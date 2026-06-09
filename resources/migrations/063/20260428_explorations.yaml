@@ -1558,12 +1558,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: name
-                  type: ${text.type}
-                  remarks: FE-supplied display name for the block (the sidebar heading)
-                  constraints:
-                    nullable: true
-              - column:
                   name: metrics
                   type: ${text.type}
                   remarks: JSON array of selected metrics ({card_id, dimension_mappings}) for this block

@@ -74,17 +74,16 @@
                        :target ["field" {} (mt/id :venues :price)]}
                       {:dimension_id "d2" :table_id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :name)]}]
-            mk-group (fn [nm dim-id disp etype]
+            mk-group (fn [dim-id disp etype]
                        (first (t2/insert-returning-instances!
                                :model/ExplorationThreadGroup
                                {:exploration_thread_id (:id t)
-                                :name                  nm
                                 :metrics               [{:card_id cid :dimension_mappings mappings}]
                                 :dimensions            [{:dimension_id dim-id :display_name disp
                                                          :effective_type etype}]
                                 :position              0})))
-            g1       (mk-group "By Price" "d1" "Price" "type/Number")
-            g2       (mk-group "By Name" "d2" "Name" "type/Text")]
+            g1       (mk-group "d1" "Price" "type/Number")
+            g2       (mk-group "d2" "Name" "type/Text")]
         (is (= :ok (query-plan/generate-query-plan! (:id t))))
         (let [rows     (t2/select [:model/ExplorationQuery :group_id :card_id :dimension_id]
                                   :exploration_thread_id (:id t))
@@ -107,13 +106,13 @@
               mappings [{:dimension_id "d1" :table_id (mt/id :venues)
                          :target ["field" {} (mt/id :venues :price)]}]
               dims     [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
-              mk       (fn [nm] (first (t2/insert-returning-instances!
-                                        :model/ExplorationThreadGroup
-                                        {:exploration_thread_id (:id t) :name nm
-                                         :metrics    [{:card_id cid :dimension_mappings mappings}]
-                                         :dimensions dims :position 0})))
-              g1       (mk "Block A")
-              g2       (mk "Block B")]
+              mk       (fn [] (first (t2/insert-returning-instances!
+                                       :model/ExplorationThreadGroup
+                                       {:exploration_thread_id (:id t)
+                                        :metrics    [{:card_id cid :dimension_mappings mappings}]
+                                        :dimensions dims :position 0})))
+              g1       (mk)
+              g2       (mk)]
           (is (= :ok (query-plan/generate-query-plan! (:id t))))
           (let [by-group (group-by :group_id (t2/select [:model/ExplorationQuery :group_id :dimension_id]
                                                         :exploration_thread_id (:id t)))]

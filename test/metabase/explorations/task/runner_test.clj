@@ -37,7 +37,7 @@
   require a non-null group_id (FK to this table)."
   [thread-id]
   (t2/insert-returning-pk! :model/ExplorationThreadGroup
-                           {:exploration_thread_id thread-id :name "g"}))
+                           {:exploration_thread_id thread-id}))
 
 (defn- pending-query!
   [thread-id card-id mbql]

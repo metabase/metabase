@@ -15,7 +15,8 @@
 
 (deftest per-group-context-scopes-applicability-test
   (testing "metric-and-dim-context returns one entry per group, with applicability scoped to that group's dims"
-    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
+    (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
+                                       :dataset_query (count-metric-query)}]
       (let [cid      (:id metric)
             mappings [{:dimension_id "d1" :table_id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}
@@ -24,11 +25,11 @@
             ;; Two groups sharing the same metric. Group A pairs it with d1 only;
             ;; group B with d2 only — even though the metric's dimension_mappings
             ;; resolve BOTH dims. Applicability must stay within each group.
-            group-a  {:id 1 :name "Revenue by Price"
+            group-a  {:id 1
                       :metrics    [{:card_id cid :dimension_mappings mappings}]
                       :dimensions [{:dimension_id "d1" :display_name "Price"
                                     :effective_type :type/Number}]}
-            group-b  {:id 2 :name "Revenue by Name"
+            group-b  {:id 2
                       :metrics    [{:card_id cid :dimension_mappings mappings}]
                       :dimensions [{:dimension_id "d2" :display_name "Name"
                                     :effective_type :type/Text}]}
@@ -37,7 +38,8 @@
             [ga gb]  groups]
         (is (= 2 (count groups)) "one context entry per group")
         (is (= [1 2] (map :group-id groups)) "group-id carried through")
-        (is (= ["Revenue by Price" "Revenue by Name"] (map :name groups)))
+        (is (= ["Revenue" "Revenue"] (map :name groups))
+            "group name is computed from the metric Card (both groups share the metric)")
         (testing "the shared metric is hydrated in both groups"
           (is (= [cid] (map :metric-id (:metrics ga))))
           (is (= [cid] (map :metric-id (:metrics gb))))
@@ -61,7 +63,6 @@
             group    (first (t2/insert-returning-instances!
                              :model/ExplorationThreadGroup
                              {:exploration_thread_id (:id t)
-                              :name                  "By Price"
                               :metrics               [{:card_id cid :dimension_mappings mappings}]
                               :dimensions            [{:dimension_id "d1" :display_name "Price"
                                                        :effective_type "type/Number"}]
@@ -76,11 +77,12 @@
 
 (deftest prompt-vars-emits-per-group-sections-test
   (testing "prompt-vars renders one block per group with its own metric/dimension counts"
-    (mt/with-temp [:model/Card metric {:type :metric :dataset_query (count-metric-query)}]
+    (mt/with-temp [:model/Card metric {:type :metric :name "Revenue"
+                                       :dataset_query (count-metric-query)}]
       (let [cid      (:id metric)
             mappings [{:dimension_id "d1" :table_id (mt/id :venues)
                        :target ["field" {} (mt/id :venues :price)]}]
-            group    {:id 7 :name "Revenue by Price"
+            group    {:id 7
                       :metrics    [{:card_id cid :dimension_mappings mappings}]
                       :dimensions [{:dimension_id "d1" :display_name "Price"
                                     :effective_type :type/Number}]}
@@ -91,6 +93,6 @@
         (is (= 1 (count (:groups vars))))
         (let [block (first (:groups vars))]
           (is (= 7 (:group_id block)))
-          (is (= "Revenue by Price" (:name block)))
+          (is (= "Revenue" (:name block)) "block name is computed from the metric Card")
           (is (string? (:metrics_md block)))
           (is (string? (:dimensions_md block))))))))

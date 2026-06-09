@@ -12,12 +12,10 @@
                    :model/ExplorationThread t {:exploration_id (:id e)}
                    :model/ExplorationThreadGroup g
                    {:exploration_thread_id (:id t)
-                    :name                  "Revenue"
                     :metrics               [{:card_id 7 :dimension_mappings [{:dimension_id "d1"}]}]
                     :dimensions            [{:dimension_id "d1" :display_name "Price"
                                              :effective_type "type/Number"}]}]
       (let [reloaded (t2/select-one :model/ExplorationThreadGroup :id (:id g))]
-        (is (= "Revenue" (:name reloaded)))
         (is (= [{:card_id 7 :dimension_mappings [{:dimension_id "d1"}]}]
                (:metrics reloaded)))
         (is (= [{:dimension_id "d1" :display_name "Price" :effective_type :type/Number}]
@@ -32,8 +30,7 @@
     (mt/with-temp [:model/User owner {}
                    :model/Exploration e {:name "x" :creator_id (:id owner)}
                    :model/ExplorationThread t {:exploration_id (:id e)}
-                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id t)
-                                                    :name "g"}]
+                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id t)}]
       (mt/with-current-user (:id owner)
         (is (true? (mi/can-read?  :model/ExplorationThreadGroup (:id g))))
         (is (true? (mi/can-write? :model/ExplorationThreadGroup (:id g))))))))
@@ -44,7 +41,7 @@
                    :model/Card metric {:type :metric :creator_id (:id u)}
                    :model/Exploration e {:name "x" :creator_id (:id u)}
                    :model/ExplorationThread t {:exploration_id (:id e)}
-                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id t) :name "g"}
+                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id t)}
                    :model/ExplorationQuery q {:exploration_thread_id (:id t)
                                               :card_id (:id metric)
                                               :dimension_id "d1"

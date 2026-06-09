@@ -77,7 +77,7 @@
 (defn- done-query!
   [thread-id card-id]
   (let [group-id (t2/insert-returning-pk! :model/ExplorationThreadGroup
-                                          {:exploration_thread_id thread-id :name "g"})
+                                          {:exploration_thread_id thread-id})
         q (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                  {:exploration_thread_id thread-id
                                                   :card_id               card-id

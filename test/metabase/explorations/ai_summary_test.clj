@@ -227,8 +227,7 @@
                    :model/ExplorationThread t {:exploration_id (:id e)
                                                :prompt         "How is revenue trending?"
                                                :position       0}
-                   :model/ExplorationThreadGroup grp {:exploration_thread_id (:id t)
-                                                      :name "Group"}]
+                   :model/ExplorationThreadGroup grp {:exploration_thread_id (:id t)}]
       (let [qp-result    (fixture-qp-result)
             query        (first (t2/insert-returning-instances!
                                  :model/ExplorationQuery

@@ -3,7 +3,7 @@
    (`ExplorationThreadGroup`) and materialized query rows.
 
    Each persisted group becomes one top-level `\"sidebar\"` node (the sidebar heading —
-   id = the group's PK as a string, name = the group's name). Within a group, the group's
+   id = the group's PK as a string, name = its computed heading). Within a group, the group's
    query rows are bundled into leaves per `[card_id dimension_id]` pair — `\"singleton\"`
    when a single query, `\"page\"` when several — pointing at their group via
    `:parent_group_id`.
@@ -134,9 +134,9 @@
      :parent_group_id nil
      :type            "auto"
      :display_type    "sidebar"
-     ;; `:name` keeps any persisted value (legacy rows) but never goes nil — new
-     ;; rows fall back to the computed heading; `:group_name` is the presentation heading.
-     :name            (or (:name group) display-name)
+     ;; `:name` mirrors the generic node field; `:group_name` is the presentation heading the
+     ;; FE actually renders for a sidebar group.
+     :name            display-name
      :group_name      display-name
      :query_ids       []
      ::max-score      nil}))
@@ -150,7 +150,7 @@
         :position        <0-indexed slot in the returned vector>
         :type            \"auto\"
         :display_type    \"sidebar\" | \"singleton\" | \"page\"
-        :name            <group name | leaf base-query name | nil>
+        :name            <computed group heading | leaf base-query name | nil>
         :query_ids       [<id> <id> ...]}
 
    Each group is emitted as a top-level `\"sidebar\"` node immediately followed by its

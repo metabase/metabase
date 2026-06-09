@@ -1599,13 +1599,13 @@
 (deftest group-tree-emits-group-and-leaf-levels-test
   (testing "Each persisted group produces a top-level 'sidebar' group; each (card_id, dimension_id) within it produces a leaf child"
     (let [groups (explorations.groups/group-tree
-                  [{:id 1 :name "Revenue block"} {:id 2 :name "Count block"}]
+                  [{:id 1 :metrics [{:card_id 10}]} {:id 2 :metrics [{:card_id 20}]}]
                   [{:id 1 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"      :interestingness_score 0.5}
                    {:id 2 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)" :interestingness_score 0.7}
                    {:id 3 :group_id 1 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)" :interestingness_score 0.3}
                    {:id 4 :group_id 1 :card_id 10 :dimension_id "d2" :segment_id nil :name "Rev by D2"      :interestingness_score 0.4}
                    {:id 5 :group_id 2 :card_id 20 :dimension_id "d1" :segment_id nil :name "Cnt by D1"      :interestingness_score 0.9}]
-                  {})
+                  {10 "Revenue block" 20 "Count block"})
           by-id  (into {} (map (juxt :id identity)) groups)]
       (is (= 5 (count groups)) "2 group nodes + 3 leaf (card, dim) nodes")
       (is (= #{"1" "2" "auto:1:10:d1" "auto:1:10:d2" "auto:2:20:d1"}
@@ -1615,9 +1615,11 @@
         (is (= "sidebar" (:display_type (get by-id "2"))))
         (is (every? #(= [] (:query_ids %)) [(get by-id "1") (get by-id "2")]))
         (is (every? #(nil? (:parent_group_id %)) [(get by-id "1") (get by-id "2")])))
-      (testing "group node :name is the group name"
+      (testing "group node :name mirrors the computed :group_name heading"
         (is (= "Revenue block" (:name (get by-id "1"))))
-        (is (= "Count block"   (:name (get by-id "2")))))
+        (is (= "Revenue block" (:group_name (get by-id "1"))))
+        (is (= "Count block"   (:name (get by-id "2"))))
+        (is (= "Count block"   (:group_name (get by-id "2")))))
       (testing "leaves point at their group via :parent_group_id"
         (is (= "1" (:parent_group_id (get by-id "auto:1:10:d1"))))
         (is (= "1" (:parent_group_id (get by-id "auto:1:10:d2"))))
@@ -1636,7 +1638,7 @@
 (deftest group-tree-depth-first-positions-test
   (testing "Output order is depth-first (group, its leaves sorted by score, next group); :position reifies the index"
     (let [groups (explorations.groups/group-tree
-                  [{:id 10 :name "Revenue"} {:id 20 :name "Count"}]
+                  [{:id 10} {:id 20}]
                   [{:id 1 :group_id 10 :card_id 1 :dimension_id "d1" :segment_id nil :name "Rev by D1" :interestingness_score 0.9}
                    {:id 2 :group_id 10 :card_id 1 :dimension_id "d2" :segment_id nil :name "Rev by D2" :interestingness_score 0.4}
                    {:id 3 :group_id 20 :card_id 2 :dimension_id "d1" :segment_id nil :name "Cnt by D1" :interestingness_score 0.8}]
@@ -1651,36 +1653,36 @@
   (testing ":display_type reflects how the group should render"
     (testing "single query → 'sidebar' group node + 'singleton' leaf"
       (let [groups (explorations.groups/group-tree
-                    [{:id 5 :name "Solo block"}]
+                    [{:id 5}]
                     [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "solo"}]
                     {})]
         (is (= ["sidebar" "singleton"] (mapv :display_type groups)))))
     (testing "multiple queries sharing (card, dim) → 'sidebar' group node + 'page' leaf"
       (let [groups (explorations.groups/group-tree
-                    [{:id 5 :name "Multi block"}]
+                    [{:id 5}]
                     [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "base"}
                      {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "seg"}]
                     {})]
         (is (= ["sidebar" "page"] (mapv :display_type groups)))))))
 
 (deftest group-tree-leaf-name-from-unsegmented-base-test
-  (testing "Leaf :name is taken from the unsegmented (segment_id=nil) base query; the group node :name is the group name"
+  (testing "Leaf :name is taken from the unsegmented (segment_id=nil) base query; the group node :name is the computed heading"
     (let [groups (explorations.groups/group-tree
-                  [{:id 5 :name "Revenue"}]
+                  [{:id 5 :metrics [{:card_id 10}]}]
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 100 :name "Rev by D1 (S1)"}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "Rev by D1"}
                    {:id 3 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id 101 :name "Rev by D1 (S2)"}]
-                  {})
+                  {10 "Revenue"})
           [grp leaf] groups]
       (is (= 2 (count groups)))
-      (is (= "Revenue"   (:name grp)) "group node name is the group's name")
+      (is (= "Revenue"   (:name grp)) "group node name is the computed metric heading")
       (is (= "Rev by D1" (:name leaf))
           "even when base isn't first in the input, its name wins for the leaf"))))
 
 (deftest group-tree-leaf-sort-prefers-contextual-test
   (testing "Leaf sort uses contextual_interestingness_score when present, else interestingness_score"
     (let [groups (explorations.groups/group-tree
-                  [{:id 5 :name "Revenue"}]
+                  [{:id 5}]
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "High heuristic low contextual"
                     :interestingness_score 0.95 :contextual_interestingness_score 0.2}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "Low heuristic high contextual"
@@ -1695,7 +1697,7 @@
 (deftest group-tree-leaf-sort-order-test
   (testing "Leaves within a group sort by max interestingness desc; nil-score leaves sort last"
     (let [groups (explorations.groups/group-tree
-                  [{:id 5 :name "Block"}]
+                  [{:id 5}]
                   [{:id 1 :group_id 5 :card_id 10 :dimension_id "d1" :segment_id nil :name "mid"  :interestingness_score 0.4}
                    {:id 2 :group_id 5 :card_id 10 :dimension_id "d2" :segment_id nil :name "high" :interestingness_score 0.9}
                    {:id 3 :group_id 5 :card_id 10 :dimension_id "d3" :segment_id nil :name "none" :interestingness_score nil}]
@@ -1710,7 +1712,7 @@
     (is (= [] (explorations.groups/group-tree [] [] {})))
     (is (= [] (explorations.groups/group-tree [] [{:id 1 :group_id 1 :card_id 1 :dimension_id "d"}] {}))))
   (testing "a group with no materialized queries still emits its node"
-    (is (= ["7"] (mapv :id (explorations.groups/group-tree [{:id 7 :name "Empty"}] [] {}))))))
+    (is (= ["7"] (mapv :id (explorations.groups/group-tree [{:id 7}] [] {}))))))
 
 (deftest exploration-get-includes-groups-test
   (testing "GET /:id attaches :groups to each thread, with one metric-level wrapper and (card, dim) leaves underneath"
@@ -2121,7 +2123,7 @@
                                                             :position       0
                                                             :started_at     (t/offset-date-time)}))
         group-id    (t2/insert-returning-pk! :model/ExplorationThreadGroup
-                                             {:exploration_thread_id (:id thread) :name "g"})
+                                             {:exploration_thread_id (:id thread)})
         eq-ids      (vec (for [i (range n)]
                            (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                                        {:exploration_thread_id (:id thread)
@@ -2184,7 +2186,7 @@
                      :model/ExplorationThread thread {:exploration_id (:id exploration)
                                                       :position       0
                                                       :started_at     (t/offset-date-time)}
-                     :model/ExplorationThreadGroup group {:exploration_thread_id (:id thread) :name "g"}
+                     :model/ExplorationThreadGroup group {:exploration_thread_id (:id thread)}
                      :model/ExplorationQuery _q {:exploration_thread_id (:id thread)
                                                  :card_id               (:id card)
                                                  :group_id              (:id group)

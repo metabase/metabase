@@ -98,12 +98,15 @@
       (str group-dn " → " dn)
       dn)))
 
-(defn- thread-groups
-  "The thread's persisted Research-plan groups (`ExplorationThreadGroup`), in authoring order."
-  [thread-id]
-  (t2/select :model/ExplorationThreadGroup
-             :exploration_thread_id thread-id
-             {:order-by [[:position :asc] [:id :asc]]}))
+(defn- groups-by-thread-id
+  "The persisted Research-plan groups (`ExplorationThreadGroup`) for `thread-ids`, in authoring
+   order, grouped by `:exploration_thread_id`."
+  [thread-ids]
+  (when (seq thread-ids)
+    (group-by :exploration_thread_id
+              (t2/select :model/ExplorationThreadGroup
+                         :exploration_thread_id [:in thread-ids]
+                         {:order-by [[:position :asc] [:id :asc]]}))))
 
 (defn- enrich-group-dimensions
   "Attach each group dimension's `:group` (source) label from `card-dim-by-id` so the read tree
@@ -139,29 +142,39 @@
                                         (exploration-query-dim-label dim ambiguous?))))))))))
 
 (defn- attach-thread-read-data
-  "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread`
-  from its persisted groups, selecting the metric Cards once (for both names and dimension
-  source metadata) and threading everything through both."
-  [thread]
-  (let [groups          (thread-groups (:id thread))
-        card-ids        (distinct (mapcat #(map :card_id (:metrics %)) groups))
-        cards           (when (seq card-ids)
-                          (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
-        card-name-by-id (into {} (map (juxt :id :name)) cards)
-        card-dim-by-id  (into {}
-                              (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
-                              cards)
-        enriched-groups (enrich-group-dimensions groups card-dim-by-id)
+  "Compute the read-side `:groups` tree and per-query `:dimension_name` labels for `thread` from
+  its pre-fetched `groups` and the shared metric-Card lookup maps (`card-name-by-id` for leaf and
+  heading names, `card-dim-by-id` for dimension source metadata)."
+  [thread groups card-name-by-id card-dim-by-id]
+  (let [enriched-groups (enrich-group-dimensions groups card-dim-by-id)
         ;; Label queries first so group-tree can name metric-anchored leaves "By <dimension>".
         labeled         (attach-query-dimension-labels thread enriched-groups card-dim-by-id)]
     (assoc labeled :groups (explorations.groups/group-tree
                             enriched-groups (:queries labeled) card-name-by-id))))
 
+(defn- attach-threads-read-data
+  "Batch [[attach-thread-read-data]] across `threads`: select every thread's groups and the
+  metric Cards they reference in two queries total (not two per thread, which N+1s), then
+  enrich each thread in memory."
+  [threads]
+  (let [groups-by-thread (groups-by-thread-id (map :id threads))
+        all-groups       (mapcat val groups-by-thread)
+        card-ids         (distinct (mapcat #(map :card_id (:metrics %)) all-groups))
+        cards            (when (seq card-ids)
+                           (t2/select [:model/Card :id :name :dimensions] :id [:in card-ids]))
+        card-name-by-id  (into {} (map (juxt :id :name)) cards)
+        card-dim-by-id   (into {}
+                               (mapcat (fn [c] (map (juxt :id identity) (:dimensions c))))
+                               cards)]
+    (mapv #(attach-thread-read-data % (get groups-by-thread (:id %) [])
+                                    card-name-by-id card-dim-by-id)
+          threads)))
+
 (defn- hydrate-exploration [exploration]
   (-> exploration
       (t2/hydrate :creator :can_write :collection
                   [:threads :queries :documents :timelines])
-      (update :threads #(some->> % (mapv attach-thread-read-data)))))
+      (update :threads #(some->> % attach-threads-read-data))))
 
 (defn- insert-thread-default-documents!
   "Insert the default Scratchpad doc, plus an AI-summary placeholder when configured."
@@ -243,7 +256,8 @@
   "One Research-plan area on the FE — either a metric area (one primary metric + chosen dimensions)
    or a dimension area (the dimension's group + referencing metrics). Persisted verbatim as one
    `ExplorationThreadGroup` row; the planners cross this group's metrics with this group's
-   dimensions only. `:name` is the FE-supplied sidebar heading."
+   dimensions only. The sidebar heading is computed read-side (see `group_name` in
+   `ExplorationQueryGroup`), not supplied here."
   [:map
    ;; Whether the block is anchored on its metric or its dimension. The read side
    ;; uses this to build the sidebar heading + sub-item names.

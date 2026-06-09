@@ -170,7 +170,7 @@
   builds the per-dim `:applicable-to` lists — all scoped to this group, so the planners
   only ever cross metrics with dimensions that co-occur in the same group.
 
-  `group` is an `ExplorationThreadGroup` row: `{:id :name :metrics [...] :dimensions [...]}`,
+  `group` is an `ExplorationThreadGroup` row: `{:id :metrics [...] :dimensions [...]}`,
   where `:metrics` entries carry `{:card_id :dimension_mappings}` and `:dimensions` entries
   carry the dim snapshot."
   [group cards mp-by-db]
@@ -234,7 +234,7 @@
   metrics only with that same group's dimensions.
 
   `groups` is the thread's `ExplorationThreadGroup` rows
-  (`{:id :name :metrics [...] :dimensions [...]}`). Returns
+  (`{:id :metrics [...] :dimensions [...]}`). Returns
 
     {:groups [{:group-id      <id>
                :name          <group name>

@@ -135,7 +135,6 @@
                  :model/Exploration e {:name "x" :creator_id (:id u)}
                  :model/ExplorationThread t {:exploration_id (:id e)}
                  :model/ExplorationThreadGroup m {:exploration_thread_id (:id t)
-                                                  :name    "Group"
                                                   :metrics [{:card_id (:id metric)
                                                              :dimension_mappings [{:dimension_id "d1"
                                                                                    :table_id 1
