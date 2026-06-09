@@ -39,7 +39,7 @@ jobs:
   backport-reminder:
     needs: [ files-changed, flags ]
     if: ${{ !cancelled() }}
-    name: Decide whether to backport docs or not
+    name: Decide whether to backport or not
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     permissions: {}
