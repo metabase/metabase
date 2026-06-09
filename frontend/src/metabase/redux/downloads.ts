@@ -8,8 +8,8 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { api } from "metabase/api/client";
 import { datasetApi } from "metabase/api/dataset";
-import api from "metabase/api/legacy-client";
 import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";

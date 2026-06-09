@@ -82,7 +82,7 @@ function SetupWorkspaceForm({ onClose }: SetupWorkspaceFormProps) {
             <Text c="text-secondary">
               {jt`Upload the ${(
                 <Code key="config">{CONFIG_FILENAME}</Code>
-              )} from the main instance's workspace page.`}
+              )} you downloaded from a workspace on your production instance.`}
             </Text>
             <FormFileInput
               name="config"

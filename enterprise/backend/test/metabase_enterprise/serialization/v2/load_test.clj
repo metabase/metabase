@@ -90,6 +90,57 @@
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))))))
 
+(deftest escape-continue-on-error-roundtrip-test
+  (testing "archive exported past escape analysis imports under continue-on-error without crashing (#74622)"
+    (let [serialized  (atom nil)
+          coll-eid    (atom nil)
+          clean-eid   (atom nil)
+          dash-eid    (atom nil)
+          escaped-eid (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [db      (ts/create! :model/Database :name "rt-db")
+                table   (ts/create! :model/Table :name "t" :db_id (:id db))
+                user    (ts/create! :model/User :first_name "A" :last_name "B" :email "a@b.example")
+                target  (ts/create! :model/Collection :name "Target")
+                outside (ts/create! :model/Collection :name "Outside (not exported)")
+                q       {:type :query :database (:id db) :query {:source-table (:id table)}}
+                clean   (ts/create! :model/Card :name "Clean" :collection_id (:id target)
+                                    :database_id (:id db) :table_id (:id table)
+                                    :query_type :query :dataset_query q :creator_id (:id user))
+                ;; lives outside the target collection, so it "escapes"
+                escaped (ts/create! :model/Card :name "Escaped" :collection_id (:id outside)
+                                    :database_id (:id db) :table_id (:id table)
+                                    :query_type :query :dataset_query q :creator_id (:id user))
+                dash    (ts/create! :model/Dashboard :name "Dash" :collection_id (:id target) :creator_id (:id user))]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id clean))
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id escaped))
+            (reset! coll-eid (:entity_id target))
+            (reset! clean-eid (:entity_id clean))
+            (reset! dash-eid (:entity_id dash))
+            (reset! escaped-eid (:entity_id escaped))
+            (reset! serialized
+                    (into [] (serdes.extract/extract {:targets           [["Collection" (:id target)]]
+                                                      :no-settings       true
+                                                      :continue-on-error true})))))
+        (testing "export keeps the collection, clean card and dashboard, leaves the escaped card out"
+          (is (contains? (ids-by-model @serialized "Collection") @coll-eid))
+          (is (contains? (ids-by-model @serialized "Card") @clean-eid))
+          (is (not (contains? (ids-by-model @serialized "Card") @escaped-eid)))
+          (is (contains? (ids-by-model @serialized "Dashboard") @dash-eid)))
+        ;; The dashboard carries a dashcard pointing at the escaped card, which isn't in the archive. Under
+        ;; continue-on-error the import skips that dashboard (load-metabase! wraps each entity in try/catch)
+        ;; rather than aborting, and everything else lands. We do NOT promise a strict (default) import works.
+        (testing "import under continue-on-error doesn't crash; the dangling dashboard is skipped, the rest lands"
+          (ts/with-db dest-db
+            (let [report (serdes.load/load-metabase! (ingestion-in-memory @serialized) {:continue-on-error true})]
+              (is (some? (t2/select-one :model/Collection :entity_id @coll-eid)) "target collection imported")
+              (is (some? (t2/select-one :model/Card :entity_id @clean-eid)) "clean card imported")
+              (is (nil? (t2/select-one :model/Card :entity_id @escaped-eid)) "escaped card not imported")
+              (is (nil? (t2/select-one :model/Dashboard :entity_id @dash-eid))
+                  "the dashboard that needs the escaped card is skipped, not imported with a dangling ref")
+              (is (seq (:errors report)) "the skipped dashboard is recorded as an import error"))))))))
+
 (deftest deserialization-nested-collections-test
   (testing "with a three-level nesting of collections"
     (let [serialized (atom nil)
@@ -1632,11 +1683,11 @@
                      :model/Card       c2   {:name "card2" :collection_id (:id coll)}
                      :model/Card       _c3  {:name "card3" :collection_id (:id coll)}]
         (testing "It's possible to skip a few errors during extract"
-          (let [extract-one serdes/extract-one]
-            (with-redefs [serdes/extract-one (fn [model-name opts instance]
-                                               (if (= (:entity_id instance) (:entity_id c1))
-                                                 (throw (ex-info "Skip me" {}))
-                                                 (extract-one model-name opts instance)))]
+          (let [extract-one (mt/original-fn #'serdes/extract-one)]
+            (mt/with-dynamic-fn-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                             (if (= (:entity_id instance) (:entity_id c1))
+                                                               (throw (ex-info "Skip me" {}))
+                                                               (extract-one model-name opts instance)))]
               (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
                 (let [ser            (vec (serdes.extract/extract {:no-settings       true
                                                                    :no-data-model     true

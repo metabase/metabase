@@ -187,11 +187,11 @@
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`.
    Uses [[driver.conn/effective-details]] to select the appropriate connection details
-   based on the current [[driver.conn/*connection-type*]]."
+   for the current connection context."
   [{:keys [id], driver :engine, :as database}]
   {:pre [(map? database)]}
-  (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (connection-type: %s) ..."
-                             driver id driver.conn/*connection-type*))
+  (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (%s) ..."
+                             driver id (driver.conn/connection-telemetry-info)))
   (let [details             (driver.conn/effective-details database)
         details-with-tunnel (driver/incorporate-ssh-tunnel-details ;; If the tunnel is disabled this returned unchanged
                              driver
@@ -250,16 +250,16 @@
 
 (defn- pool-cache-key
   "Returns the cache key for connection pools: `[database-id, connection-type]`.
-   Uses [[driver.conn/effective-connection-type]] so that a requested write connection
+   Uses [[driver.conn/connection-pool-type]] so that a requested write connection
    without configured `:write-data-details` resolves to `:default`, reusing the
    existing pool instead of creating a duplicate."
   [database]
-  [(u/the-id database) (driver.conn/effective-connection-type database)])
+  [(u/the-id database) (driver.conn/connection-pool-type database)])
 
 (mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated.
-  Uses [[driver.conn/effective-details]] to select the appropriate details based on [[driver.conn/*connection-type*]]."
+  Uses [[driver.conn/effective-details]] to select the appropriate details for the current connection context."
   [{driver :engine, :as database} :- [:maybe :map]]
   (when (some? database)
     (hash (connection-details->spec driver (driver.conn/effective-details database)))))
@@ -439,8 +439,8 @@
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
-  don't create multiple ones for the same DB and connection type. The connection type is determined by
-  [[driver.conn/*connection-type*]] - use [[driver.conn/with-write-connection]] to get a write connection pool.
+  don't create multiple ones for the same DB and connection type. The connection type follows the current
+  connection context — use [[driver.conn/with-write-connection]] to get a write connection pool.
 
   When [[metabase.driver/with-swapped-connection-details]] is active for a database, the database details are
   modified before creating the connection pool. Swapped pools are stored in a separate Guava cache with TTL-based

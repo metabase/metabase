@@ -118,11 +118,10 @@
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
-  DB based on values returned by [[metabase.driver/describe-table-fks]].
+  DB based on values returned by [[metabase.driver/describe-fks]].
 
-  If the driver supports the `:describe-fks` feature, [[metabase.driver/describe-fks]] is used to fetch the FK metadata.
-
-  This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is done."
+  This function also sets all the tables that should be synced to have `initial-sync-status=complete` once the sync is
+  done."
   [database :- i/DatabaseInstance]
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (let [driver       (driver.u/database->driver database)

@@ -185,8 +185,14 @@
         ;; cards referenced by dashboards live outside the target collections.
         {:keys [reportable-escaped analytics-card-ids]} (when has-content?
                                                           (escape-analysis by-model nodes))]
-    (if (seq reportable-escaped)
-      (log-escape-report! reportable-escaped)
+    (when (seq reportable-escaped)
+      (log-escape-report! reportable-escaped))
+    ;; By default a card referenced from inside the requested collections but living outside them aborts
+    ;; the whole export. With continue-on-error we don't abort: the escaped cards are outside the
+    ;; collection set so they're filtered out of extraction anyway, and the dashboards/cards that
+    ;; reference them are skipped on import (which also honors continue-on-error).
+    (when (or (empty? reportable-escaped)
+              (:continue-on-error opts))
       (let [coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
             ;; (published tables in target collections). These are extracted by ID, not all.

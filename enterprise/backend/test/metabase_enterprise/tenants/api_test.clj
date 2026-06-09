@@ -654,6 +654,24 @@
               (is (= #{"Normal Collection" "Shared Tenant Collection" "Tenant Specific Collection"}
                      trash-items)))))))))
 
+(deftest tenant-collections-can-be-permanently-deleted-from-trash-test
+  (testing "DELETE /api/collection/:id"
+    (testing "archived tenant collections can be permanently deleted (#74148)"
+      (mt/with-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
+                         :model/Collection {shared-id :id} {:name      "Shared Tenant Collection"
+                                                            :namespace "shared-tenant-collection"}
+                         :model/Collection {tenant-id :id} {:name      "Tenant Specific Collection"
+                                                            :namespace "tenant-specific"}]
+            ;; collections must be trashed before they can be deleted
+            (doseq [id [normal-id shared-id tenant-id]]
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:archived true}))
+            (testing "every trashed collection is permanently deleted, regardless of namespace"
+              (doseq [id [normal-id shared-id tenant-id]]
+                (mt/user-http-request :crowberto :delete 200 (str "collection/" id))
+                (is (not (t2/exists? :model/Collection :id id)))))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Tenant Deactivation Archives Collections Tests                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+

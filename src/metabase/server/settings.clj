@@ -3,6 +3,7 @@
   off a separate `response` module."
   (:require
    [clojure.string :as str]
+   [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -39,6 +40,33 @@ x.com")
   :audit      :getter
   :visibility :public
   :export?    true)
+
+(defsetting csp-img-allowed-hosts
+  (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance.")
+  :encryption :no
+  :default    ""
+  :audit      :getter
+  :visibility :public
+  :export?    true)
+
+(defsetting csp-img-enabled
+  (deferred-tru "Restrict the browser Content Security Policy so images can only load from this Metabase instance or the hosts listed in `csp-img-allowed-hosts`. Must be on to enable Custom Visualizations.")
+  :type       :boolean
+  :default    false
+  :visibility :public
+  :audit      :getter
+  :export?    true
+  :setter     (fn [new-value]
+                (let [disabling? (not (cond-> new-value (string? new-value) setting/string->boolean))]
+                  (when (and disabling?
+                             config/ee-available?
+                             (when-let [custom-viz-enabled?
+                                        (requiring-resolve
+                                         'metabase-enterprise.custom-viz-plugin.settings/custom-viz-enabled)]
+                               (custom-viz-enabled?)))
+                    (throw (ex-info (tru "Cannot disable the image CSP setting while Custom Visualizations are enabled.")
+                                    {:status-code 400})))
+                  (setting/set-value-of-type! :boolean :csp-img-enabled new-value))))
 
 (defsetting redirect-all-requests-to-https
   (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")

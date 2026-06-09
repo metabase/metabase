@@ -45,7 +45,7 @@
 (deftest create-provider-test
   (testing "Creating an OIDC provider"
     (mt/with-additional-premium-features #{:sso-oidc}
-      (with-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
+      (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
         (mt/with-temporary-setting-values [oidc-providers []]
           (testing "successfully creates provider"
             (let [result (mt/user-http-request :crowberto :post 200 "ee/sso/oidc" test-provider)]
@@ -78,7 +78,7 @@
 (deftest update-provider-test
   (testing "Updating an OIDC provider"
     (mt/with-additional-premium-features #{:sso-oidc}
-      (with-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
+      (mt/with-dynamic-fn-redefs [oidc.check/check-oidc-configuration (constantly successful-check-result)]
         (mt/with-temporary-setting-values [oidc-providers [test-provider]]
           (testing "successfully updates login prompt"
             (let [result (mt/user-http-request :crowberto :put 200 "ee/sso/oidc/test-okta"
@@ -107,10 +107,10 @@
     (mt/with-additional-premium-features #{:sso-oidc}
       (mt/with-temporary-setting-values [oidc-providers []]
         (testing "oidc-enabled is false with no providers"
-          (is (false? (sso-settings/oidc-enabled?)))))
+          (is (false? (sso-settings/oidc-enabled)))))
       (mt/with-temporary-setting-values [oidc-providers [(assoc test-provider :enabled true)]]
         (testing "oidc-configured is true when provider has required fields"
-          (is (true? (sso-settings/oidc-enabled?)))))
+          (is (true? (sso-settings/oidc-enabled)))))
       (mt/with-temporary-setting-values [oidc-providers [(assoc test-provider :enabled false)]]
         (testing "oidc-enabled is false when no provider is enabled"
-          (is (false? (sso-settings/oidc-enabled?))))))))
+          (is (false? (sso-settings/oidc-enabled))))))))

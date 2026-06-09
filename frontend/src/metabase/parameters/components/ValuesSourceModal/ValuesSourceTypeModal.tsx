@@ -8,7 +8,6 @@ import {
   useGetCardQuery,
   useGetTableQueryMetadataQuery,
 } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import type { RadioOption } from "metabase/common/components/Radio";
@@ -20,7 +19,7 @@ import { connect, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -103,7 +102,7 @@ const ValuesSourceTypeModal = ({
       footer={[
         <Button
           key="submit"
-          primary
+          variant="filled"
           disabled={!isValidSourceConfig(sourceType, sourceConfig)}
           onClick={onSubmit}
         >{t`Done`}</Button>,

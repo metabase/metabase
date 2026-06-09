@@ -1,7 +1,7 @@
 import Cookies from "js-cookie";
 import { replace } from "react-router-redux";
 
-import { logout, refreshSession } from "metabase/auth/actions";
+import { logout, refreshSession } from "metabase/redux/auth";
 import { isSameOrSiteUrlOrigin } from "metabase/utils/dom";
 
 export const SESSION_KEY = "metabase.TIMEOUT";

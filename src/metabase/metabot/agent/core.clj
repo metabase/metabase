@@ -623,7 +623,9 @@
           (let [start-ms (u/start-timer)]
             (binding [*debug-log*                              (when debug? (atom []))
                       scope/*current-user-scope*               scopes
-                      scope/*current-user-metabot-permissions* perms]
+                      scope/*current-user-metabot-permissions* perms
+                      scope/*current-user-capabilities*        (get-in opts [:context :capabilities] #{})
+                      scope/*current-loadable-skill-ids*       (atom #{})]
               (try
                 (let [agent              (init-agent opts)
                       {result    :result

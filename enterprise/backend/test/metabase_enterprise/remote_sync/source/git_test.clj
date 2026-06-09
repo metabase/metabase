@@ -10,7 +10,7 @@
    [metabase.util :as u])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
-           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
@@ -93,9 +93,38 @@
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
 
+(defn- command-timeout
+  "Reads the protected `timeout` field (in seconds) that JGit applies to a TransportCommand's
+   network operations. 0 means no timeout (JGit's default), i.e. the operation can hang forever."
+  [^TransportCommand cmd]
+  (let [f (.getDeclaredField TransportCommand "timeout")]
+    (.setAccessible f true)
+    (.getInt f cmd)))
+
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
+
+(deftest call-remote-command-applies-network-timeout-test
+  (testing "Remote git operations get a positive network timeout so a stalled connection can't hang
+            the sync thread forever (GHY-3727: pull/push gets stuck at progress 0 and 0.3)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (#'git/call-remote-command cmd source)
+        (is (pos? (command-timeout cmd))
+            "TransportCommand should have a positive (non-zero) timeout configured before .call")))))
+
+(deftest call-remote-command-respects-timeout-setting-test
+  (testing "The network timeout applied to remote git operations is driven by remote-sync-git-timeout-seconds"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (mt/with-temporary-setting-values [remote-sync-git-timeout-seconds 17]
+          (#'git/call-remote-command cmd source)
+          (is (= 17 (command-timeout cmd))))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]
@@ -422,6 +451,27 @@
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
 
+(deftest get-jgit-reclones-after-local-repo-deleted-test
+  (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
+            operation re-clones instead of returning a stale cached Git instance (which fails
+            permanently with 'origin: not found' until an instance restart)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
+            remote-url (:remote-url source)
+            ^File local-path (#'git/repo-path {:remote-url remote-url})
+            ^Git cached-git (:git source)]
+        (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
+        (is (= ["branch-1" "master"] (source.p/branches source))
+            "Precondition: branches works before the dir is deleted")
+        (FileUtils/deleteDirectory local-path)
+        (is (not (.exists local-path)) "Local clone dir is gone")
+        (let [fresh-source (->source! "master" remote)]
+          (is (.exists local-path) "Local clone dir was re-created (re-cloned)")
+          (is (not (identical? cached-git (:git fresh-source)))
+              "A fresh Git instance is returned, not the stale cached one")
+          (is (= ["branch-1" "master"] (source.p/branches fresh-source))
+              "branches works again after the dir was deleted, without an instance restart"))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
@@ -429,3 +479,54 @@
   (testing "Bitbucket URL uses x-token-auth"
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
+
+;; ---------------------------------------------------------------------------
+;; Missing remote branch tests (issue #72778)
+;; ---------------------------------------------------------------------------
+
+(defn- delete-remote-branch!
+  "Deletes a branch on the 'remote' repo used by a test."
+  [{:keys [^Git git]} ^String branch]
+  (-> (.branchDelete git)
+      (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch]))
+      (.setForce true)
+      (.call)))
+
+(deftest fetch!-prunes-deleted-remote-branches-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])]
+      (is (some? (git/commit-sha source "branch-1"))
+          "Precondition: branch-1 is resolvable locally after initial clone")
+      (delete-remote-branch! remote "branch-1")
+      (git/fetch! source)
+      (is (nil? (git/commit-sha source "branch-1"))
+          "branch-1 ref is pruned locally after the remote branch is deleted")
+      (is (some? (git/commit-sha source "master"))
+          "other refs are unaffected"))))
+
+(deftest snapshot-throws-missing-branch-ex-data-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          bad-source (->source! "does-not-exist" remote)]
+      (try
+        (source.p/snapshot bad-source)
+        (is false "snapshot should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= "Invalid branch: does-not-exist" (ex-message e)))
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "does-not-exist" (:branch (ex-data e)))))))))
+
+(deftest snapshot-throws-missing-branch-after-remote-delete-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir :branches ["branch-1"])
+          source-on-branch-1 (->source! "branch-1" remote)]
+      (is (some? (source.p/snapshot source-on-branch-1))
+          "Precondition: snapshot works before the branch is deleted")
+      (delete-remote-branch! remote "branch-1")
+      (try
+        (source.p/snapshot source-on-branch-1)
+        (is false "snapshot should have thrown after the remote branch was deleted")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "branch-1" (:branch (ex-data e)))))))))
