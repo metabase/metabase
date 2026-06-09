@@ -2205,3 +2205,40 @@
                                     :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]}]
                            :fields [$id $name]
                            :limit 2})))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                          Persisted-info source-query handling tests                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest e2e-persisted-info-native-source-query-test
+  (testing "persisted-info/native on an incoming source-query is resolved from the source-table, not the query map"
+    (testing "a query whose source-query carries persisted-info/native still reads from the source-table"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :people) :perms/create-queries :no)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (testing "Sanity check: user can query venues normally"
+            (is (=? {:status :completed}
+                    (qp/process-query (mt/mbql-query venues {:limit 1})))))
+          (testing "Sanity check: user cannot query people normally"
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (qp/process-query (mt/mbql-query people {:limit 1})))))
+          (testing "persisted-info/native in the query map is ignored in favor of the source-table"
+            (let [people-sql (str "SELECT id AS ID, address AS NAME, 0 AS CATEGORY_ID,"
+                                  " 0.0 AS LATITUDE, 0.0 AS LONGITUDE, 0 AS PRICE FROM PEOPLE")
+                  result     (qp/process-query
+                              {:database (mt/id)
+                               :type     :query
+                               :query    {:source-query {:persisted-info/native people-sql
+                                                         :source-table          (mt/id :venues)}
+                                          :limit        1}})
+                  expected   (qp/process-query
+                              (mt/mbql-query venues {:limit 1}))]
+              (is (=? {:status :completed} result))
+              (testing "Results come from the source-table, not the inline native query"
+                (is (= (mt/rows expected)
+                       (mt/rows result)))))))))))
