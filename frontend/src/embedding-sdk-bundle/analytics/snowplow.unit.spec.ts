@@ -44,7 +44,12 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     it("configures the proxy path, anonymises, and touches no storage", async () => {
       const { initSdkTracker } = await loadModule();
 
-      initSdkTracker("https://metabase.example.com", "sso", makeStore());
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
 
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
       expect(mockNewTracker).toHaveBeenCalledWith(
@@ -62,8 +67,18 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     it("is idempotent — a second call does not create another tracker", async () => {
       const { initSdkTracker } = await loadModule();
 
-      initSdkTracker("https://metabase.example.com", "sso", makeStore());
-      initSdkTracker("https://metabase.example.com", "sso", makeStore());
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
 
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
     });
@@ -71,16 +86,18 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     it("returns true on first call and false on subsequent calls", async () => {
       const { initSdkTracker } = await loadModule();
 
-      const firstResult = initSdkTracker(
-        "https://metabase.example.com",
-        "sso",
-        makeStore(),
-      );
-      const secondResult = initSdkTracker(
-        "https://metabase.example.com",
-        "sso",
-        makeStore(),
-      );
+      const firstResult = initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
+      const secondResult = initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
 
       expect(firstResult).toBe(true);
       expect(secondResult).toBe(false);
@@ -97,9 +114,35 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
     it("returns the auth method passed to initSdkTracker", async () => {
       const { initSdkTracker, getSdkAuthMethod } = await loadModule();
 
-      initSdkTracker("https://metabase.example.com", "api_key", makeStore());
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "api_key",
+        localeUsed: false,
+        externalStore: makeStore(),
+      });
 
       expect(getSdkAuthMethod()).toBe("api_key");
+    });
+  });
+
+  describe("getSdkLocaleUsed", () => {
+    it("returns null before initSdkTracker is called", async () => {
+      const { getSdkLocaleUsed } = await loadModule();
+
+      expect(getSdkLocaleUsed()).toBeNull();
+    });
+
+    it("returns the locale_used flag passed to initSdkTracker", async () => {
+      const { initSdkTracker, getSdkLocaleUsed } = await loadModule();
+
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: true,
+        externalStore: makeStore(),
+      });
+
+      expect(getSdkLocaleUsed()).toBe(true);
     });
   });
 

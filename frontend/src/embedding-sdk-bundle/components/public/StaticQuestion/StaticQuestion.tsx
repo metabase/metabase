@@ -1,6 +1,6 @@
 import { type FC, type PropsWithChildren, useMemo } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/sdk-component-events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { RenderIfHasContent } from "embedding-sdk-bundle/components/private/RenderIfHasContent/RenderIfHasContent";
@@ -133,15 +133,11 @@ const StaticQuestionInner = (
   } = normalizedProps;
 
   const isNewQuestion = questionId === "new" || questionId === "new-native";
-  const entityId = isNewQuestion
-    ? null
-    : questionId != null
-      ? questionId
-      : null;
+  const trackingEntityId = questionId != null ? questionId : null;
 
   useTrackSdkComponentMount(
     "StaticQuestion",
-    entityId,
+    trackingEntityId,
     isNewQuestion
       ? {
           id_new: questionId === "new",

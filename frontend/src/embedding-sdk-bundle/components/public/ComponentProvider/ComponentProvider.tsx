@@ -2,8 +2,10 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { EMBEDDING_SDK_SCHEMA } from "embedding-sdk-bundle/analytics/events";
 import {
   getSdkAuthMethod,
+  getSdkLocaleUsed,
   initSdkTracker,
   trackSdkEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
@@ -47,11 +49,9 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
   isLocalHost?: boolean;
 };
 
-const EMBEDDING_SDK_SCHEMA = "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
-
 function deriveAuthMethod(authConfig: MetabaseAuthConfig): string {
   if (authConfig.isGuest) {
-    return "session";
+    return "guest";
   }
   if ("apiKey" in authConfig && authConfig.apiKey) {
     return "api_key";
@@ -67,6 +67,7 @@ let hasInitializedPlugins = false;
 function useSdkTrackerInit(
   authConfig: MetabaseAuthConfig,
   reduxStore: SdkStore,
+  localeUsed: boolean,
 ) {
   const isTrackingEnabled = useSdkSelector((state) =>
     Boolean(state.settings?.values?.["anon-tracking-enabled"]),
@@ -78,11 +79,12 @@ function useSdkTrackerInit(
     }
 
     const authMethod = deriveAuthMethod(authConfig);
-    const wasJustInitialized = initSdkTracker(
-      authConfig.metabaseInstanceUrl,
+    const wasJustInitialized = initSdkTracker({
+      metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
       authMethod,
-      reduxStore,
-    );
+      localeUsed,
+      externalStore: reduxStore,
+    });
 
     // setSdkTrackerReady unblocks per-mount hooks in child components. Set it
     // even when wasJustInitialized=false (e.g. multiple providers) so children
@@ -102,6 +104,7 @@ function useSdkTrackerInit(
           global: {
             auth_method: getSdkAuthMethod(),
             sdk_version: sdkVersion,
+            locale_used: getSdkLocaleUsed(),
           },
         },
       });
@@ -176,7 +179,7 @@ export const ComponentProviderInternal = (
   });
 
   useInitPlugins(reduxStore);
-  useSdkTrackerInit(authConfig, reduxStore);
+  useSdkTrackerInit(authConfig, reduxStore, locale != null);
 
   useSdkCustomLoader();
 

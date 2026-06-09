@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/sdk-component-events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {
@@ -120,15 +120,11 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     (props as { withAlerts?: boolean }).withAlerts ?? false;
 
   const isNewQuestion = questionId === "new" || questionId === "new-native";
-  const entityId = isNewQuestion
-    ? null
-    : questionId != null
-      ? questionId
-      : null;
+  const trackingEntityId = questionId != null ? questionId : null;
 
   useTrackSdkComponentMount(
     "InteractiveQuestion",
-    entityId,
+    trackingEntityId,
     isNewQuestion
       ? {
           id_new: questionId === "new",

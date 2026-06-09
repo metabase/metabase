@@ -81,16 +81,20 @@
       "properties": {
         "auth_method": {
           "description": "Authentication method used for the embedding.",
-          "type": ["string", "null"],
-          "enum": ["session", "api_key", "sso", null]
+          "type": "string",
+          "enum": ["api_key", "sso", "guest"]
         },
         "sdk_version": {
           "description": "SDK package version string.",
           "type": ["string", "null"],
           "maxLength": 255
+        },
+        "locale_used": {
+          "description": "Whether the consumer set an explicit locale.",
+          "type": ["boolean", "null"]
         }
       },
-      "required": ["auth_method", "sdk_version"],
+      "required": ["auth_method", "sdk_version", "locale_used"],
       "additionalProperties": false
     }
   },

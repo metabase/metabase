@@ -7,8 +7,7 @@ import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-const EMBEDDING_SDK_SCHEMA =
-  "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
+const EMBEDDING_SDK_SCHEMA = "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
 
 // The SDK tracker posts to /api/analytics-proxy with encodeBase64:false, so the
 // Snowplow POST body is plain JSON: { data: [ { ue_pr: "<json>", ... } ] }.
@@ -17,13 +16,17 @@ const EMBEDDING_SDK_SCHEMA =
 type SdkEventData = {
   component: string | null;
   properties: Record<string, unknown> | null;
-  global: { auth_method: string | null; sdk_version: string | null };
+  global: {
+    auth_method: string | null;
+    sdk_version: string | null;
+    locale_used: boolean | null;
+  };
 };
 
 const sdkEventsFromProxyBody = (body: unknown): SdkEventData[] => {
   const rows =
     body && Array.isArray((body as { data?: unknown[] }).data)
-      ? ((body as { data: Array<{ ue_pr?: string }> }).data)
+      ? (body as { data: Array<{ ue_pr?: string }> }).data
       : [];
 
   return rows
@@ -80,20 +83,18 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     // Wait for at least one proxy delivery, then assert on what was captured.
     cy.wait("@analyticsProxy");
 
-    cy.wrap(capturedEvents)
-      .should((events: SdkEventData[]) => {
-        const componentEvent = events.find(
-          (event) => event.component === "StaticQuestion",
-        );
-        expect(componentEvent, "StaticQuestion mount event").to.exist;
-        expect(componentEvent?.global.auth_method, "auth_method global").to.eq(
-          "sso",
-        );
-        expect(
-          componentEvent?.global.sdk_version,
-          "sdk_version global",
-        ).to.be.a("string");
-      });
+    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
+      const componentEvent = events.find(
+        (event) => event.component === "StaticQuestion",
+      );
+      expect(componentEvent, "StaticQuestion mount event").to.exist;
+      expect(componentEvent?.global.auth_method, "auth_method global").to.eq(
+        "sso",
+      );
+      expect(componentEvent?.global.sdk_version, "sdk_version global").to.be.a(
+        "string",
+      );
+    });
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const beacon = events.find((event) => event.component === null);

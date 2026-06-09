@@ -3,9 +3,10 @@ import { useEffect } from "react";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
-import { getSdkAuthMethod, trackSdkEvent } from "./snowplow";
+import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
 
-const EMBEDDING_SDK_SCHEMA = "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
+export const EMBEDDING_SDK_SCHEMA =
+  "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
 
 export type SdkComponentName =
   | "StaticDashboard"
@@ -70,6 +71,7 @@ export const useTrackSdkComponentMount = (
         global: {
           auth_method: getSdkAuthMethod(),
           sdk_version: sdkVersion,
+          locale_used: getSdkLocaleUsed(),
         },
       },
     });

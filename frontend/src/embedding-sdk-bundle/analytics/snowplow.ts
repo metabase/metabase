@@ -19,20 +19,28 @@ const SDK_TRACKER_NAME = "sdk";
 
 let trackerInitialized = false;
 let sdkAuthMethod: string | null = null;
+let sdkLocaleUsed: boolean | null = null;
 
 // Initialize the SDK's Snowplow tracker, pointed at the instance proxy. Returns
 // true when the tracker is freshly initialized, false when already initialized
 // (idempotent — safe under React 18 StrictMode double-mount and nested providers).
-export const initSdkTracker = (
-  metabaseInstanceUrl: string,
-  authMethod: string | null = null,
-  externalStore?: { getState: () => SdkStoreState },
-): boolean => {
+export const initSdkTracker = ({
+  metabaseInstanceUrl,
+  authMethod = null,
+  localeUsed = null,
+  externalStore,
+}: {
+  metabaseInstanceUrl: string;
+  authMethod?: string | null;
+  localeUsed?: boolean | null;
+  externalStore?: { getState: () => SdkStoreState };
+}): boolean => {
   if (trackerInitialized) {
     return false;
   }
   trackerInitialized = true;
   sdkAuthMethod = authMethod;
+  sdkLocaleUsed = localeUsed;
 
   const store = externalStore ?? getSdkStore();
 
@@ -62,6 +70,10 @@ export const initSdkTracker = (
 // Returns the auth method captured during tracker initialization, or null if
 // the tracker has not been initialized yet.
 export const getSdkAuthMethod = (): string | null => sdkAuthMethod;
+
+// Returns whether the consumer set an explicit locale, captured during tracker
+// initialization, or null if the tracker has not been initialized yet.
+export const getSdkLocaleUsed = (): boolean | null => sdkLocaleUsed;
 
 const createSdkInstanceContextPlugin = (store: {
   getState: () => SdkStoreState;

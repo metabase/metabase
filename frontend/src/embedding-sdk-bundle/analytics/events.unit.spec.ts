@@ -3,6 +3,7 @@
 jest.mock("./snowplow", () => ({
   trackSdkEvent: jest.fn(),
   getSdkAuthMethod: jest.fn(() => "sso"),
+  getSdkLocaleUsed: jest.fn(() => false),
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
@@ -19,7 +20,7 @@ import { renderHook } from "@testing-library/react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 
-import { useTrackSdkComponentMount } from "./sdk-component-events";
+import { useTrackSdkComponentMount } from "./events";
 import { trackSdkEvent } from "./snowplow";
 
 const mockTrackSdkEvent = jest.mocked(trackSdkEvent);
@@ -55,7 +56,11 @@ describe("useTrackSdkComponentMount", () => {
         data: expect.objectContaining({
           component: "StaticDashboard",
           properties: { with_title: true },
-          global: { auth_method: "sso", sdk_version: "1.2.3" },
+          global: {
+            auth_method: "sso",
+            sdk_version: "1.2.3",
+            locale_used: false,
+          },
         }),
       }),
     );
