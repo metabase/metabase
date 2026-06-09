@@ -46,6 +46,7 @@ import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles
 import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureConsoleErrors } from "metabase/utils/errors";
+import { initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import registerVisualizations from "metabase/visualizations/register";
@@ -72,6 +73,12 @@ function _init(reducers, getRoutes, callback) {
   const syncedHistory = syncHistoryWithStore(browserHistory, store);
 
   createSnowplowTracker(() => getUserId(store.getState()));
+  initMetaplow({
+    beforeSend: (_type, payload) => ({
+      ...payload,
+      data: { ...payload.data, user_id: getUserId(store.getState()) },
+    }),
+  });
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
