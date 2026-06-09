@@ -55,15 +55,15 @@ export function SetupInstanceModal({
 }
 
 type SetupInstanceFormValues = {
-  instance_id: WorkspaceInstanceId | null;
+  workspace_instance_id: WorkspaceInstanceId | null;
 };
 
 const SETUP_INSTANCE_SCHEMA = Yup.object({
-  instance_id: Yup.number().nullable().required(Errors.required),
+  workspace_instance_id: Yup.number().nullable().required(Errors.required),
 });
 
 const INITIAL_VALUES: SetupInstanceFormValues = {
-  instance_id: null,
+  workspace_instance_id: null,
 };
 
 type SetupInstanceFormProps = {
@@ -86,13 +86,15 @@ function SetupInstanceForm({
     disabled: instance.workspace_id != null,
   }));
 
-  const handleSubmit = async ({ instance_id }: SetupInstanceFormValues) => {
-    if (instance_id == null) {
+  const handleSubmit = async ({
+    workspace_instance_id,
+  }: SetupInstanceFormValues) => {
+    if (workspace_instance_id == null) {
       return;
     }
     await setupWorkspaceDeployment({
       id: workspace.id,
-      instance_id,
+      workspace_instance_id,
     }).unwrap();
     onClose();
   };
@@ -113,11 +115,13 @@ function SetupInstanceForm({
               label={t`Development instance`}
               data={data}
               value={
-                values.instance_id != null ? String(values.instance_id) : null
+                values.workspace_instance_id != null
+                  ? String(values.workspace_instance_id)
+                  : null
               }
               onChange={(value) =>
                 setFieldValue(
-                  "instance_id",
+                  "workspace_instance_id",
                   value != null ? Number(value) : null,
                 )
               }

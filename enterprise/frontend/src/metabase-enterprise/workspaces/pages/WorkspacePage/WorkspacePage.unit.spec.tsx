@@ -6,6 +6,7 @@ import {
   setupCreateWorkspaceDatabaseEndpoint,
   setupDatabasesEndpoints,
   setupGetWorkspaceEndpoint,
+  setupListWorkspaceInstancesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import {
@@ -31,6 +32,7 @@ const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 function setup() {
   setupGetWorkspaceEndpoint(WORKSPACE);
   setupDatabasesEndpoints([POSTGRES]);
+  setupListWorkspaceInstancesEndpoint([]);
   setupCreateWorkspaceDatabaseEndpoint(
     createMockWorkspace({
       ...WORKSPACE,

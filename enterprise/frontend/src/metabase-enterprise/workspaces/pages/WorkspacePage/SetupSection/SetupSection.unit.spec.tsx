@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupListWorkspaceInstancesEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { Workspace, WorkspaceInstance } from "metabase-types/api";
 import {
   createMockWorkspace,
@@ -59,9 +59,12 @@ describe("SetupSection", () => {
   it("enables 'Set up an instance' when a free instance exists", async () => {
     setup({ instances: [createMockWorkspaceInstance({ workspace_id: null })] });
 
-    expect(
-      await screen.findByRole("button", { name: "Set up an instance" }),
-    ).toBeEnabled();
+    // The button starts disabled while the instance list loads, then enables.
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Set up an instance" }),
+      ).toBeEnabled();
+    });
   });
 
   it("shows 'Reset the instance' when the workspace already has an instance", async () => {

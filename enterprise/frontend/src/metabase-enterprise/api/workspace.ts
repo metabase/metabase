@@ -157,9 +157,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       Workspace,
       WorkspaceDeploymentRequest
     >({
-      query: ({ id, instance_id }) => ({
+      query: ({ id, ...body }) => ({
         method: "POST",
-        url: `/api/ee/workspace-manager/${id}/deployment/${instance_id}`,
+        url: `/api/ee/workspace-manager/${id}/deployment`,
+        body,
       }),
       invalidatesTags: (_, error, { id, instance_id }) =>
         invalidateTags(error, [

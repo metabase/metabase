@@ -76,5 +76,5 @@ export type UpdateWorkspaceInstanceRequest = {
 
 export type WorkspaceDeploymentRequest = {
   id: WorkspaceId;
-  instance_id: WorkspaceInstanceId;
+  workspace_instance_id: WorkspaceInstanceId;
 };
