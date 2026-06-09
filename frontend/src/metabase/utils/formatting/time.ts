@@ -50,27 +50,20 @@ export function formatDurationLong(durationMs: number): string {
     return t`0ms`;
   }
   if (durationMs < 1_000) {
-    const ms = Math.round(durationMs);
-    return t`${ms}ms`;
+    return t`${Math.round(durationMs)}ms`;
   }
-  // Round to the tenth-of-a-second we display before picking a branch, so e.g.
-  // 59_999ms reads as "1m 0s" rather than "60.0s".
-  const roundedMs = Math.round(durationMs / 100) * 100;
-  if (roundedMs < 60_000) {
-    const seconds = (roundedMs / 1_000).toFixed(1);
-    return t`${seconds}s`;
+  // Snap to the coarsest precision we display (0.1s) before picking a tier, so a
+  // value that rounds up to a boundary is promoted: 59_999ms reads as "1m 0s",
+  // never an impossible "60.0s".
+  const d = dayjs.duration(Math.round(durationMs / 100) * 100);
+  if (d.asMinutes() < 1) {
+    return t`${d.asSeconds().toFixed(1)}s`;
   }
-  const d = dayjs.duration(roundedMs);
-  if (roundedMs < 3_600_000) {
-    const minutes = d.minutes();
-    const seconds = d.seconds();
-    return t`${minutes}m ${seconds}s`;
+  if (d.asHours() < 1) {
+    return t`${d.minutes()}m ${d.seconds()}s`;
   }
-  // Hour-plus: use TOTAL hours (asHours can exceed 24 for very long
-  // backfills) plus the leftover minutes within the hour.
-  const hours = Math.floor(d.asHours());
-  const minutes = d.minutes();
-  return t`${hours}h ${minutes}m`;
+  // asHours (vs hours()) so very long backfills don't wrap past 24h.
+  return t`${Math.floor(d.asHours())}h ${d.minutes()}m`;
 }
 
 interface TimeWithUnitType {
