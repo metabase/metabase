@@ -7,8 +7,8 @@ import { ActionFormFieldWidget } from "metabase/actions/components/ActionFormFie
 import { getFieldTypes, getInputTypes } from "metabase/actions/constants";
 import type { ActionFormFieldProps } from "metabase/actions/types";
 import { inputTypeHasOptions } from "metabase/actions/utils";
-import { CheckBox } from "metabase/common/components/CheckBox";
 import { Radio } from "metabase/common/components/Radio";
+import { Checkbox } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type {
   FieldSettings,
@@ -146,7 +146,14 @@ function FormFieldEditor({
             <ActionFormFieldWidget
               hidden={hidden}
               actions={
-                <CheckBox
+                <Checkbox
+                  size="sm"
+                  styles={{
+                    label: {
+                      fontSize: "12px",
+                      color: "var(--mb-color-text-secondary)",
+                    },
+                  }}
                   onChange={() => {
                     onChange({
                       ...fieldSettings,
