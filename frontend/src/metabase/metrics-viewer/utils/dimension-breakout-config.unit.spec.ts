@@ -15,7 +15,10 @@ import {
   createMetricMetadata,
   setupDefinition,
 } from "./__tests__/test-helpers";
-import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "./tab-config";
+import {
+  DISPLAY_TYPE_REGISTRY,
+  getDimensionBreakoutConfig,
+} from "./dimension-breakout-config";
 
 const allMetadata = createMetricMetadata([REVENUE_METRIC, GEO_METRIC]);
 const revenueDefinition = setupDefinition(allMetadata, REVENUE_METRIC.id);
@@ -99,11 +102,11 @@ function makeColorMap(values: string[]): BreakoutColorMap {
   return new Map(values.map((v, i) => [v, palette[i % palette.length]]));
 }
 
-// ── getTabConfig ──
+// ── getDimensionBreakoutConfig ──
 
-describe("getTabConfig", () => {
-  it("returns config for time tab", () => {
-    expect(getTabConfig("time")).toEqual(
+describe("getDimensionBreakoutConfig", () => {
+  it("returns config for time dimensionBreakout", () => {
+    expect(getDimensionBreakoutConfig("time")).toEqual(
       expect.objectContaining({
         type: "time",
         autoCreate: true,
@@ -119,8 +122,8 @@ describe("getTabConfig", () => {
     );
   });
 
-  it("returns config for geo tab", () => {
-    expect(getTabConfig("geo")).toEqual(
+  it("returns config for geo dimensionBreakout", () => {
+    expect(getDimensionBreakoutConfig("geo")).toEqual(
       expect.objectContaining({
         type: "geo",
         autoCreate: true,
@@ -137,8 +140,8 @@ describe("getTabConfig", () => {
     );
   });
 
-  it("returns config for category tab", () => {
-    expect(getTabConfig("category")).toEqual(
+  it("returns config for category dimensionBreakout", () => {
+    expect(getDimensionBreakoutConfig("category")).toEqual(
       expect.objectContaining({
         type: "category",
         autoCreate: true,
@@ -153,8 +156,8 @@ describe("getTabConfig", () => {
     );
   });
 
-  it("returns config for boolean tab", () => {
-    expect(getTabConfig("boolean")).toEqual(
+  it("returns config for boolean dimensionBreakout", () => {
+    expect(getDimensionBreakoutConfig("boolean")).toEqual(
       expect.objectContaining({
         type: "boolean",
         autoCreate: true,
@@ -169,8 +172,8 @@ describe("getTabConfig", () => {
     );
   });
 
-  it("returns config for numeric tab", () => {
-    expect(getTabConfig("numeric")).toEqual(
+  it("returns config for numeric dimensionBreakout", () => {
+    expect(getDimensionBreakoutConfig("numeric")).toEqual(
       expect.objectContaining({
         type: "numeric",
         autoCreate: false,
@@ -186,22 +189,22 @@ describe("getTabConfig", () => {
     );
   });
 
-  it("throws for unknown tab type", () => {
-    expect(() => getTabConfig("unknown" as any)).toThrow(
-      "No tab config found for type: unknown",
+  it("throws for unknown dimensionBreakout type", () => {
+    expect(() => getDimensionBreakoutConfig("unknown" as any)).toThrow(
+      "No dimension breakout config found for type: unknown",
     );
   });
 });
 
 // ── Dimension predicates ──
 
-describe("TAB_TYPE_REGISTRY", () => {
+describe("DIMENSION_BREAKOUT_TYPE_REGISTRY", () => {
   describe("dimension predicates", () => {
-    const timeConfig = getTabConfig("time");
-    const geoConfig = getTabConfig("geo");
-    const categoryConfig = getTabConfig("category");
-    const booleanConfig = getTabConfig("boolean");
-    const numericConfig = getTabConfig("numeric");
+    const timeConfig = getDimensionBreakoutConfig("time");
+    const geoConfig = getDimensionBreakoutConfig("geo");
+    const categoryConfig = getDimensionBreakoutConfig("category");
+    const booleanConfig = getDimensionBreakoutConfig("boolean");
+    const numericConfig = getDimensionBreakoutConfig("numeric");
 
     it("time predicate matches datetime dimensions", () => {
       expect(
