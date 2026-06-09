@@ -22,3 +22,18 @@ export const groupHeader = {
   height: 32,
   paddingX: 12,
 } as const;
+
+export const GROUP_HEADER_BG_TINT = 0.4;
+
+export function getGroupHeaderBgTint(
+  groupColor: string | undefined,
+  headerTintTarget: string,
+) {
+  if (!groupColor) {
+    return undefined;
+  }
+
+  return Color(groupColor)
+    .mix(Color(headerTintTarget), 1 - GROUP_HEADER_BG_TINT)
+    .string();
+}

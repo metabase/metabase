@@ -6,10 +6,6 @@ import _ from "underscore";
 import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
-import {
-  TREEMAP_CHART_STYLE,
-  groupHeader,
-} from "metabase/visualizations/echarts/graph/treemap/constants/style";
 import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
 import { getTreemapColors } from "metabase/visualizations/echarts/graph/treemap/model/colors";
 import {
@@ -30,6 +26,10 @@ import {
   getTreemapChartOption,
 } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
+import {
+  TREEMAP_CHART_STYLE,
+  groupHeader,
+} from "metabase/visualizations/echarts/graph/treemap/style";
 import {
   useCloseTooltipOnScroll,
   useInjectSeriesColorsClasses,

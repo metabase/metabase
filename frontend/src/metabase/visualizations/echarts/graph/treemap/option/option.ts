@@ -1,20 +1,16 @@
-import Color from "color";
 import type { TreemapSeriesOption } from "echarts/charts";
 
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { TREEMAP_CHART_STYLE, groupHeader } from "../constants/style";
 import { getTreemapColors } from "../model/colors";
 import type { TreemapLabelLayout } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
 import type { TreemapNode, TreemapTree } from "../model/types";
-
-// How much of the group's hue remains in its header chip background (the rest
-// is mixed toward white). The chip sits on the group's own opaque background
-// fill — the borderColor that tints the within-group gaps — so a translucent
-// color would be invisible (hue over the same hue). We paint an opaque blend
-// instead, which reads as a translucent band. Lower = paler/more see-through.
-const GROUP_HEADER_BG_TINT = 0.4;
+import {
+  TREEMAP_CHART_STYLE,
+  getGroupHeaderBgTint,
+  groupHeader,
+} from "../style";
 
 // Hide a tile's label once it occupies less than this fraction of the chart
 // area. A treemap tile's area is proportional to its value, so a node's share
@@ -244,49 +240,35 @@ function toSeriesData(
 
   return tree.map((node, rootIndex) => {
     const groupColor = colors[String(node.rawName)];
-    // A lightened tint of the group hue (mixed toward white), shared by the
-    // header chip and the within-group gap borders so they read as one color.
-    const groupTint = groupColor
-      ? Color(groupColor)
-          .mix(Color(headerTintTarget), 1 - GROUP_HEADER_BG_TINT)
-          .string()
-      : undefined;
+    const groupTint = getGroupHeaderBgTint(groupColor, headerTintTarget);
     const groupId = getTreemapNodeId(rootIndex);
-    // The chip band always renders; we only suppress its text when it's been
-    // measured too narrow to fit the full label (`false`). `color: "transparent"`
-    // keeps the band (and its background) while hiding the text — better than
-    // ECharts truncating to one or two characters plus an ellipsis.
-    const upperLabel = {
-      ...(groupTint ? { backgroundColor: groupTint } : {}),
-      ...(node.children != null && parentLabelLayout[groupId] === false
-        ? { color: "transparent" }
-        : {}),
-    };
+
+    const upperLabel = getUpperLabel({
+      groupTint,
+      hasChildren: node.children !== null,
+      parentLabelLayout,
+      groupId,
+    });
+
+    const itemStyle = getItemStyle({
+      groupColor,
+      groupTint,
+      hasChildren: node.children !== null,
+      isDrilled,
+    });
+
     return {
       id: groupId,
       name: node.displayName,
       value: node.value,
       rawName: node.rawName,
       rowIndices: node.rowIndices,
-      // For a group (a node with children), ECharts fills the background with
-      // the node's borderColor and draws the leaves on top with gaps, so setting
-      // borderColor to the group tint paints the within-group gaps in that tint.
-      // The between-group separators come from the synthetic root's gaps, whose
-      // borderColor is transparent (see levels[0]) so they read as canvas. When
-      // drilled into a
-      // group it fills the canvas, and we want hueless gaps there — a transparent
-      // border reveals the white canvas behind instead of the tint.
-      itemStyle: {
-        color: groupColor,
-        ...(node.children != null
-          ? { borderColor: isDrilled ? "transparent" : groupTint }
-          : {}),
-      },
+      itemStyle,
       // Top-level nodes with children render a header chip (always shown), not
       // their own tile label, so only resolve the label for childless tiles —
       // i.e. a 1-level treemap's tiles.
       ...(node.children == null ? getLabelOverride(groupId, node.value) : {}),
-      ...(Object.keys(upperLabel).length > 0 ? { upperLabel } : {}),
+      upperLabel,
       ...(node.children
         ? {
             children: node.children.map((leaf, leafIndex) => ({
@@ -304,4 +286,48 @@ function toSeriesData(
         : {}),
     };
   });
+}
+
+function getItemStyle({
+  groupColor,
+  groupTint,
+  isDrilled,
+}: {
+  groupColor: string | undefined;
+  groupTint: string | undefined;
+  hasChildren: boolean;
+  isDrilled: boolean;
+}) {
+  return {
+    color: groupColor,
+    borderColor: isDrilled ? "transparent" : groupTint,
+  };
+}
+
+function getUpperLabel({
+  groupTint,
+  hasChildren,
+  parentLabelLayout,
+  groupId,
+}: {
+  groupTint: string | undefined;
+  hasChildren: boolean;
+  parentLabelLayout: Record<string, boolean>;
+  groupId: string;
+}) {
+  const color =
+    hasChildren && parentLabelLayout[groupId] === false
+      ? "transparent"
+      : undefined;
+
+  const label = {
+    backgroundColor: groupTint,
+    color,
+  };
+
+  if (Object.values(label).every((value) => value === undefined)) {
+    return undefined;
+  }
+
+  return label;
 }
