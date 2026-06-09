@@ -139,10 +139,6 @@ export {
 export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
-  type CheckDependenciesFormProps,
-  type CheckDependenciesModalProps,
-  type UseCheckDependenciesProps,
-  type UseCheckDependenciesResult,
 } from "./oss/dependencies";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";

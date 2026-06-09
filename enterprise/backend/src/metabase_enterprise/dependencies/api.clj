@@ -2,13 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
-   [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.analysis-finding-error :as analysis-finding-error]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
-   [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -19,136 +16,18 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
-   [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
-   [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
-
-(mr/def ::card-body
-  [:merge
-   ::queries.schema/card
-   ;; TODO (Cam 10/1/25) -- merge this into `::queries.schema/card` itself
-   [:map
-    [:result_metadata {:optional true} [:maybe analyze/ResultsMetadata]]]])
-
-(mr/def ::broken-cards-response
-  [:map
-   [:success :boolean]
-   [:bad_cards {:optional true} [:sequential ::queries.schema/card]]
-   [:bad_transforms {:optional true} [:sequential ::transforms.schema/transform]]])
-
-(mu/defn- broken-cards-response :- ::broken-cards-response
-  [{:keys [card transform]}]
-  (let [broken-card-ids (keys card)
-        broken-cards (when (seq broken-card-ids)
-                       (-> (t2/select :model/Card :id [:in broken-card-ids])
-                           (t2/hydrate [:collection :effective_ancestors] :dashboard :document)))
-        broken-transform-ids (keys transform)
-        broken-transforms (when (seq broken-transform-ids)
-                            (t2/select :model/Transform :id [:in broken-transform-ids]))]
-    {:success (and (empty? broken-card-ids)
-                   (empty? broken-transform-ids))
-     :bad_cards (into [] (comp (filter mi/can-read?)
-                               (map (fn [card]
-                                      (-> card
-                                          collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))
-                                          (update :document #(some-> % (select-keys [:id :name])))))))
-                      broken-cards)
-     :bad_transforms (into [] (filter mi/can-read?) broken-transforms)}))
-
-(api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
-  "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
-  [_route-params
-   _query-params
-   body :- ::card-body]
-  (api/read-check :model/Card (:id body))
-  (let [database-id (-> body :dataset_query :database)
-        base-provider (lib-be/application-database-metadata-provider database-id)
-        original (lib.metadata/card base-provider (:id body))
-        card (-> original
-                 (assoc :dataset-query (:dataset_query body)
-                        :type (:type body (:type original)))
-                 ;; Remove the old `:result-metadata` from the card, it's likely wrong now.
-                 (dissoc :result-metadata)
-                 ;; But if the request includes `:result_metadata`, use that. It may be from a native card
-                 ;; that's been run before saving the card.
-                 (cond-> #_card
-                  (:result_metadata body) (assoc :result-metadata (:result_metadata body))))
-        edits {:card [card]}
-        breakages (dependencies/errors-from-proposed-edits edits
-                                                           :base-provider base-provider
-                                                           :include-native? true)]
-    (broken-cards-response breakages)))
-
-(mr/def ::transform-body
-  [:map
-   [:id     {:optional false} ::lib.schema.id/transform]
-   [:name   {:optional true} :string]
-   ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
-   ;; this is my attempt to guess it
-   [:source {:optional true} [:maybe [:map
-                                      [:type {:optional true} :keyword]
-                                      [:query {:optional true} ::queries.schema/query]]]]
-   [:target {:optional true} [:maybe ms/Map]]])
-
-(api.macros/defendpoint :post "/check-transform" :- ::broken-cards-response
-  "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
-  [_route-params
-   _query-params
-   {:keys [id source target]} :- ::transform-body]
-  (api/read-check :model/Transform id)
-  (if (= (keyword (:type source)) :query)
-    (let [database-id (-> source :query :database)
-          base-provider (lib-be/application-database-metadata-provider database-id)
-          original (lib.metadata/transform base-provider id)
-          transform (-> original
-                        (cond-> #_transform source (assoc :source source))
-                        (cond-> #_transform target (assoc :target target)))
-          edits {:transform [transform]}
-          breakages (dependencies/errors-from-proposed-edits edits
-                                                             :base-provider base-provider
-                                                             :include-native? true)]
-      (broken-cards-response breakages))
-    ;; if this isn't a sql query, just claim it works
-    {:success true}))
-
-(api.macros/defendpoint :post "/check-snippet" :- ::broken-cards-response
-  "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
-  [_route-params
-   _query-params
-   {:keys [id content], snippet-name :name}
-   :- [:map
-       [:id      {:optional false} ::lib.schema.id/snippet]
-       [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
-       [:content {:optional true} :string]]]
-  (api/read-check :model/NativeQuerySnippet id)
-  (let [original (t2/select-one :model/NativeQuerySnippet id)
-        _ (when (and snippet-name
-                     (not= snippet-name (:name original))
-                     (t2/exists? :model/NativeQuerySnippet :name snippet-name))
-            (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                            {:status-code 400})))
-        snippet (cond-> (m/assoc-some original
-                                      :lib/type :metadata/native-query-snippet
-                                      :name snippet-name
-                                      :content content)
-                  content native-query-snippets/add-template-tags)
-        breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]} :include-native? true)]
-    (broken-cards-response breakages)))
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields :transform

@@ -15,11 +15,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  PLUGIN_DEPENDENCIES,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TRANSFORMS_PYTHON,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
@@ -134,33 +130,6 @@ function TransformQueryPageBody({
     dryRunError ?? lastRunError,
   );
 
-  const {
-    checkData,
-    isCheckingDependencies,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
-    onSave: async (request) => {
-      const { error } = await updateTransform(request);
-      if (error) {
-        const message = getErrorMessage(error);
-        sendErrorToast(
-          message
-            ? t`Failed to update transform query: ${message}`
-            : t`Failed to update transform query`,
-        );
-      } else {
-        sendSuccessToast(t`Transform query updated`);
-
-        if (isEditMode) {
-          dispatch(push(Urls.transform(transform.id)));
-        }
-      }
-    },
-  });
-
   const handleResetRef = useLatest(() => {
     setSource(transform.source);
     setUiState(getInitialUiState());
@@ -187,7 +156,21 @@ function TransformQueryPageBody({
     if (!isCompleteSource(source)) {
       return;
     }
-    await handleInitialSave({ id: transform.id, source });
+    const { error } = await updateTransform({ id: transform.id, source });
+    if (error) {
+      const message = getErrorMessage(error);
+      sendErrorToast(
+        message
+          ? t`Failed to update transform query: ${message}`
+          : t`Failed to update transform query`,
+      );
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+
+      if (isEditMode) {
+        dispatch(push(Urls.transform(transform.id)));
+      }
+    }
   };
 
   const handleCancel = () => {
@@ -271,17 +254,9 @@ function TransformQueryPageBody({
           )}
         </Box>
       </PageContainer>
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
       <LeaveRouteConfirmModal
         route={route as Route}
-        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
+        isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}
       />
     </>

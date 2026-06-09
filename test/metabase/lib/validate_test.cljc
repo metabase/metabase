@@ -174,6 +174,46 @@
                 :name "missingcol2"}}
              (set errors))))))
 
+(deftest ^:parallel find-bad-refs-with-source-inactive-source-table-test
+  (testing "a query whose `:source-table` is inactive returns a missing-table error attributing the table"
+    (let [orders (meta/table-metadata :orders)
+          mp     (lib.tu/mock-metadata-provider meta/metadata-provider
+                                                {:tables [(assoc orders :active false)]})
+          query  (lib/query mp orders)
+          errors (lib/find-bad-refs-with-source query)]
+      (is (= #{{:type               :missing-table
+                :source-entity-type :table
+                :source-entity-id   (meta/id :orders)}}
+             errors))))
+  (testing "a query on an active source table has no source-table errors"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (empty? (lib/find-bad-refs-with-source query)))))
+  (testing "a query whose `:source-table` can't be resolved (deleted table) is flagged, not thrown"
+    (let [query   (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp'     (lib.tu/mock-metadata-provider
+                   {:database (lib.metadata/database meta/metadata-provider)
+                    :tables   [(meta/table-metadata :products)]})
+          rebound (lib/query mp' query)
+          errors  (lib/find-bad-refs-with-source rebound)]
+      (is (= #{{:type               :missing-table
+                :source-entity-type :table
+                :source-entity-id   (meta/id :orders)}}
+             errors)))))
+
+(deftest ^:parallel find-bad-refs-with-source-deleted-source-card-test
+  (let [base         (lib/query meta/metadata-provider (meta/table-metadata :products))
+        mp-with-card (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 101 base)
+        card-query   (lib/query mp-with-card (lib.metadata/card mp-with-card 101))]
+    (testing "a query on a resolvable source card has no source-card errors"
+      (is (empty? (lib/find-bad-refs-with-source card-query))))
+    (testing "a query whose `:source-card` resolves to nil (deleted card) returns a missing-card error"
+      (let [rebound (lib/query meta/metadata-provider card-query)
+            errors  (lib/find-bad-refs-with-source rebound)]
+        (is (= #{{:type               :missing-card
+                  :source-entity-type :card
+                  :source-entity-id   101}}
+               errors))))))
+
 (deftest ^:parallel find-bad-refs-with-source-multi-stage-test
   (testing "invalid query referencing previous stage has no source"
     (let [mp meta/metadata-provider

@@ -11,7 +11,6 @@ import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHe
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -105,37 +104,29 @@ function MetricQueryPageBody({
     return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
   }, [datasetQuery, card.dataset_query]);
 
-  const {
-    checkData,
-    isCheckingDependencies,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-    onSave: async (question) => {
-      const { display, settings } = Lib.defaultDisplay(question.query());
-      const { error } = await updateCard({
-        id: card.id,
-        dataset_query: question.datasetQuery(),
-        display,
-        visualization_settings: settings,
-        result_metadata: resultMetadata,
-      });
-      if (error) {
-        sendErrorToast(t`Failed to update metric query`);
-      } else {
-        sendSuccessToast(t`Metric query updated`);
-      }
-    },
-  });
-
   const handleChangeQuery = (query: Lib.Query) => {
     setDatasetQuery(Lib.toJsQuery(query));
   };
 
-  const handleSave = () => {
-    handleInitialSave(question.setResultsMetadata({ columns: resultMetadata }));
+  const handleSave = async () => {
+    const questionWithMetadata = question.setResultsMetadata({
+      columns: resultMetadata,
+    });
+    const { display, settings } = Lib.defaultDisplay(
+      questionWithMetadata.query(),
+    );
+    const { error } = await updateCard({
+      id: card.id,
+      dataset_query: questionWithMetadata.datasetQuery(),
+      display,
+      visualization_settings: settings,
+      result_metadata: resultMetadata,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update metric query`);
+    } else {
+      sendSuccessToast(t`Metric query updated`);
+    }
   };
 
   const handleCancel = () => {
@@ -165,7 +156,7 @@ function MetricQueryPageBody({
               errorMessage={validationResult.errorMessage}
               isValid={validationResult.isValid}
               isDirty={isDirty}
-              isSaving={isSaving || isCheckingDependencies}
+              isSaving={isSaving}
               onSave={handleSave}
               onCancel={handleCancel}
             />
@@ -181,18 +172,7 @@ function MetricQueryPageBody({
           />
         </Card>
       </PageContainer>
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
-      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
     </>
   );
 }

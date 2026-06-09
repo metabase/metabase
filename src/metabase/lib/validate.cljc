@@ -6,13 +6,24 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
+
+(mu/defn missing-table-error :- [:ref ::lib.schema.validate/missing-table-error]
+  "Create a missing-table lib validation error. The offending table is carried via the `:source-entity-*`
+  keys, so this error has no `:name`."
+  []
+  {:type :missing-table})
+
+(mu/defn missing-card-error :- [:ref ::lib.schema.validate/missing-card-error]
+  "Create a missing-card lib validation error. The offending card is carried via the `:source-entity-*`
+  keys, so this error has no `:name`."
+  []
+  {:type :missing-card})
 
 (mu/defn missing-column-error :- [:ref ::lib.schema.validate/missing-column-error]
   "Create a missing-column lib validation error"
@@ -120,30 +131,40 @@
 
    The field-ref walk in [[find-bad-field-refs-with-source]] can't catch this: a `SELECT *`-style query has
    no `:field` clauses to inspect, and retiring a table doesn't deactivate its fields. So we resolve each
-   stage source directly. Reported as `:missing-table-alias` errors (the same type native validation emits
-   for missing tables) carrying the offending entity as the source, so dependency analysis attributes the
-   breakage to it.
+   stage source directly, reporting a `:missing-table`/`:missing-card` error carrying the offending entity as
+   the source, so dependency analysis attributes the breakage to it.
 
-   Note an *archived* source card is intentionally not flagged here — it still resolves and can back a
-   query; only a truly deleted (unresolvable) card id is a bad ref."
+   An inactive table is still returned by [[lib.metadata/table]] (it's fetched by id), so we catch it via the
+   `:active` flag; a truly deleted table id makes [[lib.metadata/table]] throw, so we treat a throw as a
+   deleted table and flag it too rather than letting it abort the analysis. A deleted source card resolves to
+   nil via [[lib.metadata/card]]; an *archived* card still resolves and can back a query, so it is not
+   flagged. We only flag a card on a clean nil — if resolution throws (e.g. the provider can't reach it) we
+   leave it alone rather than guess."
   [query :- ::lib.schema/query]
   (let [mp          (lib.metadata/->metadata-provider query)
         bad-sources (volatile! #{})
-        flag!       (fn [entity-type entity-id entity-name]
+        flag!       (fn [error entity-type entity-id]
                       (vswap! bad-sources conj
-                              (assoc (missing-table-alias-error (or entity-name (str entity-id)))
+                              (assoc error
                                      :source-entity-type entity-type
                                      :source-entity-id   entity-id)))]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
        (when-let [table-id (:source-table stage)]
-         (let [table (lib.metadata.protocols/table mp table-id)]
+         (let [table (try
+                       (lib.metadata/table mp table-id)
+                       (catch #?(:clj Throwable :cljs :default) _
+                         nil))]
            (when (or (nil? table) (not (:active table)))
-             (flag! :table table-id (:name table)))))
+             (flag! (missing-table-error) :table table-id))))
        (when-let [card-id (:source-card stage)]
-         (when-not (lib.metadata.protocols/card mp card-id)
-           (flag! :card card-id nil)))
+         (when (nil? (try
+                       (lib.metadata/card mp card-id)
+                       (catch #?(:clj Throwable :cljs :default) _
+                         ;; couldn't determine — treat as present rather than flag a false positive
+                         ::unresolved)))
+           (flag! (missing-card-error) :card card-id)))
        nil))
     @bad-sources))
 
