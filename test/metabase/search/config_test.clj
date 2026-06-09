@@ -25,7 +25,9 @@
            (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
 
 (deftest context-schema-test
-  (testing "the HTTP `context` enum allows the UI surfaces and :api, but not the in-process-only :metabot"
+  (testing "the HTTP `context` enum allows the UI surfaces, :api, and :metabot (accepted for debugging)"
     (is (mr/validate search.config/Context :search-app))
     (is (mr/validate search.config/Context :api))
-    (is (not (mr/validate search.config/Context :metabot)))))
+    (is (mr/validate search.config/Context :metabot)))
+  (testing "values outside the enum are rejected"
+    (is (not (mr/validate search.config/Context :bogus)))))

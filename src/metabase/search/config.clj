@@ -282,17 +282,16 @@
   "Search `context` values for non-frontend callers.
   Excluded from the frontend `SearchContext` type so the frontend cannot use them."
   [:api       ; programmatic / third-party API access
-   :metabot]) ; built in-process by Metabot and the agent API, never sent over HTTP
+   :metabot]) ; Metabot / agent API searches; accepted over HTTP too, for debugging and reproduction
 
 (def ^:private contexts
   "All valid search request `context` values: [[ui-contexts]] plus [[non-ui-contexts]]."
   (into ui-contexts non-ui-contexts))
 
 (def Context
-  "Malli enum for the search request `context` query parameter: every value in [[contexts]] except
-  `:metabot`, which is constructed in-process and is never sent over HTTP.
+  "Malli enum for the search request `context` query parameter, over every value in [[contexts]].
   The `:decode/string keyword` hook coerces the query-string value (e.g. \"search-app\") to a keyword."
-  (into [:enum {:decode/string keyword}] (remove #{:metabot} contexts)))
+  (into [:enum {:decode/string keyword}] contexts))
 
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
