@@ -233,7 +233,7 @@
                          :id            999
                          :database-id   (:id (lib.metadata/database provider))
                          :name          "broken-card"
-                         :dataset-query nil}
+                         :dataset-query {}}
             provider    (lib.tu/mock-metadata-provider provider {:cards [broken-card]})
             ;; Graph where card 101 -> card 999 (broken card depends on the base card)
             graph       (graph/in-memory {[:card 101] #{[:card 999]}})

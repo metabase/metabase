@@ -137,9 +137,8 @@
    An inactive table is still returned by [[lib.metadata/table]] (it's fetched by id), so we catch it via the
    `:active` flag; a truly deleted table id makes [[lib.metadata/table]] throw, so we treat a throw as a
    deleted table and flag it too rather than letting it abort the analysis. A deleted source card resolves to
-   nil via [[lib.metadata/card]]; an *archived* card still resolves and can back a query, so it is not
-   flagged. We only flag a card on a clean nil — if resolution throws (e.g. the provider can't reach it) we
-   leave it alone rather than guess."
+   nil via [[lib.metadata/card]] (and a throw is likewise treated as unresolvable); an *archived* card still
+   resolves and can back a query, so it is not flagged."
   [query :- ::lib.schema/query]
   (let [mp          (lib.metadata/->metadata-provider query)
         bad-sources (volatile! #{})
@@ -162,8 +161,7 @@
          (when (nil? (try
                        (lib.metadata/card mp card-id)
                        (catch #?(:clj Throwable :cljs :default) _
-                         ;; couldn't determine — treat as present rather than flag a false positive
-                         ::unresolved)))
+                         nil)))
            (flag! (missing-card-error) :card card-id)))
        nil))
     @bad-sources))
