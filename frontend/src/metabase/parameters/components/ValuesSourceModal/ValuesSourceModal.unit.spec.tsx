@@ -690,7 +690,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1, field2],
           }),
           parameterValues: createMockParameterValues({
-            values: [["1"], ["2"], ["3"]],
+            values: [[1], [2], [3]],
           }),
         });
 
@@ -743,7 +743,7 @@ describe("ValuesSourceModal", () => {
             },
           }),
           parameterValues: createMockParameterValues({
-            values: [["3"], ["4"]],
+            values: [[3], [4]],
           }),
         });
         expect(await screen.findByRole("textbox")).toHaveValue("3\n4");
