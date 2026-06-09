@@ -3,10 +3,8 @@ import { browserHistory } from "react-router";
 
 import { getBasename } from "./DataAppRouter";
 
-export interface DataAppLinkProps extends Omit<
-  AnchorHTMLAttributes<HTMLAnchorElement>,
-  "href"
-> {
+export interface DataAppLinkProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   to: string;
   children?: ReactNode;
 }
@@ -24,9 +22,13 @@ export const DataAppLink = ({
   children,
   onClick,
   target,
+  rel,
   ...rest
 }: DataAppLinkProps) => {
   const href = getBasename() + to;
+
+  const isExternalTarget = target != null && target !== "_self";
+  const resolvedRel = rel ?? (isExternalTarget ? "noopener noreferrer" : rel);
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
@@ -35,7 +37,7 @@ export const DataAppLink = ({
       return;
     }
 
-    if (target && target !== "_self") {
+    if (isExternalTarget) {
       // Explicit `target="_blank"` etc. — let the browser handle it.
       return;
     }
@@ -57,7 +59,13 @@ export const DataAppLink = ({
   };
 
   return (
-    <a href={href} target={target} onClick={handleClick} {...rest}>
+    <a
+      href={href}
+      target={target}
+      rel={resolvedRel}
+      onClick={handleClick}
+      {...rest}
+    >
       {children}
     </a>
   );

@@ -146,7 +146,7 @@ function useCustomerIdFromPath(): number | null {
 
 | Symptom | Fix |
 |---|---|
-| `<DataAppLink>` throws "You should not use <Link> outside a <Router>". | Wrap the tree with `<DataAppRouter>` — `<DataAppLink>` needs the router context it mounts. |
+| `<DataAppLink>` renders as plain text (no clickable link) on initial load. | The bundle hasn't finished loading and the fallback path is showing. Confirm the tree is wrapped in `<MetabaseProvider authConfig=…>` (dev) or `<DataAppProvider>` (host) so the bundle gets triggered. The fallback resolves to a real link once the bundle is up. |
 | URL changes in dev preview but the production iframe shows the bundle re-render itself on every navigation (or routes don't work in prod at all). | `vite.config.ts` got edited and lost `@metabase/embedding-sdk-react/data-app` from `external` / `output.globals`. Restore from the [template](https://github.com/metabase/data-app-template) — without it, Vite inlines the package's implementation into `dist/index.js`, which runs inside the Near Membrane sandbox and breaks React's state batching. |
 | URL changes but UI doesn't. | A `<BrowserRouter>`/`<HashRouter>` is still in the tree. Strip the router library out and use `<DataAppRouter>` / `<DataAppLink>` instead — the Near Membrane interaction with React-18 batching breaks every router that runs its own `setState` inside the bundle. |
 | Reload at a deep URL in dev (`localhost:5174/customers/42`) shows a blank page. | Vite's dev server is serving the route as a 404 instead of falling back to `index.html`. Set `appType: "spa"` in `vite.config.ts` (it's the default — only an issue if someone overrode it). |
