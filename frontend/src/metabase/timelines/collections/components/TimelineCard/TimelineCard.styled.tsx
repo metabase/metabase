@@ -68,7 +68,7 @@ export const CardRoot = styled(Link)`
   display: flex;
   padding: 1.75rem;
   align-items: center;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 6px;
   cursor: ${(props) => (props.to ? "pointer" : "default")};
 

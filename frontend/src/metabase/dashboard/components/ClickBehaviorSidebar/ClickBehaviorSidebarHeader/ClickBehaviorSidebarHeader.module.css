@@ -15,6 +15,6 @@
 .ChevronIconContainer {
   padding: 4px 6px;
   margin-right: 8px;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 4px;
 }

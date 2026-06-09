@@ -59,7 +59,7 @@ export function QueryBuilderBackButton({
         variant="outline"
         radius="xl"
         size="2.625rem"
-        color="border"
+        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}

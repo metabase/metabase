@@ -44,7 +44,7 @@ export function MetabotAppBarButton({
         className={className}
         variant="subtle"
         c="text-primary"
-        bd="1px solid var(--mb-color-border)"
+        bd="1px solid var(--mb-color-border-neutral)"
         p="sm"
         h="2.25rem"
         w="2.25rem"

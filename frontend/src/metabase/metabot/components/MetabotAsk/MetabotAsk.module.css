@@ -45,7 +45,7 @@
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
   box-shadow:
-    0 0 0 1px var(--mb-color-border),
+    0 0 0 1px var(--mb-color-border-neutral),
     0 4px 24px rgba(0, 0, 0, 0.08);
   min-height: 7rem;
   transition:
@@ -54,7 +54,7 @@
 
   &:focus-within {
     box-shadow:
-      0 0 0 1px var(--mb-color-border),
+      0 0 0 1px var(--mb-color-border-neutral),
       0 4px 24px rgba(0, 0, 0, 0.12);
   }
 }

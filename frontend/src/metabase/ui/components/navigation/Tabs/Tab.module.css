@@ -1,5 +1,5 @@
 .list {
-  --tab-border-color: var(--mb-color-border);
+  --tab-border-color: var(--mb-color-border-neutral);
 
   [data-orientation="horizontal"] {
     padding: 0.6875rem 0.5rem;

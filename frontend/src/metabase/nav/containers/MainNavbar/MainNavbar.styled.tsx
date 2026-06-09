@@ -27,8 +27,8 @@ export const Sidebar = styled.aside<{
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
   ${(props) =>
     props.side === "left"
-      ? "border-inline-end: 1px solid var(--mb-color-border);"
-      : "border-inline-start: 1px solid var(--mb-color-border);"}
+      ? "border-inline-end: 1px solid var(--mb-color-border-neutral);"
+      : "border-inline-start: 1px solid var(--mb-color-border-neutral);"}
 
   ${breakpointMaxSmall} {
     width: 90vw;

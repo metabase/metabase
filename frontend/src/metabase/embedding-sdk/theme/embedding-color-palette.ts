@@ -29,7 +29,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   brand: ["brand"],
   "brand-hover": ["background-hover"],
   "brand-hover-light": ["background-hover"],
-  border: ["border"],
+  border: ["border", "border-neutral"],
   filter: ["filter"],
   summarize: ["summarize"],
   "text-primary": ["text-primary"],

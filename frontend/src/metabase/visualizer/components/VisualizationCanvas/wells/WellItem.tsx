@@ -25,7 +25,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
         {...props}
         style={{
           borderRadius: "var(--border-radius-xl)",
-          border: `1px solid var(--mb-color-border)`,
+          border: `1px solid var(--mb-color-border-neutral)`,
           boxShadow: "0 0 1px var(--mb-color-shadow)",
           cursor: "grab",
           userSelect: "none",

@@ -12,7 +12,7 @@ export const GrabberHandle = styled(Icon, { shouldForwardProp: isPropValid })`
 export const ChartSettingFieldPickerRoot = styled(Group, {
   shouldForwardProp: isPropValid,
 })`
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: ${({ theme }) => theme.radius.md};
   overflow: hidden;
 

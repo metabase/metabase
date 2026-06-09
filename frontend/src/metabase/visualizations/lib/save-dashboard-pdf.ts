@@ -142,7 +142,7 @@ const createHeaderElement = (dashboardName: string, marginBottom: number) => {
     font-size: 24px;
     font-weight: 700;
     color: var(--mb-color-text-primary);
-    border-bottom: 1px solid var(--mb-color-border);
+    border-bottom: 1px solid var(--mb-color-border-neutral);
     padding: 24px 16px 16px 16px;
     margin-bottom: ${marginBottom}px;
   `;
@@ -256,7 +256,7 @@ export const saveDashboardPdf = async ({
           card.style.boxShadow = "none";
 
           // Set a clean border if needed
-          card.style.border = "1px solid var(--mb-color-border)";
+          card.style.border = "1px solid var(--mb-color-border-neutral)";
         }
       });
 

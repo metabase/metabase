@@ -11,7 +11,7 @@
   min-height: 100%;
   width: 346px;
   background-color: var(--mb-color-background-secondary);
-  border-left: 2px solid var(--mb-color-border);
+  border-left: 2px solid var(--mb-color-border-neutral);
 }
 
 .DashboardWrapper {

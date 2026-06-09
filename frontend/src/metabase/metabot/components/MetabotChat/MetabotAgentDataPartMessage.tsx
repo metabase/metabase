@@ -96,7 +96,7 @@ const DataPartJsonCard = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -123,7 +123,7 @@ const DataPartJsonCard = ({
         p="sm"
         bg="background-primary"
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
         }}
@@ -151,7 +151,7 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
     direction="row"
     align="center"
     justify="space-between"
-    bd="1px solid var(--mb-color-border)"
+    bd="1px solid var(--mb-color-border-neutral)"
     bdrs="sm"
     className={Styles.agentPartCard}
     p="sm"
@@ -185,7 +185,7 @@ const CodeEditDataPart = ({
 
   return (
     <Box
-      bd="1px solid var(--mb-color-border)"
+      bd="1px solid var(--mb-color-border-neutral)"
       bdrs="sm"
       className={Styles.agentPartCard}
     >
@@ -214,7 +214,7 @@ const CodeEditDataPart = ({
       </Flex>
       <Box
         style={{
-          borderTop: "1px solid var(--mb-color-border)",
+          borderTop: "1px solid var(--mb-color-border-neutral)",
           borderBottomLeftRadius: "var(--mantine-radius-sm)",
           borderBottomRightRadius: "var(--mantine-radius-sm)",
           overflow: "hidden",

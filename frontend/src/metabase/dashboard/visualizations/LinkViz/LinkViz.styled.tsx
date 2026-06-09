@@ -64,7 +64,7 @@ const searchResultsStyles = `
 
   max-height: 400px;
 
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 6px;
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   pointer-events: all;

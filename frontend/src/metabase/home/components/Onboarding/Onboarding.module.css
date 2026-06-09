@@ -27,7 +27,7 @@
     var(--mb-color-background-hover) 3rem,
     transparent 3rem
   );
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
   padding-left: 0;
@@ -115,12 +115,12 @@
 
 .video {
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
   width: 100%;
 }
 
 .image {
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: 0.5rem;
 }

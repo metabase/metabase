@@ -537,7 +537,9 @@ export function buildPerPanelXAxes(
       nameGap: 0,
       axisLine: {
         show: true,
-        lineStyle: { color: renderingContext.getColor("border-strong") },
+        lineStyle: {
+          color: renderingContext.getColor("border-neutral-strong"),
+        },
       },
     };
   });

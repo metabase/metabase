@@ -1,6 +1,6 @@
 .EditingParameterContainer {
   transition: all 0.2s ease-in-out;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   background: var(--mb-color-background-primary);
   border-radius: var(--mantine-radius-sm);
   cursor: pointer;

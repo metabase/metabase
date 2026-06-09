@@ -1,5 +1,5 @@
 .SelectRoot {
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
   padding: 0;
 
   & > div {
@@ -122,7 +122,7 @@
       margin-top: calc(var(--mantine-spacing-sm) - 1px);
       margin-bottom: var(--mantine-spacing-sm);
       margin-inline: var(--mantine-spacing-sm);
-      border-top: 1px solid var(--mb-color-border);
+      border-top: 1px solid var(--mb-color-border-neutral);
     }
   }
 }
@@ -154,7 +154,7 @@
 
 .Dropdown {
   background-color: var(--mb-color-background-primary);
-  border-color: var(--mb-color-border);
+  border-color: var(--mb-color-border-neutral);
 }
 
 .SelectError {

@@ -27,7 +27,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border")};
+      hasValue && highlighted ? color("brand") : color("border-neutral")};
   background-color: ${({ hasValue, highlighted }) =>
     hasValue && highlighted ? color("brand") : color("background-primary")};
   border-radius: var(--mantine-spacing-sm);

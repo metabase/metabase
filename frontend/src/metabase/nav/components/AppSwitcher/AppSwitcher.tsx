@@ -151,7 +151,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               size="2.25rem"
               p="sm"
               variant="outline"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={t`Settings`}
               bdrs="50%"
               className={className}
@@ -174,7 +174,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
               radius="lg"
               size={32}
               className={S.Avatar}
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               data-testid="app-switcher-target"
             >
               {user ? userInitials(user) : "?"}

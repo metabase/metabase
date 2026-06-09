@@ -34,7 +34,7 @@ export const saveDomImageStyles = css`
       /* the renderer we use for saving to image/pdf doesn't support box-shadow
         so we replace it with a border */
       box-shadow: none;
-      border: 1px solid var(--mb-color-border);
+      border: 1px solid var(--mb-color-border-neutral);
     }
 
     /* the renderer for saving to image/pdf does not support text overflow
