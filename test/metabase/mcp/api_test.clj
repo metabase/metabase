@@ -767,6 +767,36 @@
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
 
+(deftest tools-call-query-accepts-query-handle-test
+  (testing "the `query` tool resolves a query_handle and streams results, same as a fresh query body"
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query" {:query external-query})
+          query-data     (call-tool session-id "query"
+                                    {:query_handle (:query_handle construct-data)})]
+      (is (=? {:status             "completed"
+               :row_count          5
+               :continuation_token nil?
+               :data               {:cols sequential?
+                                    :rows (fn [rows] (= 5 (count rows)))}}
+              query-data)))))
+
+(deftest tools-call-query-stale-query-handle-test
+  (testing "the `query` tool returns a tool-level error for an unknown handle rather than a 500"
+    (let [[session-id _] (initialize!)
+          result         (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "query"
+                                                        :arguments {:query_handle (str (random-uuid))}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              result)))))
+
 (deftest tools-call-create-question-accepts-query-handle-test
   (testing "create_question resolves query_handle through the MCP layer instead of requiring raw base64"
     (let [[session-id _] (initialize!)

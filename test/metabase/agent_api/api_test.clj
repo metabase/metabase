@@ -304,15 +304,17 @@
               execute-resp))))
   (testing "Rejects native queries with 400; force callers onto /v1/execute-sql"
     ;; The scope `agent:query:execute` gates /v1/execute; `agent:sql:execute` gates
-    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying :type :native,
-    ;; a token with only the broader scope could run raw SQL, defeating the scope split.
-    (let [native-query {:database (mt/id)
-                        :type     "native"
-                        :native   {:query "select 1"}}
-          base64-query (u/encode-base64 (json/encode native-query))
-          resp         (mt/user-http-request :rasta :post 400 "agent/v1/execute"
-                                             {:query base64-query})]
-      (is (re-find #"Native queries are not supported" (str resp))))))
+    ;; /v1/execute-sql. If /v1/execute accepted a base64 payload carrying native SQL —
+    ;; at the top level or nested in a source-query/join — a token with only the broader
+    ;; scope could run raw SQL, defeating the scope split.
+    (doseq [[label q] [["top-level :type native"
+                        {:database (mt/id) :type "native" :native {:query "select 1"}}]
+                       ["nested legacy source-query"
+                        {:database (mt/id) :type "query" :query {:source-query {:native "select 1"}}}]]]
+      (testing label
+        (is (re-find #"Native queries are not supported"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
+                                                {:query (u/encode-base64 (json/encode q))}))))))))
 
 (deftest construct-metric-query-test
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -397,6 +399,88 @@
              :row_count (fn [n] (<= n 200))}
             (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                   {:query (orders-query :limit 1000)})))))
+
+(deftest combined-query-accepts-resolved-handle-test
+  (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
+            skipping the representations pipeline"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query
+                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                        :limit    5)})]
+      (is (=? {:status             "completed"
+               :row_count          5
+               :continuation_token nil?
+               :data               {:cols sequential?
+                                    :rows (fn [rows] (= 5 (count rows)))}}
+              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                    {:query (:query construct-resp)})))))
+  (testing "Pagination works on the resolved-handle path: the per-query :limit drives the
+            continuation_token across pages"
+    (let [page-size      200
+          total-rows     250
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query
+                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
+                                                        :limit    total-rows)})
+          page1          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                               {:query (:query construct-resp)})
+          page2          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                               {:continuation_token (:continuation_token page1)})]
+      (is (=? {:row_count page-size :continuation_token string?} page1))
+      (is (=? {:row_count (- total-rows page-size) :continuation_token nil?} page2)))))
+
+(deftest combined-query-rejects-native-handle-test
+  (testing "`/v2/query` rejects a base64 native query with 400 — `agent:query` must not run raw SQL,
+            same scope split `/v1/execute` enforces — in both the legacy and MBQL 5 native forms"
+    (doseq [[label q] [["legacy top-level :type"
+                        {:database (mt/id) :type "native" :native {:query "select 1"}}]
+                       ["MBQL 5 native stage"
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
+                       ["MBQL 5 native stage nested in a join"
+                        {:lib/type "mbql/query"
+                         :stages   [{:lib/type "mbql.stage/mbql"
+                                     :joins    [{:lib/type "mbql/join"
+                                                 :stages   [{:lib/type "mbql.stage/native"
+                                                             :native   "select 1"}]}]}]}]
+                       ["legacy nested native source-query"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-query {:native "select 1"}}}]]]
+      (testing label
+        (is (re-find #"Native queries are not supported"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64 (json/encode q))}))))))))
+
+(deftest combined-query-rejects-malformed-payload-test
+  (testing "`/v2/query` returns 400 (not 500) when a base64 `:query` isn't a valid JSON object"
+    (doseq [[label q] [["not valid base64/JSON"        "@@@not-base64@@@"]
+                       ["valid base64 of a non-object" (u/encode-base64 (json/encode 5))]]]
+      (testing label
+        (is (re-find #"Invalid request"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query" {:query q})))))))
+  (testing "`/v2/query` returns 400 (not 500) for a JSON object that isn't a serialized MBQL query"
+    (doseq [[label q] [["non-sequential :stages" {:stages 1}]
+                       ["missing :stages"        {:lib/type "mbql/query"}]
+                       ["non-map stage"          {:stages [1]}]
+                       ["malformed :type"        {:type 1 :stages 1}]]]
+      (testing label
+        (is (re-find #"expected a serialized MBQL query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64 (json/encode q))})))))))
+  (testing "`/v2/query` returns 400 (not 500) for an invalid present last-stage :limit"
+    (doseq [[label limit] [["string"   "lots"]
+                           ["zero"     0]
+                           ["negative" -5]
+                           ["boolean"  false]]]
+      (testing label
+        (is (re-find #":limit must be a positive integer"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                                {:query (u/encode-base64
+                                                         (json/encode {:stages [{:limit limit}]}))})))))))
+  (testing "`/v2/query` returns 400 for a malformed continuation_token"
+    (is (re-find #"Invalid request"
+                 (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                            {:continuation_token "@@@not-base64@@@"}))))))
 
 (defn- make-continuation-token [pagination]
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
