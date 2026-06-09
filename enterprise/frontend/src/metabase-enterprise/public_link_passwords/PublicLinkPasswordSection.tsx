@@ -61,6 +61,7 @@ export const PublicLinkPasswordSection = ({
 
   const [mode, setMode] = useState<PasswordMode>(null);
   const [inputValue, setInputValue] = useState("");
+  const [revealed, setRevealed] = useState(false);
 
   const isEditing = mode === "setting" || mode === "editing";
   const isViewing = hasPassword && mode === null;
@@ -80,6 +81,7 @@ export const PublicLinkPasswordSection = ({
     if (hasPassword) {
       await deletePassword({ entityType, entityId });
       resetDraft();
+      setRevealed(false);
     } else {
       setMode(mode === "setting" ? null : "setting");
       setInputValue("");
@@ -99,6 +101,7 @@ export const PublicLinkPasswordSection = ({
         entityId,
         password: inputValue,
       }).unwrap();
+      setRevealed(true);
       resetDraft();
     } catch {
       // Keep the user in the input so they can retry.
@@ -170,12 +173,19 @@ export const PublicLinkPasswordSection = ({
 
           {isViewing && (
             <TextInput
-              value={currentPassword}
+              value={revealed ? currentPassword : "••••••••"}
               readOnly
               data-testid="public-link-password-display"
-              iconBoxWidth={isAdmin ? 70 : 36}
               rightSection={
                 <Group gap={12} wrap="nowrap">
+                  <IconButton
+                    icon={revealed ? "eye_crossed_out" : "eye"}
+                    onClick={() => setRevealed((r) => !r)}
+                    aria-label={
+                      revealed ? t`Hide password` : t`Reveal password`
+                    }
+                    data-testid="public-link-password-reveal"
+                  />
                   {isAdmin && (
                     <IconButton
                       icon="pencil"
@@ -231,7 +241,7 @@ const IconButton = ({
   onClick,
   ...props
 }: {
-  icon: "pencil" | "close" | "check";
+  icon: "pencil" | "close" | "check" | "eye" | "eye_crossed_out";
   variant?: "brand" | "error" | "success";
   disabled?: boolean;
   onClick?: () => void;
