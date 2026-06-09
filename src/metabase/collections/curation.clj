@@ -15,6 +15,13 @@
   [v]
   (some-> v name))
 
+(defn- as-bool
+  "Coerce a raw boolean signal: only `true`/`1` count as true.
+  Guards against DB drivers that surface a boolean column/expression as numeric `0`/`1`, where a plain
+  Clojure truthiness check would treat `0` as true."
+  [v]
+  (or (true? v) (= 1 v)))
+
 (defn curated?
   "Whether the given curation-signal map is curated.
   Reads `:model` `:verified` `:official_collection` `:is_published` `:root_collection_type`
@@ -26,9 +33,9 @@
   ;; No feature gate: a signal can only be set while its feature is present, so the flag is already
   ;; feature-correct and self-heals on the next reindex after any feature change.
   (boolean
-   (or verified
-       official_collection
-       (and (or is_published
+   (or (as-bool verified)
+       (as-bool official_collection)
+       (and (or (as-bool is_published)
                 (contains? library-root-collection-types (as-name root_collection_type)))
             ;; published tables count only at the `final` layer; non-table library content has none
             (or (not= (as-name model) "table")

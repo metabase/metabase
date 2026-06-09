@@ -25,4 +25,10 @@
   (testing "text signals are normalized whether keyword or string"
     (is (collections.curation/curated? {:model "table" :is_published true :data_layer :final}))
     (is (collections.curation/curated? {:model :metric :root_collection_type :library-metrics}))
-    (is (collections.curation/curated? {:model "table" :data_authority :authoritative}))))
+    (is (collections.curation/curated? {:model "table" :data_authority :authoritative})))
+  (testing "boolean signals are coerced — only true/1 count, not numeric 0 (DB driver quirk)"
+    (is (collections.curation/curated? {:model "card" :verified 1}))
+    (is (collections.curation/curated? {:model "card" :official_collection 1}))
+    (is (not (collections.curation/curated? {:model "card" :verified 0})))
+    (is (not (collections.curation/curated? {:model "card" :official_collection 0})))
+    (is (not (collections.curation/curated? {:model "table" :is_published 0 :data_layer "final"})))))

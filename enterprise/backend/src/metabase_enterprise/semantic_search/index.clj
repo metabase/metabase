@@ -293,7 +293,10 @@
   (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
-     :version 4}))
+     ;; Must equal db.migration.impl/dynamic-schema-version — a freshly created index already has the
+     ;; latest schema, so recording an older version would mark it stale on creation. Kept as a literal
+     ;; (not a require) to avoid an index → impl → index-metadata → index cycle; bump both together.
+     :version 5}))
 
 (defn- upsert-embedding!-fn [connectable index text->docs]
   (fn [text->embedding]

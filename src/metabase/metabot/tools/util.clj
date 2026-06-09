@@ -198,14 +198,24 @@
   "Return the metric and model cards in metabot scope visible to the current user.
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
-  and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned.
+  and its subcollections. If the metabot has use_verified_content enabled, only verified-or-curated
+  content is returned — verified cards and cards in official collections.
 
   Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
+  ;; TODO (Chris 2026-06-09) -- this approximates collections.curation/curated? for card scope using
+  ;; verified + official collection. It can't see library-published metrics (root collection type) the
+  ;; way the precomputed `curated` search column can; fully closing that gap means routing this scope
+  ;; through search instead of a raw report_card query.
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
         use-verified-content? (:use_verified_content metabot)
+        verified? (premium-features/has-feature? :content-verification)
+        official? (premium-features/has-feature? :official-collections)
+        ;; Curation signals tractable here, each gated on its feature.
+        curated-conds (cond-> []
+                        verified? (conj [:= :mr.status [:inline "verified"]])
+                        official? (conj [:= :collection.authority_level [:inline "official"]]))
         collection-filter (if metabot-collection-id
                             (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
@@ -221,21 +231,23 @@
                             (when api/*current-user-id*
                               (collection/visible-collection-filter-clause :collection_id))]}]
     (cond-> base-query
-      ;; Prioritize verified content.
-      (premium-features/has-feature? :content-verification)
-      (assoc
-       :left-join [[:moderation_review :mr] [:and
-                                             [:= :mr.moderated_item_id :report_card.id]
-                                             [:= :mr.moderated_item_type [:inline "card"]]
-                                             [:= :mr.most_recent true]]]
-       :order-by [[[:case [:= :mr.status [:inline "verified"]] [:inline 0]
-                    :else [:inline 1]]
-                   :asc]])
+      verified?
+      (update :left-join (fnil into []) [[:moderation_review :mr] [:and
+                                                                   [:= :mr.moderated_item_id :report_card.id]
+                                                                   [:= :mr.moderated_item_type [:inline "card"]]
+                                                                   [:= :mr.most_recent true]]])
 
-      ;; Filter verified items only when that's desired.
-      (and (premium-features/has-feature? :content-verification)
-           use-verified-content?)
-      (update :where conj [:= :mr.status [:inline "verified"]])
+      official?
+      (update :left-join (fnil into []) [[:collection :collection]
+                                         [:= :collection.id :report_card.collection_id]])
+
+      ;; Prioritize curated content.
+      (seq curated-conds)
+      (assoc :order-by [[[:case (into [:or] curated-conds) [:inline 0] :else [:inline 1]] :asc]])
+
+      ;; Restrict to curated content only when that's desired.
+      (and use-verified-content? (seq curated-conds))
+      (update :where conj (into [:or] curated-conds))
 
       (integer? limit)
       (assoc :limit limit))))
