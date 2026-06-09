@@ -7,8 +7,9 @@
 
    Three coordination mechanisms cooperate; keep them straight:
 
-   1. **Cluster lock** (held by callers in [[metabase.search.task.search-index]]): serializes whole reindex
-      runs across the cluster, so at most one node rebuilds at a time.
+   1. **Cluster lock** (acquired at the appdb engine's init!/reindex! choke points in
+      [[metabase.search.appdb.core]]): serializes whole reindex runs across the cluster, so at most one node
+      rebuilds at a time.
    2. **Node-local [[index-lock]]**: serializes the multi-step DDL sequences (create-pending → activate) and
       [[ensure-ready!]] within a single JVM, so two threads on one node never both build a new index.
    3. **TTL state cache** ([[*state-store*]]): each node caches the {:active :pending} table names for a few
@@ -259,19 +260,25 @@
    search_index_metadata records. NOTE: because the mock's force-refresh! is a no-op, this does NOT support
    the build/rotate flow — [[maybe-create-pending!]]/[[activate-table!]] can't track tables they create, and
    rotation would still mutate real-version metadata. Tests that exercise init!/reindex! must instead bind
-   [[metabase.search.spec/*testing-only-index-version-hash*]] and use the real store."
+   [[metabase.search.spec/*testing-only-index-version-hash*]] and use the real store.
+
+   Re-entrant: when already inside a with-temp-index-table (the state store is a mock), it reuses the existing
+   temp table rather than creating a new one, so nested scopes share a single index and content accumulates
+   across them — several callers (e.g. nested with-search-items-in-root-collection) rely on this."
   [& body]
-  `(let [table-name# (table/gen-table-name "_temp")
-         version#    (str (string/random-string 8) "-temp")]
-     (binding [*state-store* (index-state/mock-store {:active table-name#})]
-       (try
-         (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
-                                                 :version    version#
-                                                 :lang_code  (i18n/site-locale-string)
-                                                 :status     :pending
-                                                 :index_name (name table-name#)})
-         (table/create-table! table-name#)
-         ~@body
-         (finally
-           (table/drop-table! table-name#)
-           (t2/delete! :model/SearchIndexMetadata :version version#))))))
+  `(if-not (index-state/db-backed? *state-store*)
+     (do ~@body)
+     (let [table-name# (table/gen-table-name "_temp")
+           version#    (str (string/random-string 8) "-temp")]
+       (binding [*state-store* (index-state/mock-store {:active table-name#})]
+         (try
+           (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
+                                                   :version    version#
+                                                   :lang_code  (i18n/site-locale-string)
+                                                   :status     :pending
+                                                   :index_name (name table-name#)})
+           (table/create-table! table-name#)
+           ~@body
+           (finally
+             (table/drop-table! table-name#)
+             (t2/delete! :model/SearchIndexMetadata :version version#)))))))

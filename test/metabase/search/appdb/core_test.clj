@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.search.appdb.core :as appdb.core]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.appdb.index-state :as index-state]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -26,6 +28,17 @@
                                                     {:lock-names ["search-index"] :retries 0})))]
         (is (nil? (#'appdb.core/do-with-reindex-lock (fn [] (reset! ran true) :ran))))
         (is (false? @ran) "the reindex body must not run while a build is already in progress")))))
+
+(deftest reindex-lock-bypassed-for-non-db-backed-store-test
+  (testing "an in-memory (mock) store bypasses the cluster lock entirely — parallel per-test reindexes have
+            no shared resource to serialize and must not skip each other"
+    (binding [search.index/*state-store* (index-state/mock-store {:active :some-table})]
+      ;; if the lock were used, this stand-in would make acquisition look 'already held' and skip the body
+      (mt/with-dynamic-fn-redefs [cluster-lock/do-with-cluster-lock
+                                  (fn [_opts _thunk]
+                                    (throw (ex-info "cluster lock must not be taken for a non-db-backed store"
+                                                    {:lock-names ["search-index"]})))]
+        (is (= :ran (#'appdb.core/do-with-reindex-lock (constantly :ran))))))))
 
 (deftest reindex-lock-propagates-real-errors-test
   (testing "an error from the body itself is not mistaken for a held lock — it propagates"

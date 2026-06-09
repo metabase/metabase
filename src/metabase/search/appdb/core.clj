@@ -215,15 +215,17 @@
    reindex covers anything a skipped trigger would have caught. Reentrant, so a locked [[init!]] may call
    [[reindex!]] without deadlocking."
   [thunk]
-  (try
-    (cluster-lock/with-cluster-lock reindex-lock (thunk))
-    (catch clojure.lang.ExceptionInfo e
-      ;; do-with-cluster-lock wraps a failed acquisition in an ex-info carrying :lock-names; anything else
-      ;; (a real error from the body) propagates.
-      (if (contains? (ex-data e) :lock-names)
-        (do (log/info "An appdb search index build is already running elsewhere; skipping this trigger.")
-            nil)
-        (throw e)))))
+  (if-not (index-state/db-backed? search.index/*state-store*)
+    (thunk)
+    (try
+      (cluster-lock/with-cluster-lock reindex-lock (thunk))
+      (catch clojure.lang.ExceptionInfo e
+        ;; do-with-cluster-lock wraps a failed acquisition in an ex-info carrying :lock-names; anything else
+        ;; (a real error from the body) propagates.
+        (if (contains? (ex-data e) :lock-names)
+          (do (log/info "An appdb search index build is already running elsewhere; skipping this trigger.")
+              nil)
+          (throw e))))))
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
