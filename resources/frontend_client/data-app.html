@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="{{{language}}}" translate="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta name="base-href" content="{{{baseHref}}}" />
+    <meta name="uri" content="{{{uri}}}" />
+
+    {{{embedCode}}}
+
+    <title>{{{applicationName}}}</title>
+
+    <base href="{{{baseHref}}}" />
+
+    <script type="application/json" id="_metabaseBootstrap">
+      {{{bootstrapJSON}}}
+    </script>
+
+    <script type="application/json" id="_metabaseUserLocalization">
+      {{{userLocalizationJSON}}}
+    </script>
+
+    <script type="application/json" id="_metabaseSiteLocalization">
+      {{{siteLocalizationJSON}}}
+    </script>
+
+    <script type="application/json" id="_metabaseUserColorScheme">
+      {{{userColorScheme}}}
+    </script>
+
+    <script type="application/json" id="_metabaseNonce">
+      {{{nonceJSON}}}
+    </script>
+
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.server.middleware.security -->
+    <script type="text/javascript">{{{bootstrapJS}}}</script>
+    <script type="text/javascript">{{{assetOnErrorJS}}}</script>
+  <script defer src="http://localhost:8080/app/dist/runtime.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/data-app-vendors.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><script defer src="http://localhost:8080/app/dist/app-data-app.hot.bundle.js" onerror="Metabase.AssetErrorLoad(this)"></script><link href="http://localhost:8080/app/dist/data-app-vendors.css" rel="stylesheet"><link href="http://localhost:8080/app/dist/app-data-app.css" rel="stylesheet"></head>
+
+  <!--
+    No `mb-wrapper` class on body: SDK components add it to their own
+    wrappers via `PublicComponentStylesWrapper`. Setting it on the body
+    would put the entire iframe (including the bundle's own chrome) under
+    Metabase's `.mb-wrapper`-scoped resets, which is what we're trying to
+    avoid.
+  -->
+  <body dir="ltr">
+    <div id="root"></div>
+  </body>
+</html>

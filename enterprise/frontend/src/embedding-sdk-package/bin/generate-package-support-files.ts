@@ -34,6 +34,34 @@ export * from "./main.bundle.js";
 writeToFile("nextjs.cjs", nextjs_cjs);
 writeToFile("nextjs.js", nextjs_js);
 
+// Data-app specific imports
+const dataApp_cjs = `
+const { DataAppRouter, DataAppLink, useDataAppLocation } = require("./main.bundle");
+
+module.exports = { DataAppRouter, DataAppLink, useDataAppLocation };
+`.trim();
+
+const dataApp_js = `
+export { DataAppRouter, DataAppLink, useDataAppLocation } from "./main.bundle.js";
+`.trim();
+
+writeToFile("data-app.cjs", dataApp_cjs);
+writeToFile("data-app.js", dataApp_js);
+
+const dataApp_dts = `
+import {
+  DataAppRouter as _DataAppRouter,
+  DataAppLink as _DataAppLink,
+  useDataAppLocation as _useDataAppLocation,
+} from './index.d.ts';
+
+export declare const DataAppRouter: typeof _DataAppRouter;
+export declare const DataAppLink: typeof _DataAppLink;
+export declare const useDataAppLocation: typeof _useDataAppLocation;
+`.trim();
+
+writeToFile("data-app.d.ts", dataApp_dts);
+
 // Development mode entry point.
 // When the host app bundler resolves the "development" exports condition,
 // this file sets a window global so the SDK bundle can detect dev mode.

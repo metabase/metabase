@@ -54,6 +54,12 @@ export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-conf
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
 export {
+  DataAppRouter,
+  DataAppLink,
+  useDataAppLocation,
+} from "metabase/data_apps/router";
+
+export {
   type CollectionBrowserProps,
   type CollectionBrowserListColumns,
 } from "embedding-sdk-bundle/components/public/CollectionBrowser";
