@@ -6,6 +6,10 @@ on:
     branches:
       - "master"
 
+concurrency:
+  group: "backport-reminder-${{ github.event.pull_request.number }}"
+  cancel-in-progress: true
+
 jobs:
   flags:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
