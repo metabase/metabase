@@ -5,7 +5,11 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [java-time.api :as t]
+   [metabase.driver :as driver]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel date-string->filter-test
@@ -539,6 +543,59 @@
                  {:start "2016-06-06" :end "2016-06-07"}
                  {:start "2016-06-07" :end "2016-06-08"}
                  {:start "2016-06-06" :end "2016-06-08"}]}))
+
+(defn- do-with-qp-context-and-results-tz
+  [results-tz thunk]
+  ;; date-string->raw-range only honors the report timezone when invoked inside a QP context
+  ;; (driver bound + store initialized). Mimic that here with a postgres-engined mock provider.
+  (driver/with-driver :postgres
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      {:database (assoc meta/database :engine :postgres)})
+      (mt/with-results-timezone-id results-tz
+        (thunk)))))
+
+(defn- check-relative-date-ranges
+  [results-tz s->expected]
+  (do-with-qp-context-and-results-tz
+   results-tz
+   (fn []
+     (doseq [[s expected] s->expected]
+       (testing (pr-str s)
+         (is (= expected
+                (params.dates/date-string->range s))))))))
+
+(deftest ^:parallel date-string->range-relative-respects-report-timezone-test
+  (testing "Relative date ranges anchor to the report timezone, not the JVM timezone (#74542)"
+    (testing "UTC just past midnight; US/Pacific still on the previous day"
+      ;; 2016-06-07T03:00:00Z — UTC date = 2016-06-07, US/Pacific date = 2016-06-06.
+      (mt/with-clock #t "2016-06-07T03:00:00Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"      {:start "2016-06-06" :end "2016-06-06"}
+          "yesterday"  {:start "2016-06-05" :end "2016-06-05"}
+          "past1days"  {:start "2016-06-05" :end "2016-06-05"}
+          "past3days"  {:start "2016-06-03" :end "2016-06-05"}
+          "past3days~" {:start "2016-06-03" :end "2016-06-06"}})))
+    (testing "UTC right at midnight; US/Pacific still on the previous day"
+      ;; 2016-06-07T00:00:00Z — UTC date = 2016-06-07, US/Pacific date = 2016-06-06.
+      (mt/with-clock #t "2016-06-07T00:00:00Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"     {:start "2016-06-06" :end "2016-06-06"}
+          "yesterday" {:start "2016-06-05" :end "2016-06-05"}})))
+    (testing "UTC and Pacific agree on the date — control case, behavior unchanged"
+      (mt/with-clock #t "2016-06-07T12:13:55Z"
+        (check-relative-date-ranges
+         "US/Pacific"
+         {"today"     {:start "2016-06-07" :end "2016-06-07"}
+          "yesterday" {:start "2016-06-06" :end "2016-06-06"}})))
+    (testing "Eastern timezone — UTC late evening, Tokyo already on the next day"
+      ;; 2016-06-07T20:00:00Z — UTC date = 2016-06-07, Asia/Tokyo (UTC+9) date = 2016-06-08.
+      (mt/with-clock #t "2016-06-07T20:00:00Z"
+        (check-relative-date-ranges
+         "Asia/Tokyo"
+         {"today"     {:start "2016-06-08" :end "2016-06-08"}
+          "next3days" {:start "2016-06-09" :end "2016-06-11"}})))))
 
 (deftest ^:parallel date-string->range-relative-past-from-test
   (do-date-string-range-test

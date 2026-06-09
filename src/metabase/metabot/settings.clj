@@ -101,6 +101,13 @@
                     (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
   :export?    true)
 
+(defsetting metabot-recent-views-enabled?
+  (deferred-tru "Whether the user''s recently viewed items are included in the Metabot system prompt.")
+  :type       :boolean
+  :visibility :internal
+  :default    true
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def ^:private direct-providers

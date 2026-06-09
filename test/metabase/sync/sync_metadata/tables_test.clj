@@ -355,6 +355,19 @@
           (is (= 999
                  (t2/select-one-fn :estimated_row_count :model/Table (:id tbl)))))))))
 
+(deftest create-or-reactivate-tables-deterministic-id-order-test
+  (testing "new tables are inserted sorted by [schema name] so auto-increment ids are assigned deterministically"
+    (let [metadatas #{{:schema "public" :name "zebra"}
+                      {:schema "alpha"  :name "beta"}
+                      {:schema "public" :name "apple"}
+                      {:schema "public" :name "mango"}}]
+      (mt/with-temp [:model/Database db {}]
+        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (is (= ["beta" "apple" "mango" "zebra"]
+               (map :name (t2/select [:model/Table :name]
+                                     :db_id (u/the-id db)
+                                     {:order-by [[:id :asc]]}))))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
