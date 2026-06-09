@@ -1445,8 +1445,7 @@
   {:team "UX West"
    :api  #{metabase.oauth-server.api
            metabase.oauth-server.core
-           metabase.oauth-server.init
-           metabase.oauth-server.scopes}
+           metabase.oauth-server.init}
    :uses #{api
            api-scope
            appearance
