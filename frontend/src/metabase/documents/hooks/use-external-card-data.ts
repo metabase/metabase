@@ -5,7 +5,7 @@ import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDat
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Dataset, RawSeries } from "metabase-types/api";
+import type { Card, CardId, Dataset, RawSeries } from "metabase-types/api";
 
 import type { UseCardDataResult } from "./use-card-data";
 
@@ -20,7 +20,7 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
 }
 
 export function useExternalCardDataLoader(
-  cardId: number,
+  cardId: CardId,
   { skip = false }: { skip?: boolean } = {},
 ): UseCardDataResult {
   const context = useExternalCardData();

@@ -229,14 +229,11 @@ export function ExplicitSize<T>({
           return;
         }
 
-        // ResizeObserver delivers the new dimensions on the entry. Reading them
-        // is free — they were measured during the same frame's layout pass.
-        // Calling getBoundingClientRect() inside our throttled callback runs
-        // a frame later, when style has been re-invalidated by React renders
-        // happening in parallel; that forces a synchronous re-layout
-        // (~100ms+ with many charts on screen). Prefer the entry when present.
         let width: number;
         let height: number;
+
+        // ResizeObserver entry's dimensions free to read, prefer it over
+        // getBoundingClientRect() which forces re-layout.
         if (entry && entry.target === element) {
           const box = entry.borderBoxSize?.[0];
           width = box ? box.inlineSize : entry.contentRect.width;

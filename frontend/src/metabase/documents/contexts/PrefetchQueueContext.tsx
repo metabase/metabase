@@ -6,7 +6,7 @@ import {
   useMemo,
 } from "react";
 
-import { useIsPrefetchAllowed } from "metabase/documents/hooks/use-is-prefetch-allowed";
+import { useIsPrefetchAllowed } from "metabase/common/hooks/use-is-prefetch-allowed";
 import {
   type PrefetchQueue,
   PrefetchQueueStore,

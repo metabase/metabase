@@ -1,8 +1,5 @@
 const MAX_CONCURRENT_PREFETCHES = 3;
 
-// Upper bound for how long the browser may delay an idle callback before
-// we run it anyway. Generous enough that we don't pre-empt real work, low
-// enough that prefetch eventually fires on busy pages.
 const IDLE_TIMEOUT_MS = 2000;
 
 // Fallback delay when requestIdleCallback is unavailable (e.g. Safari < 16.4).
@@ -21,10 +18,6 @@ export type IdleScheduler = {
   cancel: (handle: number) => void;
 };
 
-/**
- * Public surface of the prefetch coordinator. Decouples consumers from
- * the concrete class so tests can supply lightweight stubs.
- */
 export interface PrefetchQueue {
   setEnabled(enabled: boolean): void;
   register(reg: Registration): () => void;
@@ -49,20 +42,6 @@ function defaultScheduler(): IdleScheduler {
   };
 }
 
-/**
- * Idle-time prefetch coordinator for off-screen card embeds.
- *
- * Each card embed registers itself; whenever the browser reports a free
- * idle slice (via requestIdleCallback), the queue grants "prefetch
- * tickets" to the off-screen cards nearest the viewport, up to
- * MAX_CONCURRENT_PREFETCHES in-flight loads at a time. Cards with a
- * ticket flip their `skip` flag off, so their RTK Query fetches fire
- * and results land in the cache before the user scrolls to them.
- *
- * Tickets are monotonic: once granted, a card keeps its ticket so its
- * query result stays cached. Slot accounting uses `inflightLoads` so the
- * coordinator doesn't compete with viewport loads.
- */
 export class PrefetchQueueStore implements PrefetchQueue {
   private registrations = new Map<string, Registration>();
   private inflightLoads = new Set<string>();
@@ -179,13 +158,12 @@ export class PrefetchQueueStore implements PrefetchQueue {
 
     candidates.sort((a, b) => a.distance - b.distance);
 
-    let granted = false;
-    for (const { id } of candidates.slice(0, slotsAvailable)) {
+    const idsToPrefetch = candidates.slice(0, slotsAvailable);
+    for (const { id } of idsToPrefetch) {
       this.prefetchedIds.add(id);
-      granted = true;
     }
 
-    if (granted) {
+    if (idsToPrefetch.length > 0) {
       this.notify();
     }
   }
