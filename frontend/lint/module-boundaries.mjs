@@ -151,7 +151,7 @@ const elements = [
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
     "frontend/src/metabase/reducers-main.ts",
-    "frontend/src/metabase/routes.jsx",
+    "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/route-guards.tsx",
     "frontend/src/metabase/routes-public.tsx",
