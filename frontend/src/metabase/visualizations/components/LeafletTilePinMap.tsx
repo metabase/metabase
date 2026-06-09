@@ -1,7 +1,7 @@
 import L from "leaflet";
 import type { ContextType } from "react";
 
-import { GET } from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -185,10 +185,13 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      GET(tileUrl, {
-        signal: controller.signal,
-        rawResponse: true,
-      })()
+      api
+        .request({
+          url: tileUrl,
+          method: "GET",
+          signal: controller.signal,
+          rawResponse: true,
+        })
         .then((response) => response.blob())
         .then((blob) => {
           const reader = new FileReader();
