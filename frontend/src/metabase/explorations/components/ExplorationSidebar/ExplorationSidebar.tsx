@@ -15,6 +15,7 @@ import type {
   ITreeNodeItem,
   TreeNodeProps,
 } from "metabase/common/components/tree/types";
+import { getInitialExpandedIds } from "metabase/common/components/tree/utils";
 import { useToast } from "metabase/common/hooks";
 import {
   trackExplorationAISummaryOpened,
@@ -73,6 +74,7 @@ export function ExplorationSidebar({
   const treeController = useTree({
     data: tree,
     selectedId: selectedEntityId?.id,
+    freezeAutoExpandOnManualToggle: true,
   });
   const pendingKeyboardSelectionRef = useRef(false);
 
@@ -118,7 +120,7 @@ export function ExplorationSidebar({
   // so we need to be careful to prevent this effect from running on every render
   // eslint complains when passing `treeController.collapse` to `useEffect` deps
   // so destructure it
-  const { collapse } = treeController;
+  const { collapse, setExpandedIds } = treeController;
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -156,6 +158,10 @@ export function ExplorationSidebar({
         }
         event.preventDefault();
         pendingKeyboardSelectionRef.current = true;
+        setExpandedIds(
+          (prev) =>
+            new Set([...prev, ...getInitialExpandedIds(nextItem.id, tree)]),
+        );
         // prefetch the following item
         // if the user uses a keyboard shortcut once, they're likely to use it again
         const followingItem = getAdjacentById(
@@ -182,8 +188,10 @@ export function ExplorationSidebar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     flatItems,
+    tree,
     selectedEntityId,
     setSelectedEntityId,
+    setExpandedIds,
     handlePrefetch,
     collapse,
     exploration.id,
@@ -217,6 +225,7 @@ export function ExplorationSidebar({
       gap="lg"
       pt="3rem"
       mr="2rem"
+      data-testid="exploration-page-sidebar"
     >
       <EditableText
         initialValue={exploration.name}
@@ -284,6 +293,7 @@ function ExplorationTreeHeading({
         c="brand"
         aria-hidden
       />
+      <ExplorationHeadingStatusIcon status={item.data?.status} />
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {item.name}
       </Ellipsified>
@@ -464,6 +474,25 @@ function ExplorationTreeItem({
         )}
     </ForwardRefLink>
   );
+}
+
+function ExplorationHeadingStatusIcon({
+  status,
+}: {
+  status: ExplorationQueryStatus | undefined;
+}) {
+  if (status === "running" || status === "pending") {
+    return <Loader size="xs" aria-label={t`Loading…`} />;
+  }
+  if (status === "error") {
+    return <Icon name="warning" c="error" aria-label={t`Failed to generate`} />;
+  }
+  if (status === "canceled") {
+    return (
+      <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
+    );
+  }
+  return null;
 }
 
 function ExplorationTreeItemIcon({

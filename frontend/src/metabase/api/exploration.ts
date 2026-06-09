@@ -11,6 +11,8 @@ import type {
   ExplorationThreadId,
   GetExplorationDataRequest,
   GetExplorationDataResponse,
+  GetMyExplorationsRequest,
+  GetMyExplorationsResponse,
   UpdateExplorationRequest,
   VisualizationDisplay,
   VisualizationSettings,
@@ -40,6 +42,17 @@ export const explorationApi = Api.injectEndpoints({
       }),
       providesTags: (exploration) =>
         exploration ? [idTag("exploration", exploration.id)] : [],
+    }),
+    getMyExplorations: builder.query<
+      GetMyExplorationsResponse,
+      GetMyExplorationsRequest | void
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/exploration/mine",
+        params,
+      }),
+      providesTags: () => [listTag("exploration")],
     }),
     createExploration: builder.mutation<Exploration, CreateExplorationRequest>({
       query: (body) => ({
@@ -152,6 +165,7 @@ export const explorationApi = Api.injectEndpoints({
 export const {
   useGetExplorationDataQuery,
   useGetExplorationQuery,
+  useGetMyExplorationsQuery,
   useCreateExplorationMutation,
   useUpdateExplorationMutation,
   useRestartExplorationMutation,

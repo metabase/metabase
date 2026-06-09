@@ -226,12 +226,14 @@
                    :model/Exploration e {:name "x" :creator_id (:id u)}
                    :model/ExplorationThread t {:exploration_id (:id e)
                                                :prompt         "How is revenue trending?"
-                                               :position       0}]
+                                               :position       0}
+                   :model/ExplorationThreadGroup grp {:exploration_thread_id (:id t)}]
       (let [qp-result    (fixture-qp-result)
             query        (first (t2/insert-returning-instances!
                                  :model/ExplorationQuery
                                  {:exploration_thread_id (:id t)
                                   :card_id               (:id card)
+                                  :group_id              (:id grp)
                                   :name                  "Revenue by Month"
                                   :dimension_id          "d1"
                                   :dataset_query         (lib/->legacy-MBQL
@@ -311,6 +313,6 @@
                   (is (= 1 (count cards)) "one Card is materialized for the static cardEmbed")
                   (is (= [(:id (first cards))] embed-ids)
                       "cardEmbed.attrs.id is the materialized card id")
-                  (is (= [(explorations.groups/chart-page-url (:id e) (:id card) "d1")]
+                  (is (= [(explorations.groups/chart-page-url (:id e) (:id grp) (:id card) "d1")]
                          embed-hrefs)
                       "cardEmbed.attrs.chart_href deep-links back to the source chart's group page"))))))))))

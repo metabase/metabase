@@ -21,11 +21,10 @@ import type {
   MetabotChatMessage,
   MetabotDebugToolCallMessage,
 } from "metabase/metabot/state";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack, Text } from "metabase/ui";
 import type { GetExplorationDataResponse } from "metabase-types/api";
 
 import S from "./NewExplorationChat.module.css";
-import { ResearchModeIntro } from "./ResearchModeIntro";
 
 export const EXPLORATIONS_AGENT_ID = "explorations";
 
@@ -185,7 +184,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="md">
+      <Stack flex={1} mih={0} gap="md" bg="background-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
@@ -206,16 +205,13 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             {isDoingScience && <MetabotThinking toolCalls={activeToolCalls} />}
           </Stack>
         ) : (
-          <Center flex={1} mih={0}>
-            <ResearchModeIntro />
-          </Center>
+          <Box flex={1} mih={0} />
         )}
         <Flex
           bg="background-primary"
           bd="1px solid border"
           bdrs="md"
           mx="lg"
-          mb="lg"
           pr="0.75rem"
           flex="none"
           className={S.inputContainer}
@@ -237,6 +233,14 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
               onConfigureAi={openAiProviderConfigurationModal}
             />
           )}
+        </Flex>
+        <Flex mb="lg" mx="lg" align="center" justify="center">
+          <Text
+            c="text-secondary"
+            size="sm"
+            lh="1rem"
+            ta="center"
+          >{t`AI can make mistakes. Double check your plan and modify it as needed.`}</Text>
         </Flex>
       </Stack>
       <AIProviderConfigurationModal

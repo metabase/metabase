@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type {
   DimensionGroup,
   DimensionMetadata,
@@ -14,7 +15,7 @@ import type {
 } from "../types/viewer-state";
 
 import type { MetricSlot } from "./metric-slots";
-import { type TabInfo, getDimensionIcon, getDimensionsByType } from "./tabs";
+import { type TabInfo, getDimensionsByType } from "./tabs";
 
 // ── Dimension picker ──
 

@@ -169,6 +169,347 @@ describe("ExplorationSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps a manually collapsed heading collapsed when the tree reloads", async () => {
+    fetchMock.get("express:/api/exploration/query/:id", {
+      data: { rows: [], cols: [] },
+    });
+
+    const HEADING = "metric:revenue";
+    const LEAF = "leaf:revenue";
+    const makeGroups = () => [
+      {
+        id: HEADING,
+        parent_group_id: null,
+        position: 0,
+        type: "auto" as const,
+        display_type: "sidebar" as const,
+        name: "Revenue",
+        query_ids: [],
+      },
+      {
+        id: LEAF,
+        parent_group_id: HEADING,
+        position: 0,
+        type: "auto" as const,
+        display_type: "singleton" as const,
+        name: "Revenue by plan",
+        query_ids: [1],
+      },
+    ];
+
+    const exploration = createExploration({
+      groups: makeGroups(),
+      queries: [
+        createQuery({ id: 1, name: "Revenue by plan", status: "pending" }),
+      ],
+    });
+    // A later poll: same group/leaf ids, but the query settled — a deep-different
+    // tree, so `useTree`'s data-change effect runs.
+    const reloadedTree = getExplorationSidebarTree(
+      createExploration({
+        groups: makeGroups(),
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Revenue by plan",
+            status: "done",
+            interestingness_score: 0.9,
+          }),
+        ],
+      }),
+    );
+
+    const path = Urls.exploration(exploration.id);
+    const sidebarWith = (
+      tree: ReturnType<typeof getExplorationSidebarTree>,
+    ) => (
+      <ExplorationSidebar
+        exploration={exploration}
+        tree={tree}
+        selectedEntityId={{ type: "group", id: LEAF }}
+        setSelectedEntityId={jest.fn()}
+        getSelectedEntityIdUrl={() => path}
+      />
+    );
+
+    const { rerender } = renderWithProviders(
+      <Route
+        path={path}
+        component={() => sidebarWith(getExplorationSidebarTree(exploration))}
+      />,
+      { withRouter: true, initialRoute: path },
+    );
+
+    const heading = screen.getByRole("group", { name: /Revenue/ });
+    expect(heading).toHaveAttribute("aria-expanded", "true");
+
+    // User collapses the heading.
+    await userEvent.click(heading);
+    expect(heading).toHaveAttribute("aria-expanded", "false");
+
+    // Poll delivers a new (deep-different) tree — the collapse must be respected.
+    rerender(<Route path={path} component={() => sidebarWith(reloadedTree)} />);
+    expect(screen.getByRole("group", { name: /Revenue/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  describe("auto-expand freeze after a manual toggle", () => {
+    const A_HEADING = "metric:a";
+    const B_HEADING = "metric:b";
+    const A_LEAF = "leaf:a";
+    const B_LEAF = "leaf:b";
+
+    function twoGroups() {
+      return [
+        {
+          id: A_HEADING,
+          parent_group_id: null,
+          position: 0,
+          type: "auto" as const,
+          display_type: "sidebar" as const,
+          name: "Group A",
+          query_ids: [],
+        },
+        {
+          id: A_LEAF,
+          parent_group_id: A_HEADING,
+          position: 0,
+          type: "auto" as const,
+          display_type: "singleton" as const,
+          name: "A leaf",
+          query_ids: [1],
+        },
+        {
+          id: B_HEADING,
+          parent_group_id: null,
+          position: 1,
+          type: "auto" as const,
+          display_type: "sidebar" as const,
+          name: "Group B",
+          query_ids: [],
+        },
+        {
+          id: B_LEAF,
+          parent_group_id: B_HEADING,
+          position: 0,
+          type: "auto" as const,
+          display_type: "singleton" as const,
+          name: "B leaf",
+          query_ids: [2],
+        },
+      ];
+    }
+
+    function renderWithTree(
+      exploration: ReturnType<typeof createExploration>,
+      initialSelectedId: string,
+    ) {
+      const path = Urls.exploration(exploration.id);
+      const sidebarWith = (
+        tree: ReturnType<typeof getExplorationSidebarTree>,
+        selectedId: string,
+      ) => (
+        <ExplorationSidebar
+          exploration={exploration}
+          tree={tree}
+          selectedEntityId={{ type: "group", id: selectedId }}
+          setSelectedEntityId={jest.fn()}
+          getSelectedEntityIdUrl={() => path}
+        />
+      );
+      const { rerender } = renderWithProviders(
+        <Route
+          path={path}
+          component={() =>
+            sidebarWith(
+              getExplorationSidebarTree(exploration),
+              initialSelectedId,
+            )
+          }
+        />,
+        { withRouter: true, initialRoute: path },
+      );
+      return {
+        rerenderWith: (
+          tree: ReturnType<typeof getExplorationSidebarTree>,
+          selectedId: string,
+        ) =>
+          rerender(
+            <Route
+              path={path}
+              component={() => sidebarWith(tree, selectedId)}
+            />,
+          ),
+      };
+    }
+
+    it("does not auto-expand a newly auto-selected group after the user collapsed one", async () => {
+      fetchMock.get("express:/api/exploration/query/:id", {
+        data: { rows: [], cols: [] },
+      });
+
+      const exploration = createExploration({
+        groups: twoGroups(),
+        queries: [
+          createQuery({ id: 1, name: "A leaf", status: "done" }),
+          createQuery({ id: 2, name: "B leaf", status: "pending" }),
+        ],
+      });
+      // A later poll: B's query settles with high interestingness (deep-different
+      // tree), so the auto-selection moves to Group B's leaf.
+      const reloadedTree = getExplorationSidebarTree(
+        createExploration({
+          groups: twoGroups(),
+          queries: [
+            createQuery({ id: 1, name: "A leaf", status: "done" }),
+            createQuery({
+              id: 2,
+              name: "B leaf",
+              status: "done",
+              interestingness_score: 0.9,
+            }),
+          ],
+        }),
+      );
+
+      const { rerenderWith } = renderWithTree(exploration, A_LEAF);
+
+      const groupA = screen.getByRole("group", { name: /Group A/ });
+      expect(groupA).toHaveAttribute("aria-expanded", "true");
+      await userEvent.click(groupA);
+      expect(groupA).toHaveAttribute("aria-expanded", "false");
+
+      rerenderWith(reloadedTree, B_LEAF);
+
+      // Frozen: the collapsed group stays collapsed and the newly auto-selected
+      // group is NOT auto-expanded.
+      expect(screen.getByRole("group", { name: /Group A/ })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+      expect(screen.getByRole("group", { name: /Group B/ })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    });
+
+    it("arrow-key navigation still reveals the target group after a manual toggle", async () => {
+      fetchMock.get("express:/api/exploration/query/:id", {
+        data: { rows: [], cols: [] },
+      });
+
+      const exploration = createExploration({
+        groups: twoGroups(),
+        queries: [
+          createQuery({ id: 1, name: "A leaf", status: "done" }),
+          createQuery({ id: 2, name: "B leaf", status: "done" }),
+        ],
+      });
+
+      renderWithTree(exploration, A_LEAF);
+
+      // User collapses Group A → freezes automatic expansion.
+      await userEvent.click(screen.getByRole("group", { name: /Group A/ }));
+
+      // Explicit keyboard navigation into Group B still reveals it.
+      fireEvent.keyDown(document.body, { key: "ArrowRight" });
+      expect(screen.getByRole("group", { name: /Group B/ })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+    });
+  });
+
+  describe("heading status inherited from descendant queries", () => {
+    const HEADING = "metric:revenue";
+    const headingGroups = [
+      {
+        id: HEADING,
+        parent_group_id: null,
+        position: 0,
+        type: "auto" as const,
+        display_type: "sidebar" as const,
+        name: "Revenue",
+        query_ids: [],
+      },
+      {
+        id: "leaf:a",
+        parent_group_id: HEADING,
+        position: 0,
+        type: "auto" as const,
+        display_type: "singleton" as const,
+        name: "Leaf A",
+        query_ids: [1],
+      },
+      {
+        id: "leaf:b",
+        parent_group_id: HEADING,
+        position: 1,
+        type: "auto" as const,
+        display_type: "singleton" as const,
+        name: "Leaf B",
+        query_ids: [2],
+      },
+    ];
+    const headingRow = () => screen.getByRole("group", { name: /Revenue/ });
+
+    it("shows a loading icon while any descendant query is still loading", () => {
+      setup({
+        queries: [
+          createQuery({ id: 1, name: "Leaf A", status: "pending" }),
+          createQuery({ id: 2, name: "Leaf B", status: "done" }),
+        ],
+        groups: headingGroups,
+        selectedEntityId: { type: "group", id: "leaf:b" },
+      });
+
+      expect(
+        within(headingRow()).getByLabelText("Loading…"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an error icon once all are settled and one or more errored", () => {
+      setup({
+        queries: [
+          createQuery({ id: 1, name: "Leaf A", status: "done" }),
+          createQuery({
+            id: 2,
+            name: "Leaf B",
+            status: "error",
+            error_message: "boom",
+          }),
+        ],
+        groups: headingGroups,
+        selectedEntityId: { type: "group", id: "leaf:a" },
+      });
+
+      const row = headingRow();
+      expect(
+        within(row).getByLabelText("Failed to generate"),
+      ).toBeInTheDocument();
+      expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
+    });
+
+    it("shows no status icon when all descendant queries are done", () => {
+      setup({
+        queries: [
+          createQuery({ id: 1, name: "Leaf A", status: "done" }),
+          createQuery({ id: 2, name: "Leaf B", status: "done" }),
+        ],
+        groups: headingGroups,
+        selectedEntityId: { type: "group", id: "leaf:a" },
+      });
+
+      const row = headingRow();
+      expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
+      expect(
+        within(row).queryByLabelText("Failed to generate"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it("shows a stopped icon for canceled queries", () => {
     setup({
       queries: [
@@ -207,6 +548,27 @@ describe("ExplorationSidebar", () => {
     expect(
       within(getRow("AI Summary")).getByLabelText("Stopped"),
     ).toBeInTheDocument();
+  });
+
+  it("shows a loading status icon on the Findings heading while the AI summary is generating", () => {
+    const aiSummaryDocument = createExplorationDocument({
+      id: 42,
+      name: "AI Summary",
+    });
+
+    setup({
+      queries: [],
+      groups: [],
+      documents: [aiSummaryDocument],
+      thread: {
+        ai_summary_document_id: aiSummaryDocument.id,
+        completed_at: null,
+        canceled_at: null,
+      },
+    });
+
+    const findings = screen.getByRole("group", { name: /Findings/ });
+    expect(within(findings).getByLabelText("Loading…")).toBeInTheDocument();
   });
 
   describe("potentially-interesting marker", () => {
@@ -604,10 +966,11 @@ describe("ExplorationSidebar", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("each leaf row's status icon reflects the worst-case status of its own queries (headings have no status icon)", () => {
-      // One heading with three leaves: one pending, one error, one done.
-      // The heading button has no status indicator — only the leaf
-      // treeitems do.
+    it("each leaf row's status icon reflects its own queries; the heading shows the rolled-up status", () => {
+      // One heading with three leaves: one running, one errored, one done.
+      // Each leaf shows its own status; the heading inherits the rolled-up
+      // status of all its descendant queries (running here, since one is still
+      // loading).
       const runningLeafQueries = [
         createQuery({ id: 1001, name: "Pending leaf q1", status: "pending" }),
         createQuery({ id: 1002, name: "Pending leaf q2", status: "done" }),
@@ -677,26 +1040,22 @@ describe("ExplorationSidebar", () => {
         selectedEntityId: { type: "group", id: RUNNING_LEAF_ID },
       });
 
-      // The leaf rows show "By <dimension_name>"; we matched
-      // dimension_name to query name in `createQuery`.
+      // Leaf rows are labelled by the BE-provided group name; each row's status
+      // is derived from that group's own queries.
       expect(
-        within(getRow("Pending leaf q1")).getByLabelText("Loading…"),
+        within(getRow("Still running")).getByLabelText("Loading…"),
       ).toBeInTheDocument();
       expect(
-        within(getRow("Error leaf q1")).getByLabelText("Failed to generate"),
+        within(getRow("Has an error")).getByLabelText("Failed to generate"),
       ).toBeInTheDocument();
       expect(
-        within(getRow("Done leaf q1")).getByLabelText("Ready"),
+        within(getRow("All settled")).getByLabelText("Ready"),
       ).toBeInTheDocument();
 
-      // Heading has no status icon — none of the labels appear inside it.
+      // Heading inherits the rolled-up status: one descendant query is still
+      // loading, so it shows the loading indicator (never the leaf "Ready" icon).
       const heading = screen.getByRole("group", { name: /Status metric/ });
-      expect(
-        within(heading).queryByLabelText("Loading…"),
-      ).not.toBeInTheDocument();
-      expect(
-        within(heading).queryByLabelText("Failed to generate"),
-      ).not.toBeInTheDocument();
+      expect(within(heading).getByLabelText("Loading…")).toBeInTheDocument();
       expect(within(heading).queryByLabelText("Ready")).not.toBeInTheDocument();
     });
 
@@ -747,9 +1106,8 @@ describe("ExplorationSidebar", () => {
           position: 0,
           type: "auto",
           display_type: "page",
-          // The leaf row label is always `By <dimension_name>`, so the
-          // group's own `name` only matters for analytics — it never
-          // surfaces in the sidebar.
+          // The leaf row is labelled by the BE-provided group name; the
+          // constituent queries are fanned out behind the single row.
           name: "Revenue across regions",
           query_ids: pageQueries.map((q) => q.id),
         },
@@ -762,8 +1120,8 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        // One leaf row labelled after the first query's dimension_name.
-        expect(getRow("Revenue (US)")).toBeInTheDocument();
+        // One leaf row labelled by the group name.
+        expect(getRow("Revenue across regions")).toBeInTheDocument();
         // The other constituent query name is NOT exposed as its own row.
         const allRows = screen.getAllByRole("treeitem");
         expect(
@@ -782,7 +1140,7 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        expect(getRow("Revenue (US)")).toHaveAttribute(
+        expect(getRow("Revenue across regions")).toHaveAttribute(
           "href",
           getSelectedEntityIdUrl({ type: "group", id: PAGE_LEAF_ID }),
         );
@@ -795,7 +1153,10 @@ describe("ExplorationSidebar", () => {
           selectedEntityId: { type: "group", id: PAGE_LEAF_ID },
         });
 
-        expect(getRow("Revenue (US)")).toHaveAttribute("aria-selected", "true");
+        expect(getRow("Revenue across regions")).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
       });
 
       it("a mixed-status page leaf reports the worst-case status on its single row", () => {
@@ -836,7 +1197,7 @@ describe("ExplorationSidebar", () => {
 
         // The error wins — the row's icon is the warning.
         expect(
-          within(getRow("OK query")).getByLabelText("Failed to generate"),
+          within(getRow("Mixed page")).getByLabelText("Failed to generate"),
         ).toBeInTheDocument();
       });
     });

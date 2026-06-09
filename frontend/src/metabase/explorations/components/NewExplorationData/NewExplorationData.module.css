@@ -1,99 +1,53 @@
 .container {
-  flex-basis: max-content;
   border-left: 1px solid var(--mb-color-border);
 }
 
-.sectionAddIcon {
-  box-shadow: 0 1px 3px var(--mb-color-border);
+.blocksContainer {
+  overflow-y: auto;
+
+  /* show scrollbar a bit to the side, so it doesn't overlap with block borders */
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-.accordionRoot {
-  background: transparent;
+.block {
+  background: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
 }
 
-.accordionRoot .accordionItem {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  margin: 0 !important;
-
-  /* `&[data-active]` keeps the same chrome as the inactive state. */
-  &[data-active] {
-    background: transparent !important;
-    border: none !important;
-  }
+.blockHeader {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
 }
 
-.accordionRoot .accordionItem + .accordionItem {
-  margin-top: 1.5rem !important;
+.blockBody {
+  padding: 0.25rem 1rem 0.75rem;
 }
 
-.accordionRoot .accordionControl {
-  padding-inline: 1rem !important;
-  padding-block: var(--mantine-spacing-xs) !important;
-  background: transparent !important;
-  color: var(--mb-color-text-primary);
-
-  &:hover {
-    background: transparent !important;
-  }
+.block:not([data-expanded]) .blockBody {
+  cursor: pointer;
 }
 
-/* The "+" button sits beside the collapse control, not inside it, so we
-   never nest two <button>s. The control flexes to fill the row. */
-.accordionControlRow {
-  display: flex;
-  align-items: center;
+.blockActions {
+  opacity: 0;
+  transition: opacity 0.1s ease-in-out;
 }
 
-.accordionControlRow .accordionControl {
-  flex: 1;
-  padding-right: 0 !important;
+.block:hover .blockActions,
+.block:focus-within .blockActions {
+  opacity: 1;
 }
 
-.accordionRoot .accordionLabel {
-  /* Override the global theme: smaller font, neutral colour,
-     reset the heavy vertical padding the theme adds. */
-  color: var(--mb-color-text-secondary) !important;
-  font-weight: bold !important;
-  font-size: var(--mantine-font-size-md) !important;
-  line-height: 1rem !important;
-  padding: 0 !important;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  &:after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    border-bottom: 1px dashed var(--mb-color-border);
-  }
+.pill {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.75rem;
 }
 
-.accordionRoot .accordionChevron {
-  /* Strip the circular bordered chevron the global theme adds.
-     We want a plain caret icon. */
-  border: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  width: 1rem !important;
-  height: 1rem !important;
-  margin-left: 0 !important;
-  margin-right: var(--mantine-spacing-xs) !important;
-  color: var(--mb-color-brand);
-}
-
-.accordionRoot .accordionContent {
-  /* Drop the theme's top border on the panel content. */
-  border-top: none !important;
-  padding-inline: 2.125rem !important;
-  padding-bottom: var(--mantine-spacing-sm) !important;
-  padding-top: 0.75rem !important;
-}
-
-.accordionRoot .accordionPanel {
-  padding: 0 !important;
+.pill .pillLabel {
+  line-height: 1rem;
 }
 
 .pill .pillRemove {
@@ -104,6 +58,38 @@
   opacity: 1;
 }
 
-.beginButton {
-  align-self: center;
+.overflowPill {
+  background: var(--mb-color-background-secondary);
+}
+
+.togglePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--border-radius-xl);
+  background: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  font-weight: 600;
+  line-height: 1rem;
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+}
+
+.togglePillSelected {
+  background: var(--mb-color-background-brand);
+  color: var(--mb-color-brand);
+}
+
+.timelineTogglePill {
+  padding: 0.625rem 0.75rem;
+  font-weight: 500;
 }

@@ -1,10 +1,12 @@
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
   createExploration,
+  createExplorationDocument,
   createQuery,
   leafGroup,
   metricGroup,
 } from "metabase/explorations/test-utils";
+import type { ExplorationQueryStatus } from "metabase-types/api";
 
 import type { ExplorationTreeNode, ExplorationTreeQueryGroup } from "./utils";
 import { getExplorationSidebarTree, pickInitialSidebarEntity } from "./utils";
@@ -207,6 +209,43 @@ describe("getExplorationSidebarTree sorting", () => {
   });
 });
 
+describe("getExplorationSidebarTree passes BE-computed names through", () => {
+  const DIM_GROUP = "dim:country";
+
+  it("uses the group's group_name for the heading and each leaf's name for sub-items", () => {
+    const signups = createQuery({
+      id: 1,
+      name: "Signups",
+      status: "done",
+      interestingness_score: 0.9,
+    });
+    const revenue = createQuery({
+      id: 2,
+      name: "Revenue",
+      status: "done",
+      interestingness_score: 0.8,
+    });
+
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        queries: [signups, revenue],
+        groups: [
+          metricGroup(DIM_GROUP, "Country", 0, "By Country"),
+          leafGroup("auto:country:10", DIM_GROUP, [signups.id], 0, "Signups"),
+          leafGroup("auto:country:11", DIM_GROUP, [revenue.id], 1, "Revenue"),
+        ],
+      }),
+    );
+
+    const heading = getMetricHeadings(tree)[0];
+    expect(heading?.name).toBe("By Country");
+    expect((heading?.children ?? []).map((child) => child.name)).toEqual([
+      "Signups",
+      "Revenue",
+    ]);
+  });
+});
+
 describe("pickInitialSidebarEntity", () => {
   const METRIC_A = "metric:a";
 
@@ -251,5 +290,91 @@ describe("pickInitialSidebarEntity", () => {
       type: "group",
       id: "leaf:done",
     });
+  });
+});
+
+describe("getExplorationSidebarTree inherits a heading status from its leaves", () => {
+  const METRIC = "metric:revenue";
+
+  function buildTree(statuses: ExplorationQueryStatus[]) {
+    const queries = statuses.map((status, i) =>
+      createQuery({ id: i + 1, name: `Q${i + 1}`, status }),
+    );
+    return getExplorationSidebarTree(
+      createExploration({
+        queries,
+        groups: [
+          metricGroup(METRIC, "Revenue", 0),
+          ...queries.map((q, i) =>
+            leafGroup(`leaf:${q.id}`, METRIC, [q.id], i, q.name ?? ""),
+          ),
+        ],
+      }),
+    );
+  }
+
+  function statusOf(node: ITreeNodeItem<ExplorationTreeNode> | undefined) {
+    return node?.data?.type === "heading" ? node.data.status : undefined;
+  }
+
+  const threadStatus = (tree: ReturnType<typeof buildTree>) =>
+    statusOf(tree[0]);
+  const headingStatus = (tree: ReturnType<typeof buildTree>) =>
+    statusOf(getMetricHeadings(tree)[0]);
+
+  it("is running while any leaf query is still loading", () => {
+    const tree = buildTree(["pending", "done"]);
+    expect(headingStatus(tree)).toBe("running");
+    expect(threadStatus(tree)).toBe("running");
+  });
+
+  it("is error once all leaves are settled and one or more errored", () => {
+    const tree = buildTree(["done", "error"]);
+    expect(headingStatus(tree)).toBe("error");
+    expect(threadStatus(tree)).toBe("error");
+  });
+
+  it("is done when all leaf queries are done", () => {
+    const tree = buildTree(["done", "done"]);
+    expect(headingStatus(tree)).toBe("done");
+    expect(threadStatus(tree)).toBe("done");
+  });
+});
+
+describe("getExplorationSidebarTree Findings heading status", () => {
+  function findingsStatus(tree: ReturnType<typeof getExplorationSidebarTree>) {
+    const node = tree.find((n) => n.id === "documents");
+    return node?.data?.type === "heading" ? node.data.status : undefined;
+  }
+
+  function buildTree(threadOverrides: Parameters<typeof createExploration>[0]) {
+    return getExplorationSidebarTree(
+      createExploration({
+        documents: [createExplorationDocument({ id: 99, name: "AI Summary" })],
+        ...threadOverrides,
+      }),
+    );
+  }
+
+  it("is running while the AI summary document is generating", () => {
+    const tree = buildTree({
+      thread: {
+        ai_summary_document_id: 99,
+        completed_at: null,
+        canceled_at: null,
+      },
+    });
+    expect(findingsStatus(tree)).toBe("running");
+  });
+
+  it("is done once the AI summary document has finished", () => {
+    const tree = buildTree({
+      thread: {
+        ai_summary_document_id: 99,
+        completed_at: "2026-04-30T00:01:00Z",
+        canceled_at: null,
+      },
+    });
+    expect(findingsStatus(tree)).toBe("done");
   });
 });

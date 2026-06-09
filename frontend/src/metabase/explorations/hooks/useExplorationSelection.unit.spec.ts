@@ -2,9 +2,9 @@ import { act } from "@testing-library/react";
 
 import { setupTimelinesEndpoints } from "__support__/server-mocks/timeline";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import type {
   DimensionId,
+  ExplorationMetric,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
@@ -14,7 +14,11 @@ import {
   createMockTimeline,
 } from "metabase-types/api/mocks";
 
-import { useExplorationSelection } from "./useExplorationSelection";
+import {
+  type DimensionBlock,
+  isMetricBlock,
+  useExplorationSelection,
+} from "./useExplorationSelection";
 
 function makeDim(id: string, interestingness: number | null): MetricDimension {
   return createMockMetricDimension({
@@ -46,9 +50,19 @@ function renderSelection(timelines: Timeline[] = []) {
   return renderHookWithProviders(() => useExplorationSelection(), {});
 }
 
+function metricBlockOf(result: {
+  current: ReturnType<typeof useExplorationSelection>;
+}) {
+  const block = result.current.blocks[0];
+  if (!block || !isMetricBlock(block)) {
+    throw new Error("expected a metric block");
+  }
+  return block;
+}
+
 describe("useExplorationSelection", () => {
   describe("addMetric", () => {
-    it("adds only interesting dimensions when at least one exists", () => {
+    it("keeps every referenced dimension as a candidate but selects only the interesting ones", () => {
       const dimHigh = makeDim("dim-high", 0.9);
       const dimLow = makeDim("dim-low", 0.3);
       const metric = makeMetric(1, ["dim-high", "dim-low"]);
@@ -60,13 +74,15 @@ describe("useExplorationSelection", () => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      expect(result.current.metrics).toEqual([
-        expect.objectContaining({ id: 1 }),
+      const block = metricBlockOf(result);
+      expect(block.dimensions.map((d) => d.id)).toEqual([
+        "dim-high",
+        "dim-low",
       ]);
-      expect(result.current.dimensions.map((d) => d.id)).toEqual(["dim-high"]);
+      expect([...block.selectedDimensionIds]).toEqual(["dim-high"]);
     });
 
-    it("falls back to all referenced dimensions when none are interesting", () => {
+    it("selects all referenced dimensions when none are interesting", () => {
       const dimA = makeDim("dim-a", 0.2);
       const dimB = makeDim("dim-b", null);
       const metric = makeMetric(1, ["dim-a", "dim-b"]);
@@ -78,13 +94,33 @@ describe("useExplorationSelection", () => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      expect(result.current.dimensions.map((d) => d.id)).toEqual([
+      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
         "dim-a",
         "dim-b",
       ]);
     });
 
-    it("is a no-op when the metric is already selected", () => {
+    it("orders the candidate dimensions by interestingness descending", () => {
+      const dimMid = makeDim("dim-mid", 0.85);
+      const dimHigh = makeDim("dim-high", 0.98);
+      const dimLow = makeDim("dim-low", 0.82);
+      const metric = makeMetric(1, ["dim-mid", "dim-high", "dim-low"]);
+      const dimensionsById = makeDimensionsById([dimMid, dimHigh, dimLow]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, { dimensionsById });
+      });
+
+      expect(metricBlockOf(result).dimensions.map((d) => d.id)).toEqual([
+        "dim-high",
+        "dim-mid",
+        "dim-low",
+      ]);
+    });
+
+    it("is a no-op when the metric block already exists", () => {
       const dim = makeDim("dim-a", 0.9);
       const metric = makeMetric(1, ["dim-a"]);
       const dimensionsById = makeDimensionsById([dim]);
@@ -94,62 +130,109 @@ describe("useExplorationSelection", () => {
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
       });
-      const metricsAfterFirst = result.current.metrics;
-      const dimensionsAfterFirst = result.current.dimensions;
+      const blocksAfterFirst = result.current.blocks;
 
       act(() => {
         result.current.addMetric(metric, { dimensionsById });
       });
 
-      expect(result.current.metrics).toBe(metricsAfterFirst);
-      expect(result.current.dimensions).toBe(dimensionsAfterFirst);
+      expect(result.current.blocks).toBe(blocksAfterFirst);
     });
   });
 
-  describe("toggleMetric", () => {
-    it("adds the metric when not selected (delegates to addMetric logic)", () => {
-      const dim = makeDim("dim-a", 0.9);
-      const metric = makeMetric(1, ["dim-a"]);
-      const dimensionsById = makeDimensionsById([dim]);
+  describe("toggleDimensionSelected", () => {
+    it("flips a candidate dimension's selected state within a metric block", () => {
+      const dimHigh = makeDim("dim-high", 0.9);
+      const dimLow = makeDim("dim-low", 0.3);
+      const metric = makeMetric(1, ["dim-high", "dim-low"]);
+      const dimensionsById = makeDimensionsById([dimHigh, dimLow]);
 
       const { result } = renderSelection();
 
       act(() => {
-        result.current.toggleMetric(metric, { dimensionsById });
+        result.current.addMetric(metric, { dimensionsById });
       });
+      const blockId = result.current.blocks[0].id;
 
-      expect(result.current.metrics).toEqual([
-        expect.objectContaining({ id: 1 }),
+      act(() => {
+        result.current.toggleDimensionSelected(blockId, "dim-low");
+      });
+      expect([...metricBlockOf(result).selectedDimensionIds].sort()).toEqual([
+        "dim-high",
+        "dim-low",
       ]);
-      expect(result.current.dimensions.map((d) => d.id)).toEqual(["dim-a"]);
-    });
 
-    it("removes the metric and its orphaned dimensions when already selected", () => {
+      act(() => {
+        result.current.toggleDimensionSelected(blockId, "dim-high");
+      });
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-low",
+      ]);
+    });
+  });
+
+  describe("addDimension", () => {
+    it("adds a dimension block, all related metrics selected, and is idempotent", () => {
       const dimA = makeDim("dim-a", 0.9);
-      const dimShared = makeDim("dim-shared", 0.8);
-      const dimB = makeDim("dim-b", 0.8);
-      const metric1 = makeMetric(1, ["dim-a", "dim-shared"]);
-      const metric2 = makeMetric(2, ["dim-b", "dim-shared"]);
-      const dimensionsById = makeDimensionsById([dimA, dimShared, dimB]);
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
 
       const { result } = renderSelection();
 
       act(() => {
-        result.current.addMetric(metric1, { dimensionsById });
-        result.current.addMetric(metric2, { dimensionsById });
+        result.current.addDimension(dimA, {
+          group: null,
+          metricsByDimension,
+        });
       });
 
-      expect(result.current.metrics).toHaveLength(2);
+      const block = result.current.blocks[0];
+      if (block.kind !== "dimension") {
+        throw new Error("expected a dimension block");
+      }
+      expect(block.metrics.map((m) => m.id)).toEqual([1, 2]);
+      expect([...block.selectedMetricIds].sort()).toEqual([1, 2]);
+
+      const blocksAfterFirst = result.current.blocks;
+      act(() => {
+        result.current.addDimension(dimA, {
+          group: null,
+          metricsByDimension,
+        });
+      });
+      expect(result.current.blocks).toBe(blocksAfterFirst);
+    });
+  });
+
+  describe("toggleMetricSelected", () => {
+    it("flips a candidate metric's selected state within a dimension block", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+
+      const { result } = renderSelection();
 
       act(() => {
-        result.current.toggleMetric(metric1, { dimensionsById });
+        result.current.setBlocks([
+          {
+            kind: "dimension",
+            id: "dim:dim-a",
+            dimension: dimA,
+            groupDimensions: [dimA],
+            metrics: [metric1, metric2],
+            selectedMetricIds: new Set([1, 2]),
+          },
+        ]);
       });
 
-      expect(result.current.metrics.map((m) => m.id)).toEqual([2]);
-      // dim-a is orphaned (only metric1 used it), dim-shared survives
-      expect(result.current.dimensions.map((d) => d.id).sort()).toEqual(
-        ["dim-b", "dim-shared"].sort(),
-      );
+      act(() => {
+        result.current.toggleMetricSelected("dim:dim-a", 1);
+      });
+
+      expect([
+        ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
+      ]).toEqual([2]);
     });
   });
 
@@ -169,8 +252,6 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.timelines.map((t) => t.id)).toEqual([1, 2]);
-      expect(result.current.timelines[0]).toEqual(timeline1);
-      expect(result.current.timelines[1]).toEqual(timeline2);
     });
 
     it("ignores unknown ids and already-selected timelines", async () => {
@@ -186,14 +267,11 @@ describe("useExplorationSelection", () => {
       act(() => {
         result.current.toggleTimeline(timeline1);
       });
-
       act(() => {
         result.current.addTimelinesById([1, 2, 999]);
       });
 
       expect(result.current.timelines.map((t) => t.id)).toEqual([1, 2]);
-      expect(result.current.timelines[0]).toEqual(timeline1);
-      expect(result.current.timelines[1]).toEqual(timeline2);
     });
 
     it("is a no-op when every id is unknown or already selected", async () => {

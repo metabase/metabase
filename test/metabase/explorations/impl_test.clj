@@ -30,18 +30,20 @@
           (t2/query {:update :report_card :set {:archived false} :where [:in :id metric-ids]})))
       (thunk))))
 
-(defn- insert-n-metrics! [n]
+(defn- insert-n-metrics!
+  "Insert `n` metric Cards and return the set of their ids."
+  [n]
   (let [q (count-metric-query :orders)]
-    (dotimes [_ n]
-      (t2/insert! :model/Card
-                  {:name                   (mt/random-name)
-                   :type                   :metric
-                   :creator_id             (mt/user->id :crowberto)
-                   :database_id            (mt/id)
-                   :table_id               (mt/id :orders)
-                   :display                :scalar
-                   :visualization_settings {}
-                   :dataset_query          q}))))
+    (set (for [_ (range n)]
+           (t2/insert-returning-pk! :model/Card
+                                    {:name                   (mt/random-name)
+                                     :type                   :metric
+                                     :creator_id             (mt/user->id :crowberto)
+                                     :database_id            (mt/id)
+                                     :table_id               (mt/id :orders)
+                                     :display                :scalar
+                                     :visualization_settings {}
+                                     :dataset_query          q})))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query, breakoutable columns and column index"
@@ -90,12 +92,15 @@
                        (do-with-sample-metrics-archived
                         (fn []
                           (mt/with-model-cleanup [:model/Card]
-                            (insert-n-metrics! n)
-                            (t2/with-call-count [qc]
-                              (let [res (explorations.impl/exploration-data {})]
-                                (assert (= n (count (:metrics res)))
-                                        (str "expected " n " metrics, got " (count (:metrics res))))
-                                (qc)))))))
+                            (let [ids (insert-n-metrics! n)]
+                              (t2/with-call-count [qc]
+                                (let [res  (explorations.impl/exploration-data {})
+                                      ;; Scope to the metrics we inserted — other tests' temp
+                                      ;; :metric Cards can be live in the catalog concurrently.
+                                      mine (filter #(ids (:id %)) (:metrics res))]
+                                  (assert (= n (count mine))
+                                          (str "expected " n " of our metrics, got " (count mine)))
+                                  (qc))))))))
             few  (run-with 2)
             many (run-with 12)]
         (testing (str "queries for 2 metrics = " few ", for 12 metrics = " many)

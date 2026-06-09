@@ -9,3 +9,4 @@ export * from "./tabs";
 export * from "./dimension-picker";
 export * from "./compact-schema";
 export * from "./url-serialization";
+export { getDimensionIcon } from "metabase/common/utils/columns";

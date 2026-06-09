@@ -23,12 +23,32 @@ export function enableExplorations(): void {
 export function explorationsMetabotPromptInput(): Cypress.Chainable<
   JQuery<HTMLElement>
 > {
-  return cy.findByTestId("metabot-chat-input");
+  return cy.get(".ProseMirror[contenteditable=true]");
 }
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
-  cy.findByRole("button", { name: /Begin research/i }).should("be.visible");
+  cy.findByRole("button", { name: /Manual setup/i }).should("be.visible");
+}
+
+/**
+ * Enter the manual data-picking flow from the entry page.
+ */
+export function startManualExploration(): void {
+  cy.findByRole("button", { name: /Manual setup/i }).click();
+  cy.findByRole("button", { name: /Data/ }).should("be.visible");
+}
+
+/**
+ * The metrics picker opens on the "Library" tab whenever the metrics library is
+ * enabled (it is, under the pro token these specs activate).
+ */
+export function selectAllMetricsTab(): void {
+  cy.findByRole("dialog").then(($dialog) => {
+    if ($dialog.find('[role="tab"]').length > 0) {
+      cy.findByRole("tab", { name: "All" }).click();
+    }
+  });
 }
 
 export interface AddMetricsAndDimensionsOptions {
@@ -37,51 +57,50 @@ export interface AddMetricsAndDimensionsOptions {
 }
 
 /**
- * Pick metrics + dimensions through the Browse tab. The right pane's
- * section "+" buttons deep-link into the matching Browse picker; each
- * checkbox commits to the exploration immediately (no modal, no Done).
- * Assumes `visitNewExploration()` registered the `@getDimensions`
- * intercept already.
+ * Pick metrics + dimensions through the "+ Data" picker.
  */
 export function addMetricsAndDimensions({
   metrics,
   dimensions = [],
 }: AddMetricsAndDimensionsOptions): void {
-  cy.findByRole("button", { name: "Add metrics" }).click();
+  cy.findByRole("button", { name: /Data/ }).click();
+  cy.findByRole("menuitem", { name: "Metrics" }).click();
   cy.wait("@getDimensions");
+  selectAllMetricsTab();
   for (const name of metrics) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
+  cy.findByRole("button", { name: "Add" }).click();
+
   if (dimensions.length > 0) {
-    cy.findByRole("button", { name: "Add dimensions" }).click();
+    cy.findByRole("button", { name: /Data/ }).click();
+    cy.findByRole("menuitem", { name: "Dimensions" }).click();
     for (const name of dimensions) {
       cy.findByRole("checkbox", { name }).check({ force: true });
     }
+    cy.findByRole("button", { name: "Add" }).click();
   }
 }
 
 /**
- * Pick the named timelines (one or many) through the Browse →
- * Timelines tab. Each row is an `UnstyledButton` with `role="listitem"`
- * wrapping a `Checkbox` whose `aria-label` is the timeline name (see
- * `TimelineList.tsx`), so we drive selection through the checkbox.
+ * Pick the named timelines (one or many) through the "+ Events" modal.
  */
 export function addTimelinesToExploration(names: string | string[]): void {
   const list = Array.isArray(names) ? names : [names];
-  cy.findByRole("button", { name: "Add timelines" }).click();
+  cy.findByRole("button", { name: /Events/ }).click();
   for (const name of list) {
     cy.findByRole("checkbox", { name }).check({ force: true });
   }
+  cy.findByRole("button", { name: "Add" }).click();
 }
 
 /**
- * Click `Begin research`, wait for the create-exploration POST,
- * and assert we navigated to the detail page. Yields the new
- * exploration's id so callers can chain detail-page assertions.
+ * Click `Start research`, wait for the create-exploration POST,
+ * and assert we navigated to the detail page.
  */
 export function beginResearch(): Cypress.Chainable<number> {
   cy.intercept("POST", "/api/exploration").as("createExploration");
-  cy.findByRole("button", { name: /Begin research/i }).click();
+  cy.findByRole("button", { name: /Start research/i }).click();
   return cy.wait("@createExploration").then(({ response }) => {
     const id = response?.body?.id as number;
     expect(id, "exploration id from POST /api/exploration response").to.be.a(
@@ -93,10 +112,7 @@ export function beginResearch(): Cypress.Chainable<number> {
 }
 
 /**
- * Shape of a single tool-call event the explorations agent emits
- * over the AI-streaming protocol (Vercel AI SDK style — see
- * `frontend/src/metabase/api/ai-streaming/process-stream.ts`
- * `StreamingPartTypeRegistry`).
+ * Shape of a single tool-call event the explorations agent emits over the AI-streaming protocol.
  */
 export interface ExplorationToolCall {
   toolCallId: string;
@@ -169,16 +185,6 @@ export interface CreateExplorationViaApiOptions {
   timelineIds?: number[];
 }
 
-/**
- * Seed an exploration directly via the BE API without going
- * through the new-exploration UI. Picks the first metric +
- * dimension exposed by `/api/exploration/dimensions` unless the
- * caller provides explicit ids.
- *
- * Yields the new exploration's id. Note: query results are
- * generated asynchronously by the BE; callers must wait for them
- * separately (e.g. `cy.findAllByLabelText("Ready")`).
- */
 export function createExplorationViaApi({
   name = "Test exploration",
   metricCardIds,
@@ -215,13 +221,6 @@ export function createExplorationViaApi({
           return [firstDim.id];
         })();
 
-      // The BE's `generate-queries!` only materializes queries for
-      // (metric, dimension) pairs where the metric's snapshotted
-      // `dimension_mappings` resolves a target for that dimension.
-      // Pass `null` and we get an exploration with zero queries —
-      // the sidebar tree renders only the empty section headings
-      // and `findAllByRole("treeitem")` finds nothing. Echo back
-      // the BE's own mappings so query generation succeeds.
       const metrics = metricIds.map((id) => {
         const m = body.metrics.find((mm) => mm.id === id);
         return {
@@ -241,11 +240,16 @@ export function createExplorationViaApi({
           semantic_type: d.semantic_type,
         };
       });
+
+      const groups = metrics.map((metric) => ({
+        type: "metric" as const,
+        metrics: [metric],
+        dimensions,
+      }));
       return cy.request("POST", "/api/exploration", {
         name,
         prompt: null,
-        metrics,
-        dimensions,
+        groups,
         timeline_ids: timelineIds,
       });
     })
@@ -271,7 +275,5 @@ interface ExplorationDimensionsResponse {
 
 export function visitExploration(id: number): void {
   cy.visit(`/question/research/${id}`);
-  // Sidebar rows use `role="treeitem"`. Wait for at least one to
-  // appear so subsequent queries don't race the initial render.
   cy.findAllByRole("treeitem").first().should("be.visible");
 }

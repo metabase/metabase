@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
@@ -9,7 +9,9 @@ import { getInitialExpandedIds } from "./utils";
 type UseTreeOptions<TData = unknown> = Pick<
   TreeProps<TData>,
   "data" | "selectedId" | "initialExpandedIds"
->;
+> & {
+  freezeAutoExpandOnManualToggle?: boolean;
+};
 
 export interface TreeController<TData = unknown> {
   data: ITreeNodeItem<TData>[];
@@ -24,6 +26,7 @@ export function useTree<TData = unknown>({
   data = [],
   selectedId,
   initialExpandedIds,
+  freezeAutoExpandOnManualToggle = false,
 }: UseTreeOptions<TData>) {
   const [expandedIds, setExpandedIds] = useState(() => {
     if (initialExpandedIds) {
@@ -36,8 +39,13 @@ export function useTree<TData = unknown>({
   const previousSelectedId = usePrevious(selectedId);
   const prevData = usePrevious(data);
 
+  const hasManuallyToggledRef = useRef(false);
+
   useEffect(() => {
     if (!selectedId) {
+      return;
+    }
+    if (freezeAutoExpandOnManualToggle && hasManuallyToggledRef.current) {
       return;
     }
     const dataHasChanged = !_.isEqual(data, prevData);
@@ -49,10 +57,18 @@ export function useTree<TData = unknown>({
           new Set([...prev, ...getInitialExpandedIds(selectedId, data)]),
       );
     }
-  }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
+  }, [
+    prevData,
+    data,
+    selectedId,
+    previousSelectedId,
+    expandedIds,
+    freezeAutoExpandOnManualToggle,
+  ]);
 
   const handleToggleExpand = useCallback(
     (itemId: string | number) => {
+      hasManuallyToggledRef.current = true;
       if (expandedIds.has(itemId)) {
         setExpandedIds(
           (prev) => new Set([...prev].filter((id) => id !== itemId)),

@@ -1,0 +1,21 @@
+.inputContainer {
+  :global(.ProseMirror) {
+    min-height: 7rem;
+  }
+}
+
+.buttonHoverSecondary {
+  &:hover {
+    background-color: var(--mb-color-background-secondary) !important;
+  }
+}
+
+.explorationsContainer {
+  overflow-y: auto;
+}
+
+.explorationLink {
+  &:hover {
+    background-color: var(--mb-color-background-secondary) !important;
+  }
+}

@@ -1526,3 +1526,161 @@ databaseChangeLog:
                   remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's AI Summary doc. Debug-only — not surfaced to the user.
                   constraints:
                     nullable: true
+
+  # PRE-MERGE TODO: squash the changesets below into a few coherent chunks (they were appended
+  # incrementally during development). When squashing:
+  #   - collapse the exploration_query.group_id addColumn + addNotNullConstraint into a single
+  #     NOT NULL column definition (the constraint is split out here only to stay backwards
+  #     compatible with the already-applied nullable version).
+  #   - fold the exploration_thread_metric / exploration_thread_dimension drops into their
+  #     original createTable changesets (i.e. just delete those tables outright).
+  - changeSet:
+      id: v63.expthreadgroup
+      author: johnswanson
+      comment: Create exploration_thread_group — one row per Research-plan block (a set of metrics × dimensions). Immutable after create. Replaces the flat exploration_thread_metric/exploration_thread_dimension tables; metrics and dimensions are stored as JSON so a group is the unit of selection the planners iterate.
+      changes:
+        - createTable:
+            tableName: exploration_thread_group
+            remarks: One Research-plan block selected on a thread — a set of metrics crossed with a set of dimensions. Immutable after create.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key — surfaced to the FE as the group id
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: exploration_thread_id
+                  type: int
+                  remarks: The thread this group belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metrics
+                  type: ${text.type}
+                  remarks: JSON array of selected metrics ({card_id, dimension_mappings}) for this block
+                  constraints:
+                    nullable: true
+              - column:
+                  name: dimensions
+                  type: ${text.type}
+                  remarks: JSON array of selected dimensions ({dimension_id, display_name, effective_type, semantic_type}) for this block
+                  constraints:
+                    nullable: true
+              - column:
+                  name: position
+                  type: int
+                  defaultValueNumeric: 0
+                  remarks: Authoring order of the block within a thread
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the group was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  remarks: When the group was last updated
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v63.expthreadgroupfk
+      author: johnswanson
+      comment: FK exploration_thread_group.exploration_thread_id -> exploration_thread.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_thread_group
+            baseColumnNames: exploration_thread_id
+            referencedTableName: exploration_thread
+            referencedColumnNames: id
+            constraintName: fk_exploration_thread_group_thread_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqgroupcol
+      author: johnswanson
+      comment: Add exploration_query.group_id — the Research-plan block a materialized query belongs to. Stamped by the planner; lets the read side mirror the user's blocks and disambiguates a (card, dim) pair that appears in more than one block.
+      changes:
+        - addColumn:
+            tableName: exploration_query
+            columns:
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: The exploration_thread_group this query was planned under
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v63.expqgroupfk
+      author: johnswanson
+      comment: FK exploration_query.group_id -> exploration_thread_group.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: exploration_query
+            baseColumnNames: group_id
+            referencedTableName: exploration_thread_group
+            referencedColumnNames: id
+            constraintName: fk_exploration_query_group_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v63.expqgroupidx
+      author: johnswanson
+      comment: Index exploration_query.group_id for read-side grouping
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: v63.expqgroupnotnull
+      author: johnswanson
+      comment: Make exploration_query.group_id NOT NULL — the planner always stamps it. Added as a separate changeset (rather than editing the addColumn above) so it's safe for anyone who already ran the nullable version. No backfill needed since the feature is undeployed and every query row is created by the planner with a group_id set.
+      changes:
+        - addNotNullConstraint:
+            tableName: exploration_query
+            columnName: group_id
+            columnDataType: int
+
+  - changeSet:
+      id: v63.dropexpthreadmetric
+      author: johnswanson
+      comment: Drop exploration_thread_metric — replaced by exploration_thread_group, which stores selected metrics as JSON per Research-plan block.
+      changes:
+        - dropTable:
+            tableName: exploration_thread_metric
+
+  - changeSet:
+      id: v63.dropexpthreaddim
+      author: johnswanson
+      comment: Drop exploration_thread_dimension — replaced by exploration_thread_group, which stores selected dimensions as JSON per Research-plan block.
+      changes:
+        - dropTable:
+            tableName: exploration_thread_dimension
+
+  - changeSet:
+      id: v63.expgrouptype
+      author: denisberezin
+      comment: Add exploration_thread_group.type — whether the block is anchored on a metric ("metric") or a dimension ("dimension"). The read side uses it to build the sidebar heading ("By <dimension>" vs the metric name) and sub-item names. Nullable; legacy rows fall back to inferring from the metric count.
+      changes:
+        - addColumn:
+            tableName: exploration_thread_group
+            columns:
+              - column:
+                  name: type
+                  type: ${text.type}
+                  remarks: Block anchor — "metric" or "dimension"
+                  constraints:
+                    nullable: true

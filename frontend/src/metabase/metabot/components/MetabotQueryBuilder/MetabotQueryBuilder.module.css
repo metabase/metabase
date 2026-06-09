@@ -1,47 +1,13 @@
 .page {
   display: flex;
   flex-direction: column;
+  align-items: center;
   height: 100%;
   width: 100%;
   background: var(--mb-color-background-primary);
   position: relative;
-}
-
-/* Top mode switcher — centers the `QuestionModeSwitcher` above
-   the greeting + prompt block. Sits out of `centeredContainer`'s
-   flex centering so the prompt itself stays true-vertically
-   centered on screen. */
-.modeSwitcher {
-  display: flex;
-  justify-content: center;
-  padding-top: 1.5rem;
-}
-
-/* Empty state - centered layout */
-.centeredContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
   padding: 2rem;
   gap: 1.5rem;
-}
-
-.greeting {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: 0.75rem;
-
-  @media screen and (--breakpoint-min-sm) {
-    flex-direction: row;
-  }
-}
-
-.greetingIcon {
-  width: 2.5rem;
-  height: 2.5rem;
 }
 
 .inputWrapper {
@@ -54,18 +20,10 @@
   flex-direction: column;
   padding: 0.5rem 1rem 1rem;
   border-radius: 0.75rem;
-  box-shadow:
-    0 0 0 1px var(--mb-color-border),
-    0 4px 24px rgba(0, 0, 0, 0.08);
-  min-height: 7rem;
-  transition:
-    box-shadow 150ms ease,
-    background 1s ease-in-out;
+  border: 1px solid var(--mb-color-border);
 
-  &:focus-within {
-    box-shadow:
-      0 0 0 1px var(--mb-color-border),
-      0 4px 24px rgba(0, 0, 0, 0.12);
+  :global(.ProseMirror) {
+    min-height: 7.5rem;
   }
 }
 

@@ -1,51 +1,131 @@
 import type {
   Exploration,
   ExplorationDocument,
+  ExplorationMetric,
   ExplorationQuery,
   ExplorationQueryGroup,
   ExplorationQueryStatus,
+  ExplorationSummary,
   ExplorationThread,
   MetricDimension,
   Timeline,
 } from "metabase-types/api";
 
-import type { ExplorationNavigation, ExplorationSelection } from "./hooks";
-import type { ExplorationMetric } from "./types";
+import type {
+  DimensionBlock,
+  ExplorationBlock,
+  ExplorationSelection,
+  MetricBlock,
+} from "./hooks";
+import {
+  dimensionBlockId,
+  metricBlockId,
+} from "./hooks/useExplorationSelection";
 
 export const METRIC_HEADING_ID = "metric:1";
 
-export function makeMockSelection(opts: {
-  metrics?: ExplorationMetric[];
-  dimensions?: MetricDimension[];
+export interface MockSelectionOpts {
+  blocks?: ExplorationBlock[];
   timelines?: Timeline[];
-}): ExplorationSelection {
+  allTimelines?: Timeline[];
+}
+
+export function mockMetricBlock(
+  metric: ExplorationMetric,
+  dimensions: MetricDimension[] = [],
+  selectedDimensionIds?: Set<MetricDimension["id"]>,
+): MetricBlock {
   return {
-    metrics: opts.metrics ?? [],
-    dimensions: opts.dimensions ?? [],
-    timelines: opts.timelines ?? [],
-    name: "",
-    setName: jest.fn(),
-    setMetrics: jest.fn(),
-    setDimensions: jest.fn(),
-    setTimelines: jest.fn(),
-    addMetric: jest.fn(),
-    toggleMetric: jest.fn(),
-    toggleDimension: jest.fn(),
-    toggleTimeline: jest.fn(),
-    addTimelinesById: jest.fn(),
-    allTimelines: [],
-    timelinesLoading: false,
-    timelinesError: null,
+    kind: "metric",
+    id: metricBlockId(metric.id),
+    metric,
+    dimensions,
+    selectedDimensionIds:
+      selectedDimensionIds ?? new Set(dimensions.map((d) => d.id)),
   };
 }
 
-export function makeMockNavigation(): ExplorationNavigation {
+export function mockDimensionBlock(
+  dimension: MetricDimension,
+  metrics: ExplorationMetric[] = [],
+  groupDimensions?: MetricDimension[],
+  selectedMetricIds?: Set<ExplorationMetric["id"]>,
+): DimensionBlock {
   return {
-    leftTab: "chat",
-    setLeftTab: jest.fn(),
-    browseTab: "metrics",
-    setBrowseTab: jest.fn(),
-    openBrowse: jest.fn(),
+    kind: "dimension",
+    id: dimensionBlockId(dimension.id),
+    dimension,
+    groupDimensions: groupDimensions ?? [dimension],
+    metrics,
+    selectedMetricIds: selectedMetricIds ?? new Set(metrics.map((m) => m.id)),
+  };
+}
+
+export function makeMockSelection(
+  opts: MockSelectionOpts = {},
+): ExplorationSelection {
+  const blocks = opts.blocks ?? [];
+  const timelines = opts.timelines ?? [];
+  const allTimelines = opts.allTimelines ?? [];
+
+  const metricBlockIds = new Set<ExplorationMetric["id"]>();
+  const dimensionBlockIds = new Set<MetricDimension["id"]>();
+  const metricSeen = new Set<ExplorationMetric["id"]>();
+  const metrics: ExplorationMetric[] = [];
+  const dimensionSeen = new Set<MetricDimension["id"]>();
+  const dimensions: MetricDimension[] = [];
+
+  for (const block of blocks) {
+    if (block.kind === "metric") {
+      metricBlockIds.add(block.metric.id);
+      if (!metricSeen.has(block.metric.id)) {
+        metricSeen.add(block.metric.id);
+        metrics.push(block.metric);
+      }
+      for (const d of block.dimensions) {
+        if (block.selectedDimensionIds.has(d.id) && !dimensionSeen.has(d.id)) {
+          dimensionSeen.add(d.id);
+          dimensions.push(d);
+        }
+      }
+    } else {
+      for (const d of block.groupDimensions) {
+        dimensionBlockIds.add(d.id);
+        if (!dimensionSeen.has(d.id)) {
+          dimensionSeen.add(d.id);
+          dimensions.push(d);
+        }
+      }
+      for (const m of block.metrics) {
+        if (block.selectedMetricIds.has(m.id) && !metricSeen.has(m.id)) {
+          metricSeen.add(m.id);
+          metrics.push(m);
+        }
+      }
+    }
+  }
+
+  return {
+    blocks,
+    metricBlockIds,
+    dimensionBlockIds,
+    timelines,
+    allTimelines,
+    timelinesLoading: false,
+    timelinesError: null,
+    name: "",
+    collection: { name: "Personal collection" },
+    setName: jest.fn(),
+    setCollection: jest.fn(),
+    setBlocks: jest.fn(),
+    setTimelines: jest.fn(),
+    addMetric: jest.fn(),
+    addDimension: jest.fn(),
+    toggleTimeline: jest.fn(),
+    addTimelinesById: jest.fn(),
+    removeBlock: jest.fn(),
+    toggleDimensionSelected: jest.fn(),
+    toggleMetricSelected: jest.fn(),
   };
 }
 
@@ -189,6 +269,7 @@ export function metricGroup(
   id: string,
   name: string,
   position: number,
+  groupName?: string,
 ): ExplorationQueryGroup {
   return {
     id,
@@ -197,6 +278,7 @@ export function metricGroup(
     type: "auto",
     display_type: "sidebar",
     name,
+    group_name: groupName ?? name,
     query_ids: [],
   };
 }
@@ -217,5 +299,19 @@ export function leafGroup(
     display_type: displayType,
     name,
     query_ids: queryIds,
+  };
+}
+
+export function createExplorationSummary(
+  opts?: Partial<ExplorationSummary>,
+): ExplorationSummary {
+  return {
+    id: 1,
+    name: "Revenue investigation",
+    creator_id: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-02T00:00:00Z",
+    current_user_last_touched_at: "2026-01-02T00:00:00Z",
+    ...opts,
   };
 }

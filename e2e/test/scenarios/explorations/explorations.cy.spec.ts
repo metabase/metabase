@@ -106,60 +106,32 @@ describe("scenarios > explorations > new research > manual flow", () => {
   it("renders the empty research-mode landing with a disabled CTA", () => {
     H.visitNewExploration();
 
-    cy.findByRole("heading", {
-      name: /What do you want to research\?/i,
-    }).should("be.visible");
+    cy.findByRole("main")
+      .findByText(/What do you want to research\?/i)
+      .should("be.visible");
 
     H.explorationsMetabotPromptInput().should("be.visible");
-    // The right pane always shows the three accordion sections —
-    // Metrics, Dimensions, Timelines — each with a "+" button.
+
+    H.startManualExploration();
     cy.findByTestId("research-content")
-      .findByText("Metrics")
+      .findByRole("button", { name: /Data/ })
       .should("be.visible");
     cy.findByTestId("research-content")
-      .findByText("Dimensions")
+      .findByRole("button", { name: /Events/ })
       .should("be.visible");
-    cy.findByTestId("research-content")
-      .findByText("Timelines")
-      .should("be.visible");
-    // CTA disabled until metrics + dimensions are both selected.
-    cy.findByRole("button", { name: /Begin research/i }).should("be.disabled");
-  });
 
-  it("QuestionModeSwitcher toggles between /question/ask and /question/research", () => {
-    H.visitNewExploration();
-
-    // Click the Explore segment → MetabotQueryBuilder.
-    cy.findByRole("radio", { name: "Explore" }).check({ force: true });
-    cy.url().should("include", "/question/ask");
-    // The metabot send-button only renders inside the
-    // MetabotQueryBuilder shell.
-    cy.findByTestId("metabot-send-message").should("be.visible");
-
-    // Back to Research.
-    cy.findByRole("radio", { name: "Research" }).check({ force: true });
-    cy.url().should("include", "/question/research");
-    cy.findByRole("heading", {
-      name: /What do you want to research\?/i,
-    }).should("be.visible");
+    // CTA only appears once at least one block is added.
+    cy.findByRole("button", { name: /Start research/i }).should("not.exist");
   });
 
   it("picks metrics + dimensions, creates an exploration, and lands on the detail page", () => {
     H.visitNewExploration();
+    H.startManualExploration();
 
     H.addMetricsAndDimensions({
       metrics: ["Count of orders"],
     });
 
-    // Picking the metric in the Browse tab commits it immediately —
-    // the right pane's Metrics section shows the new pill (and the
-    // metric's interesting dimensions auto-fill the Dimensions one).
-    cy.findByTestId("research-content")
-      .findByText("Metrics")
-      .should("be.visible");
-    cy.findByTestId("research-content")
-      .findByText("Dimensions")
-      .should("be.visible");
     cy.findByTestId("research-content")
       .findByText("Count of orders")
       .should("be.visible");
@@ -181,7 +153,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
       // `NewExplorationData.tsx`.
       cy.url().should("include", `/question/research/${id}`);
       // No new-exploration CTA on the detail page.
-      cy.findByRole("button", { name: /Begin research/i }).should("not.exist");
+      cy.findByRole("button", { name: /Start research/i }).should("not.exist");
     });
   });
 
@@ -193,12 +165,15 @@ describe("scenarios > explorations > new research > manual flow", () => {
     createTimelineWithSentinelEvent("Marketing campaigns", "bell");
 
     H.visitNewExploration();
+    H.startManualExploration();
 
-    // --- Browse → Metrics search ---
-    // The right pane's "+" deep-links the left pane into Browse → Metrics.
-    cy.findByRole("button", { name: "Add metrics" }).click();
+    // --- "+ Data" → Metrics modal search ---
+    cy.findByRole("button", { name: /Data/ }).click();
+    cy.findByRole("menuitem", { name: "Metrics" }).click();
     // Seeded names are "Count of orders" + "Count of orders over time".
     cy.wait("@getDimensions");
+    // Seeded metrics aren't in the library; switch off the default Library tab.
+    H.selectAllMetricsTab();
     cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
     cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
       "exist",
@@ -206,32 +181,29 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
     // Type a substring that only matches the timeseries metric.
     cy.findByPlaceholderText("Search for a metric").type("over time");
-    // Debounced refetch.
     cy.wait("@getDimensions");
     cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
       "exist",
     );
     cy.findByRole("checkbox", { name: "Count of orders" }).should("not.exist");
 
-    // Clear the input → both rows return. We don't `cy.wait` on
-    // `@getDimensions` here because RTK Query caches the empty-`q`
-    // response from the initial mount and skips the network
-    // round-trip; we assert on the visible result instead.
+    // Clear the input → both rows return.
     cy.findByPlaceholderText("Search for a metric").clear();
     cy.findByRole("checkbox", { name: "Count of orders" }).should("exist");
     cy.findByRole("checkbox", { name: "Count of orders over time" }).should(
       "exist",
     );
 
-    // Search for something that matches no metric → empty state copy.
+    // Search for something that matches no metric → empty-state copy.
     cy.findByPlaceholderText("Search for a metric").type("zzz no such metric");
     cy.wait("@getDimensions");
-    cy.findByTestId("browse-panel")
-      .findByText("No metrics found")
-      .should("be.visible");
+    cy.findByRole("dialog").findByText("No results").should("be.visible");
 
-    // --- Browse → Timelines search ---
-    cy.findByRole("button", { name: "Add timelines" }).click();
+    // Close the metrics modal before opening the events one.
+    cy.get("body").type("{esc}");
+
+    // --- "+ Events" modal search ---
+    cy.findByRole("button", { name: /Events/ }).click();
     cy.findByRole("checkbox", { name: "Releases" }).should("exist");
     cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
@@ -247,12 +219,9 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.findByRole("checkbox", { name: "Releases" }).should("exist");
     cy.findByRole("checkbox", { name: "Marketing campaigns" }).should("exist");
 
-    // No match → empty-state copy (`No timelines found. Add one` in
-    // `TimelineList.tsx`).
+    // No match → empty-state copy.
     cy.findByPlaceholderText("Search for a timeline").type("zzz");
-    cy.findByTestId("browse-panel")
-      .findByText("No timelines found", { exact: false })
-      .should("be.visible");
+    cy.findByRole("dialog").findByText("No results").should("be.visible");
   });
 
   it("picks one or more timelines via the Browse tab and POSTs them with the exploration", () => {
@@ -260,21 +229,21 @@ describe("scenarios > explorations > new research > manual flow", () => {
       createTimelineWithSentinelEvent("Marketing campaigns", "bell").then(
         (marketingId) => {
           H.visitNewExploration();
+          H.startManualExploration();
           // Need at least one metric + dimension first — that's the
           // `canStart` gate from `NewExplorationData.tsx`.
           H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
 
-          // Pick two timelines via the Browse → Timelines tab.
+          // Pick two timelines via the "+ Events" modal.
           H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
 
-          // Both timeline pills now live under the right pane's
-          // `Timelines` accordion section (see `PillList` in
-          // `NewExplorationData.tsx`).
+          // The first picked timeline shows as a pill next to the Events
+          // button; the rest collapse into a "+N" overflow pill.
           cy.findByTestId("research-content")
             .findByText("Releases")
             .should("be.visible");
           cy.findByTestId("research-content")
-            .findByText("Marketing campaigns")
+            .findByText("+1")
             .should("be.visible");
 
           // Verify the request body forwards both ids in pick order
@@ -283,7 +252,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
           // intercept's request body before it's consumed by the
           // helper's `cy.wait`, so we drive the click + wait inline.
           cy.intercept("POST", "/api/exploration").as("createExploration");
-          cy.findByRole("button", { name: /Begin research/i }).click();
+          cy.findByRole("button", { name: /Start research/i }).click();
           cy.wait("@createExploration").then(({ request, response }) => {
             expect(request.body.timeline_ids).to.deep.eq([
               releasesId,
@@ -334,7 +303,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
     cy.task("stopMockLlmServer");
   });
 
-  it("auto-populates metrics + dimensions + name from agent tool calls, then Begin research succeeds", () => {
+  it("auto-populates metrics + dimensions + name from agent tool calls, then Start research succeeds", () => {
     cy.request("GET", "/api/exploration/dimensions").then(({ body }) => {
       const data = body as {
         metrics: Array<{ id: number; name: string; dimension_ids: string[] }>;
@@ -382,7 +351,7 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       H.visitNewExploration();
 
       H.explorationsMetabotPromptInput().type("Why are signups down?");
-      cy.findByTestId("metabot-send-message").click();
+      cy.findByRole("button", { name: /Create plan/i }).click();
 
       // The chat dispatch went through with the `explorations`
       // profile, confirming we wired the new-exploration page to
@@ -391,15 +360,14 @@ describe("scenarios > explorations > new research > metabot flow", () => {
         .its("request.body.profile_id")
         .should("eq", "explorations");
 
-      // Right panel hydrated from the tool-call result.
-      cy.findByRole("main").findByText("Metrics").should("be.visible");
-      cy.findByRole("main").findByText("Dimensions").should("be.visible");
+      // Right panel hydrated from the tool-call result — the agent's
+      // metric now heads a research-plan block.
       cy.findByRole("main").findByText(firstMetric.name).should("be.visible");
 
-      // Click Begin research; the create-exploration POST body
+      // Click Start research; the create-exploration POST body
       // should carry the name the agent picked.
       cy.intercept("POST", "/api/exploration").as("createExploration");
-      cy.findByRole("button", { name: /Begin research/i }).click();
+      cy.findByRole("button", { name: /Start research/i }).click();
       cy.wait("@createExploration").then(({ request, response }) => {
         expect(request.body.name).to.eq(agentName);
         const id = response?.body?.id as number;
@@ -527,44 +495,32 @@ describe("scenarios > explorations > detail page", () => {
           .first()
           .should("be.visible");
 
-        // Headings render as `role="group"` with `aria-expanded`,
-        // accessible by their `aria-label` (the metric name).
-        // Leaf rows are `role="treeitem"` links — ARIA's
-        // name-computation derives a treeitem's accessible name
-        // from its text content, but we assert the visible
-        // `By <dim>` label via `findByText` (matching the inner
-        // `<Text>` rendered by `Ellipsified`) to keep parity with
-        // the heading assertions below.
-        const metricHeading = () =>
-          cy.findByRole("group", { name: ordersMetric!.name });
+        cy.findByTestId("exploration-page-sidebar").within(() => {
+          const metricHeading = () =>
+            cy.findByRole("group", { name: ordersMetric!.name });
 
-        metricHeading().should("be.visible");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("be.visible");
-        }
+          metricHeading().should("be.visible");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+          }
 
-        // Collapse the metric heading: aria-expanded flips and
-        // both leaves disappear.
-        metricHeading()
-          .should("have.attr", "aria-expanded", "true")
-          .click()
-          .should("have.attr", "aria-expanded", "false");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("not.exist");
-        }
+          // Collapse the metric heading: aria-expanded flips and
+          // both leaves disappear.
+          metricHeading()
+            .should("have.attr", "aria-expanded", "true")
+            .click()
+            .should("have.attr", "aria-expanded", "false");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("not.exist");
+          }
 
-        // Re-expand: both leaves return.
-        metricHeading().click().should("have.attr", "aria-expanded", "true");
-        for (const dim of pickedDimensions) {
-          cy.findByText(`By ${dim.display_name}`).should("be.visible");
-        }
+          // Re-expand: both leaves return.
+          metricHeading().click().should("have.attr", "aria-expanded", "true");
+          for (const dim of pickedDimensions) {
+            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+          }
+        });
 
-        // Interestingness marker: read the hydrated exploration to
-        // know how many leaf groups cross the FE threshold (0.7 —
-        // see `frontend/src/metabase/explorations/constants.ts`),
-        // and assert the same number of markers render in the
-        // sidebar. If the BE marks none as interesting, no markers
-        // should appear at all.
         cy.request("GET", `/api/exploration/${id}`).then(({ body }) => {
           const QUERY_INTERESTINGNESS_SCORE_THRESHOLD = 0.7;
           type Group = {

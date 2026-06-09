@@ -1,275 +1,317 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { setupExplorationDataEndpoint } from "__support__/server-mocks/metric";
+import { renderWithProviders, screen } from "__support__/ui";
+import type { ExplorationBlock } from "metabase/explorations/hooks";
 import {
-  makeMockNavigation,
   makeMockSelection,
+  mockDimensionBlock,
+  mockMetricBlock,
 } from "metabase/explorations/test-utils";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import { useMetabotAgent } from "metabase/metabot/hooks";
-import { createMockState } from "metabase/redux/store/mocks";
-import type { MetricDimension, Timeline } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import type { ExplorationMetric, Timeline } from "metabase-types/api";
+import { createMockTimeline } from "metabase-types/api/mocks";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
-import { createMockTimeline } from "metabase-types/api/mocks/timeline";
 
-import { NewExplorationData } from "./NewExplorationData";
+import {
+  NewExplorationData,
+  buildCreateExplorationRequest,
+} from "./NewExplorationData";
 
 jest.mock("metabase/metabot/hooks", () => ({
   ...jest.requireActual("metabase/metabot/hooks"),
   useMetabotAgent: jest.fn(),
 }));
 
-const createdAtMonth = createMockMetricDimension({
-  id: "orders.created_at.month",
+const dimCreatedAt = createMockMetricDimension({
+  id: "orders.created_at",
   display_name: "Created At",
-  group: {
-    id: "orders.created_at",
-    type: "main",
-    display_name: "Orders",
-  },
   sources: [{ type: "field", "field-id": 1 }],
 });
-const createdAtQuarter = createMockMetricDimension({
-  id: "orders.created_at.quarter",
-  display_name: "Created At",
-  group: {
-    id: "orders.created_at",
-    type: "main",
-    display_name: "Orders",
-  },
-  sources: [{ type: "field", "field-id": 1 }],
-});
-const plan = createMockMetricDimension({
+const dimPlan = createMockMetricDimension({
   id: "accounts.plan",
   display_name: "Plan",
   sources: [{ type: "field", "field-id": 2 }],
 });
 
+const revenueMetric = createMockMetric({
+  id: 1,
+  name: "Revenue",
+  dimension_ids: [dimCreatedAt.id, dimPlan.id],
+}) as ExplorationMetric;
+const churnMetric = createMockMetric({
+  id: 2,
+  name: "Churn",
+  dimension_ids: [dimPlan.id],
+}) as ExplorationMetric;
+
 function setup({
-  metrics = [],
-  dimensions = [],
+  blocks = [],
   timelines = [],
-  personalCollectionId = 7,
-}: {
-  metrics?: ExplorationMetric[];
-  dimensions?: MetricDimension[];
-  timelines?: Timeline[];
-  personalCollectionId?: number | null;
-} = {}) {
+}: { blocks?: ExplorationBlock[]; timelines?: Timeline[] } = {}) {
   jest.mocked(useMetabotAgent).mockReturnValue({
     messages: [],
   } as any);
 
-  const selection = makeMockSelection({ metrics, dimensions, timelines });
-  const navigation = makeMockNavigation();
+  // The Add* modals fetch this on mount even while closed.
+  setupExplorationDataEndpoint([]);
 
-  renderWithProviders(
-    <NewExplorationData selection={selection} navigation={navigation} />,
-    {
-      storeInitialState: createMockState({
-        currentUser: createMockUser({
-          personal_collection_id: personalCollectionId ?? undefined,
-        }),
-      }),
-    },
-  );
+  const selection = makeMockSelection({ blocks, timelines });
 
-  return { selection, navigation };
+  renderWithProviders(<NewExplorationData selection={selection} />);
+
+  return { selection };
 }
 
-afterEach(() => {
-  fetchMock.removeRoutes();
-  fetchMock.clearHistory();
-});
-
-describe("NewExplorationData", () => {
-  describe("section accordion", () => {
-    it("always renders Metrics, Dimensions and Timelines accordion sections", () => {
+describe("NewExplorationData (Research plan)", () => {
+  describe("empty state", () => {
+    it("renders the header + the +Data / +Events affordances, with no Start research CTA yet", () => {
       setup();
 
-      expect(screen.getByText("Metrics")).toBeInTheDocument();
-      expect(screen.getByText("Dimensions")).toBeInTheDocument();
-      expect(screen.getByText("Timelines")).toBeInTheDocument();
+      expect(screen.getByText("Research plan")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Data/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Events/ }),
+      ).toBeInTheDocument();
     });
 
-    it("shows empty-state copy inside each section when nothing is selected", () => {
+    it("opens the metrics modal from the +Data menu", async () => {
       setup();
 
+      await userEvent.click(screen.getByRole("button", { name: /Data/ }));
+      await userEvent.click(screen.getByRole("menuitem", { name: "Metrics" }));
+
       expect(
-        screen.getByText(/Add metrics you.re interested in/),
+        await screen.findByText("Add metrics to your research plan"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText(/work backwards by specifying a dimension/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Add timelines to see if events shed light/),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Begin research" }),
-      ).toBeDisabled();
-    });
-
-    it("clicking the Metrics + opens Browse on the metrics tab", async () => {
-      const { navigation } = setup();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Add metrics" }),
-      );
-
-      expect(navigation.openBrowse).toHaveBeenCalledTimes(1);
-      expect(navigation.openBrowse).toHaveBeenCalledWith("metrics");
-    });
-
-    it("clicking the Dimensions + opens Browse on the dimensions tab", async () => {
-      const { navigation } = setup();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Add dimensions" }),
-      );
-
-      expect(navigation.openBrowse).toHaveBeenCalledTimes(1);
-      expect(navigation.openBrowse).toHaveBeenCalledWith("dimensions");
-    });
-
-    it("clicking the Timelines + opens Browse on the timelines tab", async () => {
-      const { navigation } = setup();
-
-      await userEvent.click(
-        screen.getByRole("button", { name: "Add timelines" }),
-      );
-
-      expect(navigation.openBrowse).toHaveBeenCalledTimes(1);
-      expect(navigation.openBrowse).toHaveBeenCalledWith("timelines");
     });
   });
 
-  describe("removing pills", () => {
-    it("removes all dimensions represented by a grouped dimension pill", async () => {
-      const { selection } = setup({
-        dimensions: [createdAtMonth, createdAtQuarter, plan],
+  describe("metric block", () => {
+    it("renders collapsed by default, showing selected dimensions as plain (non-toggle) pills", () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
       });
 
-      expect(screen.getByText("Orders → Created At")).toBeInTheDocument();
+      expect(screen.getByText("Revenue")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remove area")).toBeInTheDocument();
+
+      // Collapsed: dimensions show as plain pills, not toggle buttons.
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Created At")).toBeInTheDocument();
+    });
+
+    it("expands a collapsed block when its (read-only) body is clicked", async () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      // Collapsed: the dimension is a plain pill, not a toggle button.
+      expect(
+        screen.queryByRole("button", { name: "Created At" }),
+      ).not.toBeInTheDocument();
+
+      // Clicking the collapsed body expands the block.
+      await userEvent.click(screen.getByText("Created At"));
+
+      expect(
+        screen.getByRole("button", { name: "Created At" }),
+      ).toHaveAttribute("aria-pressed", "true");
+    });
+
+    it("expanding groups dimensions into source sections of toggle pills", async () => {
+      setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+
+      const createdAt = screen.getByRole("button", { name: "Created At" });
+      expect(createdAt).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: "Plan" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("toggling a dimension pill calls toggleDimensionSelected", async () => {
+      const { selection } = setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt, dimPlan])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+      await userEvent.click(screen.getByRole("button", { name: "Created At" }));
+
+      expect(selection.toggleDimensionSelected).toHaveBeenCalledWith(
+        "metric:1",
+        dimCreatedAt.id,
+      );
+    });
+
+    it("clicking the area's remove button calls selection.removeBlock", async () => {
+      const { selection } = setup({
+        blocks: [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+      });
+
+      await userEvent.click(screen.getByLabelText("Remove area"));
+
+      expect(selection.removeBlock).toHaveBeenCalledWith("metric:1");
+    });
+  });
+
+  describe("dimension block", () => {
+    it("expanding renders related metrics as toggle pills", async () => {
+      setup({
+        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+
+      expect(screen.getByRole("button", { name: "Revenue" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Churn" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("toggling a metric pill calls toggleMetricSelected", async () => {
+      const { selection } = setup({
+        blocks: [mockDimensionBlock(dimPlan, [revenueMetric, churnMetric])],
+      });
+
+      await userEvent.click(screen.getByRole("button", { name: "Expand" }));
+      await userEvent.click(screen.getByRole("button", { name: "Revenue" }));
+
+      expect(selection.toggleMetricSelected).toHaveBeenCalledWith(
+        "dim:accounts.plan",
+        revenueMetric.id,
+      );
+    });
+  });
+
+  describe("selected events pills", () => {
+    const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+    const marketingTimeline = createMockTimeline({ id: 9, name: "Marketing" });
+
+    it("is hidden when nothing is selected", () => {
+      setup();
+      expect(screen.queryByText("Releases")).not.toBeInTheDocument();
+    });
+
+    it("clicking the primary timeline pill unselects it", async () => {
+      const { selection } = setup({ timelines: [releasesTimeline] });
 
       await userEvent.click(
-        screen.getAllByRole("button", { name: "Remove" })[0],
+        screen.getByRole("button", { name: "Remove Releases" }),
       );
-
-      expect(selection.setDimensions).toHaveBeenCalledTimes(1);
-      expect(selection.setDimensions).toHaveBeenCalledWith([plan]);
+      expect(selection.toggleTimeline).toHaveBeenCalledWith(releasesTimeline);
     });
 
-    describe("removing a metric pill", () => {
-      const revenueMetric = createMockMetric({
-        id: 1,
-        name: "Revenue",
-        dimension_ids: [createdAtMonth.id, plan.id],
-      }) as ExplorationMetric;
-      const churnMetric = createMockMetric({
-        id: 2,
-        name: "Churn",
-        dimension_ids: [plan.id],
-      }) as ExplorationMetric;
-
-      /**
-       * Mantine `Pill`'s remove button uses a generic `aria-label="Remove"`
-       * for every pill, so we resolve which button to click by index. The
-       * metric `PillList` renders before the dimension `PillList` in the
-       * DOM, so the first `metrics.length` Remove buttons are the metric
-       * pills (in `metrics` order), followed by the dimension pills.
-       */
-      function clickMetricRemove(index: number): Promise<void> {
-        return userEvent.click(
-          screen.getAllByRole("button", { name: "Remove" })[index],
-        );
-      }
-
-      it("drops dimensions that no remaining metric uses", async () => {
-        const { selection } = setup({
-          metrics: [revenueMetric],
-          dimensions: [createdAtMonth, plan],
-        });
-
-        await clickMetricRemove(0);
-
-        expect(selection.setMetrics).toHaveBeenCalledWith([]);
-        expect(selection.setDimensions).toHaveBeenCalledWith([]);
-      });
-
-      it("keeps dimensions still used by another metric", async () => {
-        const { selection } = setup({
-          metrics: [revenueMetric, churnMetric],
-          dimensions: [createdAtMonth, plan],
-        });
-
-        await clickMetricRemove(0);
-
-        expect(selection.setMetrics).toHaveBeenCalledWith([churnMetric]);
-        expect(selection.setDimensions).toHaveBeenCalledWith([plan]);
-      });
-
-      it("does not call setDimensions when no dimensions need to be dropped", async () => {
-        const extraDim = createMockMetricDimension({
-          id: "accounts.region",
-          display_name: "Region",
-          sources: [{ type: "field", "field-id": 3 }],
-        });
-        const { selection } = setup({
-          metrics: [revenueMetric, churnMetric],
-          dimensions: [plan, extraDim],
-        });
-
-        await clickMetricRemove(1);
-
-        expect(selection.setMetrics).toHaveBeenCalledWith([revenueMetric]);
-        expect(selection.setDimensions).not.toHaveBeenCalled();
-      });
-    });
-
-    it("removing a timeline pill routes through selection.toggleTimeline", async () => {
-      const timeline = createMockTimeline({ id: 99, name: "Releases" });
-      const { selection } = setup({ timelines: [timeline] });
+    it("shows the first picked timeline plus a +N overflow pill", () => {
+      setup({ timelines: [releasesTimeline, marketingTimeline] });
 
       expect(screen.getByText("Releases")).toBeInTheDocument();
-
-      await userEvent.click(screen.getByRole("button", { name: "Remove" }));
-
-      expect(selection.toggleTimeline).toHaveBeenCalledTimes(1);
-      expect(selection.toggleTimeline).toHaveBeenCalledWith(timeline);
+      expect(screen.queryByText("Marketing")).not.toBeInTheDocument();
+      expect(screen.getByText("+1")).toBeInTheDocument();
     });
   });
 
-  describe("begin research", () => {
-    const revenueMetric = createMockMetric({
-      id: 1,
-      name: "Revenue",
-    }) as ExplorationMetric;
+  describe("buildCreateExplorationRequest", () => {
+    const releasesTimeline = createMockTimeline({ id: 7, name: "Releases" });
+    const launchTimeline = createMockTimeline({ id: 9, name: "Launches" });
 
-    it("creates the exploration in the user's personal collection", async () => {
-      fetchMock.post("path:/api/exploration", { id: 42, threads: [] });
-      setup({
-        metrics: [revenueMetric],
-        dimensions: [plan],
-        personalCollectionId: 7,
-      });
+    it("sends only the selected dimensions of a metric block", () => {
+      const block = mockMetricBlock(
+        revenueMetric,
+        [dimCreatedAt, dimPlan],
+        new Set([dimCreatedAt.id]),
+      );
+      const request = buildCreateExplorationRequest("n", "", [block], [], null);
 
-      await userEvent.click(
-        screen.getByRole("button", { name: "Begin research" }),
+      expect(request.groups[0].dimensions.map((d) => d.dimension_id)).toEqual([
+        dimCreatedAt.id,
+      ]);
+    });
+
+    it("sends only the selected metrics of a dimension block", () => {
+      const block = mockDimensionBlock(
+        dimPlan,
+        [revenueMetric, churnMetric],
+        [dimPlan],
+        new Set([churnMetric.id]),
+      );
+      const request = buildCreateExplorationRequest("n", "", [block], [], null);
+
+      expect(request.groups[0].metrics.map((m) => m.card_id)).toEqual([
+        churnMetric.id,
+      ]);
+    });
+
+    it("sends thread-scoped timeline_ids at the top level (not per group) and tags each block's anchor type", () => {
+      const request = buildCreateExplorationRequest(
+        "My exploration",
+        "",
+        [
+          mockMetricBlock(revenueMetric, [dimCreatedAt]),
+          mockDimensionBlock(dimPlan, [churnMetric]),
+        ],
+        [releasesTimeline, launchTimeline],
+        null,
       );
 
-      await waitFor(() => {
-        expect(fetchMock.callHistory.called("path:/api/exploration")).toBe(
-          true,
-        );
+      expect(request.timeline_ids).toEqual([7, 9]);
+      expect(request.groups).toHaveLength(2);
+      // groups no longer carry timeline_ids
+      for (const group of request.groups) {
+        expect(group).not.toHaveProperty("timeline_ids");
+      }
+      expect(request.groups[0].type).toBe("metric");
+      expect(request.groups[1].type).toBe("dimension");
+    });
+
+    it("uses empty timeline_ids when none are selected", () => {
+      const request = buildCreateExplorationRequest(
+        "My exploration",
+        "",
+        [mockMetricBlock(revenueMetric, [dimCreatedAt])],
+        [],
+        null,
+      );
+
+      expect(request.timeline_ids).toEqual([]);
+    });
+
+    it("trims the prompt and falls back to null when blank", () => {
+      expect(
+        buildCreateExplorationRequest("n", "  hello  ", [], [], null).prompt,
+      ).toBe("hello");
+      expect(
+        buildCreateExplorationRequest("n", "   ", [], [], null).prompt,
+      ).toBeNull();
+    });
+  });
+
+  describe("mixed Research plan", () => {
+    it("renders metric and dimension blocks each with their own controls and enables Start research", () => {
+      setup({
+        blocks: [
+          mockMetricBlock(revenueMetric, [dimCreatedAt]),
+          mockDimensionBlock(dimPlan, [revenueMetric, churnMetric]),
+        ],
       });
-      const call = fetchMock.callHistory.calls("path:/api/exploration")[0];
-      const body = JSON.parse(call.options.body as string);
-      expect(body.collection_id).toBe(7);
+
+      expect(screen.getAllByLabelText("Remove area")).toHaveLength(2);
+      expect(
+        screen.getByRole("button", { name: "Start research" }),
+      ).toBeEnabled();
     });
   });
 });

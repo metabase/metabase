@@ -264,7 +264,8 @@
    `::DimensionsResponse` schema in `metabase.explorations.api`."
   [{:keys [metric-ids q]}]
   (lib-be/with-metadata-provider-cache
-    (let [card-ids   (accessible-metric-ids metric-ids)
+    (let [library-ids (or (library-metrics-collection-ids) #{})
+          card-ids   (accessible-metric-ids metric-ids)
           all-cards  (load-metric-cards card-ids)
           routed-dbs (routed-database-ids (into #{} (keep :database_id) all-cards))
           cards      (remove (comp routed-dbs :database_id) all-cards)
@@ -292,7 +293,8 @@
                          (filterv #(metric-matches-search? % q-lower) hydrated)))
           slimmed    (mapv (fn [m]
                              (-> m
-                                 (assoc :dimension_ids (mapv :id (:dimensions m)))
+                                 (assoc :dimension_ids (mapv :id (:dimensions m))
+                                        :in_library (contains? library-ids (:collection_id m)))
                                  (dissoc :dimensions)))
                            filtered)]
       {:metrics          slimmed

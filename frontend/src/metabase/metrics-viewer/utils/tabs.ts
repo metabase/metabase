@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { getDimensionIcon } from "metabase/common/utils/columns";
 import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
 import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
 import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
@@ -23,41 +24,6 @@ import {
   type TabTypeDefinition,
   getTabConfig,
 } from "./tab-config";
-
-// ── Dimension classification ──
-
-export function getDimensionIcon(dimension: DimensionMetadata): IconName {
-  if (LibMetric.isPrimaryKey(dimension)) {
-    return "label";
-  }
-  if (LibMetric.isForeignKey(dimension)) {
-    return "connections";
-  }
-  if (LibMetric.isBoolean(dimension)) {
-    return "io";
-  }
-  if (LibMetric.isDateOrDateTime(dimension) || LibMetric.isTime(dimension)) {
-    return "calendar";
-  }
-  if (
-    LibMetric.isCategory(dimension) ||
-    LibMetric.isStringOrStringLike(dimension)
-  ) {
-    return "string";
-  }
-  if (LibMetric.isNumeric(dimension) || LibMetric.isCoordinate(dimension)) {
-    return "int";
-  }
-  if (
-    LibMetric.isState(dimension) ||
-    LibMetric.isCountry(dimension) ||
-    LibMetric.isCity(dimension) ||
-    LibMetric.isLocation(dimension)
-  ) {
-    return "location";
-  }
-  return "unknown";
-}
 
 export type ViewerDimensionDescriptor = DimensionDescriptor & {
   icon: IconName;

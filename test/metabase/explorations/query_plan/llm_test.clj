@@ -74,16 +74,16 @@
 
 (deftest extract-plan-test
   (testing "Extracts plan with keyword keys"
-    (let [resp {:plan [{:metric_id 1 :dimension_id "d1" :variant "default" :rationale "r"}]
+    (let [resp {:plan [{:group_id 1 :metric_id 1 :dimension_id "d1" :variant "default" :rationale "r"}]
                 :rationale "ok"}]
-      (is (= {:plan [{:metric_id 1 :dimension_id "d1" :variant "default" :params {} :rationale "r"}]
+      (is (= {:plan [{:group_id 1 :metric_id 1 :dimension_id "d1" :variant "default" :params {} :rationale "r"}]
               :rationale "ok"}
              (extract-plan resp)))))
   (testing "Extracts plan with string keys (LLM-shaped tool response)"
-    (let [resp {"plan" [{"metric_id" 1 "dimension_id" "d1" "variant" "default" "rationale" "r"
+    (let [resp {"plan" [{"group_id" 1 "metric_id" 1 "dimension_id" "d1" "variant" "default" "rationale" "r"
                          "params" {"k" 5}}]
                 "rationale" "ok"}]
-      (is (= {:plan [{:metric_id 1 :dimension_id "d1" :variant "default"
+      (is (= {:plan [{:group_id 1 :metric_id 1 :dimension_id "d1" :variant "default"
                       :params {"k" 5} :rationale "r"}]
               :rationale "ok"}
              (extract-plan resp)))))
@@ -95,8 +95,19 @@
 ;;; validate-plan — per-item rules
 ;;; ---------------------------------------------------------------------------
 
-(defn- errs [metric-by-id plan]
-  (validate-plan metric-by-id {:plan plan :rationale "rationale text"}))
+(defn- single-group
+  "Wrap a flat `{metric-id metric-ctx}` fixture into a one-group `group-by-id`
+  (group 1), matching the post-`metric-and-dim-context` shape the validator now
+  consumes."
+  [metric-by-id]
+  {1 {:group-id 1 :metrics (vals metric-by-id)}})
+
+(defn- errs
+  "Validate a single-group plan. Wraps `metric-by-id` into group 1 and stamps
+  `:group_id 1` on each item, so existing item literals need no group_id."
+  [metric-by-id plan]
+  (validate-plan (single-group metric-by-id)
+                 {:plan (mapv #(assoc % :group_id 1) plan) :rationale "rationale text"}))
 
 (deftest validate-default-item-test
   (let [m {1 (metric-with-dims 1 {"d1" (text-dim "d1" 5)})}]
@@ -106,7 +117,7 @@
     (testing "Rejects unknown metric_id"
       (let [e (errs m [{:metric_id 99 :dimension_id "d1" :variant "default"
                         :params {} :rationale "r"}])]
-        (is (some #(re-find #"metric_id=99 is not in the chosen metrics" %) e))))
+        (is (some #(re-find #"metric_id=99 is not in group" %) e))))
     (testing "Rejects unknown dimension_id"
       (let [e (errs m [{:metric_id 1 :dimension_id "unknown" :variant "default"
                         :params {} :rationale "r"}])]
@@ -230,11 +241,11 @@
 (deftest validate-plan-wide-test
   (let [m {1 (metric-with-dims 1 {"d1" (text-dim "d1" 5)})}]
     (testing "Empty plan fails the minimum"
-      (let [e (validate-plan m {:plan [] :rationale "r"})]
+      (let [e (validate-plan (single-group m) {:plan [] :rationale "r"})]
         (is (some #(re-find #"need at least" %) e))))
     (testing "Blank rationale fails"
-      (let [e (validate-plan m
-                             {:plan [{:metric_id 1 :dimension_id "d1" :variant "default"
+      (let [e (validate-plan (single-group m)
+                             {:plan [{:group_id 1 :metric_id 1 :dimension_id "d1" :variant "default"
                                       :params {} :rationale "r"}]
                               :rationale ""})]
         (is (some #(re-find #"`rationale` must be a non-empty string" %) e))))
@@ -244,13 +255,43 @@
             e    (errs m [item item])]
         (is (some #(re-find #"duplicate items" %) e))))
     (testing "Non-map response rejected"
-      (let [e (validate-plan m nil)]
+      (let [e (validate-plan (single-group m) nil)]
         (is (= ["plan response must be an object with `plan` and `rationale`"] e))))
     (testing "Errors accumulate (don't short-circuit)"
       (let [e (errs m [{:metric_id 99   :dimension_id "d1" :variant "default" :params {} :rationale "r"}
                        {:metric_id 1    :dimension_id "unknown" :variant "default" :params {} :rationale "r"}
                        {:metric_id 1    :dimension_id "d1" :variant "magic"   :params {} :rationale "r"}])]
         (is (>= (count e) 3))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Group scoping
+;;; ---------------------------------------------------------------------------
+
+(deftest validate-group-scoping-test
+  (let [group-by-id {1 {:group-id 1 :metrics [(metric-with-dims 1 {"d1" (text-dim "d1" 5)})]}
+                     2 {:group-id 2 :metrics [(metric-with-dims 2 {"d2" (text-dim "d2" 5)})]}}]
+    (testing "accepts items that stay within their own group"
+      (is (= [] (validate-plan group-by-id
+                               {:plan      [{:group_id 1 :metric_id 1 :dimension_id "d1" :variant "default" :params {} :rationale "r"}
+                                            {:group_id 2 :metric_id 2 :dimension_id "d2" :variant "default" :params {} :rationale "r"}]
+                                :rationale "ok"}))))
+    (testing "rejects a metric paired with the wrong group (cross-group)"
+      (let [e (validate-plan group-by-id
+                             {:plan      [{:group_id 1 :metric_id 2 :dimension_id "d2" :variant "default" :params {} :rationale "r"}]
+                              :rationale "ok"})]
+        (is (some #(re-find #"metric_id=2 is not in group 1" %) e))))
+    (testing "rejects an unknown group_id"
+      (let [e (validate-plan group-by-id
+                             {:plan      [{:group_id 99 :metric_id 1 :dimension_id "d1" :variant "default" :params {} :rationale "r"}]
+                              :rationale "ok"})]
+        (is (some #(re-find #"group_id=99 is not a declared group" %) e)))))
+  (testing "the same (metric, dim, variant) in two groups is NOT a duplicate"
+    (let [gbi  {1 {:group-id 1 :metrics [(metric-with-dims 5 {"d" (text-dim "d" 5)})]}
+                2 {:group-id 2 :metrics [(metric-with-dims 5 {"d" (text-dim "d" 5)})]}}
+          item {:metric_id 5 :dimension_id "d" :variant "default" :params {} :rationale "r"}]
+      (is (= [] (validate-plan gbi
+                               {:plan      [(assoc item :group_id 1) (assoc item :group_id 2)]
+                                :rationale "ok"}))))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Variant dispatch table
