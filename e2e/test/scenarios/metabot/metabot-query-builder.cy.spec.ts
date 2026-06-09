@@ -75,6 +75,22 @@ describe("Metabot Query Builder", () => {
     cy.url().should("include", "/question/ask");
   });
 
+  it("should render a generated chart inline without leaving the page", () => {
+    cy.visit("/question/ask");
+    H.metabotChatSidebar().should("be.visible");
+
+    H.mockMetabotResponse({
+      body: mockGeneratedEntityResponse(allOrdersQuestion.dataset_query),
+    });
+    H.sendMetabotMessage("Show me all orders");
+
+    cy.wait("@metabotAgent");
+    // the chart renders inline and we stay on the /ask page
+    cy.findByTestId("metabot-inline-chart").should("be.visible");
+    cy.findByTestId("qb-header").should("not.exist");
+    cy.url().should("include", "/question/ask");
+  });
+
   it("should navigate to a question when the agent returns a navigate_to", () => {
     cy.visit("/");
 
@@ -142,6 +158,18 @@ d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
 const mockTextOnlyResponse = (text: string) =>
   `0:"${text}"
 d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+
+const mockGeneratedEntityResponse = (datasetQuery: unknown) => {
+  const value = {
+    type: "card",
+    id: "card-1",
+    title: "All orders",
+    query: { id: "query-1", query: datasetQuery },
+    display: "table",
+  };
+  return `2:{"type":"generated_entity","version":1,"value":${JSON.stringify(value)}}
+d:{"finishReason":"stop","usage":{"promptTokens":100,"completionTokens":10}}`;
+};
 
 const mockErrorResponse = `3:"Anthropic API key expired or invalid"
 d:{"finishReason":"error","usage":{}}`;
