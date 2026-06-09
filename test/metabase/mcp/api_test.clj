@@ -4,7 +4,10 @@
    [clojure.test :refer :all]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
@@ -474,6 +477,408 @@
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
 
+(defn- initialize-as!
+  "Like initialize! but for a specific user."
+  [user-kw]
+  (let [response (client/client-full-response (test.users/username->token user-kw)
+                                              :post 200 "mcp"
+                                              (jsonrpc-request "initialize"))
+        session-id (get-in response [:headers "Mcp-Session-Id"])]
+    (client/client-full-response (test.users/username->token user-kw)
+                                 :post 202 "mcp"
+                                 {:request-options {:headers {"mcp-session-id" session-id}}}
+                                 (jsonrpc-notification "notifications/initialized"))
+    [session-id response]))
+
+(defn- mcp-request-as
+  "Like mcp-request but for a specific user."
+  [user-kw body extra-headers]
+  (client/client-full-response (test.users/username->token user-kw)
+                               :post "mcp"
+                               {:request-options {:headers extra-headers}}
+                               body))
+
+(deftest tools-call-query-accepts-query-handle-test
+  (testing "the `query` tool resolves a query_handle and streams results, same as a fresh query body"
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query" {:query external-query})
+          query-data     (call-tool session-id "query"
+                                    {:query_handle (:query_handle construct-data)})]
+      (is (=? {:status             "completed"
+               :row_count          5
+               :continuation_token nil?
+               :data               {:cols sequential?
+                                    :rows (fn [rows] (= 5 (count rows)))}}
+              query-data)))))
+
+(deftest tools-call-query-stale-query-handle-test
+  (testing "the `query` tool returns a tool-level error for an unknown handle rather than a 500"
+    (let [[session-id _] (initialize!)
+          result         (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "query"
+                                                        :arguments {:query_handle (str (random-uuid))}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              result)))))
+
+(deftest tools-call-create-question-accepts-query-handle-test
+  (testing "create_question resolves query_handle through the MCP layer instead of requiring raw base64"
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          construct-data (call-tool session-id "construct_query"
+                                    {:query {:lib/type "mbql/query"
+                                             :stages   [{:lib/type     "mbql.stage/mbql"
+                                                         :source-table [db-name "PUBLIC" "ORDERS"]
+                                                         :limit        5}]}})
+          question-id    (atom nil)]
+      (try
+        (let [question-data (call-tool session-id "create_question"
+                                       {:name         "Handle-Path Question"
+                                        :query_handle (:query_handle construct-data)})]
+          (reset! question-id (:id question-data))
+          (is (pos-int? (:id question-data)))
+          (is (= "Handle-Path Question" (:name question-data)))
+          ;; Card was actually persisted with a dataset_query (handle resolved correctly).
+          (is (some? (t2/select-one-fn :dataset_query :model/Card :id (:id question-data)))))
+        (finally
+          (when-let [qid @question-id] (t2/delete! :model/Card :id qid)))))))
+
+(deftest tools-call-update-question-accepts-query-handle-test
+  (testing "update_question resolves query_handle through the MCP layer"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Card To Re-query via Handle"
+                                              :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider)
+                                                                                                (mt/id :orders)))
+                                                                 (lib/aggregate (lib/count)))
+                                              :display       :table}]
+      (let [db-name         (t2/select-one-fn :name :model/Database (mt/id))
+            products-id     (mt/id :products)
+            products-fk     [db-name "PUBLIC" "PRODUCTS"]
+            [session-id _]  (initialize!)
+            construct-data  (call-tool session-id "construct_query"
+                                       {:query {:lib/type "mbql/query"
+                                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                                            :source-table products-fk
+                                                            :limit        5}]}})
+            update-data     (call-tool session-id "update_question"
+                                       {:id           card-id
+                                        :query_handle (:query_handle construct-data)})
+            persisted       (t2/select-one-fn :dataset_query :model/Card :id card-id)
+            persisted-table (some :source-table (:stages persisted))]
+        (is (= card-id (:id update-data)))
+        ;; Handle was resolved and applied to the card. Construct sends portable FKs over the
+        ;; wire; the persisted dataset_query is the resolved MBQL 5 map with numeric IDs.
+        (is (= products-id persisted-table)
+            (str "Expected handle-resolved query's :source-table = products id " products-id
+                 ", got " persisted-table))))))
+
+(deftest tools-call-update-question-stale-query-handle-test
+  (testing "An unknown query_handle returns a tool-level error rather than 500"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Stale-Handle Target"
+                                              :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider)
+                                                                                                (mt/id :orders)))
+                                                                 (lib/aggregate (lib/count)))
+                                              :display       :table}]
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "update_question"
+                                                          :arguments {:id           card-id
+                                                                      :query_handle (str (random-uuid))}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        ;; JSON-RPC: HTTP 200, result.isError, friendly message.
+        (is (= 200 (:status response)))
+        (is (nil? (get-in response [:body :error])))
+        (is (true? (:isError result)))
+        (is (str/includes? (-> result :content first :text) "Query handle not found")
+            "Stale handle should surface the dedicated message from mcp/tools.clj")
+        ;; Card should be unchanged - still pointed at orders, not whatever the stale handle would have meant.
+        (let [persisted (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+          (is (= (mt/id :orders) (some :source-table (:stages persisted)))
+              "A stale handle must not mutate the card's source table."))))))
+
+(deftest tools-call-update-dashboard-move-without-position-test
+  (testing "Missing required field on a discriminated mutation surfaces as a tool error, not a JSON-RPC error"
+    (mt/with-temp [:model/Dashboard     {dash-id :id} {:name "MCP move validation"}
+                   :model/Card          {card-id :id} {:name "x" :dataset_query (-> (lib/query (mt/metadata-provider)
+                                                                                               (lib.metadata/table (mt/metadata-provider)
+                                                                                                                   (mt/id :orders)))
+                                                                                    (lib/aggregate (lib/count)))
+                                                       :display :table}
+                   :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id
+                                                       :row 0 :col 0 :size_x 6 :size_y 4}]
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "update_dashboard"
+                                                          :arguments {:id        dash-id
+                                                                      :dashcards [{:action "move" :dashcard_id dc-id}]}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        ;; JSON-RPC layer: HTTP 200, response in `result` not `error`. Bad-input is a tool-level error.
+        (is (= 200 (:status response)))
+        (is (nil? (get-in response [:body :error])))
+        (is (true? (:isError result))
+            "missing :position on move should surface as a tool error")))))
+
+(deftest tools-call-read-resource-test
+  (testing "read_resource returns the shared dispatcher's response shape"
+    (let [[session-id _] (initialize!)
+          result         (call-tool session-id "read_resource"
+                                    {:uris ["metabase://databases"]})]
+      ;; `result` is the parsed MCP text-content JSON, which is the dispatcher's
+      ;; full return map (`:resources` per-URI + formatted `:output` string).
+      (is (sequential? (:resources result)))
+      (is (= 1 (count (:resources result))))
+      (is (= "metabase://databases" (-> result :resources first :uri)))
+      (is (some? (-> result :resources first :content))
+          "Top-level navigation URI must come back with :content (no :error)")
+      (is (string? (:output result)))
+      (is (str/includes? (:output result) "<resources>")
+          "Output is XML-shaped for LLM consumption")))
+  (testing "read_resource fetches a single-entity URI"
+    (let [[session-id _] (initialize!)
+          uri            (str "metabase://table/" (mt/id :orders))
+          result         (call-tool session-id "read_resource" {:uris [uri]})]
+      (is (= [uri] (mapv :uri (:resources result))))
+      (is (some? (-> result :resources first :content)))))
+  (testing "read_resource reports a per-URI error rather than failing the whole call"
+    (let [[session-id _] (initialize!)
+          result         (call-tool session-id "read_resource"
+                                    {:uris ["metabase://nonsense/path"]})]
+      (is (= 1 (count (:resources result))))
+      (is (nil? (-> result :resources first :content)))
+      (is (some? (-> result :resources first :error))))))
+
+;;; ----------------------------------------------- Drill Handles ---------------------------------------------------
+
+(deftest render-drill-through-publishes-its-own-resource-uri-test
+  (testing "render_drill_through publishes a distinct `_meta.ui.resourceUri` from visualize_query — ChatGPT dedupes iframes by URI, and reusing the visualize_query URI would prevent a fresh drill widget from mounting"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools-by-name  (into {} (map (juxt :name identity)) (get-in response [:body :result :tools]))
+          drill-uri      (get-in tools-by-name ["render_drill_through" :_meta :ui :resourceUri])
+          viz-uri        (get-in tools-by-name ["visualize_query"      :_meta :ui :resourceUri])]
+      (is (string? drill-uri))
+      (is (string? viz-uri))
+      (is (not= drill-uri viz-uri)
+          "render_drill_through and visualize_query must publish different resourceUris"))))
+
+(deftest tools-call-render-drill-through-test
+  (testing "render_drill_through resolves a stored handle to its encoded query"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          handle         (mt/with-current-user user-id
+                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+      ;; The error path returns no :structuredContent, so asserting it is present is
+      ;; equivalent to asserting :isError is not set.
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" session-id})))))
+  (testing "render_drill_through returns an error when the handle is unknown"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle (str (random-uuid))}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test
+  (testing "visualize_query echoes the inline query"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query "ZW5jb2RlZA=="}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-2
+  (testing "visualize_query resolves a stored handle"
+    (let [user-id        (mt/user->id :crowberto)
+          [session-id _] (initialize!)
+          handle         (mt/with-current-user user-id
+                           (mcp.session/store-handle! session-id user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-3
+  (testing "visualize_query includes the prompt stored with a construct_query handle"
+    ;; Mirrors master's assertion that the user's original prompt round-trips through the
+    ;; construct→store→visualize flow so the iframe can include it when submitting
+    ;; visualization feedback. Adapted from master's `:source`/`:operations` shape to our
+    ;; branch's `:query` representations shape; the `:prompt` round-trip semantic is
+    ;; preserved exactly.
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query"
+                                    {:query  external-query
+                                     :prompt "show 5 orders"})
+          response       (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "visualize_query"
+                                                        :arguments {:query_handle (:query_handle construct-data)}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query  string?
+                                                     :prompt "show 5 orders"}}}}
+              response)))))
+
+(deftest tools-call-visualize-query-test-4
+  (testing "visualize_query asks for an argument when neither query nor handle is provided"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Provide either")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {}})
+                           {"mcp-session-id" session-id}))))))
+
+(deftest tools-call-visualize-query-test-5
+  (testing "visualize_query returns 'handle not found' when query_handle is unknown"
+    (let [[session-id _] (initialize!)]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle (str (random-uuid))}})
+                           {"mcp-session-id" session-id}))))))
+
+;;; --------------------------------------- cross-session handle resolution -------------------------------------
+
+(deftest tools-expose-output-schema-test
+  (testing "MCP tools/list declares outputSchema for tools that emit structuredContent"
+    (let [[session-id _] (initialize!)
+          response       (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" session-id})
+          tools          (get-in response [:body :result :tools])
+          tools-by-name  (into {} (map (juxt :name identity)) tools)]
+      (testing "construct_query advertises {query_handle} as its output"
+        (let [output-schema (get-in tools-by-name ["construct_query" :outputSchema])
+              prop-names    (set (map name (keys (:properties output-schema))))]
+          (is (= "object" (:type output-schema)))
+          (is (contains? prop-names "query_handle"))
+          (is (not (contains? prop-names "widgetSessionId"))
+              "widgetSessionId was retired in favour of cross-session per-user lookup")))
+      (testing "visualize_query advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["visualize_query" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query"))))
+      (testing "render_drill_through advertises its structuredContent shape"
+        (let [output-schema (get-in tools-by-name ["render_drill_through" :outputSchema])]
+          (is (= "object" (:type output-schema)))
+          (is (contains? (set (map name (keys (:properties output-schema)))) "query")))))))
+
+(deftest construct-query-returns-bare-handle-test
+  (testing "construct_query returns just `{:query_handle uuid}` — no widget session plumbing"
+    ;; Adapted from master's `:source`/`:operations` legacy program shape to our branch's
+    ;; representations `:query` shape. The semantic — that the response is a bare handle
+    ;; with no widgetSessionId field — is preserved.
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query"
+                                    {:query  external-query
+                                     :prompt "show 5 orders"})]
+      (is (some? (parse-uuid (:query_handle construct-data))))
+      (is (not (contains? construct-data :widgetSessionId))))))
+
+(deftest visualize-query-resolves-via-cross-session-fallback-test
+  (testing "visualize_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "visualize_query"
+                                             :arguments {:query_handle handle}})
+                           {"mcp-session-id" rotated-session}))))))
+
+(deftest execute-query-resolves-via-cross-session-fallback-test
+  (testing "execute_query resolves a handle stored in another session of the same user — no widgetSessionId needed"
+    ;; Adapted from master's `:source`/`:operations` legacy program shape to our branch's
+    ;; representations `:query` shape. The semantic — cross-session same-user resolution —
+    ;; is preserved.
+    (let [[owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          db-name             (t2/select-one-fn :name :model/Database (mt/id))
+          external-query      {:lib/type "mbql/query"
+                               :stages   [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [db-name "PUBLIC" "ORDERS"]
+                                           :limit        5}]}
+          construct-data      (call-tool owner-session "construct_query"
+                                         {:query  external-query
+                                          :prompt "show 5 orders"})
+          response            (mcp-request (jsonrpc-request "tools/call"
+                                                            {:name      "execute_query"
+                                                             :arguments {:query_handle (:query_handle construct-data)}})
+                                           {"mcp-session-id" rotated-session})]
+      (is (= 200 (:status response)))
+      (is (not (get-in response [:body :result :isError]))))))
+
+(deftest render-drill-through-resolves-via-cross-session-fallback-test
+  (testing "render_drill_through resolves a handle stored in another session of the same user"
+    (let [user-id             (mt/user->id :crowberto)
+          [owner-session _]   (initialize!)
+          [rotated-session _] (initialize!)
+          handle              (mt/with-current-user user-id
+                                (mcp.session/store-handle! owner-session user-id "ZW5jb2RlZA=="))]
+      (is (=? {:status 200
+               :body   {:result {:structuredContent {:query "ZW5jb2RlZA=="}}}}
+              (mcp-request (jsonrpc-request "tools/call"
+                                            {:name      "render_drill_through"
+                                             :arguments {:handle handle}})
+                           {"mcp-session-id" rotated-session}))))))
+
+(deftest visualize-query-refuses-cross-user-handle-test
+  (testing "visualize_query refuses to resolve another user's handle"
+    (let [owner-id              (mt/user->id :crowberto)
+          [owner-session _]     (initialize!)                     ;; crowberto
+          ;; Fresh UUID-shaped sentinel for the stored payload so the leak
+          ;; assertion below can't accidentally match against any other test fixture.
+          encoded-payload       (str (random-uuid))
+          handle                (mt/with-current-user owner-id
+                                  (mcp.session/store-handle! owner-session owner-id encoded-payload))
+          [attacker-session _]  (initialize-as! :rasta)
+          response              (mcp-request-as :rasta
+                                                (jsonrpc-request "tools/call"
+                                                                 {:name      "visualize_query"
+                                                                  :arguments {:query_handle handle}})
+                                                {"mcp-session-id" attacker-session})]
+      (testing "the response is an error, NOT crowberto's encoded query"
+        (is (=? {:status 200
+                 :body   {:result {:isError true
+                                   :content [{:text #(str/includes? % "Query handle not found")}]}}}
+                response))
+        (is (not= encoded-payload
+                  (get-in response [:body :result :structuredContent :query]))
+            "cross-user handle resolution must fail")))))
+
 ;;; --------------------------------------------- OAuth Bearer Auth -------------------------------------------------
 
 (deftest unauthenticated-returns-401-test
@@ -589,7 +994,7 @@
 (deftest expired-oauth-bearer-token-returns-401-test
   (testing "POST with expired OAuth bearer token returns 401"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
-      (t2/with-transaction [_conn nil {:rollback-only true}]
+      (t2/with-transaction [_ nil {:rollback-only true}]
         (oauth-server/reset-provider!)
         (let [user-id  (mt/user->id :crowberto)
               token    (insert-expired-oauth-token! user-id (str (random-uuid)))
