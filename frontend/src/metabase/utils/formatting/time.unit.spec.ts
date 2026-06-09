@@ -108,6 +108,10 @@ describe("time", () => {
       expect(formatDurationLong(7_320_000)).toBe("2h 2m");
     });
 
+    it("does not wrap total hours past 24 for long backfills", () => {
+      expect(formatDurationLong(90_000_000)).toBe("25h 0m");
+    });
+
     it("clamps negative values to 0ms (defends against clock skew)", () => {
       expect(formatDurationLong(-1)).toBe("0ms");
       expect(formatDurationLong(-99_999)).toBe("0ms");
