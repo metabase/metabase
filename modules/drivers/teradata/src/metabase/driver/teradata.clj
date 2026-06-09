@@ -34,7 +34,8 @@
                               :test/jvm-timezone-setting        false
                               :database-routing                 false
                               :connection-impersonation         false
-                              :regex/lookaheads-and-lookbehinds false}]
+                              :regex/lookaheads-and-lookbehinds false
+                              :window-functions/offset          false}]
   (defmethod driver/database-supports? [:teradata feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :teradata
