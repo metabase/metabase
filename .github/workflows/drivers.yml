@@ -92,7 +92,7 @@ jobs:
           IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
         shell: bash
 
-  be-tests-athena-ee:
+  drivers-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' || needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -109,7 +109,7 @@ jobs:
       # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
-    name: Athena
+    name: drivers-tests-athena-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
@@ -126,7 +126,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-athena-ee'
+        junit-name: 'drivers-tests-athena-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -141,8 +141,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-bigquery-cloud-sdk-ee:
+  drivers-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -179,7 +180,7 @@ jobs:
       MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
-    name: BigQuery ${{ matrix.job.name }}
+    name: "drivers-tests-bigquery-cloud-sdk-ee (${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
@@ -201,7 +202,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-bigquery-cloud-sdk-ee'
+        junit-name: 'drivers-tests-bigquery-cloud-sdk-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
@@ -215,6 +216,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -222,7 +224,7 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-clickhouse-ee:
+  drivers-tests-clickhouse-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' || needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -246,7 +248,7 @@ jobs:
       MB_CLICKHOUSE_TEST_PORT: 8123
       MB_CLICKHOUSE_TEST_OLD_PORT: 8124
       MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
-    name: Clickhouse ${{ matrix.job.name }}
+    name: "drivers-tests-clickhouse-ee (${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.clickhouse-quarantine-conflict == 'true' }}
@@ -284,7 +286,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-clickhouse-ee'
+        junit-name: 'drivers-tests-clickhouse-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
@@ -298,6 +300,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -305,7 +308,7 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-druid-jdbc-ee:
+  drivers-tests-druid-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -320,7 +323,7 @@ jobs:
           - "8888:8888"
         env:
           CLUSTER_SIZE: nano-quickstart
-    name: Druid (JDBC)
+    name: drivers-tests-druid-jdbc-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-quarantine-conflict == 'true' }}
@@ -337,7 +340,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-druid-jdbc-ee'
+        junit-name: 'drivers-tests-druid-jdbc-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -352,8 +355,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-databricks-ee:
+  drivers-tests-databricks-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -368,7 +372,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks
+    name: drivers-tests-databricks-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
@@ -385,7 +389,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-databricks-ee'
+        junit-name: 'drivers-tests-databricks-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -400,8 +404,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-databricks-multi-catalog-ee:
+  drivers-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -417,7 +422,7 @@ jobs:
       MB_DATABRICKS_TEST_CATALOG_ROUTING: 'metabase_routing_catalog'
       MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
-    name: Databricks (Multi-Catalog)
+    name: drivers-tests-databricks-multi-catalog-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
@@ -434,7 +439,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-databricks-multi-catalog-ee'
+        junit-name: 'drivers-tests-databricks-multi-catalog-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -449,22 +454,23 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-h2:
+  drivers-tests-h2:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
       CI: 'true'
-    name: H2
+    name: drivers-tests-h2
     steps:
     - uses: actions/checkout@v6
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-h2'
+        junit-name: 'drivers-tests-h2'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -479,22 +485,23 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-h2-oss:
+  drivers-tests-h2-oss:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 40
     env:
       CI: 'true'
-    name: H2 (OSS)
+    name: drivers-tests-h2-oss
     steps:
     - uses: actions/checkout@v6
     - name: Test H2 driver (OSS)
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-h2-oss'
+        junit-name: 'drivers-tests-h2-oss'
         edition: 'oss'
         test-args: >-
           :only-tags [:mb/driver-tests]
@@ -510,8 +517,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-mysql-mariadb:
+  drivers-tests-mysql-mariadb:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -521,25 +529,25 @@ jobs:
       matrix:
         version:
           - name: MariaDB 10.6
-            junit-name: be-tests-mariadb-10-6-ee
+            junit-name: drivers-tests-mariadb-10-6-ee
             image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MariaDB Latest
-            junit-name: be-tests-mariadb-latest-ee
+            junit-name: drivers-tests-mariadb-latest-ee
             image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
+            junit-name: drivers-tests-mysql-8-0-ee
             image: mysql:8.0
             env:
               enable-ssl-tests: 'false'
               enable-aws-iam-tests: 'false'
           - name: MySQL Latest
-            junit-name: be-tests-mysql-latest-ee
+            junit-name: drivers-tests-mysql-latest-ee
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
@@ -611,8 +619,8 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
-    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    # "drivers-tests-mariadb-10-2-ee (0)"
+    name: "drivers-tests-mysql-mariadb (${{ matrix.version.name }} ${{ matrix.job.name }})"
     steps:
       - uses: actions/checkout@v6
       - name: Setup python-runner
@@ -640,6 +648,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-id: ${{ github.job }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -647,7 +656,7 @@ jobs:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-mongo:
+  drivers-tests-mongo:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -657,10 +666,10 @@ jobs:
       matrix:
         version:
           - name: MongoDB 6.0
-            junit-name: be-tests-mongo-6-0-ee
+            junit-name: drivers-tests-mongo-6-0-ee
             image: metabase/qa-databases:mongo-sample-6
           - name: MongoDB Latest
-            junit-name: be-tests-mongo-latest-ee
+            junit-name: drivers-tests-mongo-latest-ee
             image: mongo:latest
         job:
           - name: Driver Tests
@@ -684,7 +693,7 @@ jobs:
         env:
           MONGO_INITDB_ROOT_USERNAME: metabase
           MONGO_INITDB_ROOT_PASSWORD: metasample123
-    name: ${{ matrix.version.name }} ${{ matrix.job.name }}
+    name: "drivers-tests-mongo (${{ matrix.version.name }} ${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.mongo-quarantine-conflict == 'true' }}
@@ -720,6 +729,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -727,7 +737,7 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-mongo-ssl:
+  drivers-tests-mongo-ssl:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -737,7 +747,7 @@ jobs:
       matrix:
         version:
           - name: MongoDB 6.0
-            junit-name: be-tests-mongo-6-0-ssl-ee
+            junit-name: drivers-tests-mongo-6-0-ssl-ee
             image: metabase/qa-databases:mongo-sample-6
     env:
       CI: 'true'
@@ -745,7 +755,7 @@ jobs:
       MB_MONGO_TEST_USER: metabase
       MB_MONGO_TEST_PASSWORD: metasample123
       MB_TEST_MONGO_REQUIRES_SSL: true
-    name: "${{ matrix.version.name }} (SSL)"
+    name: "drivers-tests-mongo-ssl (${{ matrix.version.name }})"
     steps:
       - name: Fail on quarantine conflict
         if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-quarantine-conflict == 'true' }}
@@ -802,8 +812,9 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-id: ${{ github.job }}
 
-  be-tests-mongo-sharded-cluster-ee:
+  drivers-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' || needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -816,7 +827,7 @@ jobs:
         image: metabase/mongo-sharded-cluster:6
         ports:
           - "27017:17017"
-    name: MongoDB Sharded Cluster
+    name: drivers-tests-mongo-sharded-cluster-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-quarantine-conflict == 'true' }}
@@ -833,7 +844,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-mongo-sharded-cluster-ee'
+        junit-name: 'drivers-tests-mongo-sharded-cluster-ee'
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
     - name: Upload Test Results
@@ -847,8 +858,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-oracle:
+  drivers-tests-oracle:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' || needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -858,7 +870,7 @@ jobs:
       matrix:
         version:
           - name: Oracle 18.4
-            junit-name: be-tests-oracle-18-4-ee
+            junit-name: drivers-tests-oracle-18-4-ee
             image: gvenzl/oracle-xe:18.4.0-slim
             port: 1521
             env:
@@ -866,7 +878,7 @@ jobs:
               password: 'password'
               enable-ssl-tests: false
           - name: Oracle 21.3
-            junit-name: be-tests-oracle-21-3-ee
+            junit-name: drivers-tests-oracle-21-3-ee
             image: metabase/qa-databases:oracle-xe-21.3
             port: 2484
             env:
@@ -899,7 +911,7 @@ jobs:
           ORACLE_PASSWORD: password
         ports:
           - "1521:${{ matrix.version.port }}"
-    name: ${{ matrix.version.name }}
+    name: "drivers-tests-oracle (${{ matrix.version.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.oracle-quarantine-conflict == 'true' }}
@@ -932,8 +944,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-postgres:
+  drivers-tests-postgres:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -963,7 +976,7 @@ jobs:
             test-args: >-
               :only-tags [:mb/transforms-python-test]
             needs-python-runner: true
-    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    name: "drivers-tests-postgres (${{ matrix.version.name }} ${{ matrix.job.name }})"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -1020,7 +1033,7 @@ jobs:
         id: test-driver
         uses: ./.github/actions/test-driver
         with:
-          junit-name: 'be-tests-${{ matrix.version.junit-name }}'
+          junit-name: 'drivers-tests-${{ matrix.version.junit-name }}'
           logs-artifact-suffix: ${{ matrix.version.name }}-${{ matrix.job.name }}
           test-args: >-
             ${{ matrix.job.test-args }}
@@ -1036,6 +1049,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          driver-id: ${{ github.job }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1043,7 +1057,7 @@ jobs:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
           logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-presto-jdbc-ee:
+  drivers-tests-presto-jdbc-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' || needs.determine-driver-skips.outputs.presto-jdbc-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1059,7 +1073,7 @@ jobs:
       MB_PRESTO_JDBC_TEST_PASSWORD: metabase
       MB_ENABLE_PRESTO_JDBC_DRIVER: true
       MB_PRESTO_JDBC_TEST_ADDITIONAL_OPTIONS: 'SSLTrustStorePath=/tmp/cacerts-with-presto-ssl.jks&SSLTrustStorePassword=changeit'
-    name: Presto
+    name: drivers-tests-presto-jdbc-ee
     services:
       presto:
         image: metabase/presto-mb-ci:latest # version 0.254
@@ -1108,7 +1122,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-presto-jdbc-ee'
+        junit-name: 'drivers-tests-presto-jdbc-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1123,8 +1137,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-redshift-ee:
+  drivers-tests-redshift-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' || needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1169,7 +1184,7 @@ jobs:
       MB_REDSHIFT_TEST_DB_ROUTING: dev
       MB_REDSHIFT_TEST_HOSTS: ${{ secrets.MB_REDSHIFT_TEST_HOSTS }}
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
-    name: ${{ matrix.job.name }}
+    name: "drivers-tests-redshift-ee (${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
@@ -1192,7 +1207,7 @@ jobs:
       if: ${{ !matrix.job.skip }}
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-redshift-ee'
+        junit-name: 'drivers-tests-redshift-ee'
         test-args: >-
           ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
@@ -1207,6 +1222,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1214,7 +1230,7 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-snowflake-ee:
+  drivers-tests-snowflake-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' || needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1251,7 +1267,7 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
-    name: Snowflake ${{ matrix.job.name }}
+    name: "drivers-tests-snowflake-ee (${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
@@ -1273,7 +1289,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-snowflake-ee'
+        junit-name: 'drivers-tests-snowflake-ee'
         test-args: ${{ matrix.job.test-args }}
         logs-artifact-suffix: ${{ matrix.job.name }}
     - name: Upload Test Results
@@ -1287,6 +1303,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1294,7 +1311,7 @@ jobs:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
-  be-tests-sparksql-ee:
+  drivers-tests-sparksql-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' || needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1307,7 +1324,7 @@ jobs:
         image: metabase/spark:3.2.1
         ports:
           - "10000:10000"
-    name: Spark SQL
+    name: drivers-tests-sparksql-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sparksql-quarantine-conflict == 'true' }}
@@ -1324,7 +1341,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-sparksql-ee'
+        junit-name: 'drivers-tests-sparksql-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1339,8 +1356,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-sqlite-ee:
+  drivers-tests-sqlite-ee:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' || needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1348,7 +1366,7 @@ jobs:
     env:
       CI: 'true'
       DRIVERS: sqlite
-    name: SQLite
+    name: drivers-tests-sqlite-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sqlite-quarantine-conflict == 'true' }}
@@ -1365,7 +1383,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-sqlite-ee'
+        junit-name: 'drivers-tests-sqlite-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1380,8 +1398,9 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
 
-  be-tests-sqlserver:
+  drivers-tests-sqlserver:
     needs: determine-driver-skips
     if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' || needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1391,10 +1410,10 @@ jobs:
       matrix:
         version:
           # - name: SQL Server 2017
-          #   junit-name: be-tests-sqlserver-2017-ee
+          #   junit-name: drivers-tests-sqlserver-2017-ee
           #   image: mcr.microsoft.com/mssql/server:2017-latest
           - name: SQL Server 2022
-            junit-name: be-tests-sqlserver-2022-ee
+            junit-name: drivers-tests-sqlserver-2022-ee
             image: mcr.microsoft.com/mssql/server:2022-latest
         job:
           - name: Driver Tests
@@ -1420,7 +1439,7 @@ jobs:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
           MSSQL_MEMORY_LIMIT_MB: 1024
-    name: ${{ matrix.version.name }} ${{ matrix.job.name }}
+    name: "drivers-tests-sqlserver (${{ matrix.version.name }} ${{ matrix.job.name }})"
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.sqlserver-quarantine-conflict == 'true' }}
@@ -1456,6 +1475,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        driver-id: ${{ github.job }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1464,7 +1484,7 @@ jobs:
         logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
-  # be-tests-starburst-ee:
+  # drivers-tests-starburst-ee:
   #   needs: determine-driver-skips
   #   if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
   #   runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1487,7 +1507,7 @@ jobs:
   #   - name: Test Starburst driver
   #     uses: ./.github/actions/test-driver
   #     with:
-  #       junit-name: 'be-tests-starburst-ee'
+  #       junit-name: 'drivers-tests-starburst-ee'
   #       test-args: >-
   #         :only-tags [:mb/driver-tests]
   #   - name: Upload Test Results
@@ -1531,7 +1551,7 @@ jobs:
       docker_username: ${{ steps.login-ecr.outputs.docker_username }}
       docker_password: ${{ steps.login-ecr.outputs.docker_password }}
 
-  be-tests-vertica-ee:
+  drivers-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
     if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' || needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -1547,7 +1567,7 @@ jobs:
         credentials:
           username: ${{ needs.login-to-ecr.outputs.docker_username }}
           password: ${{ needs.login-to-ecr.outputs.docker_password }}
-    name: Vertica
+    name: drivers-tests-vertica-ee
     steps:
     - name: Fail on quarantine conflict
       if: ${{ needs.determine-driver-skips.outputs.vertica-quarantine-conflict == 'true' }}
@@ -1566,7 +1586,7 @@ jobs:
       id: test-driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-vertica-ee'
+        junit-name: 'drivers-tests-vertica-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
           :exclude-tags [:mb/transforms-python-test]
@@ -1581,87 +1601,4 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
-
-  drivers-tests-result:
-    needs:
-      # if you add a driver job, you must add it to this list for it to be a required check
-      - be-tests-h2
-      - be-tests-athena-ee
-      # these are not reliable, but we want to run them anyway to gather data about failures
-      # - be-tests-snowflake-ee
-      # - be-tests-bigquery-cloud-sdk-ee
-      - be-tests-databricks-ee
-      - be-tests-druid-jdbc-ee
-      - be-tests-mysql-mariadb
-      - be-tests-mongo
-      - be-tests-mongo-ssl
-      - be-tests-mongo-sharded-cluster-ee
-      - be-tests-oracle
-      - be-tests-postgres
-      - be-tests-presto-jdbc-ee
-      - be-tests-redshift-ee
-      - be-tests-sparksql-ee
-      - be-tests-sqlite-ee
-      - be-tests-sqlserver
-      # - be-tests-starburst-ee
-      # TODO(rileythomp, 2025-08-20): Re-enable vertica tests once the docker image is updated
-      # - be-tests-vertica-ee
-      - be-tests-clickhouse-ee
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 5
-    name: drivers-tests-result
-    if: always() && !cancelled()
-    steps:
-      - name: Check job status
-        uses: actions/github-script@v9
-        env:
-          needs: ${{ toJson(needs) }}
-        with:
-          script: | # js
-            const needs = JSON.parse(process.env.needs);
-
-            const jobs = Object.entries(needs).map(
-              ([jobName, jobValues]) => ({
-                name: jobName,
-                result: jobValues.result
-              }));
-
-            // are all jobs skipped or successful?
-            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
-                console.log("");
-                console.log("        _------.        ");
-                console.log("       /  ,     \_      ");
-                console.log("     /   /  /{}\ |o\_   ");
-                console.log("    /    \  `--' /-' \  ");
-                console.log("   |      \      \    | ");
-                console.log("  |              |`-, | ");
-                console.log("  /              /__/)/ ");
-                console.log(" |              |       ");
-                console.log("");
-                console.log("All driver tests have passed (or have been skipped). Cam is very proud of you.");
-              process.exit(0);
-            }
-
-            // otherwise, something failed
-            console.log("");
-            console.log("       .::::::::::.                          .::::::::::.       ");
-            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
-            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
-            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
-            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
-            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
-            console.log("  :::               |::-o::|        |::o-::|               :::  ");
-            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
-            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
-            console.log("     `::::......::::'                      `::::......::::'     ");
-            console.log("       `::::::::::'                          `::::::::::'       ");
-            console.log("");
-            console.log("Driver tests have failed. You have been sentenced to MetaJail.");
-
-            jobs.forEach((job) => {
-              if (job.result !== 'success') {
-                console.log(`${job.name} - ${job.result}`);
-              }
-            });
-
-            process.exit(1);
+        driver-id: ${{ github.job }}
