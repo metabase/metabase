@@ -55,6 +55,17 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
+      id: v62.2026-05-13T12:00:00.500
+      author: andsalves
+      comment: Set MySQL/MariaDB session collation for Library root child path comparisons
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: SET collation_connection = 'utf8mb4_unicode_ci'
+      rollback:
+        - empty: {}
+
+  - changeSet:
       id: v62.2026-05-13T12:00:01
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Data section

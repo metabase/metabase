@@ -3042,6 +3042,34 @@
         (is (= "librarylibrarylibrary"
                (collection-entity-id library-id)))))))
 
+(deftest backfill-legacy-library-root-collection-entity-ids-mysql-collation-test
+  (testing "mixed MySQL session and table collations do not break Library root child backfills (#75458)"
+    (mt/test-driver :mysql
+      (impl/with-temp-empty-app-db [conn :mysql]
+        (impl/run-migrations-in-range! conn ["v00.00-000" "v62.2026-05-13T12:00:00"] {:inclusive-end? false})
+        (let [library-id (insert-legacy-library-collection! {:name      "Library"
+                                                            :slug      "library"
+                                                            :type      "library"
+                                                            :entity_id "legacy-library-root"})
+              data-id    (insert-legacy-library-collection! {:name      "Data"
+                                                            :slug      "data"
+                                                            :type      "library-data"
+                                                            :location  (str "/" library-id "/")
+                                                            :entity_id "legacy-library-data"})
+              metrics-id (insert-legacy-library-collection! {:name      "Metrics"
+                                                            :slug      "metrics"
+                                                            :type      "library-metrics"
+                                                            :location  (str "/" library-id "/")
+                                                            :entity_id "legacy-library-metric"})]
+          (jdbc/execute! conn ["SET collation_connection = 'utf8mb4_general_ci'"])
+          (impl/run-migrations-in-range! conn ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"])
+          (is (= "librarylibrarylibrary"
+                 (collection-entity-id library-id)))
+          (is (= "librarylibrarydatadat"
+                 (collection-entity-id data-id)))
+          (is (= "librarylibrarymetrics"
+                 (collection-entity-id metrics-id))))))))
+
 (deftest heal-effective-type-drift-without-coercion-test
   (testing "GHY-3388: heal metabase_field rows where coercion_strategy is NULL and effective_type
            drifted away from base_type. The migration must repair such rows in both metabase_field
