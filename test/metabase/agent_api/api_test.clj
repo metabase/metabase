@@ -528,7 +528,23 @@
                                                 :query         (:query construct-resp)
                                                 :collection_id personal-id})]
       (is (= personal-name (:collection_path create-resp)))
-      (t2/delete! :model/Card :id (:id create-resp)))))
+      (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "collection_path omits ancestors the caller can't read — no hidden-name leak"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {a-id :id} {:name "Visible Parent"}
+                     :model/Collection {b-id :id} {:name "Hidden Parent" :location (format "/%d/" a-id)}
+                     :model/Collection {c-id :id} {:name "Leaf Coll" :location (format "/%d/%d/" a-id b-id)}]
+        ;; rasta can write the leaf and read its top ancestor, but has no access to the middle one.
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) a-id)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c-id)
+        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                   {:query (orders-query :limit 10)})
+              create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                   {:name          "Perm Filtered Q"
+                                                    :query         (:query construct-resp)
+                                                    :collection_id c-id})]
+          (is (= "Our analytics / Visible Parent / Leaf Coll" (:collection_path create-resp)))
+          (t2/delete! :model/Card :id (:id create-resp)))))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 

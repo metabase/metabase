@@ -58,27 +58,32 @@
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
 (defn- default-collection-id
-  "Where an LLM-created entity lands when the caller didn't pick a collection: the caller's personal
-  collection, not the root collection (`nil`) the REST API defaults to — agent-created content
-  belongs in the user's own space, not shared \"Our analytics\". API-key callers have no personal
-  collection, so this falls back to `nil` (root)."
+  "Collection id to use when the caller passed none: the caller's personal collection.
+  API-key callers have no personal collection, so this falls back to `nil` (the root collection)."
   [collection-id]
+  ;; Personal rather than the root collection REST defaults to — agent-created content belongs in the
+  ;; user's own space, not shared "Our analytics".
   (or collection-id (:id (collection/user->personal-collection api/*current-user-id*))))
 
 (defn- collection-path
-  "Breadcrumb path of the collection an entity landed in (e.g. \"Our analytics / Marketing / Q3\"),
-  mirroring the app's location breadcrumb so the LLM reports the real location instead of guessing.
+  "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing / Q3\".
+  Ancestors the caller can't read are omitted, matching the app breadcrumb.
   A `nil` `collection-id` is the root collection (\"Our analytics\"), not a personal collection."
   [collection-id]
   (let [root-name (:name (collection/root-collection-with-ui-details nil))]
     (if-not collection-id
       root-name
-      (let [coll   (t2/select-one [:model/Collection :id :name :location :personal_owner_id] collection-id)
-            chain  (collection/personal-collections-with-ui-details
-                    (conj (vec (:ancestors (t2/hydrate coll :ancestors))) coll))
-            ;; Personal subtrees breadcrumb under the owner's personal collection, not "Our analytics".
-            crumbs (cond->> (map :name chain)
-                     (not (:personal_owner_id (first chain))) (cons root-name))]
+      (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
+                                      :namespace :archived_directly]
+                                     collection-id)
+            ;; `:effective_ancestors` drops ancestors the caller can't read and prepends the root
+            ;; placeholder; strip it and re-derive the prefix below so personal subtrees breadcrumb
+            ;; under the owner's personal collection, not "Our analytics".
+            ancestors (remove #(= "root" (:id %))
+                              (:effective_ancestors (t2/hydrate coll :effective_ancestors)))
+            chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))
+            crumbs    (cond->> (map :name chain)
+                        (not (:personal_owner_id (first chain))) (cons root-name))]
         (str/join " / " crumbs)))))
 
 (defn submit-mcp-visualization-feedback!
