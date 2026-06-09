@@ -122,10 +122,8 @@ export interface SearchResult<
   collection_id?: CollectionId;
 }
 
-// The frontend surface that issued a search request, used by the backend to select ranking weights and
-// filter defaults. Required on every frontend request; keep in sync with
-// `metabase.search.config/ui-contexts`. The backend-only contexts (`api`, `metabot`) are deliberately
-// excluded so the frontend cannot use them: `api` is for programmatic callers and `metabot` is internal.
+// The frontend surface that issued a search request; the backend uses it to pick ranking weights and
+// filter defaults. Keep in sync with `metabase.search.config/ui-contexts`.
 export type SearchContext =
   | "search-bar"
   | "search-app"
