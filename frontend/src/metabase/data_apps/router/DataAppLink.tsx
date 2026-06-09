@@ -1,5 +1,5 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { Link } from "react-router";
+import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
+import { browserHistory } from "react-router";
 
 import { getBasename } from "./DataAppRouter";
 
@@ -12,21 +12,62 @@ interface DataAppLinkProps
 /**
  * Internal-only navigation link inside a data app.
  *
- * Renders react-router 3's `<Link>` under the hood — middle-click /
- * cmd-click / modifier-key handling and `<a href>` rendering all come
- * from v3's implementation. When MB upgrades to a newer router, this
- * file's `import { Link } from "react-router"` changes; the bundle's
- * `<DataAppLink to="…">` usage doesn't.
+ * Renders a plain `<a href>` with our own click handler. Middle-click /
+ * cmd-click / shift-click / alt-click / any non-primary button defer to
+ * the browser's native handling (new tab, new window, download). Primary
+ * left-clicks call `browserHistory.push()` to SPA-navigate.
  *
- * The `to` prop is bundle-relative (e.g. `to="/customers/42"`); we add
- * the auto-detected basename before handing the URL to v3's `Link`.
+ * `to` is bundle-relative (e.g. `to="/customers/42"`); the auto-detected
+ * basename is prepended before navigation so the real URL becomes
+ * `/embed/data-app/<name>/customers/42`.
  *
- * Must be rendered inside a `<DataAppRouter>` — v3's `<Link>` reads its
- * router from the surrounding `<Router>` (which `<DataAppRouter>` mounts)
- * and will throw without it.
+ * Deliberately does NOT delegate to react-router 3's `<Link>` —
+ * v3 components use deprecated React APIs (`getDefaultProps`,
+ * `childContextTypes`) that emit dev-mode warnings and will be removed
+ * in React 19. Keeping the implementation as a plain `<a>` means the
+ * component has no class component, no legacy API surface, and no
+ * coupling to the v3 router context.
  */
-export const DataAppLink = ({ to, children, ...rest }: DataAppLinkProps) => (
-  <Link to={getBasename() + to} {...rest}>
-    {children}
-  </Link>
-);
+export const DataAppLink = ({
+  to,
+  children,
+  onClick,
+  target,
+  ...rest
+}: DataAppLinkProps) => {
+  const href = getBasename() + to;
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (target && target !== "_self") {
+      // Explicit `target="_blank"` etc. — let the browser handle it.
+      return;
+    }
+
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      // Modifier keys / middle / right click → browser handles it (new tab,
+      // download, etc.). Don't preventDefault — we want the native action.
+      return;
+    }
+
+    event.preventDefault();
+    browserHistory.push(href);
+  };
+
+  return (
+    <a href={href} target={target} onClick={handleClick} {...rest}>
+      {children}
+    </a>
+  );
+};
