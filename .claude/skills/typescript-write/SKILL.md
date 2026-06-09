@@ -33,11 +33,15 @@ description: Write TypeScript and JavaScript code following Metabase coding stan
 - **Use generics to allow TypeScript to infer correct types** when creating functions and components that need to be reusable and type-safe. Don't hesitate to introduce complex generics if they allow to derive types automatically instead of manual narrowing.
 - **Model the actual data contract; keep types narrow.** Optional `field?: T` for a key that may be absent, `field: T | undefined` only when the key is always present but the value may be undefined, `| null` for explicit API nulls. Prefer domain unions over broad `string` / `number` / loose `Record`.
 - **Refer to API implementation** when defining or refining types to ensure they match the actual data structure. When considering a type cast, first consider if the type should be refined to match the actual data structure.
-- **Discriminated unions for variant state, with exhaustive checks.** Model "one of N shapes" as a union with a literal discriminant rather than a bag of optional fields, and exhaust it with a `switch` whose `default` asserts `never`, so adding a variant becomes a compile error:
+- **Discriminated unions for variant state, with exhaustive checks.** Model "one of N shapes" as a union with a literal discriminant rather than a bag of optional fields, and exhaust it with ts-pattern's `.exhaustive()` so adding a variant becomes a compile error:
   ```ts
-  function assertNever(x: never): never {
-    throw new Error(`Unhandled: ${JSON.stringify(x)}`);
-  }
+  import { match } from "ts-pattern";
+
+  const result = match(status)
+    .with({ type: "loading" }, () => <Spinner />)
+    .with({ type: "error", error: P.select() }, (error) => <Error message={error.message} />)
+    .with({ type: "success", data: P.select() }, (data) => <Content data={data} />)
+    .exhaustive(); // Compile-time guarantee all cases handled
   ```
 - **Derive union types from constants** (`as const` + `typeof`/`keyof`) so the type and the values can't drift.
 - **`readonly` / immutability where mutation isn't intended** — component props, shared constants, exported config. Prefer `readonly T[]` / `ReadonlyArray<T>` for inputs you don't mutate.
