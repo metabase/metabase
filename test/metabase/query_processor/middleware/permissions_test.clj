@@ -729,12 +729,13 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You do not have permissions to run this query"
-             (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                      :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}}))))))))
+        (testing "Query carrying a :query-permissions/perms value is still rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                          :perms/create-queries {(mt/id :venues) :query-builder}}})))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
@@ -746,23 +747,11 @@
                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
                                                          :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
-          (testing "Sanity check: should not be able to run this query the normal way"
+          (testing "Query carrying :query-permissions/sandboxed-table and perms keys is still rejected"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"You do not have permissions to run this query"
-                 (qp/process-query bad-query))))
-          (letfn [(process-query []
-                    (qp/process-query bad-query))]
-            (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
-              (with-redefs [qp.perms/remove-sandboxed-table-keys identity]
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You do not have permissions to run this query"
-                     (process-query)))))
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (process-query)))))))))
+                 (qp/process-query bad-query)))))))))
 
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
@@ -2242,3 +2231,34 @@
               (testing "Results come from the source-table, not the inline native query"
                 (is (= (mt/rows expected)
                        (mt/rows result)))))))))))
+
+(deftest e2e-card-creation-perms-key-test
+  (testing "a :query-permissions/perms value in the dataset_query does not affect card-creation permission checks"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (testing "Sanity check: user cannot run a native query against this database"
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (qp/process-query
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query "SELECT * FROM VENUES"}}))))
+          ;; Disable malli enforcement so the endpoint sees the raw request map as it would in production.
+          (binding [mu.fn/*enforce* false]
+            (testing "Card creation with a :query-permissions/perms value in the query is rejected"
+              (mt/with-model-cleanup [:model/Card]
+                (mt/user-http-request :rasta :post 403 "card"
+                                      {:name                   "test-card"
+                                       :display                :table
+                                       :collection_id          collection-id
+                                       :dataset_query          {:database               (mt/id)
+                                                                :type                   :native
+                                                                :native                 {:query         "SELECT * FROM VENUES"
+                                                                                         :template-tags {}}
+                                                                :query-permissions/perms {:gtaps {:perms/create-queries :query-builder-and-native
+                                                                                                  :perms/view-data      :unrestricted}}}
+                                       :visualization_settings {}})))))))))
