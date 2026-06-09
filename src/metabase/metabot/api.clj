@@ -3,6 +3,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
@@ -39,8 +40,10 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize])
   (:import
    (java.io OutputStream)))
 
@@ -666,6 +669,37 @@
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))
+
+;;; -----------------------------------------------------------------------------------------
+;;; DELETE BEFORE MERGE — disposable diagnostic endpoint. Validates every metabot_message
+;;; row's :data against the v4 at-rest schema; removed in the final commit of this PR.
+;;; See todos/plans/upgrade-ai-sdk-pr2-malli-schemas.md.
+;;; -----------------------------------------------------------------------------------------
+(api.macros/defendpoint :get "/dev/validate-v4"
+  :- [:map
+      [:row-count :int]
+      [:failure-count :int]
+      [:failures [:sequential [:map
+                               [:message-id :int]
+                               [:message :any]
+                               [:error :any]]]]]
+  "DELETE BEFORE MERGE: report metabot_message rows whose :data fails the v4 at-rest schema."
+  [_route-params
+   {:keys [limit]} :- [:map [:limit {:optional true} ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [explain  (mr/explainer ::metabot.schema/v4-message-data)
+        failures (into []
+                       (comp (keep (fn [row]
+                                     (let [{:keys [id data]} (t2.realize/realize row)]
+                                       (when-let [error (explain data)]
+                                         {:message-id id
+                                          :message    data
+                                          :error      (me/humanize error)}))))
+                             (take (or limit 500)))
+                       (t2/reducible-select [:model/MetabotMessage :id :data]))]
+    {:row-count     (t2/count :model/MetabotMessage)
+     :failure-count (count failures)
+     :failures      failures}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."
