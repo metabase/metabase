@@ -12,7 +12,7 @@ const { TablePicker, TableSection, FieldSection, PreviewSection, Shared } =
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 const { visitArea } = Shared;
 
-const areas: ("admin" | "data studio")[] = [/*"admin",*/ "data studio"];
+const areas: ("admin" | "data studio")[] = ["admin", "data studio"];
 type Area = (typeof areas)[number];
 
 describe.each<Area>(areas)("data model > %s", (area: Area) => {
