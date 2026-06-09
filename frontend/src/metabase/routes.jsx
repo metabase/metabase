@@ -423,6 +423,10 @@ export const getRoutes = (store) => {
         to="/admin/permissions/collections"
       />
 
+      {/* Transforms moved from /admin to /data-studio */}
+      <Redirect from="/admin/transforms" to="/data-studio/transforms" />
+      <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
+
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />
       <Route path="/unauthorized" component={Unauthorized} />
