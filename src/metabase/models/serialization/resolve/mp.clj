@@ -56,7 +56,7 @@
   (:name (lib.metadata/database metadata-provider)))
 
 (defn- matching-tables-via-provider
-  "Return all tables matching `table-name` in `metadata-provider`, post-filtered by `schema`
+  "Return active tables matching `table-name` in `metadata-provider`, post-filtered by `schema`
   (`schema` may be `nil` for schemaless databases).
 
   Used as a fallback for mock and checker providers. NOT safe for production: the
@@ -69,18 +69,24 @@
   (->> (lib.metadata.protocols/metadatas metadata-provider
                                          {:lib/type :metadata/table
                                           :name     #{table-name}})
-       (filter #(= (:schema %) schema))))
+       ;; By-name lookups skip the provider's SQL `active = true` filter (it only guards
+       ;; enumerate-all queries), so inactive rows reach here. `false?` keeps mocks with no
+       ;; `:active` key.
+       (filter #(and (= (:schema %) schema)
+                     (not (false? (:active %)))))))
 
 (defn- matching-tables-via-app-db
-  "Return all tables matching the `(db-id, schema, table-name)` triple by direct application-DB
+  "Return active tables matching the `(db-id, schema, table-name)` triple by direct application-DB
   query — same shape `resolve.db/import-table-fk` has always used. Bypasses the metadata
   provider entirely.
+
+  Filters `:active true` in the WHERE clause so stale FKs to inactive tables don't resolve.
 
   Defective `(db_id, schema, name)` duplicates (allowed by the
   `001_update_migrations.yaml` `is_defective_duplicate` carve-out for pre-constraint rows)
   return more than one candidate so [[find-table]] can raise `:ambiguous-table`."
   [db-id schema table-name]
-  (t2/select :metadata/table :db_id db-id :schema schema :name table-name))
+  (t2/select :metadata/table :db_id db-id :schema schema :name table-name :active true))
 
 (defn- app-db-backed-provider?
   "True when `metadata-provider` is part of the production app-DB-backed wrapper chain
@@ -106,8 +112,9 @@
   schemas / tables they cannot otherwise see.
 
   For the same reason this single message covers both a never-existed miss and an inactive
-  (deleted / re-uploaded) match — see [[find-table]]. Branching the wording on whether an inactive
-  row exists would be an existence oracle, so both cases get this identical message.
+  match — [[table-candidates]] drops inactive rows upstream, so both reach [[find-table]] as 0
+  candidates. Branching the wording on whether an inactive row exists would be an existence
+  oracle, so both get this identical message.
 
   The LLM can still self-correct in one turn by calling `entity_details` on the parent
   database; the message points it at that path."
@@ -132,8 +139,7 @@
   becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
   table the caller can plainly see via `entity_details`.
 
-  Returns raw matches including inactive (`:active false`) rows; [[find-table]] drops the inactive
-  ones."
+  Returns only active tables — both helpers drop inactive (`:active false`) rows."
   [metadata-provider db-id schema table-name]
   (or (when (and db-id (app-db-backed-provider? metadata-provider))
         (seq (matching-tables-via-app-db db-id schema table-name)))
@@ -147,9 +153,8 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
-  Inactive (`:active false`) matches are treated as a miss: the app-DB row can outlive its warehouse
-  table (e.g. a deleted or re-uploaded upload). (Surfaced while investigating BOT-739, though likely
-  not its cause.)"
+  Inactive (`:active false`) tables are dropped by [[table-candidates]], so a stale FK to one
+  surfaces here as a 0-candidate miss."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
@@ -161,8 +166,7 @@
                        :agent-error? true
                        :path         path
                        :expected-db  current-db})))
-    (let [candidates (filterv #(not (false? (:active %)))
-                              (table-candidates metadata-provider current-db-id path-schema path-table-name))]
+    (let [candidates (table-candidates metadata-provider current-db-id path-schema path-table-name)]
       (case (count candidates)
         0 (throw (unknown-table-ex-info metadata-provider path))
         1 (first candidates)
