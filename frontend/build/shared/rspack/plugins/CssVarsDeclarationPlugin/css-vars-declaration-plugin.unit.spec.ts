@@ -190,7 +190,7 @@ describe("CssVarsDeclarationPlugin", () => {
       });
 
       const output = readOutput(srcDir, configPath);
-      expect(output).toContain("--mb-color-core-brand: ;");
+      expect(output).toContain("--mb-color-brand: ;");
       expect(output).toContain("--mb-color-danger: ;");
       expect(output).toContain("--mb-color-success: ;");
     });
@@ -283,7 +283,7 @@ describe("CssVarsDeclarationPlugin", () => {
       expect(output).toContain("--mb-color-accent1: ;");
       expect(output).toContain("--mb-color-admin: ;");
       expect(output).toContain("--mb-color-internal: ;");
-      expect(output).toContain("--mb-color-core-brand: ;");
+      expect(output).toContain("--mb-color-brand: ;");
     });
   });
 
