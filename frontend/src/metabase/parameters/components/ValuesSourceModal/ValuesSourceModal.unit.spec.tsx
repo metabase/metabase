@@ -826,10 +826,7 @@ describe("ValuesSourceModal", () => {
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
         expect(onSubmit).toHaveBeenCalledWith("static-list", {
-          values: [
-            ["1", "One"],
-            ["2", "Two"],
-          ],
+          values: [["1"], ["2"]],
         });
       });
 
@@ -839,10 +836,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [
-                ["1", "One"],
-                ["2", "Two"],
-              ],
+              values: [["1"], ["2"]],
             },
           }),
         });
@@ -864,10 +858,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [
-                ["1", "Label"],
-                ["2", "Two"],
-              ],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
@@ -891,7 +882,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [["1", "Label"], ["2"]],
             },
           }),
         });
