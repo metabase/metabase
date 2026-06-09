@@ -300,9 +300,11 @@
   /dashboards before taking the top 5. Tables are not moderatable and always pass through."
   [context {:keys [metabot-id] :as _opts}]
   (try
-    (cond-> context
-      (metabot.settings/metabot-recent-views-enabled?)
-      (assoc :user_recently_viewed
+    ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
+    ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
+    (if-not (metabot.settings/metabot-recent-views-enabled?)
+      (dissoc context :user_recently_viewed)
+      (assoc context :user_recently_viewed
              (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
                                                                 [:views :selections]
                                                                 {:models [:card :dataset :metric :dashboard :table]}))

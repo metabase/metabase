@@ -254,6 +254,12 @@
             (let [context (context/create-context {})]
               (is (not (contains? context :user_recently_viewed))))))))))
 
+(deftest recent-views-disabled-strips-preexisting-test
+  (testing "Disabling the setting strips a caller-supplied :user_recently_viewed already in the context"
+    (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+      (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]} {})
+                          :user_recently_viewed))))))
+
 (deftest recent-views-verified-content-filter-test
   (testing "Recent views filtering by verified content"
     (mt/with-test-user :rasta
