@@ -1,140 +1,94 @@
 import { renderHook } from "@testing-library/react";
-import type { Editor, NodeViewProps } from "@tiptap/core";
 
-import { skipToken } from "metabase/api";
+import {
+  createMockNodeViewProps,
+  createMockProseMirrorNode,
+} from "metabase/rich_text_editing/tiptap/extensions/MetabotEmbed/__support__/node-view-mocks";
 
 import { useBlockMenus } from "./use-block-menus";
 
 const mockUseNodeInViewport = jest.fn();
-const mockUseListCommentsQuery = jest.fn();
+const mockUseUnresolvedCommentsCount = jest.fn();
 
 jest.mock("metabase/documents/hooks/use-node-in-viewport", () => ({
   useNodeInViewport: () => mockUseNodeInViewport(),
 }));
 
-jest.mock("metabase/api", () => ({
-  skipToken: Symbol("skipToken"),
-  // Wrapped in an arrow so the `mockUseListCommentsQuery` reference is
-  // resolved lazily — the hoisted factory runs before the `const` is
-  // initialized.
-  useListCommentsQuery: (...args: unknown[]) =>
-    mockUseListCommentsQuery(...args),
-}));
-
-jest.mock("metabase/comments/utils", () => ({
-  getTargetChildCommentThreads: jest.fn().mockReturnValue([]),
-}));
-
-jest.mock("metabase/documents/components/Editor/CommentsMenu", () => ({
-  getUnresolvedComments: jest.fn().mockReturnValue([]),
+jest.mock("metabase/documents/hooks/use-unresolved-comments-count", () => ({
+  useUnresolvedCommentsCount: (...args: unknown[]) =>
+    mockUseUnresolvedCommentsCount(...args),
 }));
 
 jest.mock("metabase/documents/selectors", () => ({
-  getChildTargetId: jest.fn().mockReturnValue(null),
-  getCurrentDocument: jest.fn().mockReturnValue({ id: 1 }),
-  getHoveredChildTargetId: jest.fn().mockReturnValue(null),
-}));
-
-jest.mock("metabase/documents/utils/api", () => ({
-  getListCommentsQuery: jest.fn().mockReturnValue({ document_id: 1 }),
+  getChildTargetId: () => null,
+  getCurrentDocument: () => ({ id: 1 }),
+  getHoveredChildTargetId: () => null,
 }));
 
 jest.mock("metabase/documents/utils/editorNodeUtils", () => ({
-  isTopLevel: jest.fn().mockReturnValue(true),
-}));
-
-jest.mock("metabase/utils/iframe", () => ({
-  isWithinIframe: jest.fn().mockReturnValue(false),
+  isTopLevel: () => true,
 }));
 
 jest.mock("metabase/redux", () => ({
   useSelector: (selector: () => unknown) => selector(),
 }));
 
-jest.mock("metabase/urls", () => ({
-  documentWithAnchor: jest.fn().mockReturnValue("/document/1/anchor/test-id"),
-}));
-
-jest.mock("@floating-ui/react", () => ({
-  autoUpdate: jest.fn(),
-  useFloating: jest.fn().mockReturnValue({
-    refs: {
-      setReference: jest.fn(),
-      setFloating: jest.fn(),
-    },
-    floatingStyles: {},
+const nodeViewProps = createMockNodeViewProps({
+  node: createMockProseMirrorNode({
+    attrs: { _id: "test-id" },
+    textContent: "test content",
   }),
-}));
+});
 
-const mockNode = {
-  attrs: { _id: "test-id" },
-  textContent: "test content",
-} as unknown as NodeViewProps["node"];
-
-const mockEditor = {} as Editor;
-const mockGetPos = jest.fn().mockReturnValue(0);
+function renderBlockMenus() {
+  return renderHook(() =>
+    useBlockMenus({
+      node: nodeViewProps.node,
+      editor: nodeViewProps.editor,
+      getPos: nodeViewProps.getPos,
+    }),
+  );
+}
 
 describe("useBlockMenus", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseListCommentsQuery.mockReturnValue({
-      unresolvedCommentsCount: 0,
-    });
+    mockUseUnresolvedCommentsCount.mockReturnValue(0);
   });
 
-  it("passes skipToken to useListCommentsQuery when off-screen", () => {
+  it("skips the unresolved-comments query when off-screen", () => {
     mockUseNodeInViewport.mockReturnValue({
       ref: jest.fn(),
       isInViewport: false,
     });
 
-    renderHook(() =>
-      useBlockMenus({
-        node: mockNode,
-        editor: mockEditor,
-        getPos: mockGetPos,
-      }),
-    );
+    renderBlockMenus();
 
-    expect(mockUseListCommentsQuery).toHaveBeenCalledWith(
-      skipToken,
-      expect.any(Object),
-    );
+    expect(mockUseUnresolvedCommentsCount).toHaveBeenCalledWith("test-id", {
+      skip: true,
+    });
   });
 
-  it("passes real query to useListCommentsQuery when in viewport", () => {
+  it("runs the unresolved-comments query when in viewport", () => {
     mockUseNodeInViewport.mockReturnValue({
       ref: jest.fn(),
       isInViewport: true,
     });
 
-    renderHook(() =>
-      useBlockMenus({
-        node: mockNode,
-        editor: mockEditor,
-        getPos: mockGetPos,
-      }),
-    );
+    renderBlockMenus();
 
-    expect(mockUseListCommentsQuery).toHaveBeenCalledWith(
-      { document_id: 1 },
-      expect.any(Object),
-    );
+    expect(mockUseUnresolvedCommentsCount).toHaveBeenCalledWith("test-id", {
+      skip: false,
+    });
   });
 
-  it("shouldShowMenus is false when off-screen", () => {
+  it("does not show menus when off-screen", () => {
     mockUseNodeInViewport.mockReturnValue({
       ref: jest.fn(),
       isInViewport: false,
     });
 
-    const { result } = renderHook(() =>
-      useBlockMenus({
-        node: mockNode,
-        editor: mockEditor,
-        getPos: mockGetPos,
-      }),
-    );
+    const { result } = renderBlockMenus();
 
     expect(result.current.shouldShowMenus).toBeFalsy();
   });
