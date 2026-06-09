@@ -1,3 +1,10 @@
+---
+id: edit-chart
+title: Editing chart settings
+description: Changing the chart type of an existing visualization with edit_chart (e.g. bar to line) — load when the user wants to switch chart type for a chart already in context.
+tools: [edit_chart]
+priority: 50
+---
 Edit the chart settings of an existing chart.
 This tool changes the chart type (e.g., bar chart to line chart, table to pie chart) but does not modify the underlying data or SQL query.
 It will return a new chart with the updated settings.

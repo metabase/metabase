@@ -21,6 +21,7 @@
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
    [metabase.metabot.tools.snippets :as tools.snippets]
    [metabase.metabot.tools.sql :as tools.sql]
@@ -86,7 +87,9 @@
  [tools.create-alert
   create-alert-tool]
  [tools.create-dashboard-subscription
-  slackbot-create-dashboard-subscription-tool])
+  slackbot-create-dashboard-subscription-tool]
+ [tools.skills
+  load-skill-tool])
 
 (def query-generation-tool-names
   "Tool names that produce a runnable query (SQL or notebook). Both the in-app
@@ -127,9 +130,10 @@
   values are tool definition maps (with :doc, :schema, :prompt, :fn, and
   optionally :decode keys).
 
-  Tool-specific instructions are loaded from `resources/metabot/prompts/tools/`
-  by `extract-tool-instructions` in `prompts.clj`, keyed by `:prompt` or
-  `<tool-name>.md` by default."
+  Tool-specific *instructions* are no longer carried in the prompt. They live in
+  the skill registry (`metabase.metabot.skills`) and are surfaced as a manifest
+  in the system prompt, with full bodies loaded on demand via the `load_skill`
+  tool."
   [tools memory-atom metabot-id]
   (reduce-kv
    (fn [acc tool-name tool-var]
