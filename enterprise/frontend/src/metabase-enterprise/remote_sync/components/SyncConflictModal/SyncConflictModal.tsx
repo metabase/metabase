@@ -35,7 +35,7 @@ import {
   useMergeImportAction,
   usePushChangesAction,
   useStashToNewBranchAction,
-} from "./mutation-wrappers";
+} from "./hooks";
 import {
   type OptionValue,
   getContinueButtonText,
