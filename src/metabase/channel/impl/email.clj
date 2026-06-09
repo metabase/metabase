@@ -24,7 +24,6 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
-   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -287,9 +286,7 @@
         (.write os ^bytes pdf-bytes))
       {:type         :attachment
        :content-type "application/pdf"
-       :file-name    (format "%s_%s.pdf"
-                             (or (not-empty (some-> dashboard-name str/trim)) "dashboard")
-                             (streaming.common/export-filename-timestamp))
+       :file-name    (str (or (not-empty (some-> dashboard-name str/trim)) "dashboard") ".pdf")
        :content      (.. temp-file toURI toURL)
        :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
     (catch Throwable e

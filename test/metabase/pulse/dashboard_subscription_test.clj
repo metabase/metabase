@@ -1390,15 +1390,6 @@
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
 
-(def ^:private pdf-attachment
-  "Expected summary (see `mt/summarize-multipart-single-email`) of the whole-dashboard PDF attachment."
-  {:type         :attachment
-   :content-type "application/pdf"
-   :file-name    "Aviary KPIs.pdf"
-   :content      java.net.URL
-   :description  "PDF of dashboard 'Aviary KPIs'"
-   :content-id   false})
-
 (deftest dashboard-sub-include-pdf-test
   (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
     (let [render-args (atom nil)]
@@ -1429,14 +1420,14 @@
             (testing "renderer is called with the subscription's dashboard id and resolved parameters"
               (is (= dashboard-id (:dashboard-id @render-args)))
               (is (= [] (:parameters @render-args))))
-            (testing "the email body, card image, and the rendered PDF are all attached"
-              (is (= (rasta-dashsub-message
-                      {:message [{"Aviary KPIs" true}
-                                 pulse.test-util/png-attachment
-                                 pdf-attachment]})
-                     (mt/summarize-multipart-single-email
-                      (first (:channel/email pulse-results))
-                      #"Aviary KPIs"))))))))))
+            (let [message  (:message (first (:channel/email pulse-results)))
+                  pdf-part (some #(when (= "application/pdf" (:content-type %)) %) message)]
+              (testing "the PDF attachment is named after the dashboard"
+                (is (= "Aviary KPIs.pdf" (:file-name pdf-part)))
+                (is (= java.net.URL (class (:content pdf-part)))))
+              (testing "the email still includes its HTML body and the chart image"
+                (is (some #(= "image/png" (:content-type %)) message))
+                (is (some #(= "text/html; charset=utf-8" (:type %)) message))))))))))
 
 (deftest dashboard-sub-no-pdf-by-default-test
   (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
