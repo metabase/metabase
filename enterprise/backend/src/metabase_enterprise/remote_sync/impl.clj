@@ -357,9 +357,10 @@
   [snapshot opts dep-ids]
   (if (empty? dep-ids)
     []
-    (let [rows     (map (fn [[mt id]] {:model_type mt :model_id id}) dep-ids)
-          entities (into [] (spec/extract-entities-for-rows rows))
-          specs    (mapv (fn [e] [(source/entity->file-spec opts e) (:entity_id e)]) entities)]
+    (let [specs (->> dep-ids
+                     (map (fn [[mt id]] {:model_type mt :model_id id}))
+                     spec/extract-entities-for-rows
+                     (map (fn [e] [(source/entity->file-spec opts e) (:entity_id e)])))]
       (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
         (mapv first specs)))))
 
