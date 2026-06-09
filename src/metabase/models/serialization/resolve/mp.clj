@@ -107,12 +107,12 @@
 
   For the same reason this single message covers both a never-existed miss and an inactive
   (deleted / re-uploaded) match — see [[find-table]]. Branching the wording on whether an inactive
-  row exists would be an existence oracle, so the deletion hint is unconditional.
+  row exists would be an existence oracle, so both cases get this identical message.
 
   The LLM can still self-correct in one turn by calling `entity_details` on the parent
   database; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
-  (ex-info (tru "No table found matching portable FK {0} — it may not exist, or may have been deleted. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
+  (ex-info (tru "No table found matching portable FK {0}. Call `entity_details` with entity-type `database` and the database''s numeric id to list available tables and schemas, then retry with an exact portable FK from the response."
                 (pr-str path))
            {:status-code  400
             :error        :unknown-table
