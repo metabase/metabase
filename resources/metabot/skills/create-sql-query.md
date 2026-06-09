@@ -1,3 +1,10 @@
+---
+id: create-sql-query
+title: Creating SQL queries
+description: Creating a new SQL query with create_sql_query — load before writing SQL for the read-only contract, model reference syntax ({{#model_id}}), and identifier quoting.
+tools: [create_sql_query]
+priority: 50
+---
 **When to use:**
 - User asks for SQL queries but isn't editing an existing one
 - You want to create SQL using models ({{#model_id}} syntax) or tables
@@ -33,7 +40,7 @@
 **For transformations**, use CTEs:
 ```sql
 WITH step1 AS (
-  SELECT * FROM {{ '{{' }}#model_id{{ '}}' }} AS name_alias
+  SELECT * FROM {{#model_id}} AS name_alias
 ),
 step2 AS (
   SELECT ... FROM step1

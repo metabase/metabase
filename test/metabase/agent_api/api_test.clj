@@ -686,6 +686,25 @@
                           {:name         "Bad Dashboard"
                            :question_ids [999999]})))
 
+(deftest create-entity-url-test
+  (testing "create question/dashboard return a frontend URL"
+    (testing "absolute when site-url is set"
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+        (let [construct (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                              {:query (orders-query :limit 1)})
+              q         (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                              {:name "URL Q" :query (:query construct)})
+              d         (mt/user-http-request :rasta :post 200 "agent/v1/dashboard" {:name "URL D"})]
+          (is (= (str "https://mb.example.com/question/" (:id q)) (:url q)))
+          (is (= (str "https://mb.example.com/dashboard/" (:id d)) (:url d)))
+          (t2/delete! :model/Card :id (:id q))
+          (t2/delete! :model/Dashboard :id (:id d)))))
+    (testing "relative when site-url is unset (no \"null\" prefix)"
+      (mt/with-temporary-setting-values [site-url nil]
+        (let [d (mt/user-http-request :rasta :post 200 "agent/v1/dashboard" {:name "Relative URL D"})]
+          (is (= (str "/dashboard/" (:id d)) (:url d)))
+          (t2/delete! :model/Dashboard :id (:id d)))))))
+
 (deftest create-collection-test
   (testing "Creates a root-level collection"
     (mt/with-current-user (mt/user->id :crowberto)
