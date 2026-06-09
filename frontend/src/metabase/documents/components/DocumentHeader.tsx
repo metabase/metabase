@@ -18,6 +18,7 @@ import {
   Button,
   Flex,
   Icon,
+  Loader,
   Menu,
   Text,
   TextInput,
@@ -86,13 +87,27 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const { prepareForPrint } = usePrintContext();
+  const { prepareForPrint, isPrinting } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handlePrint = useCallback(async () => {
     await prepareForPrint();
     window.print();
     trackDocumentPrint(document);
+    setIsMenuOpen(false);
   }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPrinting) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPrinting],
+  );
 
   return (
     <Flex
@@ -188,7 +203,11 @@ export const DocumentHeader = ({
           </Tooltip>
         )}
         {!document?.archived && (
-          <Menu position="bottom-end">
+          <Menu
+            position="bottom-end"
+            opened={isMenuOpen}
+            onChange={handleMenuChange}
+          >
             <Menu.Target>
               <ActionIcon
                 variant="subtle"
@@ -202,6 +221,9 @@ export const DocumentHeader = ({
             <Menu.Dropdown>
               <Menu.Item
                 leftSection={<Icon name="document" />}
+                rightSection={isPrinting ? <Loader size="xs" /> : undefined}
+                closeMenuOnClick={false}
+                disabled={isPrinting}
                 onClick={handlePrint}
               >
                 {t`Print Document`}
