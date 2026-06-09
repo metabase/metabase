@@ -8,7 +8,6 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [methodical.core :as methodical])
   (:import
@@ -88,12 +87,13 @@
         entries      (volatile! [])
         version      (->> stream
                           (map-indexed (fn [idx entity]
-                                         (u/prog1 (entity->file-spec opts entity)
+                                         (let [spec (entity->file-spec opts entity)]
                                            (vswap! entries conj {:model_type (-> entity :serdes/meta last :model)
                                                                  :entity_id  (:entity_id entity)
-                                                                 :path       (:path <>)})
+                                                                 :path       (:path spec)})
                                            (remote-sync.task/update-progress!
-                                            task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))))
+                                            task-id (-> (min (inc idx) stream-count) (/ stream-count) (* 0.65) (+ 0.3)))
+                                           spec)))
                           (source.p/write-files! snapshot message))]
     {:version version :entries @entries}))
 

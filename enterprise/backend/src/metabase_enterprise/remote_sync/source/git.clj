@@ -255,11 +255,11 @@
 (defn- commit-tree!
   "Builds a commit on the branch tip and pushes it. Inserts `upserts` (file specs with :path/:content)
   as new blobs, then copies forward each existing tree entry whose path is not being upserted and for
-  which `(keep-existing? path)` returns true. Commits on the current version as parent, updates the
+  which `(keep-existing?-fn path)` returns true. Commits on the current version as parent, updates the
   branch ref, and pushes.
 
   Returns the new commit sha. Throws ExceptionInfo if the write or push fails."
-  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts keep-existing?]
+  [{:keys [^Git git ^String version ^String branch] :as snapshot} ^String message upserts keep-existing?-fn]
   (let [repo         (.getRepository git)
         branch-ref   (qualify-branch branch)
         parent-id    (.resolve repo version)
@@ -273,7 +273,7 @@
             (.add builder (doto (DirCacheEntry. ^String path)
                             (.setFileMode FileMode/REGULAR_FILE)
                             (.setObjectId blob-id)))))
-        ;; Copy forward existing entries that aren't being upserted and that `keep-existing?` keeps.
+        ;; Copy forward existing entries that aren't being upserted and that `keep-existing?-fn` keeps.
         ;; Entries are copied by object id (no blob re-read).
         (when parent-id
           (with-open [rev-walk  (RevWalk. repo)
@@ -283,7 +283,7 @@
             (while (.next tree-walk)
               (let [path (.getPathString tree-walk)]
                 (when (and (not (contains? upsert-paths path))
-                           (keep-existing? path))
+                           (keep-existing?-fn path))
                   (.add builder (doto (DirCacheEntry. path)
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))))))))
