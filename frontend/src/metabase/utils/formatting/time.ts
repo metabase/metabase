@@ -53,12 +53,15 @@ export function formatDurationLong(durationMs: number): string {
     const ms = Math.round(durationMs);
     return t`${ms}ms`;
   }
-  if (durationMs < 60_000) {
-    const seconds = (durationMs / 1_000).toFixed(1);
+  // Round to the tenth-of-a-second we display before picking a branch, so e.g.
+  // 59_999ms reads as "1m 0s" rather than "60.0s".
+  const roundedMs = Math.round(durationMs / 100) * 100;
+  if (roundedMs < 60_000) {
+    const seconds = (roundedMs / 1_000).toFixed(1);
     return t`${seconds}s`;
   }
-  const d = dayjs.duration(durationMs);
-  if (durationMs < 3_600_000) {
+  const d = dayjs.duration(roundedMs);
+  if (roundedMs < 3_600_000) {
     const minutes = d.minutes();
     const seconds = d.seconds();
     return t`${minutes}m ${seconds}s`;
