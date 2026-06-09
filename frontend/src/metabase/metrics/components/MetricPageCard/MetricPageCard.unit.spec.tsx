@@ -5,6 +5,7 @@ import {
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
+  setupForbiddenCardEndpoints,
 } from "__support__/server-mocks";
 import { PERMISSION_ERROR } from "__support__/server-mocks/constants";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -61,18 +62,7 @@ function setup() {
 
 describe("MetricPageCard", () => {
   it("renders the unauthorized state when the card itself is not readable", async () => {
-    fetchMock.get(`path:/api/card/${CARD_ID}`, {
-      status: 403,
-      body: PERMISSION_ERROR,
-    });
-    fetchMock.get(`path:/api/card/${CARD_ID}/query_metadata`, {
-      status: 403,
-      body: PERMISSION_ERROR,
-    });
-    fetchMock.post(`path:/api/card/${CARD_ID}/query`, {
-      status: 403,
-      body: PERMISSION_ERROR,
-    });
+    setupForbiddenCardEndpoints(CARD_ID);
 
     setup();
 
