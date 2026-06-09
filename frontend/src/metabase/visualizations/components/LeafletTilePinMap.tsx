@@ -185,19 +185,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      api
-        .request({
-          url: tileUrl,
-          method: "GET",
-          signal: controller.signal,
-          rawResponse: true,
-        })
-        .then((response) => response.blob())
-        .then((blob) => readAsDataURL(blob))
-        .then((src) => {
-          tile.src = src;
-          return tile.decode();
-        })
+      loadImage(tile, tileUrl, controller.signal)
         .then(() => {
           if (controller.signal.aborted) {
             return;
@@ -222,6 +210,25 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       return tile;
     };
   };
+}
+
+async function loadImage(
+  img: HTMLImageElement,
+  url: string,
+  signal: AbortSignal,
+) {
+  const response = await api.request({
+    method: "GET",
+    url,
+    signal,
+    rawResponse: true,
+  });
+  const blob = await response.blob();
+  const src = await readAsDataURL(blob);
+
+  img.src = src;
+  // img.decode waits for the image to be loaded and throws if it fails
+  await img.decode();
 }
 
 function readAsDataURL(blob: Blob): Promise<string> {
