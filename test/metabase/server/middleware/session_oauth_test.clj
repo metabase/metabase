@@ -41,8 +41,11 @@
   [token]
   (oidc.store/revoke-token (:token-store (oauth-server/get-provider)) token))
 
-(defn- in-one-hour [] (+ (System/currentTimeMillis) 3600000))
-(defn- one-hour-ago [] (- (System/currentTimeMillis) 3600000))
+;; Wall-clock epoch millis for token expiry timestamps (not duration measurements) — use Date/inst-ms
+;; rather than System/currentTimeMillis, matching the oauth-server store tests.
+(defn- now-ms [] (inst-ms (java.util.Date.)))
+(defn- in-one-hour [] (+ (now-ms) 3600000))
+(defn- one-hour-ago [] (- (now-ms) 3600000))
 
 ;;; ----------------------------------------- scope mapping (the trust hinge) -----------------------------------------
 
