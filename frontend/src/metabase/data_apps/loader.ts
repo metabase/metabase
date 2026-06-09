@@ -1,11 +1,13 @@
 import type * as React from "react";
 
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { getSubpathSafeUrl } from "metabase/urls";
 
-import { type DataAppHostApi, createDataAppSandbox } from "./sandbox";
+import { createDataAppSandbox } from "./sandbox";
 
 export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;
+  theme?: MetabaseTheme;
 }
 
 /**
@@ -40,14 +42,13 @@ export function instantiateDataAppBundle(
   const sandbox = createDataAppSandbox(label, targetWindow);
   const factory = sandbox.evaluate(code);
 
-  const hostApi: DataAppHostApi = {};
-  const def = factory(hostApi);
+  const def = factory();
 
   if (!def || typeof def.component !== "function") {
     throw new Error(
-      "Factory return value is missing a `component` function (expected { component })",
+      "Factory return value is missing a `component` function (expected { component, theme? })",
     );
   }
 
-  return { component: def.component };
+  return { component: def.component, theme: def.theme };
 }

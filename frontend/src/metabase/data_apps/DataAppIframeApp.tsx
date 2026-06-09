@@ -3,9 +3,16 @@ import createCache from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { getCspNonce } from "metabase/utils/csp";
 
+import { DataAppProvider } from "./components/DataAppProvider";
 import { fetchDataAppBundleCode, instantiateDataAppBundle } from "./loader";
+
+interface LoadedApp {
+  component: ComponentType<Record<string, unknown>>;
+  theme: MetabaseTheme | undefined;
+}
 
 /**
  * Reads the requested data-app name from the iframe URL.
@@ -29,13 +36,18 @@ interface BundleHostProps {
 }
 
 /**
- * Fetches + sandboxes the bundle, then renders the resulting component
- * under the iframe-side Emotion cache.
+ * Fetches + sandboxes the bundle, then wraps the resulting component
+ * with `DataAppProvider` (host-realm Redux store, SDK theme, portal
+ * container) and renders it under the iframe-side Emotion cache.
+ *
+ * `DataAppProvider` lives here in host code (not inside the bundle), so
+ * the SDK's `setState`-via-listener paths (drill popups, plugin init,
+ * etc.) run in host realm and don't hit the React-18-batching-through-
+ * Near-Membrane bug. The bundle's `App.tsx` returns pure content; the
+ * factory passes the theme through as `{ component, theme }`.
  */
 function BundleHost({ name, cache }: BundleHostProps) {
-  const [AppComponent, setAppComponent] = useState<ComponentType<
-    Record<string, unknown>
-  > | null>(null);
+  const [loaded, setLoaded] = useState<LoadedApp | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,11 +55,14 @@ function BundleHost({ name, cache }: BundleHostProps) {
 
     const load = async () => {
       const code = await fetchDataAppBundleCode(name);
+
       if (cancelled) {
         return;
       }
-      const { component } = instantiateDataAppBundle(code, name, window);
-      setAppComponent(() => component);
+
+      const { component, theme } = instantiateDataAppBundle(code, name, window);
+
+      setLoaded({ component, theme });
     };
 
     load().catch((e: unknown) => {
@@ -64,12 +79,18 @@ function BundleHost({ name, cache }: BundleHostProps) {
   if (error) {
     return <div style={{ padding: 16, color: "#b00" }}>Error: {error}</div>;
   }
-  if (!AppComponent) {
+
+  if (!loaded) {
     return <div style={{ padding: 16 }}>Loading…</div>;
   }
+
+  const { component: AppComponent, theme } = loaded;
+
   return (
     <CacheProvider value={cache}>
-      <AppComponent />
+      <DataAppProvider theme={theme}>
+        <AppComponent />
+      </DataAppProvider>
     </CacheProvider>
   );
 }
