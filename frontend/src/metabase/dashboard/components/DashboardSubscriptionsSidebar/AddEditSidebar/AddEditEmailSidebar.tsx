@@ -32,7 +32,7 @@ import {
   type User,
 } from "metabase-types/api";
 
-import S from "./AddEditEmailSidebar.module.css";
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";

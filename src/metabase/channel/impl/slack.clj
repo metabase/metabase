@@ -137,13 +137,22 @@
 
 (def ^:private SlackMessage
   [:map {:closed true}
-   [:channel :string]
-   [:blocks  [:sequential :map]]])
+   [:channel              :string]
+   [:blocks               [:sequential :map]]
+   [:pdf {:optional true} [:maybe [:map
+                                   [:bytes    bytes?]
+                                   [:filename :string]]]]])
 
 (mu/defmethod channel/send! :channel/slack
-  [_channel {:keys [channel blocks]} :- SlackMessage]
+  [_channel {:keys [channel blocks pdf]} :- SlackMessage]
   (doseq [block-chunk (partition-all 50 blocks)]
-    (slack/post-chat-message! {:channel channel :blocks block-chunk})))
+    (slack/post-chat-message! {:channel channel :blocks block-chunk}))
+  (when pdf
+    ;; A PDF upload failing must not abort the rest of the subscription.
+    (try
+      (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel)
+      (catch Throwable e
+        (log/error e "Error sharing dashboard subscription PDF to Slack; skipping PDF")))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    System Event Notifications                                   ;;
@@ -233,11 +242,23 @@
                            :fields filter-fields})]
     (filter some? [header-section filter-section link-section])))
 
+(defn- dashboard-pdf
+  "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails."
+  [dashboard creator-id parameters]
+  (try
+    (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters))]
+      {:bytes    pdf-bytes
+       :filename (str (or (not-empty (some-> (:name dashboard) str/trim)) "dashboard") ".pdf")})
+    (catch Throwable e
+      (log/error e "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment")
+      nil)))
+
 (mu/defmethod channel/render-notification [:channel/slack :notification/dashboard] :- [:sequential SlackMessage]
-  [_channel-type {:keys [payload creator]} {:keys [recipients]}]
+  [_channel-type {:keys [payload creator creator_id]} {:keys [recipients include_pdf]}]
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
+        pdf              (when include_pdf (dashboard-pdf dashboard creator_id all-params))
         blocks           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
                                ;; Isolate each part: rendering one part (e.g. realizing its Hiccup into a PNG)
                                ;; must not abort the whole subscription. On failure, substitute an error
@@ -252,5 +273,6 @@
                               flatten
                               (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]
-      {:channel channel-id
-       :blocks  blocks})))
+      (cond-> {:channel channel-id
+               :blocks  blocks}
+        pdf (assoc :pdf pdf)))))

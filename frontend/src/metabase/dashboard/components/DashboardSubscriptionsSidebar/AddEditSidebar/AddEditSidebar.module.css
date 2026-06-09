@@ -3,5 +3,5 @@
 }
 
 .SwitchInput {
-  z-index: -1;
+  z-index: -1; /* This allows icons with tooltips in the label */
 }

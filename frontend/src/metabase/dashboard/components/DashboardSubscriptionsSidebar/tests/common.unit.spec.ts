@@ -253,6 +253,31 @@ describe("DashboardSubscriptionsSidebar", () => {
 
       expect(hasBasicFilterOptions(screen)).toBe(true);
     });
+
+    it("should send the include_pdf channel detail to the backend when the PDF switch is on", async () => {
+      setup({ isAdmin: false, email: false, slack: true });
+
+      await screen.findByText("Send this dashboard to Slack");
+
+      // Pick a channel so the subscription is valid and can be sent
+      await userEvent.type(
+        await screen.findByPlaceholderText("Pick a user or channel..."),
+        "#general",
+      );
+
+      await userEvent.click(
+        await screen.findByRole("switch", {
+          name: /Attach a PDF of the dashboard/,
+        }),
+      );
+
+      await userEvent.click(await screen.findByText("Send to Slack now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.channel).toBe("#general");
+      expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
   });
 
   describe("Email Subscription sidebar", () => {

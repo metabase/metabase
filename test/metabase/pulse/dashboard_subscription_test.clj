@@ -1466,3 +1466,31 @@
                    (mt/summarize-multipart-single-email
                     (first (:channel/email pulse-results))
                     #"Aviary KPIs")))))))))
+
+(deftest dashboard-sub-slack-include-pdf-test
+  (testing "A Slack channel with :include_pdf renders the dashboard PDF and carries it on the message"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general" :include_pdf true}}]
+        (let [render-args (atom nil)]
+          (with-redefs [channel.render/render-dashboard-to-pdf
+                        (fn [dashboard-id user-id parameters]
+                          (reset! render-args {:dashboard-id dashboard-id :user-id user-id :parameters parameters})
+                          (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+            (pulse.test-util/slack-test-setup!
+             (let [results (pulse.test-util/with-captured-channel-send-messages!
+                             (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   msg     (first (:channel/slack results))]
+               (testing "renderer is called with the subscription's dashboard id"
+                 (is (= dashboard-id (:dashboard-id @render-args))))
+               (testing "the slack message carries the rendered PDF"
+                 (is (bytes? (-> msg :pdf :bytes)))
+                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))))))))))

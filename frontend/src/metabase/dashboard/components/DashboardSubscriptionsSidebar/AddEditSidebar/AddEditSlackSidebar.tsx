@@ -8,23 +8,24 @@ import {
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
-import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { SlackChannelField } from "metabase/notifications/channels/SlackChannelField";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { Icon, Title } from "metabase/ui";
+import { Group, Icon, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Channel,
-  ChannelApiResponse,
-  ChannelSpec,
-  ChannelSpecs,
-  Dashboard,
-  ScheduleSettings,
+import {
+  type Channel,
+  type ChannelApiResponse,
+  type ChannelSpec,
+  type ChannelSpecs,
+  type Dashboard,
+  DataPermissionValue,
+  type ScheduleSettings,
 } from "metabase-types/api";
 
+import S from "./AddEditSidebar.module.css";
 import { CaveatMessage } from "./CaveatMessage";
 import DefaultParametersSection from "./DefaultParametersSection";
 import { DeleteSubscriptionAction } from "./DeleteSubscriptionAction";
@@ -73,6 +74,21 @@ export const AddEditSlackSidebar = ({
     pulse,
     formInput.channels as ChannelSpecs,
   );
+
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  );
+
+  // Whether to share a server-rendered PDF of the whole dashboard to the channel.
+  const includePdf = !!allowDownload && !!channel.details?.include_pdf;
+
+  const handleToggleIncludePdf = (checked: boolean) => {
+    onChannelPropertyChange("details", {
+      ...channel.details,
+      include_pdf: checked,
+    });
+  };
 
   return (
     <Sidebar
@@ -142,18 +158,50 @@ export const AddEditSlackSidebar = ({
         )}
         <div
           className={cx(
-            CS.textBold,
             CS.py2,
-            CS.flex,
-            CS.justifyBetween,
-            CS.alignCenter,
+
             CS.borderTop,
           )}
         >
-          <Title order={4}>{t`Don't send if there aren't results`}</Title>
-          <Toggle
-            value={pulse.skip_if_empty || false}
+          <Switch
+            checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
+            label={
+              <Text fw="bold">{t`Don't send if there aren't results`}</Text>
+            }
+            labelPosition="left"
+            classNames={{
+              body: S.SwitchBody,
+            }}
+          />
+
+          <Switch
+            mt="1rem"
+            aria-label={t`Attach a PDF of the dashboard`}
+            checked={includePdf}
+            onChange={(e) => handleToggleIncludePdf(e.target.checked)}
+            disabled={!allowDownload}
+            labelPosition="left"
+            classNames={{
+              body: S.SwitchBody,
+              input: S.SwitchInput,
+            }}
+            label={
+              <Group gap={0}>
+                <Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  ml="0.5rem"
+                  size={12}
+                  tooltip={
+                    allowDownload
+                      ? t`Shares a server-rendered PDF of the whole dashboard.`
+                      : t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
+                  }
+                />
+              </Group>
+            }
           />
         </div>
         {pulse.id != null && (

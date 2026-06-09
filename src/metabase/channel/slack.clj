@@ -262,10 +262,11 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [file-id filename]}]
+  [& {:keys [file-id filename channel-id]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
-                      {:query-params {:files (json/encode [{:id file-id, :title filename}])}}))
+                      {:query-params (cond-> {:files (json/encode [{:id file-id, :title filename}])}
+                                       channel-id (assoc :channel_id channel-id))}))
         complete-response
         (try
           (complete!)
@@ -311,6 +312,28 @@
     (u/prog1 {:url file-url
               :id file_id}
       (log/debug "Uploaded image" (:url <>)))))
+
+(defn- join-channel!
+  "Best-effort: have the bot join `channel-id`. Sharing a file into a channel requires membership (Slack returns
+  `not_in_channel` otherwise); posting messages does not, since that uses `chat:write.public`. Joining only works for
+  public channels — private channels need the bot invited, so a failure here is logged and ignored."
+  [channel-id]
+  (try
+    (POST "conversations.join" {:query-params {:channel channel-id}})
+    (catch Throwable e
+      (log/warnf e "Could not join Slack channel %s; a file share may fail" channel-id))))
+
+(mu/defn upload-file-to-channel!
+  "Upload `file` bytes to Slack and share them into `channel-id` as a downloadable file. Returns the uploaded file URL.
+  Joins the channel first, since file sharing requires membership."
+  [file       :- NonEmptyByteArray
+   filename   :- ms/NonBlankString
+   channel-id :- ms/NonBlankString]
+  {:pre [(channel.settings/slack-configured?)]}
+  (join-channel! channel-id)
+  (let [{:keys [upload_url file_id]} (get-upload-url! filename file)]
+    (upload-file-to-url! upload_url file)
+    (complete! {:file-id file_id :filename filename :channel-id channel-id})))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
