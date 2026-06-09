@@ -76,19 +76,23 @@ jobs:
           github-token-2: ${{ secrets.GITHUB_TOKEN }}
 
   # --- Legacy escape hatch: explicit depth backports -----------------------
-  # `double-backport`/`triple-backport` keep their original behavior — backport to
-  # CURRENT_VERSION and the 1–2 lines below it — independent of `major_version_support`.
-  # Kept for the short term for one-off manual depth control. If a branch from the
-  # primary path above already exists, create-backport simply errors on the duplicate.
+  # `single-backport`/`double-backport`/`triple-backport` keep their original behavior —
+  # backport to CURRENT_VERSION and the 0–2 lines below it — independent of
+  # `major_version_support`. `single-backport` is a fallback for when the primary path
+  # can't be used and only CURRENT_VERSION is wanted. Kept for the short term for one-off
+  # manual depth control. If a branch from the primary path above already exists,
+  # create-backport simply errors on the duplicate.
   legacy-backport:
     if:
       | # triggered only by the legacy depth labels, at merge or when added afterwards
       github.event.pull_request.merged == true && (
         github.event.action == 'closed' && (
+          contains(github.event.pull_request.labels.*.name, 'single-backport') ||
           contains(github.event.pull_request.labels.*.name, 'double-backport') ||
           contains(github.event.pull_request.labels.*.name, 'triple-backport')
         ) ||
         github.event.action == 'labeled' && (
+          github.event.label.name == 'single-backport' ||
           github.event.label.name == 'double-backport' ||
           github.event.label.name == 'triple-backport'
         )
