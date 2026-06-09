@@ -40,7 +40,7 @@
              :url     (child-url url path)
              :headers {"x-api-key" api_key}
              :as      :json
-             ;; we handle non-2xx ourselves below
+             ;; let clj-http throw on non-2xx; the catch below wraps + sanitizes it
              :throw-exceptions true
              :socket-timeout   30000
              :connection-timeout 10000}
@@ -89,9 +89,17 @@
    (or nil when the import reports no changes)."
   [instance {:keys [url token branch]}]
   (let [branch        (or branch "main")
-        {coll-id :id} (:body (child-request! instance :post "/api/collection"
-                                             {:form-params  {:name synced-collection-name}
-                                              :content-type :json}))]
+        ;; Idempotent: reuse an existing "Robot DE" if present rather than creating a second
+        ;; one. A prior provision that failed after creating the collection but before the
+        ;; settings PUT leaves an orphan that the (is_remote_synced-gated) deprovision cleanup
+        ;; can't see; reusing it here absorbs that orphan instead of accumulating duplicates.
+        existing      (->> (:body (child-request! instance :get "/api/collection" {:as :json}))
+                           (filter #(= synced-collection-name (:name %)))
+                           first)
+        coll-id       (or (:id existing)
+                          (:id (:body (child-request! instance :post "/api/collection"
+                                                      {:form-params  {:name synced-collection-name}
+                                                       :content-type :json}))))]
     (child-request! instance :put "/api/ee/remote-sync/settings"
                     {:form-params  {:remote-sync-url    url
                                     :remote-sync-token  token
@@ -113,6 +121,8 @@
    concurrent provisions can't both grab the same instance. Returns the claimed instance,
    or throws 404 (no such instance) / 409 (already provisioned)."
   [instance-id workspace-id]
+  ;; Existence probe only (so a missing instance is 404, not 409); the conditional update
+  ;; below is the actual compare-and-swap.
   (let [instance (t2/select-one :model/WorkspaceInstance :id instance-id)]
     (when-not instance
       (throw (ex-info "Pool instance not found" {:status-code 404 :instance_id instance-id})))
@@ -129,11 +139,17 @@
    roll back a provision whose child steps failed. Never throws — rollback must not mask the
    original error."
   [instance]
+  ;; Two independent best-effort steps: a failed child unbind must NOT skip freeing the
+  ;; appdb row (the pool slot), and neither step may throw — provision!'s catch re-throws
+  ;; the original error after this, which a throw here would mask.
   (try
     (child-request! instance :delete "/api/ee/workspace-instance/current" {:as :string})
     (catch Exception _e
       (log/warnf "Rollback unbind failed on instance %d (continuing)" (:id instance))))
-  (t2/update! :model/WorkspaceInstance :id (:id instance) {:workspace_id nil}))
+  (try
+    (t2/update! :model/WorkspaceInstance :id (:id instance) {:workspace_id nil})
+    (catch Exception _e
+      (log/warnf "Rollback appdb-free failed on instance %d" (:id instance)))))
 
 (defn provision!
   "Bind workspace `workspace-id` to the free pool instance `instance-id`.

@@ -62,38 +62,62 @@
                 (is (instance? java.io.File (:content part)))))))))))
 
 (deftest provision-with-remote-sync-test
-  (testing "provision! with remote-sync config also creates the collection, sets settings, and triggers import"
+  (testing "provision! with remote-sync config looks up/creates the collection, sets settings, triggers import"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
       (let [{:keys [ws-id]} (provisioned-workspace!)
             inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
                                              {:url "https://child.example.com" :api_key "k"})
             calls   (atom [])]
-        ;; Stub returns bodies the orchestrator reads: a collection id, then an import task id.
+        ;; GET /api/collection -> [] (no existing Robot DE) so a POST creates one (id 99).
         (with-redefs [http/request (fn [req]
                                      (swap! calls conj req)
                                      {:status 200
                                       :body   (cond
-                                                (= "/api/collection" (re-find #"/api/collection$" (:url req)))
+                                                (and (= :get (:method req)) (re-find #"/api/collection$" (:url req)))
+                                                []
+                                                (and (= :post (:method req)) (re-find #"/api/collection$" (:url req)))
                                                 {:id 99}
                                                 (re-find #"/remote-sync/import" (:url req))
                                                 {:task_id "task-1"}
                                                 :else {})})]
           (deployment/provision! ws-id inst-id {:url "https://repo.example/x.git" :token "tok" :branch "main"}))
-        (let [paths (map #(-> % :url (->> (re-find #"/api/.*"))) @calls)]
-          (testing "four child calls in order: bind, collection, settings, import"
-            (is (= 4 (count @calls)))
-            (is (= [:post :post :put :post] (map :method @calls)))
-            (is (= ["/api/ee/advanced-config/"
-                    "/api/collection"
-                    "/api/ee/remote-sync/settings"
-                    "/api/ee/remote-sync/import"]
-                   paths)))
+        (let [steps (map (juxt :method #(re-find #"/api/.*" (:url %))) @calls)]
+          (testing "child calls in order: bind, list collections, create collection, settings, import"
+            (is (= [[:post "/api/ee/advanced-config/"]
+                    [:get  "/api/collection"]
+                    [:post "/api/collection"]
+                    [:put  "/api/ee/remote-sync/settings"]
+                    [:post "/api/ee/remote-sync/import"]]
+                   steps)))
           (testing "the settings call pins the created collection and points at the repo"
-            (let [settings-req (nth @calls 2)
-                  fp           (:form-params settings-req)]
+            (let [fp (:form-params (nth @calls 3))]
               (is (= "https://repo.example/x.git" (:remote-sync-url fp)))
               (is (= "read-write" (:remote-sync-type fp)))
               (is (= {99 true} (:collections fp))))))))))
+
+(deftest provision-reuses-existing-synced-collection-test
+  (testing "provision! reuses an existing Robot DE collection instead of creating a duplicate"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
+      (let [{:keys [ws-id]} (provisioned-workspace!)
+            inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                             {:url "https://child.example.com" :api_key "k"})
+            calls   (atom [])]
+        ;; GET /api/collection -> an existing Robot DE (id 42); no POST create should happen.
+        (with-redefs [http/request (fn [req]
+                                     (swap! calls conj req)
+                                     {:status 200
+                                      :body   (cond
+                                                (and (= :get (:method req)) (re-find #"/api/collection$" (:url req)))
+                                                [{:id 42 :name "Robot DE"}]
+                                                (re-find #"/remote-sync/import" (:url req))
+                                                {:task_id "t"}
+                                                :else {})})]
+          (deployment/provision! ws-id inst-id {:url "https://repo/x.git" :token "tok"}))
+        (testing "no POST /api/collection (reused id 42)"
+          (is (not-any? #(and (= :post (:method %)) (re-find #"/api/collection$" (:url %))) @calls)))
+        (testing "settings pins the reused collection"
+          (let [settings-req (first (filter #(re-find #"/remote-sync/settings" (:url %)) @calls))]
+            (is (= {42 true} (:collections (:form-params settings-req))))))))))
 
 (deftest provision-rejects-busy-instance-test
   (testing "provision! 409s when the target instance is already provisioned"
