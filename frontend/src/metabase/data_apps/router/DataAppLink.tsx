@@ -3,8 +3,10 @@ import { Link } from "react-router";
 
 import { DataAppRouterContext, getBasename } from "./DataAppRouter";
 
-interface DataAppLinkProps
-  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
+interface DataAppLinkProps extends Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "href"
+> {
   to: string;
   children?: ReactNode;
 }

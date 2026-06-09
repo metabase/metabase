@@ -14,10 +14,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import {
-  useDeleteDataAppMutation,
-  useListDataAppsQuery,
-} from "metabase/api";
+import { useDeleteDataAppMutation, useListDataAppsQuery } from "metabase/api";
 
 import { DataAppListItem } from "./DataAppListItem";
 import S from "./ManageDataAppsPage.module.css";
