@@ -50,12 +50,12 @@
                     response))))))))
 
 (deftest protected-resource-metadata-bare-path-test
-  (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves the same metadata as JSON (BOT-1617)"
+  (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [response (mt/user-http-request :crowberto :get 200
                                            ".well-known/oauth-protected-resource")]
-        (is (=? {:resource                "http://localhost:3000/api/mcp"
-                 :authorization_servers   ["http://localhost:3000"]
+        (is (=? {:resource                 "http://localhost:3000/api/metabase-mcp"
+                 :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))))))
 
