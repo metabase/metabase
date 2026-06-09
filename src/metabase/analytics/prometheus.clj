@@ -200,7 +200,7 @@
                       (f)))
                   (catch Throwable e
                     (log/warn e "Error running pull collector" id)))))
-            (ArrayList. 0))]
+            [])]
     (delay
       (collector/named
        {:name      "metabase_application_pull"
