@@ -20,7 +20,7 @@ import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Icon, Switch, Text, Title } from "metabase/ui";
+import { Group, Icon, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -91,6 +91,23 @@ export const AddEditEmailSidebar = ({
   const allowDownload = pulse.cards?.every(
     (card) => card.download_perms !== DataPermissionValue.NONE,
   );
+
+  // Whether to attach a server-rendered PDF of the whole dashboard. Stored per-channel in
+  // `details.include_pdf` (the same place as `attachment_only`); the BE reads it on the email path.
+  const includePdf =
+    !!allowDownload &&
+    (pulse.channels?.some((channel) => !!channel.details?.include_pdf) ??
+      false);
+
+  const handleToggleIncludePdf = (checked: boolean) => {
+    setPulse({
+      ...pulse,
+      channels: pulse.channels.map((channel) => ({
+        ...channel,
+        details: { ...channel.details, include_pdf: checked },
+      })),
+    });
+  };
 
   useEffect(() => {
     if (isEmbeddingSdk()) {
@@ -193,8 +210,35 @@ export const AddEditEmailSidebar = ({
             }
             labelPosition="left"
             classNames={{
-              body: S.NoResultsBody,
+              body: S.SwitchBody,
             }}
+          />
+          <Switch
+            mt="1rem"
+            checked={includePdf}
+            onChange={(e) => handleToggleIncludePdf(e.target.checked)}
+            disabled={!allowDownload}
+            classNames={{
+              body: S.SwitchBody,
+              input: S.SwitchInput,
+            }}
+            label={
+              <Group gap={0}>
+                <Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  ml="0.5rem"
+                  size={12}
+                  tooltip={
+                    allowDownload
+                      ? t`Attaches a server-rendered PDF of the whole dashboard.`
+                      : t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
+                  }
+                />
+              </Group>
+            }
+            labelPosition="left"
           />
         </div>
         <EmailAttachmentPicker

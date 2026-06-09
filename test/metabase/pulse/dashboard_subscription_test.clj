@@ -8,6 +8,7 @@
    [metabase.channel.email.result-attachment :as email.result-attachment]
    [metabase.channel.impl.slack :as channel.slack]
    [metabase.channel.render.body :as body]
+   [metabase.channel.render.core :as channel.render]
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
@@ -1388,3 +1389,80 @@
               (first (:channel/email pulse-results))
               #"Aviary KPIs"
               #"Dashboard content available in attached files"))))))
+
+(def ^:private pdf-attachment
+  "Expected summary (see `mt/summarize-multipart-single-email`) of the whole-dashboard PDF attachment."
+  {:type         :attachment
+   :content-type "application/pdf"
+   :file-name    "Aviary KPIs.pdf"
+   :content      java.net.URL
+   :description  "PDF of dashboard 'Aviary KPIs'"
+   :content-id   false})
+
+(deftest dashboard-sub-include-pdf-test
+  (testing "A channel with :include_pdf attaches a server-rendered PDF of the whole dashboard (#_subs)"
+    (let [render-args (atom nil)]
+      ;; Stub the renderer: avoid producing a real PDF, and capture the args it's called with.
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [dashboard-id user-id parameters]
+                      (reset! render-args {:dashboard-id dashboard-id
+                                           :user-id      user-id
+                                           :parameters   parameters})
+                      (.getBytes "%PDF-1.4 stub" "UTF-8"))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"
+                                                         :details      {:include_pdf true}}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (testing "renderer is called with the subscription's dashboard id and resolved parameters"
+              (is (= dashboard-id (:dashboard-id @render-args)))
+              (is (= [] (:parameters @render-args))))
+            (testing "the email body, card image, and the rendered PDF are all attached"
+              (is (= (rasta-dashsub-message
+                      {:message [{"Aviary KPIs" true}
+                                 pulse.test-util/png-attachment
+                                 pdf-attachment]})
+                     (mt/summarize-multipart-single-email
+                      (first (:channel/email pulse-results))
+                      #"Aviary KPIs"))))))))))
+
+(deftest dashboard-sub-no-pdf-by-default-test
+  (testing "Without :include_pdf, the renderer is not invoked and no PDF is attached"
+    (let [called? (atom false)]
+      (with-redefs [channel.render/render-dashboard-to-pdf
+                    (fn [& _] (reset! called? true) (byte-array 0))]
+        (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                           :dataset_query (mt/mbql-query orders {:limit 1})}
+                       :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                       :model/DashboardCard _ {:dashboard_id dashboard-id
+                                               :card_id      card-id}
+                       :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                            :dashboard_id dashboard-id}
+                       :model/PulseCard     _ {:pulse_id pulse-id
+                                               :card_id  card-id
+                                               :position 0}
+                       :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                         :channel_type "email"}
+                       :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                       :pulse_channel_id pc-id}]
+          (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+            (is (false? @called?))
+            (is (= (rasta-dashsub-message
+                    {:message [{"Aviary KPIs" true}
+                               pulse.test-util/png-attachment]})
+                   (mt/summarize-multipart-single-email
+                    (first (:channel/email pulse-results))
+                    #"Aviary KPIs")))))))))

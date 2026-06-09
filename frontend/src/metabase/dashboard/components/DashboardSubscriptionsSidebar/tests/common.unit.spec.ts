@@ -286,5 +286,35 @@ describe("DashboardSubscriptionsSidebar", () => {
       expect(payload.cards).toHaveLength(1);
       expect(payload.cards[0].id).toEqual(dashcard.id);
     });
+
+    it("should persist the include_pdf channel detail when the PDF switch is toggled on", async () => {
+      setup();
+
+      await userEvent.click(await screen.findByText("Email it"));
+      await screen.findByText("Email this dashboard");
+
+      const pdfSwitch = await screen.findByRole("switch", {
+        name: /Attach a PDF of the dashboard/,
+      });
+      expect(pdfSwitch).not.toBeChecked();
+
+      await userEvent.click(pdfSwitch);
+      expect(pdfSwitch).toBeChecked();
+
+      // Confirm the flag rides along in the channel details on send
+      await userEvent.click(
+        await screen.findByPlaceholderText(
+          "Enter user names or email addresses",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByText(`${user.first_name} ${user.last_name}`),
+      );
+      await userEvent.click(await screen.findByText("Send email now"));
+
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/pulse/test");
+      const payload = await lastCall?.request?.json();
+      expect(payload.channels[0].details.include_pdf).toBe(true);
+    });
   });
 });

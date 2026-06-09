@@ -1,3 +1,7 @@
-.NoResultsBody {
+.SwitchBody {
   justify-content: space-between;
+}
+
+.SwitchInput {
+  z-index: -1;
 }
