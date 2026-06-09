@@ -62,17 +62,15 @@
 (defn- forwarded-scheme
   "The scheme a TLS-terminating proxy used to reach us, inferred from the same forwarded headers as [[u/https?]]."
   [{:strs [x-forwarded-proto x-forwarded-protocol x-url-scheme x-forwarded-ssl front-end-https]}]
-  (cond
-    ;; Proto-style headers carry the scheme directly. Take the first hop of a comma-separated chain (`https, http`)
-    ;; and lower-case it: URL schemes are case-insensitive (RFC 3986) but normalize-site-url's "http" prefix check
-    ;; is not, so `HTTPS` would be mangled as scheme-less.
-    (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-    (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
-            (str/split #",") first str/trim not-empty u/lower-case-en)
-
-    ;; Boolean-style headers are `on` when the original request was HTTPS.
-    (or x-forwarded-ssl front-end-https)
-    (when (= "on" (u/lower-case-en (or x-forwarded-ssl front-end-https))) "https")))
+  ;; Proto-style headers carry the scheme directly. Take the first hop of a comma-separated chain (`https, http`)
+  ;; and lower-case it: URL schemes are case-insensitive (RFC 3986) but normalize-site-url's "http" prefix check
+  ;; is not, so `HTTPS` would be mangled as scheme-less. Normalize first and branch on the result so a blank
+  ;; proto header (e.g. `X-Forwarded-Proto: ""`) falls through to the boolean-style HTTPS indicators below.
+  (or (some-> (or x-forwarded-proto x-forwarded-protocol x-url-scheme)
+              (str/split #",") first str/trim not-empty u/lower-case-en)
+      ;; Boolean-style headers are `on` when the original request was HTTPS.
+      (when-let [ssl (or x-forwarded-ssl front-end-https)]
+        (when (= "on" (u/lower-case-en ssl)) "https"))))
 
 (defn- maybe-set-site-url* [{headers :headers, uri :uri}]
   (let [{:strs [origin x-forwarded-host host user-agent]} headers]
