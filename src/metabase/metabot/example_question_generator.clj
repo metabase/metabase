@@ -151,9 +151,14 @@
 
 (def ^:private max-batch-size 10)
 
+(def ^:private generation-failed
+  "Sentinel for an item whose generation threw — distinct from one that legitimately produced no
+  questions, so [[generate-example-questions]] can tell an outage apart from an empty result."
+  ::generation-failed)
+
 (defn- process-batch-parallel
   "Process items in parallel batches, matching Python's asyncio.gather behavior.
-  A single item's failure (e.g. an LLM error after retries) yields an empty result for that item
+  A single item's failure (e.g. an LLM error after retries) yields [[generation-failed]] for that item
   rather than aborting the whole run — callers zip results positionally with the source items, so we
   keep one result per item and never reorder."
   [items generate-fn]
@@ -165,8 +170,8 @@
                               (try
                                 (generate-fn item)
                                 (catch Throwable e
-                                  (log/warn e "Example question generation failed for one item; skipping it")
-                                  {:questions []}))))
+                                  (log/warn e "Example question generation failed for one item")
+                                  generation-failed))))
                           batch)]
         (mapv deref futures)))
     (partition-all max-batch-size items))))
@@ -185,14 +190,27 @@
   (log/info "Generating example questions natively"
             {:table-count  (count (:tables payload))
              :metric-count (count (:metrics payload))})
-  (let [table-questions  (if (seq (:tables payload))
-                           (process-batch-parallel (:tables payload) generate-table-questions)
-                           [])
-        metric-questions (if (seq (:metrics payload))
-                           (process-batch-parallel (:metrics payload) generate-metric-questions)
-                           [])]
+  (let [table-results  (if (seq (:tables payload))
+                         (process-batch-parallel (:tables payload) generate-table-questions)
+                         [])
+        metric-results (if (seq (:metrics payload))
+                         (process-batch-parallel (:metrics payload) generate-metric-questions)
+                         [])
+        all-results    (concat table-results metric-results)
+        failures       (count (filter #(= generation-failed %) all-results))
+        produced       (transduce (comp (remove #(= generation-failed %))
+                                        (map (comp count :questions)))
+                                  + 0 all-results)
+        ->questions    (fn [r] (if (= generation-failed r) {:questions []} r))]
+    ;; If failures left us with nothing usable, surface the outage instead of returning an empty
+    ;; result — otherwise the caller's delete+generate transaction commits and wipes existing prompts.
+    ;; Partial successes (produced > 0) still go through.
+    (when (and (pos? failures) (zero? produced))
+      (throw (ex-info "Example question generation produced nothing because every attempt failed"
+                      {:failures failures})))
     (log/info "Native example question generation complete"
-              {:table-results  (count table-questions)
-               :metric-results (count metric-questions)})
-    {:table_questions  table-questions
-     :metric_questions metric-questions}))
+              {:table-results (count table-results)
+               :metric-results (count metric-results)
+               :failures failures})
+    {:table_questions  (mapv ->questions table-results)
+     :metric_questions (mapv ->questions metric-results)}))
