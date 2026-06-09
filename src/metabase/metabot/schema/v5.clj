@@ -1,8 +1,7 @@
 (ns metabase.metabot.schema.v5
   "Schemas for the AI SDK v5 message formats: `UIMessageChunk` (wire/SSE) and
-  `UIMessage`/`UIMessagePart` (at-rest). One family covers both v5 and v6 — these are ported
-  from the v6 superset with v6-only members marked optional/extra branches, so payloads from
-  either version validate.
+  `UIMessage`/`UIMessagePart` (at-rest). One family covers both v5 and v6 — it encodes the v6
+  superset with v6-only members optional, so payloads from either version validate.
 
   Derived (ported from TypeScript/Zod to Malli) from the Vercel AI SDK, used under the
   Apache License 2.0, © 2023 Vercel, Inc.:
@@ -15,6 +14,8 @@
   (:require
    [clojure.string :as str]
    [metabase.util.malli.registry :as mr]))
+
+(set! *warn-on-reflection* true)
 
 (defn- data-type? [t] (and (string? t) (str/starts-with? t "data-")))
 (defn- tool-type? [t] (and (string? t) (str/starts-with? t "tool-")))
@@ -140,7 +141,8 @@
                              [:messageMetadata {:optional true} :any]]]
    ["finish"                [:map {:closed true}
                              [:type [:= "finish"]]
-                             [:finishReason {:optional true} [:enum "stop" "length" "content-filter" "tool-calls" "error" "other"]]
+                             [:finishReason {:optional true}
+                              [:enum "stop" "length" "content-filter" "tool-calls" "error" "other"]]
                              [:messageMetadata {:optional true} :any]]]
    ["abort"                 [:map {:closed true}
                              [:type [:= "abort"]]
@@ -354,9 +356,8 @@
    [:parts [:sequential ::ui-message-part]]])
 
 (mr/def ::metabase-ui-message-part
-  "The subset of [[::ui-message-part]] that Metabase persists in `metabot_message.data` (v2
-  format). Unlike upstream `ToolUIPart`, the tool part carries an explicit `:toolName` and only
-  the three states the converter emits."
+  "The subset of [[::ui-message-part]] that Metabase persists in `metabot_message.data`. Unlike
+  upstream `ToolUIPart`, the tool part carries an explicit `:toolName` and only three states."
   [:multi {:dispatch (fn [part]
                        (let [t (:type part)]
                          (cond
@@ -379,4 +380,5 @@
             [:data :any]]]])
 
 (mr/def ::metabase-ui-message-parts
+  "A `metabot_message.data` value: a vector of [[::metabase-ui-message-part]]s."
   [:sequential ::metabase-ui-message-part])

@@ -7,7 +7,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
-(def ^:private external-cases
+(def ^:private stream-part-cases
   [[{:role "assistant" :_type "TEXT" :content "Hi there"}                          :content]
    [{:role "assistant" :_type "ERROR" :content "Something went wrong"}             :content]
    [{:_type "DATA" :type "navigate_to" :version 1 :value "/question/1"}            :version]
@@ -16,7 +16,7 @@
    [{:role "tool" :_type "TOOL_RESULT" :tool_call_id "tc1" :content "<result/>"}   :tool_call_id]
    [{:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}    :usage]])
 
-(def ^:private native-cases
+(def ^:private part-cases
   [[{:type "text" :id "t1" :text "Hello"}                                          :text]
    [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}          :function]
    [{:type "tool-output" :id "tc1" :function "search"
@@ -26,9 +26,9 @@
    [{:type "error" :error {:message "boom"}}                                       :error]])
 
 (deftest ^:parallel entry-test
-  (doseq [[schema cases] {::schema.v4/external-ai-service-entry external-cases
-                          ::schema.v4/native-entry              native-cases
-                          ::schema.v4/user-message-entry        [[{:role "user" :content "Do we have orders data?"} :content]]}
+  (doseq [[schema cases] {::schema.v4/stream-part-entry  stream-part-cases
+                          ::schema.v4/part-entry         part-cases
+                          ::schema.v4/user-message-entry [[{:role "user" :content "Do we have orders data?"} :content]]}
           [payload required-key] cases]
     (testing (str schema " " (or (:_type payload) (:type payload) (:role payload)))
       (is (mr/validate schema payload))
@@ -57,7 +57,7 @@
                           [{:role "user" :content "hi" :unexpected-key 1}])))))
 
 (deftest ^:parallel normalize-entry-test
-  (testing "pre-strip tool-output results are trimmed to the persisted subset"
+  (testing "full tool-output results are trimmed to the persisted subset"
     (let [entry {:type   "tool-output"
                  :id     "tc1"
                  :result {:output            "rows"
