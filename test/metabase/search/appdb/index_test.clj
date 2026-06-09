@@ -520,6 +520,9 @@
             (catch Exception _)))
         (testing "Given various obsolete search indexes"
           (is (every? #'search.table/exists? (cons related-table obsolete-tables))))
+        ;; Clear tracking so reset-index! activates a fresh table (nothing serving) rather than building a
+        ;; pending replacement; this test asserts the activate-immediately path.
+        (search.engine/reset-tracking! :search.engine/appdb)
         (search.index/reset-index!)
         (testing "We can create new index"
           (is (#'search.table/exists? (search.index/active-table))))
@@ -560,12 +563,37 @@
                              [p ds])))
                    table->descendants))))))
 
+(deftest reset-index!-keeps-serving-index-test
+  ;; reset-index! must never blank out search: when a complete index is already serving, it builds the
+  ;; replacement as :pending and leaves the old :active table answering queries until the caller populates
+  ;; and rotates. It only activates a fresh empty table immediately when nothing is serving.
+  (when (search/supports-index?)
+    (binding [search.spec/*testing-only-index-version-hash* "reset-signal-test"]
+      (try
+        (testing ":activated when nothing is serving — a fresh empty table becomes active immediately"
+          (search.engine/reset-tracking! :search.engine/appdb)
+          (is (= :activated (search.index/reset-index!)))
+          (is (search.table/exists? (search.index/active-table)) "fresh table is active and exists")
+          (is (nil? (search.index/pending-table)) "no pending left behind"))
+        (testing ":pending when a complete index is serving — old active kept, replacement is pending"
+          (let [serving (search.index/active-table)]
+            (is (= :pending (search.index/reset-index!)))
+            (is (= serving (search.index/active-table)) "old active still serving queries")
+            (is (some? (search.index/pending-table)) "replacement created as pending")
+            (is (not= serving (search.index/pending-table)) "pending is a different, empty table")))
+        (finally
+          (search.engine/reset-tracking! :search.engine/appdb)
+          (t2/delete! :model/SearchIndexMetadata :version "reset-signal-test")
+          (#'search.table/delete-obsolete-tables!))))))
+
 (deftest auto-refresh-test
   ;; TTL caching duration is tested in index-state-test. This integration test verifies
   ;; that the appdb index uses the cached state and that force-refresh! reads new DB state.
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "auto-refresh-test"]
       (try
+        ;; Start from a clean slate so reset-index! activates a fresh table (nothing is serving yet).
+        (search.engine/reset-tracking! :search.engine/appdb)
         (search.index/reset-index!)
         (let [active-before (search.index/active-table)
               active-after  (search.table/gen-table-name)
@@ -589,6 +617,8 @@
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "pending-timeout-test"]
       (try
+        ;; Start clean so reset-index! activates a fresh table rather than leaving a pending replacement.
+        (search.engine/reset-tracking! :search.engine/appdb)
         (search.index/reset-index!)
         (let [active-table (search.index/active-table)
               pending-old  (search.table/gen-table-name)

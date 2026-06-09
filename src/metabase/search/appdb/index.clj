@@ -125,7 +125,17 @@
       (boolean pending))))
 
 (defn reset-index!
-  "Ensure we have a blank slate; in case the table schema or stored data format has changed."
+  "Ensure there is a fresh, empty index table to populate; in case the table schema or stored data format
+   has changed. Returns:
+
+     :activated — a new empty table was made active immediately, because no complete index was serving
+                  (genuine first-time creation). Partial results then appear as soon as the caller populates.
+     :pending   — a complete index is still serving, so the replacement was created as :pending and the old
+                  :active table is left serving. The caller MUST populate the pending table and then call
+                  [[activate-table!]], so search is never blanked out mid-rebuild.
+
+   The choice hinges on whether we have a usable index to keep serving — never throw away the only thing
+   answering queries just to put an empty table in its place."
   []
   (log/infof "Resetting appdb index for version %s, active table: %s" (search.spec/index-version-hash)
              (pr-str (active-table)))
@@ -136,8 +146,12 @@
                 (when (pos? deleted)
                   (log/infof "Deleted %d pending indices" deleted)))
               (index-state/set-state! *state-store* {:active (active-table) :pending nil}))
-            (maybe-create-pending!)
-            (activate-table!))]
+            (let [serving? (boolean (and (active-table) (table/exists? (active-table))))]
+              (maybe-create-pending!)
+              (if serving?
+                :pending
+                ;; Nothing usable is serving — activate the fresh empty table now for partial results ASAP.
+                (do (activate-table!) :activated))))]
     (if search.ingestion/*force-sync*
       (reset-logic)
       ;; Use a dedicated connection so the empty tables become visible to other connections
@@ -146,7 +160,9 @@
         (reset-logic)))))
 
 (defn ensure-ready!
-  "Ensure the index is ready to be populated. Returns truthy if the index was created or reset."
+  "Ensure the index is ready to be populated. Returns nil when an existing index was already in place and no
+   reset was needed, otherwise the [[reset-index!]] signal (:activated or :pending) telling the caller how to
+   populate it."
   [& {:keys [force-reset?]}]
   (locking index-lock
     (when (nil? (active-table))
@@ -236,9 +252,14 @@
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temp-index-table
-  "Create a temporary index table for the duration of the body.
-   Binds *state-store* to an isolated MockStateStore so DDL operations within body
-   do not touch the real search_index_metadata records."
+  "Create a single temporary index table for the duration of the body, for tests that write to and read from
+   one fixed index table (ingestion, scoring, search).
+
+   Binds *state-store* to an isolated MockStateStore so DDL within the body doesn't touch the real
+   search_index_metadata records. NOTE: because the mock's force-refresh! is a no-op, this does NOT support
+   the build/rotate flow — [[maybe-create-pending!]]/[[activate-table!]] can't track tables they create, and
+   rotation would still mutate real-version metadata. Tests that exercise init!/reindex! must instead bind
+   [[metabase.search.spec/*testing-only-index-version-hash*]] and use the real store."
   [& body]
   `(let [table-name# (table/gen-table-name "_temp")
          version#    (str (string/random-string 8) "-temp")]

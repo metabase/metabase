@@ -4,6 +4,7 @@
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -203,32 +204,67 @@
 (defn- populate-index! [mode]
   (search.writer/index-docs! mode (search.ingestion/searchable-documents)))
 
+(def ^:private reindex-lock
+  "Cluster-wide lock ensuring at most one appdb index build runs across the whole cluster at a time.
+  Kept at its historical keyword name to work during rolling upgrades."
+  :metabase.search.task.search-index/search-index-lock)
+
+(defn- do-with-reindex-lock
+  "Run `thunk` while holding [[reindex-lock]]. If another node or thread already holds it, log and skip
+   (return nil) rather than queue: the in-progress build will produce a fresh index, and the periodic
+   reindex covers anything a skipped trigger would have caught. Reentrant, so a locked [[init!]] may call
+   [[reindex!]] without deadlocking."
+  [thunk]
+  (try
+    (cluster-lock/with-cluster-lock reindex-lock (thunk))
+    (catch clojure.lang.ExceptionInfo e
+      ;; do-with-cluster-lock wraps a failed acquisition in an ex-info carrying :lock-names; anything else
+      ;; (a real error from the body) propagates.
+      (if (contains? (ex-data e) :lock-names)
+        (do (log/info "An appdb search index build is already running elsewhere; skipping this trigger.")
+            nil)
+        (throw e)))))
+
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
-  (let [index-created (search.index/when-index-created)]
-    (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
-      (do
-        (log/info "Forcing early reindex because existing index is old")
-        (search.engine/reindex! :search.engine/appdb {}))
-      (let [created? (search.index/ensure-ready! opts)]
-        (when (or created? re-populate?)
-          (log/info "Populating index")
-          (populate-index! (if created? (search.index/background-mode) (search.index/incremental-mode))))))))
+  (do-with-reindex-lock
+   (fn []
+     (let [index-created (search.index/when-index-created)]
+       (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
+         (do
+           (log/info "Forcing early reindex because existing index is old")
+           (search.engine/reindex! :search.engine/appdb {}))
+         (case (search.index/ensure-ready! opts)
+           ;; A replacement table was created as pending while the existing index keeps serving queries:
+           ;; populate the pending table, THEN rotate it in, so search is never blanked out mid-rebuild.
+           :pending   (do (log/info "Populating replacement index, then activating")
+                          (u/prog1 (populate-index! (search.index/background-mode))
+                            (search.index/activate-table!)))
+           ;; A fresh empty table was activated immediately (nothing was serving): just populate it so
+           ;; partial results appear as soon as possible.
+           :activated (do (log/info "Populating index")
+                          (populate-index! (search.index/background-mode)))
+           ;; No reset was needed; optionally re-populate the existing active index in place.
+           (when re-populate?
+             (log/info "Re-populating index")
+             (populate-index! (search.index/incremental-mode)))))))))
 
 (defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
   (search.index/sync-from-restored-db!))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
-  (try
-    (let [mode (if in-place? (search.index/in-place-mode) (search.index/background-mode))]
-      (search.index/ensure-ready!)
-      (search.index/prepare! mode)
-      (u/prog1 (populate-index! mode)
-        (search.index/finish! mode)))
-    (catch Throwable e
-      (log/error e "Error during reindexing")
-      (throw e))))
+  (do-with-reindex-lock
+   (fn []
+     (try
+       (let [mode (if in-place? (search.index/in-place-mode) (search.index/background-mode))]
+         (search.index/ensure-ready!)
+         (search.index/prepare! mode)
+         (u/prog1 (populate-index! mode)
+           (search.index/finish! mode)))
+       (catch Throwable e
+         (log/error e "Error during reindexing")
+         (throw e))))))
 
 (derive :event/setting-update ::settings-changed-event)
 

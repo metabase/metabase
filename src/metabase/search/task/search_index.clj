@@ -3,7 +3,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
@@ -19,7 +18,6 @@
 
 (def ^:private init-stem "metabase.task.search-index.init")
 (def ^:private reindex-stem "metabase.task.search-index.reindex")
-(def ^:private cluster-lock-name ::search-index-lock)
 
 (def init-job-key
   "Key used to define and trigger a job that ensures there is an active index."
@@ -31,19 +29,21 @@
 
 ;; We define the job bodies outside the defrecord, so that we can redefine them live from the REPL
 
+;; The cluster-wide lock that ensures only one node builds the index at a time lives at the appdb engine's
+;; init!/reindex! choke points (see metabase.search.appdb.core), so every trigger — this job, the locale
+;; change, the API force-reindex, late-init recovery — is covered, not just the scheduled paths here.
+
 (defn init!
   "Create a new index, if necessary"
   []
   (when (search/supports-index?)
     (tracing/with-span :search "search.task.init" {}
-      (cluster-lock/with-cluster-lock cluster-lock-name
-        (search/init-index! {:force-reset? false, :re-populate? false})))))
+      (search/init-index! {:force-reset? false, :re-populate? false}))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc                        "Populate a new Search Index"}
   SearchIndexReindex [_ctx]
-  (cluster-lock/with-cluster-lock cluster-lock-name
-    (search/reindex! {:async? false})))
+  (search/reindex! {:async? false}))
 
 ;; Atom holding a promise that is delivered when the background init thread finishes.
 ;; nil when no init has been started — [[wait-for-init!]] returns immediately in that case.
