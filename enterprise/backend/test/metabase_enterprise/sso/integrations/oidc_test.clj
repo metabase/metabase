@@ -389,3 +389,17 @@
                (is (contains?
                     (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
                     group-id))))))))))
+
+(deftest successful-oidc-callback-does-not-log-pii-test
+  (testing "Successful OIDC callback should not log user's email address"
+    (mt/with-additional-premium-features #{:sso-oidc}
+      (mt/with-log-messages-for-level [log-messages [metabase-enterprise.sso.integrations.oidc :info]]
+        ;; Mock login! to return a successful result with user email, in-thread so log capture works
+        (with-redefs [auth-identity/login! (constantly {:success? true
+                                                        :redirect-url "/"
+                                                        :user {:email "jane@example.com"}})]
+          (metabase-enterprise.sso.integrations.oidc/sso-callback
+           "test-idp"
+           {:params {:code "test-code" :state "test-state"}})
+          (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
+              "Log messages should not contain user's email address"))))))

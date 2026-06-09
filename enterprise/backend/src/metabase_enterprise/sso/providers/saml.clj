@@ -12,7 +12,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [saml20-clj.core :as saml]))
+   [saml20-clj.core :as saml]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -126,7 +127,8 @@
                                     (sso-settings/saml-attribute-email)))
                           {:status-code 400
                            :user-attributes (keys user-attributes)})))
-        (log/infof "Successfully authenticated SAML assertion for: %s %s" first-name last-name)
+        (log/infof "Successfully authenticated SAML assertion for user ID: %s"
+                   (t2/select-one-fn :id :model/User :%lower.email (u/lower-case-en email)))
         {:success? true
          :user-data {:email email
                      :first_name first-name
