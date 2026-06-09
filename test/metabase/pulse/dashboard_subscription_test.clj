@@ -1493,4 +1493,27 @@
                  (is (= dashboard-id (:dashboard-id @render-args))))
                (testing "the slack message carries the rendered PDF"
                  (is (bytes? (-> msg :pdf :bytes)))
-                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))))))))))
+                 (is (str/ends-with? (-> msg :pdf :filename) ".pdf")))
+               (testing "it's a single message: no chart-image blocks, title/link ride along as the PDF caption"
+                 (is (empty? (:blocks msg)))
+                 (is (str/includes? (-> msg :pdf :comment) "Aviary KPIs")))))))))))
+
+(deftest dashboard-sub-slack-no-pdf-sends-images-test
+  (testing "Without :include_pdf, Slack still sends chart images and no PDF"
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                         :display       :line
+                                                         :dataset_query (mt/mbql-query orders {:limit 1})}
+                     :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                     :model/DashboardCard _ {:dashboard_id dashboard-id :card_id card-id :row 0}
+                     :model/Pulse         {pulse-id :id} {:name "Pulse Name" :dashboard_id dashboard-id}
+                     :model/PulseCard     _ {:pulse_id pulse-id :card_id card-id :position 0}
+                     :model/PulseChannel  _ {:pulse_id     pulse-id
+                                             :channel_type "slack"
+                                             :details      {:channel "#general"}}]
+        (pulse.test-util/slack-test-setup!
+         (let [results (pulse.test-util/with-captured-channel-send-messages!
+                         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+               msg     (first (:channel/slack results))]
+           (is (nil? (:pdf msg)))
+           (is (some #(= "image" (:type %)) (:blocks msg)))))))))

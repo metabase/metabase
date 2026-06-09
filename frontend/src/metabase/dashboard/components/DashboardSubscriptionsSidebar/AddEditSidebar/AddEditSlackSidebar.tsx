@@ -177,7 +177,7 @@ export const AddEditSlackSidebar = ({
 
           <Switch
             mt="1rem"
-            aria-label={t`Attach a PDF of the dashboard`}
+            aria-label={t`Send dashboard as PDF`}
             checked={includePdf}
             onChange={(e) => handleToggleIncludePdf(e.target.checked)}
             disabled={!allowDownload}
@@ -188,7 +188,7 @@ export const AddEditSlackSidebar = ({
             }}
             label={
               <Group gap={0}>
-                <Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>
+                <Text fw="bold">{t`Send dashboard as PDF`}</Text>
                 <Icon
                   name="info"
                   c="text-secondary"
@@ -196,7 +196,7 @@ export const AddEditSlackSidebar = ({
                   size={12}
                   tooltip={
                     allowDownload
-                      ? t`Shares a server-rendered PDF of the whole dashboard.`
+                      ? t`Shares a server-rendered PDF of the whole dashboard instead of sending individual dashcards.`
                       : t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
                   }
                 />

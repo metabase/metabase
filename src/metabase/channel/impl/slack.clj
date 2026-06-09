@@ -140,19 +140,22 @@
    [:channel              :string]
    [:blocks               [:sequential :map]]
    [:pdf {:optional true} [:maybe [:map
-                                   [:bytes    bytes?]
-                                   [:filename :string]]]]])
+                                   [:bytes                 bytes?]
+                                   [:filename              :string]
+                                   [:comment {:optional true} [:maybe :string]]]]]])
 
 (mu/defmethod channel/send! :channel/slack
   [_channel {:keys [channel blocks pdf]} :- SlackMessage]
   (doseq [block-chunk (partition-all 50 blocks)]
     (slack/post-chat-message! {:channel channel :blocks block-chunk}))
   (when pdf
-    ;; A PDF upload failing must not abort the rest of the subscription.
+    ;; Share the PDF as one message (its caption is the file's `initial_comment`); on failure, post just the caption.
     (try
-      (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel)
+      (slack/upload-file-to-channel! (:bytes pdf) (:filename pdf) channel (:comment pdf))
       (catch Throwable e
-        (log/error e "Error sharing dashboard subscription PDF to Slack; skipping PDF")))))
+        (log/error e "Error sharing dashboard subscription PDF to Slack; posting summary without the PDF")
+        (when-let [comment (:comment pdf)]
+          (slack/post-chat-message! {:channel channel :text comment}))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                    System Event Notifications                                   ;;
@@ -242,6 +245,18 @@
                            :fields filter-fields})]
     (filter some? [header-section filter-section link-section])))
 
+(defn- slack-dashboard-caption
+  "A plain mrkdwn caption (dashboard title, link, and filters) used as the PDF file's `initial_comment`, so the title
+  and the PDF arrive as a single Slack message rather than two."
+  [dashboard creator-name all-params top-level-params]
+  (str/join "\n"
+            (concat
+             [(format "*%s*" (:name dashboard))
+              (mkdwn-link-text (urls/dashboard-url (:id dashboard) all-params)
+                               (format "Sent from %s by %s" (appearance/site-name) creator-name))]
+             (for [parameter top-level-params]
+               (parameter-markdown parameter)))))
+
 (defn- dashboard-pdf
   "Render the whole dashboard to a PDF for Slack, returning `{:bytes ... :filename ...}` or `nil` if rendering fails."
   [dashboard creator-id parameters]
@@ -258,20 +273,25 @@
   (let [all-params       (:parameters payload)
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
-        pdf              (when include_pdf (dashboard-pdf dashboard creator_id all-params))
-        blocks           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
-                               ;; Isolate each part: rendering one part (e.g. realizing its Hiccup into a PNG)
-                               ;; must not abort the whole subscription. On failure, substitute an error
-                               ;; placeholder block so the remaining cards still deliver (#74007).
-                               (mapcat (fn [part]
-                                         (try
-                                           (part->sections! all-params part)
-                                           (catch Throwable e
-                                             (log/error e "Error rendering dashboard subscription part for Slack; substituting error placeholder")
-                                             [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))
-                                       (:dashboard_parts payload))]
-                              flatten
-                              (remove nil?))]
+        pdf              (some-> (when include_pdf (dashboard-pdf dashboard creator_id all-params))
+                                 (assoc :comment (slack-dashboard-caption dashboard (:common_name creator)
+                                                                          all-params top-level-params)))
+        blocks           (if pdf
+                           ;; PDF sends as a single file message (caption set in `send!`); skip the chart-image blocks.
+                           []
+                           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
+                                 ;; Isolate each part: rendering one part (e.g. realizing its Hiccup into a PNG)
+                                 ;; must not abort the whole subscription. On failure, substitute an error
+                                 ;; placeholder block so the remaining cards still deliver (#74007).
+                                 (mapcat (fn [part]
+                                           (try
+                                             (part->sections! all-params part)
+                                             (catch Throwable e
+                                               (log/error e "Error rendering dashboard subscription part for Slack; substituting error placeholder")
+                                               [(text->markdown-section (str (tru "An error occurred while displaying this card.")))])))
+                                         (:dashboard_parts payload))]
+                                flatten
+                                (remove nil?)))]
     (for [channel-id (map notification-recipient->channel recipients)]
       (cond-> {:channel channel-id
                :blocks  blocks}

@@ -206,13 +206,14 @@
                  (mock-200-response (slurp "./test_resources/slack_conversations_join_response.json"))))
         (mt/with-temporary-setting-values [slack-app-token "test-token"]
           (is (= "https://files.slack.com/files-pri/DDDDDDDDD-EEEEEEEEE/wow.gif"
-                 (slack/upload-file-to-channel! file-bytes filename "C0CHANNEL")))
+                 (slack/upload-file-to-channel! file-bytes filename "C0CHANNEL" "*Aviary KPIs*")))
           (testing "joins the channel first (file sharing requires membership)"
             (is (= "C0CHANNEL"
                    (:channel (parse-query-string (:query-string @join-req))))))
-          (testing "shares the file into the channel"
-            (is (= "C0CHANNEL"
-                   (:channel_id (parse-query-string (:query-string @complete-req)))))))))))
+          (testing "shares the file into the channel with its caption as the message comment"
+            (let [params (parse-query-string (:query-string @complete-req))]
+              (is (= "C0CHANNEL" (:channel_id params)))
+              (is (= "*Aviary KPIs*" (:initial_comment params))))))))))
 
 (deftest post-chat-message!-test
   (testing "post-chat-message!"

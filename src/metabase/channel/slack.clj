@@ -262,11 +262,12 @@
 (defn complete!
   "Completes the file upload to a Slack channel by calling the `files.completeUploadExternal` endpoint, and polls the
    same endpoint until the file is uploaded to the channel. Returns the URL of the uploaded file."
-  [& {:keys [file-id filename channel-id]}]
+  [& {:keys [file-id filename channel-id initial-comment]}]
   (let [complete! (fn []
                     (POST "files.completeUploadExternal"
                       {:query-params (cond-> {:files (json/encode [{:id file-id, :title filename}])}
-                                       channel-id (assoc :channel_id channel-id))}))
+                                       channel-id      (assoc :channel_id channel-id)
+                                       initial-comment (assoc :initial_comment initial-comment))}))
         complete-response
         (try
           (complete!)
@@ -325,15 +326,22 @@
 
 (mu/defn upload-file-to-channel!
   "Upload `file` bytes to Slack and share them into `channel-id` as a downloadable file. Returns the uploaded file URL.
-  Joins the channel first, since file sharing requires membership."
-  [file       :- NonEmptyByteArray
-   filename   :- ms/NonBlankString
-   channel-id :- ms/NonBlankString]
-  {:pre [(channel.settings/slack-configured?)]}
-  (join-channel! channel-id)
-  (let [{:keys [upload_url file_id]} (get-upload-url! filename file)]
-    (upload-file-to-url! upload_url file)
-    (complete! {:file-id file_id :filename filename :channel-id channel-id})))
+  Joins the channel first, since file sharing requires membership. `initial-comment` (mrkdwn, optional) becomes the
+  text of the file's message, so the file and a caption arrive as a single message."
+  ([file filename channel-id]
+   (upload-file-to-channel! file filename channel-id nil))
+  ([file            :- NonEmptyByteArray
+    filename        :- ms/NonBlankString
+    channel-id      :- ms/NonBlankString
+    initial-comment :- [:maybe :string]]
+   {:pre [(channel.settings/slack-configured?)]}
+   (join-channel! channel-id)
+   (let [{:keys [upload_url file_id]} (get-upload-url! filename file)]
+     (upload-file-to-url! upload_url file)
+     (complete! {:file-id         file_id
+                 :filename        filename
+                 :channel-id      channel-id
+                 :initial-comment initial-comment}))))
 
 (mu/defn post-chat-message!
   "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
