@@ -231,6 +231,13 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
+  const hasDataSource = isNative
+    ? Lib.databaseID(query) != null
+    : Lib.sourceTableOrCardId(query) != null;
+  if (!hasDataSource) {
+    return {};
+  }
+
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
