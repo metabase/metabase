@@ -117,6 +117,7 @@ type LibraryPlugin = {
   isLibrarySubCollectionType: (
     type?: string | null,
   ) => type is LibrarySubCollectionType;
+  isLibraryDataCollectionType: (type?: string | null) => type is "library-data";
 };
 
 const getDefaultPluginLibrary = (): LibraryPlugin => ({
@@ -150,6 +151,9 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isLibrarySubCollectionType: (
     _type?: string | null,
   ): _type is LibrarySubCollectionType => false,
+  isLibraryDataCollectionType: (
+    _type?: string | null,
+  ): _type is "library-data" => false,
 });
 
 export const PLUGIN_LIBRARY = getDefaultPluginLibrary();
