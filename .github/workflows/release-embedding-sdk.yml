@@ -389,6 +389,7 @@ jobs:
         run: |
           npm publish --tag 62-stable
 
+  # When a newer release branch goes gold, remove this entire job from this branch.
   tag-latest:
     name: Tag npm release as latest
     needs: [publish-npm, determine-sdk-version]
