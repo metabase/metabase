@@ -1,13 +1,13 @@
 ---
 name: create-data-app
-description: Scaffold a new Metabase data-app development project by cloning the `metabase-data-app-template` GitHub repo. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
+description: Scaffold a new Metabase data-app development project by cloning the `data-app-template` GitHub repo. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 ---
 
 # Create a Metabase Data App
 
 A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `npm run build` producing a single `dist/index.js` to upload via Admin → Data apps.
 
-**The scaffold itself lives in a separate GitHub repo: [`metabase/metabase-data-app-template`](https://github.com/metabase/metabase-data-app-template).** This skill clones that template and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — clone the template instead.
+**The scaffold itself lives in a separate GitHub repo: [`metabase/data-app-template`](https://github.com/metabase/data-app-template).** This skill clones that template and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — clone the template instead.
 
 ## When to invoke this skill
 
@@ -22,7 +22,7 @@ Before cloning, look for an existing data-app project. Surface signs (one of):
 script.
 
 If any surface sign is present, verify the project matches the current
-`metabase-data-app-template`. Check **all** of:
+`data-app-template`. Check **all** of:
 
 1. `vite.config.ts` externals include `"react"`, `"react/jsx-runtime"`,
    `"@metabase/embedding-sdk-react"`, `"@metabase/embedding-sdk-react/data-app"`
@@ -45,7 +45,7 @@ Never overwrite existing files without explicit confirmation.
 
 ## Step 1 — Clone the template
 
-Source: `metabase/metabase-data-app-template`. Any GitHub remote created should
+Source: `metabase/data-app-template`. Any GitHub remote created should
 be **private**.
 
 - **Empty CWD** → clone in-place via `degit` (no name to ask for, no remote
@@ -66,18 +66,36 @@ Once the template is on disk:
 5. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 6. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
 
-## Step 3 — Confirm what the app should do
+## Step 3 — Pull the typed schema
 
-Before writing a single component, confirm the app's scope with the user. If they haven't described the screens, data, or flow, **ask first**:
+Generate `src/metabase.data.ts` by invoking the
+[`metabase-semantic-schema-data-apps`](../metabase-semantic-schema-data-apps/SKILL.md)
+skill. It prompts the user for an API key, hits
+`/api/typed-schemas/v1/typescript` on the target Metabase, and writes the file.
+
+The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<d>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
+
+This step is mandatory before Step 4 — the schema is the catalog you'll check the user's brief against, and the agent needs it loaded into context before discussing what the app should do.
+
+## Step 4 — Confirm what the app should do
+
+Before writing a single component, confirm the app's scope with the user **and check it against the schema you just pulled**. If they haven't described the screens, data, or flow, ask first:
 
 - What are the screen(s) and the rough layout? (single screen, multi-page, etc.)
 - Which Metabase questions, dashboards, or data sources drive each screen?
 - Any specific interactions (filters, drill-downs, write-back via actions)?
 - Branding / theme constraints?
 
-## Step 4 — Write the actual app
+**Schema-matching rule.** Every entity the user references should map to something in `src/metabase.data.ts`:
+
+- **Match exists** → confirm what you found by name. Example: "Your schema has `schema.questions.overview_revenue` and `schema.tables.customers` with the `lifetime_value` measure — is that what you want me to use?"
+- **Topic doesn't match** → don't fabricate. Push back: explain the schema doesn't expose anything for that topic, and ask whether to (1) add it upstream in the Metabase semantic layer first and re-run Step 3, (2) pick a different topic that's already curated, or (3) ship the app without that part. **Don't invent mock data. Don't create new questions from inside the app.** The schema is curated upstream; the app is presentation only.
+
+## Step 5 — Write the actual app
 
 Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
+
+**Reference Metabase data through the schema, never with raw IDs.** Import `schema` from `src/metabase.data.ts` and pass `schema.questions.<name>.id`, `schema.tables.<t>.id`, `schema.metrics.<m>.id` to the data hooks. For query patterns (typed row shapes, `useMetabaseQuery` generics, segments / measures / breakouts, debugging), follow the `metabase-semantic-schema-data-apps` skill — it owns the data-side conventions; this skill owns the project-side conventions.
 
 **Do not modify `src/index.tsx`, `src/dev.tsx`, `vite.config.ts`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** They encode the bundle contract with the host (factory shape, externals, document shell). Tweaks here drift the dev preview from production — the iframe doesn't read your `index.html`, the host serves a byte-for-byte template — and silently break things like drill popups and routing.
 
@@ -136,7 +154,7 @@ Vite bundles everything reachable from `src/index.tsx` into a single `dist/index
 
 ```tsx
 // ✅ correct
-import { StaticQuestion, useQuestionQuery } from "@metabase/embedding-sdk-react";
+import { StaticQuestion, useMetabaseQuery } from "@metabase/embedding-sdk-react";
 import { DataAppRouter, DataAppLink } from "@metabase/embedding-sdk-react/data-app";
 
 // ❌ wrong — no globalThis pattern; you'd be reading nothing
@@ -193,7 +211,8 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
-| `useQuestionQuery` | Hook that runs a saved question and returns its dataset (`{ data, isLoading, error, refetch }`). Use when you want to read raw query results (rows, columns, metadata) and render your own UI from them instead of dropping in a `StaticQuestion` / `InteractiveQuestion`. **Signature:** `useQuestionQuery(questionId, options?)` — the first arg is the bare numeric id, NOT an object. The optional second arg is `{ initialSqlParameters?, enabled? }`. Must be called from inside a component rendered under `<MetabaseProvider>` (which `dev.tsx` and the host provide). |
+| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-semantic-schema-data-apps` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
+| `useQuestionQuery` | Question-only data-fetching hook (`useQuestionQuery(questionId, options?)` returning `{ data, isLoading, error, refetch }`). The bare numeric id is the first arg; optional `{ initialSqlParameters?, enabled? }` is the second. Must be called under `<MetabaseProvider>`. Use when you need a quick question fetch without going through the schema layer (e.g. ad-hoc tooling, pre-schema apps); prefer `useMetabaseQuery` for new schema-backed work. |
 
 ### Blocked APIs
 
@@ -208,70 +227,20 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed al
 
 **Rule of thumb:** if you're about to touch `window.X`, `document.X`, `navigator.X`, `history.X`, or any storage global, stop and pick the endowed replacement above. The endowed surface (React + SDK components + data hooks + `useAction` + DataAppRouter) covers every routine need; anything outside it is intentionally unreachable.
 
-### When to use `useQuestionQuery` vs a `StaticQuestion` / `InteractiveQuestion`
+### When to use `useMetabaseQuery` vs a `StaticQuestion` / `InteractiveQuestion`
 
-This is a decision the agent makes per-rendering, not once for the whole app:
+This is a per-rendering decision, not a project-wide one:
 
-- **`StaticQuestion` / `InteractiveQuestion`** — use ONLY when a stock Metabase chart, displayed as-is, is exactly what the data app needs. No surrounding custom layout that the chart has to integrate with, no custom interactions, no derived/aggregated values pulled out of the dataset, no per-row UI, no list/grid/card pattern built from the rows. The SDK widget renders its own chrome, sizing, and interaction model — you take it or leave it.
-- **`useQuestionQuery`** — use **whenever ANY of the following applies**, even slightly:
-    - You want to render the data as something other than the saved question's visualization type (a stat tile, a list of cards, a custom table, a Pokémon-style grid, a sparkline, anything bespoke).
-    - You need to read a single value out of the result (e.g. "the count from the first row", "the sum of column X") and display it.
-    - You want to drive your own state or other components from the rows (filters, selections, derived dashboards-of-tiles, etc.).
-    - You need to format, transform, group, or join the rows before display.
-    - You want custom empty/loading/error states.
-    - You want the data layout to integrate with the surrounding bundle UI (consistent fonts, spacings, branded headers, etc.) that the SDK widget can't be styled into.
+- **`StaticQuestion` / `InteractiveQuestion`** — only when a stock Metabase chart, displayed as-is, IS the deliverable. No custom layout the chart has to integrate with, no derived/aggregated values pulled out, no per-row UI, no bespoke list/grid/card pattern. The SDK widget renders its own chrome and sizing — take it or leave it.
+- **`useMetabaseQuery`** — whenever **any** of the following applies, even slightly: rendering as something other than the saved question's viz type (stat tile, custom table, grid, sparkline, anything bespoke); reading a single value out of the result; driving your own state or other components from the rows; formatting / transforming / grouping rows before display; custom empty/loading/error states; or making the data layout match the bundle's chrome.
 
-**Default to `useQuestionQuery`.** Reach for `StaticQuestion`/`InteractiveQuestion` only when the saved-question chart, with its own framing, IS the deliverable. The moment the user asks for "something custom" — even subtle, even just "show the count nicely" — switch to `useQuestionQuery` and render the UI yourself.
+**Default to `useMetabaseQuery`.** Reach for `StaticQuestion` / `InteractiveQuestion` only when the saved-question chart with its own framing is exactly what the user asked for. The moment they want "something custom" — even subtle, even just "show the count nicely" — switch to the hook.
 
-The hook returns `{ data, isLoading, error, ... }` from the SDK. Read `data` once it's loaded to get rows/columns/metadata; render with normal React. Hooks must be called from inside a component rendered under `MetabaseProvider`.
+**Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted / derived queries (pass `isLoading` down) and for `useAction`'s `isExecuting` (spinner in the button + `disabled={isExecuting}`).
 
-**Always render a spinner (or skeleton) while `isLoading` is `true`** — never an empty slot or stale value, which causes layout shift when the data arrives. Same rule for lifted/derived queries (pass `isLoading` down to each consumer) and for action triggers (`useAction`'s `isExecuting` → spinner in the button, plus `disabled={isExecuting}`).
+**Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
-#### Call each question at most once per render tree
-
-**Call `useQuestionQuery(N)` exactly once per unique question id** in the rendered tree. Calling it from multiple components with the same id is almost never what you want:
-
-- Each call mounts an independent subscription and fires its own query — same rows fetched multiple times, more bytes, slower first paint, and the components can briefly disagree if one finishes before the other.
-- The query state (`isLoading`, `error`, `data`) is duplicated, so each consuming component has to handle the loading dance separately even though they're all waiting on the same query.
-
-Lift the call to the highest component that needs the data, then **pass the result down as props** (or a context if the consumers are deep). Each consumer becomes a pure render of one shared `data`/`isLoading`/`error` triple. Think of `useQuestionQuery(N)` as defining a single "data source" per question — derived values (count, sum, top-K, filtered subset) come from JS on top of that one `data`, not from extra calls.
-
-```tsx
-// ✅ One call, derived values + multiple presentations
-import { useQuestionQuery } from "@metabase/embedding-sdk-react";
-
-function Dashboard() {
-  const { data, isLoading, error } = useQuestionQuery(1);
-  if (isLoading) return <Spinner />;
-  if (error) return <ErrorBox error={error} />;
-  if (!data) return null;
-
-  const rows = data.rows;
-  const total = rows.length;
-  const topByValue = [...rows].sort((a, b) => Number(b[2]) - Number(a[2])).slice(0, 5);
-
-  return (
-    <>
-      <StatTile label="Total customers" value={total} />
-      <TopList rows={topByValue} />
-      <CustomTable rows={rows} cols={data.cols} />
-    </>
-  );
-}
-
-// ❌ Same question fetched three times
-function Dashboard() {
-  return (
-    <>
-      <StatTile /> {/* calls useQuestionQuery(1) */}
-      <TopList />  {/* calls useQuestionQuery(1) */}
-      <CustomTable /> {/* calls useQuestionQuery(1) */}
-    </>
-  );
-}
-```
-
-Different ids, or the same id with different `initialSqlParameters`, are different data sources — call them separately. Same id + same parameters → fetch once.
+(For the hook contract itself — generics, table-vs-metric variants, segments / measures / breakouts, debugging — see the `metabase-semantic-schema-data-apps` skill.)
 
 ## SDK component sizing
 
