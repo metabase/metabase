@@ -567,7 +567,10 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            children={null}
+          />
         </>,
       );
 

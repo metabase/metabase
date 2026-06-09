@@ -158,6 +158,7 @@ export type {
   SqlParameterChangePayload,
   SdkUserId,
   SqlParameterValues,
+  SdkActionId,
 } from "embedding-sdk-bundle/types";
 
 export type {
