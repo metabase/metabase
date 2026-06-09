@@ -158,6 +158,7 @@ export class UnconnectedDataSelector extends Component {
     hideSingleSchema: PropTypes.bool,
     hideSingleDatabase: PropTypes.bool,
     useOnlyAvailableDatabase: PropTypes.bool,
+    databasesLoaded: PropTypes.bool,
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
@@ -190,6 +191,7 @@ export class UnconnectedDataSelector extends Component {
   static defaultProps = {
     isInitiallyOpen: false,
     useOnlyAvailableDatabase: true,
+    databasesLoaded: true,
     useOnlyAvailableSchema: true,
     hideSingleSchema: true,
     hideSingleDatabase: false,
@@ -571,12 +573,20 @@ export class UnconnectedDataSelector extends Component {
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
-      this.props.selectedDatabaseId == null
+      this.props.selectedDatabaseId == null &&
+      // Wait until the database list is fully loaded. While it is still
+      // hydrating, `databases` can transiently hold a single database (the
+      // others' metadata hasn't arrived yet) and we'd wrongly treat it as the
+      // only one — auto-selecting it and skipping the list (metabase#52411).
+      this.props.databasesLoaded
     ) {
       const databases = this.getDatabases();
       const enabledDatabases = databases.filter(
         (db) => !databaseIsDisabled?.(db),
       );
+      // Only auto-select when there is exactly one enabled database; with
+      // several we must show the list so the user can choose. (Using `>= 1`
+      // here auto-selected the first of many and skipped the database list.)
       if (enabledDatabases.length === 1) {
         this.onChangeDatabase(enabledDatabases[0]);
       }
@@ -1167,15 +1177,23 @@ const DataSelector = _.compose(
         databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data
           ?.data;
       const metadata = getMetadata(state);
+      const databases =
+        ownProps.databases ||
+        queriedDatabases
+          ?.map(({ id }) => metadata.database(id))
+          .filter((database) => database != null) ||
+        [];
       return {
         availableModels: ownProps.metadata?.available_models ?? [],
         metadata,
-        databases:
-          ownProps.databases ||
-          queriedDatabases
-            ?.map(({ id }) => metadata.database(id))
-            .filter((database) => database != null) ||
-          [],
+        databases,
+        // The database list is fully loaded once every queried database has
+        // been hydrated into metadata (or the caller passed `databases`
+        // directly). Used to avoid auto-selecting a transient single database.
+        databasesLoaded:
+          ownProps.databases != null ||
+          (queriedDatabases != null &&
+            databases.length === queriedDatabases.length),
         hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
           include: "tables",
           saved: true,
