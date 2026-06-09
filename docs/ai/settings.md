@@ -9,7 +9,7 @@ redirect_from:
 
 _Admin > AI_
 
-FIXME. This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md). To limit _who_ can use Metabot, see [AI controls](./usage-controls.md).
+This page covers admin settings for AI features in Metabase, including [Metabot](./metabot.md). To limit _who_ can use Metabot, see [AI controls](./usage-controls.md).
 
 ## Enable AI features
 
