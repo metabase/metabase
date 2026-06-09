@@ -166,11 +166,8 @@ export function useCardData({
   const isLoading = isLoadingCard || isLoadingDataset;
 
   const dispatch = useDispatch();
-  // Track this card in `loadingCardIds` while its query is in flight. The
-  // cleanup fires whenever `id`/`skip`/`isLoading` change or the component
-  // unmounts, so a card that is skipped or unmounted mid-load (e.g. scrolled
-  // out of the buffer before its query resolved) doesn't leak a stale entry.
-  // The slice reducers are idempotent, so redundant dispatches are harmless.
+  // Track this card in `loadingCardIds` while its query is in flight, clearing
+  // it on cleanup so a skipped/unmounted mid-load card leaves no stale entry.
   useEffect(() => {
     if (skip || !isLoading) {
       return;

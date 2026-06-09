@@ -5,26 +5,16 @@ import { usePrintContextValue } from "./use-print-context-value";
 describe("usePrintContextValue", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    jest.spyOn(global, "requestAnimationFrame").mockImplementation((cb) => {
-      return setTimeout(() => cb(0), 0) as unknown as number;
-    });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
-  async function flushNextFrame() {
-    await act(async () => {
-      jest.advanceTimersByTime(0);
-      await Promise.resolve();
-    });
-  }
-
-  async function flushPrintFrames() {
-    await flushNextFrame();
-    await flushNextFrame();
+  // Modern fake timers fake requestAnimationFrame, which jsdom schedules ~16ms
+  // apart, so advancing by one frame runs a single pending rAF callback.
+  async function advanceFrame() {
+    await act(() => jest.advanceTimersByTimeAsync(16));
   }
 
   it("sets and clears printing state from browser print events", () => {
@@ -42,7 +32,7 @@ describe("usePrintContextValue", () => {
   it("sets printing state and waits two animation frames before resolving", async () => {
     const { result } = renderHook(() => usePrintContextValue());
     let resolved = false;
-    let promise: Promise<void>;
+    let promise: Promise<void> | undefined;
 
     act(() => {
       promise = result.current.prepareForPrint().then(() => {
@@ -53,11 +43,11 @@ describe("usePrintContextValue", () => {
     expect(result.current.isPrinting).toBe(true);
     expect(resolved).toBe(false);
 
-    await flushNextFrame();
+    await advanceFrame();
     expect(resolved).toBe(false);
 
-    await flushNextFrame();
-    await promise!;
+    await advanceFrame();
+    await promise;
     expect(resolved).toBe(true);
   });
 
@@ -72,7 +62,7 @@ describe("usePrintContextValue", () => {
       }),
     );
     let resolved = false;
-    let promise: Promise<void>;
+    let promise: Promise<void> | undefined;
 
     act(() => {
       promise = result.current.prepareForPrint().then(() => {
@@ -80,7 +70,8 @@ describe("usePrintContextValue", () => {
       });
     });
 
-    await flushPrintFrames();
+    await advanceFrame();
+    await advanceFrame();
 
     expect(isReady).toHaveBeenCalled();
     expect(resolved).toBe(false);
@@ -88,7 +79,7 @@ describe("usePrintContextValue", () => {
     ready = true;
     await act(async () => {
       jest.advanceTimersByTime(100);
-      await promise!;
+      await promise;
     });
 
     expect(resolved).toBe(true);
@@ -104,7 +95,7 @@ describe("usePrintContextValue", () => {
       }),
     );
     let resolved = false;
-    let promise: Promise<void>;
+    let promise: Promise<void> | undefined;
 
     act(() => {
       promise = result.current.prepareForPrint().then(() => {
@@ -112,12 +103,13 @@ describe("usePrintContextValue", () => {
       });
     });
 
-    await flushPrintFrames();
+    await advanceFrame();
+    await advanceFrame();
     expect(resolved).toBe(false);
 
     await act(async () => {
       jest.advanceTimersByTime(300);
-      await promise!;
+      await promise;
     });
 
     expect(resolved).toBe(true);
