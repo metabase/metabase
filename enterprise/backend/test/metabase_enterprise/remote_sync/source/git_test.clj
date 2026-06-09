@@ -201,6 +201,37 @@
                   "master2.txt"]
                  (git/list-files (assoc remote :version "master")))))))))
 
+(deftest apply-changes
+  (let [subdir (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master remote] (init-source! "master" remote-dir
+                                          :files {"master.txt" "root file"
+                                                  (str subdir "keep.yaml") "keep me"
+                                                  (str subdir "edit.yaml") "old content"
+                                                  (str subdir "remove.yaml") "delete me"})]
+        (testing "apply-changes! overwrites/adds upserts, removes delete-paths, and PRESERVES every other file"
+          (source.p/apply-changes! (source.p/snapshot master) "Incremental"
+                                   [{:path (str subdir "edit.yaml") :content "new content"}
+                                    {:path (str subdir "new.yaml") :content "brand new"}]
+                                   [(str subdir "remove.yaml")])
+          (is (= ["Incremental" "Initial commit"] (map :message (git/log master))))
+          (let [snap (source.p/snapshot master)]
+            (is (= [(str subdir "edit.yaml")
+                    (str subdir "keep.yaml")
+                    (str subdir "new.yaml")
+                    "master.txt"]
+                   (source.p/list-files snap))
+                "edit overwritten + new added, remove deleted; keep.yaml (managed, untouched) and master.txt preserved")
+            (is (= "new content" (source.p/read-file snap (str subdir "edit.yaml"))))
+            (is (= "brand new"   (source.p/read-file snap (str subdir "new.yaml"))))
+            (is (= "keep me"     (source.p/read-file snap (str subdir "keep.yaml")))
+                "a managed-dir file not in the write set is preserved (unlike write-files!)")
+            (is (= "root file"   (source.p/read-file snap "master.txt")))
+            (is (nil? (source.p/read-file snap (str subdir "remove.yaml")))))
+          (testing "the commit was pushed to the remote"
+            (is (= ["Incremental" "Initial commit"]
+                   (map :message (git/log (assoc remote :branch "master")))))))))))
+
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
     (mt/with-temp-dir [remote-dir nil]
