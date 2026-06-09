@@ -28,7 +28,7 @@ const TIMELINE = createMockTimeline({
   ],
 });
 
-describe("QueryBuilder > timeline events (GHY-3789)", () => {
+describe("QueryBuilder > timeline events (GHY-3839)", () => {
   it("shows timeline events when the timelines request resolves after the question loads", async () => {
     // Delay /api/timeline so it resolves *after* the question and bookmarks have
     // loaded — i.e. after the effect that calls showTimelinesForCollection has
