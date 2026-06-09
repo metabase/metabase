@@ -56,7 +56,7 @@ export const Breadcrumb = ({
       )}
 
       <Ellipsified
-        c={undefined}
+        c={undefined} // to avoid inline style with would have higher specificity than CSS in Breadcrumb.module.css
         className={S.text}
         fw="bold"
         lh="normal"
