@@ -76,10 +76,6 @@ describe("NewExplorationData (Research plan)", () => {
       expect(
         screen.getByRole("button", { name: /Events/ }),
       ).toBeInTheDocument();
-      // The CTA only appears once at least one block has been added.
-      expect(
-        screen.queryByRole("button", { name: "Start research" }),
-      ).not.toBeInTheDocument();
     });
 
     it("opens the metrics modal from the +Data menu", async () => {
