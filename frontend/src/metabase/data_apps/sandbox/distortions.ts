@@ -1,5 +1,4 @@
 import { makeSandboxDistortionCallback } from "metabase/utils/scripts-sandbox";
-import type { DataAppId } from "metabase-types/api";
 
 /**
  * Data-app Near Membrane distortion callback.
@@ -14,6 +13,6 @@ import type { DataAppId } from "metabase-types/api";
  * no sibling DOM to protect from. If we ever want defense-in-depth there,
  * add scoping in this file — the shared module is unchanged.
  */
-export function makeDistortionCallback(appId: DataAppId) {
-  return makeSandboxDistortionCallback(`data-app ${appId}`);
+export function makeDistortionCallback(label: string) {
+  return makeSandboxDistortionCallback(`data-app ${label}`);
 }

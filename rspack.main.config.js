@@ -123,6 +123,8 @@ const config = {
     "app-embed-sdk": "./app-embed-sdk.tsx",
     "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
+    "app-data-app": "./app-data-app.tsx",
+    "data-app-vendors": "./data_apps/iframe-vendors.ts",
   },
 
   // we override it for dev mode below
@@ -241,7 +243,11 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
-          chunks: "initial",
+          // The data-app iframe is isolated from main-app CSS/JS by design;
+          // sharing the vendor chunk would re-link them. Keep its
+          // node_modules in its own chunks.
+          chunks: (chunk) =>
+            chunk.name !== "data-app-vendors" && chunk.name !== "app-data-app",
           name: "vendor",
           priority: -10,
         },
@@ -304,6 +310,12 @@ const config = {
       chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
+    }),
+    new HtmlWebpackPlugin({
+      filename: "../../data-app.html",
+      chunksSortMode: "manual",
+      chunks: ["data-app-vendors", "app-data-app"],
+      template: __dirname + "/resources/frontend_client/data_app_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",

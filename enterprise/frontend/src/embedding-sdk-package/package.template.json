@@ -19,6 +19,11 @@
       "require": "./dist/nextjs.cjs",
       "import": "./dist/nextjs.js"
     },
+    "./data-app": {
+      "types": "./dist/data-app.d.ts",
+      "require": "./dist/data-app.cjs",
+      "import": "./dist/data-app.js"
+    },
     "./package.json": "./package.json"
   },
   "typesVersions": {
