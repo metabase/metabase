@@ -2,8 +2,9 @@
   (:require
    [honey.sql :as sql]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting  quote-identifier]]
-   [metabase.driver.sql.query-processor :as sql.qp]))
+   [metabase.driver.sql-jdbc.quoting :refer [quote-identifier with-quoting]]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.malli :as mu]))
 
 (defmulti active-tables
   "Return a reducible sequence of maps containing information about the active tables/views, collections, or equivalent
@@ -116,13 +117,13 @@
    The privileges include select, insert, update, and delete.
 
    The rows have the following keys and value types:
-     - role            :- [:maybe :string]
-     - schema          :- [:maybe :string]
-     - table           :- :string
-     - select          :- :boolean
-     - update          :- :boolean
-     - insert          :- :boolean
-     - delete          :- :boolean
+     - role   :- [:maybe :string]
+     - schema :- [:maybe :string]
+     - table  :- :string
+     - select :- :boolean
+     - update :- :boolean
+     - insert :- :boolean
+     - delete :- :boolean
 
    Either:
    (1) role is null, corresponding to the privileges of the DB connection's current user
@@ -131,38 +132,25 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti alter-columns-sql
-  "Generate the query to be used with [[driver/alter-columns!]]."
-  {:added "0.49.0",
-   :arglists '([driver table-name column-definitions])
-   :deprecated "0.54.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
+;; TODO (Cam 2026-06-09) This is absolutely NOT a method related to sync, so it doesn't belong here at all. Move this
+;; stuff somewhere else.
 (defmulti alter-table-columns-sql
   "Generate the query to be used with [[driver/alter-table-columns!]].
-  Supersedes the deprecated [[alter-columns-sql]].
-  This version receives additional kw-args `opts` (as passed to [[driver/alter-table-columns!]])."
+
+  `column-definitions` should match `:metabase.driver/column-definitions`.
+
+  As far as I can tell, options are currently ignored, but are allowed to match the shape of
+  `:metabase.driver/alter-table-columns!-options` -- Cam."
   {:added "0.54.0"
-   :arglists '([driver table-name column-definitions & opts])}
+   :arglists '([driver ^String table-name column-definitions & {:as opts}])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;; used for compatibility with drivers only implementing alter-columns-sql
-;; remove when alter-columns-sql is deleted (v0.57+)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod alter-table-columns-sql ::driver/driver
-  [driver table-name column-definitions & _opts]
-  (alter-columns-sql driver table-name column-definitions))
-
-;; default :sql-jdbc implementation kept here rather than on alter-table-columns-sql
-;; to maximize compatibility:
-;; a. get-method for superclass type calls still pick up this impl
-;; b. existing specialisation of sql-jdbc should remain preferred when alter-table-column-sql is called
-;; we can move this impl to alter-table-columns-sql when alter-columns-sql is deleted (v0.57+)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod alter-columns-sql :sql-jdbc
-  [driver table-name column-definitions]
+(mu/defmethod alter-table-columns-sql :sql-jdbc
+  [driver             :- :keyword
+   table-name         :- :string
+   column-definitions :- ::driver/column-definitions
+   & {:as _opts}      :- ::driver/alter-table-columns!-options]
   (with-quoting driver
     (first (sql/format {:alter-table  (keyword table-name)
                         :alter-column (map (fn [[column-name type-and-constraints]]

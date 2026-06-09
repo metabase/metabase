@@ -16,6 +16,33 @@
 
 (set! *warn-on-reflection* true)
 
+;; We really don't want people compiling SQL without quoting identifiers, as that can be a potential avenue toward SQL
+;; injection... wrap the original [[honey.sql/format]] function so that it throws an exception if we're compiling
+;; without quoting unless [[*DANGEROUS-allow-sql-compilation-with-quoting-disabled*]] is explicitly enabled.
+
+(defonce ^:private original-format
+  (let [f sql/format]
+    (fn original-format
+      ([data]      (f data {}))
+      ([data opts] (f data opts)))))
+
+(def ^:private ^:dynamic *DANGEROUS-allow-sql-compilation-with-quoting-disabled* false)
+
+(defn- wrapped-format
+  ([data]
+   (wrapped-format data {}))
+  ([data opts]
+   (when (and (not *DANGEROUS-allow-sql-compilation-with-quoting-disabled*)
+              ;; if `:quoted` is set in opts, it must be truthy; otherwise if unset `:dialect` must be present, which
+              ;; will cause quoting to be enabled so long as `:quoted` is not set to something falsey
+              (not (if (contains? opts :quoted)
+                     (:quoted opts)
+                     (:dialect opts))))
+     (throw (ex-info "Error: compiling SQL without quoting identifiers! This can be dangerous!!" {:opts opts})))
+   (original-format data opts)))
+
+(alter-var-root #'sql/format (constantly wrapped-format))
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;

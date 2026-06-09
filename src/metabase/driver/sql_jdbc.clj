@@ -14,12 +14,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
-                                             quote-table with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -253,8 +253,12 @@
   [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
   (driver/insert-into! driver db-id table-name (mapv :name columns) data))
 
-(defmethod driver/add-columns! :sql-jdbc
-  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+(mu/defmethod driver/add-columns! :sql-jdbc
+  [driver                  :- :any
+   db-id                   :- ::lib.schema.id/database
+   table-name              :- :string
+   column-definitions      :- ::driver/column-definitions
+   & {:keys [primary-key]} :- ::driver/add-columns!-options]
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (with-quoting driver
     (let [primary-key-column (first primary-key)
@@ -272,23 +276,14 @@
       (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
         (jdbc/execute! conn sql)))))
 
-;; kept for get-method driver compatibility
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/alter-columns! :sql-jdbc
-  [driver db-id table-name column-definitions]
-  (driver-api/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/alter-table-columns! :sql-jdbc
-  [driver db-id table-name column-definitions & opts]
-  (let [deprecated-default-method      (get-method driver/alter-columns! :sql-jdbc)
-        deprecated-driver-method       (get-method driver/alter-columns! driver)
-        deprecated-method-specialised? (not (identical? deprecated-default-method deprecated-driver-method))]
-    ;; compatibility: continue to use the old method if it has been overridden
-    (if deprecated-method-specialised?
-      (deprecated-driver-method driver db-id table-name column-definitions)
-      (->> (apply sql-jdbc.sync/alter-table-columns-sql driver table-name column-definitions opts)
-           (driver-api/execute-write-sql! db-id)))))
+(mu/defmethod driver/alter-table-columns! :sql-jdbc
+  [driver            :- :keyword
+   db-id             :- ::lib.schema.id/database
+   table-name        :- :string
+   column-definitions :- ::driver/column-definitions
+   & {:as opts} :- ::driver/alter-table-columns!-options]
+  (->> (sql-jdbc.sync/alter-table-columns-sql driver table-name column-definitions opts)
+       (driver-api/execute-write-sql! db-id)))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]

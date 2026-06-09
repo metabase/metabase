@@ -20,22 +20,18 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Statement Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -686,9 +682,12 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/alter-columns! :redshift
-  [_driver _db-id _table-name column-definitions]
+(mu/defmethod driver/alter-table-columns! :redshift
+  [_driver            :- :keyword
+   _db-id             :- ::lib.schema.id/database
+   _table-name        :- :string
+   column-definitions :- ::driver/column-definitions
+   & {:as _opts} :- ::driver/alter-table-columns!-options]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]

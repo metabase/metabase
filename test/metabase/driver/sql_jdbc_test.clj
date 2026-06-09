@@ -28,7 +28,7 @@
                          {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest describe-fields-sync-with-composite-pks-test
+(deftest ^:parallel describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
       (mt/dataset dataset-definition-test/composite-pk
