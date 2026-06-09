@@ -171,10 +171,15 @@
 
 (def ^:dynamic *chart-size*
   "When bound to a map `{:width <px> :height <px>}`, isomorphic (ECharts) charts rendered via
-  [[*javascript-visualization*]] use these as their intrinsic SVG dimensions, and PNG
-  rasterization targets the same dimensions (stretching to fit). Used to make a backend chart
-  fill an explicit pixel box -- e.g. a dashboard grid cell -- the way the frontend does. When
-  nil, keeps the legacy behavior (fixed width, aspect-preserving height)."
+  [[*javascript-visualization*]] use `:width`/`:height` as their intrinsic (logical) SVG
+  dimensions, and PNG rasterization targets those same dimensions (stretching to fit). Used to
+  make a backend chart fill an explicit pixel box -- e.g. a dashboard grid cell -- the way the
+  frontend does. When nil, keeps the legacy behavior (fixed width, aspect-preserving height).
+
+  An optional `:scale` (default 1) multiplies *only the raster* dimensions: the chart is still
+  laid out at `:width`x`:height` (so fonts, labels, and spacing are unchanged), but the SVG is
+  rasterized to `scale`x more pixels -- i.e. supersampling for a crisper image at the same on-page
+  size, without relaying the chart out smaller."
   nil)
 
 (def ^:dynamic ^:private *svg-background-color*
@@ -190,8 +195,11 @@
           in                           (TranscoderInput. fixed-svg-doc)
           out                          (TranscoderOutput. os)
           transcoder                   (PNGTranscoder.)
-          render-width                 (float (or (:width *chart-size*) *svg-render-width*))
-          render-height                (some-> (or (:height *chart-size*) *svg-render-height*) float)]
+          ;; `:scale` (default 1) supersamples the raster only -- the SVG is laid out at the
+          ;; logical :width/:height but rasterized to scale-times more pixels.
+          scale                        (:scale *chart-size* 1)
+          render-width                 (float (or (some-> (:width *chart-size*) (* scale)) *svg-render-width*))
+          render-height                (some-> (or (some-> (:height *chart-size*) (* scale)) *svg-render-height*) float)]
       (.addTranscodingHint transcoder PNGTranscoder/KEY_WIDTH render-width)
       (when render-height
         (.addTranscodingHint transcoder PNGTranscoder/KEY_HEIGHT render-height))

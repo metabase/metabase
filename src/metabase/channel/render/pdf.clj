@@ -113,8 +113,18 @@
 
 (def ^:private dpi
   "Pixels per inch used to size rasterized charts. Higher = crisper but larger PDFs. A grid
-  cell's pixel dimensions are derived from its printed point size and this DPI."
+  cell's pixel dimensions are derived from its printed point size and this DPI. NOTE: this also
+  sets the chart's *logical* layout size, so raising it shrinks chart fonts/labels rather than
+  just sharpening -- use [[chart-supersample]] for pure sharpness."
   150.0)
+
+(def ^:private chart-supersample
+  "Supersampling factor for isomorphic (ECharts/visx) chart rasters: the chart is laid out at its
+  `dpi`-derived logical pixel size (so fonts/labels are unchanged) but the SVG is rasterized to
+  this many times more pixels, then drawn into the same on-page box -- crisper at the same size.
+  1.0 = no supersampling; 2.0 makes a 150-DPI chart effectively 300 DPI (for print/zoom) at ~+12%
+  PDF size. See [[metabase.channel.render.js.svg/*chart-size*]]."
+  2.0)
 
 (def ^:private desc-color (Color. 0x6B 0x73 0x80))
 (def ^:private link-color (Color. 0x1B 0x6F 0xC2))
@@ -1149,12 +1159,13 @@
        (m/distinct-by #(get-in % [:card :id]))))
 
 (defn- sized-chart-png
-  "Render an isomorphic chart to a PNG of exactly `w-px` x `h-px`, telling static-viz to lay the
-  chart out into that box (so it fills it the way the frontend does). Used for rectangular
-  charts and for square/wide pies (which then place their legend to the side). Returns nil if
-  the chart doesn't produce an SVG."
+  "Render an isomorphic chart to a PNG, telling static-viz to lay the chart out into a `w-px` x
+  `h-px` logical box (so it fills it the way the frontend does), rasterized at
+  [[chart-supersample]] times that pixel size for crispness. Used for rectangular charts and for
+  square/wide pies (which then place their legend to the side). Returns nil if the chart doesn't
+  produce an SVG."
   ^bytes [card dashcard data w-px h-px]
-  (binding [js.svg/*chart-size* {:width w-px :height h-px}]
+  (binding [js.svg/*chart-size* {:width w-px :height h-px :scale chart-supersample}]
     (let [viz (or (:visualization_settings dashcard) (:visualization_settings card))
           {t :type c :content} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
       (when (= :svg t)
