@@ -26,14 +26,6 @@ import {
 // tree, top-level nodes in a 1-level tree), not to group header chips.
 const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
 
-// Bottom inset (px) reserved for the breadcrumb overlay while drilled in.
-// Exported so the rounded-corner clip in TreemapChart can match it (otherwise
-// the clip rounds the empty breadcrumb strip instead of the drilled tiles).
-// Sized so the gap between the chart's bottom edge and the breadcrumb pill is
-// 24px: the pill is ~32px tall and sits 8px off the container bottom
-// (TreemapBreadcrumb.module.css), so 24 + 32 + 8 = 64.
-export const DRILLED_BOTTOM_INSET = 64;
-
 export interface TreemapSeriesNode {
   id: string;
   name: string;
@@ -119,9 +111,6 @@ export function getTreemapChartOption({
   series: TreemapChartSeriesOption;
 } {
   const hasChildren = tree.some((node) => node.children != null);
-  // When drilled into a group it becomes the view root and the breadcrumb shows
-  // its name, so we hide the group header and reserve bottom space for the pill.
-  const bottomSpace = isDrilled ? DRILLED_BOTTOM_INSET : 0;
 
   // Header band labelling each top-level group at the overview. ECharts wraps
   // `series.data` in a synthetic root, so depths are: root=0 (`levels[0]`),
@@ -191,19 +180,11 @@ export function getTreemapChartOption({
       // strings built in `toSeriesData`; the name-only label ignores them.
       rich: getLeafLabelRich(renderingContext),
     },
-    // Base for the synthetic root: no upper-label height, or it insets the whole
-    // treemap from the top. Group headers come from `levels[1]` instead.
     upperLabel: { show: false },
-    // Full-bleed layout. ECharts' default reserves `top`/`bottom: 50px` (where
-    // the native breadcrumb sat) — we zero it out so the overview fills the
-    // whole area, and reserve `bottomSpace` only while drilled in, so the
-    // breadcrumb overlay has room without overlapping tiles. The bottom inset
-    // changes via a fresh `setOption` (not a canvas resize), so there's no
-    // resize/animation race to corrupt the layout.
     top: 0,
     left: 0,
     right: 0,
-    bottom: bottomSpace,
+    bottom: 0,
     data: toSeriesData(
       tree,
       colors,

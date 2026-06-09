@@ -1,24 +1,23 @@
 .breadcrumb {
-  position: absolute;
-  bottom: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
+  /* position: absolute;
+  top: 0;
+  left: 0;
+  right: 0; */
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
-  border-radius: 1rem;
+  justify-content: space-between;
+  padding: 1rem 2rem 1rem 2rem;
   background-color: var(--mb-color-background);
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.07),
-    0 1px 4px rgba(0, 0, 0, 0.05),
-    0 5px 15px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--mb-color-border);
   font-size: var(--mantine-font-size-sm);
   line-height: 1rem;
   white-space: nowrap;
 }
 
-.root {
+.back {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin: 0;
   padding: 0;
   border: none;
@@ -29,10 +28,20 @@
   color: var(--mb-color-text-primary);
 }
 
-.separator {
-  color: var(--mb-color-text-tertiary);
+.values {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.group {
+.value {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--mb-color-text-primary);
+}
+
+.percent {
+  font-size: 14px;
+  font-weight: 400;
   color: var(--mb-color-text-secondary);
 }

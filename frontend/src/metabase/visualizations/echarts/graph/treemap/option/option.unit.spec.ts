@@ -503,7 +503,7 @@ describe("getTreemapChartOption full inline block", () => {
 });
 
 describe("getTreemapChartOption layout", () => {
-  it("is full-bleed with no bottom inset at the overview", () => {
+  it("is full-bleed at the overview (the breadcrumb bar is a sibling, not an inset)", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       renderingContext,
@@ -512,7 +512,7 @@ describe("getTreemapChartOption layout", () => {
     expect(series).toMatchObject({ top: 0, left: 0, right: 0, bottom: 0 });
   });
 
-  it("reserves bottom space for the breadcrumb when drilled", () => {
+  it("stays full-bleed when drilled", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       colors: getTreemapColors(TWO_LEVEL_TREE),
@@ -520,7 +520,7 @@ describe("getTreemapChartOption layout", () => {
       renderingContext,
     });
 
-    expect(series.bottom).toBeGreaterThan(0);
+    expect(series).toMatchObject({ top: 0, left: 0, right: 0, bottom: 0 });
   });
 });
 

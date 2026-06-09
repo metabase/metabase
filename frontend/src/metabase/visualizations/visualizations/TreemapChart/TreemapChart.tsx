@@ -1,5 +1,4 @@
 import type { EChartsType } from "echarts/core";
-import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
@@ -27,10 +26,7 @@ import {
   getTreemapParentLabelLayouts,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
-import {
-  DRILLED_BOTTOM_INSET,
-  getTreemapChartOption,
-} from "metabase/visualizations/echarts/graph/treemap/option/option";
+import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
   TREEMAP_CHART_STYLE,
@@ -80,9 +76,6 @@ export const TreemapChart = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
-  // The hover-overlay zrender element, added/removed directly on the chart's
-  // zrender layer (see events.ts). Owned here so we can also clear it when the
-  // view or data changes.
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
   // top-level group. The breadcrumb and the bottom inset render from
@@ -315,7 +308,7 @@ export const TreemapChart = ({
     ? getTreemapBreadcrumbModel(chartData.tree, viewRootId)
     : null;
 
-  const handleBreadcrumbAllClick = useCallback(() => {
+  const handleBreadcrumbBack = useCallback(() => {
     handleViewRootChange(null);
   }, [handleViewRootChange]);
 
@@ -334,36 +327,30 @@ export const TreemapChart = ({
   }
 
   return (
-    <Box
-      className={S.root}
-      // Match the rounded-corner clip's bottom inset to the treemap content
-      // rectangle: while drilled, ECharts reserves a bottom strip for the
-      // breadcrumb, so the clip must inset the bottom by the same amount or the
-      // bottom rounding lands in the empty strip instead of on the drilled tiles.
-      style={
-        {
-          "--treemap-bottom-inset": `${viewRootId != null ? DRILLED_BOTTOM_INSET : 0}px`,
-        } as CSSProperties
-      }
-      py={isCompact ? 24 : 48}
-      px={isCompact ? 24 : 96}
-      w="100%"
-      h="100%"
-    >
-      <ResponsiveEChartsRenderer
-        ref={containerRef}
-        option={option}
-        eventHandlers={allEventHandlers}
-        onInit={handleInit}
+    <Box w="100%" h="100%" display="flex" style={{ flexDirection: "column" }}>
+      {breadcrumb && formatters && (
+        <TreemapBreadcrumb
+          groupLabel={breadcrumb.groupLabel}
+          value={formatters.value(breadcrumb.value)}
+          percent={formatPercent(1)}
+          onBackClick={handleBreadcrumbBack}
+        />
+      )}
+      <Box
+        className={S.root}
+        py={isCompact ? 24 : 32}
+        px={isCompact ? 24 : 32}
+        w="100%"
+        style={{ flex: 1, minHeight: 0 }}
       >
-        {breadcrumb && (
-          <TreemapBreadcrumb
-            groupLabel={breadcrumb.groupLabel}
-            onAllClick={handleBreadcrumbAllClick}
-          />
-        )}
-      </ResponsiveEChartsRenderer>
-      {colorsCss}
+        <ResponsiveEChartsRenderer
+          ref={containerRef}
+          option={option}
+          eventHandlers={allEventHandlers}
+          onInit={handleInit}
+        />
+        {colorsCss}
+      </Box>
     </Box>
   );
 };
