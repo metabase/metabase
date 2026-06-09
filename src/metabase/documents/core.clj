@@ -1,6 +1,7 @@
 (ns metabase.documents.core
   (:require
    [metabase.documents.api.document]
+   [metabase.documents.models.document]
    [metabase.documents.prose-mirror]
    [metabase.documents.recent-views]
    [metabase.documents.validate]
@@ -8,11 +9,14 @@
 
 (comment
   metabase.documents.api.document/keep-me
+  metabase.documents.models.document/keep-me
   metabase.documents.recent-views/keep-me)
 
 (p/import-vars
  [metabase.documents.api.document
   get-document]
+ [metabase.documents.models.document
+  register-exploration-doc-visibility-fn!]
  [metabase.documents.prose-mirror
   prose-mirror-content-type]
  [metabase.documents.validate

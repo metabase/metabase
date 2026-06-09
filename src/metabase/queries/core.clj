@@ -54,6 +54,7 @@
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!
+  viewer-can-view-cached-result?
   cached-dataset])
 
 #_{:clj-kondo/ignore [:missing-docstring]}

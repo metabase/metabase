@@ -20,6 +20,7 @@ import type {
 } from "metabase-types/api";
 import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
+import { ExplorationChartError } from "./ExplorationChartError";
 import { ExplorationChartSkeleton } from "./ExplorationChartSkeleton";
 import S from "./ExplorationVisualization.module.css";
 import { ExplorationVisualizationHeader } from "./ExplorationVisualizationHeader";
@@ -191,6 +192,11 @@ function ExplorationGroupVisualizationChart({
   // Extract the identity-stable dataset references so they can be
   // individually tracked in the useMemo dependency array below.
   const datasets = datasetQueries.map((q) => q.currentData);
+  // A result fetch can fail (most commonly a 403 when the viewer's data-access
+  // lens differs from the snapshot creator's). `currentData` stays undefined in
+  // that case, same as while loading, so track errors separately to avoid
+  // showing the loading skeleton forever.
+  const datasetError = datasetQueries.find((q) => q.error)?.error;
 
   const { seriesGroups, layoutStrategy, chartsForDocumentEmbed } =
     useMemo(() => {
@@ -218,6 +224,15 @@ function ExplorationGroupVisualizationChart({
   }, [seriesGroups]);
 
   if (!seriesGroups) {
+    if (datasetError) {
+      return (
+        <ExplorationChartError
+          name={groupName}
+          explorationQuery={queries[0]}
+          error={datasetError}
+        />
+      );
+    }
     return (
       <ExplorationChartSkeleton
         name={groupName}

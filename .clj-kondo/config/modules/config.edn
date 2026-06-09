@@ -1006,6 +1006,7 @@
            metabot
            metrics
            models
+           permissions
            queries
            query-permissions
            query-processor

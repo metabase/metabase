@@ -1482,3 +1482,18 @@ databaseChangeLog:
                   remarks: Block anchor — "metric" or "dimension"
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v63.storedresultdataaccesstoken
+      author: nvoxland
+      comment: Add stored_result.data_access_token for per-lens cached-read gating
+      changes:
+        - addColumn:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  type: ${text.type}
+                  remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
+                  constraints:
+                    nullable: true

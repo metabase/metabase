@@ -1166,15 +1166,24 @@
 
 (defn- store-fake-result!
   "Insert a StoredResult holding the worker-serialized bytes plus an ExplorationQueryResult
-  that points at it, mirroring what the runner produces so the read endpoints can replay it."
+  that points at it, mirroring what the runner produces so the read endpoints can replay it.
+  Stamps `creator_id` from the owning Exploration (as the real runner does) so the cached-read
+  gate's creator bypass behaves like production."
   [query-id qp-result]
-  (let [bytes (cache.impl/do-with-serialization
-               (fn [in result-fn]
-                 (in qp-result)
-                 (result-fn)))
-        sr-id (first (t2/insert-returning-pks!
-                      :model/StoredResult
-                      {:result_data bytes}))]
+  (let [bytes      (cache.impl/do-with-serialization
+                    (fn [in result-fn]
+                      (in qp-result)
+                      (result-fn)))
+        creator-id (t2/select-one-fn :creator_id :model/Exploration
+                                     {:select [:e.creator_id]
+                                      :from   [[:exploration :e]]
+                                      :join   [[:exploration_thread :t] [:= :t.exploration_id :e.id]
+                                               [:exploration_query :q]  [:= :q.exploration_thread_id :t.id]]
+                                      :where  [:= :q.id query-id]})
+        sr-id      (first (t2/insert-returning-pks!
+                           :model/StoredResult
+                           {:result_data bytes
+                            :creator_id  creator-id}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id query-id
                  :stored_result_id     sr-id})))
@@ -2067,48 +2076,24 @@
           (is (true? (:archived_directly d))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Routed-database creation block                                          |
+;;; |                                         Routed-database metrics                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest exploration-create-rejects-routed-database-metric-test
+(deftest dimensions-includes-routed-database-metrics-test
   (when config/ee-available?
-    (testing "Exploration planner refuses when any selected metric lives in a router database"
-      (mt/with-temp [:model/User u {:email "routed@example.com"}
-                     :model/Card metric (assoc (valid-metric-card (:id u)) :name "Routed Metric")
-                     :model/DatabaseRouter _ {:database_id    (mt/id)
-                                              :user_attribute "team"}]
-        ;; POST creates the exploration (now returns 200; routed-db check is async).
-        (let [resp (mt/user-http-request u :post 200 "exploration"
-                                         {:name   "routed"
-                                          :groups [{:name       "Group"
-                                                    :metrics    [{:card_id (:id metric)
-                                                                  :dimension_mappings [{:dimension_id "d1"
-                                                                                        :table_id (mt/id :venues)
-                                                                                        :target ["field" {} (mt/id :venues :price)]}]}]
-                                                    :dimensions [{:dimension_id "d1"}]}]})
-              tid    (-> resp :threads first :id)
-              result (query-plan/generate-query-plan! tid)]
-          ;; The planner detects the routed database and returns nil (caught throwable).
-          (is (nil? result) "planning should fail for routed-database metrics")
-          (let [thread (t2/select-one :model/ExplorationThread :id tid)]
-            ;; mark-thread-terminally-failed! sets completed_at (not query_plan_started_at,
-            ;; which is stamped by the task runner before calling generate-query-plan!).
-            (is (some? (:completed_at thread))
-                "thread is stamped as terminally processed")))))))
-
-(deftest dimensions-excludes-routed-database-metrics-test
-  (when config/ee-available?
-    (testing "GET /api/exploration/dimensions hides metrics whose database is a router"
+    (testing "GET /api/exploration/dimensions includes metrics whose database is a router — routed
+              results are gated per-lens on read (see stored_result.data_access_token) rather than
+              hidden from the picker"
       (with-sample-metrics-archived
-        (mt/with-temp [:model/Card        _ {:name          "Routed Hidden"
+        (mt/with-temp [:model/Card        _ {:name          "Routed Metric"
                                              :type          :metric
                                              :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}
                        :model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "team"}]
           (let [resp  (mt/user-http-request :rasta :get 200 "exploration/dimensions")
                 names (set (map :name (:metrics resp)))]
-            (is (not (contains? names "Routed Hidden"))
-                "metric on a router database is filtered out of /dimensions")))))))
+            (is (contains? names "Routed Metric")
+                "metric on a router database is selectable in /dimensions")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              POST /api/exploration/thread/:thread-id/cancel                                    |

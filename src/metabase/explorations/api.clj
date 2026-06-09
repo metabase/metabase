@@ -930,19 +930,19 @@
     (case (:status q)
       "done"
       (let [sr (api/check-404 (eqr/stored-results id))]
-        ;; The cached `result_data` was produced by the creator, so non-creator viewers might
-        ;; otherwise see data the QP would have filtered out for them. Block when the viewer
-        ;; is sandboxed/impersonated for the snapshot's DB or lacks data perms on it.
+        ;; The cached `result_data` was produced under the creator's lens, so a non-creator viewer
+        ;; might otherwise see rows the QP would have filtered out for them. Gate against the
+        ;; creator's stored data-access token (sandbox/impersonation/routing) + basic data perms.
         (when-not (= api/*current-user-id* (:creator_id sr))
           (queries/assert-can-view-cached-result! sr))
         (stream-stored-result format (:result_data sr)))
 
-      (do
-        (queries/assert-can-view-cached-result! {:id            (:id q)
-                                                 :database_id   (:database_id q)
-                                                 :dataset_query (:dataset_query q)})
-        {:status 409
-         :body   (select-keys q [:id :status :error_message :started_at :finished_at])}))))
+      ;; Pending / errored: no blob exists yet and the response is status-only (no rows, no
+      ;; derived text), so it carries no data to leak — it rides the exploration's collection
+      ;; perms (already enforced by `get-exploration-query-or-404`'s read-check), like seeing a
+      ;; dashboard card that's still loading.
+      {:status 409
+       :body   (select-keys q [:id :status :error_message :started_at :finished_at])})))
 
 (api.macros/defendpoint :put "/query/:id/interesting" :- ::ExplorationQuerySummary
   "Set the owner's interestingness rating on an exploration query.
