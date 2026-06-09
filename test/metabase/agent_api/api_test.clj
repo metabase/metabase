@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
    [metabase.agent-api.settings :as agent-api.settings]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.normalize :as lib.normalize]
@@ -446,17 +447,20 @@
 ;;; ------------------------------------------------ Create Question Tests -------------------------------------------
 
 (deftest create-question-test
-  (testing "Creates a saved question from a constructed query"
-    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+  (testing "Omitting collection_id saves to the caller's personal collection, not root"
+    (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                                {:query (orders-query :limit 10)})
           create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
                                                {:name  "Agent Test Question"
                                                 :query (:query construct-resp)})]
-      (is (=? {:id            pos?
-               :name          "Agent Test Question"
-               :display       "table"
-               :collection_id nil
-               :description   nil}
+      (is (=? {:id              pos?
+               :name            "Agent Test Question"
+               :display         "table"
+               :collection_id   personal-id
+               :collection_path personal-name
+               :description     nil}
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
       (t2/delete! :model/Card :id (:id create-resp))))
@@ -470,11 +474,12 @@
                                                   :display       "bar"
                                                   :description   "A test question"
                                                   :collection_id coll-id})]
-        (is (=? {:id            pos?
-                 :name          "Agent Question With Options"
-                 :display       "bar"
-                 :collection_id coll-id
-                 :description   "A test question"}
+        (is (=? {:id              pos?
+                 :name            "Agent Question With Options"
+                 :display         "bar"
+                 :collection_id   coll-id
+                 :collection_path "Our analytics / Agent Question Collection"
+                 :description     "A test question"}
                 create-resp))
         (t2/delete! :model/Card :id (:id create-resp)))))
   (testing "Returns 403 when caller cannot run the proposed query"
@@ -502,17 +507,62 @@
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
 
+(deftest create-question-collection-path-test
+  (testing "collection_path is the full breadcrumb, mirroring the app's location"
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent Coll"}
+                   :model/Collection {child-id :id}  {:name "Child Coll" :location (format "/%d/" parent-id)}]
+      (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                 {:query (orders-query :limit 10)})
+            create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                 {:name          "Nested Q"
+                                                  :query         (:query construct-resp)
+                                                  :collection_id child-id})]
+        (is (= "Our analytics / Parent Coll / Child Coll" (:collection_path create-resp)))
+        (t2/delete! :model/Card :id (:id create-resp)))))
+  (testing "Personal-collection subtrees breadcrumb under the owner's personal collection, not Our analytics"
+    (let [personal-id    (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name  (collection/user->personal-collection-name (mt/user->id :rasta) :user)
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name          "Personal Q"
+                                                :query         (:query construct-resp)
+                                                :collection_id personal-id})]
+      (is (= personal-name (:collection_path create-resp)))
+      (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "collection_path omits ancestors the caller can't read — no hidden-name leak"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {a-id :id} {:name "Visible Parent"}
+                     :model/Collection {b-id :id} {:name "Hidden Parent" :location (format "/%d/" a-id)}
+                     :model/Collection {c-id :id} {:name "Leaf Coll" :location (format "/%d/%d/" a-id b-id)}]
+        ;; rasta can write the leaf and read its top ancestor, but has no access to the middle one.
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) a-id)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c-id)
+        (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                   {:query (orders-query :limit 10)})
+              create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                                   {:name          "Perm Filtered Q"
+                                                    :query         (:query construct-resp)
+                                                    :collection_id c-id})]
+          ;; rasta can't read the root collection here either, so "Our analytics" is dropped too —
+          ;; the point is that the unreadable middle parent never appears.
+          (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
+          (t2/delete! :model/Card :id (:id create-resp)))))))
+
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
 
 (deftest create-dashboard-test
-  (testing "Creates an empty dashboard"
-    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
-                                     {:name "Agent Test Dashboard"})]
-      (is (=? {:id            pos?
-               :name          "Agent Test Dashboard"
-               :collection_id nil
-               :description   nil
-               :dashcard_ids  []}
+  (testing "Creates an empty dashboard, defaulting to the caller's personal collection"
+    (let [personal-id   (:id (collection/user->personal-collection (mt/user->id :rasta)))
+          personal-name (collection/user->personal-collection-name (mt/user->id :rasta) :user)
+          resp          (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                              {:name "Agent Test Dashboard"})]
+      (is (=? {:id              pos?
+               :name            "Agent Test Dashboard"
+               :collection_id   personal-id
+               :collection_path personal-name
+               :description     nil
+               :dashcard_ids    []}
               resp))
       (t2/delete! :model/Dashboard :id (:id resp))))
   (testing "Creates a dashboard with questions"
@@ -543,7 +593,9 @@
       (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
                                        {:name          "Collection Dashboard"
                                         :collection_id coll-id})]
-        (is (= coll-id (:collection_id resp)))
+        (is (=? {:collection_id   coll-id
+                 :collection_path "Our analytics / Agent Dashboard Collection"}
+                resp))
         (t2/delete! :model/Dashboard :id (:id resp)))))
   (testing "Returns 404 when a question_id does not exist"
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
@@ -621,7 +673,9 @@
                                                          :display       :table}]
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/question/" card-id)
                                        {:collection_id dest-coll-id})]
-        (is (= dest-coll-id (:collection_id resp))))
+        (is (=? {:collection_id   dest-coll-id
+                 :collection_path "Our analytics / Agent Move Dest"}
+                resp)))
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
 (deftest update-question-archive-test
@@ -777,7 +831,9 @@
                                                          :dashboard_id  dash-id}]
       (let [resp (mt/user-http-request :rasta :put 200 (str "agent/v1/dashboard/" dash-id)
                                        {:collection_id dest-coll-id})]
-        (is (= dest-coll-id (:collection_id resp))))
+        (is (=? {:collection_id   dest-coll-id
+                 :collection_path "Our analytics / Agent Dash Dest"}
+                resp)))
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Dashboard :id dash-id)))
       ;; cards on the dashboard should follow
       (is (= dest-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))))
