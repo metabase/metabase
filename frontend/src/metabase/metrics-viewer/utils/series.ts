@@ -54,10 +54,10 @@ import {
   getEffectiveDefinitionEntry,
   getEntryBreakout,
 } from "./definition-entries";
+import { DISPLAY_TYPE_REGISTRY } from "./dimension-breakout-config";
+import { getDimensionIcon } from "./dimension-breakouts";
 import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
-import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
-import { getDimensionIcon } from "./tabs";
 
 export function shouldShowStackSeries(
   display: MetricsViewerDisplayType,
@@ -352,7 +352,7 @@ export const DIMENSION_COLUMN_INDEX = 0;
 export const BREAKOUT_COLUMN_INDEX = 1;
 export const METRIC_COLUMN_INDEX = 2;
 
-// When the breakout dimension is the same as the tab's dimension,
+// When the breakout dimension is the same as the dimension breakout's dimension,
 // the query avoids adding it twice, so we get [breakout, metric] instead of [dimension, breakout, metric].
 function getBreakoutColumnDescriptor(cols: DatasetColumn[]): {
   index: number;

@@ -317,7 +317,8 @@
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
-  (let [models (if (seq models) models search.config/all-models)
+  (let [context (some-> context search.config/normalized-context)
+        models (if (seq models) models search.config/all-models)
         engine (parse-engine search-engine)
         fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
