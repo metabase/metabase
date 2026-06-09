@@ -2,7 +2,7 @@ import { getIcon, queryIcon, render } from "__support__/ui";
 
 import { ModerationStatusIcon } from "./ModerationStatusIcon";
 
-describe("ModerationReviewBanner", () => {
+describe("ModerationStatusIcon", () => {
   it("should show an icon when given a real moderation status", () => {
     render(<ModerationStatusIcon status="verified" />);
     expect(getIcon("verified")).toBeInTheDocument();

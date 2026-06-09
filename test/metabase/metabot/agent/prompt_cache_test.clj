@@ -62,7 +62,8 @@
     (prompts/build-system-message-content
      {:prompt-template template-name}
      per-request-context
-     {})))
+     {}
+     [])))
 
 (defn- prefix-of [rendered]
   (let [idx (.indexOf ^String rendered ^String cache-breakpoint)]

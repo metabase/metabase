@@ -736,10 +736,10 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync settings/ }),
+        screen.getByRole("button", { name: "More actions" }),
       );
       await userEvent.click(
-        screen.getByRole("button", { name: "Re-scan table" }),
+        await screen.findByRole("menuitem", { name: /Re-scan field values/ }),
       );
 
       const calls = fetchMock.callHistory.calls(
@@ -767,11 +767,11 @@ describe("DataModel", () => {
       );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
-        screen.getByRole("button", { name: /Sync settings/ }),
+        screen.getByRole("button", { name: "More actions" }),
       );
       await userEvent.click(
-        screen.getByRole("button", {
-          name: "Discard cached field values",
+        await screen.findByRole("menuitem", {
+          name: /Discard cached field values/,
         }),
       );
       const calls = fetchMock.callHistory.calls(

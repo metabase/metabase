@@ -2,13 +2,47 @@ name: Backport Reminder
 
 on:
   pull_request:
-    types: [auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
+    types: [opened, edited, auto_merge_enabled, review_requested, labeled, unlabeled, synchronize]
     branches:
       - "master"
-  merge_group:
+
+concurrency:
+  group: "backport-reminder-${{ github.event.pull_request.number }}"
+  cancel-in-progress: true
 
 jobs:
+  flags:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    outputs:
+      has_backport_label: ${{ steps.c.outputs.value }}
+    steps:
+      - id: c
+        run: |
+          echo "value=${{
+            contains(github.event.pull_request.labels.*.name, 'no-backport') ||
+            contains(github.event.pull_request.labels.*.name, 'backport') ||
+            contains(github.event.pull_request.labels.*.name, 'single-backport') ||
+            contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+            contains(github.event.pull_request.labels.*.name, 'triple-backport') }}" >> "$GITHUB_OUTPUT"
+
+  files-changed:
+    name: Check which files changed
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 3
+    outputs:
+      docs: ${{ steps.changes.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test which files changed
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   backport-reminder:
+    needs: [ files-changed, flags ]
+    if: ${{ !cancelled() }}
     name: Decide whether to backport or not
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -17,10 +51,124 @@ jobs:
       - name: Fail if backport decision label is missing
         if: >
           github.event_name == 'pull_request' &&
-          !contains(github.event.pull_request.labels.*.name, 'no-backport') &&
-          !contains(github.event.pull_request.labels.*.name, 'backport') &&
-          !contains(github.event.pull_request.labels.*.name, 'double-backport') &&
-          !contains(github.event.pull_request.labels.*.name, 'triple-backport')
+          needs.files-changed.outputs.docs == 'true' &&
+          needs.flags.outputs.has_backport_label == 'false'
         run: |
-          echo "::error::PR is missing a backport decision label. Add one of: no-backport, backport, double-backport, triple-backport"
+          echo "::error::PR has docs changes and is missing a backport decision label. Add one of: no-backport, backport, single-backport, double-backport, or triple-backport"
           exit 1
+
+  priority-backport-reminder:
+    name: Remind about backporting P0 + P1 fixes
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    needs: [flags]
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Add, update, or remove the high-priority backport reminder
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v9
+        env:
+          HAS_BACKPORT_LABEL: ${{ needs.flags.outputs.has_backport_label }}
+        with:
+          script: | # js
+            const { owner, repo } = context.repo;
+            const prNumber = context.payload.pull_request.number;
+
+            // A backport decision has already been made if a decision label is present.
+            const alreadyDecided = process.env.HAS_BACKPORT_LABEL === "true";
+
+            // Issues linked to this PR via closing keywords (fixes/closes/resolves #N),
+            // together with their labels.
+            const query = `
+              query($owner: String!, $repo: String!, $pr: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $pr) {
+                    closingIssuesReferences(first: 50) {
+                      nodes {
+                        number
+                        title
+                        url
+                        labels(first: 50) { nodes { name } }
+                      }
+                    }
+                  }
+                }
+              }`;
+
+            const data = await github.graphql(query, { owner, repo, pr: prNumber });
+            const linkedIssues =
+              data.repository.pullRequest.closingIssuesReferences.nodes ?? [];
+
+            const PRIORITY_LABELS = ["Priority:P0", "Priority:P1"];
+            const priorityIssues = linkedIssues.filter((issue) =>
+              issue.labels.nodes.some((l) => PRIORITY_LABELS.includes(l.name)),
+            );
+
+            // Hidden marker so we can find/update/remove our own comment idempotently.
+            const MARKER = "<!-- backport-priority-reminder -->";
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number: prNumber, per_page: 100 },
+            );
+            const existing = comments.find(
+              (c) => c.body && c.body.includes(MARKER),
+            );
+
+            // Remind only while a high-priority issue is closed AND no decision
+            // has been made yet. Once either stops being true the comment is no
+            // longer needed, so we remove any stale one below.
+            const shouldComment = priorityIssues.length > 0 && !alreadyDecided;
+
+            if (!shouldComment) {
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                });
+                console.log("Removed stale backport-priority reminder.");
+              } else {
+                console.log(
+                  "Reminder not needed (no high-priority linked issues, or a backport decision label is already applied).",
+                );
+              }
+              return;
+            }
+
+            const list = priorityIssues
+              .map((i) => {
+                const tags = i.labels.nodes
+                  .map((l) => l.name)
+                  .filter((n) => PRIORITY_LABELS.includes(n))
+                  .join(", ");
+                return `- #${i.number} ${i.title} (${tags})`;
+              })
+              .join("\n");
+
+            const body = [
+              MARKER,
+              "⚠️ This PR closes one or more high-priority issues:",
+              "",
+              list,
+              "",
+              "Please apply the `backport` label unless you have a very good reason not to.",
+            ].join("\n");
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }

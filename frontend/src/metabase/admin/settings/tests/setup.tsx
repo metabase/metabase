@@ -59,7 +59,7 @@ export const ossRoutes: RouteMap = {
   ldap: { path: "/authentication/ldap", testPattern: /Server Settings/i },
   apiKeys: {
     path: "/authentication/api-keys",
-    testPattern: /Allow users to use API keys/i,
+    testPattern: /Create API keys to let users authenticate/i,
   },
   maps: { path: "/maps", testPattern: /Map tile server URL/i },
   localization: { path: "/localization", testPattern: /Instance language/i },

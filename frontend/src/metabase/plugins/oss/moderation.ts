@@ -23,8 +23,6 @@ export type RevisionOrModerationEvent = {
 const getDefaultPluginModeration = () => ({
   isEnabled: () => false,
   EntityModerationIcon: PluginPlaceholder,
-  QuestionModerationSection: PluginPlaceholder,
-  ModerationReviewBanner: PluginPlaceholder,
   ModerationReviewTextForQuestion: PluginPlaceholder,
   ModerationReviewTextForDashboard: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,

@@ -1,6 +1,5 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
@@ -32,10 +31,10 @@ import {
 
 export function getDataStudioRoutes(
   store: Store<State>,
-  CanAccessDataStudio: ComponentType,
-  CanAccessDataModel: ComponentType,
-  _CanAccessTransforms: ComponentType,
-  IsAdmin: ComponentType,
+  CanAccessDataStudio: RouteComponent,
+  CanAccessDataModel: RouteComponent,
+  _CanAccessTransforms: RouteComponent,
+  IsAdmin: RouteComponent,
 ) {
   return (
     <Route component={CanAccessDataStudio}>

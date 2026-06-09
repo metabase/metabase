@@ -101,14 +101,13 @@
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
-  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
-        rankers         (into #{}
+  (let [rankers         (into #{}
                               (map (fn [k]
                                      (if (namespace k)
                                        (keyword (namespace k))
                                        k)))
                               (keys overrides))
-        unknown-rankers (not-empty (remove known-ranker? rankers))]
+        unknown-rankers (not-empty (remove search.config/known-rankers rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
@@ -127,7 +126,8 @@
   "Return the current weights being used to rank the search results"
   [_route-params
    {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
-  (search.config/weights {:context context}))
+  ;; normalize so the reported weights match what search actually applies for this context
+  (search.config/weights {:context (search.config/normalized-context context)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -144,7 +144,9 @@
                                         [:context {:default :default} :keyword]
                                         [:search_engine {:optional true} :any]]]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  ;; normalize so overrides are stored under the same key search reads them from
+  (let [context   (search.config/normalized-context context)
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))
@@ -161,11 +163,14 @@
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
 
+  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.
+  It defaults to `api`, the value for programmatic callers.
+
   Filters:
   - `archived`: set to true to search archived items only, default is false
   - `table_db_id`: search for tables, cards, and models of a certain DB
   - `models`: only search for items of specific models. If not provided, search for all models
-  - `filters_items_in_personal_collection`: only search for items in personal collections
+  - `filter_items_in_personal_collection`: only search for items in personal collections
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
   - `last_edited_at`: search for items last edited at a specific timestamp
@@ -206,7 +211,9 @@
     has-temporal-dim                    :has_temporal_dim}
    :- [:map
        [:q                                   {:optional true} [:maybe :string]]
-       [:context                             {:optional true} [:maybe :keyword]]
+       ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
+       ;; what makes `:default :api` actually apply when the param is omitted
+       [:context                             {:default :api} search.config/Context]
        [:archived                            {:default false} [:maybe :boolean]]
        [:collection                          {:optional true} [:maybe ms/PositiveInt]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]

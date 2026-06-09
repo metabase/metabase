@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
-  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
-  `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
+  "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, and `describe-nested-field-columns`."
   (:refer-clojure :exclude [some select-keys every? mapv empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -18,9 +17,12 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
@@ -401,27 +403,72 @@
      (map (fn [col] (select-keys col [:table-schema :table-name :field-name])))
      (sql-jdbc.execute/reducible-query db (describe-indexes-sql driver (assoc args :details (driver.conn/effective-details db)))))))
 
-(defn- describe-table-fks*
-  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
-  (into
-   #{}
-   (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                                           (fn [^ResultSet rs]
-                                             (fn []
-                                               {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                                :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                                   :schema (.getString rs "PKTABLE_SCHEM")}
-                                                :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+(mu/defn reducible-table-fks-from-jdbc-metadata :- ::driver/describe-fks.result
+  "Part of the implementation for [[describe-fks-with-jdbc-metadata]], which is the default implementation
+  of [[metabase.driver/describe-fks]]. Made available if you'd like to implement [[metabase.driver/describe-fks]]
+  individually for each Table.
 
-(defn describe-table-fks
-  "Default implementation of [[metabase.driver/describe-table-fks]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db-or-id-or-spec table & [db-name-or-nil]]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   db-or-id-or-spec
-   nil
-   (fn [^Connection conn]
-     (describe-table-fks* driver conn table db-name-or-nil))))
+  Return a reducible sequence of foreign key information maps (as expected by [[metabase.driver/describe-fks]]) for
+  Table with `schema`, `table-name`, and, optionally `db-name-or-nil` using
+  `java.sql.DatabaseMetaData/getImportedKeys`. These strings act like filters for the returned results."
+  [^DatabaseMetaData metadata       :- (lib.schema.common/instance-of-class DatabaseMetaData)
+   ^String           db-name-or-nil :- [:maybe :string]
+   ^String           schema         :- [:maybe :string]
+   ^String           table-name     :- :string]
+  (sql-jdbc.sync.common/reducible-results
+   #(.getImportedKeys metadata db-name-or-nil schema table-name)
+   (fn [^ResultSet rs]
+     (fn []
+       {:fk-table-schema schema
+        :fk-table-name   table-name
+        :fk-column-name  (.getString rs "FKCOLUMN_NAME")
+        :pk-table-schema (.getString rs "PKTABLE_SCHEM")
+        :pk-table-name   (.getString rs "PKTABLE_NAME")
+        :pk-column-name  (.getString rs "PKCOLUMN_NAME")}))))
+
+(mu/defn reducible-fks-for-tables-matching-options :- ::driver/describe-fks.result
+  "Part of the implementation for [[describe-fks-with-jdbc-metadata]], which is the default implementation
+  of [[metabase.driver/describe-fks]]. Made available if you'd like to implement [[metabase.driver/describe-fks]]
+  individually for each Table.
+
+  Return a reducible sequence of foreign key information maps (as expected by [[metabase.driver/describe-fks]]) by
+  calling
+
+    (f ^java.sql.Connection conn table)
+
+  for each Table that matches the `options` spec and concatenating the results."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options
+   f        :- [:=>
+                [:cat
+                 (lib.schema.common/instance-of-class Connection)
+                 [:map
+                  {:description "Table"}
+                  [:schema {:optional true} [:maybe :string]]
+                  [:name   :string]]]
+                ::driver/describe-fks.result]]
+  (reify clojure.lang.IReduceInit
+    (reduce [_this rf init]
+      (let [reducible-tables (driver-api/reducible-sync-tables database options)]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver
+         database
+         nil
+         (fn [^Connection conn]
+           (let [xform         (mapcat (partial f conn)) ; (f conn table) => [fk1 fk2 ...]
+                 reducible-fks (eduction xform reducible-tables)]
+             (reduce rf init reducible-fks))))))))
+
+(mu/defn- describe-fks-with-jdbc-metadata :- ::driver/describe-fks.result
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC-based drivers."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options]
+  (letfn [(f [^java.sql.Connection conn {schema :schema, table-name :name, :as _table}]
+            (let [metadata (.getMetaData conn)]
+              (reducible-table-fks-from-jdbc-metadata metadata nil schema table-name)))]
+    (reducible-fks-for-tables-matching-options driver database options f)))
 
 (defmulti describe-fks-sql
   "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
@@ -431,13 +478,24 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn describe-fks
-  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
-  [driver db & {:keys [schema-names table-names] :as args}]
+(mu/defn- describe-fks-with-sql :- ::driver/describe-fks.result
+  [driver                                         :- :keyword
+   db                                             :- ::lib.schema.metadata/database
+   {:keys [schema-names table-names] :as options} :- ::driver/describe-fks.options]
   (if (or (and schema-names (empty? schema-names))
           (and table-names (empty? table-names)))
     []
-    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc args :details (driver.conn/effective-details db))))))
+    (sql-jdbc.execute/reducible-query db (describe-fks-sql driver (assoc options :details (driver.conn/effective-details db))))))
+
+(mu/defn describe-fks :- ::driver/describe-fks.result
+  "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   options  :- ::driver/describe-fks.options]
+  (let [f (if (get-method describe-fks-sql driver)
+            describe-fks-with-sql
+            describe-fks-with-jdbc-metadata)]
+    (f driver database options)))
 
 (defn describe-table-indexes
   "Default implementation of [[metabase.driver/describe-table-indexes]] for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

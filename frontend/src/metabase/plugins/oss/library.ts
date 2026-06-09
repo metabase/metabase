@@ -87,7 +87,10 @@ type LibraryPlugin = {
   }: {
     skip?: boolean;
     type: CollectionType;
-  }) => CollectionItem | undefined;
+  }) => {
+    data: CollectionItem | undefined;
+    isLoading: boolean;
+  };
   useGetResolvedLibraryCollection: (params?: { skip?: boolean }) => {
     data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
@@ -124,7 +127,10 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
   isEnabled: false,
   getDataStudioLibraryRoutes: () => null,
   useGetLibraryCollection: () => ({ isLoading: false, data: undefined }),
-  useGetLibraryChildCollectionByType: () => undefined,
+  useGetLibraryChildCollectionByType: () => ({
+    data: undefined,
+    isLoading: false,
+  }),
   useGetResolvedLibraryCollection: () => ({
     isLoading: false,
     data: undefined,

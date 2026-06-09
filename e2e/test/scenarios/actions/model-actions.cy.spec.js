@@ -83,7 +83,11 @@ describe(
       cy.intercept("POST", "/api/action/*/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
-      cy.intercept("GET", "/api/search?archived=true").as("getArchived");
+      cy.intercept({
+        method: "GET",
+        pathname: "/api/search",
+        query: { archived: "true" },
+      }).as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
       cy.intercept("GET", "/api/database?*").as("getDatabase");
     });

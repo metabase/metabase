@@ -422,10 +422,10 @@
             default pool's leak detector tight on non-transform instances."
     (mt/with-temp [:model/Database db {:engine :h2}]
       (is (= :default
-             (driver.conn/effective-connection-type db)))
+             (driver.conn/connection-pool-type db)))
       (driver.conn/with-transform-connection
         (is (= :transform
-               (driver.conn/effective-connection-type db)))))))
+               (driver.conn/connection-pool-type db)))))))
 
 ;; Not ^:parallel: the kondo linter flags `set-statement-query-timeout!` (`!`-suffixed, so classified "destructive")
 ;; when used inside a parallel test. The call site here only mutates a local proxy Statement and is safe, but marking
