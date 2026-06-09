@@ -500,6 +500,7 @@
            permissions
            premium-features
            query-processor
+           request
            settings
            slackbot
            system
