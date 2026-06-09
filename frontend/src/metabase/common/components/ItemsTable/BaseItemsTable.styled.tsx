@@ -12,11 +12,10 @@ import {
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
 import { Link } from "metabase/common/components/Link";
+import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
 import AdminS from "metabase/css/admin.module.css";
 import type { IconProps, TextProps } from "metabase/ui";
 import { FixedSizeIcon, Text } from "metabase/ui";
-
-import { RawMaybeLink } from "../Badge/Badge.styled";
 
 import type { ResponsiveProps } from "./utils";
 import { getContainerQuery } from "./utils";

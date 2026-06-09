@@ -424,7 +424,7 @@
   (FileUtils/deleteDirectory repo-path))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
+  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
     obj
     (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
                                                                      :token      token})

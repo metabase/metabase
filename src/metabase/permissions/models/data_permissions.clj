@@ -489,31 +489,32 @@
   schema name. If the user has multiple permissions for the given type in different groups, they are coalesced into a
   single value. The schema-level permission is the *least* restrictive table-level permission within that schema.
 
-  For databases without a schema, the schema name will be nil, but we want to compare that against the empty string instead."
+  Schema names are compared with nil and the empty string treated as equivalent, matching how `database-schemas`
+  presents these databases to the API."
   [user-id perm-type database-id schema-name :- [:maybe :string]]
-  (let [schema-name (or schema-name "")]
-    (when (not= :model/Table (model-by-perm-type perm-type))
-      (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
-                      {perm-type (permissions.schema/data-permissions perm-type)})))
-    (cond
-      (is-superuser? user-id)
-      (most-permissive-value perm-type)
+  (when (not= :model/Table (model-by-perm-type perm-type))
+    (throw (ex-info (tru "Permission type {0} is not a table-level permission." perm-type)
+                    {perm-type (permissions.schema/data-permissions perm-type)})))
+  (cond
+    (is-superuser? user-id)
+    (most-permissive-value perm-type)
 
-      (and (= perm-type :perms/manage-table-metadata)
-           (is-data-analyst? user-id))
-      (most-permissive-value perm-type)
+    (and (= perm-type :perms/manage-table-metadata)
+         (is-data-analyst? user-id))
+    (most-permissive-value perm-type)
 
-      :else
-      ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
-      ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
-      ;; restrictive group permission.
-      (let [perm-values (->> (get-permissions user-id perm-type database-id)
-                             (filter #(or (= (:schema_name %) schema-name)
-                                          (nil? (:table_id %))))
-                             (map :perm_value)
-                             (into #{}))]
-        (or (coalesce perm-type perm-values)
-            (least-permissive-value perm-type))))))
+    :else
+    ;; The schema-level permission is the most-restrictive table-level permission within a schema. So for each group,
+    ;; select the most-restrictive table-level permission. Then use normal coalesce logic to select the *least*
+    ;; restrictive group permission.
+    (let [schema-name (or schema-name "")
+          perm-values (->> (get-permissions user-id perm-type database-id)
+                           (filter #(or (= (or (:schema_name %) "") schema-name)
+                                        (nil? (:table_id %))))
+                           (map :perm_value)
+                           (into #{}))]
+      (or (coalesce perm-type perm-values)
+          (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-schema? :- :boolean
   "Returns a Boolean indicating whether the user has the specified permission value for the given database ID and schema,

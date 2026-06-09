@@ -31,26 +31,26 @@ describe("WorkspaceEmptyState", () => {
     setup();
 
     expect(
-      screen.getByRole("link", { name: /File-based development/ }),
+      screen.getByRole("link", { name: /Agent-driven development/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Using remote sync/ }),
     ).toBeInTheDocument();
   });
 
-  it("does not show the upload-workspace-config button for non-admins", () => {
+  it("does not show the upload-config button for non-admins", () => {
     setup({ isAdmin: false });
 
     expect(
-      screen.queryByRole("button", { name: "upload a workspace config" }),
+      screen.queryByRole("button", { name: "Upload a workspace config" }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows the upload-workspace-config button for admins", () => {
+  it("shows the upload-config button for admins", () => {
     setup({ isAdmin: true });
 
     expect(
-      screen.getByRole("button", { name: "upload a workspace config" }),
+      screen.getByRole("button", { name: "Upload a workspace config" }),
     ).toBeInTheDocument();
   });
 });

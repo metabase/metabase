@@ -208,6 +208,15 @@
               :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
+(deftest ^:parallel get-database-stub-test
+  (testing "GET /api/database"
+    (testing "A stub database should not be included in the response"
+      (mt/with-temp [:model/Database {db-id-1 :id} {:is_stub true}
+                     :model/Database {db-id-2 :id} {:is_stub false}]
+        (let [{databases :data} (mt/user-http-request :lucky :get 200 "database")]
+          (is (nil? (m/find-first #(= (:id %) db-id-1) databases)))
+          (is (some? (m/find-first #(= (:id %) db-id-2) databases))))))))
+
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
     (testing "A database can be fetched even if one table has legacy-no-self-service permissions"

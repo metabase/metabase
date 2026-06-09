@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import type { WithRouterProps } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
@@ -9,7 +8,7 @@ import {
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { ArchiveCollectionModalContainer } from "./ArchiveCollectionModal";
+import { ArchiveCollectionModal } from "./ArchiveCollectionModal";
 
 const TEST_COLLECTION = createMockCollection({ id: 1, name: "Sales" });
 
@@ -23,9 +22,9 @@ const setup = ({
   const props = {
     onClose,
     params: { slug },
-  } as unknown as WithRouterProps & { onClose: () => void };
+  };
 
-  renderWithProviders(<ArchiveCollectionModalContainer {...props} />);
+  renderWithProviders(<ArchiveCollectionModal {...props} />);
 
   return { onClose };
 };
