@@ -6,7 +6,7 @@ import { MetabotVerifiedContentConfigurationPane } from "./components/MetabotVer
 import {
   ModerationReviewTextForDashboard,
   ModerationReviewTextForQuestion,
-} from "./components/ModerationReviewBanner";
+} from "./components/ModerationReviewText";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import { useCardMenuItems, useDashboardMenuItems } from "./hooks/useMenuItems";
 import {

@@ -4,7 +4,7 @@ import Question from "metabase-lib/v1/Question";
 import type { ModerationReview, User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { ModerationReviewTextForQuestion } from "./ModerationReviewBanner";
+import { ModerationReviewTextForQuestion } from "./ModerationReviewText";
 
 const moderator: User = createMockUser({ id: 1, common_name: "Foo" });
 const currentUser: User = createMockUser({

@@ -11,8 +11,6 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
 
-import S from "./ModerationReview.module.css";
-
 const ICON_BUTTON_SIZE = 16;
 
 export const ModerationReviewTextForQuestion = ({
@@ -77,7 +75,7 @@ const ModerationReviewText = ({
         name={iconName}
         c={iconColor}
         size={ICON_BUTTON_SIZE}
-        className={S.iconMargin}
+        mt="xs"
       />
       <Text>
         {bannerText} {relativeCreationTime}
