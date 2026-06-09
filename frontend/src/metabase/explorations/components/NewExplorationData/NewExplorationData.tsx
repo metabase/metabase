@@ -1,9 +1,11 @@
+import cx from "classnames";
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateExplorationMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { trackExplorationCreated } from "metabase/explorations/analytics";
 import type {
   ExplorationBlock,
@@ -18,7 +20,6 @@ import {
   Button,
   Center,
   Group,
-  Icon,
   Menu,
   Stack,
   Text,
@@ -201,11 +202,11 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
             <Menu.Target>
               <Button
                 variant="outline"
-                color="text-secondary"
+                color="text-primary"
+                bd="1px solid text-tertiary"
                 size="sm"
                 disabled={isManualDataPickingDisabled}
-                leftSection={<Icon name="add" size={12} />}
-              >{t`Data`}</Button>
+              >{t`+ Data`}</Button>
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item onClick={() => setActiveModal("metrics")}>
@@ -240,10 +241,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           bd="1px dashed border"
           bdrs="xl"
           disabled={isManualDataPickingDisabled}
-          leftSection={<Icon name="add" c="text-secondary" size={12} />}
           onClick={() => setActiveModal("events")}
         >
-          {!timelines.length ? t`Events` : null}
+          {!timelines.length ? t`+ Events` : null}
         </Button>
       </Group>
 
@@ -285,22 +285,21 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
       </Box>
 
-      <Group justify="space-between" align="flex-end" wrap="nowrap">
+      <Group justify="space-between" align="center" wrap="nowrap">
         <Text
           c="text-secondary"
           size="sm"
           lh="1rem"
         >{t`${applicationName} will automate running combinations of these pairings and then do a basic analysis of the results.`}</Text>
-        {canStart && (
-          <Button
-            size="sm"
-            flex="none"
-            variant="filled"
-            loading={isStarting}
-            disabled={isStarting || isManualDataPickingDisabled}
-            onClick={handleStart}
-          >{t`Start research`}</Button>
-        )}
+        <Button
+          className={cx(!canStart && CS.hidden)} // hide with css to make sure caption text is aligned vertically
+          size="sm"
+          flex="none"
+          variant="filled"
+          loading={isStarting}
+          disabled={isStarting || isManualDataPickingDisabled}
+          onClick={handleStart}
+        >{t`Start research`}</Button>
       </Group>
 
       <AddMetricsModal

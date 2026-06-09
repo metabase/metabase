@@ -234,7 +234,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             />
           )}
         </Flex>
-        <Flex mb="md" mx="lg" align="center" justify="center">
+        <Flex mb="lg" mx="lg" align="center" justify="center">
           <Text
             c="text-secondary"
             size="sm"
