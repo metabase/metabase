@@ -2262,3 +2262,20 @@
                                                                 :query-permissions/perms {:gtaps {:perms/create-queries :query-builder-and-native
                                                                                                   :perms/view-data      :unrestricted}}}
                                        :visualization_settings {}})))))))))
+
+(deftest at-least-as-permissive-rejects-unknown-values-test
+  (testing "at-least-as-permissive? should throw on values not in the permission type's value set"
+    (binding [mu.fn/*enforce* false]
+      (testing "String values should throw"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Invalid permission value"
+             (perms/at-least-as-permissive? :perms/create-queries "query-builder-and-native" :no))))
+      (testing "Unknown keyword values should throw"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Invalid permission value"
+             (perms/at-least-as-permissive? :perms/create-queries :bogus-value :no))))
+      (testing "Valid keyword values should still work"
+        (is (true? (perms/at-least-as-permissive? :perms/create-queries :query-builder-and-native :no)))
+        (is (false? (perms/at-least-as-permissive? :perms/create-queries :no :query-builder-and-native)))))))
