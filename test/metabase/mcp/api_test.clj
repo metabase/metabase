@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
@@ -704,6 +705,10 @@
                     _              (reset! question-id (:id question-data))
                     _              (is (= (format "https://stats.metabase.test/question/%d" @question-id)
                                           (:url question-data)))
+                    ;; No collection_id given → defaults to the caller's personal collection;
+                    ;; collection_path must survive MCP forwarding.
+                    _              (is (= (collection/user->personal-collection-name (mt/user->id :crowberto) :user)
+                                          (:collection_path question-data)))
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
