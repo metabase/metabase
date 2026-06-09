@@ -138,6 +138,7 @@ export function getTreemapChartOption({
     color: renderingContext.getColor("text-primary"),
     fontSize: groupHeader.fontSize,
     fontWeight: groupHeader.fontWeight,
+    lineHeight: groupHeader.height,
     // Chip shape; the per-node `backgroundColor` (the group hue with opacity)
     // is set in `toSeriesData`. A per-node `color: "transparent"` there hides the
     // text of any chip too narrow to fit it, while keeping this band.
