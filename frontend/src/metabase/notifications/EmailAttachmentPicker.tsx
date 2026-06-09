@@ -15,7 +15,7 @@ import { Toggle } from "metabase/common/components/Toggle";
 import type { ExportFormat } from "metabase/common/types/export";
 import CS from "metabase/css/core/index.css";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { Box, Checkbox, Group, Icon, Switch, Text } from "metabase/ui";
+import { Box, Checkbox, Group, Icon, Switch, Text, Tooltip } from "metabase/ui";
 import type { SubscriptionSupportingCard } from "metabase-types/api";
 
 import S from "./EmailAttachmentPicker.module.css";
@@ -397,60 +397,41 @@ export function EmailAttachmentPicker({
 
   return (
     <div>
-      <Box
-        className={CS.borderTop}
-        pt="1.5rem"
-        pb="1.5rem"
-        opacity={canAttachFiles ? 1 : 0.6}
-      >
-        {/* <Group gap="0">
-          <Text fw="bold">{t`Attach results as files`}</Text>
-          <Icon
-            name="info"
-            c="text-secondary"
-            ml="0.5rem"
-            size={12}
-            tooltip={
-              disabledReason ||
-              t`Attachments can contain up to 2,000 rows of data.`
-            }
-          />
-        </Group>
+      <Box className={CS.borderTop} pt="1.5rem" pb="1.5rem">
         <Tooltip label={disabledReason} disabled={!disabledReason}>
-          <Toggle
-            aria-label={t`Attach results`}
-            value={isEnabled && canAttachFiles}
-            onChange={toggleAttach}
-            disabled={!canAttachFiles}
-          />
+          <Box>
+            <Switch
+              label={
+                <Group gap={0}>
+                  <Text
+                    fw="bold"
+                    c={disabledReason ? "text-secondary" : "text-primary"}
+                  >{t`Attach results as files`}</Text>
+                  <Icon
+                    name="info"
+                    c="text-secondary"
+                    ml="0.5rem"
+                    size={12}
+                    tooltip={
+                      !disabledReason
+                        ? t`Attachments can contain up to 2,000 rows of data.`
+                        : undefined
+                    }
+                  />
+                </Group>
+              }
+              aria-label={t`Attach results`}
+              checked={isEnabled && canAttachFiles}
+              onChange={(e) => toggleAttach(e.target.checked)}
+              disabled={!canAttachFiles}
+              labelPosition="left"
+              classNames={{
+                body: S.AttachmentSwitchBody,
+                input: S.AttachmentSwitchInput,
+              }}
+            />
+          </Box>
         </Tooltip>
-      </Group> */}
-        <Switch
-          label={
-            <Group gap={0}>
-              <Text fw="bold">{t`Attach results as files`}</Text>
-              <Icon
-                name="info"
-                c="text-secondary"
-                ml="0.5rem"
-                size={12}
-                tooltip={
-                  disabledReason ||
-                  t`Attachments can contain up to 2,000 rows of data.`
-                }
-              />
-            </Group>
-          }
-          aria-label={t`Attach results`}
-          checked={isEnabled && canAttachFiles}
-          onChange={(e) => toggleAttach(e.target.checked)}
-          disabled={!canAttachFiles}
-          labelPosition="left"
-          classNames={{
-            body: S.AttachmentSwitchBody,
-            input: S.AttachmentSwitchInput,
-          }}
-        />
       </Box>
       {isEnabled && canAttachFiles && (
         <div>

@@ -10,7 +10,6 @@ import {
 } from "metabase/common/components/SchedulePicker";
 import { SendTestPulse } from "metabase/common/components/SendTestPulse";
 import { Sidebar } from "metabase/common/components/Sidebar";
-// import { Toggle } from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPicker";
@@ -201,7 +200,6 @@ export const AddEditEmailSidebar = ({
           />
         )}
         <div className={cx(CS.py3, CS.borderTop)}>
-          {/* <Title order={5}>{t`Don't send if there aren't results`}</Title> */}
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
