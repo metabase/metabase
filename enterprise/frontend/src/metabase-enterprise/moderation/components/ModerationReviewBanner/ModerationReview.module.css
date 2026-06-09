@@ -1,7 +1,3 @@
-.container {
-  border-radius: var(--mantine-radius-md);
-}
-
 .iconMargin {
   margin-top: var(--mantine-spacing-xs);
 }

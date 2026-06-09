@@ -4,10 +4,7 @@ import Question from "metabase-lib/v1/Question";
 import type { ModerationReview, User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import {
-  ModerationReviewBanner,
-  ModerationReviewTextForQuestion,
-} from "./ModerationReviewBanner";
+import { ModerationReviewTextForQuestion } from "./ModerationReviewBanner";
 
 const moderator: User = createMockUser({ id: 1, common_name: "Foo" });
 const currentUser: User = createMockUser({
@@ -23,22 +20,6 @@ const moderationReview: ModerationReview = {
   created_at: "1997-10-10T03:30:30",
   user: moderator,
 };
-
-describe("ModerationReviewBanner", () => {
-  it("should show text concerning the given review", async () => {
-    setupUserEndpoints(moderator);
-
-    renderWithProviders(
-      <ModerationReviewBanner moderationReview={moderationReview} />,
-      {
-        storeInitialState: {
-          currentUser,
-        },
-      },
-    );
-    expect(await screen.findByText("Foo verified this")).toBeInTheDocument();
-  });
-});
 
 describe("ModerationReviewText", () => {
   it("should show text concerning the given review", async () => {
