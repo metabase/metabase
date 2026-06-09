@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.curation :as collections.curation]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
@@ -142,8 +143,9 @@
                          :display_data (display-data m)
                          :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
-                         :embeddable_text (embeddable-text m)))]
-    (merge fn-results sql-results)))
+                         :embeddable_text (embeddable-text m)))
+        document (merge fn-results sql-results)]
+    (assoc document :curated (collections.curation/curated? document))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs

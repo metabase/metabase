@@ -2,6 +2,7 @@
   (:require
    [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase.collections.curation :as collections.curation]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -40,7 +41,7 @@
 (def dynamic-schema-version
   "Code version of dynamic schema (index_table_xyzs). If higher than what's found in db dynamic schema migration will
   be attempted."
-  4)
+  5)
 
 (defn- alter-index-tables!
   "Run `alter-fn` against each existing index table whose `index_version` is below `target-version`, then bump those
@@ -143,6 +144,27 @@
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))
 
+(defn- add-data-authority-and-curated-columns!
+  "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
+  `curated` backs Metabot's \"verified or curated content\" filter.
+  The backfill reuses [[metabase.collections.curation/curated-honeysql]] so it can't drift from the
+  ingestion predicate; changing the rule needs a new migration to recompute this column."
+  [tx index-metadata]
+  ;; The index has no is_published column, so resolve that signal to false and lean on
+  ;; root_collection_type to cover library/published tables. Backfilling keeps the filter working
+  ;; before the next reindex; data_authority is added empty and populated for real on the next update.
+  (let [curated-expr (collections.curation/curated-honeysql
+                      (fn [signal] (if (= signal :is_published) [:inline false] signal)))]
+    (alter-index-tables!
+     tx index-metadata 5
+     (fn [execute! table-name]
+       (let [kw-tbl (keyword table-name)]
+         (execute! {:alter-table [kw-tbl] :add-column [[:data_authority :text :if-not-exists]]})
+         (execute! {:alter-table [kw-tbl] :add-column [[:curated :boolean :if-not-exists]]})
+         (execute! {:update kw-tbl
+                    :set   {:curated curated-expr}
+                    :where [:= :curated nil]}))))))
+
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
   leftovers if necessary."
@@ -151,6 +173,8 @@
   ;; migration 2: add personal_owner_id column to index tables
   ;; migration 3: add collection_type and data_layer columns to index tables
   ;; migration 4: add root_collection_type column to index tables
+  ;; migration 5: add data_authority and precomputed curated columns to index tables
   (add-personal-owner-id-column! tx index-metadata)
   (add-collection-type-and-data-layer-columns! tx index-metadata)
-  (add-root-collection-type-column! tx index-metadata))
+  (add-root-collection-type-column! tx index-metadata)
+  (add-data-authority-and-curated-columns! tx index-metadata))

@@ -50,7 +50,13 @@
   [search-ctx]
   ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
   ;; TODO move this behavior to the spec somehow
-  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
+  ;; :curated? is a cross-cutting OR over signals that every index row carries (null when N/A), so it must
+  ;; not restrict the model set the way the per-attr filters do — that restriction is what made a
+  ;; verified-only Metabot blind to tables (BOT-1536).
+  (let [required (->> (remove-if-falsey search-ctx :archived?)
+                      (#(dissoc % :curated?))
+                      keys
+                      (keep context-key->filter))]
     (into #{}
           (remove nil?)
           (for [search-model (:models search-ctx)

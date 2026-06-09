@@ -572,6 +572,7 @@
   collections
   {:team "UX West"
    :api  #{metabase.collections.core
+           metabase.collections.curation
            metabase.collections.models.collection
            metabase.collections.models.collection.root
            metabase.collections.schema}
@@ -3436,6 +3437,7 @@
            analytics-interface
            api
            app-db
+           collections
            config
            connection-pool
            llm
