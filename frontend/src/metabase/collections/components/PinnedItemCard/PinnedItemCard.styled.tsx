@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
 import { Box, type BoxProps } from "metabase/ui";
 
 export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`

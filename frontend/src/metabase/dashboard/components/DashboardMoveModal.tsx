@@ -94,7 +94,7 @@ export const DashboardMoveModalConnected = ({
   params,
   onClose,
 }: {
-  params: { slug: string };
+  params: { slug?: string };
   onClose: () => void;
 }) => {
   const id = Urls.extractCollectionId(params.slug);
