@@ -193,15 +193,9 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
           rawResponse: true,
         })
         .then((response) => response.blob())
-        .then((blob) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === "string") {
-              tile.src = reader.result;
-            }
-          };
-
-          reader.readAsDataURL(blob);
+        .then((blob) => readAsDataURL(blob))
+        .then((src) => {
+          tile.src = src;
           done?.(undefined, tile);
         })
         .catch((error: unknown) => {
@@ -222,4 +216,23 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       return tile;
     };
   };
+}
+
+function readAsDataURL(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Cannot read tile"));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Cannot read tile"));
+    };
+
+    reader.readAsDataURL(blob);
+  });
 }
