@@ -3,10 +3,10 @@ import { useEffect, useMemo } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import { parseProviderAndModel } from "metabase/admin/ai/utils";
 import { useGetMetabotSettingsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { parseProviderAndModel } from "metabase/metabot/components/AIProviderConfigurationForm";
 import { Icon, Loader, Select, type SelectOption } from "metabase/ui";
 
 import S from "./MetabotModelSelector.module.css";
