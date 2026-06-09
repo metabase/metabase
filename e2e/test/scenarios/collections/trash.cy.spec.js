@@ -979,14 +979,18 @@ function ensureCanRestoreFromPage(name) {
 }
 
 function selectItem(name) {
-  cy.findByText(name).closest("tr").findByRole("checkbox").check();
+  cy.findByText(name)
+    .closest("tr")
+    .findByRole("checkbox")
+    .closest("button")
+    .click();
 }
 
 function assertChecked(name, checked = true) {
   cy.findByText(name)
     .closest("tr")
     .findByRole("checkbox")
-    .should(checked ? "have.attr" : "not.have.attr", "checked");
+    .should(checked ? "be.checked" : "not.be.checked");
 }
 
 function assertTrashSelectedInNavigationSidebar() {

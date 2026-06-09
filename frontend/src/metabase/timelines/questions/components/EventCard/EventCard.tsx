@@ -2,9 +2,8 @@ import type { ChangeEvent, SyntheticEvent } from "react";
 import { memo, useCallback } from "react";
 import { t } from "ttag";
 
-import { CheckBox as Checkbox } from "metabase/common/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Checkbox, Icon, Menu } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/visualizations/lib/formatting";
 import type { IconName, Timeline, TimelineEvent } from "metabase-types/api";
@@ -82,6 +81,7 @@ const EventCard = ({
     >
       <CardCheckboxContainer>
         <Checkbox
+          size="sm"
           checked={isVisible}
           onChange={handleChangeVisibility}
           onClick={handleAsideClick}

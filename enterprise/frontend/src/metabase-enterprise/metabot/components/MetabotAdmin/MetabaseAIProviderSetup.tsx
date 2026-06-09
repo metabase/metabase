@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { useMetabotSetupContext } from "metabase/admin/ai/MetabotSetup";
 import {
   useRefreshTokenStatusMutation,
   useUpdateMetabotSettingsMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
+import { useAIProviderConfigurationContext } from "metabase/metabot";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -165,7 +165,7 @@ export function MetabaseAIProviderSetup({
   ]);
 
   const { isMutating, handleDisconnect, resetProvider, isModal } =
-    useMetabotSetupContext(connectAction, onDisconnect);
+    useAIProviderConfigurationContext(connectAction, onDisconnect);
 
   const metabaseManagedAiPurchaseError = metabaseManagedAiPurchase.error
     ? getErrorMessage(
