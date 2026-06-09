@@ -101,14 +101,13 @@
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
-  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
-        rankers         (into #{}
+  (let [rankers         (into #{}
                               (map (fn [k]
                                      (if (namespace k)
                                        (keyword (namespace k))
                                        k)))
                               (keys overrides))
-        unknown-rankers (not-empty (remove known-ranker? rankers))]
+        unknown-rankers (not-empty (remove search.config/known-rankers rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
@@ -127,7 +126,8 @@
   "Return the current weights being used to rank the search results"
   [_route-params
    {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
-  (search.config/weights {:context context}))
+  ;; normalize so the reported weights match what search actually applies for this context
+  (search.config/weights {:context (search.config/normalized-context context)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -144,7 +144,9 @@
                                         [:context {:default :default} :keyword]
                                         [:search_engine {:optional true} :any]]]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  ;; normalize so overrides are stored under the same key search reads them from
+  (let [context   (search.config/normalized-context context)
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))
