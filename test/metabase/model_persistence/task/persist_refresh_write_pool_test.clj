@@ -10,11 +10,8 @@
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]))
 
-;; The write context for persistence DDL is established by the driver's refresh!/unpersist!, not by the
-;; task layer (see persist-refresh-test/task-establishes-no-write-connection-context-test for the other half).
-;; These tests drive the real dispatching-refresher and capture *connection-type* at the DDL boundary; the
-;; warehouse calls (compile, db->pooled-connection-spec, do-with-connection-with-options) are stubbed so no
-;; real connection is opened.
+;; Verify that the driver's refresh!/unpersist! establish a write-connection context for their DDL: drive the
+;; real refresher with the warehouse calls stubbed, and capture *connection-type* at the DDL boundary.
 
 (deftest refresh-runs-ddl-under-write-connection-test
   (doseq [engine [:postgres :mysql]]
