@@ -161,11 +161,23 @@ describe("scenarios > search > snowplow", () => {
           context: "search-app",
         });
 
-        cy.findByRole("heading", { name: "Orders in a dashboard" }).click();
-        H.expectUnstructuredSnowplowEvent({
-          event: SEARCH_CLICK,
-          context: "search-app",
-          position: 0,
+        // The result's rank depends on ranking weights, so derive its position from the DOM order
+        // rather than pinning a specific index.
+        cy.findAllByTestId("search-result-item").then(($items) => {
+          const position = $items
+            .toArray()
+            .findIndex((el) =>
+              el.textContent?.includes("Orders in a dashboard"),
+            );
+          expect(position, "Orders in a dashboard is in the results").to.be.gte(
+            0,
+          );
+          cy.wrap($items.eq(position)).click();
+          H.expectUnstructuredSnowplowEvent({
+            event: SEARCH_CLICK,
+            context: "search-app",
+            position,
+          });
         });
       });
     });

@@ -88,15 +88,16 @@
    :view-count          2
    :text                5
    :mine                1
-   :exact               5
+   ;; An exact (case-insensitive) name match is the strongest single intent signal: :exact (100) overpowers
+   ;; any one curation tier (:official-collection / :verified, and the :data-picker :library boost, 80 each).
+   ;; Base text/recency scorers (0–5) only break ties within a tier.
+   :exact               100
    :prefix              0
-   ;; User-curated tiers, from strongest to weakest.
-   ;; :library at 200 exceeds :official-collection + :verified (80 each) combined,
-   ;; so a library item always outranks a non-library one.
-   ;; Base text/recency scorers (0–5 range) only break ties *within* a tier.
-   :library             200
    :official-collection 80
    :verified            80
+   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
+   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   :library             0
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
    ;; Maps the backend's cosine distance to a [0, 1] score: 1 = identical vector, 0 = maximally distant or keyword-only hit.
@@ -120,6 +121,10 @@
     :model/dataset  1
     :model/metric   1
     :model/question 0}
+   :data-picker
+   ;; Boost curated library items when picking a data source, but keep it a curation-tier signal (80, like
+   ;; :verified/:official) so an exact name match (:exact 100) can overpower it.
+   {:library 80}
    ;; TODO: lift :data-layer up to :default. It's a structural signal (every visible warehouse
    ;; table gets `data_layer "final"`), so the +33 boost flips orderings across every search
    ;; surface and breaks e2e specs that pin specific top results. To make progress:
