@@ -58,4 +58,4 @@ Enterprise functionality MUST use the plugin system. It is very important to not
 
 ### Scripts
 
-@../.claude/skills/\_shared/typescript-commands.md
+@../.claude/skills/_shared/typescript-commands.md
