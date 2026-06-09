@@ -4,28 +4,23 @@ databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
   - changeSet:
-      id: v62.2026-05-13T11:00:00
+      id: v62.legacy-library-root-entity-id-old-id-cleanup
       author: andsalves
       comment: >-
-        This migration has been patched to resolve a mismatch collation issue on MySQL/MariaDB, @see #75458.
-        To update it without breaking the checkSum rules, we replace the original changeset ids and delete the
-        original ids from databasechangelog to keep the migration history clean.
-        As these migrations are idempotent, we won't have problems if we need to rollback instances.
+        Delete old changeset rows for the Library Data and Library Metrics entity ID backfills. Those changesets were
+        re-id'd after patching their MySQL/MariaDB SQL to resolve a collation mismatch issue, @see #75458.
       changes:
         - sql:
             sql: >-
               DELETE FROM ${databasechangelog.name} WHERE id IN (
-                'v62.2026-05-13T11:59:58',
-                'v62.2026-05-13T11:59:59',
-                'v62.2026-05-13T12:00:00',
                 'v62.2026-05-13T12:00:01',
                 'v62.2026-05-13T12:00:02'
-              );
+              ) AND filename = 'migrations/062_update_migrations.yaml';
       rollback:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T11:00:01
+      id: v62.2026-05-13T11:59:58
       author: andsalves
       comment: Backfill type column value for Library collections
       changes:
@@ -45,7 +40,7 @@ databaseChangeLog:
       rollback:
         - empty: {}
   - changeSet:
-      id: v62.2026-05-13T11:00:02
+      id: v62.2026-05-13T11:59:59
       author: andsalves
       comment: Make sure the root collection with library type and canonical entity_id is unique
       changes:
@@ -63,7 +58,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T11:00:03
+      id: v62.2026-05-13T12:00:00
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library root collection
       changes:
@@ -76,7 +71,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T11:00:04
+      id: v62.2026-05-13T12:00:01-updated
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Data section
       changes:
@@ -134,7 +129,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T11:00:05
+      id: v62.2026-05-13T12:00:02-updated
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Metrics section
       changes:
