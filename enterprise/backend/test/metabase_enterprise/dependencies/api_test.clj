@@ -1978,7 +1978,7 @@
                 (is (empty? ids) "No tables should be in results")))))))))
 
 (deftest ^:sequential breaking-entities-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/breaking excludes archived source cards"
+  (testing "GET /api/ee/dependencies/graph/breaking includes archived source cards that break a non-archived dependent"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/User user {:email "test@test.com"}]
         (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
@@ -2005,7 +2005,9 @@
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=archivedbrokentestcard")
                   card-ids (set (map :id (:data response)))]
               (is (contains? card-ids (:id active-model)))
-              (is (not (contains? card-ids (:id archived-model)))))))))))
+              ;; The archived model is itself a breaking source: its non-archived dependent
+              ;; (dependent-card-2) has an error traced back to it, so it should be surfaced.
+              (is (contains? card-ids (:id archived-model))))))))))
 
 (deftest ^:sequential breaking-entities-multiple-dependents-test
   (testing "GET /api/ee/dependencies/graph/breaking - model breaking multiple dependents appears once"

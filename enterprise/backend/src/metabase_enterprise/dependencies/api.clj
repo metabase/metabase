@@ -856,15 +856,16 @@
                                                         nil))]
                                   {:filter (mi/exclude-internal-content-hsql model :table-alias :entity)
                                    :filter-joins #{}})
-        archived-filter {:filter (case entity-type
-                                   (:card :dashboard :document :snippet :segment :measure)
-                                   [:= :entity.archived false]
-                                   :table
-                                   [:and
-                                    [:= :entity.active true]
-                                    [:= :entity.visibility_type nil]]
-                                   nil)
-                         :filter-joins #{}}
+        archived-filter (when-not (= query-type :breaking)
+                          {:filter (case entity-type
+                                     (:card :dashboard :document :snippet :segment :measure)
+                                     [:= :entity.archived false]
+                                     :table
+                                     [:and
+                                      [:= :entity.active true]
+                                      [:= :entity.visibility_type nil]]
+                                     nil)
+                           :filter-joins #{}})
         personal-filter (when-not include-personal-collections
                           (case entity-type
                             (:card :dashboard :document :snippet)
@@ -930,7 +931,9 @@
         {:keys [join join-filter]} (query-type-join-and-filter query-type entity-type)
         {:keys [filters filter-joins]} (build-optional-filters params config)
         {:keys [sort-column sort-joins]} (sort-key-cols-and-joins sort-column entity-type name-column location-column)
-        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id)
+        visible-filter (visible-entities-filter-clause (name entity-type) :entity.id
+                                                       (when (= query-type :breaking)
+                                                         {:include-archived-items :all}))
         all-required-joins (set/union filter-joins sort-joins)
         select-clause [[[:inline (name entity-type)] :entity_type]
                        [:entity.id :entity_id]

@@ -6,6 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.util :as lib.util]
@@ -112,14 +113,43 @@
        nil))
     @bad-fields))
 
-(mu/defn find-bad-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
-  "Like [[find-bad-refs]] but includes source entity information for each error.
-   Returns a set of error maps, each containing:
-   - `:type` - the error type (e.g., `:missing-column`)
-   - `:name` - the column name (for missing-column errors)
-   - `:source-entity-type` - optional, `:table` or `:card` if source could be determined
-   - `:source-entity-id` - optional, the ID of the source entity
-   - `:soft?` - optional, true when the ref could be dropped (eg. from a `:fields` list) without breaking the query"
+(mu/defn- find-bad-source-refs :- [:set ::lib.schema.validate/error-with-source]
+  "Returns errors for any stage (including join stages) whose `:source-table`/`:source-card` references an
+   entity that no longer backs a valid query: a table that is missing or inactive (e.g. dropped from the
+   warehouse and retired during sync), or a source card that has been deleted.
+
+   The field-ref walk in [[find-bad-field-refs-with-source]] can't catch this: a `SELECT *`-style query has
+   no `:field` clauses to inspect, and retiring a table doesn't deactivate its fields. So we resolve each
+   stage source directly. Reported as `:missing-table-alias` errors (the same type native validation emits
+   for missing tables) carrying the offending entity as the source, so dependency analysis attributes the
+   breakage to it.
+
+   Note an *archived* source card is intentionally not flagged here — it still resolves and can back a
+   query; only a truly deleted (unresolvable) card id is a bad ref."
+  [query :- ::lib.schema/query]
+  (let [mp          (lib.metadata/->metadata-provider query)
+        bad-sources (volatile! #{})
+        flag!       (fn [entity-type entity-id entity-name]
+                      (vswap! bad-sources conj
+                              (assoc (missing-table-alias-error (or entity-name (str entity-id)))
+                                     :source-entity-type entity-type
+                                     :source-entity-id   entity-id)))]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when-let [table-id (:source-table stage)]
+         (let [table (lib.metadata.protocols/table mp table-id)]
+           (when (or (nil? table) (not (:active table)))
+             (flag! :table table-id (:name table)))))
+       (when-let [card-id (:source-card stage)]
+         (when-not (lib.metadata.protocols/card mp card-id)
+           (flag! :card card-id nil)))
+       nil))
+    @bad-sources))
+
+(mu/defn- find-bad-field-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
+  "Returns source-annotated errors for any `:field` ref in the query that can't be resolved to an active
+   column. See [[find-bad-refs-with-source]] for the shape of each error map."
   [query :- ::lib.schema/query]
   (let [bad-fields (volatile! #{})]
     (lib.walk/walk-clauses
@@ -144,6 +174,20 @@
                (vswap! bad-fields conj error)))))
        nil))
     @bad-fields))
+
+(mu/defn find-bad-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
+  "Like [[find-bad-refs]] but includes source entity information for each error.
+   Returns a set of error maps, each containing:
+   - `:type` - the error type (e.g., `:missing-column`)
+   - `:name` - the column name (for missing-column errors)
+   - `:source-entity-type` - optional, `:table` or `:card` if source could be determined
+   - `:source-entity-id` - optional, the ID of the source entity
+   - `:soft?` - optional, true when the ref could be dropped (eg. from a `:fields` list) without breaking the query
+
+   Catches both unresolvable `:field` refs and stages whose `:source-table`/`:source-card` is missing or inactive."
+  [query :- ::lib.schema/query]
+  (into (find-bad-source-refs query)
+        (find-bad-field-refs-with-source query)))
 
 (comment
   (require '[metabase.lib.core :as lib])
