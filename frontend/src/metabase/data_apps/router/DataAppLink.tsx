@@ -3,8 +3,10 @@ import { browserHistory } from "react-router";
 
 import { getBasename } from "./DataAppRouter";
 
-export interface DataAppLinkProps
-  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
+export interface DataAppLinkProps extends Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "href"
+> {
   to: string;
   children?: ReactNode;
 }

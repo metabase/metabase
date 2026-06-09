@@ -63,4 +63,6 @@ interface DataAppRouterProps {
  * the same code works — `basename` resolves to `""` and the sub-path is
  * just the raw pathname.
  */
-export const DataAppRouter = ({ children }: DataAppRouterProps) => <>{children}</>;
+export const DataAppRouter = ({ children }: DataAppRouterProps) => (
+  <>{children}</>
+);
