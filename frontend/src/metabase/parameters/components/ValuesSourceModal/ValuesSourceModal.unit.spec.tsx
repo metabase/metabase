@@ -690,7 +690,7 @@ describe("ValuesSourceModal", () => {
             fields: [field1, field2],
           }),
           parameterValues: createMockParameterValues({
-            values: [[1], [2], [3]],
+            values: [["1"], ["2"], ["3"]],
           }),
         });
 
@@ -739,11 +739,11 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
-            values: [[3], [4]],
+            values: [["3"], ["4"]],
           }),
         });
         expect(await screen.findByRole("textbox")).toHaveValue("3\n4");
@@ -762,7 +762,7 @@ describe("ValuesSourceModal", () => {
           parameter: createMockUiParameter({
             fields: [field1, field2],
             values_source_config: {
-              values: [[1], [2]],
+              values: [["1"], ["2"]],
             },
           }),
           parameterValues: createMockParameterValues({
@@ -826,7 +826,10 @@ describe("ValuesSourceModal", () => {
         await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
         expect(onSubmit).toHaveBeenCalledWith("static-list", {
-          values: [["1"], ["2"]],
+          values: [
+            ["1", "One"],
+            ["2", "Two"],
+          ],
         });
       });
 
@@ -836,7 +839,10 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1], [2]],
+              values: [
+                ["1", "One"],
+                ["2", "Two"],
+              ],
             },
           }),
         });
@@ -858,7 +864,10 @@ describe("ValuesSourceModal", () => {
             fields: [field1],
             values_source_type: "static-list",
             values_source_config: {
-              values: [[1, "Label"], [2]],
+              values: [
+                ["1", "Label"],
+                ["2", "Two"],
+              ],
             },
           }),
         });
