@@ -24,6 +24,7 @@ type RunButtonProps = {
   id: TransformId | TransformJobId | undefined;
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
+  isLoading?: boolean;
   allowCancellation?: boolean;
   size?: ButtonProps["size"];
   onRun: () => void;
@@ -35,6 +36,7 @@ export const RunButton = forwardRef(function RunButton(
     id,
     run,
     isDisabled: isExternallyDisabled = false,
+    isLoading = false,
     allowCancellation = false,
     size = "md",
     onRun,
@@ -47,6 +49,7 @@ export const RunButton = forwardRef(function RunButton(
   const { label, color, leftSection, isDisabled } = getRunButtonInfo({
     run,
     isRecent,
+    isLoading,
     isDisabled: isExternallyDisabled || !!isMeterLocked,
   });
 
@@ -95,6 +98,7 @@ export const RunButton = forwardRef(function RunButton(
 type RunButtonOpts = {
   run: TransformRun | null | undefined;
   isRecent: boolean;
+  isLoading: boolean;
   isDisabled: boolean;
 };
 
@@ -108,8 +112,17 @@ type RunButtonInfo = {
 function getRunButtonInfo({
   run,
   isRecent,
+  isLoading,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
+  if (isLoading && run?.status !== "started" && run?.status !== "canceling") {
+    return {
+      label: t`Run now`,
+      leftSection: <Loader size="sm" />,
+      isDisabled: true,
+    };
+  }
+
   if (run?.status === "started") {
     return {
       label: t`Running now…`,
