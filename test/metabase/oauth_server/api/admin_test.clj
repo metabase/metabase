@@ -5,6 +5,8 @@
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- client-defaults []
   {:client_id          (str (random-uuid))
    :client_type        "confidential"
