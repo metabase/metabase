@@ -62,9 +62,10 @@ Once the template is on disk:
 1. Edit `package.json` `name` to match the project folder.
 2. Pin `@metabase/embedding-sdk-react` to the target Metabase version (e.g. `"^63.0.0"`) — the template ships with `*`. v63 is the floor; earlier versions don't ship the data-app contract surface.
 3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
-4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone). After install succeeds, **strip the lockfile-ignoring block from `.gitignore`** — the template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock*` to stay PM-agnostic, but the downstream project wants its lockfile committed for reproducible installs.
-5. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
-6. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
+4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
+5. **Strip the lockfile-ignoring block from `.gitignore`.** The template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb` plus the leading comment block (the chunk between `# Lockfiles —` and `bun.lockb`). The block has to go so the downstream project commits its lockfile for reproducible installs. **Verify with `git status`** — the lockfile your package manager just generated must now appear as a new untracked file. If it doesn't, the block is still in `.gitignore`; remove it and re-check. Do **not** skip this step or defer it to "later"; agents have repeatedly forgotten and shipped projects with no committed lockfile.
+6. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
+7. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
 
 ## Step 3 — Pull the typed schema
 
