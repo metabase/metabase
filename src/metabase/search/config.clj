@@ -77,8 +77,8 @@
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
 (def static-default-weights
-  "Base scorer weights that every search inherits. Each context layers its overrides on top (see
-  [[static-context-weights]] and [[weights]])."
+  "Base scorer weights that every search inherits.
+  Each context layers its overrides on top (see [[static-context-weights]] and [[weights]])."
   {:pinned              0
    :bookmarked          1
    :recency             1
@@ -145,8 +145,8 @@
 
 (def known-rankers
   "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
-  [[static-context-weights]] profile. Namespaced scorer params (e.g. `:model/dashboard`) collapse to their
-  namespace (`:model`)."
+  [[static-context-weights]] profile.
+  Namespaced scorer params (e.g. `:model/dashboard`) collapse to their namespace (`:model`)."
   (into #{}
         (map #(if (namespace %) (keyword (namespace %)) %))
         (concat (keys static-default-weights)
@@ -227,8 +227,9 @@
 (defn- normalize-override-keys
   "Re-key persisted weight overrides ([[search.settings/experimental-search-weight-overrides]]) by
   [[normalized-context]], so an override saved under a context that has since been collapsed (e.g.
-  `:command-palette` -> `:global`) is still applied. When a raw alias and its normalized context both carry
-  overrides, the normalized one wins -- it's what the weights API writes today."
+  `:command-palette` -> `:global`) is still applied.
+  When a raw alias and its normalized context both carry overrides, the normalized one wins -- it's
+  what the weights API writes today."
   [overrides]
   (reduce-kv (fn [acc context weight-overrides]
                (let [normalized (normalized-context context)]
