@@ -1,12 +1,10 @@
-import { type AnchorHTMLAttributes, type ReactNode, useContext } from "react";
+import type { AnchorHTMLAttributes, ReactNode } from "react";
 import { Link } from "react-router";
 
-import { DataAppRouterContext, getBasename } from "./DataAppRouter";
+import { getBasename } from "./DataAppRouter";
 
-interface DataAppLinkProps extends Omit<
-  AnchorHTMLAttributes<HTMLAnchorElement>,
-  "href"
-> {
+interface DataAppLinkProps
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
   to: string;
   children?: ReactNode;
 }
@@ -22,21 +20,13 @@ interface DataAppLinkProps extends Omit<
  *
  * The `to` prop is bundle-relative (e.g. `to="/customers/42"`); we add
  * the auto-detected basename before handing the URL to v3's `Link`.
+ *
+ * Must be rendered inside a `<DataAppRouter>` — v3's `<Link>` reads its
+ * router from the surrounding `<Router>` (which `<DataAppRouter>` mounts)
+ * and will throw without it.
  */
-export function DataAppLink({ to, children, ...rest }: DataAppLinkProps) {
-  // Defensive — surface a clear error if the bundle puts `<DataAppLink>`
-  // outside a `<DataAppRouter>`. v3's `<Link>` would fail more cryptically
-  // (no router context) without this.
-  const ctx = useContext(DataAppRouterContext);
-  if (!ctx) {
-    throw new Error("DataAppLink must be rendered inside a <DataAppRouter>");
-  }
-
-  const target = getBasename() + to;
-
-  return (
-    <Link to={target} {...rest}>
-      {children}
-    </Link>
-  );
-}
+export const DataAppLink = ({ to, children, ...rest }: DataAppLinkProps) => (
+  <Link to={getBasename() + to} {...rest}>
+    {children}
+  </Link>
+);
