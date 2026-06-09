@@ -14,7 +14,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import { McpServerUrlSection } from "./MCPServerUrlSection";
 
 const SITE_URL = "https://metabase.example.com";
-const MCP_URL = `${SITE_URL}/api/mcp`;
+const MCP_URL = `${SITE_URL}/api/metabase-mcp`;
 
 function setup({ siteUrl = SITE_URL }: { siteUrl?: string | undefined } = {}) {
   const settings = createMockSettings({ "site-url": siteUrl });
