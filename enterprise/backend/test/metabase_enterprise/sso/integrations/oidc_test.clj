@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sso.integrations.oidc :as oidc-integration]
    [metabase-enterprise.sso.test-setup :as sso.test-setup]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.server.instance :as server.instance]
@@ -398,7 +399,7 @@
         (with-redefs [auth-identity/login! (constantly {:success? true
                                                         :redirect-url "/"
                                                         :user {:email "jane@example.com"}})]
-          (metabase-enterprise.sso.integrations.oidc/sso-callback
+          (oidc-integration/sso-callback
            "test-idp"
            {:params {:code "test-code" :state "test-state"}})
           (is (not-any? #(re-find #"jane@example.com" (:message %)) (log-messages))
