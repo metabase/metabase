@@ -3,17 +3,22 @@
 import { useReducedMotion } from "@mantine/hooks";
 import cx from "classnames";
 import {
+  Children,
   type ComponentPropsWithoutRef,
   type MouseEvent,
+  type ReactNode,
+  isValidElement,
   memo,
   useMemo,
 } from "react";
+import { t } from "ttag";
 
 import {
   Markdown,
   type MarkdownProps,
 } from "metabase/common/components/Markdown";
 import { parseMetabaseProtocolLink } from "metabase/metabot/utils/links";
+import { ActionIcon, CopyButton, Icon, Tooltip } from "metabase/ui";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
 
 import type {
@@ -129,6 +134,52 @@ const parseDataSelectionLink = (
 const splitMessageLinesAsParagraphs = (message: string) =>
   message.replaceAll(/\r?\n|\r/g, "\n\n");
 
+const getNodeText = (node: ReactNode): string =>
+  Children.toArray(node)
+    .map((child) => {
+      if (typeof child === "string" || typeof child === "number") {
+        return String(child);
+      }
+
+      if (isValidElement<{ children?: ReactNode }>(child)) {
+        return getNodeText(child.props.children);
+      }
+
+      return "";
+    })
+    .join("");
+
+const MarkdownCodeBlock = ({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"pre">) => {
+  const code = getNodeText(children);
+
+  return (
+    <div className={S.codeBlock}>
+      <pre {...props}>{children}</pre>
+      <CopyButton value={code}>
+        {({ copied, copy }: { copied: boolean; copy: () => void }) => (
+          <Tooltip
+            label={copied ? t`Copied!` : t`Copy code`}
+            opened={copied || undefined}
+          >
+            <ActionIcon
+              aria-label={t`Copy code`}
+              className={S.copyCodeButton}
+              data-testid="metabot-code-block-copy"
+              size="sm"
+              onClick={copy}
+            >
+              <Icon name="copy" size="1rem" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </CopyButton>
+    </div>
+  );
+};
+
 const getComponents = ({
   onInternalLinkClick,
   dataPointTargets,
@@ -211,6 +262,7 @@ const getComponents = ({
       </div>
     </div>
   ),
+  pre: MarkdownCodeBlock,
 });
 
 export const AIMarkdown = memo(

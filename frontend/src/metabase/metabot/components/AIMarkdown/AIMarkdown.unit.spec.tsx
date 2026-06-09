@@ -28,6 +28,7 @@ const setup = (props: ComponentProps<typeof AIMarkdown>) => {
 describe("AIMarkdown", () => {
   beforeEach(() => {
     jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    jest.mocked(navigator.clipboard.writeText).mockClear();
   });
 
   afterEach(() => {
@@ -174,5 +175,25 @@ describe("AIMarkdown", () => {
       expect(await screen.findByText("My Question")).toBeInTheDocument();
       expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
     });
+  });
+
+  it("should copy fenced code blocks", async () => {
+    setup({
+      children: `
+\`\`\`sql
+SELECT *
+FROM orders
+\`\`\`
+      `.trim(),
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Copy code" }),
+    );
+
+    const writeText = jest.mocked(navigator.clipboard.writeText);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toContain("SELECT *\nFROM orders");
+    expect(writeText.mock.calls[0][0]).not.toContain("```");
   });
 });
