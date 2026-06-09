@@ -263,13 +263,12 @@
   (let [repo         (.getRepository git)
         branch-ref   (qualify-branch branch)
         parent-id    (.resolve repo version)
-        upsert-paths (into #{} (comp (map :path) (remove str/blank?)) upserts)]
+        upsert-paths (into #{} (map :path) upserts)]
     (with-open [inserter (.newObjectInserter repo)]
       (let [index   (DirCache/newInCore)
             builder (.builder index)]
         ;; Add the upserted files as new blobs.
-        (doseq [{:keys [path content]} upserts
-                :when (not (str/blank? path))]
+        (doseq [{:keys [path content]} upserts]
           (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))]
             (.add builder (doto (DirCacheEntry. ^String path)
                             (.setFileMode FileMode/REGULAR_FILE)
@@ -312,7 +311,7 @@
 
 (defn- apply-changes!
   [snapshot ^String message upserts delete-paths]
-  (let [delete-set (into #{} (remove str/blank?) delete-paths)]
+  (let [delete-set (set delete-paths)]
     (commit-tree! snapshot message upserts
                   (fn [path] (not (contains? delete-set path))))))
 
