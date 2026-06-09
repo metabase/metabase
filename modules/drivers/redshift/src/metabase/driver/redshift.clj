@@ -769,6 +769,83 @@
   (when (public-create-grant? conn schema-name)
     (driver.postgres/raise-public-create-grant! schema-name)))
 
+(defn- current-user-usesuper?
+  "True when `current_user` has `usesuper`. Superusers can ALTER DEFAULT
+   PRIVILEGES FOR USER <anyone>, so they bypass the membership check below.
+
+   Redshift's user-membership model differs from PostgreSQL's: there is no
+   `pg_has_role(name, name, text)` overload (the function doesn't exist on
+   Redshift at all on RA3 clusters), and `pg_group` is not generally populated.
+   The practical membership graph collapses to: you are `current_user`, or you
+   are a superuser. Anything else fails at REVOKE time."
+  [conn]
+  (boolean (:usesuper (first (jdbc/query conn ["SELECT usesuper FROM pg_user WHERE usename = current_user"])))))
+
+(defn- relation-owners-in-schema
+  "Distinct relation owners in `schema-name`. Caller filters out the ones
+   `current_user` can impersonate.
+
+   Why this matters: `ALTER DEFAULT PRIVILEGES IN SCHEMA <s>` (without
+   `FOR ROLE`) only affects future objects created by the connection user.
+   Tables created later by foreign owners skip the iso-user grant -- workspace
+   data goes stale silently.
+
+   `relkind` set matches the scope of `ALTER DEFAULT PRIVILEGES ... ON TABLES`:
+   ordinary tables (`r`), views (`v`), materialized views (`m`), partitioned
+   tables (`p`), and foreign tables (`f`). Spectrum external tables live in
+   `svv_external_tables` and are not covered by `pg_default_acl`, so they need
+   no entry here."
+  [conn schema-name]
+  (->> (jdbc/query conn
+                   [(str "SELECT DISTINCT pg_get_userbyid(c.relowner) AS owner "
+                         "FROM pg_class c "
+                         "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                         "WHERE n.nspname = ? "
+                         "  AND c.relkind IN ('r','v','m','p','f') "
+                         "ORDER BY owner")
+                    schema-name])
+       (keep :owner)))
+
+(defn- default-acl-grantors-in-schema
+  "Distinct grantors of pre-existing `pg_default_acl` entries in `schema-name`.
+   Caller filters out the ones `current_user` can impersonate.
+
+   Distinct from [[relation-owners-in-schema]]: that surfaces future-object
+   grantor risk; this surfaces pre-existing default-priv rows we will need to
+   REVOKE FOR USER <grantor> at destroy time. Both block the workspace
+   contract."
+  [conn schema-name]
+  (->> (jdbc/query conn
+                   [(str "SELECT DISTINCT u.usename AS owner "
+                         "FROM pg_catalog.pg_default_acl d "
+                         "JOIN pg_catalog.pg_user      u ON u.usesysid = d.defacluser "
+                         "JOIN pg_catalog.pg_namespace n ON n.oid      = d.defaclnamespace "
+                         "WHERE n.nspname = ? "
+                         "  AND d.defaclobjtype = 'r' "
+                         "ORDER BY owner")
+                    schema-name])
+       (keep :owner)))
+
+(defn assert-can-alter-default-privileges!
+  "Throws when `schema-name` has relation-owners or pre-existing default-priv
+   grantors that `current_user` cannot impersonate via `FOR USER`. On Redshift
+   the impersonation graph collapses to: `owner == current_user`, or
+   `current_user` is a superuser.
+
+   Without this guarantee we can neither extend defaults to future objects of
+   foreign owners (silent data drift) nor REVOKE pre-existing default-priv
+   entries at destroy time (DROP USER fails -> GHY-3709)."
+  [conn schema-name]
+  (when-not (current-user-usesuper? conn)
+    (let [me      (:me (first (jdbc/query conn ["SELECT current_user AS me"])))
+          owners  (->> (concat (relation-owners-in-schema     conn schema-name)
+                               (default-acl-grantors-in-schema conn schema-name))
+                       distinct
+                       (remove #(= % me))
+                       (map (fn [o] {:owner o})))]
+      (when (seq owners)
+        (driver.postgres/raise-unmemberable-default-priv-owners! schema-name owners)))))
+
 (defmethod driver/init-workspace-isolation! :redshift
   [_driver database workspace]
   (let [schema-name    (driver.u/workspace-isolation-namespace-name workspace)
@@ -800,13 +877,20 @@
         quoted-user    (quote-field username)
         source-schemas (set schemas)
         spec           (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; Pre-flight check (read-only) can run in its own transaction. Only the
-    ;; PUBLIC-CREATE assert is needed on Redshift — its GRANT statements error
-    ;; loudly at execute time when grant authority is missing, so the silent-
-    ;; skip class of bug we catch on PostgreSQL doesn't reproduce.
+    ;; Pre-flight check (read-only) can run in its own transaction. Redshift's
+    ;; GRANT statements error loudly when grant authority is missing, so PG's
+    ;; silent-skip USAGE/SELECT class doesn't reproduce here. But two ALTER
+    ;; DEFAULT PRIVILEGES failure modes do reproduce and need explicit checks:
+    ;;
+    ;; - Foreign relation-owners: tables created later by an owner the
+    ;;   connection user can't impersonate skip our default-priv grant.
+    ;; - Foreign default-priv grantors: pre-existing `pg_default_acl` rows whose
+    ;;   grantor we can't impersonate at destroy time -> `DROP USER` fails
+    ;;   (GHY-3709).
     (jdbc/with-db-transaction [t-conn spec]
       (doseq [s source-schemas]
-        (assert-no-public-create-grant! t-conn s)))
+        (assert-no-public-create-grant!       t-conn s)
+        (assert-can-alter-default-privileges! t-conn s)))
     ;; Grants run as auto-commit per statement so privileges are immediately
     ;; observable to a subsequent describe-database from a different connection.
     (doseq [s   source-schemas
@@ -828,7 +912,9 @@
   (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
 
 (defn- schemas-with-user-grants
-  "Query Redshift to find schemas where the user has been granted privileges."
+  "Query Redshift to find schemas where the user has been granted relation-level privileges.
+   `svv_relation_privileges` only surfaces actual GRANTs on existing relations -- it does NOT
+   list ALTER DEFAULT PRIVILEGES entries. See [[default-acl-grants-for-user]] for those."
   [conn username]
   (->> (jdbc/query conn
                    ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
@@ -836,19 +922,82 @@
                     username])
        (keep :namespace_name)))
 
+(defn- escape-like-pattern
+  "Escape PostgreSQL/Redshift LIKE metacharacters (`%`, `_`) and our chosen
+   escape char (`|`) in `s` so it matches literally. Used with `ESCAPE '|'` on
+   the LIKE clause -- `|` chosen over `\\` because Redshift's SQL parser treats
+   a literal `'\\'` as an unterminated string. Without this escaping, iso-user
+   names containing `_` (which they always do -- the generator produces
+   `mb__isolation_<id>` form) would match siblings via wildcard, and the
+   destroy could revoke default-priv rows belonging to unrelated users."
+  [^String s]
+  (-> s
+      (str/replace "|" "||")
+      (str/replace "%" "|%")
+      (str/replace "_" "|_")))
+
+(defn- default-acl-grants-for-user
+  "Enumerate `(grantor, schema)` pairs that have an ALTER DEFAULT PRIVILEGES entry referencing
+   `username` as a grantee. Returns a seq of `{:grantor :schema}` maps.
+
+   Redshift exposes `pg_default_acl` but rejects `aclitem`->`varchar` casts and does not
+   provide `aclexplode`. We use `array_to_string(defaclacl, ',')` (allowed on aclitem[]).
+   Verified live: Redshift's `array_to_string` strips the enclosing braces of an `aclitem[]`,
+   so each entry is comma-separated text of the form `grantee=privs/grantor`. To make the
+   grantee match unambiguous, we prepend a `,` to the haystack and search for `,<name>=` --
+   that way a row with only one grantee (no preceding entries) still matches.
+
+   LIKE metacharacters in `username` are escaped with `ESCAPE '|'` so `_` and `%` match
+   literally -- critical because the iso-user generator always produces `_`-containing
+   names. Pipe over backslash because Redshift's parser rejects a literal backslash escape
+   clause as an unterminated string.
+
+   Schema-less entries (`defaclnamespace = 0`, applies to any schema) are excluded -- our
+   provisioning only ever issues `ALTER DEFAULT PRIVILEGES IN SCHEMA`, never the no-schema
+   form, so those entries do not originate here."
+  [conn username]
+  (let [esc (escape-like-pattern username)]
+    (jdbc/query
+     conn
+     [(str "SELECT u.usename   AS grantor, "
+           "       n.nspname   AS schema "
+           "FROM   pg_catalog.pg_default_acl d "
+           "JOIN   pg_catalog.pg_user      u ON u.usesysid = d.defacluser "
+           "JOIN   pg_catalog.pg_namespace n ON n.oid      = d.defaclnamespace "
+           "WHERE  d.defaclobjtype = 'r' "
+           "  AND (',' || array_to_string(d.defaclacl, ',')) LIKE ? ESCAPE '|'")
+      (str "%," esc "=%")])))
+
 (defmethod driver/destroy-workspace-isolation! :redshift
   [_driver database workspace]
   (let [schema-name   (:schema workspace)
         username      (-> workspace :database_details :user)
         quoted-user   (quote-field username)
-        quoted-schema (quote-schema schema-name)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (let [user-exists    (user-exists? t-conn username)
-            schema-exists  (schema-exists? t-conn schema-name)
+        quoted-schema (quote-schema schema-name)
+        spec          (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; Foreign-grantor default-priv REVOKEs run first, each in its own autocommit
+    ;; statement. Redshift has no SAVEPOINT and aborts the entire transaction on
+    ;; the first error, so these cannot share a transaction with the main cleanup
+    ;; batch: one stale row (schema dropped between discovery and execution) would
+    ;; otherwise poison DROP USER. Autocommit + per-statement catch is what
+    ;; actually lets the rest proceed.
+    (when (user-exists? spec username)
+      (doseq [{:keys [grantor schema]} (default-acl-grants-for-user spec username)
+              :let [sql (format "ALTER DEFAULT PRIVILEGES FOR USER %s IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
+                                (quote-field grantor) (quote-schema schema) quoted-user)]]
+        (try
+          (jdbc/execute! spec [sql])
+          (catch Throwable t
+            (log/warnf t "Failed to revoke default-priv (%s, %s) referencing iso-user %s; continuing"
+                       grantor schema username)))))
+    ;; Main batch stays transactional: relation revokes, iso-schema bare REVOKE,
+    ;; DROP SCHEMA, DROP USER -- the cleanup we want atomic.
+    (jdbc/with-db-transaction [t-conn spec]
+      (let [user-exists     (user-exists? t-conn username)
+            schema-exists   (schema-exists? t-conn schema-name)
             granted-schemas (when user-exists
                               (schemas-with-user-grants t-conn username))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          ;; Only revoke if user exists
           (when user-exists
             (doseq [schema granted-schemas
                     :let [quoted-granted-schema (quote-schema schema)]]
@@ -857,17 +1006,11 @@
                                          quoted-granted-schema quoted-user))
               (.addBatch ^Statement stmt
                          ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s"
-                                         quoted-granted-schema quoted-user))
-              ;; `grant-workspace-read-access!` issues `ALTER DEFAULT PRIVILEGES IN SCHEMA <s>
-              ;; GRANT SELECT ON TABLES TO <iso-user>` on every input schema. Those default-priv
-              ;; entries are owned by the granting role (metabase_ci) but reference the iso-user;
-              ;; without an explicit REVOKE here, `DROP USER` fails with "cannot be dropped
-              ;; because some objects depend on it / privileges for default privileges on new
-              ;; relations belonging to user <grantor> in schema <input-schema>".
-              (.addBatch ^Statement stmt
-                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"
                                          quoted-granted-schema quoted-user)))
-            ;; Only revoke default privileges if both user and schema exist
+            ;; Iso-namespace default-priv was issued by the connection user at init time, so a
+            ;; no-FOR-USER REVOKE is correct here. Guarded on schema existence to avoid
+            ;; erroring on a schema that was dropped manually. Coverage for foreign-grantor
+            ;; default-priv rows is handled above by the per-grantor autocommit loop.
             (when schema-exists
               (.addBatch ^Statement stmt
                          ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s REVOKE ALL ON TABLES FROM %s"

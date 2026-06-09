@@ -1013,6 +1013,17 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1667,6 +1678,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -2330,6 +2342,7 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform
                     :model/TransformRun}

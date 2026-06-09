@@ -222,32 +222,32 @@
     (when (some #(= database-id (:database_id %)) (:databases ws))
       (throw (ex-info "Database already in workspace"
                       {:status-code 409 :workspace_id workspace-id :database_id database-id})))
-    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
-                                          {:workspace_id     workspace-id
-                                           :database_id      database-id
-                                           :input_schemas    input-schemas
-                                           :database_details {}
-                                           :output_namespace ""})]
-      (try
-        (provisioning/provision-single! wsd-id)
-        (catch Throwable t
-          (t2/delete! :model/WorkspaceDatabase :id wsd-id)
-          (throw t)))
-      (workspace/get-workspace workspace-id))))
+    (t2/with-transaction [_conn]
+      (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
+                                            {:workspace_id     workspace-id
+                                             :database_id      database-id
+                                             :input_schemas    input-schemas
+                                             :database_details {}
+                                             :output_namespace ""})]
+        (provisioning/provision-single! wsd-id)))
+    (workspace/get-workspace workspace-id)))
 
 (defn update-database!
   "Update a database's config in a workspace: deprovision the existing one (if provisioned),
    update `input-schemas`, then reprovision (blocking). `input-schemas` is a vector of
    driver-opaque schema name strings. Returns the updated workspace, hydrated."
   [workspace-id database-id input-schemas]
-  (let [ws  (assert-workspace-exists workspace-id)
-        wsd (find-wsd ws database-id)]
+  (let [ws     (assert-workspace-exists workspace-id)
+        wsd    (find-wsd ws database-id)
+        wsd-id (:id wsd)]
     (assert-input-schemas-when-supported! database-id input-schemas)
     (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! (:id wsd)))
-    (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                {:input_schemas input-schemas})
-    (provisioning/provision-single! (:id wsd))
+      (provisioning/deprovision-single! wsd-id))
+    (provisioning/with-workspace-database-lock wsd-id
+      (t2/with-transaction [_conn]
+        (t2/update! :model/WorkspaceDatabase {:id wsd-id}
+                    {:input_schemas input-schemas})
+        (provisioning/provision-single! wsd-id)))
     (workspace/get-workspace workspace-id)))
 
 (defn remove-database!

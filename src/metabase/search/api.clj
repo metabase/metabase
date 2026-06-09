@@ -262,7 +262,8 @@
                 :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
                 :has-temporal-dim                    has-temporal-dim
                 :display-type                        (set display-type)}))
-      (analytics/inc! :metabase-search/response-ok))
+      (analytics/inc! :metabase-search/response-ok)
+      (analytics/observe! :metabase-search/response-results (:total <>)))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))

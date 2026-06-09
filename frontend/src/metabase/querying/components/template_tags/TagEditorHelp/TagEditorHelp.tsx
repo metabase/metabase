@@ -1,11 +1,10 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { Box, Code } from "metabase/ui";
+import { Box, Button, Code } from "metabase/ui";
 import { uuid } from "metabase/utils/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
@@ -208,8 +207,8 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
       <Code block>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
         <Button
-          medium
           className={CS.mt1}
+          size="xs"
           onClick={() => setDatasetQuery(datasetQuery, true)}
         >
           {t`Try it`}

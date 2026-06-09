@@ -5,17 +5,90 @@ on:
     types: [closed, labeled]
 
 jobs:
-  create-backport:
+  # --- Primary path: backport to every supported release line --------------
+  # Triggered by the plain `backport` label. `contains(array, 'backport')` is an
+  # exact element match, so this never fires for `double-backport`/`triple-backport`
+  # — those are handled by the legacy escape hatch at the end of this file.
+  prepare:
     if:
-      | # the PR must have a backport label when it's merged, or be labeled with a backport label after merge
+      | # the PR must carry the `backport` label at merge, or be labeled `backport` after merge
+      github.event.pull_request.merged == true && (
+        github.event.action == 'closed' && contains(github.event.pull_request.labels.*.name, 'backport') ||
+        github.event.action == 'labeled' && github.event.label.name == 'backport'
+      )
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    outputs:
+      commit: ${{ steps.find_commit.outputs.commit }}
+      targets: ${{ steps.targets.outputs.result }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      - uses: ./.github/actions/find-squashed-commit
+        name: Find commit
+        id: find_commit
+        with:
+          pull-request-number: ${{ github.event.pull_request.number }}
+          base-ref: ${{ github.event.pull_request.base.ref }}
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Compute supported backport targets
+        id: targets
+        uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        with:
+          script: | # js
+            // Backport targets are the supported major lines from version-info.json:
+            // a line is in support — and a backport target — if and only if its EoL is
+            // today or later. `getSupportedMajors` encapsulates that rule (and ignores
+            // the display-only `lts` flag); it is shared with the auto-minor scheduler.
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const targets = await getSupportedMajors();
+            console.log('supported backport targets', targets);
+
+            return targets;
+
+  backport:
+    needs: prepare
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    strategy:
+      fail-fast: false # one conflicting branch must not block the others
+      matrix:
+        target: ${{ fromJson(needs.prepare.outputs.targets) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Backport to v${{ matrix.target }}
+        uses: ./.github/actions/create-backport
+        with:
+          target-version: ${{ matrix.target }}
+          backport-commit: ${{ needs.prepare.outputs.commit }}
+          github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          github-token-2: ${{ secrets.GITHUB_TOKEN }}
+
+  # --- Legacy escape hatch: explicit depth backports -----------------------
+  # `double-backport`/`triple-backport` keep their original behavior — backport to
+  # CURRENT_VERSION and the 1–2 lines below it — independent of `major_version_support`.
+  # Kept for the short term for one-off manual depth control. If a branch from the
+  # primary path above already exists, create-backport simply errors on the duplicate.
+  legacy-backport:
+    if:
+      | # triggered only by the legacy depth labels, at merge or when added afterwards
       github.event.pull_request.merged == true && (
         github.event.action == 'closed' && (
-          contains(github.event.pull_request.labels.*.name, 'backport') ||
           contains(github.event.pull_request.labels.*.name, 'double-backport') ||
           contains(github.event.pull_request.labels.*.name, 'triple-backport')
         ) ||
         github.event.action == 'labeled' && (
-          github.event.label.name == 'backport' ||
           github.event.label.name == 'double-backport' ||
           github.event.label.name == 'triple-backport'
         )

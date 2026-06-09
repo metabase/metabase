@@ -33,6 +33,7 @@
    [metabase.embedding.init]
    [metabase.events.init]
    [metabase.geojson.init]
+   [metabase.health-inspector.init]
    [metabase.indexed-entities.init]
    [metabase.lib-be.init]
    [metabase.lib.init]

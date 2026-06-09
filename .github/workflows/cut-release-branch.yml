@@ -70,6 +70,10 @@ jobs:
           git push -u origin "$BRANCH"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      # CURRENT_VERSION is an org-level variable — that's the canonical one,
+      # shared across repos. A repo-level variable of the same name would
+      # shadow it (repo vars override org vars), so we deliberately update
+      # the org-level value here and rely on no repo-level override existing.
       - name: Bump vars.CURRENT_VERSION
         id: bump
         continue-on-error: true
@@ -78,7 +82,7 @@ jobs:
         run: |
           gh variable set CURRENT_VERSION \
             --body "${{ steps.preflight.outputs.next }}" \
-            --repo "${{ github.repository }}"
+            --org "${{ github.repository_owner }}"
 
       # Pre-create the milestone for the version AFTER this cut, so it's
       # already open when next time's backfill needs somewhere to assign
@@ -204,7 +208,7 @@ jobs:
 
             const notes = [
               bumpFailed
-                ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/${owner}/${repo}/settings/variables/actions|Actions variables>`
+                ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/organizations/${owner}/settings/variables/actions|Org Actions variables>`
                 : `\`CURRENT_VERSION\` bumped to *${next}*.`,
               milestoneFailed
                 ? `:warning: Pre-creating milestone \`0.${{ steps.preflight.outputs.nextMilestone }}\` (for the next cut) failed — please create it manually: <https://github.com/${owner}/${repo}/milestones|Repository milestones>`
