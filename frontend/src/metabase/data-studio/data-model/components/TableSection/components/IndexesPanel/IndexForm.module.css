@@ -1,0 +1,28 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.sectionTitle {
+  font-weight: 600;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--mb-color-border);
+  width: 100%;
+  margin: var(--mantine-spacing-md) 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--mantine-spacing-sm);
+  padding-top: var(--mantine-spacing-md);
+}
+
+.tableLink {
+  color: var(--mb-color-text-brand);
+  font-weight: 500;
+}

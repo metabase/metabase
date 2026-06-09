@@ -81,6 +81,7 @@
    [metabase.users.init]
    [metabase.version.init]
    [metabase.view-log.init]
+   [metabase.warehouse-index-manager.init]
    [metabase.warehouses.init]
    [metabase.xrays.init]))
 

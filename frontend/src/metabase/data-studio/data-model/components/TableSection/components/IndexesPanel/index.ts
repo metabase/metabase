@@ -1,0 +1,1 @@
+export { IndexesPanel } from "./IndexesPanel";

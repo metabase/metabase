@@ -1,0 +1,25 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-md);
+}
+
+.headerTitle {
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-weight: 600;
+}
+
+.subtitle {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.formTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+}

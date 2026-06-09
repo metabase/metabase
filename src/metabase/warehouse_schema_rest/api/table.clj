@@ -31,6 +31,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-index-manager.core :as index-manager]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
@@ -542,3 +543,114 @@
       (do
         (sync-schema-async! table api/*current-user-id*)
         {:status :ok}))))
+
+;;; -------------------------------------------------------------------------
+;;; Index manager — see metabase.warehouse-index-manager
+;;;
+;;; Mounted under `/api/table/:id/indexes/...`. All endpoints are
+;;; superuser-only. The mutating endpoints (POST/PUT/DELETE — in BE-3)
+;;; additionally require the table to be transform-managed.
+
+(def ^:private IndexColumn
+  [:map
+   [:name      :string]
+   [:direction {:optional true} [:enum {:decode/string keyword} :asc :desc]]])
+
+(def ^:private IndexStructured
+  [:map
+   [:index_name    :string]
+   [:columns       [:vector {:min 1} IndexColumn]]
+   [:include       {:optional true} [:vector :string]]
+   [:unique        {:optional true} :boolean]
+   [:concurrent    {:optional true} :boolean]
+   [:if_not_exists {:optional true} :boolean]
+   [:method        {:optional true}
+    [:enum {:decode/string keyword} :btree :hash :gin :gist :brin :spgist]]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/indexes"
+  "List every index on this table. Joins introspected indexes with the
+  `IndexRequest` rows that track Metabase-managed indexes; rows without
+  a matching request render as `managed_by_metabase: false` and the FE
+  hides write actions for them."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/list-indexes table api/*is-superuser?*)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/indexes/preview"
+  "Render a structured index definition into the CREATE INDEX statement
+  that would be executed. Pure: never runs anything, never inserts a
+  request row. Validates column names against the table's fields and
+  the warehouse driver."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   {:keys [structured]} :- [:map [:structured IndexStructured]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (try
+      (index-manager/preview table structured)
+      (catch clojure.lang.ExceptionInfo e
+        ;; Builder/driver-support failures surface as 400; defendpoint's
+        ;; exception middleware honours :status-code in ex-data.
+        (throw (ex-info (ex-message e)
+                        (assoc (ex-data e) :status-code 400)))))))
+
+(def ^:private IndexRequestBody
+  "Either `:statement` (raw SQL) or `:structured` (typed form) is required;
+  if both are present the structured form wins."
+  [:and
+   [:map
+    [:statement  {:optional true} :string]
+    [:structured {:optional true} IndexStructured]]
+   [:fn {:error/message "either :statement or :structured is required"}
+    (fn [{:keys [statement structured]}] (or statement structured))]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:id/indexes"
+  "Queue a CREATE INDEX. Validates the statement, inserts an
+  `IndexRequest`, submits a quick-task. Returns the new row immediately;
+  the FE polls `GET /:id/indexes/requests/:request-id` for status."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query
+   body :- IndexRequestBody]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-create! table body api/*current-user-id*)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id/indexes/requests/:request-id"
+  "Poll the status of a queued index request."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (api/check-404 (index-manager/get-request (:id table) request-id))))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id/indexes/requests/:request-id"
+  "Edit a queued/completed index request. Drops the previous index (if it
+  was succeeded) and creates the new one in the same task. Returns 409
+  if the request is currently in flight."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]
+   _query
+   body :- IndexRequestBody]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-edit! table request-id body)))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/:id/indexes/requests/:request-id"
+  "Drop the index, then delete the request row so the (table, name)
+  slot is freed for a future re-create. Returns 409 if the request is
+  currently in flight."
+  [{:keys [id request-id]} :- [:map
+                               [:id ms/PositiveInt]
+                               [:request-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [table (api/check-404 (t2/select-one :model/Table :id id))]
+    (index-manager/submit-drop! table request-id)))

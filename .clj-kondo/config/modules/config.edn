@@ -2516,6 +2516,21 @@
    :model-exports #{:model/ViewLog}
    :model-imports #{:model/Card :model/Dashboard :model/Table}}
 
+  warehouse-index-manager
+  {:team "Gadget"
+   :api  #{metabase.warehouse-index-manager.core
+           metabase.warehouse-index-manager.init
+           metabase.warehouse-index-manager.models.index-request}
+   :uses #{driver
+           events
+           models
+           util}
+   :model-exports #{:model/IndexRequest}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/Table
+                    :model/Transform}}
+
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
@@ -2576,6 +2591,7 @@
            types
            upload
            util
+           warehouse-index-manager
            warehouse-schema
            xrays}
    :model-imports #{:model/Database

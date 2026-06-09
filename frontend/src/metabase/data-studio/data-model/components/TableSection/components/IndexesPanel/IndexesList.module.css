@@ -1,0 +1,44 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background);
+}
+
+.rowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+}
+
+.name {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.definition {
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.75rem;
+  color: var(--mb-color-text-secondary);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--mantine-spacing-xs);
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.row:hover .actions,
+.row:focus-within .actions,
+.row:has([aria-expanded="true"]) .actions {
+  opacity: 1;
+}

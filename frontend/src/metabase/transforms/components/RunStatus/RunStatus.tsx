@@ -1,10 +1,14 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box, Group, Icon } from "metabase/ui";
+import { Box, Group, Icon, Text } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
-import { parseTimestampWithTimezone } from "../../utils";
+import {
+  formatTransformDuration,
+  getTransformRunDurationMs,
+  parseTimestampWithTimezone,
+} from "../../utils";
 import { RunInfo } from "../RunInfo";
 
 type RunStatusSectionProps = {
@@ -35,6 +39,14 @@ export function RunStatus({
       ? parseTimestampWithTimezone(end_time, systemTimezone)
       : null;
   const endTimeText = endTime != null ? endTime.fromNow() : null;
+  const durationMs = getTransformRunDurationMs(run);
+  const durationText =
+    durationMs != null ? formatTransformDuration(durationMs) : null;
+  const durationNode = durationText != null && (
+    <Text c="text-secondary" component="span" data-testid="run-duration">
+      {t`(${durationText})`}
+    </Text>
+  );
 
   const errorInfo =
     message != null && status != null ? (
@@ -60,7 +72,8 @@ export function RunStatus({
           <Box>
             {endTimeText
               ? t`Last ran ${endTimeText} successfully.`
-              : t`Last ran successfully.`}
+              : t`Last ran successfully.`}{" "}
+            {durationNode}
           </Box>
           {runInfo}
         </Group>
@@ -72,7 +85,8 @@ export function RunStatus({
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
-              : t`Last run failed.`}
+              : t`Last run failed.`}{" "}
+            {durationNode}
           </Box>
           {errorInfo ?? runInfo}
         </Group>
@@ -91,7 +105,8 @@ export function RunStatus({
           <Box>
             {endTimeText
               ? t`Last run was canceled ${endTimeText}.`
-              : t`Last run was canceled.`}
+              : t`Last run was canceled.`}{" "}
+            {durationNode}
           </Box>
           {runInfo}
         </Group>
@@ -103,7 +118,8 @@ export function RunStatus({
           <Box mr={errorInfo ? "xs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`
-              : t`Last run timed out.`}
+              : t`Last run timed out.`}{" "}
+            {durationNode}
           </Box>
           {errorInfo ?? runInfo}
         </Group>

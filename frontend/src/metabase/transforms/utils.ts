@@ -118,6 +118,39 @@ export function getTransformRunName(run: TransformRun): string {
   return run.transform?.name ?? t`Unknown transform`;
 }
 
+export function getTransformRunDurationMs(run: TransformRun): number | null {
+  if (run.end_time == null) {
+    return null;
+  }
+  const start = Date.parse(run.start_time);
+  const end = Date.parse(run.end_time);
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return null;
+  }
+  const ms = end - start;
+  return ms >= 0 ? ms : null;
+}
+
+export function formatTransformDuration(durationMs: number): string {
+  if (durationMs < 1000) {
+    return t`${durationMs}ms`;
+  }
+  const totalSeconds = Math.round(durationMs / 1000);
+  if (totalSeconds < 60) {
+    return t`${totalSeconds}s`;
+  }
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (totalMinutes < 60) {
+    return seconds === 0
+      ? t`${totalMinutes}m`
+      : t`${totalMinutes}m ${seconds}s`;
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes === 0 ? t`${hours}h` : t`${hours}h ${minutes}m`;
+}
+
 export function isErrorStatus(status: TransformRunStatus | null) {
   return status === "failed" || status === "timeout";
 }

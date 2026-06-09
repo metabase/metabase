@@ -1,0 +1,45 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background);
+}
+
+.grip {
+  cursor: grab;
+  color: var(--mb-color-text-tertiary);
+  display: flex;
+  align-items: center;
+}
+
+.position {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background-color: var(--mb-color-background-brand);
+  color: var(--mb-color-text-brand);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.label {
+  flex: 1;
+  font-weight: 500;
+  word-break: break-all;
+}
+
+.direction {
+  width: 6rem;
+  flex-shrink: 0;
+}
+
+.searchWrap {
+  position: relative;
+}
