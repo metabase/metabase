@@ -81,6 +81,8 @@ describe("scenarios > search > snowplow", () => {
             request_id: P.string,
             offset: null,
             search_term_hash: P.string,
+            // The raw term is redacted to null on every instance except Metabase's own stats instance
+            // (shouldReportSearchTerm); the salted search_term_hash above is what identifies the query.
             search_term: null,
           },
           event,
