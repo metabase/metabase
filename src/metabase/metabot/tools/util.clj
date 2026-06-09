@@ -216,20 +216,22 @@
         curated-conds (cond-> []
                         verified? (conj [:= :mr.status [:inline "verified"]])
                         official? (conj [:= :collection.authority_level [:inline "official"]]))
+        ;; Columns are qualified with report_card because the official-collections branch joins
+        ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id
                             (let [collection (t2/select-one :model/Collection :id metabot-collection-id)
                                   collection-ids (conj (collection/descendant-ids collection) metabot-collection-id)]
-                              [:in :collection_id collection-ids])
+                              [:in :report_card.collection_id collection-ids])
                             [:and true])
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
                     :where [:and
                             [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
-                            [:in :type [:inline ["metric" "model"]]]
-                            [:= :archived false]
+                            [:in :report_card.type [:inline ["metric" "model"]]]
+                            [:= :report_card.archived false]
                             (when api/*current-user-id*
-                              (collection/visible-collection-filter-clause :collection_id))]}]
+                              (collection/visible-collection-filter-clause :report_card.collection_id))]}]
     (cond-> base-query
       verified?
       (update :left-join (fnil into []) [[:moderation_review :mr] [:and
@@ -258,4 +260,5 @@
   Only cards visible to the current user are returned."
   [metabot-id & {:as opts}]
   (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
-                             (update :order-by (fnil conj []) [:id]))))
+                             ;; qualified: the official-collections branch joins `collection`, which also has `id`
+                             (update :order-by (fnil conj []) [:report_card.id]))))
