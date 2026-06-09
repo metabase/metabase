@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
+import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -13,14 +14,19 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type { TreemapLabelLayout } from "metabase/visualizations/echarts/graph/treemap/model/labels";
+import type {
+  TreemapLabelLayout,
+  TreemapParentLabelLayout,
+} from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
+  MIN_FULL_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_WIDTH,
   getTreemapLabelLayouts,
   getTreemapLayoutNodes,
   getTreemapParentLabelLayouts,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
+import { getTreemapInlineValuePercentIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
 import {
   DRILLED_BOTTOM_INSET,
   getTreemapChartOption,
@@ -29,6 +35,7 @@ import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/t
 import {
   TREEMAP_CHART_STYLE,
   groupHeader,
+  leafBlock,
 } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
   useCloseTooltipOnScroll,
@@ -92,11 +99,12 @@ export const TreemapChart = ({
     Record<string, TreemapLabelLayout>
   >({});
   // Per-group header-text visibility, keyed by group node id, measured the same
-  // way as `labelLayout` (second pass): a group whose header chip is too narrow
-  // for its full label maps to `false`, suppressing the text while keeping the
-  // chip band. Empty until the first `finished`; missing ids default to showing.
+  // way as `labelLayout` (second pass): per group, whether the header chip shows
+  // its name text (too-narrow chips suppress it while keeping the band) and
+  // whether it also shows the right-aligned value+percentage. Empty until the
+  // first `finished`; missing ids default to showing the text.
   const [parentLabelLayout, setParentLabelLayout] = useState<
-    Record<string, boolean>
+    Record<string, TreemapParentLabelLayout>
   >({});
   const handleViewRootChange = useCallback((id: string | null) => {
     viewRootIdRef.current = id;
@@ -116,6 +124,17 @@ export const TreemapChart = ({
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
+  // Column-aware value/percent formatters, shared by the option builder, the
+  // tooltip, and the label measurement pass (so the widths it measures match
+  // what renders).
+  const formatters = useMemo(
+    () =>
+      chartData
+        ? getTreemapFormatters(chartData.treemapColumns, settings)
+        : null,
+    [chartData, settings],
+  );
+
   // Cards smaller than 12×8 grid cells can't fit legible group headers, so hide
   // parent labels there even when the setting is on. Unbounded contexts (the
   // query builder) have no `gridSize` and are never restricted.
@@ -125,7 +144,7 @@ export const TreemapChart = ({
       gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
 
   const option = useMemo(() => {
-    if (!chartData) {
+    if (!chartData || !formatters) {
       return null;
     }
     const { tree, colors, treemapColumns } = chartData;
@@ -138,9 +157,9 @@ export const TreemapChart = ({
       showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
       labelLayout,
       parentLabelLayout,
+      formatValue: formatters.value,
       renderingContext,
     });
-    const formatters = getTreemapFormatters(treemapColumns, settings);
 
     return {
       ...seriesOption,
@@ -150,11 +169,13 @@ export const TreemapChart = ({
         formatters.value,
         containerRef,
         () => viewRootIdRef.current,
+        getTreemapInlineValuePercentIds(labelLayout, parentLabelLayout),
         treemapColumns.grouping.column.display_name,
       ),
     };
   }, [
     chartData,
+    formatters,
     settings,
     viewRootId,
     labelLayout,
@@ -191,35 +212,76 @@ export const TreemapChart = ({
   // converges in one extra pass.
   const handleLabelMeasure = useCallback(() => {
     const chart = chartRef.current;
-    if (!chart) {
+    const tree = chartData?.tree;
+    if (!chart || !tree || !formatters) {
       return;
     }
     const nodes = getTreemapLayoutNodes(chart);
+
+    // Resolve a node id ("i" group/1-level tile, "i-j" leaf) to its tree node.
+    const getNode = (id: string) => {
+      const [rootPart, leafPart] = id.split("-");
+      const root = tree[Number(rootPart)];
+      return leafPart == null ? root : root?.children?.[Number(leafPart)];
+    };
+    const total = tree.reduce((sum, node) => sum + node.value, 0);
+    const formatShare = (value: number) =>
+      formatPercent(total === 0 ? 0 : value / total);
+
+    // Leaf tiles qualify for the "full" stacked block only when the value line
+    // (the widest, at the H3 font) fits the tile width, so measure it at that
+    // font. The value renders in the leaf-label font family (see the rich style
+    // in `option.ts`), so measure with the same family.
     const nextLayout = getTreemapLabelLayouts(nodes, {
       minTileWidth: MIN_LABEL_TILE_WIDTH,
       minTileHeight: MIN_LABEL_TILE_HEIGHT,
+      minFullTileHeight: MIN_FULL_LABEL_TILE_HEIGHT,
       padding: LABEL_PADDING,
+      getValueLabelWidth: (id) => {
+        const node = getNode(id);
+        if (node == null) {
+          return Infinity;
+        }
+        return renderingContext.measureText(formatters.value(node.value), {
+          size: leafBlock.value.fontSize,
+          family: TREEMAP_CHART_STYLE.nodeLabels.fontFamily,
+          weight: leafBlock.value.fontWeight,
+        });
+      },
     });
     setLabelLayout((prev) => (_.isEqual(prev, nextLayout) ? prev : nextLayout));
 
     // Parent (group) header chips: a group node id is "0", "1", … — the index
-    // into the top-level tree. Measure each header's text at the chip's font
-    // style; if it doesn't fit the chip width, suppress the text (keep the band).
-    const tree = chartData?.tree;
+    // into the top-level tree. Measure each header's name at the chip's font
+    // style (too-narrow chips suppress the name); also measure the right-aligned
+    // value+percentage cluster (value bold + gap + percent regular) so the chip
+    // shows it only when there's room.
+    const measureHeader = (text: string, weight: number) =>
+      renderingContext.measureText(text, {
+        size: groupHeader.fontSize,
+        family: renderingContext.fontFamily,
+        weight,
+      });
     const nextParentLayout = getTreemapParentLabelLayouts(nodes, {
-      getLabel: (id) => tree?.[Number(id)]?.displayName,
-      measureTextWidth: (text) =>
-        renderingContext.measureText(text, {
-          size: groupHeader.fontSize,
-          family: renderingContext.fontFamily,
-          weight: groupHeader.fontWeight,
-        }),
+      getLabel: (id) => getNode(id)?.displayName,
+      measureTextWidth: (text) => measureHeader(text, groupHeader.fontWeight),
+      getValuePercentWidth: (id) => {
+        const node = getNode(id);
+        if (node == null) {
+          return Infinity;
+        }
+        return (
+          measureHeader(formatters.value(node.value), groupHeader.fontWeight) +
+          groupHeader.valuePercentGap +
+          measureHeader(formatShare(node.value), groupHeader.percentFontWeight)
+        );
+      },
       padding: groupHeader.paddingX,
     });
     setParentLabelLayout((prev) =>
       _.isEqual(prev, nextParentLayout) ? prev : nextParentLayout,
     );
-  }, [chartData, renderingContext]);
+  }, [chartData, formatters, renderingContext]);
 
   const allEventHandlers = useMemo(
     () => [

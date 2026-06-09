@@ -2,6 +2,7 @@ import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import {
+  getTreemapInlineValuePercentIds,
   getTreemapNodeId,
   getTreemapTooltipContext,
   getTreemapTooltipModel,
@@ -188,5 +189,45 @@ describe("getTreemapTooltipModel", () => {
     const model = getTreemapTooltipModel(context, () => undefined, formatValue);
 
     expect(model.rows[0].values[1]).toBe(formatPercent(0));
+  });
+});
+
+describe("getTreemapInlineValuePercentIds", () => {
+  it("includes leaves showing the full block and excludes label-only / hidden ones", () => {
+    const ids = getTreemapInlineValuePercentIds(
+      {
+        "0-0": { show: true, detail: "full", width: 100 },
+        "0-1": { show: true, detail: "labelOnly", width: 100 },
+        "0-2": { show: false, detail: "none", width: 100 },
+      },
+      {},
+    );
+
+    expect(ids).toEqual(new Set(["0-0"]));
+  });
+
+  it("includes group headers showing the value+percentage and excludes the rest", () => {
+    const ids = getTreemapInlineValuePercentIds(
+      {},
+      {
+        "0": { showText: true, showValuePercent: true, nameColumnWidth: 50 },
+        "1": { showText: true, showValuePercent: false },
+      },
+    );
+
+    expect(ids).toEqual(new Set(["0"]));
+  });
+
+  it("unions full leaves and value+% headers", () => {
+    const ids = getTreemapInlineValuePercentIds(
+      { "0-0": { show: true, detail: "full", width: 100 } },
+      { "1": { showText: true, showValuePercent: true, nameColumnWidth: 50 } },
+    );
+
+    expect(ids).toEqual(new Set(["0-0", "1"]));
+  });
+
+  it("returns an empty set when nothing is shown inline", () => {
+    expect(getTreemapInlineValuePercentIds({}, {})).toEqual(new Set());
   });
 });

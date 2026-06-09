@@ -7,6 +7,7 @@ import type {
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
+import type { TreemapLabelLayout, TreemapParentLabelLayout } from "./labels";
 import type { TreemapNode, TreemapTree } from "./types";
 
 export interface TreemapTooltipContext {
@@ -22,6 +23,30 @@ export function getTreemapNodeId(
   leafIndex?: number,
 ): string {
   return leafIndex == null ? `${rootIndex}` : `${rootIndex}-${leafIndex}`;
+}
+
+/**
+ * The set of node ids that already display their own value + percentage inline —
+ * leaf tiles rendering the `"full"` stacked block, and group headers rendering
+ * the right-aligned value+percentage. Their hover tooltip is suppressed (the
+ * info is already on the tile), while smaller tiles still get the tooltip.
+ */
+export function getTreemapInlineValuePercentIds(
+  labelLayout: Record<string, TreemapLabelLayout>,
+  parentLabelLayout: Record<string, TreemapParentLabelLayout>,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const [id, layout] of Object.entries(labelLayout)) {
+    if (layout.detail === "full") {
+      ids.add(id);
+    }
+  }
+  for (const [id, layout] of Object.entries(parentLabelLayout)) {
+    if (layout.showValuePercent) {
+      ids.add(id);
+    }
+  }
+  return ids;
 }
 
 export function getTreemapTooltipContext(

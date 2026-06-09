@@ -1,5 +1,6 @@
 import Color from "color";
 
+import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -363,7 +364,7 @@ describe("getTreemapChartOption labelLayout override", () => {
   it("hides a leaf label and sets its wrap width from the measured layout", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelLayout: { "0-0": { show: false, width: 50 } },
+      labelLayout: { "0-0": { show: false, detail: "none", width: 50 } },
       renderingContext,
     });
     const [big] = series.data[0].children ?? [];
@@ -374,7 +375,7 @@ describe("getTreemapChartOption labelLayout override", () => {
   it("shows a leaf label and wraps it, overriding the area-share heuristic", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelLayout: { "0-1": { show: true, width: 120 } },
+      labelLayout: { "0-1": { show: true, detail: "labelOnly", width: 120 } },
       renderingContext,
     });
     const [, tiny] = series.data[0].children ?? [];
@@ -386,7 +387,7 @@ describe("getTreemapChartOption labelLayout override", () => {
   it("falls back to the area-share heuristic for ids not in the map", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
-      labelLayout: { "0-0": { show: false, width: 50 } },
+      labelLayout: { "0-0": { show: false, detail: "none", width: 50 } },
       renderingContext,
     });
     const [, tiny] = series.data[0].children ?? [];
@@ -404,8 +405,8 @@ describe("getTreemapChartOption labelLayout override", () => {
     const { series } = getTreemapChartOption({
       tree: oneLevel,
       labelLayout: {
-        "0": { show: false, width: 200 },
-        "1": { show: true, width: 30 },
+        "0": { show: false, detail: "none", width: 200 },
+        "1": { show: true, detail: "labelOnly", width: 30 },
       },
       renderingContext,
     });
@@ -413,6 +414,91 @@ describe("getTreemapChartOption labelLayout override", () => {
     expect(series.data[0].label).toEqual({ show: false, width: 200 });
     // "B" would be area-share-hidden, but the layout shows it.
     expect(series.data[1].label).toEqual({ show: true, width: 30 });
+  });
+});
+
+describe("getTreemapChartOption full inline block", () => {
+  // G = 100 (grand total); Big = 98, Tiny = 2 → shares of whole are 98% / 2%.
+  const twoLevel: TreemapTree = [
+    {
+      rawName: "G",
+      displayName: "G",
+      value: 100,
+      rowIndices: [0, 1],
+      children: [
+        { rawName: "Big", displayName: "Big", value: 98, rowIndices: [0] },
+        { rawName: "Tiny", displayName: "Tiny", value: 2, rowIndices: [1] },
+      ],
+    },
+  ];
+  const formatValue = (value: number) => `$${value}`;
+
+  it("renders a 'full' leaf as a stacked name / value / percentage rich block", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      labelLayout: { "0-0": { show: true, detail: "full", width: 150 } },
+      formatValue,
+      renderingContext,
+    });
+    const [big] = series.data[0].children ?? [];
+
+    expect(big.label).toEqual({
+      show: true,
+      width: 150,
+      // value/percentage lines stay single-line (truncate), unlike the
+      // name-only label which keeps the series' word-wrap.
+      overflow: "truncate",
+      formatter: `{name|Big}\n{value|$98}\n{pct|${formatPercent(0.98)}}`,
+    });
+  });
+
+  it("computes the percentage as share of the whole (leaf value over grand total)", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      labelLayout: { "0-1": { show: true, detail: "full", width: 150 } },
+      formatValue,
+      renderingContext,
+    });
+    const [, tiny] = series.data[0].children ?? [];
+
+    // Tiny = 2 of 100 → 2%, not its share of the parent group.
+    expect(tiny.label?.formatter).toBe(
+      `{name|Tiny}\n{value|$2}\n{pct|${formatPercent(0.02)}}`,
+    );
+  });
+
+  it("defines the block rich styles (name bold 12, value bold 20, percent regular 12)", () => {
+    const { series } = getTreemapChartOption({
+      tree: twoLevel,
+      renderingContext,
+    });
+
+    expect(series.label?.rich).toMatchObject({
+      name: { fontSize: 12, fontWeight: 700 },
+      value: { fontSize: 20, fontWeight: 700 },
+      pct: { fontSize: 12, fontWeight: 400 },
+    });
+  });
+
+  it("applies the full block to a 1-level treemap tile", () => {
+    const oneLevel: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 75, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({
+      tree: oneLevel,
+      labelLayout: { "0": { show: true, detail: "full", width: 200 } },
+      formatValue,
+      renderingContext,
+    });
+
+    expect(series.data[0].label).toEqual({
+      show: true,
+      width: 200,
+      overflow: "truncate",
+      formatter: `{name|A}\n{value|$75}\n{pct|${formatPercent(0.75)}}`,
+    });
   });
 });
 
@@ -523,7 +609,7 @@ describe("getTreemapChartOption group header", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
       // Group "0" measured too narrow to fit its label.
-      parentLabelLayout: { "0": false },
+      parentLabelLayout: { "0": { showText: false, showValuePercent: false } },
       renderingContext,
     });
 
@@ -535,7 +621,7 @@ describe("getTreemapChartOption group header", () => {
   it("keeps the header text for a group whose chip fits its label", () => {
     const { series } = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,
-      parentLabelLayout: { "0": true },
+      parentLabelLayout: { "0": { showText: true, showValuePercent: false } },
       renderingContext,
     });
 
@@ -549,6 +635,80 @@ describe("getTreemapChartOption group header", () => {
     });
 
     expect(series.data[0].upperLabel?.color).toBeUndefined();
+  });
+});
+
+describe("getTreemapChartOption group header value + percentage", () => {
+  // Europe = 30, Asia = 70 → grand total 100, so Europe's header share is 30%.
+  const tree: TreemapTree = [
+    {
+      rawName: "Europe",
+      displayName: "Europe",
+      value: 30,
+      rowIndices: [0, 1],
+      children: [
+        {
+          rawName: "Sweden",
+          displayName: "Sweden",
+          value: 20,
+          rowIndices: [0],
+        },
+        {
+          rawName: "Germany",
+          displayName: "Germany",
+          value: 10,
+          rowIndices: [1],
+        },
+      ],
+    },
+    {
+      rawName: "Asia",
+      displayName: "Asia",
+      value: 70,
+      rowIndices: [2],
+      children: [
+        { rawName: "China", displayName: "China", value: 70, rowIndices: [2] },
+      ],
+    },
+  ];
+  const formatValue = (value: number) => `$${value}`;
+
+  it("renders the name in a fixed-width column with value + percentage flush right", () => {
+    const { series } = getTreemapChartOption({
+      tree,
+      parentLabelLayout: {
+        "0": { showText: true, showValuePercent: true, nameColumnWidth: 80 },
+      },
+      formatValue,
+      renderingContext,
+    });
+
+    expect(series.data[0].upperLabel?.formatter).toBe(
+      `{name|Europe}{value|$30}{pct|${formatPercent(0.3)}}`,
+    );
+    // Name column is sized to the measured width; the cluster fonts match the
+    // header (value bold, percent regular).
+    expect(series.data[0].upperLabel?.rich).toMatchObject({
+      name: { width: 80, overflow: "truncate" },
+      value: { fontWeight: 700 },
+      pct: { fontWeight: 400 },
+    });
+    // The chip band tint is still set.
+    expect(series.data[0].upperLabel?.backgroundColor).toBeDefined();
+  });
+
+  it("renders the name only (no formatter) when the chip can't fit the value+%", () => {
+    const { series } = getTreemapChartOption({
+      tree,
+      parentLabelLayout: {
+        "0": { showText: true, showValuePercent: false },
+      },
+      formatValue,
+      renderingContext,
+    });
+
+    expect(series.data[0].upperLabel?.formatter).toBeUndefined();
+    expect(series.data[0].upperLabel?.rich).toBeUndefined();
   });
 });
 

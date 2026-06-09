@@ -16,6 +16,7 @@ export function getTreemapTooltipOption(
   formatValue: (value: number) => string,
   containerRef: React.RefObject<HTMLDivElement>,
   getViewRootId: () => string | null,
+  inlineValuePercentIds: Set<string>,
   groupingHeader?: string,
 ): TooltipOption {
   return {
@@ -27,6 +28,12 @@ export function getTreemapTooltipOption(
       }
       const id = (params.data as { id?: string } | undefined)?.id;
       if (id == null) {
+        return "";
+      }
+      // Tiles that already show their value + percentage inline don't need a
+      // tooltip — suppress it so only smaller (label-only / unlabeled) tiles
+      // surface the breakdown on hover.
+      if (inlineValuePercentIds.has(id)) {
         return "";
       }
       const context = getTreemapTooltipContext(
