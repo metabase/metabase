@@ -71,15 +71,6 @@
    :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                   {:dumper-options {:flow-style :block :split-lines false}})})
 
-(defn- entity-path-entry
-  "Returns `{:model_type :entity_id :path}` for an extracted entity given its already-computed path.
-  `path` must be reused from the entity's file spec — recomputing it would advance the storage
-  context's unique-name generator and yield a different path."
-  [entity path]
-  {:model_type (-> entity :serdes/meta last :model)
-   :entity_id  (:entity_id entity)
-   :path       path})
-
 (defn store!
   "Stores serialized entities from a stream to a remote source and commits the changes.
 
@@ -98,7 +89,9 @@
         version      (->> stream
                           (map-indexed (fn [idx entity]
                                          (u/prog1 (entity->file-spec opts entity)
-                                           (vswap! entries conj (entity-path-entry entity (:path <>)))
+                                           (vswap! entries conj #(do {:model_type (-> entity :serdes/meta last :model)
+                                                                      :entity_id  (:entity_id entity)
+                                                                      :path       (:path <>)}))
                                            (remote-sync.task/update-progress!
                                             task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))))
                           (source.p/write-files! snapshot message))]
