@@ -4,31 +4,33 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.app-db.core :as mdb]
+   [java-time.api :as t]
    [metabase.channel.urls :as urls]
+   [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.core :as task]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- recent-failed-cron-job-runs
-  "All cron-scheduled job runs that failed or timed out since `cutoff`, oldest first."
-  [cutoff]
+  "Cron job runs that failed or timed out in `[start, end)`, oldest first."
+  [start end]
   (t2/select [:model/TransformJobRun :job_id :start_time :message]
              {:where    [:and
                          [:= :run_method "cron"]
                          [:in :status ["failed" "timeout"]]
-                         [:>= :start_time cutoff]]
+                         [:>= :start_time start]
+                         [:< :start_time end]]
               :order-by [[:start_time :asc]]}))
 
 (defn failing-jobs
-  "Summarize cron job runs that failed or timed out since `cutoff`, one entry per job."
-  [cutoff]
-  (let [runs     (recent-failed-cron-job-runs cutoff)
+  "Summarize failed/timed-out cron job runs in `[start, end)`, one entry per job."
+  [start end]
+  (let [runs     (recent-failed-cron-job-runs start end)
         job-ids  (distinct (map :job_id runs))
         id->name (when (seq job-ids)
                    (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))]
@@ -43,11 +45,19 @@
          (sort-by :first_failed)
          vec)))
 
-(defn digest-info
-  "Event info for the failure digest, built from the last day of run history."
+(defn- digest-timezone
+  "Zone for the digest's calendar-day boundaries, matching transform scheduling."
   []
-  (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :day)
-        jobs   (failing-jobs cutoff)]
+  (t/zone-id (or (driver/report-timezone)
+                 (qp.timezone/system-timezone-id)
+                 "UTC")))
+
+(defn digest-info
+  "Event info for the failure digest, covering the previous calendar day."
+  []
+  (let [yesterday           (u.date/add (t/zoned-date-time (digest-timezone)) :day -1)
+        {:keys [start end]} (u.date/range yesterday :day)
+        jobs                (failing-jobs start end)]
     {:job_count     (count jobs)
      :failure_count (reduce + 0 (map :failure_count jobs))
      :jobs          jobs}))
@@ -58,7 +68,7 @@
   (let [{:keys [jobs] :as info} (digest-info)]
     (if (seq jobs)
       (events/publish-event! :event/transform-failure-digest info)
-      (log/info "No transform job failures in the last day; skipping digest."))))
+      (log/info "No transform job failures yesterday; skipping digest."))))
 
 (def ^:private digest-job-key "metabase.transforms.notification.failure-digest-job")
 (def ^:private digest-trigger-key "metabase.transforms.notification.failure-digest-trigger")
