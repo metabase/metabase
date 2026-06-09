@@ -238,7 +238,9 @@
                            #(merge % weight-overrides)
                            #(merge weight-overrides %)))))
              {}
-             overrides))
+             ;; sorted so the winner is deterministic when several aliases collapse to one normalized
+             ;; context (the normalized key still wins; among aliases the lowest-sorted one does)
+             (into (sorted-map) overrides)))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights

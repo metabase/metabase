@@ -51,7 +51,13 @@
       (is (= {:global {:text 5 :exact 9}} (normalize {:type-filter {:text 5} :global {:exact 9}}))))
     (testing "the :default base and un-remapped contexts pass through untouched"
       (is (= {:default {:text 7} :entity-picker {:exact 3}}
-             (normalize {:default {:text 7} :entity-picker {:exact 3}}))))))
+             (normalize {:default {:text 7} :entity-picker {:exact 3}})))))
+  (testing "several aliases collapsing to one normalized context resolve deterministically, regardless of
+            input order (the lowest-sorted alias wins among aliases)"
+    (let [normalize #'search.config/normalize-override-keys]
+      (is (= {:global {:exact 2}}
+             (normalize (array-map :search-app {:exact 1} :command-palette {:exact 2}))
+             (normalize (array-map :command-palette {:exact 2} :search-app {:exact 1})))))))
 
 (deftest weights-by-context-test
   (testing "the broad-search surfaces share one weight profile that boosts prefix matches"
