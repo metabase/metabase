@@ -93,6 +93,7 @@ const elements = [
     name: "metabase-shared",
     pattern: "frontend/src/metabase-shared/**",
   }),
+  createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "shared", name: "metrics" }),
   createElement({ type: "shared", name: "metrics-viewer" }),
