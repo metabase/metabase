@@ -1,8 +1,7 @@
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
-import { alpha } from "metabase/ui/colors";
+import { FixedSizeIcon, Flex, Text } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
   getIconForReview,
@@ -12,55 +11,7 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard, ModerationReview } from "metabase-types/api";
 
-import Styles from "./ModerationReview.module.css";
-import {
-  Container,
-  Text,
-  TextContainer,
-  Time,
-} from "./ModerationReviewBanner.styled";
 const ICON_BUTTON_SIZE = 16;
-
-interface ModerationReviewBannerProps {
-  moderationReview: ModerationReview;
-  className?: string;
-}
-
-export const ModerationReviewBanner = ({
-  moderationReview,
-  className,
-}: ModerationReviewBannerProps) => {
-  const { data: moderator } = useGetUserQuery(moderationReview.moderator_id);
-  const currentUser = useSelector(getUser);
-
-  if (!moderator) {
-    return null;
-  }
-
-  const { bannerText } = getTextForReviewBanner(
-    moderationReview,
-    moderator,
-    currentUser,
-  );
-  const relativeCreationTime = getRelativeTime(moderationReview.created_at);
-  const { name: iconName, color: iconColor } =
-    getIconForReview(moderationReview);
-
-  return (
-    <Container
-      style={{ backgroundColor: alpha(iconColor, 0.2) }}
-      className={className}
-    >
-      <Icon name={iconName} c={iconColor} size={ICON_BUTTON_SIZE} />
-      <TextContainer>
-        <Text>{bannerText}</Text>
-        <Time dateTime={moderationReview.created_at}>
-          {relativeCreationTime}
-        </Time>
-      </TextContainer>
-    </Container>
-  );
-};
 
 export const ModerationReviewTextForQuestion = ({
   question,
@@ -124,11 +75,11 @@ const ModerationReviewText = ({
         name={iconName}
         c={iconColor}
         size={ICON_BUTTON_SIZE}
-        className={Styles.IconMargin}
+        mt="xs"
       />
-      <UIText>
+      <Text>
         {bannerText} {relativeCreationTime}
-      </UIText>
+      </Text>
     </Flex>
   );
 };
