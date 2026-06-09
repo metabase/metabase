@@ -1,13 +1,13 @@
 ---
 name: create-data-app
-description: Scaffold a new Metabase data-app development project — a Vite + React + TypeScript project with hot-reload preview against a live Metabase, plus a production build that emits a single uploadable bundle. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
+description: Scaffold a new Metabase data-app development project by cloning the `metabase-data-app-template` GitHub repo. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 ---
 
 # Create a Metabase Data App
 
-A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. This skill scaffolds a proper Vite + TypeScript project: source code in `src/` (multiple `.tsx` files allowed and encouraged), a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `yarn build` producing a single `dist/index.js` to upload via Admin → Data apps.
+A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `npm run build` producing a single `dist/index.js` to upload via Admin → Data apps.
 
-**Always use TypeScript (`.tsx` / `.ts`).** The bundle imports SDK values as normal package imports — `import { StaticQuestion } from "@metabase/embedding-sdk-react"` — and `vite.config.ts` externalizes those imports so the production iframe reads the host-realm copies at runtime. The Vite dev server resolves the same imports to the real npm package.
+**The scaffold itself lives in a separate GitHub repo: [`metabase/metabase-data-app-template`](https://github.com/metabase/metabase-data-app-template).** This skill clones that template and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — clone the template instead.
 
 ## When to invoke this skill
 
@@ -16,437 +16,130 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 
 ### Detecting an existing project
 
-Before writing any files, check whether the working directory already looks
-like a data-app project. Telltale signs:
+Before cloning, look for an existing data-app project. Surface signs (one of):
+`src/index.tsx`, `vite.config.ts` with `name: "__dataAppFactory__"`, or
+`package.json` depending on `@metabase/embedding-sdk-react` with a `vite build`
+script.
 
-- `src/index.tsx` exists, **or**
-- `vite.config.ts` with a `name: "__dataAppFactory__"` entry, **or**
-- `package.json` whose `scripts` include `vite build` and depends on
-  `@metabase/embedding-sdk-react`.
+If any surface sign is present, verify the project matches the current
+`metabase-data-app-template`. Check **all** of:
 
-If any of these signals are present, **do not silently re-scaffold** — pause
-and ask the user:
+1. `vite.config.ts` externals include `"react"`, `"react/jsx-runtime"`,
+   `"@metabase/embedding-sdk-react"`, `"@metabase/embedding-sdk-react/data-app"`
+   with corresponding `output.globals` (`React`, `__react_jsx_runtime__`,
+   `__metabase_sdk__`, `__metabase_data_app__`).
+2. `src/index.tsx`'s factory returns `{ component, theme }` (no args).
+3. `src/dev.tsx` wraps in the SDK's `<MetabaseProvider authConfig={…}>`.
 
-> "I see this looks like an existing data-app project. Should I keep
-> working in it (extend the current `src/`), or do you want me to
-> scaffold a fresh project somewhere else?"
+**All checks pass** → template-shaped. Ask: "Extend this one, or scaffold fresh
+elsewhere?" If extend → skip the clone step, edit `src/`. If fresh → ask for a
+target path, clone there.
 
-Only continue once the user has answered:
+**Any check fails** → not template-shaped (older scaffold or drift). **Stop.**
+Tell the user the structure differs from the current template, extending it
+risks breaking the bundle contract, and ask whether to (1) migrate it, (2)
+scaffold fresh and port the code over, or (3) proceed anyway at their risk.
+Wait for the answer.
 
-- **"Keep working in this one"** → skip the file-writing steps below and
-  edit the existing `src/` files (typically `src/App.tsx` and
-  `src/components/`).
-- **"Scaffold fresh"** → ask for the target path, then write the files
-  there.
+Never overwrite existing files without explicit confirmation.
 
-Do not overwrite existing files without explicit confirmation.
+## Step 1 — Clone the template
 
-## What gets created
+Source: `metabase/metabase-data-app-template`. Any GitHub remote created should
+be **private**.
 
-```
-my-data-app/
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-├── index.html                  ← Vite dev entry
-├── src/
-│   ├── index.tsx               ← PRODUCTION entry — factory returns { component, theme }
-│   ├── dev.tsx                 ← DEV entry — wraps App with MetabaseProvider + authConfig
-│   ├── theme.ts                ← MetabaseTheme, shared between dev + prod entries
-│   ├── App.tsx                 ← top-level component (you edit this); pure content, no MetabaseProvider wrap
-│   └── components/             ← split components freely; multiple .tsx files OK
-│       └── …
-├── public/                     ← static assets if needed
-├── dist/                       ← produced by `yarn build` (gitignored)
-│   └── index.js                ← THE file to upload to Metabase
-├── .env.local.example
-├── .gitignore
-└── README.md
-```
+- **Empty CWD** → clone in-place via `degit` (no name to ask for, no remote
+  created — user can add one later). Make an initial git commit afterwards.
+- **Non-empty CWD** → ask the user for a target directory name (e.g.
+  `sales-app`). Prefer `gh repo create --template … --private --clone` so a
+  private GitHub remote is wired up at the same time. Fall back to `degit` (no
+  remote) if `gh` isn't available.
 
-## Two modes, same source
+## Step 2 — Customize
 
-| | Source loaded | Output | Used for |
-|---|---|---|---|
-| **`yarn dev`** | `src/dev.tsx` (wraps `<App/>` in the SDK's `<MetabaseProvider authConfig={…}>` and mounts it) | http://localhost:5174 with HMR | Iterating visually against a real Metabase |
-| **`yarn build`** | `src/index.tsx` (factory returns `{ component, theme }`; host wraps with `DataAppProvider`) | `dist/index.js` (single IIFE) | Uploading to Metabase |
+Once the template is on disk:
 
-`App.tsx` and everything in `src/components/` is shared between both modes. The split is only at the entry layer.
+1. Edit `package.json` `name` to match the project folder.
+2. Pin `@metabase/embedding-sdk-react` to the target Metabase version (e.g. `"^63.0.0"`) — the template ships with `*`. v63 is the floor; earlier versions don't ship the data-app contract surface.
+3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
+4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone). After install succeeds, **strip the lockfile-ignoring block from `.gitignore`** — the template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock*` to stay PM-agnostic, but the downstream project wants its lockfile committed for reproducible installs.
+5. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
+6. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
 
-## Step 1 — Project files (write these verbatim)
+## Step 3 — Confirm what the app should do
 
-### `package.json`
+Before writing a single component, confirm the app's scope with the user. If they haven't described the screens, data, or flow, **ask first**:
 
-```json
-{
-  "name": "data-app",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite --port 5174",
-    "build": "vite build"
-  },
-  "dependencies": {
-    "@metabase/embedding-sdk-react": "*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10"
-  }
-}
-```
+- What are the screen(s) and the rough layout? (single screen, multi-page, etc.)
+- Which Metabase questions, dashboards, or data sources drive each screen?
+- Any specific interactions (filters, drill-downs, write-back via actions)?
+- Branding / theme constraints?
 
-`@metabase/embedding-sdk-react` **must be at least v62** — earlier versions don't ship the component surface (`MetabaseProvider`, the question/dashboard components) the data-app contract depends on. Pin to the exact version matching your target Metabase when you commit (e.g. `"@metabase/embedding-sdk-react": "^62.0.0"`).
+## Step 4 — Write the actual app
 
-### `vite.config.ts`
+Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
 
-```ts
-import { resolve } from "node:path";
+**Do not modify `src/index.tsx`, `src/dev.tsx`, `vite.config.ts`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** They encode the bundle contract with the host (factory shape, externals, document shell). Tweaks here drift the dev preview from production — the iframe doesn't read your `index.html`, the host serves a byte-for-byte template — and silently break things like drill popups and routing.
 
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-
-// See "Two modes, same source" above.
-//
-// Externals:
-//   - `react` → `globalThis.React`. The bundle uses the host's React
-//     instance so there's only one React in the tree.
-//   - `@metabase/embedding-sdk-react` → `globalThis.__metabase_sdk__`.
-//     The SDK components and hooks (`MetabaseProvider`, `StaticQuestion`,
-//     etc.) are host-realm so React state from them survives the Near
-//     Membrane boundary correctly.
-//   - `@metabase/embedding-sdk-react/data-app` → `globalThis.__metabase_data_app__`.
-//     Host-owned primitives (routing, etc.) — same rationale.
-//
-// `jsxRuntime: "classic"` keeps `react` externalization to a single
-// package (no separate `react/jsx-runtime` global needed).
-export default defineConfig({
-  plugins: [react({ jsxRuntime: "classic" })],
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-    lib: {
-      entry: resolve(__dirname, "src/index.tsx"),
-      formats: ["iife"],
-      fileName: () => "index.js",
-      name: "__dataAppFactory__",
-    },
-    rollupOptions: {
-      external: [
-        "react",
-        "@metabase/embedding-sdk-react",
-        "@metabase/embedding-sdk-react/data-app",
-      ],
-      output: {
-        globals: {
-          react: "React",
-          "@metabase/embedding-sdk-react": "__metabase_sdk__",
-          "@metabase/embedding-sdk-react/data-app": "__metabase_data_app__",
-        },
-      },
-    },
-  },
-  server: { port: 5174, host: "localhost" },
-});
-```
-
-### `tsconfig.json`
-
-```json
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "jsx": "react",
-    "jsxFactory": "React.createElement",
-    "jsxFragmentFactory": "React.Fragment",
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "strict": true,
-    "allowJs": false,
-    "checkJs": false,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "forceConsistentCasingInFileNames": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client"]
-  },
-  "include": ["src", "vite.config.ts"]
-}
-```
-
-### `index.html`
-
-**Write this verbatim. Do not edit it.** Production data-apps render inside an isolated iframe whose document is hard-coded to the exact head/CSS-reset/`#root` shell below (charset, viewport, `lang`, the CSS reset, the font-family). Diverging here means the bundle looks one way in the Vite dev preview and a different way in production — the iframe doesn't read this file. The host serves a byte-for-byte equivalent template at runtime, so any baseline tweak (different font, different reset) has to land in the host side first, not here.
-
-Things you may NOT change in this file:
-- The `lang` attribute, `<meta charset>`, or `<meta name="viewport">`.
-- The CSS reset rules (`html, body, #root { height: 100%; margin: 0; }`).
-- The `body` font-family declaration.
-
-Things you may change:
-- The `<title>` (cosmetic — only shown in the dev preview's browser tab).
-- Adding more script tags is fine if you genuinely need them in dev (none should be needed for a normal data app).
-
-If you want bundle-specific styles, put them in a CSS module or `<style>`/`<link>` inside a component — not here.
-
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Data App Dev Preview</title>
-    <style>
-      html, body, #root { height: 100%; margin: 0; }
-      body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/dev.tsx"></script>
-  </body>
-</html>
-```
-
-### `src/vite-env.d.ts` — env var types
-
-The bundle no longer needs a `globals.d.ts` for SDK types — they come from `@metabase/embedding-sdk-react` as normal package types. The only ambient declarations needed are for the Vite env vars used in `dev.tsx`:
-
-```ts
-interface ImportMetaEnv {
-  readonly VITE_MB_URL: string;
-  readonly VITE_MB_API_KEY: string;
-}
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-```
-
-### `src/theme.ts` — shared theme
-
-Used by both the production `index.tsx` (passed through the factory) and the dev `dev.tsx` (passed to the dev preview's `<MetabaseProvider>`).
-
-```ts
-import type { MetabaseTheme } from "@metabase/embedding-sdk-react";
-
-export const sdkTheme: MetabaseTheme = {
-  colors: {
-    brand: "#4D96FF",
-    "brand-hover": "#4D96FF",
-    positive: "#4D96FF",
-    charts: ["#4D96FF"],
-    // The SDK widget's surface — match the IMMEDIATE PARENT of the chart.
-    background: "white",
-    "background-secondary": "white",
-    // Text on the SDK surface — must contrast with `background`.
-    "text-primary": "#1f2937",
-    "text-secondary": "#4b5563",
-    "text-tertiary": "#6b7280",
-  },
-  fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
-};
-```
-
-### `src/index.tsx` — production entry
-
-```tsx
-import type { MetabaseTheme } from "@metabase/embedding-sdk-react";
-
-import App from "./App";
-import { sdkTheme } from "./theme";
-
-type Factory = () => {
-  component: React.ComponentType;
-  theme?: MetabaseTheme;
-};
-
-/**
- * Production entry. Vite lib mode emits an IIFE whose return value is
- * assigned to globalThis.__dataAppFactory__ (the `name` field in
- * vite.config.ts). The Metabase host evaluates the bundle text, reads
- * `__dataAppFactory__` back out, calls it with NO arguments, and wraps
- * the returned `component` in its own `DataAppProvider` (which sets up
- * the SDK Redux store, theme, and portal container in host realm).
- *
- * The bundle deliberately does NOT render `<MetabaseProvider>` inside
- * `App.tsx`. That's the host's job in prod, and the dev entry's job in
- * dev. Bundle-side wrapping would force the SDK's `setState`-via-listener
- * paths through the Near Membrane sandbox and break drill popups,
- * plugin init, and similar.
- *
- * The factory takes no arguments. Everything the host exposes to the
- * bundle comes through normal package imports from
- * `@metabase/embedding-sdk-react` and `@metabase/embedding-sdk-react/data-app`.
- */
-const factory: Factory = () => ({ component: App, theme: sdkTheme });
-
-export default factory;
-```
-
-### `src/dev.tsx` — dev entry
-
-In production the host wraps the bundle in `DataAppProvider`. In dev there's no host, so the dev entry uses the SDK's real `<MetabaseProvider>` (which needs an `authConfig`) to set up the same providers locally.
-
-```tsx
-import {
-  type MetabaseAuthConfig,
-  MetabaseProvider,
-} from "@metabase/embedding-sdk-react";
-import { createRoot } from "react-dom/client";
-
-import App from "./App";
-import { sdkTheme } from "./theme";
-
-const authConfig: MetabaseAuthConfig = {
-  metabaseInstanceUrl: import.meta.env.VITE_MB_URL,
-  apiKey: import.meta.env.VITE_MB_API_KEY,
-};
-
-const root = document.getElementById("root");
-if (!root) {
-  throw new Error("#root not found");
-}
-createRoot(root).render(
-  <MetabaseProvider authConfig={authConfig} theme={sdkTheme}>
-    <App />
-  </MetabaseProvider>,
-);
-```
-
-### `src/App.tsx` — starter
-
-`App.tsx` is **pure content** — no `<MetabaseProvider>` wrap (that's `dev.tsx` in dev and the host in prod). Imports come from the SDK package as normal; the bundle's `vite.config.ts` externalizes them so production references the host's copies at runtime, and Vite's dev server uses the real package directly.
-
-```tsx
-import { StaticQuestion } from "@metabase/embedding-sdk-react";
-
-export default function App() {
-  return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f7" }}>
-      <header style={{ padding: 24 }}>
-        <h1 style={{ margin: 0 }}>Hello, data app</h1>
-        <p style={{ color: "#555" }}>Edit src/App.tsx to begin.</p>
-      </header>
-      <div style={{ margin: 24, padding: 16, background: "white", borderRadius: 12 }}>
-        <div style={{ height: 360, overflow: "hidden" }}>
-          <StaticQuestion
-            questionId={1}
-            withChartTypeSelector={false}
-            height="100%"
-            width="100%"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-```
-
-### `.env.local.example`
-
-```
-VITE_MB_URL=http://localhost:3000
-VITE_MB_API_KEY=mb_replace_me
-```
-
-### `.gitignore`
-
-```
-node_modules
-.env.local
-.vite
-dist
-```
-
-### `README.md`
-
-```md
-# data-app
-
-A Metabase data-app authored as a Vite + React + TypeScript (TSX) project.
-See the project's SKILL.md for full guidance; the short version is `yarn`
-then `yarn dev` (preview at http://localhost:5174 — first set
-`VITE_MB_URL` + `VITE_MB_API_KEY` in `.env.local`), and `yarn build` to
-produce `dist/index.js` for upload via Admin → Data apps → Add.
-
-If the dev preview hits CORS, add `http://localhost:5174` under
-Admin → Embedding → Embedded analytics SDK → CORS.
-```
-
-## Step 2 — Install + run
-
-```bash
-yarn
-cp .env.local.example .env.local
-# fill in VITE_MB_URL + VITE_MB_API_KEY (Admin → Authentication → API keys)
-yarn dev      # preview at http://localhost:5174 with HMR
-yarn build    # produces dist/index.js
-```
+**After every meaningful round of edits, run `npm run typecheck`.** It runs `tsc --noEmit` over `src/` and `vite.config.ts` — catches wrong prop shapes against the SDK types, broken refactors, missing imports, etc. The Vite dev server does NOT typecheck (it only transpiles), so errors that would fail a production CI run can sit invisibly in a passing `npm run dev` session. Run it before declaring a task complete.
 
 ## Source conventions
 
-### 1. Write TSX.
+### 1. Write TSX
 
-The source is plain ESM + TSX:
+Plain ESM + TSX, normal package imports:
 
 ```tsx
-// src/components/PokemonCard.tsx
-type Pokemon = { name: string; questionId: number };
+// src/components/CustomerCard.tsx
+import { StaticQuestion } from "@metabase/embedding-sdk-react";
 
-const { StaticQuestion } = globalThis;
+type Customer = { name: string; questionId: number };
 
-export default function PokemonCard({ pokemon }: { pokemon: Pokemon }) {
+export default function CustomerCard({ customer }: { customer: Customer }) {
   return (
-    <article style={{ /* … */ }}>
-      <h3>{pokemon.name}</h3>
-      <StaticQuestion questionId={pokemon.questionId} height={300} width="100%" />
+    <article>
+      <h3>{customer.name}</h3>
+      <StaticQuestion questionId={customer.questionId} height={300} width="100%" />
     </article>
   );
 }
 ```
 
-### 2. Multiple files are encouraged
+### 2. Structure from the start
 
-Split components, helpers, data into separate files in `src/`. Vite bundles everything in `src/` reachable from `src/index.tsx` into a single `dist/index.js` IIFE.
+Default project layout (see Step 4 for the principle — don't dump everything into `App.tsx`):
 
 ```
 src/
-├── globals.d.ts
-├── index.tsx
-├── App.tsx
-├── components/
-│   ├── Hero.tsx
-│   ├── PokemonCard.tsx
-│   └── TypePill.tsx
-├── data/
-│   └── pokemon.ts
-└── theme.ts
+├── index.tsx          (template — don't edit)
+├── dev.tsx            (template — don't edit)
+├── App.tsx            (routing + composition only)
+├── theme.ts
+├── pages/             (one file per screen)
+│   ├── Overview.tsx
+│   └── CustomerDetail.tsx
+├── components/        (shared UI)
+│   └── Card.tsx
+├── hooks/             (data-fetching wrappers, custom hooks)
+│   └── useCustomers.ts
+├── lib/               (pure helpers / derivations)
+│   └── format.ts
+└── types/             (shared TS types)
+    └── customer.ts
 ```
+
+Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the folder layout is purely for your own readability.
 
 ### 3. Import SDK values from `@metabase/embedding-sdk-react` directly
 
-Just use normal package imports. `vite.config.ts` externalizes both `@metabase/embedding-sdk-react` and `@metabase/embedding-sdk-react/data-app` so the build maps them to host-realm globals (`__metabase_sdk__` / `__metabase_data_app__`); the Vite dev server resolves them to the real npm package.
+`vite.config.ts` externalizes `@metabase/embedding-sdk-react` and `@metabase/embedding-sdk-react/data-app`, so production maps them to host-realm globals (`__metabase_sdk__` / `__metabase_data_app__`); the Vite dev server resolves them to the real npm package.
 
 ```tsx
 // ✅ correct
 import { StaticQuestion, useQuestionQuery } from "@metabase/embedding-sdk-react";
 import { DataAppRouter, DataAppLink } from "@metabase/embedding-sdk-react/data-app";
 
-// ❌ wrong — globalThis pattern is gone; you'd be reading nothing
+// ❌ wrong — no globalThis pattern; you'd be reading nothing
 const { MetabaseProvider, StaticQuestion } = globalThis;
 ```
 
@@ -454,15 +147,23 @@ const { MetabaseProvider, StaticQuestion } = globalThis;
 
 ### 4. Import `react` normally too
 
-The bundle's `vite.config.ts` externalizes `react` (mapped to `globalThis.React`), so a plain `import` resolves to the host's React in production and the npm package in dev. Same syntax in both modes:
+`vite.config.ts` externalizes `react` (mapped to `globalThis.React`), so a plain `import` resolves to the host's React in production and the npm package in dev:
 
 ```tsx
 import { useState, useEffect, useMemo } from "react";
 ```
 
+**No `import React from "react"` needed in TSX files** — the template uses the automatic JSX runtime (`jsx: "react-jsx"` in `tsconfig.json`, `react()` plugin default in `vite.config.ts`). The compiler injects the `react/jsx-runtime` imports it needs. Just write JSX and named imports — that's it.
+
+For React *types* (e.g. `ComponentType`, `ReactNode`, `RefObject`), use named type imports rather than the `React.` namespace:
+
+```ts
+import type { ComponentType, ReactNode } from "react";
+```
+
 ## Theme rules
 
-`MetabaseProvider`'s `theme` is the only way SDK component appearance changes. It is NOT a stylesheet for the bundle's own chrome.
+`MetabaseProvider`'s `theme` (defined in `src/theme.ts`) is the only way SDK component appearance changes. It is NOT a stylesheet for the bundle's own chrome.
 
 | Field | Purpose | Notes |
 |---|---|---|
@@ -473,7 +174,7 @@ import { useState, useEffect, useMemo } from "react";
 | `colors.text-primary`, `text-secondary`, `text-tertiary` | Text on SDK surfaces | **MUST contrast with `background`.** For white bg: use `#1f2937` or similar dark color. The SDK's default `text-primary` resolves to ~white, so leaving it unset on a white surface produces invisible white text. **Always pair `background` and `text-primary` when overriding.** |
 | `fontFamily` | SDK widget typography | |
 
-**Never put page-chrome colors in the theme.** Style page chrome with inline `style={{ background: "#f5f5f7" }}` on your own `div`s.
+**The theme only styles SDK widgets — never your own UI.** For your page background, headers, card wrappers, etc., use inline `style={{ background: "#f5f5f7" }}` or CSS modules on your own elements.
 
 **Don't expect per-subtree theming.** Multiple `<MetabaseProvider>`s on the page fight for the single CSS-variable slot. If the look needs to change with state, recompute `sdkTheme` at the App level and re-render — the whole tree re-themes.
 
@@ -501,7 +202,7 @@ The Near Membrane sandbox throws at runtime on these globals. Use the endowed al
 - **Network** (`fetch`, `XMLHttpRequest`, `WebSocket`) → the data hooks for reads, `useAction` for writes. No raw network from the bundle, ever.
 - **UI dialogs** (`alert`, `confirm`, `prompt`) → render a React modal in your own tree.
 - **Storage** (`localStorage`, `sessionStorage`, `indexedDB`, `document.cookie`) → treat the Data App as stateless across reloads; persist via a Metabase action.
-- **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppNavigate()` for in-app, `<a target="_blank" rel="noopener">` for external.
+- **Window / history navigation** (`window.open`, `history.pushState`, `history.replaceState`) → `useDataAppLocation().navigate` for in-app, `<a target="_blank" rel="noopener">` for external.
 - **`navigator.*` device APIs** (`clipboard`, `geolocation`, etc.) → not available.
 - **Global event listeners on `document` / `window`** for typing or clipboard events (`keydown`, `keyup`, `keypress`, `beforeinput`, `input`, `paste`, `copy`, `cut`, `before*paste/copy/cut`, `compositionstart/update/end`, `storage`) → attach the listener to your own element instead, or use the React event handler (`onKeyDown`, `onPaste`, …) on the specific input/container that needs it. Same listener on a script-owned element still works.
 
@@ -591,7 +292,7 @@ Without `height`/`width`, the SDK component renders at its intrinsic size and ov
 
 ## Upload to Metabase
 
-1. `yarn build` → produces `dist/index.js`.
+1. `npm run build` → produces `dist/index.js`.
 2. Open Metabase → Admin → Data apps → **Add**.
 3. Pick a short `name` (used in `/data-app/<name>` URL) and a display name.
 4. Upload `dist/index.js`.
@@ -606,14 +307,10 @@ To replace: delete the data app, upload again. Per-app replace endpoint isn't wi
 | "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `curl -H "X-API-Key: $KEY" $URL/api/user/current`, add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
-| "Invalid hook call" at runtime. | `react` not externalized — check `vite.config.ts`. |
-| Bundle is multi-MB. | Runtime-importing `@metabase/embedding-sdk-react` from non-dev source (see *Source conventions §3*). |
-| `dist/index.js` doesn't assign to `__dataAppFactory__`. | `lib.name: "__dataAppFactory__"` missing in `vite.config.ts`. |
-| Dev preview blank, console says `MetabaseProvider is undefined`. | `src/dev.tsx` must `import "./dev-globals"` BEFORE `import App from "./App"`. |
-| `Cannot find module '@metabase/embedding-sdk-react'`. | Run `yarn install` to install the SDK package. Types come from the package directly. |
+| "Invalid hook call" at runtime. | `react` not externalized — the template ships with this configured; check you didn't edit `vite.config.ts`. |
+| Bundle is multi-MB. | One of `react`, `@metabase/embedding-sdk-react`, or `@metabase/embedding-sdk-react/data-app` was removed from `vite.config.ts`'s `external` — restore from the template. |
+| `dist/index.js` doesn't assign to `__dataAppFactory__`. | `lib.name: "__dataAppFactory__"` got removed from `vite.config.ts` — restore from the template. |
+| Dev preview blank, console says `MetabaseProvider is undefined`. | `src/dev.tsx` got edited and lost the `<MetabaseProvider authConfig={…}>` wrap. |
+| `Cannot find module '@metabase/embedding-sdk-react'`. | Run `npm install` (or the equivalent for your package manager). Types come from the package directly. |
 | Drill popups don't open / SDK components show empty / "MetabaseProvider not found" at runtime in dev. | `src/dev.tsx` is missing the `<MetabaseProvider authConfig={…}>` wrap. The bundle's `App.tsx` does NOT include `MetabaseProvider` — `dev.tsx` provides it. |
-| URL changes but UI doesn't update in production (works in dev). | `vite.config.ts` is missing `@metabase/embedding-sdk-react/data-app` in `external` / `output.globals`. Without it, the data-app routing primitives get inlined into the bundle and the React-state-batching-through-Near-Membrane bug breaks navigation re-renders. |
-
-## Confirm scope before generating code
-
-Once the project files are in place (whether freshly scaffolded or detected as existing), confirm what the data app should *do* before writing components. If the user hasn't already described the screen / charts / flow, ask first — code generated against an assumed brief is the most common rework cause.
+| URL changes but UI doesn't update in production (works in dev). | `vite.config.ts` is missing `@metabase/embedding-sdk-react/data-app` in `external` / `output.globals`. Without it, the data-app routing primitives get inlined into the bundle and the React-state-batching-through-Near-Membrane bug breaks navigation re-renders. Restore from the template. |
