@@ -2,10 +2,11 @@ import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import {
-  getTreemapInlineValuePercentIds,
+  getTreemapInlineValueIds,
   getTreemapNodeId,
   getTreemapTooltipContext,
   getTreemapTooltipModel,
+  isTreemapTooltipSuppressed,
 } from "./tooltip";
 import type { TreemapNode, TreemapTree } from "./types";
 
@@ -192,42 +193,72 @@ describe("getTreemapTooltipModel", () => {
   });
 });
 
-describe("getTreemapInlineValuePercentIds", () => {
-  it("includes leaves showing the full block and excludes label-only / hidden ones", () => {
-    const ids = getTreemapInlineValuePercentIds(
+describe("getTreemapInlineValueIds", () => {
+  it("collects full leaves and value+% headers into separate sets", () => {
+    const ids = getTreemapInlineValueIds(
       {
         "0-0": { show: true, detail: "full", width: 100 },
         "0-1": { show: true, detail: "labelOnly", width: 100 },
         "0-2": { show: false, detail: "none", width: 100 },
       },
-      {},
-    );
-
-    expect(ids).toEqual(new Set(["0-0"]));
-  });
-
-  it("includes group headers showing the value+percentage and excludes the rest", () => {
-    const ids = getTreemapInlineValuePercentIds(
-      {},
       {
         "0": { showText: true, showValuePercent: true, nameColumnWidth: 50 },
         "1": { showText: true, showValuePercent: false },
       },
     );
 
-    expect(ids).toEqual(new Set(["0"]));
+    expect(ids).toEqual({
+      fullLeafIds: new Set(["0-0"]),
+      valuePercentHeaderIds: new Set(["0"]),
+    });
   });
 
-  it("unions full leaves and value+% headers", () => {
-    const ids = getTreemapInlineValuePercentIds(
-      { "0-0": { show: true, detail: "full", width: 100 } },
-      { "1": { showText: true, showValuePercent: true, nameColumnWidth: 50 } },
-    );
+  it("returns empty sets when nothing is shown inline", () => {
+    expect(getTreemapInlineValueIds({}, {})).toEqual({
+      fullLeafIds: new Set(),
+      valuePercentHeaderIds: new Set(),
+    });
+  });
+});
 
-    expect(ids).toEqual(new Set(["0-0", "1"]));
+describe("isTreemapTooltipSuppressed", () => {
+  const inline = {
+    fullLeafIds: new Set(["0-0", "1-0"]),
+    valuePercentHeaderIds: new Set(["0"]),
+  };
+
+  describe("2-level overview (viewRootId null, isTwoLevel true)", () => {
+    it("suppresses any element whose top-level group header shows the value+%", () => {
+      // Group "0" header shows value+%, so both its header and its sub-groups
+      // suppress the (group-level) tooltip.
+      expect(isTreemapTooltipSuppressed("0", null, true, inline)).toBe(true);
+      expect(isTreemapTooltipSuppressed("0-0", null, true, inline)).toBe(true);
+      expect(isTreemapTooltipSuppressed("0-3", null, true, inline)).toBe(true);
+    });
+
+    it("shows the tooltip when the top-level group header does not show the value+%", () => {
+      // Group "1" header has no value+%, so its elements keep the tooltip even
+      // though leaf "1-0" shows its own full block (different, sub-group info).
+      expect(isTreemapTooltipSuppressed("1", null, true, inline)).toBe(false);
+      expect(isTreemapTooltipSuppressed("1-0", null, true, inline)).toBe(false);
+    });
   });
 
-  it("returns an empty set when nothing is shown inline", () => {
-    expect(getTreemapInlineValuePercentIds({}, {})).toEqual(new Set());
+  describe("drilled into a group (viewRootId set)", () => {
+    it("suppresses a hovered leaf that shows its own full block", () => {
+      expect(isTreemapTooltipSuppressed("0-0", "0", true, inline)).toBe(true);
+      expect(isTreemapTooltipSuppressed("0-3", "0", true, inline)).toBe(false);
+    });
+  });
+
+  describe("1-level treemap (isTwoLevel false)", () => {
+    it("suppresses a tile that shows its own full block, ignoring headers", () => {
+      const ids = {
+        fullLeafIds: new Set(["0", "2"]),
+        valuePercentHeaderIds: new Set<string>(),
+      };
+      expect(isTreemapTooltipSuppressed("0", null, false, ids)).toBe(true);
+      expect(isTreemapTooltipSuppressed("1", null, false, ids)).toBe(false);
+    });
   });
 });

@@ -170,18 +170,10 @@ export function getTreemapChartOption({
 
   const series: TreemapChartSeriesOption = {
     type: "treemap",
-    // Native click is disabled; TreemapChart hijacks `click` to drill into the
-    // clicked node's grouping (see TreemapChart/events.ts). `leafDepth: 2` keeps
-    // the initial view at two levels.
     nodeClick: false,
     roam: false,
-    // ECharts' built-in per-node hover highlight is disabled: hover is shown by
-    // washing the whole hovered section (a custom `graphic` overlay driven by
-    // `mouseover`/`globalout` in TreemapChart/events.ts), so a second per-tile
-    // emphasis on top of it would double up. Disabling emphasis also means the
-    // group header no longer enters an emphasis state, so it can't shift on hover.
+    // We're adding custom hover effect to be able to highlight the whole group.
     emphasis: { disabled: true },
-    // A custom React breadcrumb (see TreemapChart) replaces ECharts' native one.
     breadcrumb: { show: false },
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
@@ -384,7 +376,7 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
       fontSize: leafBlock.name.fontSize,
       fontWeight: leafBlock.name.fontWeight,
       height: leafBlock.name.height,
-      verticalAlign: "middle",
+      verticalAlign: "middle" as const,
     },
     value: {
       ...shadow,
@@ -392,7 +384,7 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
       fontWeight: leafBlock.value.fontWeight,
       padding: [leafBlock.valueGap, 0, 0, 0],
       height: leafBlock.value.height,
-      verticalAlign: "middle",
+      verticalAlign: "middle" as const,
     },
     pct: {
       ...shadow,
@@ -401,7 +393,7 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
       height: leafBlock.percent.height,
       lineHeight: leafBlock.percent.height,
       padding: [leafBlock.percentGap, 0, 0, 0],
-      verticalAlign: "middle",
+      verticalAlign: "middle" as const,
     },
   };
 }

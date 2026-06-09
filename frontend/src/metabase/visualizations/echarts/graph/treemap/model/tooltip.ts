@@ -25,28 +25,62 @@ export function getTreemapNodeId(
   return leafIndex == null ? `${rootIndex}` : `${rootIndex}-${leafIndex}`;
 }
 
+export interface TreemapInlineValueIds {
+  /**
+   * Leaf ids ("i-j", or "i" in a 1-level treemap) rendering the `"full"` stacked
+   * block (their own value + percentage inline).
+   */
+  fullLeafIds: Set<string>;
+  /** Group ids ("i") whose header renders the right-aligned value+percentage. */
+  valuePercentHeaderIds: Set<string>;
+}
+
 /**
- * The set of node ids that already display their own value + percentage inline —
- * leaf tiles rendering the `"full"` stacked block, and group headers rendering
- * the right-aligned value+percentage. Their hover tooltip is suppressed (the
- * info is already on the tile), while smaller tiles still get the tooltip.
+ * Which nodes already display their value + percentage inline: leaf tiles
+ * showing the `"full"` block, and group headers showing the value+percentage
+ * cluster. Kept as two sets because tooltip suppression keys on different ones
+ * depending on the view (see `isTreemapTooltipSuppressed`).
  */
-export function getTreemapInlineValuePercentIds(
+export function getTreemapInlineValueIds(
   labelLayout: Record<string, TreemapLabelLayout>,
   parentLabelLayout: Record<string, TreemapParentLabelLayout>,
-): Set<string> {
-  const ids = new Set<string>();
+): TreemapInlineValueIds {
+  const fullLeafIds = new Set<string>();
   for (const [id, layout] of Object.entries(labelLayout)) {
     if (layout.detail === "full") {
-      ids.add(id);
+      fullLeafIds.add(id);
     }
   }
+  const valuePercentHeaderIds = new Set<string>();
   for (const [id, layout] of Object.entries(parentLabelLayout)) {
     if (layout.showValuePercent) {
-      ids.add(id);
+      valuePercentHeaderIds.add(id);
     }
   }
-  return ids;
+  return { fullLeafIds, valuePercentHeaderIds };
+}
+
+/**
+ * Whether the hover tooltip for a node should be suppressed because the same
+ * information is already on the canvas. What "the same information" means
+ * depends on the view:
+ * - **2-level overview** — the tooltip is the top-level group summary, so it's
+ *   redundant only when that group's *header* already shows its value + % (the
+ *   hovered element's own sub-group block is different, group-vs-sub, info).
+ * - **drilled into a group, or a 1-level treemap** — the tooltip is about the
+ *   hovered tile, so suppress when that tile shows its own value + % inline.
+ */
+export function isTreemapTooltipSuppressed(
+  id: string,
+  viewRootId: string | null,
+  isTwoLevel: boolean,
+  { fullLeafIds, valuePercentHeaderIds }: TreemapInlineValueIds,
+): boolean {
+  if (viewRootId == null && isTwoLevel) {
+    const [rootPart] = id.split("-");
+    return valuePercentHeaderIds.has(rootPart);
+  }
+  return fullLeafIds.has(id);
 }
 
 export function getTreemapTooltipContext(

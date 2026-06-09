@@ -26,7 +26,7 @@ import {
   getTreemapLayoutNodes,
   getTreemapParentLabelLayouts,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
-import { getTreemapInlineValuePercentIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
+import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
 import {
   DRILLED_BOTTOM_INSET,
   getTreemapChartOption,
@@ -169,7 +169,7 @@ export const TreemapChart = ({
         formatters.value,
         containerRef,
         () => viewRootIdRef.current,
-        getTreemapInlineValuePercentIds(labelLayout, parentLabelLayout),
+        getTreemapInlineValueIds(labelLayout, parentLabelLayout),
         treemapColumns.grouping.column.display_name,
       ),
     };

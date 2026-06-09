@@ -5,8 +5,10 @@ import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
 
 import {
+  type TreemapInlineValueIds,
   getTreemapTooltipContext,
   getTreemapTooltipModel,
+  isTreemapTooltipSuppressed,
 } from "../model/tooltip";
 import type { TreemapNode, TreemapTree } from "../model/types";
 
@@ -16,9 +18,10 @@ export function getTreemapTooltipOption(
   formatValue: (value: number) => string,
   containerRef: React.RefObject<HTMLDivElement>,
   getViewRootId: () => string | null,
-  inlineValuePercentIds: Set<string>,
+  inlineValueIds: TreemapInlineValueIds,
   groupingHeader?: string,
 ): TooltipOption {
+  const isTwoLevel = tree.some((node) => node.children != null);
   return {
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
@@ -30,16 +33,20 @@ export function getTreemapTooltipOption(
       if (id == null) {
         return "";
       }
-      // Tiles that already show their value + percentage inline don't need a
-      // tooltip — suppress it so only smaller (label-only / unlabeled) tiles
-      // surface the breakdown on hover.
-      if (inlineValuePercentIds.has(id)) {
+      const viewRootId = getViewRootId();
+      // When the same value + percentage is already on the canvas, the tooltip
+      // is redundant — suppress it (see `isTreemapTooltipSuppressed` for the
+      // view-dependent rule: group header at the overview, the tile itself when
+      // drilled or 1-level).
+      if (
+        isTreemapTooltipSuppressed(id, viewRootId, isTwoLevel, inlineValueIds)
+      ) {
         return "";
       }
       const context = getTreemapTooltipContext(
         tree,
         id,
-        getViewRootId(),
+        viewRootId,
         groupingHeader,
       );
       if (context == null) {
