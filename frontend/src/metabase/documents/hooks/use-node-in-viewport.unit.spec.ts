@@ -11,6 +11,7 @@ function stubQueue(overrides: Partial<PrefetchQueue> = {}): PrefetchQueue {
     reportLoading: () => {},
     notifyViewportChange: () => {},
     hasTicket: () => false,
+    hasInflightLoads: () => false,
     subscribe: () => () => {},
     destroy: () => {},
     ...overrides,
@@ -22,6 +23,7 @@ const mockUsePrintContext = jest.fn();
 const mockUsePrefetchQueue = jest.fn();
 
 jest.mock("@mantine/hooks", () => ({
+  ...jest.requireActual("@mantine/hooks"),
   useIntersection: (...args: unknown[]) => mockUseIntersection(...args),
 }));
 

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWindowEvent } from "@mantine/hooks";
+import { useCallback, useMemo, useState } from "react";
 
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import type { PrintContextValue } from "metabase/documents/contexts/PrintContext";
 import { delay } from "metabase/utils/promise";
 
@@ -12,10 +14,6 @@ type UsePrintContextValueOptions = {
   pollIntervalMs?: number;
 };
 
-function waitForNextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
 export function usePrintContextValue({
   isReady,
   timeoutMs = DEFAULT_TIMEOUT_MS,
@@ -23,34 +21,18 @@ export function usePrintContextValue({
 }: UsePrintContextValueOptions = {}): PrintContextValue {
   const [isPrinting, setIsPrinting] = useState(false);
 
-  useEffect(() => {
-    const handleBeforePrint = () => setIsPrinting(true);
-    const handleAfterPrint = () => setIsPrinting(false);
-    window.addEventListener("beforeprint", handleBeforePrint);
-    window.addEventListener("afterprint", handleAfterPrint);
-    return () => {
-      window.removeEventListener("beforeprint", handleBeforePrint);
-      window.removeEventListener("afterprint", handleAfterPrint);
-    };
-  }, []);
+  useWindowEvent("beforeprint", () => setIsPrinting(true));
+  useWindowEvent("afterprint", () => setIsPrinting(false));
 
   const prepareForPrint = useCallback(async () => {
     setIsPrinting(true);
 
-    // Give React two frames to commit the print flag and let lazy card
-    // queries start before code calls window.print().
-    await waitForNextFrame();
-    await waitForNextFrame();
-
-    if (!isReady) {
-      return;
-    }
+    // Wait for the print flag to paint so lazy card queries start (and
+    // register as in-flight) before we poll readiness and call window.print().
+    await waitUntilNextFramePainted();
 
     const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      if (isReady()) {
-        break;
-      }
+    while (isReady && !isReady() && Date.now() < deadline) {
       await delay(pollIntervalMs);
     }
   }, [isReady, timeoutMs, pollIntervalMs]);

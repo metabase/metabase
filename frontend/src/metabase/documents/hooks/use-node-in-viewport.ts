@@ -1,4 +1,4 @@
-import { useIntersection } from "@mantine/hooks";
+import { useIntersection, useMergedRef } from "@mantine/hooks";
 import {
   useCallback,
   useEffect,
@@ -55,13 +55,7 @@ export function useNodeInViewport(id?: string) {
   const { ref: ioRef, entry } = useIntersection(options);
 
   const elementRef = useRef<HTMLElement | null>(null);
-  const ref = useCallback(
-    (el: HTMLElement | null) => {
-      elementRef.current = el;
-      ioRef(el);
-    },
-    [ioRef],
-  );
+  const ref = useMergedRef(elementRef, ioRef);
 
   const ioIntersecting = entry?.isIntersecting ?? false;
 
@@ -79,7 +73,9 @@ export function useNodeInViewport(id?: string) {
   const isInViewport = isPrinting || ioIntersecting;
 
   const isInViewportRef = useRef(isInViewport);
-  isInViewportRef.current = isInViewport;
+  useEffect(() => {
+    isInViewportRef.current = isInViewport;
+  }, [isInViewport]);
 
   useEffect(() => {
     if (!prefetchQueue || id == null) {
