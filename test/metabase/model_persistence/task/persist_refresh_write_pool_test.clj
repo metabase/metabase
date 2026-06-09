@@ -27,7 +27,7 @@
                                  (unpersist! [_ _database _persisted-info]))]
             (mt/with-temp [:model/Card model {:type :model :database_id db-id}
                            :model/PersistedInfo _pi {:card_id (:id model) :database_id db-id}]
-              (#'task.persist-refresh/refresh-tables! db-id test-refresher)))
+              (#'task.persist-refresh/refresh-tables! db-id test-refresher nil)))
           (testing "write pool is created during refresh"
             (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
           (finally
