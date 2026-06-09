@@ -15,10 +15,12 @@ export function useDataAppLocation(): {
   navigate: (to: string) => void;
 } {
   const ctx = useContext(DataAppRouterContext);
+
   if (!ctx) {
     throw new Error(
       "useDataAppLocation must be called inside a <DataAppRouter>",
     );
   }
+
   return { pathname: ctx.pathname, navigate: ctx.navigate };
 }

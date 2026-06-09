@@ -2,28 +2,25 @@ import {
   type ReactNode,
   createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
+import { Route, Router, browserHistory } from "react-router";
 
 /**
  * Data-app routing primitives.
  *
- * Why custom — and not `react-router-dom` in the bundle:
+ * Implementation uses Metabase's bundled `react-router@3` — same library
+ * MB uses everywhere else. The bundle never sees the router library: it
+ * only depends on the `{ pathname, navigate }` context shape we expose
+ * and on the `<DataAppLink>` component. When MB jumps v3 → v6/v7, this
+ * file's internals change; bundles stay untouched.
  *
- * The bundle runs inside a Near Membrane sandbox. When `react-router-dom`'s
- * `setState` (inside `BrowserRouter`'s `history.listen` handler) crosses
- * from the bundle realm into host React, React 18's automatic batching
- * silently drops the update — same structural bug class as
- * https://github.com/facebook/react/issues/24458, but triggered by Near
- * Membrane's detached-iframe realm rather than the Safari microtask quirk.
- * Result: URL changes, UI doesn't.
- *
- * The fix is to keep every `setState` on the host side of the membrane.
- * This provider lives in host code; the bundle just renders
- * `<DataAppRouter>`, `<DataAppLink>`, `useDataAppLocation()` and never
- * touches `window.history` or React state related to routing itself.
+ * Lives in host code, endowed to the bundle via
+ * `@metabase/embedding-sdk-react/data-app`. Every `setState` here runs in
+ * host realm; no Near Membrane crossing.
  */
 interface DataAppRouterContextValue {
   pathname: string;
@@ -44,10 +41,29 @@ function detectBasename(): string {
   return window.location.pathname.match(DATA_APP_BASENAME_RE)?.[0] ?? "";
 }
 
+export function getBasename(): string {
+  return detectBasename();
+}
+
 function computeSubPath(basename: string): string {
   const full = window.location.pathname;
-  const sub = basename && full.startsWith(basename) ? full.slice(basename.length) : full;
+  const sub =
+    basename && full.startsWith(basename) ? full.slice(basename.length) : full;
   return sub || "/";
+}
+
+/**
+ * Internal: react-router 3 expects `<Route>` children inside `<Router>`,
+ * and `<Route>`'s `component` prop must be a stable reference (otherwise
+ * v3 remounts on every render and the child tree loses state). We pass
+ * the user's content through React Context so the Route's component can
+ * stay a stable function reference while still rendering whatever the
+ * `<DataAppRouter>` is currently wrapping.
+ */
+const RouteContentBridge = createContext<ReactNode>(null);
+
+function RouteContent() {
+  return useContext(RouteContentBridge);
 }
 
 interface DataAppRouterProps {
@@ -71,22 +87,21 @@ export function DataAppRouter({ children }: DataAppRouterProps) {
   const [pathname, setPathname] = useState(() => computeSubPath(basename));
 
   useEffect(() => {
-    // Browser back/forward and our own `pushState`-driven updates: both
-    // observed by re-reading `window.location.pathname`.
-    const sync = () => setPathname(computeSubPath(basename));
-    window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    // `browserHistory.listen` fires for every navigation — `Link` clicks,
+    // imperative `push` calls, and browser back/forward. One subscription
+    // covers all of them.
+    const unsubscribe = browserHistory.listen(() => {
+      setPathname(computeSubPath(basename));
+    });
+
+    return unsubscribe;
   }, [basename]);
 
   const navigate = useCallback(
     (to: string) => {
       // `to` is bundle-relative (e.g. "/customers/42"). The real URL is
       // `basename + to`.
-      const target = basename + to;
-      if (window.location.pathname !== target) {
-        window.history.pushState(null, "", target);
-      }
-      setPathname(to || "/");
+      browserHistory.push(basename + to);
     },
     [basename],
   );
@@ -96,9 +111,20 @@ export function DataAppRouter({ children }: DataAppRouterProps) {
     [pathname, navigate],
   );
 
+  const bridgeValue = useMemo(
+    () => (
+      <DataAppRouterContext.Provider value={value}>
+        {children}
+      </DataAppRouterContext.Provider>
+    ),
+    [value, children],
+  );
+
   return (
-    <DataAppRouterContext.Provider value={value}>
-      {children}
-    </DataAppRouterContext.Provider>
+    <RouteContentBridge.Provider value={bridgeValue}>
+      <Router history={browserHistory}>
+        <Route path="*" component={RouteContent} />
+      </Router>
+    </RouteContentBridge.Provider>
   );
 }
