@@ -56,15 +56,6 @@ export function createDataAppSandbox(
       liveTargetCallback: isLiveTarget,
       endowments: Object.getOwnPropertyDescriptors({
         React,
-        // Exposes the host's `react/jsx-runtime` (the production
-        // automatic-runtime entry) to the bundle. The data-app
-        // template's `vite.config.ts` externalizes
-        // `react/jsx-runtime` to this global, so JSX-emitted
-        // `import { jsx } from "react/jsx-runtime"` resolves to the
-        // host's React — keeping a single React instance + matching
-        // element symbol shape across host and bundle. Without this,
-        // the bundle inlines its own copy of the CJS jsx-runtime shim
-        // which calls `require("react")` and explodes at runtime.
         __react_jsx_runtime__: ReactJsxRuntime,
         __metabase_sdk__: {
           // Data fetching

@@ -12,21 +12,10 @@ export interface DataAppLinkProps
 /**
  * Internal-only navigation link inside a data app.
  *
- * Renders a plain `<a href>` with our own click handler. Middle-click /
- * cmd-click / shift-click / alt-click / any non-primary button defer to
- * the browser's native handling (new tab, new window, download). Primary
- * left-clicks call `browserHistory.push()` to SPA-navigate.
- *
- * `to` is bundle-relative (e.g. `to="/customers/42"`); the auto-detected
- * basename is prepended before navigation so the real URL becomes
- * `/embed/data-app/<name>/customers/42`.
- *
  * Deliberately does NOT delegate to react-router 3's `<Link>` —
  * v3 components use deprecated React APIs (`getDefaultProps`,
  * `childContextTypes`) that emit dev-mode warnings and will be removed
- * in React 19. Keeping the implementation as a plain `<a>` means the
- * component has no class component, no legacy API surface, and no
- * coupling to the v3 router context.
+ * in React 19.
  */
 export const DataAppLink = ({
   to,
