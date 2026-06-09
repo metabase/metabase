@@ -10,6 +10,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -54,6 +55,32 @@
   2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
+
+(defn- personal-collection-id
+  "Id of the current caller's personal collection, created on demand; `nil` for API-key callers,
+  which have none. Agent-created content defaults here rather than the root collection REST uses —
+  the user's own space, not shared \"Our analytics\"."
+  []
+  (:id (collection/user->personal-collection api/*current-user-id*)))
+
+(defn- collection-path
+  "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing / Q3\".
+  Ancestors the caller can't read are omitted, matching the app breadcrumb.
+  A `nil` `collection-id` is the root collection (\"Our analytics\"), not a personal collection."
+  [collection-id]
+  (if-not collection-id
+    (:name (collection/root-collection-with-ui-details nil))
+    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
+                                    :namespace :archived_directly]
+                                   collection-id)
+          ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
+          ;; drops ancestors the caller can't read. A personal subtree leads with the personal
+          ;; collection instead, so drop that root crumb for them.
+          ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
+                      (collection/is-personal-collection-or-descendant-of-one? coll)
+                      (remove #(= "root" (:id %))))
+          chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))]
+      (str/join " / " (map :name chain)))))
 
 (defn- check-tool-result
   "Extract :structured-output from a tool result, or throw with the appropriate HTTP status code.
@@ -620,29 +647,35 @@
 
 (mr/def ::create-question-response
   [:map
-   [:id            ms/PositiveInt]
-   [:name          ms/NonBlankString]
-   [:display       :string]
-   [:collection_id [:maybe ms/PositiveInt]]
-   [:description   [:maybe :string]]])
+   [:id              ms/PositiveInt]
+   [:name            ms/NonBlankString]
+   [:display         :string]
+   [:collection_id   [:maybe ms/PositiveInt]]
+   [:collection_path :string]
+   [:description     [:maybe :string]]])
 
 (api.macros/defendpoint :post "/v1/question" :- ::create-question-response
   "Save a previously constructed query as a named question (card).
 
   The `query` parameter should be a base64-encoded string returned by construct_query.
-  Optionally specify display type, description, collection, and visualization settings."
+  Optionally specify display type, description, collection, and visualization settings.
+  If `collection_id` is omitted the question is saved to the caller's personal collection.
+  The response `collection_path` is the saved location."
   {:scope metabot/agent-question-create
    :tool  {:name "create_question"
            :description (str "Save a query as a named question in Metabase. "
                              "Pass the base64 query string from construct_query. "
                              "Optionally set display type (table, bar, line, pie, etc.), "
-                             "description, and target collection.")}}
+                             "description, and target collection. "
+                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
    {:keys [query display description collection_id visualization_settings]
     question-name :name}
    :- ::create-question-request]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)]
+  (let [dataset-query (-> query u/decode-base64 json/decode+kw)
+        collection_id (or collection_id (personal-collection-id))]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -659,11 +692,12 @@
                  :collection_id          collection_id
                  :visualization_settings (or visualization_settings {})}
                 {:id api/*current-user-id*})]
-      {:id            (:id card)
-       :name          (:name card)
-       :display       (name (:display card))
-       :collection_id (:collection_id card)
-       :description   (:description card)})))
+      {:id              (:id card)
+       :name            (:name card)
+       :display         (name (:display card))
+       :collection_id   (:collection_id card)
+       :collection_path (collection-path (:collection_id card))
+       :description     (:description card)})))
 
 ;;; ------------------------------------------------ Create Dashboard -----------------------------------------------
 
@@ -676,56 +710,63 @@
 
 (mr/def ::create-dashboard-response
   [:map
-   [:id            ms/PositiveInt]
-   [:name          ms/NonBlankString]
-   [:collection_id [:maybe ms/PositiveInt]]
-   [:description   [:maybe :string]]
-   [:dashcard_ids  [:sequential ms/PositiveInt]]])
+   [:id              ms/PositiveInt]
+   [:name            ms/NonBlankString]
+   [:collection_id   [:maybe ms/PositiveInt]]
+   [:collection_path :string]
+   [:description     [:maybe :string]]
+   [:dashcard_ids    [:sequential ms/PositiveInt]]])
 
 (api.macros/defendpoint :post "/v1/dashboard" :- ::create-dashboard-response
   "Create a new dashboard, optionally populated with saved questions.
 
   Pass `question_ids` to add existing saved questions as cards on the dashboard.
-  Cards are automatically positioned on the grid based on their display type."
+  Cards are automatically positioned on the grid based on their display type.
+  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.
+  The response `collection_path` is the saved location."
   {:scope metabot/agent-dashboard-create
    :tool  {:name "create_dashboard"
            :description (str "Create a dashboard in Metabase. "
                              "Optionally pass question_ids to add saved questions as cards. "
-                             "Cards are auto-positioned on the dashboard grid.")}}
+                             "Cards are auto-positioned on the dashboard grid. "
+                             "If you omit collection_id it's saved to the user's personal collection. "
+                             "Report the saved location from the response `collection_path`.")}}
   [_route-params
    _query-params
    {:keys [description collection_id question_ids]
     dashboard-name :name}
    :- ::create-dashboard-request]
-  (api/create-check :model/Dashboard {:collection_id collection_id})
-  (let [cards (when (seq question_ids)
-                (mapv #(api/read-check :model/Card %) question_ids))
-        dash  (t2/with-transaction [_conn]
-                (let [dash (first (t2/insert-returning-instances!
-                                   :model/Dashboard
-                                   {:name          dashboard-name
-                                    :description   description
-                                    :parameters    []
-                                    :creator_id    api/*current-user-id*
-                                    :collection_id collection_id}))]
-                  (when (seq cards)
-                    (reduce (fn [placed card]
-                              (let [display  (or (:display card) :table)
-                                    position (autoplace/get-position-for-new-dashcard placed display)]
-                                (t2/insert-returning-instance!
-                                 :model/DashboardCard
-                                 (merge position {:dashboard_id (:id dash)
-                                                  :card_id      (:id card)}))
-                                (conj placed position)))
-                            []
-                            cards))
-                  dash))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    {:id           (:id dash)
-     :name         (:name dash)
-     :collection_id (:collection_id dash)
-     :description  (:description dash)
-     :dashcard_ids (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))}))
+  (let [collection_id (or collection_id (personal-collection-id))]
+    (api/create-check :model/Dashboard {:collection_id collection_id})
+    (let [cards (when (seq question_ids)
+                  (mapv #(api/read-check :model/Card %) question_ids))
+          dash  (t2/with-transaction [_conn]
+                  (let [dash (first (t2/insert-returning-instances!
+                                     :model/Dashboard
+                                     {:name          dashboard-name
+                                      :description   description
+                                      :parameters    []
+                                      :creator_id    api/*current-user-id*
+                                      :collection_id collection_id}))]
+                    (when (seq cards)
+                      (reduce (fn [placed card]
+                                (let [display  (or (:display card) :table)
+                                      position (autoplace/get-position-for-new-dashcard placed display)]
+                                  (t2/insert-returning-instance!
+                                   :model/DashboardCard
+                                   (merge position {:dashboard_id (:id dash)
+                                                    :card_id      (:id card)}))
+                                  (conj placed position)))
+                              []
+                              cards))
+                    dash))]
+      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+      {:id              (:id dash)
+       :name            (:name dash)
+       :collection_id   (:collection_id dash)
+       :collection_path (collection-path (:collection_id dash))
+       :description     (:description dash)
+       :dashcard_ids    (mapv :id (t2/select :model/DashboardCard :dashboard_id (:id dash)))})))
 
 ;;; ------------------------------------------------- Authentication -------------------------------------------------
 ;;
