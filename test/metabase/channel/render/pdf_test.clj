@@ -1,7 +1,9 @@
 (ns metabase.channel.render.pdf-test
-  "Tests for backend dashboard->PDF rendering. This first installment covers the security-critical
-  SSRF defenses around fetching user-provided Markdown image URLs. Everything here is intentionally
-  network-free (pure predicates, the DNS resolver exercised against `localhost`, and in-memory
+  "Tests for backend dashboard->PDF rendering: the SSRF defenses around fetching user-provided
+  Markdown image URLs, plus the pure layout/text helpers (Markdown furigana, parameter chip
+  wrapping, inline-parameter resolution, visualizer display resolution, and the right-to-left
+  shaping/reordering/alignment for Arabic and Hebrew). Everything here is intentionally
+  network-free (pure predicates, the DNS resolver exercised against `localhost`, in-memory PDFs and
   streams) so the suite is fast and not flaky."
   (:require
    [clojure.test :refer :all]
@@ -56,7 +58,7 @@
    "not a url"
    ""])
 
-(deftest safe-image-url?-test
+(deftest ^:parallel safe-image-url?-test
   (testing "allowed image URLs"
     (doseq [url allowed-urls]
       (is (true? (boolean (#'pdf/safe-image-url? url))) (str "should be allowed: " url))))
@@ -93,7 +95,7 @@
    "fd12:3456::1"                 ; IPv6 ULA (fd)
    "ff02::1"])                    ; IPv6 multicast
 
-(deftest public-address?-test
+(deftest ^:parallel public-address?-test
   (testing "globally-routable addresses are allowed"
     (doseq [ip public-ips]
       (is (true? (boolean (#'pdf/public-address? (InetAddress/getByName ip))))
@@ -107,13 +109,13 @@
 ;; SSRF: DNS resolver closes the rebinding gap, and the fetch short-circuits before any network IO
 ;; --------------------------------------------------------------------------------------------
 
-(deftest ssrf-safe-dns-resolver-test
+(deftest ^:parallel ssrf-safe-dns-resolver-test
   (testing "the validating resolver throws when a host resolves to a non-public address"
     ;; `localhost` resolves to loopback (no network needed) -> must be refused
     (is (thrown? ExceptionInfo
                  (.resolve ^org.apache.http.conn.DnsResolver @#'pdf/ssrf-safe-dns-resolver "localhost")))))
 
-(deftest fetch-image-bytes-blocks-without-network-test
+(deftest ^:parallel fetch-image-bytes-blocks-without-network-test
   (testing "blocked URLs return nil at the validation gate, never reaching the network"
     (doseq [url ["https://169.254.169.254/latest/meta-data/"
                  "http://example.com/x.png"
@@ -126,7 +128,7 @@
 ;; Download size cap (read-bounded)
 ;; --------------------------------------------------------------------------------------------
 
-(deftest read-bounded-test
+(deftest ^:parallel read-bounded-test
   (testing "reads the whole stream when under the cap"
     (is (= "hello" (String. ^bytes (#'pdf/read-bounded (ByteArrayInputStream. (.getBytes "hello")) 100)))))
   (testing "reads exactly up to the cap (inclusive)"
@@ -138,7 +140,7 @@
 ;; Markdown: furigana {base|reading} parsing
 ;; --------------------------------------------------------------------------------------------
 
-(deftest parse-ruby-test
+(deftest ^:parallel parse-ruby-test
   (let [strip (fn [runs] (mapv #(dissoc % :href) runs))]
     (testing "{base|reading} becomes a ruby run; surrounding text stays as text runs"
       (is (= [{:ruby? true :base "参加希望" :reading "さんかきぼう"} {:text "の方は"}]
@@ -159,7 +161,7 @@
 ;; Clickable links
 ;; --------------------------------------------------------------------------------------------
 
-(deftest clickable-href?-test
+(deftest ^:parallel clickable-href?-test
   (testing "absolute http/https/mailto links are clickable"
     (doseq [h ["https://example.com" "http://example.com/a?b=1" "HTTPS://EX.COM" "mailto:a@b.com"]]
       (is (true? (boolean (#'pdf/clickable-href? h))) (str h))))
@@ -167,7 +169,7 @@
     (doseq [h ["/dashboard/5" "example.com" "javascript:alert(1)" "file:///etc/passwd" "ftp://x/y" "" nil]]
       (is (false? (boolean (#'pdf/clickable-href? h))) (str h)))))
 
-(deftest link-annotations-test
+(deftest ^:parallel link-annotations-test
   (testing "markdown links become PDF URI link annotations (http/https/mailto only)"
     (with-open [doc (PDDocument.)]
       (let [page (PDPage. PDRectangle/A4)]
@@ -190,7 +192,7 @@
 ;; Link cards render as clickable markdown text cells
 ;; --------------------------------------------------------------------------------------------
 
-(deftest link-card-cell-test
+(deftest ^:parallel link-card-cell-test
   (testing "a URL link dashcard becomes a markdown text cell (clickable like any md link)"
     (binding [api/*current-user-id* 1]
       (is (= {:row 0 :col 0 :size_x 2 :size_y 1 :kind :text
@@ -200,7 +202,7 @@
                                                              :link {:url "https://example.com"}}}
                                    []))))))
 
-(deftest iframe-url-test
+(deftest ^:parallel iframe-url-test
   (testing "a bare URL is used as-is"
     (is (= "https://youtu.be/x" (#'pdf/iframe-url "https://youtu.be/x"))))
   (testing "src is extracted from an <iframe> embed snippet"
@@ -214,7 +216,7 @@
     (is (nil? (#'pdf/iframe-url "   ")))
     (is (nil? (#'pdf/iframe-url "<iframe></iframe>")))))
 
-(deftest iframe-card-cell-test
+(deftest ^:parallel iframe-card-cell-test
   (testing "an iframe dashcard becomes a clickable link text cell to its target"
     (is (= {:row 0 :col 0 :size_x 4 :size_y 3 :kind :text :text "https://youtu.be/abc"}
            (#'pdf/dashcard->cell {:row 0 :col 0 :size_x 4 :size_y 3
@@ -226,7 +228,7 @@
 ;; Parameter bar layout (flow + wrap)
 ;; --------------------------------------------------------------------------------------------
 
-(deftest layout-param-chips-test
+(deftest ^:parallel layout-param-chips-test
   (let [chips [{:width 100.0} {:width 100.0} {:width 100.0}]] ; param-chip-gap is 16
     (testing "chips that fit stay on one line, with cumulative x offsets (0, 100+gap, 200+2gap)"
       (let [lines (#'pdf/layout-param-chips chips 1000.0)]
@@ -240,7 +242,7 @@
     (testing "no chips -> no lines"
       (is (= [] (#'pdf/layout-param-chips [] 1000.0))))))
 
-(deftest resolve-inline-params-test
+(deftest ^:parallel resolve-inline-params-test
   (let [params [{:id "a" :name "Max Discount" :value [100]}
                 {:id "b" :name "Category" :value "Gadget"}
                 {:id "c" :name "Unset"} ; no value -> dropped
@@ -258,7 +260,7 @@
     (testing "an inline id that only has an unset parameter -> nil"
       (is (nil? (#'pdf/resolve-inline-params {:inline_parameters ["c"]} params))))))
 
-(deftest visual-order-test
+(deftest ^:parallel visual-order-test
   (testing "left-to-right text is returned unchanged (no bidi processing)"
     (is (= "Hello, world 123" (#'pdf/visual-order "Hello, world 123")))
     (is (= "" (#'pdf/visual-order "")))
@@ -285,7 +287,7 @@
       (is (= (#'pdf/visual-order "مرحبا")
              (#'pdf/visual-order "مَرْحَبًا"))))))               ; vocalised == plain once stripped
 
-(deftest base-rtl?-test
+(deftest ^:parallel base-rtl?-test
   (testing "base direction is RTL only when the first strong character is RTL"
     (is (true?  (boolean (#'pdf/base-rtl? "שלום עולם"))))            ; Hebrew
     (is (true?  (boolean (#'pdf/base-rtl? "مرحبا بكم"))))            ; Arabic
@@ -296,7 +298,7 @@
     (is (false? (boolean (#'pdf/base-rtl? ""))))
     (is (false? (boolean (#'pdf/base-rtl? "日本語"))))))            ; CJK is LTR
 
-(deftest reorder-bidi-items-test
+(deftest ^:parallel reorder-bidi-items-test
   (let [mk    (fn [t sp] {:text t :space-before? sp})
         texts (fn [items] (mapv :text (#'pdf/reorder-bidi-items items)))]
     (testing "a left-to-right line keeps its word order"
@@ -316,7 +318,7 @@
       (is (= ["עולם" "Metabase" "שלום"]
              (texts [(mk "שלום" false) (mk "Metabase" true) (mk "עולם" true)]))))))
 
-(deftest effective-display-test
+(deftest ^:parallel effective-display-test
   (testing "a non-visualizer card uses its own display"
     (is (= :bar (#'pdf/effective-display {:display "bar"} {})))
     (is (= :bar (#'pdf/effective-display {:display "bar"} {:visualization_settings {}}))))

@@ -45,10 +45,11 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.util :as render.util]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -484,10 +485,10 @@
   localhost/metadata/internal)."
   [^String url]
   (try
-    (let [u    (URL. url)
-          host (some-> (.getHost u) str/lower-case (str/replace #"^\[|\]$" ""))]
-      (and (= "https" (str/lower-case (str (.getProtocol u))))
-           (str/blank? (str (.getUserInfo u)))
+    (let [parsed (URL. url)
+          host   (some-> (.getHost parsed) u/lower-case-en (str/replace #"^\[|\]$" ""))]
+      (and (= "https" (u/lower-case-en (str (.getProtocol parsed))))
+           (str/blank? (str (.getUserInfo parsed)))
            (not (str/blank? host))
            (boolean (re-find #"[a-z]" host))    ; a real hostname has a letter; blocks decimal/octal IP forms
            (not (InetAddresses/isInetAddress host))
@@ -520,7 +521,7 @@
                                  :headers            {"User-Agent" image-fetch-user-agent}
                                  :dns-resolver       ssrf-safe-dns-resolver})
             ctype (some-> (get-in resp [:headers :content-type])
-                          (str/split #";") first str/trim str/lower-case)
+                          (str/split #";") first str/trim u/lower-case-en)
             ^InputStream body (:body resp)]
         (try
           (when (and (= 200 (:status resp)) (contains? allowed-image-content-types ctype))
@@ -890,7 +891,7 @@
     (.setNonStrokingColor cs Color/BLACK)))
 
 (defn- draw-code-block!
-  [^PDPageContentStream cs block x top-y cell-w bottom scale]
+  [^PDPageContentStream cs block x top-y _cell-w bottom scale]
   (let [font (face :mono)
         pt   (* 9.0 scale)
         lh   (* pt line-height-factor)]
@@ -1023,28 +1024,28 @@
                  (seq inline) (assoc :inline-params inline))]
     (cond
       (:card_id dc)
-      (when-let [part (notification.execute/execute-dashboard-subscription-card dc parameters)]
+      (when-let [part (notification.payload/execute-dashboard-subscription-card dc parameters)]
         (assoc geom :kind :card :part (cond-> part (seq inline) (assoc :inline-params inline))))
 
-      (notification.execute/virtual-card-of-type? dc "heading")
+      (notification.payload/virtual-card-of-type? dc "heading")
       (assoc geom :kind :heading
-             :text (get-in (notification.execute/process-virtual-dashcard dc parameters)
+             :text (get-in (notification.payload/process-virtual-dashcard dc parameters)
                            [:visualization_settings :text]))
 
-      (notification.execute/virtual-card-of-type? dc "text")
+      (notification.payload/virtual-card-of-type? dc "text")
       (assoc geom :kind :text
-             :text (get-in (notification.execute/process-virtual-dashcard dc parameters)
+             :text (get-in (notification.payload/process-virtual-dashcard dc parameters)
                            [:visualization_settings :text]))
 
       ;; link cards render as a markdown `### [name](url)` text cell (clickable like any md link);
       ;; reuse the email conversion so they match, and so entity links are permission-checked.
-      (notification.execute/virtual-card-of-type? dc "link")
-      (when-let [part (notification.execute/dashcard-link-card->part dc)]
+      (notification.payload/virtual-card-of-type? dc "link")
+      (when-let [part (notification.payload/dashcard-link-card->part dc)]
         (assoc geom :kind :text :text (:text part)))
 
       ;; iframe cards (embedded video/web players) can't render in a PDF -- show the target as a
       ;; clickable link instead (autolinked bare URL).
-      (notification.execute/virtual-card-of-type? dc "iframe")
+      (notification.payload/virtual-card-of-type? dc "iframe")
       (when-let [url (iframe-url (get-in dc [:visualization_settings :iframe]))]
         (assoc geom :kind :text :text url))
 
@@ -1169,45 +1170,6 @@
           fit   (long (Math/floor (/ (double max-h) lh)))]
       (* (min lines (max 0 fit)) lh))))
 
-(declare inline-param-lines inline-params-height draw-param-lines!)
-
-(defn- render-card-cell!
-  "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
-  (crisp text) and the space it consumes is reserved before the body is rendered. (Card
-  descriptions are intentionally omitted -- they vary from the frontend dashboard and add little
-  in a static export.) Rectangular (ECharts/visx) charts are then rendered to exactly fill the
-  remaining body area (matching the frontend); other types render their body title-less and fit
-  preserving aspect into the body area."
-  [^PDDocument doc ^PDPageContentStream cs timezone {:keys [card dashcard inline-params] :as part} x top-y cell-w cell-h]
-  (let [data       (get-in part [:result :data])
-        title      (card-title card dashcard)
-        th         (text-block-height (bold-font) chart-title-pt cell-w (* 0.5 cell-h) title)
-        ;; Inline parameters (filters attached to this card) render between the title and the
-        ;; chart body, like the email subscription does.
-        ip-lines   (inline-param-lines inline-params cell-w)
-        iph        (inline-params-height ip-lines)
-        header     (+ th iph (if (or (pos? th) (pos? iph)) 4.0 0.0))
-        body-top   (- (double top-y) header)
-        body-h     (- cell-h header)
-        display    (effective-display card dashcard)
-        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
-        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
-        fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display) (>= cell-w body-h)))]
-    ;; Native title for every card type.
-    (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
-    (when (seq ip-lines)
-      (draw-param-lines! cs ip-lines (- (double top-y) th) x))
-    (when (> body-h 12.0)
-      (if-let [png (when fill?
-                     (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
-        ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
-        (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                    (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
-        ;; fallback: title-less body PNG, fit preserving aspect into the body area
-        (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
-          (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h))))))
-
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter bar -- the dashboard's active (non-inline) filter values, shown once at the very top
 ;; of the dashboard (like the email subscription filter bar). Chips flow and wrap across lines, so
@@ -1260,14 +1222,14 @@
   "Vertical points a card's inline parameter lines consume (0 when there are none)."
   [param-lines]
   (if (seq param-lines)
-    (+ (* (count param-lines) (* param-pt line-height-factor)) 4.0)
+    (+ (* (count param-lines) param-pt line-height-factor) 4.0)
     0.0))
 
 (defn- param-lines-rows
   "Whole grid rows the parameter bar consumes (0 when there are no params)."
   [param-lines unit]
   (if (seq param-lines)
-    (rows-for-pt (+ (* (count param-lines) (* param-pt line-height-factor)) header-pad-pt) unit)
+    (rows-for-pt (+ (* (count param-lines) param-pt line-height-factor) header-pad-pt) unit)
     0))
 
 (defn- draw-param-chip!
@@ -1291,6 +1253,44 @@
          (doseq [chip (first lines)]
            (draw-param-chip! cs (+ (double base-x) (:x chip)) (- y param-pt) chip))
          (recur (rest lines) (- y (* param-pt line-height-factor))))))))
+
+(defn- render-card-cell!
+  "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
+  (crisp text) and the space it consumes is reserved before the body is rendered. (Card
+  descriptions are intentionally omitted -- they vary from the frontend dashboard and add little
+  in a static export.) Rectangular (ECharts/visx) charts are then rendered to exactly fill the
+  remaining body area (matching the frontend); other types render their body title-less and fit
+  preserving aspect into the body area."
+  [^PDDocument doc ^PDPageContentStream cs timezone
+   {:keys [card dashcard inline-params] :as part} x top-y cell-w cell-h]
+  (let [data       (get-in part [:result :data])
+        title      (card-title card dashcard)
+        th         (text-block-height (bold-font) chart-title-pt cell-w (* 0.5 cell-h) title)
+        ;; Inline parameters (filters attached to this card) render between the title and the
+        ;; chart body, like the email subscription does.
+        ip-lines   (inline-param-lines inline-params cell-w)
+        iph        (inline-params-height ip-lines)
+        header     (+ th iph (if (or (pos? th) (pos? iph)) 4.0 0.0))
+        body-top   (- (double top-y) header)
+        body-h     (- cell-h header)
+        display    (effective-display card dashcard)
+        ;; Rectangular charts always fill their box; pies fill (and move their legend to the
+        ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
+        fill?      (or (contains? rectangular-displays display)
+                       (and (= :pie display) (>= cell-w body-h)))]
+    ;; Native title for every card type.
+    (draw-text-block! cs (bold-font) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
+    (when (seq ip-lines)
+      (draw-param-lines! cs ip-lines (- (double top-y) th) x))
+    (when (> body-h 12.0)
+      (if-let [png (when fill?
+                     (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
+        ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
+        (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
+                    (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
+        ;; fallback: title-less body PNG, fit preserving aspect into the body area
+        (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
+          (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h))))))
 
 (defn- line-start-x
   "Start x for drawing a single line of `text` (measured with `face`/`font-pt`) within the box
@@ -1454,6 +1454,5 @@
      path)))
 
 (comment
-  (let [main-dash 1
-        i18n-dash 18]
-    (render-dashboard-to-pdf-file 1 1 {} "/tmp/dash35.pdf")))
+  ;; main dashboard = 1, the i18n sample dashboard = 18
+  (render-dashboard-to-pdf-file 1 1 {} "/tmp/dash.pdf"))
