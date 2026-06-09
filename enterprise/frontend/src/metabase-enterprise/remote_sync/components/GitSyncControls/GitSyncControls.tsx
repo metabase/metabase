@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
@@ -20,8 +20,14 @@ import {
   useImportChangesMutation,
   useLazyGetExportPreflightQuery,
 } from "metabase-enterprise/api";
-import { getSyncConflictVariant } from "metabase-enterprise/remote_sync/selectors";
-import { syncConflictVariantUpdated } from "metabase-enterprise/remote_sync/sync-task-slice";
+import {
+  getCurrentTask,
+  getSyncConflictVariant,
+} from "metabase-enterprise/remote_sync/selectors";
+import {
+  syncConflictVariantUpdated,
+  taskCleared,
+} from "metabase-enterprise/remote_sync/sync-task-slice";
 import type { ExportPreflightResponse } from "metabase-types/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
@@ -66,6 +72,23 @@ export const GitSyncControls = () => {
   const combobox = useCombobox();
 
   const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
+
+  // An export task that ends in conflict (the push lost the preflight->execute race, or fell through a
+  // preflight error) is otherwise silent: the middleware can't toast (no hook), so surface it here, then
+  // clear the task so it doesn't re-fire on re-render/navigation.
+  const currentTask = useSelector(getCurrentTask);
+  useEffect(() => {
+    if (
+      currentTask?.status === "conflict" &&
+      currentTask?.sync_task_type === "export"
+    ) {
+      sendToast({
+        icon: "warning",
+        message: t`The remote branch changed before your push finished. Pull the latest changes, then push again.`,
+      });
+      dispatch(taskCleared());
+    }
+  }, [currentTask, sendToast, dispatch]);
 
   const {
     currentData: hasRemoteChangesData,

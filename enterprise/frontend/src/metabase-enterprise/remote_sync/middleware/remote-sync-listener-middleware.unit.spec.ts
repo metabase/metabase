@@ -12,7 +12,6 @@ import {
 import { Api } from "metabase/api";
 import { collectionApi } from "metabase/api/collection";
 import { settings as settingsReducer } from "metabase/redux/settings";
-import { undoReducer } from "metabase/redux/undo";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import { createMockCollection } from "metabase-types/api/mocks";
 
@@ -37,7 +36,6 @@ const createTestStore = (settingsOverrides: Record<string, unknown> = {}) => {
     reducer: combineReducers({
       remoteSyncPlugin: remoteSyncReducer,
       settings: settingsReducer,
-      undo: undoReducer,
       // EnterpriseApi is an enhanced version of Api, so they share the same reducer
       [Api.reducerPath]: Api.reducer,
     }),
@@ -281,7 +279,9 @@ describe("remote-sync-listener-middleware", () => {
       });
     });
 
-    it("toasts (and does not open the setup modal) when an export task ends in conflict", async () => {
+    it("does NOT open the setup modal when an export task ends in conflict", async () => {
+      // Export conflicts are surfaced as a toast by GitSyncControls (which can use the useToast hook),
+      // not by the middleware — so the middleware must not route them to the setup-conflict modal.
       fetchMock.get("path:/api/ee/remote-sync/current-task", {
         status: 200,
         body: { status: "conflict", sync_task_type: "export" },
@@ -298,14 +298,7 @@ describe("remote-sync-listener-middleware", () => {
       );
 
       await waitFor(() => {
-        const messages = store
-          .getState()
-          .undo.map((undo) => String(undo.message));
-        expect(
-          messages.some((m) =>
-            /remote branch changed before your push/i.test(m),
-          ),
-        ).toBe(true);
+        expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
       });
       expect(store.getState().remoteSyncPlugin?.syncConflictVariant).not.toBe(
         "setup",

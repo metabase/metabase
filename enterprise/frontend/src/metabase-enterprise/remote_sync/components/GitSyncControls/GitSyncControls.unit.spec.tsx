@@ -1,8 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
+import {
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
+import { taskUpdated } from "../../sync-task-slice";
 
 import { GitSyncControls } from "./GitSyncControls";
 import {
@@ -425,6 +434,63 @@ describe("GitSyncControls", () => {
       expect(
         screen.getByRole("button", { name: /Refresh/ }),
       ).toBeInTheDocument();
+    });
+  });
+
+  // Kept last: setupEnterprisePlugins() registers the remote-sync redux reducer globally, which the other
+  // tests in this file deliberately don't need (they use local state). Doing it here keeps that contained.
+  describe("export conflict toast", () => {
+    it("toasts when an export task comes back in conflict", async () => {
+      // The plugin reducer (state.plugins.remoteSyncPlugin, read by getCurrentTask) is only registered
+      // when the remote_sync premium gate passes, so enable it and initialize the plugin.
+      const settings = mockSettings({
+        "token-features": createMockTokenFeatures({ remote_sync: true }),
+        "remote-sync-enabled": true,
+        "remote-sync-branch": "main",
+        "remote-sync-type": "read-write",
+      });
+      setupEnterprisePlugins();
+      setupRemoteSyncEndpoints({
+        branches: ["main"],
+        dirty: [],
+        hasRemoteChanges: false,
+      });
+      setupCollectionEndpoints();
+      setupSessionEndpoints({});
+
+      const { store } = renderWithProviders(<GitSyncControls />, {
+        storeInitialState: createMockState({
+          currentUser: createMockUser({ is_superuser: true }),
+          settings,
+        }),
+      });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+
+      // Simulate the polled export task coming back in conflict (what the middleware dispatches when a
+      // push loses the preflight->execute race). GitSyncControls observes it and toasts via useToast.
+      store.dispatch(
+        taskUpdated({
+          id: 77,
+          sync_task_type: "export",
+          status: "conflict",
+          progress: 1,
+          started_at: "2026-01-01T00:00:00Z",
+          ended_at: "2026-01-01T00:00:01Z",
+          last_progress_report_at: null,
+          error_message: null,
+          initiated_by: 0,
+        }),
+      );
+
+      await waitFor(() => {
+        const messages = store.getState().undo.map((u) => String(u.message));
+        expect(messages.some((m) => /changed before your push/i.test(m))).toBe(
+          true,
+        );
+      });
     });
   });
 });
