@@ -195,6 +195,10 @@ documentation:
   - "docs/**"
   - "**/*.md"
 
+# Used only in .github/workflows/backport-reminder.yml
+docs:
+  - "docs/**"
+
 embedding_documentation:
   - ".typedoc/**"
   - "docs/embedding/**"
