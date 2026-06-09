@@ -26,12 +26,12 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
   ColorName[]
 > = {
-  brand: ["brand"],
+  brand: ["brand", "core-brand"],
   "brand-hover": ["background-hover"],
   "brand-hover-light": ["background-hover"],
   border: ["border"],
-  filter: ["filter"],
-  summarize: ["summarize"],
+  filter: ["filter", "core-filter"],
+  summarize: ["summarize", "core-summarize"],
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-tertiary"],
