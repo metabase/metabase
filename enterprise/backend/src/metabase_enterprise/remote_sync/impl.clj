@@ -363,6 +363,63 @@
       (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
         (mapv first specs)))))
 
+(defn- incremental-updates-for-row
+  [{:keys [status file_path] :as row}]
+  (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+                        (let [spec (source/entity->file-spec opts entity)]
+                          {:entity entity
+                           :spec spec
+                           :eid (:entity_id entity)
+                           :new-path (:path spec)})))]
+    (cond
+      (not= :entity-id ;; only entity-id models can be synced incrementally
+            (:identity (spec/spec-for-model-type (:model_type row))))
+      nil
+
+      (not (#{"create" "update" "removed" "delete"} status))
+      nil
+
+      (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
+           (str/blank? file_path))
+      nil
+
+      (#{"removed" "delete"} status)
+      {:delete-paths [file_path]
+       :removed-ids [(:id row)]}
+
+      ;; past here, we're seeing create and update statuses
+      (not @info) ;; entity no longer exists
+      nil
+
+      ;; create: brand-new file, no old path to delete.
+      ;; Target must be free or same entity id
+      (and (= "create" status)
+           (path-free-for? snapshot (:new-path @info) (:eid @info)))
+      {:pull (untracked-content-deps (:model_type row) (:model_id row))
+       :upserts [(:spec @info)]
+       :synced [{:id (:id row) :file_path (:new-path @info)}]}
+
+      ;; in-place update: at its stored path, or (no stored path) the repo file at
+      ;; new-path is already this entity — overwrite.
+      (and (= "update" status)
+           (or (= file_path (:new-path @info))
+               (and (str/blank? file_path)
+                    (= (:eid @info) (file-entity-id (source.p/read-file snapshot (:new-path @info)))))))
+      {:pull (untracked-content-deps (:model_type row) (:model_id row))
+       :upserts [(:spec @info)]
+       :synced [{:id (:id row) :file_path (:new-path @info)}]}
+
+      ;; rename: update whose stored path differs from new path. Write the
+      ;; new file and delete the old one.
+      (and (= "update" status)
+           (not (str/blank? file_path))
+           (not= file_path (:new-path @info))
+           (path-free-for? snapshot (:new-path @info) (:eid @info)))
+      {:pull (untracked-content-deps (:model_type row) (:model_id row))
+       :upserts [(:spec @info)]
+       :synced [{:id (:id row) :file_path (:new-path @info)}]
+       :delete-paths [file_path]})))
+
 (defn- incremental-plan
   "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
   handled incrementally.
@@ -381,70 +438,13 @@
   [snapshot dirty-rows]
   (when (seq dirty-rows)
     (let [opts (serdes/storage-base-context)
-          plan (reduce
-                (fn [plan {:keys [status file_path] :as row}]
-                  ;; Lazily serialize the entity and derive its path, all in one cached value. nil if
-                  ;; the entity no longer exists. Only forced once a create/update branch needs it, so
-                  ;; removed/delete and non-entity-id rows never serialize.
-                  (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-                                        (let [spec (source/entity->file-spec opts entity)]
-                                          {:entity entity
-                                           :spec spec
-                                           :eid (:entity_id entity)
-                                           :new-path (:path spec)})))
-                        upsert (fn [plan]
-                                 (-> plan
-                                     (update :pull into (untracked-content-deps (:model_type row) (:model_id row)))
-                                     (update :upserts conj (:spec @info))
-                                     (update :synced conj {:id (:id row) :file_path (:new-path @info)})))]
-                    (cond
-                      (not= :entity-id ;; only entity-id models can be synced incrementally
-                            (:identity (spec/spec-for-model-type (:model_type row))))
-                      (reduced nil)
-
-                      (not (#{"create" "update" "removed" "delete"} status))
-                      (reduced nil)
-
-                      (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
-                           (str/blank? file_path))
-                      (reduced nil)
-
-                      (#{"removed" "delete"} status)
-                      (-> plan
-                          (update :delete-paths conj file_path)
-                          (update :removed-ids conj (:id row)))
-
-                      ;; past here, we're seeing create and update statuses
-                      (not @info) ;; entity no longer exists
-                      (reduced nil)
-
-                      ;; create: brand-new file, no old path to delete.
-                      ;; Target must be free or same entity id
-                      (and (= "create" status)
-                           (path-free-for? snapshot (:new-path @info) (:eid @info)))
-                      (upsert plan)
-
-                      ;; in-place update: at its stored path, or (no stored path) the repo file at
-                      ;; new-path is already this entity — overwrite.
-                      (and (= "update" status)
-                           (or (= file_path (:new-path @info))
-                               (and (str/blank? file_path)
-                                    (= (:eid @info) (file-entity-id (source.p/read-file snapshot (:new-path @info)))))))
-                      (upsert plan)
-
-                      ;; rename: update whose stored path differs from new path. Write the
-                      ;; new file and delete the old one.
-                      (and (= "update" status)
-                           (not (str/blank? file_path))
-                           (not= file_path (:new-path @info))
-                           (path-free-for? snapshot (:new-path @info) (:eid @info)))
-                      (-> (upsert plan)
-                          (update :delete-paths conj file_path))
-
-                      :else
-                      (reduced nil))))
-                {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}
-                dirty-rows)]
+          plan (->> dirty-rows
+                    (map incremental-updates-for-row)
+                    (reduce (fn [plan updates]
+                              (if (nil? updates)
+                                (reduced nil)
+                                (merge-with into plan updates)))
+                            {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}))]
       (when plan
         (when-let [deps (dep-upserts snapshot opts (:pull plan))]
           (-> plan (update :upserts into deps) (dissoc :pull)))))))
