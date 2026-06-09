@@ -1,8 +1,5 @@
 (ns metabase.transforms.notification
-  "Daily digest of transform job failures, computed from recent `transform_job_run` history.
-
-  A daily Quartz job publishes `:event/transform-failure-digest`; the seeded system-event
-  notification in [[metabase.notification.seed]] routes it to admins."
+  "Daily digest of transform job failures, computed from recent `transform_job_run` history."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
