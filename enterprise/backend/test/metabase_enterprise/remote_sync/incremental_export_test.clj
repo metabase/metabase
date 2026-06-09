@@ -389,3 +389,27 @@
               "import applied the renamed name from the repo")
           (is (= 1 (t2/count :model/Card :entity_id a-eid))
               "exactly one card for the entity — no duplicate from a stale file"))))))
+
+(deftest two-same-named-creates-use-incremental-path-test
+  (with-exported-collection!
+    (fn [{:keys [mock coll-id]}]
+      ;; Two NEW cards with the same name in one batch. The shared storage context dedups them to
+      ;; distinct paths (foo + foo_2), so neither collides and both are written incrementally — matching
+      ;; a full export. (No prior foo.yaml exists, so path-free-for? can't catch a collision; the shared
+      ;; generator is what keeps them apart.)
+      (mt/with-temp [:model/Card {c1 :id} {:name "Foo" :collection_id coll-id}
+                     :model/Card {c2 :id} {:name "Foo" :collection_id coll-id}]
+        (seed-synced-row! "Card" c1)
+        (seed-synced-row! "Card" c2)
+        (set-status! "Card" c1 "create")
+        (set-status! "Card" c2 "create")
+        (let [e1   (t2/select-one-fn :entity_id :model/Card :id c1)
+              e2   (t2/select-one-fn :entity_id :model/Card :id c2)
+              task (new-task!)]
+          (impl/export! (source.p/snapshot mock) task "two foos")
+          (is (= "apply-changes-version" (written-version task))
+              "two same-named creates stay on the incremental path")
+          (is (entity-exported? mock e1) "first Foo exported")
+          (is (entity-exported? mock e2) "second Foo exported")
+          (is (not= (path-for-eid mock e1) (path-for-eid mock e2))
+              "the two Foos get distinct, deduped paths"))))))
