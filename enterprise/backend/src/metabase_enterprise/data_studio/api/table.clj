@@ -9,6 +9,7 @@
    [metabase.collections.core :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -113,6 +114,29 @@
       #{}
       (traverse-graph downstream-table-ids initial-ids))))
 
+;;; ------------------------------------------------ Collection lifecycle hook ------------------------------------------------
+
+(defenterprise unpublish-downstream-fk-tables!
+  "When tables are unpublished because their Library collection was archived or deleted, also unpublish any tables that
+  depend on them via FK remapping (Dimensions), so implicit joins are not broken. Mirrors the force-unpublish behavior
+  of the `/unpublish-tables` endpoint. `seed-table-ids` are the tables that were just unpublished."
+  :feature :library
+  [seed-table-ids]
+  (when (seq seed-table-ids)
+    (let [downstream-ids      (all-downstream-table-ids [:in :id seed-table-ids])
+          table-ids-to-update (when (seq downstream-ids)
+                                (t2/select-pks-set :model/Table :id [:in downstream-ids] :is_published true))]
+      (when (seq table-ids-to-update)
+        (t2/query {:update (t2/table-name :model/Table)
+                   :set    {:collection_id nil
+                            :is_published  false}
+                   :where  [:in :id table-ids-to-update]})
+        ;; Publish events for audit log and remote sync tracking
+        (let [updated-tables (t2/select :model/Table :id [:in table-ids-to-update])]
+          (doseq [table updated-tables]
+            (events/publish-event! :event/table-unpublish {:object  table
+                                                           :user-id api/*current-user-id*})))))))
+
 ;;; ------------------------------------------------ Response Schemas ------------------------------------------------
 
 (mr/def ::publish-tables-response
@@ -144,8 +168,9 @@
                                           (tru "Tables can only be published to Library/Data collections."))
         where              (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         upstream-ids       (all-upstream-table-ids where)
+        ;; Don't move already-published upstream tables; only publish unpublished ones.
         update-where       (if (seq upstream-ids)
-                             [:or where [:in :id upstream-ids]]
+                             [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
                              where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]

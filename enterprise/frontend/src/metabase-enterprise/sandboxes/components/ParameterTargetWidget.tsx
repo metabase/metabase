@@ -1,28 +1,46 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { SelectButton } from "metabase/common/components/SelectButton";
 import { useCaptureEvent } from "metabase/common/hooks";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
-import { getMappingOptionByTarget } from "metabase/parameters/utils/mapping-options";
+import {
+  type ParameterMappingOption,
+  getMappingOptionByTarget,
+} from "metabase/parameters/utils/mapping-options";
 import { Box, Popover } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type { ParameterTarget } from "metabase-types/api";
 
-const defaultChildren = ({ selected, placeholder }) => (
+type TriggerRenderProps = {
+  selected?: ParameterMappingOption;
+  disabled: boolean;
+  placeholder?: string;
+};
+
+type ParameterTargetWidgetProps = {
+  question?: Question;
+  target?: ParameterTarget | null;
+  onChange: (target: ParameterTarget) => void;
+  mappingOptions: ParameterMappingOption[];
+  placeholder?: string;
+  children?: ReactNode | ((props: TriggerRenderProps) => ReactNode);
+};
+
+const defaultChildren = ({ selected, placeholder }: TriggerRenderProps) => (
   <SelectButton hasValue={!!selected} className="border-med">
     {selected ? selected.name : placeholder || "Select a target"}
   </SelectButton>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function ParameterTargetWidget({
+export function ParameterTargetWidget({
   question,
   target,
   onChange,
   mappingOptions,
   placeholder,
   children = defaultChildren,
-}) {
+}: ParameterTargetWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useCaptureEvent(
@@ -55,7 +73,7 @@ export default function ParameterTargetWidget({
       onChange={setIsOpen}
     >
       <Popover.Target>
-        <Box className={cx({ disabled })} onClick={() => setIsOpen(!isOpen)}>
+        <Box className={cx({ disabled })} onClick={() => setIsOpen((v) => !v)}>
           {triggerElement}
         </Box>
       </Popover.Target>
