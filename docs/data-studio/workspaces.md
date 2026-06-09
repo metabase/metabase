@@ -1,15 +1,15 @@
 ---
 title: Workspaces
-summary: Workspaces create isolated schemas in your data warehouse for you to test out transforms.
+summary: "Workspaces are isolation environments for AI agents. They let agents run data ransforms and develop analyses without touching the databases where the real data lives."
 ---
 
 # Workspaces
 
-Workspaces are Metabase configurations that remap tables so you can test out new transforms safely, without polluting your production schema.
+Workspaces are isolation environments for AI agents. They let agents run data transforms and analyses without touching the databases where the real data lives.
 
 ## How workspaces work
 
-When your development Metabase is in a workspace, it'll look like it's creating tables in production, and you can build dashboards, questions, and documents on top of those tables. But under the hood, transforms will write those tables to an isolated schema, so you (or an agent) are free to experiment.
+Workspaces are Metabase configurations that remap tables so that an AI agent can test out new transforms safely, without polluting your production schema. When your development Metabase is in a workspace, it'll look like it's creating tables in production, and you can build dashboards, questions, and documents on top of those tables. But under the hood, transforms will write those tables to an isolated schema, so you (or an agent) are free to experiment.
 
 Once you're happy with your transforms and content, you can use remote sync to push your changes to production, and everything will just work. Your transforms will target your production schema, and any content you built in the workspace will know to query those tables.
 

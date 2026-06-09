@@ -2454,7 +2454,7 @@
       },
       "metabase-enterprise.security-center.schema.semver" : {
         "type" : "string",
-        "pattern" : "^\\d+\\.\\d+\\.\\d+$"
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
       },
       "metabase-enterprise.security-center.schema.severity" : {
         "type" : "string",
@@ -5430,6 +5430,25 @@
       "metabase.frontend-errors.api.frontend-error-type" : {
         "type" : "string",
         "enum" : [ "component-crash", "chart-render-error" ]
+      },
+      "metabase.health-inspector.api.result" : {
+        "type" : "object",
+        "properties" : {
+          "check_name" : {
+            "type" : "string"
+          },
+          "health" : {
+            "type" : "number"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "run_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "check_name", "health", "message", "run_at" ]
       },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
@@ -26609,7 +26628,7 @@
       "post" : {
         "operationId" : "post-api-ee-dependencies-check-card",
         "summary" : "POST /api/ee/dependencies/check-card",
-        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+        "description" : "Check a proposed edit to a card, and return the cards/transforms this edit will break.\n\n  `broken-cards-response` ensures the stable response order.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -35399,6 +35418,36 @@
         "tags" : [ "/api/google" ]
       }
     },
+    "/api/health-inspector" : {
+      "get" : {
+        "operationId" : "get-api-health-inspector",
+        "summary" : "GET /api/health-inspector",
+        "description" : "Get a list of recent health check runs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.health-inspector.api.result"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/health-inspector" ]
+      }
+    },
     "/api/ldap/settings" : {
       "put" : {
         "operationId" : "put-api-ldap-settings",
@@ -38662,7 +38711,7 @@
       "get" : {
         "operationId" : "get-api-notification-admin",
         "summary" : "GET /api/notification/admin",
-        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed). The Failing tab uses `?last_send_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the card — the whole-run\n  rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This is a\n  superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs that\n  never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
         "parameters" : [ {
           "in" : "query",
           "name" : "active",
@@ -38745,6 +38794,13 @@
         }, {
           "in" : "query",
           "name" : "last_send_status",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_check_status",
           "required" : false,
           "schema" : {
             "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"

@@ -203,22 +203,24 @@
   "Run a Lib `count(*)` over venues through the QP and return the scalar."
   []
   (let [mp (mt/metadata-provider)]
-    (->> (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-             (lib/aggregate (lib/count)))
-         qp/process-query mt/rows ffirst)))
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        (lib/aggregate (lib/count))
+        qp/process-query mt/rows ffirst)))
 
 (deftest run-transform!-ctas-rows-affected-reflects-rows-written-test
-  ;; Characterizes the CTAS row count per driver. BigQuery and Redshift are excluded — they
+  ;; Characterizes the CTAS row count per driver. BigQuery, Snowflake, and Redshift are excluded; they
   ;; declare `:transforms/accurate-rows-affected false`, so the transforms layer skips emitting
   ;; efficiency metrics for their full-rebuild runs rather than trust the bogus count. New failing
   ;; driver → add the feature override + add it to this exclusion.
   #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
-                         :bigquery-cloud-sdk :redshift)
+                         :bigquery-cloud-sdk :redshift :snowflake)
     (mt/with-premium-features #{:transforms-basic}
       (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
             written (venues-row-count)]
-        (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "ctas_rows_affected_probe" :database (mt/id)}]
+        (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema
+                                                        :name "ctas_rows_affected_probe"
+                                                        :database (mt/id)}]
           (let [transform {:source {:type "query" :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
@@ -229,7 +231,7 @@
                            :output-schema  (:schema target)
                            :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}
                 result    (driver/run-transform! driver/*driver* details {})]
-            (is (== written (:rows-affected result))
+            (is (= written (:rows-affected result))
                 (format "%s: CTAS :rows-affected (%s) should equal %s — new failing driver → declare `:transforms/accurate-rows-affected false` and exclude"
                         driver/*driver* (pr-str (:rows-affected result)) written))))))))
 
@@ -252,6 +254,6 @@
                            :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
             (driver/run-transform! driver/*driver* details {})      ; first run = CTAS (creates the table)
             (let [insert-result (driver/run-transform! driver/*driver* details {})]   ; second run = INSERT
-              (is (== written (:rows-affected insert-result))
+              (is (= written (:rows-affected insert-result))
                   (format "%s: INSERT :rows-affected (%s) should equal %s — failure means the driver also undercounts DML"
                           driver/*driver* (pr-str (:rows-affected insert-result)) written)))))))))

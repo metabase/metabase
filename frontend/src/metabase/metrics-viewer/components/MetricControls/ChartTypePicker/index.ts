@@ -1,2 +1,2 @@
 export { ChartTypePicker } from "./ChartTypePicker";
-export type { ChartTypeOption } from "../../../utils/tab-config";
+export type { ChartTypeOption } from "../../../utils/dimension-breakout-config";

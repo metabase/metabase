@@ -15,7 +15,7 @@
 </segment>
 {% endif %}
 {% if is_field %}
-<field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}"{% if field_fk_target_fqn %} fk_target_fully_qualified_name="{{field_fk_target_fqn}}"{% endif %}>{% if field_description %}
+<field id="{{field_id}}" name="{{field_name|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}"{% if field_fk_target_fqn %} fk_target_fully_qualified_name="{{field_fk_target_fqn}}"{% endif %}>{% if field_description %}
 ## Description
 {{field_description}}{% endif %}</field>
 {% endif %}
@@ -312,7 +312,9 @@ They provide a rough idea of the data characteristics but may not reflect the co
 {% if is_field_metadata %}
 {% if field_metadata_value_xml %}
 <field-metadata field_id="{{field_metadata_field_id}}">
-    {{field_metadata_value_xml|safe}}
+{% if field_metadata_source %}    Source table: {{field_metadata_source}}
+{% endif %}{% if field_metadata_reference %}    Reference (copy into a field clause): {{field_metadata_reference|safe}}
+{% endif %}    {{field_metadata_value_xml|safe}}
 </field-metadata>
 {% else %}
 No metadata available to display. This doesn't mean the column is empty or cannot be queried - there may be various reasons why values aren't shown here.
