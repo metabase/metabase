@@ -6,6 +6,7 @@ import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import TimelineEmptyState from "metabase/timelines/collections/components/TimelineEmptyState";
+import { Box } from "metabase/ui";
 
 import { AddEntitiesModal } from "./AddEntitiesModal";
 
@@ -30,7 +31,13 @@ export function AddTimelinesModal({
 
   const [search, setSearch] = useState("");
 
-  const hasTimelines = allTimelines.length > 0;
+  const timelinesWithEvents = useMemo(() => {
+    return allTimelines.filter(
+      (timeline) => (timeline.events?.length ?? 0) > 0,
+    );
+  }, [allTimelines]);
+
+  const hasTimelines = timelinesWithEvents.length > 0;
   const showEmptyState = opened && !hasTimelines;
   const { data: rootCollection } = useGetCollectionQuery(
     showEmptyState ? { id: ROOT_COLLECTION.id } : skipToken,
@@ -43,30 +50,26 @@ export function AddTimelinesModal({
 
   const items = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return (
-      allTimelines
-        // The picker only surfaces timelines that have at least one event.
-        .filter((timeline) => (timeline.events?.length ?? 0) > 0)
-        .filter(
-          (timeline) =>
-            query === "" ||
-            timeline.name.toLowerCase().includes(query) ||
-            (timeline.description ?? "").toLowerCase().includes(query),
-        )
-        .map((timeline) => {
-          const eventCount = timeline.events?.length ?? 0;
-          return {
-            key: String(timeline.id),
-            label: timeline.name,
-            description: ngettext(
-              msgid`${eventCount} event`,
-              `${eventCount} events`,
-              eventCount,
-            ),
-          };
-        })
-    );
-  }, [allTimelines, search]);
+    return timelinesWithEvents
+      .filter(
+        (timeline) =>
+          query === "" ||
+          timeline.name.toLowerCase().includes(query) ||
+          (timeline.description ?? "").toLowerCase().includes(query),
+      )
+      .map((timeline) => {
+        const eventCount = timeline.events?.length ?? 0;
+        return {
+          key: String(timeline.id),
+          label: timeline.name,
+          description: ngettext(
+            msgid`${eventCount} event`,
+            `${eventCount} events`,
+            eventCount,
+          ),
+        };
+      });
+  }, [search, timelinesWithEvents]);
 
   const handleAdd = (keys: string[]) => {
     const wanted = new Set(keys.map(Number));
@@ -101,7 +104,12 @@ export function AddTimelinesModal({
       selectedKeys={selectedKeys}
       emptyState={
         hasTimelines ? undefined : (
-          <TimelineEmptyState collection={rootCollection} />
+          <Box mt="md">
+            <TimelineEmptyState
+              collection={rootCollection}
+              shouldOpenLinkInNewTab
+            />
+          </Box>
         )
       }
     />

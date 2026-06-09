@@ -232,11 +232,13 @@ export function AddEntitiesModal({
           </LoadingAndErrorWrapper>
         </Box>
         <Group justify="flex-end">
-          <Button
-            variant="filled"
-            onClick={handleAdd}
-            disabled={checked.size === 0}
-          >{t`Add`}</Button>
+          {!emptyState && (
+            <Button
+              variant="filled"
+              onClick={handleAdd}
+              disabled={checked.size === 0}
+            >{t`Add`}</Button>
+          )}
         </Group>
       </Stack>
     </Modal>
