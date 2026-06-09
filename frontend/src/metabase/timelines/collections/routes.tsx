@@ -23,46 +23,42 @@ const getRoutes = () => {
         {...{
           path: "timelines",
           modal: TimelineIndexModal,
-          // enableMouseEvents lets Mantine's click-outside detection work
-          // for the overflow menus inside (UXW-264).
-          modalProps: { enableTransition: false, enableMouseEvents: true },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/new",
           modal: NewTimelineModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/archive",
           modal: TimelineListArchiveModal,
-          modalProps: { enableTransition: false, enableMouseEvents: true },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId",
           modal: TimelineDetailsModal,
-          // enableMouseEvents lets Mantine's click-outside detection work
-          // for the overflow menus inside (UXW-264).
-          modalProps: { enableTransition: false, enableMouseEvents: true },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/edit",
           modal: EditTimelineModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/move",
           modal: MoveTimelineModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
           noWrap: true,
         }}
       />
@@ -70,49 +66,49 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/archive",
           modal: TimelineArchiveModal,
-          modalProps: { enableTransition: false, enableMouseEvents: true },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/delete",
           modal: DeleteTimelineModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/new/events/new",
           modal: NewEventWithTimelineModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/new",
           modal: NewEventModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/edit",
           modal: EditEventModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/move",
           modal: MoveEventModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/delete",
           modal: DeleteEventModal,
-          modalProps: { enableTransition: false },
+          modalProps: { transitionProps: { duration: 0 } },
         }}
       />
     </Fragment>

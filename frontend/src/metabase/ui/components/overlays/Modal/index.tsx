@@ -7,6 +7,8 @@ import {
 import { PreventEagerPortal } from "metabase/ui";
 import { useDisableCommandPalette } from "metabase/ui/hooks/use-disable-command-palette";
 
+import { useModalCloseHandler } from "./use-modal-close-handler";
+
 export type { ModalProps } from "@mantine/core";
 export { useModalsStack } from "@mantine/core";
 
@@ -17,9 +19,21 @@ export function Modal(props: ModalProps) {
     disabled: props.opened,
   });
 
+  const modalRef = useModalCloseHandler({
+    opened: props.opened,
+    onClose: props.onClose,
+    closeOnClickOutside: props.closeOnClickOutside ?? true,
+    closeOnEscape: props.closeOnEscape ?? true,
+  });
+
   return (
     <PreventEagerPortal {...props}>
-      <MantineModal {...props} />
+      <MantineModal
+        {...props}
+        ref={modalRef}
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+      />
     </PreventEagerPortal>
   );
 }

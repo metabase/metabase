@@ -5,9 +5,9 @@ import { t } from "ttag";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { Modal } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -139,17 +139,21 @@ function ModelActionPicker({
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>
-      {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
-          <ActionCreator
-            modelId={model.id}
-            databaseId={model.database_id}
-            actionId={editingActionId}
-            onClose={closeModal}
-            onSubmit={handleModalSubmit}
-          />
-        </Modal>
-      )}
+      <Modal
+        opened={isActionCreatorOpen}
+        onClose={closeModal}
+        size="85%"
+        withCloseButton={false}
+        padding={0}
+      >
+        <ActionCreator
+          modelId={model.id}
+          databaseId={model.database_id}
+          actionId={editingActionId}
+          onClose={closeModal}
+          onSubmit={handleModalSubmit}
+        />
+      </Modal>
     </>
   );
 }

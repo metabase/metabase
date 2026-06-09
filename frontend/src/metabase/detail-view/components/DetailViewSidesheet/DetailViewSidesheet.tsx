@@ -13,7 +13,6 @@ import {
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -31,6 +30,7 @@ import {
   Divider,
   Group,
   Icon,
+  Modal,
   Stack,
   Tooltip,
   rem,
@@ -386,7 +386,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal
+        opened={isDeleteModalOpen}
+        onClose={handleDeleteModalClose}
+        size="lg"
+        withCloseButton={false}
+        padding={0}
+      >
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}

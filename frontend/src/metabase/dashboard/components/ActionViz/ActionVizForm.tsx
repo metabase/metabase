@@ -7,8 +7,8 @@ import ActionParametersInputForm, {
 } from "metabase/actions/containers/ActionParametersInputForm";
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
-import { Modal } from "metabase/common/components/Modal";
 import { ActionsApi, PublicApi } from "metabase/services";
+import { Modal } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -133,38 +133,38 @@ function ActionVizForm({
           focus={isEditingDashcard}
           onClick={onClick}
         />
-        {showFormModal && (
-          <ActionParametersInputModal
+        <ActionParametersInputModal
+          opened={showFormModal}
+          action={action}
+          mappedParameters={mappedParameters}
+          initialValues={initialValues}
+          title={title}
+          showEmptyState={shouldPrefetch && !hasPrefetchedValues}
+          showConfirmMessage={showConfirmMessage}
+          confirmMessage={action.visualization_settings?.confirmMessage}
+          onEdit={canEditAction ? handleActionEdit : undefined}
+          onSubmit={onModalSubmit}
+          onSubmitSuccess={handleSubmitSuccess}
+          onClose={() => setShowFormModal(false)}
+          onCancel={() => setShowFormModal(false)}
+        />
+        <Modal
+          opened={showEditModal}
+          data-testid="action-editor-modal"
+          onClose={closeEditModal}
+          size="85%"
+          withCloseButton={false}
+          padding={0}
+        >
+          <ActionCreator
             action={action}
-            mappedParameters={mappedParameters}
-            initialValues={initialValues}
-            title={title}
-            showEmptyState={shouldPrefetch && !hasPrefetchedValues}
-            showConfirmMessage={showConfirmMessage}
-            confirmMessage={action.visualization_settings?.confirmMessage}
-            onEdit={canEditAction ? handleActionEdit : undefined}
-            onSubmit={onModalSubmit}
-            onSubmitSuccess={handleSubmitSuccess}
-            onClose={() => setShowFormModal(false)}
-            onCancel={() => setShowFormModal(false)}
-          />
-        )}
-        {showEditModal && (
-          <Modal
-            wide
-            data-testid="action-editor-modal"
+            modelId={action.model_id}
+            databaseId={action.database_id}
+            actionId={action.id}
+            onSubmit={onActionEdit}
             onClose={closeEditModal}
-          >
-            <ActionCreator
-              action={action}
-              modelId={action.model_id}
-              databaseId={action.database_id}
-              actionId={action.id}
-              onSubmit={onActionEdit}
-              onClose={closeEditModal}
-            />
-          </Modal>
-        )}
+          />
+        </Modal>
       </>
     );
   }

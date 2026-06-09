@@ -35,6 +35,7 @@ export type SnippetCollectionPickerModalProps = {
 };
 
 export type SnippetCollectionPermissionsModalProps = {
+  opened: boolean;
   collectionId: CollectionId;
   onClose: () => void;
 };

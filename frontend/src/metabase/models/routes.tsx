@@ -4,33 +4,32 @@ import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/A
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
+import type { ModalProps } from "metabase/ui";
 
-export const getRoutes = () => (
-  <Route path="/model/:slug/detail">
-    <Route path="actions" component={ModelActions}>
-      <ModalRoute
-        path="new"
-        modal={ActionCreatorModal}
-        modalProps={{
-          wide: true,
-          enableTransition: false,
-          closeOnClickOutside: false, // logic in component is reversed, so false is true.
-        }}
-      />
-      <ModalRoute
-        path=":actionId"
-        modal={ActionCreatorModal}
-        modalProps={{
-          wide: true,
-          enableTransition: false,
-          closeOnClickOutside: false, // logic in component is reversed, so false is true.
-        }}
-      />
+export const getRoutes = () => {
+  const modalProps: Partial<ModalProps> = {
+    size: "85%",
+    transitionProps: { duration: 0 },
+  };
+  return (
+    <Route path="/model/:slug/detail">
+      <Route path="actions" component={ModelActions}>
+        <ModalRoute
+          path="new"
+          modal={ActionCreatorModal}
+          modalProps={modalProps}
+        />
+        <ModalRoute
+          path=":actionId"
+          modal={ActionCreatorModal}
+          modalProps={modalProps}
+        />
+      </Route>
+      <Route path=":rowId" component={ModelDetailPage} />
+      <IndexRedirect to="actions" />
+      <Redirect from="usage" to="actions" />
+      <Redirect from="schema" to="actions" />
+      <Redirect from="*" to="actions" />
     </Route>
-    <Route path=":rowId" component={ModelDetailPage} />
-    <IndexRedirect to="actions" />
-    <Redirect from="usage" to="actions" />
-    <Redirect from="schema" to="actions" />
-    <Redirect from="*" to="actions" />
-  </Route>
-);
+  );
+};
