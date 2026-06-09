@@ -177,10 +177,6 @@ export type DataSegregationStrategy =
   | "connection-impersonation"
   | "database-routing";
 
-// Identifiers for entities in the permissions editor. Shared between the
-// admin permissions editor, the plugin system, and enterprise permission
-// features.
-
 export type DatabaseEntityId = {
   databaseId: number;
 };
@@ -193,8 +189,6 @@ export type TableEntityId = SchemaEntityId & {
   tableId: number;
 };
 
-/** Named PermissionEntityId (rather than plain EntityId) to avoid colliding
- * with the comments EntityId in the metabase-types/api barrel. */
 export type PermissionEntityId = DatabaseEntityId &
   Partial<Omit<TableEntityId, "databaseId">>;
 
