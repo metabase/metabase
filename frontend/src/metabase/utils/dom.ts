@@ -181,6 +181,21 @@ export function isEventOverElement(
   return y >= top && y <= bottom && x >= left && x <= right;
 }
 
+const EDITABLE_ELEMENT_TAG_NAMES = ["INPUT", "TEXTAREA", "SELECT"];
+
+/**
+ * Whether the given event target is a text-editable element (input, textarea,
+ * select, or a `contenteditable` node). Global keyboard handlers should bail out
+ * when one of these is focused so the user can type and move the caret normally.
+ */
+export function isEditableElement(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (EDITABLE_ELEMENT_TAG_NAMES.includes(target.tagName) ||
+      target.isContentEditable)
+  );
+}
+
 export function isReducedMotionPreferred(): boolean {
   const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   return mediaQuery != null && mediaQuery.matches;
