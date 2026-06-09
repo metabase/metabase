@@ -152,12 +152,22 @@
 (def ^:private max-batch-size 10)
 
 (defn- process-batch-parallel
-  "Process items in parallel batches, matching Python's asyncio.gather behavior."
+  "Process items in parallel batches, matching Python's asyncio.gather behavior.
+  A single item's failure (e.g. an LLM error after retries) yields an empty result for that item
+  rather than aborting the whole run — callers zip results positionally with the source items, so we
+  keep one result per item and never reorder."
   [items generate-fn]
   (vec
    (mapcat
     (fn [batch]
-      (let [futures (mapv #(future (generate-fn %)) batch)]
+      (let [futures (mapv (fn [item]
+                            (future
+                              (try
+                                (generate-fn item)
+                                (catch Throwable e
+                                  (log/warn e "Example question generation failed for one item; skipping it")
+                                  {:questions []}))))
+                          batch)]
         (mapv deref futures)))
     (partition-all max-batch-size items))))
 
