@@ -7,11 +7,16 @@ summary: "See all alerts in your instance and manage them in bulk"
 
 _Admin > Tools > Alerts management_
 
-Admins can see all [question alerts](../questions/alerts.md) active in their Metabase instance, identify failed or orphaned alerts, and delete alerts in bulk.
+In the Alert management section, Admins can:
+
+- View and search all [question alerts](../questions/alerts.md) in their Metabase
+- Identify failed or orphaned alerts
+- Edit alerts, including changing the alert's owner
+- Delete alerts in bulk
 
 ![Alert management](./images/alert-management.png)
 
-Alert management includes only question alerts. Currently [dashboard subscriptions](../dashboards/subscriptions.md) are not included.
+Currently, [dashboard subscriptions](../dashboards/subscriptions.md) are not included.
 
 ## See all alerts
 
