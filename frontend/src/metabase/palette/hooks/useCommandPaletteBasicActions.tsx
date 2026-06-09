@@ -65,7 +65,9 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: searchResults } = useSearchQuery(
-    isLoggedIn ? { models: ["dataset"], limit: 1 } : skipToken,
+    isLoggedIn
+      ? { models: ["dataset"], limit: 1, context: "command-palette" }
+      : skipToken,
   );
   const hasModels = (searchResults?.data?.length ?? 0) > 0;
 

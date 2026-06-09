@@ -9,6 +9,7 @@ export const useFetchMetrics = (
       ? req
       : {
           models: ["metric"],
+          context: "browse",
           ...req,
         },
   );
