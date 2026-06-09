@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.search.appdb.document :as search.document]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -30,7 +31,7 @@
   [entities & body]
   `(search.tu/with-temp-index-table
      (#'specialization/batch-upsert! (search.index/active-table)
-                                     (map (comp #'search.index/document->entry
+                                     (map (comp #'search.document/document->entry
                                                 #'search.ingestion/->document)
                                           ~entities))
      ~@body))

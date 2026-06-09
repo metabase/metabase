@@ -11,6 +11,8 @@
    [metabase.search.appdb.index-state :as index-state]
    [metabase.search.appdb.scoring :as search.scoring]
    [metabase.search.appdb.specialization.postgres :as specialization.postgres]
+   [metabase.search.appdb.table :as search.table]
+   [metabase.search.appdb.writer :as search.writer]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.filter :as search.filter]
@@ -173,7 +175,7 @@
     (try
       (execute-search-query search-ctx)
       (catch Exception e
-        (if (and (search.index/table-not-found-exception? e) (not (::already-retried search-ctx)))
+        (if (and (search.table/table-not-found-exception? e) (not (::already-retried search-ctx)))
           (do (index-state/force-refresh! search.index/*state-store*)
               (execute-search-query (assoc search-ctx ::already-retried true)))
           (throw e))))))
@@ -198,8 +200,8 @@
          t2/query
          (into #{} (map :model)))))
 
-(defn- populate-index! [context]
-  (search.index/index-docs! context (search.ingestion/searchable-documents)))
+(defn- populate-index! [mode]
+  (search.writer/index-docs! mode (search.ingestion/searchable-documents)))
 
 (defmethod search.engine/init! :search.engine/appdb
   [_ {:keys [re-populate?] :as opts}]
@@ -211,7 +213,7 @@
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
           (log/info "Populating index")
-          (populate-index! (if created? :search/reindexing :search/updating)))))))
+          (populate-index! (if created? (search.index/background-mode) (search.index/incremental-mode))))))))
 
 (defmethod search.engine/sync-from-restored-db! :search.engine/appdb [_]
   (search.index/sync-from-restored-db!))
@@ -219,14 +221,11 @@
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
   (try
-    (search.index/ensure-ready!)
-    (if in-place?
-      (when-let [table (search.index/active-table)]
-        ;; keep the current table, just delete its contents
-        (t2/delete! table))
-      (search.index/maybe-create-pending!))
-    (u/prog1 (populate-index! (if in-place? :search/updating :search/reindexing))
-      (search.index/activate-table!))
+    (let [mode (if in-place? (search.index/in-place-mode) (search.index/background-mode))]
+      (search.index/ensure-ready!)
+      (search.index/prepare! mode)
+      (u/prog1 (populate-index! mode)
+        (search.index/finish! mode)))
     (catch Throwable e
       (log/error e "Error during reindexing")
       (throw e))))

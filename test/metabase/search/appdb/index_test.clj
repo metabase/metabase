@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.index-state :as index-state]
+   [metabase.search.appdb.table :as search.table]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
@@ -514,22 +515,22 @@
       (try
         (doseq [tn (cons related-table obsolete-tables)]
           (try
-            (search.index/create-table! tn)
+            (search.table/create-table! tn)
             ;; They might already exist
             (catch Exception _)))
         (testing "Given various obsolete search indexes"
-          (is (every? #'search.index/exists? (cons related-table obsolete-tables))))
+          (is (every? #'search.table/exists? (cons related-table obsolete-tables))))
         (search.index/reset-index!)
         (testing "We can create new index"
-          (is (#'search.index/exists? (search.index/active-table))))
+          (is (#'search.table/exists? (search.index/active-table))))
         (testing "... without destroying any related non-index tables"
-          (is (#'search.index/exists? related-table)))
+          (is (#'search.table/exists? related-table)))
         (testing "... and we clear out all the obsolete tables"
-          (is (every? (comp not #'search.index/exists?) obsolete-tables)))
+          (is (every? (comp not #'search.table/exists?) obsolete-tables)))
         (testing "... and there is no more pending table"
-          (is (not (#'search.index/exists? (#'search.index/pending-table)))))
+          (is (not (#'search.table/exists? (#'search.index/pending-table)))))
         (finally
-          (#'search.index/drop-table! related-table))))))
+          (#'search.table/drop-table! related-table))))))
 
 ;; We don't currently track database deletes in realtime in the search index.
 ;; To do so, we would make use of the following mechanism to find downstream elements deleted by a cascade.
@@ -567,14 +568,14 @@
       (try
         (search.index/reset-index!)
         (let [active-before (search.index/active-table)
-              active-after  (search.index/gen-table-name)
-              pending-after (search.index/gen-table-name)
+              active-after  (search.table/gen-table-name)
+              pending-after (search.table/gen-table-name)
               version       (search.spec/index-version-hash)]
           (search-index-metadata/create-pending! :appdb version active-after)
-          (search.index/create-table! active-after)
+          (search.table/create-table! active-after)
           (search-index-metadata/active-pending! :appdb version)
           (search-index-metadata/create-pending! :appdb version pending-after)
-          (search.index/create-table! pending-after)
+          (search.table/create-table! pending-after)
           (testing "We continue using our cached references without a force-refresh"
             (is (= active-before (search.index/active-table))))
           (testing "But we see the new active table after force-refresh!"
@@ -582,7 +583,7 @@
             (is (= active-after (search.index/active-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (#'search.table/delete-obsolete-tables!))))))
 
 (deftest pending-table-expiry-test
   (when (search/supports-index?)
@@ -590,11 +591,11 @@
       (try
         (search.index/reset-index!)
         (let [active-table (search.index/active-table)
-              pending-old  (search.index/gen-table-name)
-              pending-new  (search.index/gen-table-name)
+              pending-old  (search.table/gen-table-name)
+              pending-new  (search.table/gen-table-name)
               version      (search.spec/index-version-hash)]
           ;; Set up old pending table (more than a day old)
-          (search.index/create-table! pending-old)
+          (search.table/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
           (t2/update! :model/SearchIndexMetadata
                       {:index_name (name pending-old)}
@@ -606,7 +607,7 @@
           (testing "Old pending table is ignored (more than a day old)"
             (is (nil? (#'search.index/pending-table))))
           ;; Create new pending table (less than a day old)
-          (search.index/create-table! pending-new)
+          (search.table/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
           ;; Force a re-read so we pick up the new pending table
           (index-state/force-refresh! search.index/*state-store*)
@@ -615,67 +616,7 @@
             (is (= pending-new (#'search.index/pending-table)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
-          (#'search.index/delete-obsolete-tables!))))))
-
-(deftest strip-junk-chars-test
-  (let [strip @#'search.index/strip-junk-chars]
-    (testing "non-string values pass through unchanged"
-      (is (= 42        (strip 42)))
-      (is (= :a-kw     (strip :a-kw)))
-      (is (= nil       (strip nil)))
-      (is (= [:|| "x"] (strip [:|| "x"]))))
-    (testing "NUL byte (0x00) is replaced with a space — Postgres rejects raw NUL in text columns"
-      (is (= "a b" (strip "a b"))))
-    (testing "C0 controls (BEL, BS, VT, FF, US) are replaced with spaces"
-      (is (= "a b c d e f"
-             (strip "abcdef"))))
-    (testing "tab/newline/CR also become spaces (already whitespace for tsvector tokenization)"
-      (is (= "a b c d" (strip "a\tb\nc\rd"))))
-    (testing "DEL (0x7F) and C1 controls (0x80-0x9F) are replaced"
-      (is (= "a b c d" (strip "abcd"))))
-    (testing "unpaired surrogate code points are replaced"
-      (is (= "a b" (strip (str "a" (char 0xD800) "b")))))
-    (testing "ordinary text — letters, digits, punctuation, CJK, emoji — is untouched"
-      (is (= "Hello, world! 123 你好 🦄"
-             (strip "Hello, world! 123 你好 🦄"))))
-    (testing "BOM (U+FEFF) and zero-width joiner (U+200D — Cf class) are intentionally NOT stripped"
-      (is (= "a﻿b‍c" (strip "a﻿b‍c"))))
-    (testing "control chars at start/end of string"
-      (is (= " a " (strip " a"))))
-    (testing "consecutive control chars each become a space"
-      (is (= "a   b" (strip "a b"))))))
-
-(deftest document->entry-junk-chars-test
-  ;; document->entry calls (specialization/extra-entry-fields entity), which dispatches on (mdb/db-type)
-  ;; and is only implemented for :postgres and :h2 — running this on MySQL/MariaDB hits the missing-impl error.
-  (when (#{:postgres :h2} (mdb/db-type))
-    (let [->entry    @#'search.index/document->entry
-          FF         (str (char 0x000C))
-          NUL        (str (char 0x0000))
-          BEL        (str (char 0x0007))
-          DEL        (str (char 0x007F))
-          dirty-name (str "Title" FF "Sub" NUL "title" BEL)
-          dirty-st   (str "line1" DEL "line2")
-          entity     {:model           "card"
-                      :name            dirty-name
-                      :searchable_text dirty-st
-                      :display_data    {:name dirty-name}
-                      :legacy_input    {}
-                      :archived        false}
-          entry      (->entry entity)]
-      (testing "top-level :name column has control chars replaced with spaces"
-        (is (= "Title Sub title " (:name entry))))
-      (testing "search_vector / extra fields built from the stripped entity contain no raw control chars"
-        (let [printed (pr-str (vals (select-keys entry [:search_vector :with_native_query_vector
-                                                        :search_terms :native_search_terms])))]
-          (is (false? (.contains printed NUL)) "no NUL byte")
-          (is (false? (.contains printed BEL)) "no BEL")
-          (is (false? (.contains printed FF))  "no form feed")
-          (is (false? (.contains printed DEL)) "no DEL")))
-      (testing "display_data preserves original characters (value was a map at strip time, encoded after)"
-        (let [^String json-str (:display_data entry)]
-          (is (false? (.contains json-str ^CharSequence NUL)) "encoded JSON has no raw NUL")
-          (is (false? (.contains json-str ^CharSequence FF))  "encoded JSON has no raw form feed"))))))
+          (#'search.table/delete-obsolete-tables!))))))
 
 (deftest reindex-survives-duplicate-most-recent-revisions-test
   ;; Two `revision` rows with `most_recent = true` for the same card cause the spec's LEFT
@@ -708,13 +649,13 @@
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
       (try
-        (let [table-name (search.index/gen-table-name)
+        (let [table-name (search.table/gen-table-name)
               version (search.spec/index-version-hash)]
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))
           (testing "Returns age of active table"
             (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
-              (search.index/create-table! table-name)
+              (search.table/create-table! table-name)
               (search-index-metadata/create-pending! :appdb version table-name)
               (search-index-metadata/active-pending! :appdb version)
               (t2/update! :model/SearchIndexMetadata
@@ -723,4 +664,4 @@
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")
-          (#'search.index/delete-obsolete-tables!))))))
+          (#'search.table/delete-obsolete-tables!))))))
