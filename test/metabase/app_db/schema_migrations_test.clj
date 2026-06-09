@@ -2893,8 +2893,8 @@
   (str/trim (t2/select-one-fn :entity_id :collection :id collection-id)))
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test
-  (testing "v62.2026-05-13T12:00:00 through v62.2026-05-13T12:00:02: backfill canonical Library root entity IDs"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+  (testing "v62.2026-05-13T11:00:03 through v62.2026-05-13T11:00:05: backfill canonical Library root entity IDs"
+    (impl/test-migrations ["v62.2026-05-13T11:00:03" "v62.2026-05-13T11:00:05"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
@@ -2919,7 +2919,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-2
   (testing "ambiguous Library Data direct children are not modified"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:00:03" "v62.2026-05-13T11:00:05"] [migrate!]
       (let [library-id        (insert-legacy-library-collection! {:name      "Library"
                                                                   :slug      "library"
                                                                   :type      "library"
@@ -2951,7 +2951,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-3
   (testing "Library Data collections outside Library root do not count as ambiguous"
-    (impl/test-migrations ["v62.2026-05-13T12:00:00" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:00:03" "v62.2026-05-13T11:00:05"] [migrate!]
       (let [library-id      (insert-legacy-library-collection! {:name      "Library"
                                                                 :slug      "library"
                                                                 :type      "library"
@@ -2979,7 +2979,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-4
   (testing "pre-existing canonical Library rows with missing types prevent entity_id collisions"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:02"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:00:01" "v62.2026-05-13T11:00:05"] [migrate!]
       (let [canonical-library-id (insert-legacy-library-collection! {:name      "Pre-existing canonical Library"
                                                                      :slug      "canonical-library"
                                                                      :type      nil
@@ -3031,7 +3031,7 @@
 
 (deftest backfill-legacy-library-root-collection-entity-ids-test-5
   (testing "legacy Library root is backfilled when the canonical entity_id does not already exist"
-    (impl/test-migrations ["v62.2026-05-13T11:59:58" "v62.2026-05-13T12:00:00"] [migrate!]
+    (impl/test-migrations ["v62.2026-05-13T11:00:01" "v62.2026-05-13T11:00:03"] [migrate!]
       (let [library-id (insert-legacy-library-collection! {:name      "Library"
                                                            :slug      "library"
                                                            :type      "library"
