@@ -1,26 +1,57 @@
-{{> metabase/channel/email/_header.hbs }}
-<div style="margin: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
-  <h2 style="font-weight: normal; color: #4C545B;line-height: 1.65rem;">
-    We've noticed a new login on your <a href="{{{siteUrl}}}">{{applicationName}}</a> account.
-  </h2>
-  <p style="margin-top: 1em">
-    Hi {{first-name}},
-  </p>
-  <p style="margin-top: 1em">
-    We noticed a login on your <a href="{{{siteUrl}}}">{{applicationName}}</a> account from a new device.
-  </p>
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <img style="max-height: 45px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
+            </div>
 
-  <p style="margin-top: 1em;">
-    {{device}} - {{location}}
-  </p>
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 24px 0; color: #2F3C45;">
+              We've noticed a new login on your {{context.application_name}} account.
+            </h1>
 
-  <p style="margin-top: 1em;">
-    {{timestamp}}
-  </p>
+            <p style="text-align: center; font-size: 15px; line-height: 165%; color: #2F3C45; margin: 0 0 16px 0;">
+              Hi, {{first-name}}. We noticed a login on your {{context.application_name}} account from a new device.
+            </p>
 
-  <p style="margin-top: 1em;">
-    If this was you, you can safely disregard this email. If this wasn't you, you should change your password
-    immediately.
-  </p>
-</div>
-{{> metabase/channel/email/_footer.hbs }}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 24px auto 24px auto; text-align: center;">
+              <div style="line-height: 20px; color: #2F3C45; font-weight: 700;">
+                {{device}} - {{location}}
+              </div>
+              <div style="line-height: 20px; color: #656F76; margin-top: 8px;">
+                {{timestamp}}
+              </div>
+            </div>
+
+            <p style="text-align: center; font-size: 15px; line-height: 165%; color: #2F3C45; margin: 0;">
+              If this was you, you can safely disregard this email. If this wasn't you, you should change your password immediately.
+            </p>
+
+            <hr style="margin-top: 32px; margin-bottom: 32px;">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              Metabase, Inc.
+            </div>
+
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              9740 Campo Rd., Suite 1029, Spring Valley, CA 91977
+            </div>
+
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="https://www.metabase.com" style="color: #656F76 !important; font-size: 13px;">
+                www.metabase.com
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
