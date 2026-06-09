@@ -350,9 +350,11 @@
                              :token  (:token remote_sync)
                              :branch (:branch remote_sync)}))))
 
-(api.macros/defendpoint :delete "/:id/deployment" :- InstanceResponse
-  "Deprovision workspace `:id`: unbind it from its pool instance and return that instance
-   to the pool (free). The instance is not destroyed."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+(api.macros/defendpoint :delete "/:id/deployment/:workspace-instance-id" :- InstanceResponse
+  "Deprovision workspace `:id`: unbind it from pool instance `:workspace-instance-id` and
+   return that instance to the pool (free). The instance is not destroyed. 409 if the named
+   instance is not the one bound to this workspace."
+  [{:keys [id workspace-instance-id]}
+   :- [:map [:id ms/PositiveInt] [:workspace-instance-id ms/PositiveInt]]]
   (api/check-superuser)
-  (present-instance (deployment/deprovision! id)))
+  (present-instance (deployment/deprovision! id workspace-instance-id)))

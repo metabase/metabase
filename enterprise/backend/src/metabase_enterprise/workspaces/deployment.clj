@@ -198,10 +198,11 @@
                  (:id instance)))))
 
 (defn deprovision!
-  "Unbind the workspace from the instance the workspace `workspace-id` is provisioned on,
-   returning that instance to the pool.
+  "Unbind workspace `workspace-id` from pool instance `instance-id`, returning that instance
+   to the pool.
 
-   1. Find the instance bound to `workspace-id` — 404 if none.
+   1. Find the instance bound to `workspace-id` — 404 if none. Verify it is `instance-id`
+      (409 on mismatch — guards against a stale caller naming the wrong instance).
    2. Child: archive the synced collection (best-effort cleanup — GHY-3829 policy (a)).
    3. Child: `DELETE /api/ee/workspace-instance/current` (clears workspace mode + remappings).
    4. Mark the instance free (`workspace_id = null`).
@@ -213,11 +214,15 @@
 
    The instance itself is NOT destroyed — it keeps its admin user + `api_key` and returns
    to the pool for reuse. Booting is the expensive part the pool exists to avoid."
-  [workspace-id]
+  [workspace-id instance-id]
   (let [instance (t2/select-one :model/WorkspaceInstance :workspace_id workspace-id)]
     (when-not instance
       (throw (ex-info "No pool instance is provisioned for this workspace"
                       {:status-code 404 :workspace_id workspace-id})))
+    (when (not= instance-id (:id instance))
+      (throw (ex-info "That instance is not the one provisioned for this workspace"
+                      {:status-code 409 :workspace_id workspace-id
+                       :instance_id instance-id :bound_instance_id (:id instance)})))
     (clean-synced-collection! instance)
     (try
       (child-request! instance :delete "/api/ee/workspace-instance/current" {:as :string})

@@ -156,7 +156,7 @@
                                        (if (re-find #"/workspace-instance/current" (:url req))
                                          (throw (ex-info "child down" {}))
                                          {:status 200 :body []}))]
-            (let [result (deployment/deprovision! ws-id)]
+            (let [result (deployment/deprovision! ws-id inst-id)]
               (is (nil? (:workspace_id result)))
               (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))))
 
@@ -179,7 +179,7 @@
                                                  {:id 8 :name "Other"    :is_remote_synced false}
                                                  {:id 9 :name "Robot DE" :is_remote_synced false}]
                                                 "")})]
-            (let [result (deployment/deprovision! ws-id)]
+            (let [result (deployment/deprovision! ws-id inst-id)]
               (testing "instance is free again"
                 (is (nil? (:workspace_id result)))
                 (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
@@ -203,7 +203,7 @@
                                        (if (re-find #"/api/collection$" (:url req))
                                          (throw (ex-info "boom" {}))
                                          {:status 200 :body ""}))]
-            (let [result (deployment/deprovision! ws-id)]
+            (let [result (deployment/deprovision! ws-id inst-id)]
               (is (nil? (:workspace_id result)))
               (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))))
 
@@ -211,4 +211,14 @@
   (testing "deprovision! 404s when no instance is provisioned for the workspace"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "unbound"}]
       (is (thrown-with-msg? Exception #"No pool instance"
-                            (deployment/deprovision! ws-id))))))
+                            (deployment/deprovision! ws-id 1))))))
+
+(deftest deprovision-409-on-instance-mismatch-test
+  (testing "deprovision! 409s when the named instance is not the one bound to the workspace"
+    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace]
+      (mt/with-temp [:model/Workspace {ws-id :id} {:name "bound"}]
+        (let [bound-id (t2/insert-returning-pk! :model/WorkspaceInstance
+                                                {:url "https://bound.example.com" :api_key "k"
+                                                 :workspace_id ws-id})]
+          (is (thrown-with-msg? Exception #"not the one provisioned"
+                                (deployment/deprovision! ws-id (inc bound-id)))))))))

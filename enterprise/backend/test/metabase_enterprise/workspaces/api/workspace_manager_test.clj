@@ -280,11 +280,11 @@
           (testing "deprovision frees the instance"
             (is (=? {:id iid :status "free" :workspace_id nil}
                     (mt/user-http-request :crowberto :delete 200
-                                          (str "ee/workspace-manager/" ws-id "/deployment"))))))))))
+                                          (str "ee/workspace-manager/" ws-id "/deployment/" iid))))))))))
 
 (deftest deployment-superuser-gated-test
   (testing "deployment endpoints require a superuser"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "g"}]
       (mt/user-http-request :rasta :post 403 (str "ee/workspace-manager/" ws-id "/deployment")
                             {:workspace_instance_id 1})
-      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id "/deployment")))))
+      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id "/deployment/1")))))
