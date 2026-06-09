@@ -196,6 +196,12 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
         .then((blob) => readAsDataURL(blob))
         .then((src) => {
           tile.src = src;
+          return tile.decode();
+        })
+        .then(() => {
+          if (controller.signal.aborted) {
+            return;
+          }
           done?.(undefined, tile);
         })
         .catch((error: unknown) => {
