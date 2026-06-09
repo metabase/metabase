@@ -36,6 +36,11 @@
   (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
                                 token (str user-id) "test-client" (vec scopes) expiry nil))
 
+(defn- revoke-access-token!
+  "Revoke a token in the live provider's token store, as the `/oauth/revoke` endpoint does on logout."
+  [token]
+  (oidc.store/revoke-token (:token-store (oauth-server/get-provider)) token))
+
 (defn- in-one-hour [] (+ (System/currentTimeMillis) 3600000))
 (defn- one-hour-ago [] (- (System/currentTimeMillis) 3600000))
 
@@ -112,6 +117,20 @@
       (testing "an unknown bearer token does not authenticate"
         (is (nil? (:metabase-user-id req)))
         (is (nil? (:token-scopes req)))))))
+
+(deftest bearer-bridge-revoked-token-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [user-id (mt/user->id :rasta)
+            token   (str (random-uuid))]
+        (save-access-token! token user-id [oauth-server/full-access-scope] (in-one-hour))
+        (testing "the token authenticates before it is revoked"
+          (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
+        (revoke-access-token! token)
+        (testing "after revocation (as on logout) the same token no longer authenticates"
+          (let [req (merge-current-user-info (bearer-request token))]
+            (is (nil? (:metabase-user-id req)))
+            (is (nil? (:token-scopes req)))))))))
 
 (deftest bearer-bridge-precedence-test
   (testing "session/api-key auth takes precedence — bearer resolution is not even attempted"
