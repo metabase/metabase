@@ -387,13 +387,10 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          npm publish --tag 62-beta
+          npm publish --tag 62-stable
 
   tag-latest:
     name: Tag npm release as latest
-    # ⚠️ This should only run on the most recent release branch (e.g. `release-x.61.x`),
-    # and only once it becomes stable (gold). Delete this line when gold — do not delete during the pre-gold window.
-    if: false
     needs: [publish-npm, determine-sdk-version]
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
