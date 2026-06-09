@@ -1170,33 +1170,3 @@
                              :conversation_id (str (random-uuid))
                              :history         []
                              :state           {}}))))
-
-;;; -----------------------------------------------------------------------------------------
-;;; DELETE BEFORE MERGE — exercises the disposable /dev/validate-v4 diagnostic endpoint;
-;;; removed together with the endpoint in the final commit of this PR.
-;;; -----------------------------------------------------------------------------------------
-(deftest validate-v4-endpoint-test
-  (let [conversation-id (str (random-uuid))
-        insert-message! (fn [data]
-                          (first (t2/insert-returning-pks! :model/MetabotMessage
-                                                           {:conversation_id conversation-id
-                                                            :role            "user"
-                                                            :profile_id      "metabot-1"
-                                                            :external_id     (str (random-uuid))
-                                                            :total_tokens    0
-                                                            :data            data
-                                                            :finished        true})))]
-    (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :crowberto)})
-    (try
-      (let [valid-id   (insert-message! [{:role "user" :content "hi"}])
-            invalid-id (insert-message! [{:bogus true}])
-            response   (mt/user-http-request :crowberto :get 200 "metabot/dev/validate-v4")
-            failed-ids (into #{} (map :message-id) (:failures response))]
-        (is (>= (:row-count response) 2))
-        (is (contains? failed-ids invalid-id))
-        (is (not (contains? failed-ids valid-id))))
-      (testing "requires superuser"
-        (mt/user-http-request :rasta :get 403 "metabot/dev/validate-v4"))
-      (finally
-        (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
-        (t2/delete! :model/MetabotConversation :id conversation-id)))))

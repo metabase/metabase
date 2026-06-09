@@ -157,6 +157,32 @@
     (is (not (mr/validate ::metabot.schema/v4-message-data
                           [{:role "user" :content "hi" :unexpected-key 1}])))))
 
+(deftest ^:parallel normalize-v4-entry-test
+  (testing "pre-strip tool-output results are trimmed to the persisted subset"
+    (let [entry {:type   "tool-output"
+                 :id     "tc1"
+                 :result {:output            "rows"
+                          :structured-output {:type "table"}
+                          :instructions      "..."
+                          :resources         []
+                          :data-parts        []}}]
+      (is (= {:type   "tool-output"
+              :id     "tc1"
+              :result {:output "rows" :structured-output {:type "table"}}}
+             (metabot.schema/normalize-v4-entry entry)))))
+  (testing "nil results pass through"
+    (is (= {:type "tool-output" :id "tc1" :result nil}
+           (metabot.schema/normalize-v4-entry {:type "tool-output" :id "tc1" :result nil}))))
+  (testing "errorText errors are rewritten to the error key"
+    (is (= {:type "error" :error "Overloaded"}
+           (metabot.schema/normalize-v4-entry {:type "error" :errorText "Overloaded"}))))
+  (testing "compliant entries pass through unchanged"
+    (is (= {:type "error" :error {:message "boom"}}
+           (metabot.schema/normalize-v4-entry {:type "error" :error {:message "boom"}})))
+    (is (= {:type "text" :id "t1" :text "hi"}
+           (metabot.schema/normalize-v4-entry {:type "text" :id "t1" :text "hi"})))
+    (is (= "not a map" (metabot.schema/normalize-v4-entry "not a map")))))
+
 (defn- persistence-round-trip
   "Simulate `mi/transform-json` write + read: keyword values become strings, keys stay keywords."
   [x]

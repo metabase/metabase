@@ -482,3 +482,60 @@
    [:sequential {:min 1} ::v4-user-message-entry]
    [:sequential {:min 1} ::v4-external-ai-service-entry]
    [:sequential {:min 1} ::v4-native-entry]])
+
+(defn normalize-v4-entry
+  "Maps historically-persisted entry shapes that predate the v4 spec onto their spec-compliant
+  equivalents; entries already compliant pass through unchanged. Two deviations exist in
+  production data:
+  - native `tool-output` entries written before `strip-tool-output-bloat` carry the full tool
+    result (`:instructions`, `:resources`, `:data-parts`, …) — trimmed to the persisted subset
+  - a short-lived writer persisted errors as `{:type \"error\" :errorText ...}` — rewritten to
+    the spec'd `{:type \"error\" :error ...}`"
+  [entry]
+  (cond
+    (not (map? entry))
+    entry
+
+    (= "tool-output" (:type entry))
+    (update entry :result #(some-> % (select-keys [:output :structured-output :structured_output])))
+
+    (and (= "error" (:type entry)) (contains? entry :errorText))
+    (-> entry
+        (assoc :error (:errorText entry))
+        (dissoc :errorText))
+
+    :else entry))
+
+(comment
+  ;; validate a CSV dump of metabot_message (`id` and `data` columns, header row) against the
+  ;; v4 at-rest schema, e.g. from psql:
+  ;;   \copy (select id, data from metabot_message) to 'dump.csv' with csv header
+  (require '[clojure.data.csv :as csv]
+           '[clojure.java.io :as io]
+           '[malli.error :as me]
+           '[metabase.util.json :as json])
+
+  (defn validate-v4-csv [path]
+    (with-open [reader (io/reader path)]
+      (let [[header & rows] (csv/read-csv reader)
+            column-index    (fn [column] (first (keep-indexed #(when (= column %2) %1) header)))
+            id-idx          (column-index "id")
+            data-idx        (column-index "data")
+            explain         (mr/explainer ::v4-message-data)]
+        (reduce (fn [acc row]
+                  (let [raw    (nth row data-idx)
+                        parsed (try (json/decode+kw raw) (catch Exception e e))
+                        parsed (cond->> parsed
+                                 (sequential? parsed) (mapv normalize-v4-entry))
+                        error  (if (instance? Exception parsed)
+                                 {:json-parse (ex-message parsed)}
+                                 (some-> (explain parsed) me/humanize))]
+                    (cond-> (update acc :row-count inc)
+                      error (-> (update :failure-count inc)
+                                (update :failures conj {:message-id (when id-idx (nth row id-idx))
+                                                        :message    (if (instance? Exception parsed) raw parsed)
+                                                        :error      error})))))
+                {:row-count 0 :failure-count 0 :failures []}
+                rows))))
+
+  (validate-v4-csv "/path/to/metabot_message.csv"))
