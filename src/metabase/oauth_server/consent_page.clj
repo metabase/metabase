@@ -97,7 +97,7 @@
 
    `scopes` is a vector of `{:scope :description}` maps describing what the client is requesting; it is
    shown to the user so a broad grant (e.g. full account access) is never approved blindly."
-  [{:keys [client-name client-id oauth-params nonce csrf-token params-sig scopes]}]
+  [{:keys [client-name oauth-params nonce csrf-token params-sig scopes]}]
   (let [{:keys [font-family logo-url default-logo? brand-color]} (appearance-settings)
         css-font-family (css-escape-font-name font-family)]
     (str
@@ -121,9 +121,7 @@
                               padding: 2.5rem; max-width: 440px; width: 100%; margin: 1rem; }
                    .logo { display: flex; justify-content: center; margin-bottom: 1.5rem; }
                    .logo img { max-height: 32px; max-width: 100%; min-height: 100%; height: auto; }
-                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.25rem; }
-                   .client-id { text-align: center; font-size: 0.75rem; color: #949aab; margin-bottom: 1rem;
-                                font-family: monospace; word-break: break-all; }
+                   h1 { font-size: 1.25rem; font-weight: 700; color: #2e353b; text-align: center; margin-bottom: 0.5rem; }
                    .subtitle { text-align: center; font-size: 0.875rem; line-height: 1.5; color: #696e7b; margin-bottom: 1.5rem; }
                    .scopes { list-style: none; margin: 0 0 1.5rem; padding: 0;
                              border: 1px solid #f0f0f0; border-radius: 8px; }
@@ -155,7 +153,6 @@
             (h/raw svg)
             [:img {:src logo-url :alt "Logo" :height "32"}])]
          [:h1 "Authorize " (or client-name "Unknown Application") "?"]
-         (when client-id [:p.client-id client-id])
          [:p.subtitle (or client-name "This application") " is requesting access to "
           [:strong (appearance/application-name)] " on your behalf:"]
          (when (some :full-access? scopes)

@@ -256,7 +256,6 @@
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body    (consent-page/render-consent-page
                              {:client-name  (some-> (:client-name client) (truncate 64))
-                              :client-id    (:client_id parsed)
                               :nonce        (:nonce request)
                               :csrf-token   csrf-token
                               :params-sig   params-sig
