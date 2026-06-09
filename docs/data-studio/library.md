@@ -46,9 +46,9 @@ Library is essentially a special collection. It has three special "subcollection
 - **Metrics** - for [official metrics](#metrics);
 - **Snippets** - for all the [SQL snippets](#sql-snippets) on your instance.
 
-These special collections are pre-defined - you can't get rid of them or rename them (but you can use [Library permissions](#library-permissions) to control who sees these collections).
+These special collections are predefined. You can't rename or archive them, (but you can use [ permissions](#library-permissions) to control who sees these collections).
 
-Each of these special collections can have further subcollections. For example, if your instance has a lot of published tables, you might want to break the **Library > Data** collection into "Sales", "Marketing", "Product" tables etc.
+Each of these special collections can have further subcollections. For example, if your Metabase has a lot of published tables, you might want to organize the **Library > Data** collection into "Sales", "Marketing", "Product" subcollections.
 
 People will see the Library structure in the navigation sidebar and in the data picker in the query builder:
 
@@ -82,7 +82,7 @@ Once a table is published, you can view and manage its metadata, and more.
 - Overview
 - Fields
 - [Segments](segments.md)
-- [Measures]
+- [Measures](measures.md)
 - [Dependencies](./dependencies/graph.md)
 
 To query a table from the Library in Data Studio:
@@ -137,7 +137,7 @@ Library is essentially just a special collection. Metabase uses the standard [co
 
 ![Library collection permissions](./images/library-permissions.png)
 
-Admins and people in the Data Analyst group always have Curate access to the Library. Like with the Admin group, you can't change the Data Analyst's Curate access to the Library.
+Admins and people in the Data Analyst group always have Curate access to the Library.
 
 There are some caveats through, depending on which part of the Library you're working with.
 
