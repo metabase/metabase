@@ -136,6 +136,12 @@ export const TreemapChart = ({
     (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
       gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
 
+  // Whether tiles render their metric value inline (the leaf "full" block / the
+  // group-header value+percentage). When off, the measurement pass below skips
+  // sizing the value so tiles stay at name-only (the value never qualifies).
+  const showLeafValues = settings["treemap.show_leaf_values"] ?? true;
+  const showParentValues = settings["treemap.show_parent_values"] ?? true;
+
   const option = useMemo(() => {
     if (!chartData || !formatters) {
       return null;
@@ -231,6 +237,10 @@ export const TreemapChart = ({
       minFullTileHeight: MIN_FULL_LABEL_TILE_HEIGHT,
       padding: LABEL_PADDING,
       getValueLabelWidth: (id) => {
+        // Setting off → never qualify for the "full" block (stay name-only).
+        if (!showLeafValues) {
+          return Infinity;
+        }
         const node = getNode(id);
         if (node == null) {
           return Infinity;
@@ -259,6 +269,10 @@ export const TreemapChart = ({
       getLabel: (id) => getNode(id)?.displayName,
       measureTextWidth: (text) => measureHeader(text, groupHeader.fontWeight),
       getValuePercentWidth: (id) => {
+        // Setting off → header never shows the value+percentage cluster.
+        if (!showParentValues) {
+          return Infinity;
+        }
         const node = getNode(id);
         if (node == null) {
           return Infinity;
@@ -274,7 +288,13 @@ export const TreemapChart = ({
     setParentLabelLayout((prev) =>
       _.isEqual(prev, nextParentLayout) ? prev : nextParentLayout,
     );
-  }, [chartData, formatters, renderingContext]);
+  }, [
+    chartData,
+    formatters,
+    renderingContext,
+    showLeafValues,
+    showParentValues,
+  ]);
 
   const allEventHandlers = useMemo(
     () => [

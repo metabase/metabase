@@ -81,10 +81,14 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   "treemap.show_parent_labels": {
     getSection: () => t`Display`,
+    get group() {
+      return t`Parent categories`;
+    },
     get title() {
       return t`Show parent labels`;
     },
     widget: "toggle",
+    index: 0,
     getDefault: () => true,
     inline: true,
     // The parent labels are the top-level group header chips, which only exist
@@ -95,14 +99,69 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     ) => !vizSettings["treemap.sub_grouping"],
     readDependencies: ["treemap.sub_grouping"],
   },
+  "treemap.show_parent_values": {
+    getSection: () => t`Display`,
+    get group() {
+      return t`Parent categories`;
+    },
+    get title() {
+      return t`Show parent values`;
+    },
+    widget: "toggle",
+    index: 1,
+    getDefault: () => true,
+    inline: true,
+    // Parent values render inside the group header chips, so they have no effect
+    // when the chips themselves are hidden — disable the toggle when parent
+    // labels are off.
+    getProps: (
+      _series: RawSeries,
+      vizSettings: ComputedVisualizationSettings,
+    ) => ({
+      disabled: vizSettings["treemap.show_parent_labels"] === false,
+    }),
+    // Parent values render in the group header chips, which only exist in a
+    // 2-level treemap — hide the setting until a sub-grouping is selected.
+    getHidden: (
+      _series: RawSeries,
+      vizSettings: ComputedVisualizationSettings,
+    ) => !vizSettings["treemap.sub_grouping"],
+    readDependencies: ["treemap.sub_grouping", "treemap.show_parent_labels"],
+  },
   "treemap.show_leaf_labels": {
     getSection: () => t`Display`,
+    get group() {
+      return t`Leaves`;
+    },
     get title() {
       return t`Show leaf labels`;
     },
     widget: "toggle",
+    index: 0,
     getDefault: () => true,
     inline: true,
+  },
+  "treemap.show_leaf_values": {
+    getSection: () => t`Display`,
+    get group() {
+      return t`Leaves`;
+    },
+    get title() {
+      return t`Show leaf values`;
+    },
+    widget: "toggle",
+    index: 1,
+    getDefault: () => true,
+    inline: true,
+    // Leaf values render as part of the leaf tile label, so they have no effect
+    // when leaf labels are off — disable the toggle then.
+    getProps: (
+      _series: RawSeries,
+      vizSettings: ComputedVisualizationSettings,
+    ) => ({
+      disabled: vizSettings["treemap.show_leaf_labels"] === false,
+    }),
+    readDependencies: ["treemap.show_leaf_labels"],
   },
 };
 

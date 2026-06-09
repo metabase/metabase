@@ -410,6 +410,10 @@ describe("TREEMAP_CHART_DEFINITION", () => {
       expect(showParentLabelsSetting.getSection?.()).toBe("Display");
     });
 
+    it("is grouped under 'Parent categories'", () => {
+      expect(showParentLabelsSetting.group).toBe("Parent categories");
+    });
+
     it("is hidden when no sub-grouping is selected", () => {
       const getHidden = checkNotNull(showParentLabelsSetting.getHidden);
       expect(getHidden([], {}, {} as never)).toBe(true);
@@ -417,6 +421,65 @@ describe("TREEMAP_CHART_DEFINITION", () => {
 
     it("is visible once a sub-grouping is selected", () => {
       const getHidden = checkNotNull(showParentLabelsSetting.getHidden);
+      expect(
+        getHidden([], { "treemap.sub_grouping": "SubCategory" }, {} as never),
+      ).toBe(false);
+    });
+  });
+
+  describe("treemap.show_parent_values setting", () => {
+    const showParentValuesSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.show_parent_values"],
+    );
+
+    it("is a toggle in the Display section that defaults to true", () => {
+      expect(showParentValuesSetting.widget).toBe("toggle");
+      expect(checkNotNull(showParentValuesSetting.getDefault)([], {})).toBe(
+        true,
+      );
+      expect(showParentValuesSetting.getSection?.()).toBe("Display");
+    });
+
+    it("is grouped under 'Parent categories'", () => {
+      expect(showParentValuesSetting.group).toBe("Parent categories");
+    });
+
+    it("is disabled when parent labels are turned off", () => {
+      const getProps = checkNotNull(showParentValuesSetting.getProps);
+      expect(
+        getProps(
+          [],
+          { "treemap.show_parent_labels": false },
+          jest.fn(),
+          undefined,
+          jest.fn(),
+        ),
+      ).toEqual({ disabled: true });
+    });
+
+    it("is enabled when parent labels are on (or unset)", () => {
+      const getProps = checkNotNull(showParentValuesSetting.getProps);
+      expect(getProps([], {}, jest.fn(), undefined, jest.fn())).toEqual({
+        disabled: false,
+      });
+      expect(
+        getProps(
+          [],
+          { "treemap.show_parent_labels": true },
+          jest.fn(),
+          undefined,
+          jest.fn(),
+        ),
+      ).toEqual({ disabled: false });
+    });
+
+    it("is hidden when no sub-grouping is selected", () => {
+      const getHidden = checkNotNull(showParentValuesSetting.getHidden);
+      expect(getHidden([], {}, {} as never)).toBe(true);
+    });
+
+    it("is visible once a sub-grouping is selected", () => {
+      const getHidden = checkNotNull(showParentValuesSetting.getHidden);
       expect(
         getHidden([], { "treemap.sub_grouping": "SubCategory" }, {} as never),
       ).toBe(false);
@@ -434,8 +497,52 @@ describe("TREEMAP_CHART_DEFINITION", () => {
       expect(showLeafLabelsSetting.getSection?.()).toBe("Display");
     });
 
+    it("is grouped under 'Leaves'", () => {
+      expect(showLeafLabelsSetting.group).toBe("Leaves");
+    });
+
     it("is always available (no sub-grouping requirement)", () => {
       expect(showLeafLabelsSetting.getHidden).toBeUndefined();
+    });
+  });
+
+  describe("treemap.show_leaf_values setting", () => {
+    const showLeafValuesSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.show_leaf_values"],
+    );
+
+    it("is a toggle in the Display section that defaults to true", () => {
+      expect(showLeafValuesSetting.widget).toBe("toggle");
+      expect(checkNotNull(showLeafValuesSetting.getDefault)([], {})).toBe(true);
+      expect(showLeafValuesSetting.getSection?.()).toBe("Display");
+    });
+
+    it("is grouped under 'Leaves'", () => {
+      expect(showLeafValuesSetting.group).toBe("Leaves");
+    });
+
+    it("is disabled when leaf labels are turned off", () => {
+      const getProps = checkNotNull(showLeafValuesSetting.getProps);
+      expect(
+        getProps(
+          [],
+          { "treemap.show_leaf_labels": false },
+          jest.fn(),
+          undefined,
+          jest.fn(),
+        ),
+      ).toEqual({ disabled: true });
+    });
+
+    it("is enabled when leaf labels are on (or unset)", () => {
+      const getProps = checkNotNull(showLeafValuesSetting.getProps);
+      expect(getProps([], {}, jest.fn(), undefined, jest.fn())).toEqual({
+        disabled: false,
+      });
+    });
+
+    it("is always available (no sub-grouping requirement)", () => {
+      expect(showLeafValuesSetting.getHidden).toBeUndefined();
     });
   });
 });
