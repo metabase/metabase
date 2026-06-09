@@ -93,9 +93,26 @@ describe("scenarios > home > homepage", () => {
         triggered_from: "suggestion_sidebar",
       });
 
-      cy.intercept("POST", "/api/dashboard/save").as("saveDashboard");
+      // Wait for the final x-ray dashboard to actually be ready before saving.
+      // `@getXrayDashboard` only confirms the automagic metadata GET; the dashboard isn't in
+      // the store yet. Once it is, `useDashboardUrlQuery`
+      // (frontend/src/metabase/dashboard/hooks/use-dashboard-url-query.ts) syncs the
+      // dashboard's parameters into the URL (dispatch(replace(...))), so the query string
+      // becomes populated. That is a reliable "dashboard is ready" signal; clicking
+      // "Save this" before it means the dashboard isn't ready and the save is lost.
+      cy.location("search").should("not.be.empty");
+
       cy.findByTestId("automatic-dashboard-header").button("Save this").click();
-      cy.wait("@saveDashboard");
+
+      // Assert the save succeeded via the resulting UI — the header switches to a "Saved"
+      // button + "See it" link — rather than waiting on the POST /api/dashboard/save
+      // request. The request-alias wait was timing-sensitive and flaked with "No request
+      // ever occurred"; the saved-state UI is the real user-observable outcome and Cypress
+      // retries it until the save completes.
+      cy.findByTestId("automatic-dashboard-header").within(() => {
+        cy.findByText("See it").should("be.visible");
+        cy.findByText("Saved").should("be.visible");
+      });
 
       H.expectUnstructuredSnowplowEvent({
         event: "x-ray_saved",
