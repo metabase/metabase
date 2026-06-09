@@ -1,13 +1,18 @@
 (ns metabase.metabot.schema.v4
-  "Schemas for the legacy v4 at-rest `metabot_message.data` formats. These are bespoke Metabase
-  formats with no upstream source — hand-encoded from the historical writers. Validates
-  post-select values: JSON keys are keywordized, all values are strings."
+  "Schemas for the v4 at-rest `metabot_message.data` formats. A `data` value is a vector in one
+  of three self-describing shapes: stream-part entries (persisted AI SDK v4 data-stream parts,
+  tagged by uppercase `:_type`), part entries (message parts keyed by lowercase `:type`), or a
+  user message. Validates post-select values: JSON keys are keywordized, all values are strings.
+
+  Upstream protocol: https://github.com/vercel/ai (ai@4, packages/ui-utils/src/stream-parts.ts)"
   (:require
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::external-ai-service-entry
-  "An entry written by the external-ai-service path — the at-rest form of
-  [[metabase.metabot.util/aisdk->messages]] output."
+(set! *warn-on-reflection* true)
+
+(mr/def ::stream-part-entry
+  "The at-rest form of an AI SDK v4 data-stream part. The `:_type` tags are the v4 protocol's
+  stream-part names, uppercased."
   [:multi {:dispatch :_type}
    ["TEXT"           [:map {:closed true}
                       [:role :string]
@@ -40,9 +45,8 @@
                       [:finish_reason :string]
                       [:usage :map]]]])
 
-(mr/def ::native-entry
-  "An entry written by the native agent loop — the at-rest form of the parts built by
-  `aisdk-chunks->part` after `finalize-assistant-turn!` filtering and `strip-tool-output-bloat`."
+(mr/def ::part-entry
+  "A message part, keyed by lowercase `:type`."
   [:multi {:dispatch :type}
    ["text"        [:map {:closed true}
                    [:type [:= "text"]]
@@ -73,29 +77,27 @@
                    [:error [:or :map :string]]]]])
 
 (mr/def ::user-message-entry
+  "A user message."
   [:map {:closed true}
    [:role [:= "user"]]
    [:content :string]])
 
 (mr/def ::message-data
-  "A whole `metabot_message.data` value in the legacy v4 format. Rows are written wholesale by a
-  single writer, so entries within a row are homogeneous; assistant placeholder rows are `[]`."
+  "A whole `metabot_message.data` value in the v4 format. Entries within a row are homogeneous;
+  assistant placeholder rows are `[]`."
   [:or
    [:sequential {:max 0} :any]
    [:sequential {:min 1} ::user-message-entry]
-   [:sequential {:min 1} ::external-ai-service-entry]
-   [:sequential {:min 1} ::native-entry]])
+   [:sequential {:min 1} ::stream-part-entry]
+   [:sequential {:min 1} ::part-entry]])
 
 (defn normalize-entry
-  "Maps historically-persisted entry shapes that predate the v4 spec onto their spec-compliant
-  equivalents; entries already compliant pass through unchanged. Two deviations exist in
-  production data (verified against a full dump of `metabot_message`, all rows validate against
-  [[::message-data]] after this mapping):
+  "Maps the non-compliant entry shapes found in production data onto their
+  [[::message-data]]-compliant equivalents; compliant entries pass through unchanged:
 
-  - native `tool-output` entries written before `strip-tool-output-bloat` carry the full tool
-    result (`:instructions`, `:resources`, `:data-parts`, …) — trimmed to the persisted subset
-  - a short-lived writer persisted errors as `{:type \"error\" :errorText ...}` — rewritten to
-    the spec'd `{:type \"error\" :error ...}`"
+  - `tool-output` [[::part-entry]]s carrying full tool results (`:instructions`, `:resources`,
+    `:data-parts`, …) are trimmed to the persisted subset
+  - `{:type \"error\" :errorText ...}` entries are rewritten to `{:type \"error\" :error ...}`"
   [entry]
   (cond
     (not (map? entry))
