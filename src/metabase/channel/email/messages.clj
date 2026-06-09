@@ -136,14 +136,17 @@
       :recipients   recipients
       :message-type :html
       :message      (channel.template/render "metabase/channel/email/user_joined_notification.hbs"
-                                             (merge (common-context)
-                                                    {:logoHeader        true
-                                                     :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                                     :joinedViaSSO      google-auth?
-                                                     :joinedUserEmail   (:email new-user)
-                                                     :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                                     :adminEmail        (first recipients)
-                                                     :joinedUserEditUrl (str (system/site-url) "/admin/people")}))})))
+                                             {:context           {:application_name     (appearance/application-name)
+                                                                  :application_color    (channel.render/primary-color)
+                                                                  :application_logo_url (logo-url)
+                                                                  :site_url             (system/site-url)}
+                                              :payload           {:style {:color_text_dark channel.render/color-text-dark}}
+                                              :joinedUserName    (or (:first_name new-user) (:email new-user))
+                                              :joinedViaSSO      google-auth?
+                                              :joinedUserEmail   (:email new-user)
+                                              :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
+                                              :adminEmail        (first recipients)
+                                              :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
