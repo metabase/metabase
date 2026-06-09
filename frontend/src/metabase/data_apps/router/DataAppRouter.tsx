@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { Route, Router, browserHistory } from "react-router";
+import { Router, browserHistory } from "react-router";
 
 import { DATA_APP_EMBED_PREFIX } from "metabase/data_apps/constants";
 
@@ -91,6 +91,13 @@ function RouteContent() {
   return useContext(RouteContentBridge);
 }
 
+// react-router 3 ignores route changes after the first mount and warns
+// "You cannot change <Router routes>; it will be ignored" if you re-pass
+// JSX children each render. Hoist the route definition to a single
+// module-level reference so the `routes` prop is identity-stable across
+// every `<DataAppRouter>` re-render.
+const STABLE_ROUTES = { path: "*", component: RouteContent };
+
 interface DataAppRouterProps {
   children?: ReactNode;
 }
@@ -147,9 +154,7 @@ export function DataAppRouter({ children }: DataAppRouterProps) {
 
   return (
     <RouteContentBridge.Provider value={bridgeValue}>
-      <Router history={browserHistory}>
-        <Route path="*" component={RouteContent} />
-      </Router>
+      <Router history={browserHistory} routes={STABLE_ROUTES} />
     </RouteContentBridge.Provider>
   );
 }
