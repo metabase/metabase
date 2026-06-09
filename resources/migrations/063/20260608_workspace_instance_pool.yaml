@@ -69,8 +69,23 @@ databaseChangeLog:
             constraintName: idx_unique_workspace_instance_url
             columnNames: url
 
+  # Index BEFORE the FK: MySQL/MariaDB reuse this index to satisfy the FK, so on rollback
+  # (reverse order) the FK is dropped first and the index drop no longer trips
+  # "needed in a foreign key constraint".
   - changeSet:
       id: v63.2026-06-08T12:00:02
+      author: bryan
+      comment: Index workspace_instance.workspace_id for the deprovision lookup (select by workspace_id)
+      changes:
+        - createIndex:
+            tableName: workspace_instance
+            indexName: idx_workspace_instance_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v63.2026-06-08T12:00:03
       author: bryan
       comment: FK workspace_instance.workspace_id -> workspace.id (set null on delete so deleting a workspace returns the instance to the pool)
       changes:
@@ -81,15 +96,3 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_instance_workspace_id
             onDelete: SET NULL
-
-  - changeSet:
-      id: v63.2026-06-08T12:00:03
-      author: bryan
-      comment: Index workspace_instance.workspace_id for the deprovision lookup (select by workspace_id)
-      changes:
-        - createIndex:
-            tableName: workspace_instance
-            indexName: idx_workspace_instance_workspace_id
-            columns:
-              - column:
-                  name: workspace_id
