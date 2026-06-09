@@ -168,8 +168,9 @@
                                           (tru "Tables can only be published to Library/Data collections."))
         where              (table-selectors->filter (select-keys body [:database_ids :schema_ids :table_ids]))
         upstream-ids       (all-upstream-table-ids where)
+        ;; Don't move already-published upstream tables; only publish unpublished ones.
         update-where       (if (seq upstream-ids)
-                             [:or where [:in :id upstream-ids]]
+                             [:or where [:and [:in :id upstream-ids] [:= :is_published false]]]
                              where)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (t2/select-pks-set :model/Table {:where update-where})]
