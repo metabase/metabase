@@ -89,9 +89,9 @@
         version      (->> stream
                           (map-indexed (fn [idx entity]
                                          (u/prog1 (entity->file-spec opts entity)
-                                           (vswap! entries conj #(do {:model_type (-> entity :serdes/meta last :model)
-                                                                      :entity_id  (:entity_id entity)
-                                                                      :path       (:path <>)}))
+                                           (vswap! entries conj {:model_type (-> entity :serdes/meta last :model)
+                                                                 :entity_id  (:entity_id entity)
+                                                                 :path       (:path <>)})
                                            (remote-sync.task/update-progress!
                                             task-id (-> (inc idx) (/ stream-count) (* 0.65) (+ 0.3))))))
                           (source.p/write-files! snapshot message))]

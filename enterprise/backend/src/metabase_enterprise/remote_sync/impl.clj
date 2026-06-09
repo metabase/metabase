@@ -364,7 +364,7 @@
         (mapv first specs)))))
 
 (defn- incremental-updates-for-row
-  [opts {:keys [status file_path] :as row}]
+  [opts snapshot {:keys [status file_path] :as row}]
   (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
                         (let [spec (source/entity->file-spec opts entity)]
                           {:entity entity
@@ -439,7 +439,7 @@
   (when (seq dirty-rows)
     (let [opts (serdes/storage-base-context)
           plan (->> dirty-rows
-                    (map #(incremental-updates-for-row opts %))
+                    (map #(incremental-updates-for-row opts snapshot %))
                     (reduce (fn [plan updates]
                               (if (nil? updates)
                                 (reduced nil)
