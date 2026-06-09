@@ -355,3 +355,37 @@
             (impl/export! (source.p/snapshot mock) task "edit")
             (is (= "apply-changes-version" (written-version task))
                 "the dependency is already tracked, so the guard allows the incremental path")))))))
+
+;;; ---------------------------------------- Import round-trip (GHY-3725) ----------------------------------------
+;;; The tests above assert the right files land in the repo. These assert the resulting repo actually imports
+;;; back to the intended state — the real point of keeping the repo consistent. `:force? true` bypasses the
+;;; first-import conflict check (the entities already exist locally with these entity_ids).
+
+(deftest incremental-edit-round-trips-through-import-test
+  (testing "a repo produced by an incremental in-place edit imports back to the edited content"
+    (with-exported-collection!
+      (fn [{:keys [mock card-a]}]
+        (t2/update! :model/Card card-a {:description "edited via incremental"})
+        (set-status! "Card" card-a "update")
+        (impl/export! (source.p/snapshot mock) (new-task!) "edit")
+        ;; diverge the DB from the repo, then import the repo back over it
+        (t2/update! :model/Card card-a {:description "local divergence"})
+        (impl/import! (source.p/snapshot mock) (new-task!) :force? true)
+        (is (= "edited via incremental" (t2/select-one-fn :description :model/Card :id card-a))
+            "import restored the description the incremental export wrote")))))
+
+(deftest incremental-rename-round-trips-through-import-test
+  (testing "a repo produced by an incremental rename imports to the renamed entity, with no stale duplicate"
+    (with-exported-collection!
+      (fn [{:keys [mock card-a]}]
+        (let [a-eid (t2/select-one-fn :entity_id :model/Card :id card-a)]
+          (t2/update! :model/Card card-a {:name "Renamed A"})
+          (set-status! "Card" card-a "update")
+          (impl/export! (source.p/snapshot mock) (new-task!) "rename")
+          ;; rename back locally, then import the repo
+          (t2/update! :model/Card card-a {:name "Card A"})
+          (impl/import! (source.p/snapshot mock) (new-task!) :force? true)
+          (is (= "Renamed A" (t2/select-one-fn :name :model/Card :id card-a))
+              "import applied the renamed name from the repo")
+          (is (= 1 (t2/count :model/Card :entity_id a-eid))
+              "exactly one card for the entity — no duplicate from a stale file"))))))
