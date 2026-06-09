@@ -85,6 +85,20 @@ describe("getTreemapChartOption (1-level)", () => {
     const option = getTreemapChartOption({ tree: [], renderingContext });
     expect(option.series.data).toEqual([]);
   });
+
+  it("spaces the tiles apart via the root level's gapWidth (transparent border)", () => {
+    const tree: TreemapTree = [
+      { rawName: "A", displayName: "A", value: 10, rowIndices: [0] },
+      { rawName: "B", displayName: "B", value: 25, rowIndices: [1] },
+    ];
+
+    const { series } = getTreemapChartOption({ tree, renderingContext });
+
+    // The root level always applies, even with no children, so a 1-level
+    // treemap's tiles render with gaps rather than flush against each other.
+    expect(series.levels?.[0]?.itemStyle?.gapWidth).toBeGreaterThan(0);
+    expect(series.levels?.[0]?.itemStyle?.borderColor).toBe("transparent");
+  });
 });
 
 describe("getTreemapChartOption colors", () => {

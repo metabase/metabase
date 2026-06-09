@@ -134,28 +134,27 @@ export function getTreemapChartOption({
     padding: [0, groupHeader.paddingX],
   };
 
-  const levels: TreemapSeriesOption["levels"] = [
-    // levels[0] → synthetic root. Keep its header off so it reserves no top
-    // strip; its `gapWidth` spaces the top-level groups apart. The gaps are
-    // filled with this node's `borderColor`; a transparent border reveals the
-    // canvas behind instead of painting white separators (which look wrong on a
-    // dark-mode background).
-    {
-      itemStyle: { borderWidth: 0, gapWidth: 2, borderColor: "transparent" },
-      upperLabel: { show: false },
-    },
-    // levels[1] → the groups. The header band lives here. `borderWidth` is kept
-    // at 0: a group's bg rect is filled with its `borderColor` (the group hue),
-    // so any borderWidth would paint a tinted frame around the group's outer
-    // edge. We only want the tint on the inter-leaf gaps, so we rely on
-    // `gapWidth` alone; the white between-group separators come from the root's
-    // `gapWidth`.
-    {
-      itemStyle: { borderWidth: 0, gapWidth: 1 },
-      colorSaturation: [0.3, 0.5],
-      upperLabel: groupUpperLabel,
-    },
-  ];
+  // levels[0] → synthetic root. Keep its header off so it reserves no top
+  // strip; its `gapWidth` spaces the top-level tiles apart. The gaps are
+  // filled with this node's `borderColor`; a transparent border reveals the
+  // canvas behind instead of painting white separators (which look wrong on a
+  // dark-mode background). This applies to both 1-level and 2-level treemaps —
+  // without it a 1-level treemap's tiles render flush, with no gaps.
+  const rootLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
+    itemStyle: { borderWidth: 0, gapWidth: 2, borderColor: "transparent" },
+    upperLabel: { show: false },
+  };
+  // levels[1] → the groups (2-level only). The header band lives here.
+  // `borderWidth` is kept at 0: a group's bg rect is filled with its
+  // `borderColor` (the group hue), so any borderWidth would paint a tinted
+  // frame around the group's outer edge. We only want the tint on the
+  // inter-leaf gaps, so we rely on `gapWidth` alone; the white between-group
+  // separators come from the root's `gapWidth`.
+  const groupLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
+    itemStyle: { borderWidth: 0, gapWidth: 1 },
+    colorSaturation: [0.3, 0.5],
+    upperLabel: groupUpperLabel,
+  };
 
   const series: TreemapChartSeriesOption = {
     type: "treemap",
@@ -198,7 +197,9 @@ export function getTreemapChartOption({
     leafDepth: 2,
     visibleMin: 25 * 25,
     childrenVisibleMin: 25 * 25,
-    ...(hasChildren ? { levels } : {}),
+    // The root gap applies to both 1-level and 2-level treemaps; the group
+    // level (headers, saturation) only exists when there are children.
+    levels: hasChildren ? [rootLevel, groupLevel] : [rootLevel],
   };
 
   return { series };
