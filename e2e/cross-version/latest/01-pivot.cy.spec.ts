@@ -57,7 +57,7 @@ describe("Cross-version questions - pivot", () => {
   it("verify: pivot table is preserved", { tags: ["@target"] }, () => {
     cy.signIn("admin", { skipCache: true });
 
-    cy.visit("/collection/root");
+    X.visitRootCollectionAndWait();
 
     cy.log(`-- ${Q1_NAME}: Assert that the pivot table viz is preserved --`);
     cy.findAllByTestId("collection-entry-name")

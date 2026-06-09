@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.api :as mcp.api]
@@ -14,6 +15,7 @@
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
+   [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -654,66 +656,77 @@
     "create_question" "create_dashboard"
     "update_question" "update_dashboard" "create_collection"})
 
-(deftest tools-call-smoke-test
+(deftest tools-call-smoke-test-covers-all-agent-api-backed-tools-test
   (testing "every Agent API-backed tool is exercised by the smoke test"
     (is (= (apply disj (set (map :name (mcp.tools/list-tools nil)))
                   ["visualize_query" "render_drill_through"])
            smoke-tested-tools)
-        "Add the missing tool to `smoke-tested-tools` and the call sequence below."))
+        "Add the missing tool to `smoke-tested-tools` and the call sequence below.")))
+
+(deftest tools-call-smoke-test
   (testing "every tool returns a successful response with valid parameters"
-    (search.tu/with-legacy-search
-      (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
-                                          :type          :metric
-                                          :database_id   (mt/id)
-                                          :dataset_query (orders-count-query)}]
-        (let [[session-id _] (initialize!)
-              db-name        (t2/select-one-fn :name :model/Database (mt/id))
-              orders-query   {:lib/type "mbql/query"
-                              :stages   [{:lib/type     "mbql.stage/mbql"
-                                          :source-table [db-name "PUBLIC" "ORDERS"]
-                                          :limit        5}]}
-              ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
-              ;; assertion in `call-tool` fails partway through the sequence.
-              question-id    (atom nil)
-              dash-id        (atom nil)
-              coll-id        (atom nil)]
-          (try
-            (let [;; Discovery tools — call-tool helper asserts (not :isError) internally.
-                  _              (call-tool session-id "search" {:term_queries ["orders"]})
-                  ;; Query construction + execution
-                  construct-data (call-tool session-id "construct_query" {:query orders-query})
-                  _              (call-tool session-id "query" {:query orders-query})
-                  _              (call-tool session-id "execute_query"
-                                            {:query_handle (:query_handle construct-data)})
-                  _              (call-tool session-id "execute_sql"
-                                            {:database_id (mt/id)
-                                             :sql         "SELECT 1"})
-                  _              (call-tool session-id "read_resource"
-                                            {:uris ["metabase://databases"]})
-                  ;; Write tools — record IDs as soon as they're known so the `finally` block
-                  ;; can clean up even if a later step throws.
-                  question-data  (call-tool session-id "create_question"
-                                            {:name  "Smoke Question"
-                                             :query (mcp.session/read-handle session-id
-                                                                             (mt/user->id :crowberto)
-                                                                             (:query_handle construct-data))})
-                  _              (reset! question-id (:id question-data))
-                  _              (call-tool session-id "update_question"
-                                            {:id          (:id question-data)
-                                             :description "Smoke updated description"})
-                  dash-data      (call-tool session-id "create_dashboard"
-                                            {:name "Smoke Dashboard"})
-                  _              (reset! dash-id (:id dash-data))
-                  _              (call-tool session-id "update_dashboard"
-                                            {:id          (:id dash-data)
-                                             :description "Smoke updated dashboard"})
-                  coll-data      (call-tool session-id "create_collection"
-                                            {:name "Smoke Collection"})]
-              (reset! coll-id (:id coll-data)))
-            (finally
-              (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
-              (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
-              (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid)))))))))
+    (mt/with-temporary-setting-values [system.settings/site-url "https://stats.metabase.test"]
+      (search.tu/with-legacy-search
+        (mt/with-temp [:model/Card _metric {:name          "Smoke Metric"
+                                            :type          :metric
+                                            :database_id   (mt/id)
+                                            :dataset_query (orders-count-query)}]
+          (let [[session-id _] (initialize!)
+                db-name        (t2/select-one-fn :name :model/Database (mt/id))
+                orders-query   {:lib/type "mbql/query"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table [db-name "PUBLIC" "ORDERS"]
+                                            :limit        5}]}
+                ;; Track write-tool outputs in atoms so the `finally` cleanup runs even if an
+                ;; assertion in `call-tool` fails partway through the sequence.
+                question-id    (atom nil)
+                dash-id        (atom nil)
+                coll-id        (atom nil)]
+            (try
+              (let [;; Discovery tools — call-tool helper asserts (not :isError) internally.
+                    _              (call-tool session-id "search" {:term_queries ["orders"]})
+                    ;; Query construction + execution
+                    construct-data (call-tool session-id "construct_query" {:query orders-query})
+                    _              (call-tool session-id "query" {:query orders-query})
+                    _              (call-tool session-id "execute_query"
+                                              {:query_handle (:query_handle construct-data)})
+                    _              (call-tool session-id "execute_sql"
+                                              {:database_id (mt/id)
+                                               :sql         "SELECT 1"})
+                    _              (call-tool session-id "read_resource"
+                                              {:uris ["metabase://databases"]})
+                    ;; Write tools — record IDs as soon as they're known so the `finally` block
+                    ;; can clean up even if a later step throws.
+                    question-data  (call-tool session-id "create_question"
+                                              {:name  "Smoke Question"
+                                               :query (mcp.session/read-handle session-id
+                                                                               (mt/user->id :crowberto)
+                                                                               (:query_handle construct-data))})
+                    _              (reset! question-id (:id question-data))
+                    _              (is (= (format "https://stats.metabase.test/question/%d" @question-id)
+                                          (:url question-data)))
+                    ;; No collection_id given → defaults to the caller's personal collection;
+                    ;; collection_path must survive MCP forwarding.
+                    _              (is (= (collection/user->personal-collection-name (mt/user->id :crowberto) :user)
+                                          (:collection_path question-data)))
+                    _              (call-tool session-id "update_question"
+                                              {:id          (:id question-data)
+                                               :description "Smoke updated description"})
+                    dash-data      (call-tool session-id "create_dashboard"
+                                              {:name "Smoke Dashboard"})
+                    _              (reset! dash-id (:id dash-data))
+                    _              (is (= (format "https://stats.metabase.test/dashboard/%d" @dash-id)
+                                          (:url dash-data)))
+                    _              (call-tool session-id "update_dashboard"
+                                              {:id          (:id dash-data)
+                                               :description "Smoke updated dashboard"})
+                    coll-data      (call-tool session-id "create_collection"
+                                              {:name "Smoke Collection"})]
+                (reset! coll-id (:id coll-data)))
+              (finally
+                (when-let [qid @question-id] (t2/delete! :model/Card :id qid))
+                (when-let [did @dash-id]     (t2/delete! :model/Dashboard :id did))
+                (when-let [cid @coll-id]     (t2/delete! :model/Collection :id cid))))))))))
 
 (deftest tools-call-visualize-query-direct-test
   (testing "visualize_query returns UI structured content"
@@ -758,6 +771,36 @@
                    :data      {:cols sequential?
                                :rows (fn [rows] (= 5 (count rows)))}}
                   execute-data)))))))
+
+(deftest tools-call-query-accepts-query-handle-test
+  (testing "the `query` tool resolves a query_handle and streams results, same as a fresh query body"
+    (let [[session-id _] (initialize!)
+          db-name        (t2/select-one-fn :name :model/Database (mt/id))
+          external-query {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db-name "PUBLIC" "ORDERS"]
+                                      :limit        5}]}
+          construct-data (call-tool session-id "construct_query" {:query external-query})
+          query-data     (call-tool session-id "query"
+                                    {:query_handle (:query_handle construct-data)})]
+      (is (=? {:status             "completed"
+               :row_count          5
+               :continuation_token nil?
+               :data               {:cols sequential?
+                                    :rows (fn [rows] (= 5 (count rows)))}}
+              query-data)))))
+
+(deftest tools-call-query-stale-query-handle-test
+  (testing "the `query` tool returns a tool-level error for an unknown handle rather than a 500"
+    (let [[session-id _] (initialize!)
+          result         (mcp-request (jsonrpc-request "tools/call"
+                                                       {:name      "query"
+                                                        :arguments {:query_handle (str (random-uuid))}})
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   {:result {:isError true
+                                 :content [{:text #(str/includes? % "Query handle not found")}]}}}
+              result)))))
 
 (deftest tools-call-create-question-accepts-query-handle-test
   (testing "create_question resolves query_handle through the MCP layer instead of requiring raw base64"

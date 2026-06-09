@@ -521,13 +521,33 @@ function getBarSeriesDataLabelTransform(
 function getBarSeriesZeroToNullTransform(
   barSeriesModels: SeriesModel[],
 ): ConditionalTransform {
+  const dataKeysWithNonZeroValues = new Set<DataKey>();
+  let hasCheckedNonZeroValues = false;
+
   return {
     condition: barSeriesModels.length > 0,
-    fn: (datum: Datum) => {
+    fn: (datum: Datum, _index: number, dataset: ChartDataset) => {
+      if (!hasCheckedNonZeroValues) {
+        barSeriesModels.forEach(({ dataKey }) => {
+          if (
+            dataset.some(
+              (datum) =>
+                typeof datum[dataKey] === "number" && datum[dataKey] !== 0,
+            )
+          ) {
+            dataKeysWithNonZeroValues.add(dataKey);
+          }
+        });
+        hasCheckedNonZeroValues = true;
+      }
+
       const transforedDatum = { ...datum };
 
       barSeriesModels.forEach(({ dataKey }) => {
-        transforedDatum[dataKey] = datum[dataKey] === 0 ? null : datum[dataKey];
+        transforedDatum[dataKey] =
+          dataKeysWithNonZeroValues.has(dataKey) && datum[dataKey] === 0
+            ? null
+            : datum[dataKey];
       });
 
       return transforedDatum;

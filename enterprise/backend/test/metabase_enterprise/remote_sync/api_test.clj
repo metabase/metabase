@@ -170,25 +170,25 @@
 
 (deftest branches-endpoint-returns-branches-test
   (testing "GET /api/ee/remote-sync/branches returns list of branches"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
+    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :branches ["main" "develop" "feature-branch"]))]
       (is (= {:items ["main" "develop" "feature-branch"]}
              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-requires-superuser-test
   (testing "GET /api/ee/remote-sync/branches requires superuser permissions"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source))]
+    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source))]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-errors-when-git-not-configured-test
   (testing "GET /api/ee/remote-sync/branches errors when git source not configured"
-    (with-redefs [source/source-from-settings (constantly nil)]
+    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly nil)]
       (is (= "Source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
 (deftest branches-endpoint-handles-repository-errors-test
   (testing "GET /api/ee/remote-sync/branches handles git repository errors"
-    (with-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
+    (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly (mock-git-source :error-on-branches? true))]
       (is (= "Repository not found: Please check the repository URL"
              (mt/user-http-request :crowberto :get 400 "ee/remote-sync/branches"))))))
 
@@ -200,7 +200,7 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})
                 completed-task (wait-for-task-completion task_id)]
             (is (=? {:status "success" :task_id int?} resp))
@@ -212,7 +212,7 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-develop)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-develop)]
           (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch "feature-branch" :expected_branch "main"})
                 completed-task (wait-for-task-completion task_id)]
             (is (= "success" (:status response)))
@@ -224,7 +224,7 @@
       (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                          remote-sync-token  "test-token"
                                          remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (testing "stale expected_branch -> 409 branch_mismatch, no task created"
             (let [before (t2/count :model/RemoteSyncTask)
                   resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/import"
@@ -262,7 +262,7 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-main)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (let [{:as response :keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})
                 completed-task (wait-for-task-completion task_id)]
             (is (= "success" (:status response)))
@@ -275,7 +275,7 @@
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
             (is (= "Remote sync task in progress"
                    (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"})))))))))
 
@@ -291,7 +291,7 @@
                                              :model_collection_id 1
                                              :status "updated"
                                              :status_changed_at (java.time.OffsetDateTime/now)})
-        (with-redefs [source/source-from-settings (constantly mock-main)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                  (:message (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {:expected_branch "main"}))))
           (testing "But can force an import"
@@ -319,8 +319,8 @@
           ;; Stub the app-DB reconcile load — its correctness is covered synchronously by impl-test; here we
           ;; only verify the endpoint/flag wiring and that the async task completes (loading into a real
           ;; warehouse DB inside the task thread is slow/racy on the MySQL/MariaDB app-db matrix).
-          (with-redefs [source/source-from-settings (constantly mock-main)
-                        impl/load-snapshot! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)
+                                      impl/load-snapshot! (constantly nil)]
             (testing "merge=true succeeds even with unsaved local changes"
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                     completed-task (wait-for-task-completion task_id)]
@@ -341,7 +341,7 @@
                                                :model_collection_id 1
                                                :status "update"
                                                :status_changed_at (java.time.OffsetDateTime/now)})
-          (with-redefs [source/source-from-settings (constantly mock-main)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
             (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                   completed-task (wait-for-task-completion task_id)]
               (is (remote-sync.task/successful? completed-task)
@@ -365,9 +365,9 @@
                                        remote-sync-branch "main"]
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v1" :trees {"v1" {}})]
-        (with-redefs [source/source-from-settings  (constantly src)
-                      remote-sync.task/last-version (constantly "v1")
-                      impl/load-snapshot!           (fn [snap & _] (swap! loaded conj (source.p/version snap)) nil)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                    remote-sync.task/last-version (constantly "v1")
+                                    impl/load-snapshot!           (fn [snap & _] (swap! loaded conj (source.p/version snap)) nil)]
           (t2/insert! :model/RemoteSyncObject {:model_type "Card" :model_id 9001 :model_name "Local Card"
                                                :model_collection_id 1 :status "update"
                                                :status_changed_at (java.time.OffsetDateTime/now)})
@@ -385,14 +385,14 @@
                                        remote-sync-branch "main"]
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" (card-yaml-fixture)})]
-        (with-redefs [source/source-from-settings  (constantly src)
-                      remote-sync.task/last-version (constantly "v1") ; != current -> diverged, base resolvable
-                      ;; simulate load-snapshot!'s contract (run the in-txn finalize: restore-dirty +
-                      ;; set-version) without the slow app-DB reconcile
-                      impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
-                                                      (swap! loaded conj :loaded)
-                                                      (when finalize! (finalize!))
-                                                      nil)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                    remote-sync.task/last-version (constantly "v1") ; != current -> diverged, base resolvable
+                                    ;; simulate load-snapshot!'s contract (run the in-txn finalize: restore-dirty +
+                                    ;; set-version) without the slow app-DB reconcile
+                                    impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
+                                                                    (swap! loaded conj :loaded)
+                                                                    (when finalize! (finalize!))
+                                                                    nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/successful? task))
@@ -406,9 +406,9 @@
                                        remote-sync-branch "main"]
       (let [loaded (atom [])
             src    (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})] ; "gone" absent
-        (with-redefs [source/source-from-settings  (constantly src)
-                      remote-sync.task/last-version (constantly "gone")
-                      impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                    remote-sync.task/last-version (constantly "gone")
+                                    impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/conflict? task))
@@ -420,9 +420,9 @@
                                        remote-sync-token  "test-token"
                                        remote-sync-branch "main"]
       (let [src (test-helpers/versioned-source :current "v2" :trees {"v2" (card-yaml-fixture)})]
-        (with-redefs [source/source-from-settings  (constantly src)
-                      remote-sync.task/last-version (constantly nil)
-                      impl/load-snapshot!           (fn [_snap & _] nil)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                    remote-sync.task/last-version (constantly nil)
+                                    impl/load-snapshot!           (fn [_snap & _] nil)]
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:merge true :expected_branch "main"})
                 task (wait-for-task-completion task_id)]
             (is (remote-sync.task/conflict? task))))))))
@@ -436,12 +436,12 @@
                                            remote-sync-branch "main"]
           (let [loaded (atom [])
                 src    (test-helpers/versioned-source :current "v2" :trees {"v1" {} "v2" {}})]
-            (with-redefs [source/source-from-settings  (constantly src)
-                          remote-sync.task/last-version (constantly "v1") ; diverged, base resolvable
-                          impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
-                                                          (swap! loaded conj :loaded)
-                                                          (when finalize! (finalize!))
-                                                          nil)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                        remote-sync.task/last-version (constantly "v1") ; diverged, base resolvable
+                                        impl/load-snapshot!           (fn [_snap _ _ & {:keys [finalize!]}]
+                                                                        (swap! loaded conj :loaded)
+                                                                        (when finalize! (finalize!))
+                                                                        nil)]
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? task))
@@ -456,9 +456,9 @@
                                            remote-sync-branch "main"]
           (let [loaded (atom [])
                 src    (test-helpers/versioned-source :current "v2" :trees {"v2" {}})] ; "gone" absent
-            (with-redefs [source/source-from-settings  (constantly src)
-                          remote-sync.task/last-version (constantly "gone")
-                          impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings  (constantly src)
+                                        remote-sync.task/last-version (constantly "gone")
+                                        impl/load-snapshot!           (fn [_snap & _] (swap! loaded conj :loaded) nil)]
               (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main" :merge true})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/conflict? task))
@@ -474,7 +474,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Exports are only allowed when remote-sync-type is set to 'read-write'"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
 
@@ -486,7 +486,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
               (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
                     task (wait-for-task-completion task_id)]
                 (is (remote-sync.task/successful? task))
@@ -501,7 +501,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "feature-branch"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
               (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                                                      {:branch "feature-branch" :message "Custom export message"})
                     task (wait-for-task-completion task_id)]
@@ -531,7 +531,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
               (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:branch "main"})
                     task (wait-for-task-completion (:task_id response))]
                 (is (remote-sync.task/failed? task))))))))))
@@ -544,7 +544,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (is (= "Remote sync task in progress"
                      (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {:branch "main"}))))))))))
 
@@ -562,8 +562,8 @@
             ;; Stub the app-DB reconcile load — its correctness is covered synchronously by impl-test; here we
             ;; only verify the endpoint/flag wiring and task completion (loading into a real warehouse DB
             ;; inside the task thread is slow/racy on the MySQL/MariaDB app-db matrix).
-            (with-redefs [source/source-from-settings (constantly mock-source)
-                          impl/load-snapshot! (constantly nil)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/load-snapshot! (constantly nil)]
               (testing "merge=true reconciles non-conflicting remote changes and succeeds"
                 (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:merge true :branch "main"})
                       task     (wait-for-task-completion (:task_id response))]
@@ -591,7 +591,7 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (testing "no prior sync -> not diverged"
                 (let [resp (mt/user-http-request :crowberto :get 200 "ee/remote-sync/export-preflight?branch=main")]
                   (is (false? (:has_changes resp)))))
@@ -612,7 +612,7 @@
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-main)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
               (testing "POST /export -> 409 with a branch_mismatch flag and the current branch"
                 (let [before (t2/count :model/RemoteSyncTask)
                       resp   (mt/user-http-request :crowberto :post 409 "ee/remote-sync/export" {:branch "stale-branch"})]
@@ -636,11 +636,16 @@
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
               (testing "Can export with force"
                 (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {:force true :branch "main"})))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
+
+(deftest current-task-requires-superuser-test
+  (testing "GET /api/ee/remote-sync/current-task requires superuser permissions (GHY-3804)"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "ee/remote-sync/current-task")))))
 
 (deftest current-task-returns-nil-when-no-tasks-test
   (testing "GET /api/ee/remote-sync/current-task returns nil when there are no tasks"
@@ -687,6 +692,16 @@
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
 
 ;;; ------------------------------------------------- Cancel Task Endpoint -------------------------------------------------
+
+(deftest cancel-task-requires-superuser-test
+  (testing "POST /api/ee/remote-sync/current-task/cancel requires superuser permissions (GHY-3804)"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                   :last_progress_report_at :%now
+                                                   :started_at :%now}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "ee/remote-sync/current-task/cancel")))
+      (testing "task is not cancelled by the non-superuser request"
+        (is (not (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))))
 
 (deftest cancel-task-errors-when-no-tasks-test
   (testing "POST /api/ee/remote-sync/current-task/cancel errors when there are no tasks"
@@ -865,8 +880,8 @@
 (deftest settings-update-succeeds-test
   (testing "PUT /api/ee/remote-sync/settings successfully updates settings"
     (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-main)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-url nil
                                            remote-sync-type :read-write]
           (let [resp (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
@@ -877,8 +892,8 @@
 (deftest settings-update-triggers-import-in-read-only-test
   (testing "PUT /api/ee/remote-sync/settings triggers import when type is read-only"
     (let [mock-main (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-main)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-main)]
         (mt/with-temporary-setting-values [remote-sync-type :read-only
                                            remote-sync-branch "main"
                                            remote-sync-url "https://github.com/test/repo.git"
@@ -903,8 +918,8 @@
 
 (deftest settings-cannot-change-with-dirty-data
   (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
-    (with-redefs [remote-sync.object/dirty? (constantly true)
-                  settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
+    (mt/with-dynamic-fn-redefs [remote-sync.object/dirty? (constantly true)
+                                settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"
@@ -949,8 +964,8 @@
   (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on a single collection"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll-id true}})]
             (is (= {:success true} response))
@@ -960,8 +975,8 @@
   (testing "PUT /api/ee/remote-sync/settings with collections disables remote sync on a single collection"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll-id false}})]
             (is (= {:success true} response))
@@ -972,8 +987,8 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                      :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll1-id true coll2-id true}})]
             (is (= {:success true} response))
@@ -985,8 +1000,8 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
                      :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {coll1-id true coll2-id false}})]
             (is (= {:success true} response))
@@ -999,8 +1014,8 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
                      :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}
                      :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced false}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {parent-id true}})]
             (is (= {:success true} response))
@@ -1014,8 +1029,8 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
                      :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}
                      :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced true}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:collections {parent-id false}})]
             (is (= {:success true} response))
@@ -1036,8 +1051,8 @@
                                     :collection_id remote-synced-coll-id
                                     :database_id (mt/id)
                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                {:collections {remote-synced-coll-id true}})]
             (is (= "Uses content that is not remote synced." (:error response)))))))))
@@ -1055,8 +1070,8 @@
                                     :collection_id coll2-id
                                     :database_id (mt/id)
                                     :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                      impl/finish-remote-config! (constantly nil)]
+        (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                    impl/finish-remote-config! (constantly nil)]
           (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                                {:collections {coll1-id false}})]
             (is (= "Used by remote synced content." (:error response)))))))))
@@ -1064,8 +1079,8 @@
 (deftest settings-collections-empty-is-no-op-test
   (testing "PUT /api/ee/remote-sync/settings with empty collections is a no-op"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                  impl/finish-remote-config! (constantly nil)]
         (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                              {:collections {}})]
           (is (= {:success true} response))
@@ -1082,8 +1097,8 @@
   (testing "PUT /api/ee/remote-sync/settings rejects collection changes when remote-sync-type is read-only"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}
                    :model/Collection {synced-coll-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                  impl/finish-remote-config! (constantly nil)]
         (testing "rejects enabling collections when remote-sync-type is explicitly read-only"
           (is (= "Cannot change synced collections when remote-sync-type is read-only."
                  (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
@@ -1104,8 +1119,8 @@
   (testing "PUT /api/ee/remote-sync/settings skips read-only error when collections have no actual changes"
     (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}
                    :model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                  impl/finish-remote-config! (constantly nil)]
         (testing "sending false for already-unsynced collection in read-only mode succeeds"
           (is (= {:success true}
                  (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
@@ -1128,9 +1143,9 @@
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}
                      :model/Collection {unsynced-id :id} {:name "Unsynced Collection" :location "/" :is_remote_synced false}]
         (let [bulk-set-called? (atom false)]
-          (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                        impl/finish-remote-config! (constantly nil)
-                        remote-sync.core/bulk-set-remote-sync (fn [& _] (reset! bulk-set-called? true))]
+          (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                      impl/finish-remote-config! (constantly nil)
+                                      remote-sync.core/bulk-set-remote-sync (fn [& _] (reset! bulk-set-called? true))]
             (testing "no-op collections do not call bulk-set-remote-sync"
               (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                    {:collections {synced-id true unsynced-id false}})]
@@ -1140,8 +1155,8 @@
 (deftest settings-collections-allows-changes-in-read-write-mode-test
   (testing "PUT /api/ee/remote-sync/settings allows collection changes when remote-sync-type is read-write"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
-      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
-                    impl/finish-remote-config! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                                  impl/finish-remote-config! (constantly nil)]
         (testing "allows enabling collections when remote-sync-type is explicitly read-write"
           (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                {:remote-sync-type :read-write
@@ -1168,7 +1183,7 @@
                                        remote-sync-token "test-token"
                                        remote-sync-branch "main"
                                        remote-sync-type :read-write]
-      (with-redefs [source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
         (is (= {:status "success"
                 :message "Branch 'feature-branch' created from 'main'"}
                (mt/user-http-request :crowberto :post 200 "ee/remote-sync/create-branch"
@@ -1191,8 +1206,8 @@
                                                           :model_collection_id 1
                                                           :status "updated"
                                                           :status_changed_at (java.time.OffsetDateTime/now)}]
-        (with-redefs [source/source-from-settings (constantly mock-source)
-                      impl/async-export!          (fn [_ _ _ & _opts] (assoc remote-sync :calls (swap! export-calls inc)))]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                    impl/async-export!          (fn [_ _ _ & _opts] (assoc remote-sync :calls (swap! export-calls inc)))]
           (is (=? {:status "success"
                    :message "Stashing to feature-branch"}
                   (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
@@ -1222,7 +1237,7 @@
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           ;; Clear cache before test
           (impl/invalidate-remote-changes-cache!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
@@ -1240,7 +1255,7 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "old-version"}]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
             ;; Clear cache before test
             (impl/invalidate-remote-changes-cache!)
             (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
@@ -1258,7 +1273,7 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "mock-version"}]
-          (with-redefs [source/source-from-settings (constantly mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
             ;; Clear cache before test
             (impl/invalidate-remote-changes-cache!)
             (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
@@ -1278,9 +1293,9 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _args]
+                                                                    (swap! call-count inc)
+                                                                    mock-source)]
             ;; Clear cache before test
             (impl/invalidate-remote-changes-cache!)
             ;; First call - should hit the source
@@ -1303,9 +1318,9 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _args]
+                                                                    (swap! call-count inc)
+                                                                    mock-source)]
             ;; Clear cache before test
             (impl/invalidate-remote-changes-cache!)
             ;; First call - should hit the source
@@ -1328,9 +1343,9 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "mock-version"}]
-          (with-redefs [source/source-from-settings (fn [& _args]
-                                                      (swap! call-count inc)
-                                                      mock-source)]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _args]
+                                                                    (swap! call-count inc)
+                                                                    mock-source)]
             ;; Clear cache before test
             (impl/invalidate-remote-changes-cache!)
             ;; First call with main branch
@@ -1369,7 +1384,7 @@
       (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                               :ended_at :%now
                                               :version "some-prior-version"}]
-        (with-redefs [source/source-from-settings (fn [& _] (missing-branch-source "gone"))]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] (missing-branch-source "gone"))]
           (impl/invalidate-remote-changes-cache!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
             (is (false? (:has_changes response)))
@@ -1394,7 +1409,7 @@
         (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
                                                 :ended_at :%now
                                                 :version "mock-version"}]
-          (with-redefs [source/source-from-settings source-fn]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings source-fn]
             (impl/invalidate-remote-changes-cache!)
             (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
               (is (true? (:branch_missing first-response)))
@@ -1417,7 +1432,7 @@
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"
                                          remote-sync-check-changes-cache-ttl-seconds 60]
-        (with-redefs [source/source-from-settings (fn [& _] failing-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (fn [& _] failing-source)]
           (impl/invalidate-remote-changes-cache!)
           (is (thrown-with-msg? RuntimeException #"boom"
                                 (impl/has-remote-changes?))))))))
@@ -1427,8 +1442,8 @@
 (deftest settings-preserves-token-when-switching-to-read-only-test
   (testing "PUT /api/ee/remote-sync/settings preserves token when switching from read-write to read-only"
     (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "secret-token-value"
                                            remote-sync-branch "main"
@@ -1444,8 +1459,8 @@
 (deftest settings-preserves-token-when-changing-branch-test
   (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
     (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "secret-token-value"
                                            remote-sync-branch "main"
@@ -1461,8 +1476,8 @@
 (deftest settings-clears-token-when-explicitly-nil-test
   (testing "PUT /api/ee/remote-sync/settings clears token when explicitly set to nil"
     (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "secret-token-value"
                                            remote-sync-branch "main"
@@ -1479,8 +1494,8 @@
 (deftest settings-updates-transforms-setting-test
   (testing "PUT /api/ee/remote-sync/settings can update remote-sync-transforms setting"
     (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"
@@ -1507,8 +1522,8 @@
 (deftest settings-preserves-transforms-when-not-specified-test
   (testing "PUT /api/ee/remote-sync/settings preserves transforms setting when not specified"
     (let [mock-source (test-helpers/create-mock-source)]
-      (with-redefs [settings/check-git-settings! (constantly nil)
-                    source/source-from-settings (constantly mock-source)]
+      (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly nil)
+                                  source/source-from-settings (constantly mock-source)]
         (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                            remote-sync-token "test-token"
                                            remote-sync-branch "main"
@@ -1596,7 +1611,7 @@
                                             :progress       0.0}]
       (let [mock-source     (test-helpers/create-mock-source)
             tasks-before    (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"
                                              remote-sync-branch "main"
@@ -1614,7 +1629,7 @@
                                             :progress       0.0}]
       (let [mock-source  (test-helpers/create-mock-source)
             tasks-before (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"
                                              remote-sync-branch "main"
@@ -1633,7 +1648,7 @@
                                             :progress       0.0}]
       (let [mock-source      (test-helpers/create-mock-source)
             initial-branches @(:branches-atom mock-source)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"
                                              remote-sync-branch "main"
@@ -1656,7 +1671,7 @@
       (let [mock-source      (test-helpers/create-mock-source)
             initial-branches @(:branches-atom mock-source)
             tasks-before     (t2/count :model/RemoteSyncTask)]
-        (with-redefs [source/source-from-settings (constantly mock-source)]
+        (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)]
           (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/test/repo.git"
                                              remote-sync-token  "test-token"
                                              remote-sync-branch "main"

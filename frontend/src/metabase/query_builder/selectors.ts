@@ -36,6 +36,7 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
+import { createRawSeries } from "metabase/visualizations/lib/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -60,7 +61,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { cleanIndexFlags } from "./model-indexes/actions";
-import { createRawSeries, getWritableColumnProperties } from "./utils";
+import { getWritableColumnProperties } from "./utils";
 
 // This selector can be called from public questions / dashboards, which do not have state.qb
 export const getUiControls = (state: State) => state.qb?.uiControls;

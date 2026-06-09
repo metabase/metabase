@@ -1128,6 +1128,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset", "metric"],
+      context: "data-picker",
     });
     let metadata;
     if (response) {

@@ -9,6 +9,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.skills :as skills]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -164,10 +165,16 @@
         steps          (memory/get-steps memory)
         input-parts    (mapcat input-message->parts input-messages)
         step-parts     (mapcat step->parts steps)
-        result         (vec (concat input-parts step-parts))]
+        ;; Preload the active SQL dialect (if any) as a synthetic load_skill
+        ;; tool-call/result pair. It is placed after the input messages (so the
+        ;; first message is still the user's) and before this turn's steps, which
+        ;; keeps it below the system cache breakpoint.
+        preload-parts  (skills/dialect-preload-parts (user-context/extract-sql-dialect context))
+        result         (vec (concat input-parts preload-parts step-parts))]
     (log/info "Building message history"
               {:input-message-count (count input-messages)
                :step-count          (count steps)
+               :preload-parts       (count preload-parts)
                :total-parts         (count result)})
     result))
 
@@ -186,6 +193,7 @@
   Returns message map with {:role \"system\" :content \"...\"}."
   [context profile tools]
   (let [enriched-context (user-context/enrich-context-for-template context)
-        content          (prompts/build-system-message-content profile enriched-context tools)]
+        content          (prompts/build-system-message-content
+                          profile enriched-context tools (:capabilities context))]
     {:role    "system"
      :content content}))
