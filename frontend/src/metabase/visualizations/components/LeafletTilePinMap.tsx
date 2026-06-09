@@ -222,6 +222,7 @@ async function loadImage(
     url,
     signal,
     rawResponse: true,
+    retry: true,
   });
   const blob = await response.blob();
   const src = await readAsDataURL(blob);
