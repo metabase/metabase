@@ -93,7 +93,13 @@
                                    [[table [(sql.qp/->honeysql
                                              :sparksql
                                              (h2x/identifier :table-alias @(resolve 'metabase.driver.sparksql/source-table-alias)))]]])))]
-    (first (sql.qp/format-honeysql driver/*driver* honeysql))))
+    (let [sql (first (sql.qp/format-honeysql driver/*driver* honeysql))]
+      ;; Teradata doesn't allow ORDER BY in subqueries unless paired with TOP,
+      ;; and its syntax is `SELECT TOP N` (no parentheses) which HoneySQL can't
+      ;; produce directly. Post-process the SQL string to inject it.
+      (if (= driver/*driver* :teradata)
+        (str/replace-first sql #"(?i)^SELECT " "SELECT TOP 1000 ")
+        sql))))
 
 (defn- venues-category-native-sandbox-def []
   (driver/with-driver (or driver/*driver* :h2)
