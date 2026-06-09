@@ -16,6 +16,6 @@
 
 .explorationLink {
   &:hover {
-    background-color: var(--mb-color-background-tertiary) !important;
+    background-color: var(--mb-color-background-secondary) !important;
   }
 }

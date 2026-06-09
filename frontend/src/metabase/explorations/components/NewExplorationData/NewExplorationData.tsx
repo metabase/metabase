@@ -20,6 +20,7 @@ import {
   Button,
   Center,
   Group,
+  Icon,
   Menu,
   Stack,
   Text,
@@ -240,6 +241,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           size="sm"
           bd="1px dashed border"
           bdrs="xl"
+          leftSection={
+            timelines.length ? <Icon name="add" size={12} /> : undefined
+          }
           disabled={isManualDataPickingDisabled}
           onClick={() => setActiveModal("events")}
         >

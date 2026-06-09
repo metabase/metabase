@@ -15,6 +15,7 @@ import type {
 import {
   getExplorationQueryGroupInterestingness,
   getExplorationQueryGroupStatus,
+  isSettledExplorationQueryStatus,
 } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
@@ -23,6 +24,7 @@ export interface ExplorationTreeHeading {
   type: "heading";
   explorationId?: ExplorationId;
   thread?: ExplorationThread;
+  status?: ExplorationQueryStatus;
 }
 
 export interface ExplorationTreeQueryGroup {
@@ -69,20 +71,41 @@ export function getExplorationSidebarTree(
         type: "heading",
         explorationId: exploration.id,
         thread,
+        status: getExplorationQueryGroupStatus(thread.queries ?? []),
       },
       children: getExplorationQueryTree(thread),
     };
   });
+  const documentNodes = getExplorationDocumentTree(exploration);
   tree.push({
     id: "documents",
     name: t`Findings`,
     icon: "empty",
     data: {
       type: "heading",
+      status: getDocumentsHeadingStatus(documentNodes),
     },
-    children: getExplorationDocumentTree(exploration),
+    children: documentNodes,
   });
   return tree;
+}
+
+function getDocumentsHeadingStatus(
+  documents: ITreeNodeItem<ExplorationTreeDocument>[],
+): ExplorationQueryStatus | undefined {
+  const statuses = documents
+    .map((doc) => doc.data?.status)
+    .filter((status): status is ExplorationQueryStatus => status != null);
+  if (statuses.length === 0) {
+    return undefined;
+  }
+  if (statuses.some((status) => !isSettledExplorationQueryStatus(status))) {
+    return "running";
+  }
+  if (statuses.some((status) => status === "canceled")) {
+    return "canceled";
+  }
+  return "done";
 }
 
 function getExplorationQueryTree(
@@ -151,7 +174,12 @@ function getExplorationQueryTree(
       id: group.id,
       name: group.group_name ?? group.name,
       icon: "empty",
-      data: { type: "heading" },
+      data: {
+        type: "heading",
+        status: getExplorationQueryGroupStatus(
+          leafGroups.flatMap((leaf) => leaf.queries),
+        ),
+      },
       children,
     });
   }

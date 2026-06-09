@@ -183,8 +183,8 @@ const MetabotQueryBuilderInner = () => {
   return (
     <Box className={S.page}>
       <Stack gap="lg" className={S.inputWrapper}>
-        <Flex align="center" justify="space-between">
-          <Text fz="xl" fw={600} c="text-primary" mt="4rem">
+        <Flex align="center" justify="space-between" mt="3.5rem">
+          <Text fz="xl" fw={600} c="text-primary">
             {title}
           </Text>
           <Button

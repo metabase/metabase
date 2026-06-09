@@ -27,6 +27,7 @@ export function AddTimelinesModal({
     timelinesLoading,
     timelinesError,
     setTimelines,
+    collection,
   } = selection;
 
   const [search, setSearch] = useState("");
@@ -39,8 +40,8 @@ export function AddTimelinesModal({
 
   const hasTimelines = timelinesWithEvents.length > 0;
   const showEmptyState = opened && !hasTimelines;
-  const { data: rootCollection } = useGetCollectionQuery(
-    showEmptyState ? { id: ROOT_COLLECTION.id } : skipToken,
+  const { data: timelineCollection } = useGetCollectionQuery(
+    showEmptyState ? { id: collection?.id || ROOT_COLLECTION.id } : skipToken,
   );
 
   const selectedKeys = useMemo(
@@ -74,11 +75,17 @@ export function AddTimelinesModal({
   const handleAdd = (keys: string[]) => {
     const wanted = new Set(keys.map(Number));
     const current = new Set(timelines.map((timeline) => timeline.id));
+
+    let hasChanges = false;
     for (const id of wanted) {
       if (!current.has(id)) {
-        trackExplorationPlanEdited("manual", "timelines");
+        hasChanges = true;
       }
     }
+    if (hasChanges) {
+      trackExplorationPlanEdited("manual", "timelines");
+    }
+
     setTimelines((prev) => {
       const kept = prev.filter((timeline) => wanted.has(timeline.id));
       const keptIds = new Set(kept.map((timeline) => timeline.id));
@@ -106,7 +113,7 @@ export function AddTimelinesModal({
         hasTimelines ? undefined : (
           <Box mt="md">
             <TimelineEmptyState
-              collection={rootCollection}
+              collection={timelineCollection}
               shouldOpenLinkInNewTab
             />
           </Box>

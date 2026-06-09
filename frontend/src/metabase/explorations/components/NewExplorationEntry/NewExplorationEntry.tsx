@@ -84,7 +84,7 @@ export function NewExplorationEntry({
         >
           {t`Explore`}
         </Button>
-        <Text fz="xl" fw={600} c="text-primary">
+        <Text fz="xl" fw={600} c="text-primary" mb="0.5rem">
           {t`What do you want to research?`}
         </Text>
         <Paper
