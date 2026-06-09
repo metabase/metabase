@@ -144,18 +144,10 @@
 
 (deftest import-table-fk-inactive-table-test
   (testing "a portable FK to an inactive table (deleted / re-uploaded CSV) must NOT resolve"
-    ;; One mechanism behind the BOT-739 symptom (not confirmed to be the customer's exact trigger):
-    ;; an uploaded CSV table is dropped from the warehouse and its app-DB row marked `:active false`
-    ;; by `upload/delete-upload!`, but the row lingers (sync doesn't retire inactive uploaded
-    ;; tables). A follow-up Metabot turn carrying the stale portable FK would previously resolve to
-    ;; that dead row and compile to SQL hitting a non-existent warehouse table ("Table
-    ;; 'metabot2_…' not found"). The resolver must instead surface a clean :unknown-table
-    ;; agent-error so the LLM re-lists the current tables. Resolving inactive rows is a real bug
-    ;; regardless of whether it's what BOT-739 hit.
-    ;;
-    ;; The miss message is the SAME as a never-existed miss (asserted below): branching the wording
-    ;; on whether an inactive row exists would be an existence oracle against the un-sandboxed
-    ;; provider, so the deletion hint is worded unconditionally in [[unknown-table-ex-info]].
+    ;; BOT-739-adjacent: a deleted / re-uploaded upload leaves an inactive app-DB row whose
+    ;; warehouse table is gone, so resolving a stale portable FK to it yields "table not found".
+    ;; It must be a miss — and the miss message must match a never-existed miss (asserted below),
+    ;; since distinguishing them would be an existence oracle.
     (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
                    :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
                                           :db_id  (:id db)                   :active false}]
