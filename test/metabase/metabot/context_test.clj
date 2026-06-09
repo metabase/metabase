@@ -251,8 +251,8 @@
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
           (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
-            (let [context (context/create-context {})]
-              (is (not (contains? context :user_recently_viewed))))))))))
+            (let [ctx (context/create-context {})]
+              (is (not (contains? ctx :user_recently_viewed))))))))))
 
 (deftest recent-views-disabled-strips-preexisting-test
   (testing "Disabling the setting strips a caller-supplied :user_recently_viewed already in the context"
