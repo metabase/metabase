@@ -44,18 +44,17 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
+                              :database-routing                true
                               :describe-fields                 true
-                              :describe-fks                    true
                               :expression-aggregations         true
                               :expression-literals             true
                               :expressions                     true
+                              :multi-level-schema              true
                               :native-parameters               true
                               :nested-queries                  true
-                              :multi-level-schema              true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false
-                              :database-routing                true}]
+                              :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
