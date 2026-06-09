@@ -24,7 +24,7 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: var(--mb-color-brand);

@@ -15,6 +15,7 @@ import {
   TreeTable,
   useTreeTableInstance,
 } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
 import { getUserLabel } from "metabase/utils/user";
 import type {
   AdminNotification,
@@ -130,8 +131,8 @@ export const NotificationsTable = ({
         accessorFn: (notification) => notification.payload?.card?.name ?? "",
         cell: ({ row }) => {
           const card = row.original.payload?.card;
-          const cardId = row.original.payload.card_id;
-          const name = card?.name ?? `#${cardId}`;
+          const cardId = row.original.payload?.card_id;
+          const name = card?.name ?? (cardId ? `#${cardId}` : t`Unknown`);
           return <Ellipsified tooltip={name}>{name}</Ellipsified>;
         },
       },
@@ -174,7 +175,7 @@ export const NotificationsTable = ({
         cell: ({ row }) => {
           const summaries = summarizeChannels(row.original);
           if (summaries.length === 0) {
-            return "—";
+            return EMPTY_CELL_PLACEHOLDER;
           }
           return (
             <Flex gap="sm" align="center" wrap="wrap">

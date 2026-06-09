@@ -26,7 +26,9 @@ export const SORT_COLUMN_VALUES: AdminNotificationSortColumn[] = [
 
 export const TAB_FILTERS: Record<NotificationsTab, TabFilters> = {
   all: {},
-  failing: { last_send_status: "failing" },
+  // The Failing tab filters on run health (last_check) — the whole-run rollup — so it catches
+  // query failures and abandoned runs, not just channel-send delivery failures.
+  failing: { last_check_status: "failing" },
   ownerless: { creatorless: true },
 };
 
