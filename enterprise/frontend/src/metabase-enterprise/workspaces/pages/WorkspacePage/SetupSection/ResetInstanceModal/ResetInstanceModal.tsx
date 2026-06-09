@@ -8,16 +8,18 @@ import {
 } from "metabase/forms";
 import { Button, FocusTrap, Group, Modal, Stack, Text } from "metabase/ui";
 import { useResetWorkspaceDeploymentMutation } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import type { Workspace, WorkspaceInstance } from "metabase-types/api";
 
 export type ResetInstanceModalProps = {
   workspace: Workspace;
+  instance: WorkspaceInstance;
   opened: boolean;
   onClose: () => void;
 };
 
 export function ResetInstanceModal({
   workspace,
+  instance,
   opened,
   onClose,
 }: ResetInstanceModalProps) {
@@ -29,27 +31,32 @@ export function ResetInstanceModal({
       onClose={onClose}
     >
       <FocusTrap.InitialFocus />
-      <ResetInstanceForm workspace={workspace} onClose={onClose} />
+      <ResetInstanceForm
+        workspace={workspace}
+        instance={instance}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
 
 type ResetInstanceFormProps = {
   workspace: Workspace;
+  instance: WorkspaceInstance;
   onClose: () => void;
 };
 
-function ResetInstanceForm({ workspace, onClose }: ResetInstanceFormProps) {
+function ResetInstanceForm({
+  workspace,
+  instance,
+  onClose,
+}: ResetInstanceFormProps) {
   const [resetWorkspaceDeployment] = useResetWorkspaceDeploymentMutation();
 
   const handleSubmit = async () => {
-    const instance = workspace.workspace_instance;
-    if (instance == null) {
-      return;
-    }
     await resetWorkspaceDeployment({
       id: workspace.id,
-      instance_id: instance.id,
+      workspace_instance_id: instance.id,
     }).unwrap();
     onClose();
   };

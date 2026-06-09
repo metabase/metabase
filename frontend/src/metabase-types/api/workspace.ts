@@ -19,7 +19,6 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   databases: WorkspaceDatabase[];
-  workspace_instance?: WorkspaceInstance | null;
   created_at: string;
   creator_id: UserId;
 

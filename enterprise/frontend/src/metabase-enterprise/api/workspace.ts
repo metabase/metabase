@@ -162,26 +162,26 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace-manager/${id}/deployment`,
         body,
       }),
-      invalidatesTags: (_, error, { id, instance_id }) =>
+      invalidatesTags: (_, error, { id, workspace_instance_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
           idTag("workspace", id),
-          idTag("workspace-instance", instance_id),
+          idTag("workspace-instance", workspace_instance_id),
         ]),
     }),
     resetWorkspaceDeployment: builder.mutation<
       Workspace,
       WorkspaceDeploymentRequest
     >({
-      query: ({ id, instance_id }) => ({
+      query: ({ id, workspace_instance_id }) => ({
         method: "DELETE",
-        url: `/api/ee/workspace-manager/${id}/deployment/${instance_id}`,
+        url: `/api/ee/workspace-manager/${id}/deployment/${workspace_instance_id}`,
       }),
-      invalidatesTags: (_, error, { id, instance_id }) =>
+      invalidatesTags: (_, error, { id, workspace_instance_id }) =>
         invalidateTags(error, [
           listTag("workspace"),
           idTag("workspace", id),
-          idTag("workspace-instance", instance_id),
+          idTag("workspace-instance", workspace_instance_id),
         ]),
     }),
   }),

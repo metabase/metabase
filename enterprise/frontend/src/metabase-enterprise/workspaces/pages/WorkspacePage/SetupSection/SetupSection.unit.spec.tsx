@@ -67,11 +67,11 @@ describe("SetupSection", () => {
     });
   });
 
-  it("shows 'Reset the instance' when the workspace already has an instance", async () => {
+  it("shows 'Reset the instance' when an instance is bound to this workspace", async () => {
+    const workspace = createMockWorkspace({ id: 3 });
     setup({
-      workspace: createMockWorkspace({
-        workspace_instance: createMockWorkspaceInstance({ id: 7 }),
-      }),
+      workspace,
+      instances: [createMockWorkspaceInstance({ id: 7, workspace_id: 3 })],
     });
 
     expect(

@@ -28,7 +28,10 @@ export type SetupSectionProps = {
 export function SetupSection({ workspace }: SetupSectionProps) {
   const { data: instances = [] } = useListWorkspaceInstancesQuery();
 
-  const instance = workspace.workspace_instance ?? null;
+  // The bound instance is the pool instance whose `workspace_id` points back here.
+  const instance =
+    instances.find((instance) => instance.workspace_id === workspace.id) ??
+    null;
 
   const configLink = (
     <Anchor
@@ -53,7 +56,11 @@ export function SetupSection({ workspace }: SetupSectionProps) {
     >
       <Group p="lg" justify="space-between" align="center">
         <Text maw="40rem">{description}</Text>
-        <DeploymentButton workspace={workspace} instances={instances} />
+        <DeploymentButton
+          workspace={workspace}
+          instance={instance}
+          instances={instances}
+        />
       </Group>
       {instance != null && (
         <>
@@ -74,21 +81,27 @@ export function SetupSection({ workspace }: SetupSectionProps) {
 
 type DeploymentButtonProps = {
   workspace: Workspace;
+  instance: WorkspaceInstance | null;
   instances: WorkspaceInstance[];
 };
 
-function DeploymentButton({ workspace, instances }: DeploymentButtonProps) {
+function DeploymentButton({
+  workspace,
+  instance,
+  instances,
+}: DeploymentButtonProps) {
   const [setupOpened, { open: openSetup, close: closeSetup }] =
     useDisclosure(false);
   const [resetOpened, { open: openReset, close: closeReset }] =
     useDisclosure(false);
 
-  if (workspace.workspace_instance != null) {
+  if (instance != null) {
     return (
       <>
         <Button onClick={openReset}>{t`Reset the instance`}</Button>
         <ResetInstanceModal
           workspace={workspace}
+          instance={instance}
           opened={resetOpened}
           onClose={closeReset}
         />
