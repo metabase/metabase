@@ -9,6 +9,8 @@ import {
 } from "react";
 import { Route, Router, browserHistory } from "react-router";
 
+import { DATA_APP_EMBED_PREFIX } from "metabase/data_apps/constants";
+
 /**
  * Data-app routing primitives.
  *
@@ -30,15 +32,38 @@ interface DataAppRouterContextValue {
 export const DataAppRouterContext =
   createContext<DataAppRouterContextValue | null>(null);
 
-const DATA_APP_BASENAME_RE = /^\/embed\/data-app\/[^/]+/;
+/**
+ * Escape a string for safe use as a literal inside a `RegExp`. The
+ * embed-prefix constant doesn't currently contain regex metacharacters,
+ * but escaping makes the regex robust against future changes to the
+ * constant.
+ */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Captures everything from the start of `pathname` up to and including the
+// data-app `:name` segment. Tolerates a Metabase subpath install
+// (`/mb/embed/data-app/sales/…`) by allowing arbitrary characters before
+// the `DATA_APP_EMBED_PREFIX` literal. In root installs (no subpath) the
+// pre-segment is empty and the match becomes `${DATA_APP_EMBED_PREFIX}/<name>`.
+const DATA_APP_BASENAME_RE = new RegExp(
+  `^(.*?${escapeRegExp(DATA_APP_EMBED_PREFIX)}/[^/]+)`,
+);
 
 /**
- * Returns the iframe URL's data-app prefix (e.g. `/embed/data-app/sales`)
- * so the provider can strip it before exposing the sub-path to the bundle.
- * Returns `""` for non-iframe contexts (the dev preview).
+ * Returns the iframe URL's data-app prefix — including any Metabase
+ * subpath install root — so the provider can strip it before exposing
+ * the sub-path to the bundle. Returns `""` for non-iframe contexts (the
+ * dev preview).
+ *
+ * Examples:
+ *   `/embed/data-app/sales/customers/42`       → `/embed/data-app/sales`
+ *   `/mb/embed/data-app/sales/customers/42`    → `/mb/embed/data-app/sales`
+ *   `/customers/42`                            → `""`
  */
 function detectBasename(): string {
-  return window.location.pathname.match(DATA_APP_BASENAME_RE)?.[0] ?? "";
+  return window.location.pathname.match(DATA_APP_BASENAME_RE)?.[1] ?? "";
 }
 
 export function getBasename(): string {

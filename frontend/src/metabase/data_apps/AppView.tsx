@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useGetDataAppQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DATA_APP_EMBED_PREFIX } from "metabase/data_apps/constants";
 import { Box, Text } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 
@@ -25,7 +26,9 @@ function deriveIframeSrc(name: string): string {
   const path = window.location.pathname;
   const i = path.indexOf(prefix);
   const tail = i >= 0 ? path.slice(i + prefix.length) : "";
-  return getSubpathSafeUrl(`/embed/data-app/${encodeURIComponent(name)}${tail}`);
+  return getSubpathSafeUrl(
+    `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`,
+  );
 }
 
 /**
@@ -44,7 +47,7 @@ function attachIframeUrlMirror(
   iframeWindow: Window,
   parentName: string,
 ): () => void {
-  const iframePrefix = `/embed/data-app/${encodeURIComponent(parentName)}`;
+  const iframePrefix = `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`;
   const parentPrefix = `/data-app/${encodeURIComponent(parentName)}`;
 
   const mirror = () => {

@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "metabase/utils/csp";
 import "metabase/utils/dayjs";
 
+import api from "metabase/api/legacy-client";
 import { DataAppIframeApp } from "metabase/data_apps/DataAppIframeApp";
 import registerVisualizations from "metabase/visualizations/register";
 
@@ -19,6 +20,9 @@ import registerVisualizations from "metabase/visualizations/register";
  * `MetabaseProvider` endowment, which sets up the SDK Redux store and
  * theme on demand.
  */
+
+api.basename = (window.MetabaseRoot ?? "").replace(/\/+$/, "");
+
 function _init() {
   document.body.style.margin = "0";
 
