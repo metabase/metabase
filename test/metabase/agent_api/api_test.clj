@@ -543,7 +543,9 @@
                                                    {:name          "Perm Filtered Q"
                                                     :query         (:query construct-resp)
                                                     :collection_id c-id})]
-          (is (= "Our analytics / Visible Parent / Leaf Coll" (:collection_path create-resp)))
+          ;; rasta can't read the root collection here either, so "Our analytics" is dropped too —
+          ;; the point is that the unreadable middle parent never appears.
+          (is (= "Visible Parent / Leaf Coll" (:collection_path create-resp)))
           (t2/delete! :model/Card :id (:id create-resp)))))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------

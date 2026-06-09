@@ -57,34 +57,31 @@
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
-(defn- default-collection-id
-  "Collection id to use when the caller passed none: the caller's personal collection.
-  API-key callers have no personal collection, so this falls back to `nil` (the root collection)."
-  [collection-id]
-  ;; Personal rather than the root collection REST defaults to — agent-created content belongs in the
-  ;; user's own space, not shared "Our analytics".
-  (or collection-id (:id (collection/user->personal-collection api/*current-user-id*))))
+(defn- personal-collection-id
+  "Id of the current caller's personal collection, created on demand; `nil` for API-key callers,
+  which have none. Agent-created content defaults here rather than the root collection REST uses —
+  the user's own space, not shared \"Our analytics\"."
+  []
+  (:id (collection/user->personal-collection api/*current-user-id*)))
 
 (defn- collection-path
   "Permission-filtered location breadcrumb of `collection-id`, e.g. \"Our analytics / Marketing / Q3\".
   Ancestors the caller can't read are omitted, matching the app breadcrumb.
   A `nil` `collection-id` is the root collection (\"Our analytics\"), not a personal collection."
   [collection-id]
-  (let [root-name (:name (collection/root-collection-with-ui-details nil))]
-    (if-not collection-id
-      root-name
-      (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
-                                      :namespace :archived_directly]
-                                     collection-id)
-            ;; `:effective_ancestors` drops ancestors the caller can't read and prepends the root
-            ;; placeholder; strip it and re-derive the prefix below so personal subtrees breadcrumb
-            ;; under the owner's personal collection, not "Our analytics".
-            ancestors (remove #(= "root" (:id %))
-                              (:effective_ancestors (t2/hydrate coll :effective_ancestors)))
-            chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))
-            crumbs    (cond->> (map :name chain)
-                        (not (:personal_owner_id (first chain))) (cons root-name))]
-        (str/join " / " crumbs)))))
+  (if-not collection-id
+    (:name (collection/root-collection-with-ui-details nil))
+    (let [coll      (t2/select-one [:model/Collection :id :name :location :personal_owner_id
+                                    :namespace :archived_directly]
+                                   collection-id)
+          ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
+          ;; drops ancestors the caller can't read. A personal subtree leads with the personal
+          ;; collection instead, so drop that root crumb for them.
+          ancestors (cond->> (:effective_ancestors (t2/hydrate coll :effective_ancestors))
+                      (collection/is-personal-collection-or-descendant-of-one? coll)
+                      (remove #(= "root" (:id %))))
+          chain     (collection/personal-collections-with-ui-details (conj (vec ancestors) coll))]
+      (str/join " / " (map :name chain)))))
 
 (defn submit-mcp-visualization-feedback!
   "Submit MCP Apps visualization feedback to Harbormaster.
@@ -671,7 +668,7 @@
     question-name :name}
    :- ::create-question-request]
   (let [dataset-query (-> query u/decode-base64 json/decode+kw)
-        collection_id (default-collection-id collection_id)]
+        collection_id (or collection_id (personal-collection-id))]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -854,7 +851,7 @@
    {:keys [description collection_id question_ids]
     dashboard-name :name}
    :- ::create-dashboard-request]
-  (let [collection_id (default-collection-id collection_id)]
+  (let [collection_id (or collection_id (personal-collection-id))]
     (api/create-check :model/Dashboard {:collection_id collection_id})
     (let [cards (when (seq question_ids)
                   (mapv #(api/read-check :model/Card %) question_ids))
