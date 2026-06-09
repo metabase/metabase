@@ -5,8 +5,10 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.plugins.impl :as plugins]
+   [metabase.sample-data.example-content :as example-content]
    [metabase.sample-data.impl :as sample-data]
    [metabase.sync.core :as sync]
    [metabase.sync.task.sync-databases-test :as task.sync-databases-test]
@@ -152,6 +154,25 @@
           (is (t2/exists? :model/Card :id (:id other-card))))
         (testing "the new bundled sample DB is extracted and synced"
           (is (true? @extract-called?)))))))
+
+(deftest recreate-sample-database-forces-engine-test
+  (testing "recreate-sample-database! forces the requested engine even though this jar ships SQLite"
+    (let [seen-engine (atom nil)]
+      (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
+                                  (fn [] (reset! seen-engine (#'sample-data/sample-database-engine)))
+                                  example-content/recreate-example-content!
+                                  (fn [_db-id] nil)]
+        (#'sample-data/recreate-sample-database! :h2))
+      (testing "the heavy extraction/sync ran with the engine override applied"
+        (is (= :h2 @seen-engine))))))
+
+(deftest recreate-sample-database-respects-sample-content-flag-test
+  (testing "recreate-sample-database! does nothing when sample content is disabled"
+    (let [extract-called? (atom false)]
+      (mt/with-dynamic-fn-redefs [config/load-sample-content?                (constantly false)
+                                  sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
+        (#'sample-data/recreate-sample-database! :h2))
+      (is (false? @extract-called?)))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"

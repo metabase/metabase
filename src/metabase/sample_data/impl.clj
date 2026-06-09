@@ -26,14 +26,20 @@
 
 (def ^:private ^String h2-sample-database-filename "sample-database.db.mv.db")
 
+(def ^:dynamic *sample-database-engine-override*
+  "When bound to a keyword, forces [[sample-database-engine]] to that engine. Used by the SQLite->H2
+  downgrade path to extract+sync the H2 sample database even though this jar otherwise ships SQLite."
+  nil)
+
 (defn- sample-database-engine
   "Engine of the bundled sample database. Defaults to `:sqlite` (what we ship). E2E tests set
   `MB_SAMPLE_DATABASE_ENGINE=h2` so the sample database is the H2 one the suite was written against,
   deferring the test migration to SQLite without changing what we ship."
   []
-  (if (= "h2" (System/getenv "MB_SAMPLE_DATABASE_ENGINE"))
-    :h2
-    :sqlite))
+  (cond
+    *sample-database-engine-override*                  *sample-database-engine-override*
+    (= "h2" (System/getenv "MB_SAMPLE_DATABASE_ENGINE")) :h2
+    :else                                              :sqlite))
 
 (defn- sample-database-filename
   []
@@ -130,6 +136,19 @@
       (when (seq empty-ids)
         (t2/delete! :model/Dashboard :id [:in empty-ids])))))
 
+(defn recreate-sample-database!
+  "Extract + sync a fresh sample database of `engine` and, unless running under test endpoints, reseed
+  its Example collection. Gated on sample content being enabled, and assumes any prior sample database
+  has already been removed. `engine` is forced via [[*sample-database-engine-override*]] so callers can
+  recreate an engine other than what this jar ships (the SQLite->H2 downgrade migration forces `:h2`)."
+  [engine]
+  (binding [*sample-database-engine-override* engine]
+    (when (config/load-sample-content?)
+      (extract-and-sync-sample-database!)
+      (when-not (config/config-bool :mb-enable-test-endpoints)
+        (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
+          (example-content/recreate-example-content! new-db-id))))))
+
 (defn- replace-sample-database!
   "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
   Database's tables, fields, and connection details are incompatible with the new engine, so rather
@@ -146,11 +165,7 @@
   (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
     (t2/delete! :model/Database (:id old-sample-db))
     (delete-emptied-dashboards! dashboard-ids))
-  (when (config/load-sample-content?)
-    (extract-and-sync-sample-database!)
-    (when-not (config/config-bool :mb-enable-test-endpoints)
-      (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
-        (example-content/recreate-example-content! new-db-id)))))
+  (recreate-sample-database! (sample-database-engine)))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
