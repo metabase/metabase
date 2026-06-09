@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { getErrorMessage } from "metabase/api/utils";
 import type { Dataset, Field } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
@@ -12,8 +13,6 @@ export function getPreviewTypeData() {
 }
 
 export function getDataErrorMessage(data: Dataset): string {
-  const error = typeof data.error === "string" ? data.error : data.error?.data;
-
   if (data.error_type === "invalid-query") {
     return t`Something went wrong fetching the data for this field. This could mean something is wrong with the field settings, like a cast that is not supported for the underlying data type. Please check your settings and try again.`;
   }
@@ -22,7 +21,7 @@ export function getDataErrorMessage(data: Dataset): string {
     return t`You do not have permission to preview this field's data.`;
   }
 
-  return error ?? t`Something went wrong`;
+  return getErrorMessage(data.error);
 }
 
 export function is403Error(error: unknown): boolean {

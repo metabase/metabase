@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
+import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import {
   createDraftCard,
@@ -63,9 +64,10 @@ const getErrorMessage = (
   queryError: unknown,
 ): string => {
   if (failedDataset?.error) {
-    return typeof failedDataset.error === "string"
-      ? failedDataset.error
-      : failedDataset.error?.data || t`Query execution failed`;
+    return getResponseErrorMessage(
+      failedDataset.error,
+      t`Query execution failed`,
+    );
   }
   if (typeof queryError === "object" && queryError && "message" in queryError) {
     return String(queryError.message);
