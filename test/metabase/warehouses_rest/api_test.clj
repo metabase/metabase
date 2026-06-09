@@ -37,8 +37,9 @@
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
@@ -1528,9 +1529,9 @@
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
                    ;; this is flaking and I suspect it's because the triggers is created async in
                    ;; post-insert hook of Database
-                   (u/poll {:thunk     #(task.sync-databases-test/query-all-db-sync-triggers-name db)
-                            :done?      not-empty
-                            :timeout-ms 300}))))
+                   (util-be/poll {:thunk     #(task.sync-databases-test/query-all-db-sync-triggers-name db)
+                                  :done?      not-empty
+                                  :timeout-ms 300}))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly

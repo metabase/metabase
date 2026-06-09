@@ -25,6 +25,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -147,7 +148,7 @@
   [{:keys [dataset-filters-type dataset-filters-patterns] :as details} & {:keys [logging-schema-exclusions?]}]
   (let [client (database-details->client details)
         project-id (bigquery.common/get-project-id details)
-        datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+        datasets (.listDatasets client project-id (util-be/varargs BigQuery$DatasetListOption))
         inclusion-patterns (when (= "inclusion" dataset-filters-type) dataset-filters-patterns)
         exclusion-patterns (when (= "exclusion" dataset-filters-type) dataset-filters-patterns)]
     (for [^Dataset dataset (.iterateAll datasets)
@@ -178,7 +179,7 @@
       true)))
 
 (def ^:private empty-table-options
-  (u/varargs BigQuery$TableOption))
+  (util-be/varargs BigQuery$TableOption))
 
 (defn- get-table*
   [^BigQuery client project-id dataset-id table-id]
@@ -548,7 +549,7 @@
   (let [field-idxs  (mapv :database_position fields)
         all-parsers (get-field-parsers (.. bq-table getDefinition getSchema))
         parsers     (mapv all-parsers field-idxs)
-        page        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
+        page        (.list bq-table (util-be/varargs BigQuery$TableDataListOption))]
     (transduce
      (comp (take table-rows-sample/max-sample-rows)
            (map (partial extract-fingerprint field-idxs parsers)))
@@ -743,7 +744,7 @@
         ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
         ;; in the UI. (#71558)
         ^Job job         (try
-                           (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                           (.create client (JobInfo/of request) (util-be/varargs BigQuery$JobOption))
                            (catch Throwable t
                              (handle-bigquery-exception t sql parameters)))
         job-id           (.getJobId job)
@@ -753,7 +754,7 @@
                            (try
                              (*page-callback*)
                              (let [result-options (if *page-size* [(BigQuery$QueryResultsOption/pageSize *page-size*)] [])
-                                   result         (.getQueryResults job (u/varargs BigQuery$QueryResultsOption result-options))]
+                                   result         (.getQueryResults job (util-be/varargs BigQuery$QueryResultsOption result-options))]
                                (if result
                                  (deliver result-promise [:ready result])
                                  (throw (ex-info "Null response from query" {}))))
@@ -799,7 +800,7 @@
     (try
       (thunk)
       (catch Throwable e
-        (let [ex-data (u/all-ex-data e)]
+        (let [ex-data (util-be/all-ex-data e)]
           (if (:retryable? ex-data)
             (thunk)
             (throw e)))))))
@@ -1100,7 +1101,7 @@
   (let [client     (database-details->client conn-spec) ;; for bigquery, connection spec *is* the details
         project-id (bigquery.common/get-project-id conn-spec)
         dataset-id (DatasetId/of project-id schema)]
-    (when-not (.getDataset client dataset-id (u/varargs BigQuery$DatasetOption))
+    (when-not (.getDataset client dataset-id (util-be/varargs BigQuery$DatasetOption))
       ;; Dataset doesn't exist, try to create it
       (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
         (driver/execute-raw-queries! driver conn-spec sql)))))

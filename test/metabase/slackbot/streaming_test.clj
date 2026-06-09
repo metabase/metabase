@@ -11,7 +11,7 @@
    [metabase.slackbot.test-util :as tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
@@ -144,9 +144,9 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                       :done?      true?
-                       :timeout-ms 5000})
+              (util-be/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                             :done?      true?
+                             :timeout-ms 5000})
               (testing "stop-stream was called with feedback blocks"
                 (let [{:keys [blocks]} (first @stop-stream-calls)]
                   (is (= 1 (count blocks)))
@@ -195,9 +195,9 @@
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
-                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                         :done?      true?
-                         :timeout-ms 5000})))
+                (util-be/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000})))
             (testing "start-turn! received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}] @start-opts)))))))))
 
@@ -246,9 +246,9 @@
                         (mt/client :post 200 "metabot/slack/events"
                                    (tu/slack-request-options event-body)
                                    event-body)
-                        (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                                 :done?      true?
-                                 :timeout-ms 5000})))
+                        (util-be/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                                       :done?      true?
+                                       :timeout-ms 5000})))
                     (testing "start-turn! never received :hostname or :pii-info from the slackbot path"
                       (doseq [opts @start-opts]
                         (is (not (contains? opts :hostname)))
@@ -273,9 +273,9 @@
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
-                (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
-                         :done?      true?
-                         :timeout-ms 5000})))
+                (util-be/poll {:thunk      #(>= (count @stop-stream-calls) 1)
+                               :done?      true?
+                               :timeout-ms 5000})))
             (testing "start-turn! received ai-proxy? = false"
               (is (=? [{:ai-proxy? false}] @start-opts)))))))))
 

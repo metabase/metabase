@@ -22,8 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]])
-  #?@(:cljs [(:require-macros [metabase.lib.convert :refer [with-aggregation-list]])]))
+   [metabase.util.performance :refer [mapv some select-keys not-empty #?(:clj doseq) #?(:clj for)]]))
 
 (def ^:private ^:dynamic *mbql5-uuid->legacy-index*
   {})
@@ -214,13 +213,6 @@
               *mbql5-uuid->legacy-index* mbql5->legacy]
       (thunk))))
 
-#?(:clj
-   (defmacro with-aggregation-list
-     "Macro for capturing the context of a query stage's `:aggregation` list, so any legacy `[:aggregation 0]` indexed
-     refs can be converted correctly to UUID-based MBQL 5 refs."
-     [aggregations & body]
-     `(do-with-aggregation-list ~aggregations (fn [] ~@body))))
-
 (defn- index-ref-clauses->mbql5 [clauses]
   (letfn [(pass [state]
             (reduce (fn [{:keys [index index->uuid converted] :as state} clause]
@@ -291,20 +283,21 @@
                                      ->mbql5
                                      (lib.util/top-level-expression-clause k))))
                          not-empty)]
-    (metabase.lib.convert/with-aggregation-list (:aggregation stage)
-      (let [stage (-> stage
-                      stage-source-card-id->mbql5
-                      (m/assoc-some :expressions expressions))
-            stage (reduce
-                   (fn [stage k]
-                     (if-not (get stage k)
-                       stage
-                       (update stage k ->mbql5)))
-                   stage
-                   (disj stage-keys :expressions :aggregation))]
-        (cond-> stage
-          (:joins stage)              (update :joins deduplicate-join-aliases)
-          (:lib/stage-metadata stage) (update-in [:lib/stage-metadata :columns] add-source-uuids-to-cols expressions))))))
+    (do-with-aggregation-list (:aggregation stage)
+                              (fn []
+                                (let [stage (-> stage
+                                                stage-source-card-id->mbql5
+                                                (m/assoc-some :expressions expressions))
+                                      stage (reduce
+                                             (fn [stage k]
+                                               (if-not (get stage k)
+                                                 stage
+                                                 (update stage k ->mbql5)))
+                                             stage
+                                             (disj stage-keys :expressions :aggregation))]
+                                  (cond-> stage
+                                    (:joins stage)              (update :joins deduplicate-join-aliases)
+                                    (:lib/stage-metadata stage) (update-in [:lib/stage-metadata :columns] add-source-uuids-to-cols expressions)))))))
 
 (defmethod ->mbql5 :mbql.stage/native
   [stage]
@@ -730,16 +723,17 @@
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql
   [stage]
-  (metabase.lib.convert/with-aggregation-list (:aggregation stage)
-    (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-            (-> stage
-                disqualify
-                source-card->legacy-source-table
-                (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-                (m/update-existing :breakout #(mapv ->legacy-MBQL %))
-                (m/update-existing :expressions stage-expressions->legacy-MBQL)
-                (update-list->legacy-boolean-expression :filters :filter))
-            (disj stage-keys :aggregation :breakout :filters :expressions))))
+  (do-with-aggregation-list (:aggregation stage)
+                            (fn []
+                              (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
+                                      (-> stage
+                                          disqualify
+                                          source-card->legacy-source-table
+                                          (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+                                          (m/update-existing :breakout #(mapv ->legacy-MBQL %))
+                                          (m/update-existing :expressions stage-expressions->legacy-MBQL)
+                                          (update-list->legacy-boolean-expression :filters :filter))
+                                      (disj stage-keys :aggregation :breakout :filters :expressions)))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
@@ -787,16 +781,17 @@
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]
-     (with-aggregation-list aggregations
-       (try
-         (->mbql5 legacy-ref)
-         (catch #?(:clj Throwable :cljs :default) e
-           (throw (ex-info (lib.util/format "Error converting legacy ref to MBQL 5: %s" (ex-message e))
-                           {:query                    query
-                            :stage-number             stage-number
-                            :legacy-ref               legacy-ref
-                            :legacy-index->mbql5-uuid *legacy-index->mbql5-uuid*}
-                           e))))))))
+     (do-with-aggregation-list aggregations
+                               (fn []
+                                 (try
+                                   (->mbql5 legacy-ref)
+                                   (catch #?(:clj Throwable :cljs :default) e
+                                     (throw (ex-info (lib.util/format "Error converting legacy ref to MBQL 5: %s" (ex-message e))
+                                                     {:query                    query
+                                                      :stage-number             stage-number
+                                                      :legacy-ref               legacy-ref
+                                                      :legacy-index->mbql5-uuid *legacy-index->mbql5-uuid*}
+                                                     e)))))))))
 
 (defn- from-json [query-fragment]
   #?(:cljs (if (object? query-fragment)

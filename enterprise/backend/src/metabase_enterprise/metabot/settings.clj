@@ -2,7 +2,7 @@
   "Enterprise-only metabot settings for usage limits."
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (def ^:private valid-limit-units #{:tokens :messages})
 

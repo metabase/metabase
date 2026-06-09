@@ -16,7 +16,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as string]
@@ -210,7 +210,7 @@
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (or pending
             (let [table-name (gen-table-name)]
-              (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
+              (log/infof "Creating pending index %s for lang %s" table-name (i18n-be/site-locale-string))
               ;; We may fail to insert a new metadata row if we lose a race with another instance.
               (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
                 (try
@@ -405,7 +405,7 @@
                     :model/SearchIndexMetadata
                     :engine :appdb
                     :version (search.spec/index-version-hash)
-                    :lang_code (i18n/site-locale-string)
+                    :lang_code (i18n-be/site-locale-string)
                     :status :active
                     {:order-by [[:created_at :desc]]}))
 
@@ -469,7 +469,7 @@
          (try
            (t2/insert! :model/SearchIndexMetadata {:engine     :appdb
                                                    :version    version#
-                                                   :lang_code  (i18n/site-locale-string)
+                                                   :lang_code  (i18n-be/site-locale-string)
                                                    :status     :pending
                                                    :index_name (name table-name#)})
            (create-table! table-name#)

@@ -18,6 +18,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -117,9 +118,9 @@
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees."
   [driver db-id table-name metadata data-source]
   (let [source-table-name (transforms-base.u/temp-table-name driver (namespace table-name))
-        temp-table-name (u/poll {:thunk #(transforms-base.u/temp-table-name driver (namespace table-name))
-                                 :done? #(not= source-table-name %)
-                                 :interval-ms 1})]
+        temp-table-name (util-be/poll {:thunk #(transforms-base.u/temp-table-name driver (namespace table-name))
+                                       :done? #(not= source-table-name %)
+                                       :interval-ms 1})]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
       (create-table-and-insert-data! driver db-id (table-schema source-table-name metadata) data-source)
@@ -261,7 +262,7 @@
                            :events            events
                            :timeout           (:timeout body)}))
           (try
-            (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
+            (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (util-be/varargs FileAttribute))
                   temp-file ^File (.toFile temp-path)]
               (when-not (seq (:fields output-manifest))
                 (throw (ex-info "No fields in metadata"

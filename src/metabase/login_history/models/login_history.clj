@@ -6,7 +6,8 @@
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -19,7 +20,7 @@
   (when zone-id
     (.getDisplayName zone-id
                      java.time.format.TextStyle/SHORT_STANDALONE
-                     (i18n/user-locale))))
+                     (i18n-be/user-locale))))
 
 (defn human-friendly-infos
   "Return human-friendly versions of the info in one or more LoginHistory instances. Powers the login history API

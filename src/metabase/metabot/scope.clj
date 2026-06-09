@@ -8,7 +8,7 @@
   (:require
    [metabase.api-scope.core :as api-scope]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (set! *warn-on-reflection* true)
 

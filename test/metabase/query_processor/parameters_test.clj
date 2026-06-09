@@ -19,6 +19,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]))
 
 (defn- run-count-query [query]
@@ -715,7 +716,7 @@
                     (is (not ::here?)
                         "Should never get here, query should throw an Exception")
                     (catch Throwable e
-                      (doseq [data (keep ex-data (u/full-exception-chain e))]
+                      (doseq [data (keep ex-data (util-be/full-exception-chain e))]
                         (walk/postwalk
                          (fn [form]
                            (when (string? form)

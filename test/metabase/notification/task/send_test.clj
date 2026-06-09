@@ -8,7 +8,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2])
   (:import
    (org.quartz TriggerKey)))
@@ -40,17 +40,17 @@
                               :cron_schedule every-second}]
                             [{:channel_id chn-id
                               :channel_type notification.tu/test-channel-type}])]
-                  (is (not-empty (u/poll {:thunk       (fn [] @captured-messages)
-                                          :done?       seq
-                                          :timeout-ms  2000
-                                          :interval-ms 100})))
+                  (is (not-empty (util-be/poll {:thunk       (fn [] @captured-messages)
+                                                :done?       seq
+                                                :timeout-ms  2000
+                                                :interval-ms 100})))
                   (is (=? {:task         "notification-trigger"
                            :task_details {:trigger_type                 "notification-subscription/cron"
                                           :notification_subscription_id (mt/malli=? pos-int?)
                                           :cron_schedule                every-second
                                           :notification_ids             [(:id noti)]}}
-                          (u/poll {:thunk #(latest-task-history-entry "notification-trigger")
-                                   :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))
+                          (util-be/poll {:thunk #(latest-task-history-entry "notification-trigger")
+                                         :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))
 
 (deftest init-send-notification-triggers-test
   (mt/with-model-cleanup [:model/Notification]

@@ -12,6 +12,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -74,7 +75,7 @@
   "Check if a table exists."
   [table-name ^Connection conn]
   (-> (.getMetaData conn)
-      (.getTables  nil nil table-name (u/varargs String ["TABLE"]))
+      (.getTables  nil nil table-name (util-be/varargs String ["TABLE"]))
       jdbc/metadata-query
       seq
       boolean))
@@ -234,16 +235,16 @@
   chance the lock will end up clearing up so we can run migrations normally."
   [^LockService lock-service]
   (let [retry-counter (volatile! 0)]
-    (u/auto-retry 5
-      (when-not (.acquireLock lock-service)
-        (Thread/sleep 2000)
-        (vswap! retry-counter inc)
-        (throw
-         (LockException.
-          (str
-           (trs "Database has migration lock; cannot run migrations.")
-           " "
-           (trs "You can force-release these locks by running `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks`."))))))
+    (util-be/auto-retry 5
+                        (when-not (.acquireLock lock-service)
+                          (Thread/sleep 2000)
+                          (vswap! retry-counter inc)
+                          (throw
+                           (LockException.
+                            (str
+                             (trs "Database has migration lock; cannot run migrations.")
+                             " "
+                             (trs "You can force-release these locks by running `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks`."))))))
     (if (pos? @retry-counter)
       (log/warnf "Migration lock was acquired after %d retries." @retry-counter)
       (do (log/info "No migration lock found.")

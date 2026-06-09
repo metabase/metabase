@@ -21,7 +21,7 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
@@ -161,7 +161,7 @@
 
 (defmethod sql.qp/->honeysql [:presto-jdbc (Class/forName "[B")]
   [_driver bs]
-  [:from_base64 (u/encode-base64-bytes bs)])
+  [:from_base64 (util-be/encode-base64-bytes bs)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
   [_ [_ t]]

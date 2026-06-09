@@ -723,6 +723,7 @@
    metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
    metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
    metabase.lib.common/defop                                                                    macros.metabase.lib.common/defop
+   metabase.lib.common.macros/defop                                                             macros.metabase.lib.common/defop
    metabase.lib.filter/deffilter                                                                macros.metabase.lib.filter/deffilter
    metabase.parameters.chain-filter-test/chain-filter                                           macros.metabase.parameters.chain-filter-test/chain-filter
    metabase.parameters.chain-filter-test/chain-filter-search                                    macros.metabase.parameters.chain-filter-test/chain-filter

@@ -18,6 +18,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.convert.macros :refer [with-aggregation-list]]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
@@ -341,7 +342,7 @@
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
-  (lib.convert/with-aggregation-list (lib.aggregation/aggregations query)
+  (with-aggregation-list (lib.aggregation/aggregations query)
     (let [cols (mapv (fn [col]
                        (let [field-ref (super-broken-legacy-field-ref query col)]
                          (cond-> col

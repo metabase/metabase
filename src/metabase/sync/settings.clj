@@ -1,7 +1,7 @@
 (ns metabase.sync.settings
   (:require
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (defn- -show-database-syncing-modal []

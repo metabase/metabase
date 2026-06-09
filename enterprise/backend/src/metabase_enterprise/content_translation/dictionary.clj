@@ -7,7 +7,8 @@
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -30,7 +31,7 @@
 (defn- collect-locale-error
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
-  (when (not (i18n/included-locale? locale))
+  (when (not (i18n-be/included-locale? locale))
     (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
 
 (defn- collect-duplication-error
@@ -58,7 +59,7 @@
                    (get row-with-headers "locale code"))
         msgid (get row-with-headers "string")
         msgstr (get row-with-headers "translation")
-        normalized-locale (i18n/normalized-locale-string (str/trim locale))
+        normalized-locale (i18n-be/normalized-locale-string (str/trim locale))
         formatted-locale (if (nil? normalized-locale)
                            (str/trim locale)
                            normalized-locale)

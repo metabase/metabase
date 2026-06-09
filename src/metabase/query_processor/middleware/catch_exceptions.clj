@@ -11,6 +11,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -31,7 +32,7 @@
   {:status     :failed
    :class      (class e)
    :error      (.getMessage e)
-   :stacktrace (u/filtered-stacktrace e)})
+   :stacktrace (util-be/filtered-stacktrace e)})
 
 (defmethod format-exception InterruptedException
   [^InterruptedException _e]
@@ -61,7 +62,7 @@
 (defn- exception-chain
   "Exception chain in reverse order, e.g. inner-most cause first."
   [e]
-  (reverse (u/full-exception-chain e)))
+  (reverse (util-be/full-exception-chain e)))
 
 (mu/defn- best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
@@ -142,7 +143,7 @@
             ;; format the Exception and return it
             (let [formatted-exception (format-exception* query e @extra-info)
                   query-canceled?     (some (comp :query/query-canceled? ex-data)
-                                            (u/full-exception-chain e))]
+                                            (util-be/full-exception-chain e))]
               (when-not query-canceled?
                 (log/errorf "Error processing query: %s\n%s"
                             (or (:error formatted-exception) "Error running query")

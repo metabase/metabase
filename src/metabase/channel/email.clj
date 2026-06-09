@@ -9,6 +9,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -307,7 +308,7 @@
                                 (smtp->mb-setting :port mb-to-smtp-map) "Wrong host or port"}}
           creds-error {:errors {(smtp->mb-setting :user mb-to-smtp-map) "Wrong username or password"
                                 (smtp->mb-setting :pass mb-to-smtp-map) "Wrong username or password"}}
-          exceptions  (u/full-exception-chain error)
+          exceptions  (util-be/full-exception-chain error)
           message     (str/join ": " (map ex-message exceptions))
           match-error (fn match-error [regex-or-exception-class [message exceptions]]
                         (cond (instance? java.util.regex.Pattern regex-or-exception-class)

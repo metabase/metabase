@@ -5,7 +5,7 @@
    [clojure.test :refer :all]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util-be.core :as util-be]))
 
 (deftest ^:parallel compile-test
   (testing "Can we convert an MBQL query to a native query?"
@@ -36,7 +36,7 @@
   (testing "If query is already native, `compile` should not execute the query (metabase#13572)"
     ;; 1000,000,000 rows, no way this will finish in 2 seconds if executed
     (let [long-query "SELECT CHECKINS.* FROM CHECKINS LEFT JOIN CHECKINS C2 ON 1=1 LEFT JOIN CHECKINS C3 ON 1=1"]
-      (u/with-timeout 2000
+      (util-be/with-timeout 2000
         (is (= {:lib/type :mbql.stage/native, :query long-query}
                (qp.compile/compile
                 {:database (mt/id)

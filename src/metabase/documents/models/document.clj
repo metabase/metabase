@@ -10,7 +10,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]

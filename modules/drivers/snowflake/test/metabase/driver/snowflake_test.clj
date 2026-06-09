@@ -45,6 +45,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
@@ -65,7 +66,7 @@
         (qp/process-query query)
         (is false "no statement created")
         (catch Exception e
-          (-> e u/all-ex-data ::native-query))))))
+          (-> e util-be/all-ex-data ::native-query))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -752,11 +753,11 @@
                            :model/Secret {upload-secret-id :id} {:name "Private key upload for Snowflake"
                                                                  :kind :pem-cert
                                                                  :source "uploaded"
-                                                                 :value (u/string-to-bytes pk-key)}
+                                                                 :value (util-be/string-to-bytes pk-key)}
                            :model/Secret {base64-upload-secret-id :id} {:name "Private key base64 upload for Snowflake"
                                                                         :kind :pem-cert
                                                                         :source "uploaded"
-                                                                        :value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}]
+                                                                        :value (mt/bytes->base64-data-uri (util-be/string-to-bytes pk-key))}]
               (testing "private key authentication via uploaded keys or local key with path stored in a secret"
                 (spit pk-path pk-key)
                 (is (can-connect? (-> (:details (mt/db))
@@ -770,10 +771,10 @@
                                   {:private-key-value pk-key
                                    :private-key-options "uploaded"}
                                   ;; uploaded byte array
-                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))
+                                  {:private-key-value (mt/bytes->base64-data-uri (util-be/string-to-bytes pk-key))
                                    :private-key-options "uploaded"}
                                   ;; uploaded byte array without private-key-options
-                                  {:private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes pk-key))}
+                                  {:private-key-value (mt/bytes->base64-data-uri (util-be/string-to-bytes pk-key))}
                                   ;; saved local path
                                   {:private-key-id path-secret-id}
                                   ;; saved uploaded bytes
@@ -855,9 +856,9 @@
                             (let [source (case (:private-key-options details-to-succeed "local")
                                            "local" :file-path
                                            "uploaded" :uploaded)]
-                              (is (=? {:value (u/string-to-bytes (if (= :file-path source)
-                                                                   (:private-key-path details-to-succeed pk-path)
-                                                                   pk-key))
+                              (is (=? {:value (util-be/string-to-bytes (if (= :file-path source)
+                                                                         (:private-key-path details-to-succeed pk-path)
+                                                                         pk-key))
                                        :source source}
                                       (secret/latest-for-id secret-id))))))))))))))))))
 
@@ -881,7 +882,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (util-be/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
       ;; TODO: We should make those message returned when role is incorrect more descriptive!
@@ -940,7 +941,7 @@
                                        :advanced-options    false
                                        :schema-filters-type "all"
                                        :account             account
-                                       :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes private-key-value))
+                                       :private-key-value   (mt/bytes->base64-data-uri (util-be/string-to-bytes private-key-value))
                                        :tunnel-enabled      false
                                        :user                user}}]
       (testing "Database can be created using _default_ `nil` role"

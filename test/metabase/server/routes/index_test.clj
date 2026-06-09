@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.server.routes.index :as index]
    [metabase.test :as mt]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]))
 
 (deftest ^:parallel localization-json-file-name-test
@@ -24,7 +24,7 @@
                             "plural-forms"              "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
            (some->
-            (binding [i18n/*user-locale* "es_for_test"]
+            (binding [i18n-be/*user-locale* "es_for_test"]
               (#'index/load-localization nil))
             json/decode
             (update "translations" select-keys [""])
@@ -35,7 +35,7 @@
     (is (= {"headers"      {"language" "xx", "plural-forms" "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
            (some->
-            (binding [i18n/*user-locale* "xx"]
+            (binding [i18n-be/*user-locale* "xx"]
               (#'index/load-localization nil))
             json/decode)))))
 
@@ -44,7 +44,7 @@
     (is (= {"headers"      {"language" "en", "plural-forms" "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
            (some->
-            (binding [i18n/*user-locale* "en"]
+            (binding [i18n-be/*user-locale* "en"]
               (#'index/load-localization nil))
             json/decode)))))
 
@@ -60,7 +60,7 @@
                             "plural-forms"              "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
            (some->
-            (binding [i18n/*user-locale* "xx"]
+            (binding [i18n-be/*user-locale* "xx"]
               (#'index/load-localization "es_for_test"))
             json/decode
             (update "translations" select-keys [""])
@@ -69,18 +69,18 @@
     (is (= {"headers"      {"language" "yy", "plural-forms" "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
            (some->
-            (binding [i18n/*user-locale* "xx"]
+            (binding [i18n-be/*user-locale* "xx"]
               (#'index/load-localization "yy"))
             json/decode)))))
 
 (deftest load-entrypoint-template-contains-user-locale
-  (binding [i18n/*user-locale* "es"]
+  (binding [i18n-be/*user-locale* "es"]
     (is (= "es" (:language (#'index/template-parameters false {})))))
-  (binding [i18n/*user-locale* "en"]
+  (binding [i18n-be/*user-locale* "en"]
     (is (= "en" (:language (#'index/template-parameters false {})))))
   (mt/with-temporary-setting-values [site-locale "es"]
     ;; site locale is used as the default
     (is (= "es" (:language (#'index/template-parameters false {}))))
     ;; but we can override with the user locale
-    (binding [i18n/*user-locale* "fr"]
+    (binding [i18n-be/*user-locale* "fr"]
       (is (= "fr" (:language (#'index/template-parameters false {})))))))

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.workspaces.settings
   (:require
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (def keep-me
   "Marker so callers can `(comment ...keep-me)` to retain the require that registers the settings in this ns."

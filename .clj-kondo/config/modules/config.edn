@@ -109,6 +109,7 @@
            search
            settings
            util
+           util-be
            warehouses
            workspaces}
    :model-exports #{:model/Action}
@@ -174,7 +175,8 @@
               request
               server
               settings
-              util}
+              util
+              util-be}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/DashboardCard
@@ -310,7 +312,8 @@
            models
            permissions
            users
-           util}
+           util
+           util-be}
    :model-exports #{:model/ApiKey}
    :model-imports #{:model/User}}
 
@@ -337,7 +340,8 @@
            config
            connection-pool
            task
-           util}
+           util
+           util-be}
    :model-imports #{:model/Database
                     :model/Field
                     :model/QueryCache
@@ -506,7 +510,8 @@
            task
            timeline
            types
-           util}
+           util
+           util-be}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/Database
@@ -533,7 +538,8 @@
            settings
            store-api
            task
-           util}
+           util
+           util-be}
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
@@ -854,6 +860,7 @@
            system
            tracing
            util
+           util-be
            warehouse-schema
            warehouses
            ;; `metabase.driver.sync/include-schema?` skips workspace iso schemas
@@ -949,7 +956,8 @@
            query-processor
            request
            tiles
-           util}
+           util
+           util-be}
    :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
 
   events
@@ -1478,6 +1486,7 @@
            models
            query-processor
            util
+           util-be
            warehouse-schema
            warehouses}
    :model-imports #{:model/Card
@@ -1547,7 +1556,8 @@
    :api  #{metabase.plugins.core}
    :uses #{classloader
            driver
-           util}}
+           util
+           util-be}}
 
   premium-features
   {:team "UX West"
@@ -1823,6 +1833,7 @@
            tracing
            users
            util
+           util-be
            workspaces}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -1858,7 +1869,8 @@
            session
            settings
            users
-           util}
+           util
+           util-be}
    :model-imports #{:model/User}}
 
   revisions
@@ -1874,7 +1886,8 @@
            models
            queries
            query-permissions
-           util}
+           util
+           util-be}
    :model-exports #{:model/Revision}
    :model-imports #{:model/Card
                     :model/Dashboard
@@ -1930,7 +1943,8 @@
            task
            tracing
            transforms
-           util}
+           util
+           util-be}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -1940,7 +1954,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}
+   :uses #{api driver models premium-features util util-be}
    :model-exports #{:model/Secret}}
 
   segments
@@ -2218,7 +2232,8 @@
            request
            task
            tracing
-           util}
+           util
+           util-be}
    :model-exports #{:model/TaskHistory}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
@@ -2421,7 +2436,8 @@
    :uses #{api
            config
            lib
-           util}}
+           util
+           util-be}}
 
   users
   {:team "UX West"
@@ -2488,6 +2504,11 @@
            config
            settings
            system}}
+
+  util-be
+  {:team "DevEx"
+   :api  :any
+   :uses #{util}}
 
   version
   {:team "UX West"
@@ -2602,7 +2623,8 @@
            secrets
            settings
            sync
-           util}
+           util
+           util-be}
    :model-exports #{:model/Database}
    :model-imports #{:model/Card
                     :model/Field
@@ -2797,6 +2819,7 @@
            sync
            users
            util
+           util-be
            enterprise/serialization}
    :model-imports #{:model/AuditLog
                     :model/Card
@@ -3288,6 +3311,7 @@
            tenants
            users
            util
+           util-be
            warehouse-schema
            warehouses
            enterprise/api}
@@ -3371,7 +3395,8 @@
            settings
            task
            tracing
-           util}
+           util
+           util-be}
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/serialization
@@ -3429,6 +3454,7 @@
            sso
            system
            util
+           util-be
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
 
@@ -3525,7 +3551,8 @@
            tracing
            transforms
            transforms-base
-           util}
+           util
+           util-be}
    :model-exports #{:model/PythonLibrary}
    :model-imports #{:model/Database
                     :model/Field

@@ -19,7 +19,9 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
@@ -132,14 +134,14 @@
   {:pre [(keyword? driver) (map? details-map)]}
   (if throw-exceptions
     (try
-      (u/with-timeout (driver.settings/db-connection-timeout-ms)
+      (util-be/with-timeout (driver.settings/db-connection-timeout-ms)
         (or (driver/can-connect? driver details-map)
             (throw (Exception. "Failed to connect to Database"))))
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
         (log/error e "Failed to connect to Database")
-        (throw (if-let [humanized-message (some->> (u/all-ex-messages e)
+        (throw (if-let [humanized-message (some->> (util-be/all-ex-messages e)
                                                    (driver/humanize-connection-error-message driver))]
                  (let [error-data (cond
                                     (keyword? humanized-message)
@@ -208,7 +210,7 @@
 
 (defn- supports?* [driver feature database]
   (try
-    (u/with-timeout supports?-timeout-ms
+    (util-be/with-timeout supports?-timeout-ms
       (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
@@ -643,7 +645,7 @@
                        (str/replace #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" "")
                        (str/replace #"\n-----END (?:(\p{Alnum}+) )?PRIVATE KEY-----\s*$" "")
                        (str/replace #"\s" ""))
-        decoded (u/decode-base64-to-bytes key-base64)
+        decoded (util-be/decode-base64-to-bytes key-base64)
         key-factory (KeyFactory/getInstance algorithm)] ; TODO support other algorithms
     (.generatePrivate key-factory (PKCS8EncodedKeySpec. decoded))))
 

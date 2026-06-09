@@ -15,6 +15,7 @@
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -145,12 +146,12 @@
 (defn- put-file
   "Put file, whole or from start to end, on url, reporting on-progress. Retries up to 3 times."
   [url ^File file on-progress & {:keys [headers start end]}]
-  (u/auto-retry 3
-    (with-open [file-stream (progress-file-input-stream file on-progress)]
-      (let [[stream length] (if (and start end)
-                              [(sub-stream file-stream start end) (- end start)]
-                              [file-stream (.length file)])]
-        (http/put url {:headers headers :length length :body stream})))))
+  (util-be/auto-retry 3
+                      (with-open [file-stream (progress-file-input-stream file on-progress)]
+                        (let [[stream length] (if (and start end)
+                                                [(sub-stream file-stream start end) (- end start)]
+                                                [file-stream (.length file)])]
+                          (http/put url {:headers headers :length length :body stream})))))
 
 ;; ~100mb
 (def ^:private part-size 100e6)

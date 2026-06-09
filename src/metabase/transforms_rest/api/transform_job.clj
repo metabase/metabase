@@ -8,7 +8,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru LocalizedString]]
+   [metabase.util.i18n-be.core :refer [deferred-tru LocalizedString]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]

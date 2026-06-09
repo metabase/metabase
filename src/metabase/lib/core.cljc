@@ -60,6 +60,7 @@
    [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.common :as lib.common]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.convert.macros]
    [metabase.lib.convert.metadata-to-legacy]
    [metabase.lib.database :as lib.database]
    [metabase.lib.dispatch]
@@ -1408,7 +1409,6 @@
   ->legacy-MBQL
   ->mbql5
   legacy-default-join-alias
-  with-aggregation-list
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy
   lib-metadata-column->legacy-metadata-column
@@ -1732,3 +1732,9 @@
 
   **Code Health:** Healthy."
   metabase.lib.parameters.parse.types/no-value)
+
+;; `with-aggregation-list` is re-exported CLJ-only — `shared.ns/import-fns`'s
+;; cross-platform branch emits a CLJS `(def …)` that can't take the value of a
+;; macro, producing an `:undeclared-var` build warning. CLJS callers use
+;; `metabase.lib.convert.macros/with-aggregation-list` directly anyway.
+#?(:clj (shared.ns/import-fns [metabase.lib.convert.macros with-aggregation-list]))

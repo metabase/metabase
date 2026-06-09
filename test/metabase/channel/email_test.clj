@@ -16,6 +16,7 @@
    [metabase.test.util :as tu]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u :refer [prog1]]
+   [metabase.util-be.core :as util-be]
    [metabase.util.retry :as retry]
    [postal.core :as postal]
    [postal.message :as message]
@@ -477,12 +478,12 @@
              Exception
              #"Too many attempts!.*"
              (throttle {:to ["4@metabase.com"]})))
-        (is (some? (u/poll {:thunk       (fn [] (try (throttle {:to ["4@metabase.com"]})
-                                                     (catch Exception _
-                                                       nil)))
-                            :done?       some?
-                            :timeout-ms  200
-                            :interval-ms 10})))))))
+        (is (some? (util-be/poll {:thunk       (fn [] (try (throttle {:to ["4@metabase.com"]})
+                                                           (catch Exception _
+                                                             nil)))
+                                  :done?       some?
+                                  :timeout-ms  200
+                                  :interval-ms 10})))))))
 
 (deftest ^:parallel partition-recipients-test
   (let [recipients ["1@x.com" "2@x.com" "3@x.com" "4@x.com" "5@x.com"]]

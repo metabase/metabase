@@ -16,6 +16,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]
@@ -284,7 +285,7 @@
   (assert (= (humanization/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
-    (u/with-timeout sync-timeout-ms
+    (util-be/with-timeout sync-timeout-ms
       (let [;; only do "full sync" (with fingerprinting) for test-data, because it can take literally MINUTES on CI.
             scan (if (= database-name "test-data") :full :schema)]
         (if (driver/database-supports? driver :test/use-fake-sync nil)
@@ -294,21 +295,21 @@
           (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
                                        "NONE")
                 full-sync?         (= scan :full)]
-            (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                               (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-              ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              ;;
-              ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-              ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-              ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-              ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-              (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
-                (sync/sync-database! db {:scan scan}))
-              ;; add extra metadata for fields
-              (try
-                (add-extra-metadata! database-definition db)
-                (catch Throwable e
-                  (log/error e "Error adding extra metadata"))))))))
+            (util-be/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                                     (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+                             ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+                             ;;
+                             ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
+                             ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
+                             ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
+                             ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
+                             (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+                               (sync/sync-database! db {:scan scan}))
+                             ;; add extra metadata for fields
+                             (try
+                               (add-extra-metadata! database-definition db)
+                               (catch Throwable e
+                                 (log/error e "Error adding extra metadata"))))))))
     (catch Throwable e
       (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
             e       (ex-info message
@@ -414,7 +415,7 @@
                driver)
     (do
       (log/info "Data has not been loaded yet. Loading...")
-      (u/with-timeout create-database-timeout-ms
+      (util-be/with-timeout create-database-timeout-ms
         ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
           (tx/create-db! driver dbdef)))))

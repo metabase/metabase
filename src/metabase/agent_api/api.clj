@@ -33,6 +33,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -271,7 +272,7 @@
    _query-params
    {:keys [prompt] :as body} :- ::construct-query-request]
   (let [query (evaluate-external-query-for-execution body)]
-    (cond-> {:query (-> query json/encode u/encode-base64)}
+    (cond-> {:query (-> query json/encode util-be/encode-base64)}
       prompt (assoc :prompt prompt))))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
@@ -283,7 +284,7 @@
   (-> {:query      query-map
        :pagination {:limit total-limit :page (inc page)}}
       json/encode
-      u/encode-base64))
+      util-be/encode-base64))
 
 (defn- decode-continuation-token
   "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
@@ -292,7 +293,7 @@
    the embedded query happens in [[check-token-query-permissions!]] — a token
    doesn't grant access the bearer wouldn't otherwise have."
   [token]
-  (let [decoded (-> token u/decode-base64 json/decode+kw)
+  (let [decoded (-> token util-be/decode-base64 json/decode+kw)
         {:keys [limit page]} (:pagination decoded)]
     (api/check (and (int? limit) (pos? limit))
                [400 "Invalid continuation token: limit must be a positive integer"])
@@ -490,7 +491,7 @@
    _query-params
    {encoded-query :query} :- ::execute-query-request]
   (let [query (-> encoded-query
-                  u/decode-base64
+                  util-be/decode-base64
                   json/decode+kw)]
     ;; `/v1/execute` is gated by the `agent:query:execute` scope and is intended for MBQL.
     ;; The opaque base64 payload could carry `:type :native`, but `execute_sql` is gated by
@@ -636,7 +637,7 @@
    {:keys [query display description collection_id visualization_settings]
     question-name :name}
    :- ::create-question-request]
-  (let [dataset-query (-> query u/decode-base64 json/decode+kw)]
+  (let [dataset-query (-> query util-be/decode-base64 json/decode+kw)]
     ;; Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`.
     ;; `create-card!` itself does NOT run permissions checks; without these mirroring the
     ;; REST endpoint, an LLM caller could (a) save a card whose query references data the
@@ -733,7 +734,7 @@
                                     ;; canonical MBQL shape regardless of whether the LLM
                                     ;; sent legacy or MBQL 5.
                                     (-> (:query body)
-                                        u/decode-base64
+                                        util-be/decode-base64
                                         json/decode+kw
                                         lib-be/normalize-query)))
         ;; Set :archived_directly to mirror :archived (mark as Trash if explicitly archived).

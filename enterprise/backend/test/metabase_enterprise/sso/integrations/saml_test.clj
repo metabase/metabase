@@ -18,6 +18,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [ring.util.codec :as codec]
    [saml20-clj.core :as saml]
    [toucan2.core :as t2])
@@ -188,7 +189,7 @@
                     base-64  (-> location uri->params-map :SAMLRequest)
                     xml      (-> base-64
                                  codec/url-decode
-                                 u/decode-base64-to-bytes
+                                 util-be/decode-base64-to-bytes
                                  byte-inflate
                                  bytes->str
                                  (str/replace #"\n+" "")
@@ -247,10 +248,10 @@
            (testing (format "result = %s" (pr-str result))
              (is (string? redirect-url))
              (is (= default-redirect-uri
-                    (u/decode-base64 (:RelayState (uri->params-map redirect-url))))))))))))
+                    (util-be/decode-base64 (:RelayState (uri->params-map redirect-url))))))))))))
 
 (defn- saml-response-from-file [filename]
-  (u/encode-base64 (slurp filename)))
+  (util-be/encode-base64 (slurp filename)))
 
 (defn- saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response.xml"))
@@ -280,7 +281,7 @@
   {:request-options {:content-type     :x-www-form-urlencoded
                      :redirect-strategy :none
                      :form-params      {:SAMLResponse saml-response
-                                        :RelayState   (u/encode-base64 relay-state)}}})
+                                        :RelayState   (util-be/encode-base64 relay-state)}}})
 
 (defn- extract-csp-script-nonce
   "Pull the `'nonce-<value>'` out of the Content-Security-Policy `script-src` directive."
@@ -706,12 +707,12 @@
               (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
                 (testing "\nRelay state URL should be base-64 encoded"
                   (is (= redirect-url
-                         (u/decode-base64 (:RelayState params-map)))))
+                         (util-be/decode-base64 (:RelayState params-map)))))
                 (testing "\nPOST request should redirect to the original redirect URL"
                   (do-with-some-validators-disabled!
                    (fn []
                      (let [req-options (saml-post-request-options (saml-test-response)
-                                                                  (u/decode-base64 (:RelayState params-map)))
+                                                                  (util-be/decode-base64 (:RelayState params-map)))
                            response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                        (is (successful-login? response))
                        (is (= redirect-url
@@ -737,7 +738,7 @@
                     (do-with-some-validators-disabled!
                      (fn []
                        (let [req-options (saml-post-request-options (saml-test-response)
-                                                                    (u/decode-base64 (:RelayState params-map)))
+                                                                    (util-be/decode-base64 (:RelayState params-map)))
                              response    (client/client-real-response :post 302 "/auth/sso" req-options)]
                          (is (successful-login? response))
                          (is (= (str "http://localhost:3001/path" redirect-url)
@@ -837,7 +838,7 @@
               origin (-> (get-in result [:body :url])
                          uri->params-map
                          :RelayState
-                         u/decode-base64
+                         util-be/decode-base64
                          uri->params-map
                          :origin)]
           (is (= "https://app.example.com" origin)))))))
@@ -854,7 +855,7 @@
                 token (-> (get-in result [:body :url])
                           uri->params-map
                           :RelayState
-                          u/decode-base64
+                          util-be/decode-base64
                           uri->params-map
                           :token)]
             (is (not (nil? token)))))))))

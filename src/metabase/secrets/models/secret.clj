@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -128,7 +129,7 @@
         is-string? (string? value)
         treatment (get conn-prop :treatment "base64")
         str-value (cond
-                    is-bytes? (u/bytes-to-string value)
+                    is-bytes? (util-be/bytes-to-string value)
                     is-string? value)]
     (cond
       (and str-value
@@ -136,10 +137,10 @@
            (re-find uploaded-base-64-prefix-pattern str-value))
       (-> str-value
           (str/replace-first uploaded-base-64-prefix-pattern "")
-          u/decode-base64-to-bytes)
+          util-be/decode-base64-to-bytes)
 
       is-string?
-      (u/string-to-bytes value)
+      (util-be/string-to-bytes value)
 
       :else
       value)))
@@ -220,7 +221,7 @@
   (cond (string? secret-value)
         secret-value
         (bytes? secret-value)
-        (u/bytes-to-string secret-value)))
+        (util-be/bytes-to-string secret-value)))
 
 ;;; ---------------------------------------------- Fetching secrets ----------------------------------------------
 

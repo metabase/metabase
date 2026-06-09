@@ -9,6 +9,8 @@
     - `metabase.util.i18n.validation-test` — regression guard on the built `.edn` artifacts.
 
   Kept free of jgettext and other build-only deps so all three layers can require it."
+  (:require
+   [clojure.string :as str])
   (:import
    (java.text MessageFormat)))
 
@@ -102,6 +104,64 @@
   (into (sorted-set)
         (filter some?)
         (if (number? acceptable-counts) [acceptable-counts] acceptable-counts)))
+
+;;; -------------------------------------------------- Macro-time argument validators -------------------------------------------------
+;;;
+;;; These functions are called from the `:clj` branch of the cross-platform
+;;; `metabase.util.i18n` macros at macro-expansion time, so bad format strings
+;;; or arg-count mismatches in `(tru …)` / `(trs …)` / `(trun …)` / `(trsn …)`
+;;; call sites fail to compile.
+;;;
+;;; They live in this slim ns (no Clojure or BE deps beyond `clojure.string`)
+;;; so the lazy `(require 'metabase.util.i18n.validation)` from the macros does
+;;; not pull `metabase.util.i18n-be.macros` (records, potemkin, …) onto
+;;; shadow-cljs's macro-load path.
+
+(defn- valid-str-form?
+  "True if `x` is a `(str \"...\" \"...\" …)` form with every arg a String literal —
+  i.e. something we can statically concatenate to get a single format string."
+  [x]
+  (and (sequential? x)
+       (= (first x) 'str)
+       (every? string? (rest x))))
+
+(defn validate-number-of-args
+  "Macro-time assertion: the literal format-string form `format-string-or-str`
+  has the same number of `{N}` placeholders as the count of `args`. The first
+  arg may be a String literal or a `(str \"...\" \"...\" …)` form built of
+  String literals."
+  [format-string-or-str args]
+  (let [format-string              (cond
+                                     (string? format-string-or-str) format-string-or-str
+                                     (valid-str-form? format-string-or-str) (apply str (rest format-string-or-str))
+                                     :else (assert false "The first arg to (deferred-)trs/tru must be a String or a valid `str` form with String arguments!"))
+        message-format             (MessageFormat. ^String format-string)
+        expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
+        expected-num-args          (count (.getFormats message-format))
+        actual-num-args            (count args)]
+    (assert (not (skipped-arg-index? format-string))
+            (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
+                    (pr-str (.toPattern message-format))
+                    (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
+    (assert (= expected-num-args actual-num-args)
+            (str (format "(deferred-)trs/tru with format string %s expects %d args, got %d."
+                         (pr-str (.toPattern message-format)) expected-num-args actual-num-args)
+                 " Did you forget to escape a single quote?"))))
+
+(defn validate-n
+  "Macro-time assertion: `trsn`/`trun` format strings reference at most one
+  `{0}` placeholder (for `n`)."
+  [format-string format-string-pl]
+  (assert (and (string? format-string) (string? format-string-pl))
+          "The first and second args to (deferred-)trsn/trun must be Strings!")
+  (let [validate (fn [format-string]
+                   (let [message-format    (MessageFormat. ^String format-string)
+                         num-args-by-index (count (.getFormatsByArgumentIndex message-format))
+                         num-args          (count (.getFormats message-format))]
+                     (assert (and (<= num-args-by-index 1) (<= num-args 1))
+                             "(deferred-)trsn/trun only supports a single {0} placeholder for the value `n`")))]
+    (validate format-string)
+    (validate format-string-pl)))
 
 (defn arg-count-mismatch
   "If `actual-count` is not in `acceptable-counts`, return

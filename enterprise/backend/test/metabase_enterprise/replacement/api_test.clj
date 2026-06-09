@@ -13,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -319,7 +319,7 @@
                              (replacement.protocols/advance! progress)))]
         ;; Poll until done
         (replacement.execute/execute-async! work-fn progress)
-        (u/deref-with-timeout done? 2000)
+        (util-be/deref-with-timeout done? 2000)
         (is (=? {:total 3 :so-far 3 :status :succeeded}
                 @state))))))
 

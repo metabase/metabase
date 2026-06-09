@@ -21,6 +21,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -47,7 +48,7 @@
         (binding [qp.perms/*card-id* model-id]
           (qp/execute-write-query! query)))
       (catch Throwable e
-        (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+        (if (= (:type (util-be/all-ex-data e)) qp.error-type/missing-required-permissions)
           (api/throw-403 e)
           (throw (ex-info (format "Error executing Action: %s" (ex-message e))
                           {:action     action

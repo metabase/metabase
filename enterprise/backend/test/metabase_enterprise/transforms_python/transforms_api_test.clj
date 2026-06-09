@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2])
   (:import
    (clojure.lang IDeref)
@@ -405,10 +405,10 @@
                             ;; Cancellation currently overwrites the message, so we should wait for some log output if we expect it
                             ;; Ideally we would not use the message field for log output, or otherwise avoid having logs being lost on cancellation.
                             _          (when expect-script
-                                         (u/poll {:thunk       #(deref message-observer)
-                                                  :done?       #(some #{"script started"} %)
-                                                  :interval-ms 1
-                                                  :timeout-ms  5000}))
+                                         (util-be/poll {:thunk       #(deref message-observer)
+                                                        :done?       #(some #{"script started"} %)
+                                                        :interval-ms 1
+                                                        :timeout-ms  5000}))
                             _          (when redefs (await-signal ready-signal))
                             _          (get-last-run transform-id)
                             _          (mt/user-http-request :crowberto :post 204 (format "transform/%d/cancel" transform-id))

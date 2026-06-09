@@ -11,7 +11,7 @@
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (deftest python-transform-scheduled-job-test
@@ -40,14 +40,14 @@
                  :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
                 (transforms.schedule/initialize-job! job)
                 (transforms.schedule/update-job! job-id "* * * * * ? *")
-                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
-                                    :done?   true?
-                                    :timeout-ms 20000
-                                    :interval-ms 1000})))
-                (is (true? (u/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
-                                    :done?   true?
-                                    :timeout-ms 10000
-                                    :interval-ms 1000})))))))))))
+                (is (true? (util-be/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
+                                          :done?   true?
+                                          :timeout-ms 20000
+                                          :interval-ms 1000})))
+                (is (true? (util-be/poll {:thunk   (fn [] (t2/exists? :model/Table :name (:name target)))
+                                          :done?   true?
+                                          :timeout-ms 10000
+                                          :interval-ms 1000})))))))))))
 
 (def ^:private python-source {:type "python"})
 

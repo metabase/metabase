@@ -7,7 +7,7 @@
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -18,7 +18,7 @@
 (def ^:dynamic *formatting-locale*
   "Dynamic var to hold the current locale for datetime formatting.
   Defaults to the site locale from system settings."
-  (i18n/site-locale))
+  (i18n-be/site-locale))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -250,5 +250,5 @@
     (fn [temporal-str]
       (if (str/blank? temporal-str)
         ""
-        (binding [*formatting-locale* (i18n/user-locale)]
+        (binding [*formatting-locale* (i18n-be/user-locale)]
           (format-timestring timezone-id temporal-str col merged-viz-settings))))))

@@ -3,7 +3,7 @@
   (:require
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting security-center-email-recipients
   (deferred-tru "List of email recipients for Security Center notifications.")

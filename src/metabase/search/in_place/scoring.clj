@@ -116,7 +116,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.util :as search.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]))
 
 (defn- matches?
   [search-token match-token]
@@ -388,6 +389,6 @@
   maps with `:score` and `:result` keys."
   [reducible-results max-results xf]
   (->> reducible-results
-       (transduce xf (u/sorted-take max-results compare-score))
+       (transduce xf (util-be/sorted-take max-results compare-score))
        rseq
        (map :result)))

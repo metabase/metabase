@@ -6,7 +6,7 @@
    [metabase.secrets.models.secret :as secret]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
@@ -198,7 +198,7 @@
                       uploaded-str-value (codecs/bytes->str (codecs/str->bytes content (str charset))
                                                             (str charset))]
                 uploaded-value [uploaded-str-value
-                                (format "data:%s;base64,%s" mime-type (u/encode-base64-bytes uploaded-bytes))]]
+                                (format "data:%s;base64,%s" mime-type (util-be/encode-base64-bytes uploaded-bytes))]]
           (testing (format "mime-type %s charset %s " mime-type (str charset))
             (let [details {:keystore-value uploaded-value}
                   file (secret/value-as-file!

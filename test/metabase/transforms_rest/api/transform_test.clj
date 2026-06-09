@@ -24,6 +24,7 @@
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1294,9 +1295,9 @@
               (mt/user-http-request :crowberto :post 202
                                     (format "transform/%d/run" transform-id))
               ;; Wait for run to start and check attribution
-              (let [run (u/poll {:thunk #(t2/select-one :model/TransformRun :transform_id transform-id)
-                                 :done? some?
-                                 :timeout-ms 5000})]
+              (let [run (util-be/poll {:thunk #(t2/select-one :model/TransformRun :transform_id transform-id)
+                                       :done? some?
+                                       :timeout-ms 5000})]
                 (is (some? run) "Run should exist")
                 (is (= crowberto-id (:user_id run))
                     "Run should be attributed to the triggering user (crowberto), not the owner (rasta)")))))))))

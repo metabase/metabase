@@ -5,7 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.transforms.models.transform :as transform]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -47,10 +47,10 @@
   (t2/exists? :model/TransformTag :name tag-name :id [:not= tag-id]))
 
 (defn- translate-name [tag]
-  (let [values {"hourly"  (i18n/deferred-trs "hourly")
-                "daily"   (i18n/deferred-trs "daily")
-                "weekly"  (i18n/deferred-trs "weekly")
-                "monthly" (i18n/deferred-trs "monthly")}
+  (let [values {"hourly"  (i18n-be/deferred-trs "hourly")
+                "daily"   (i18n-be/deferred-trs "daily")
+                "weekly"  (i18n-be/deferred-trs "weekly")
+                "monthly" (i18n-be/deferred-trs "monthly")}
         name (get values (:built_in_type tag))]
     {:name name}))
 

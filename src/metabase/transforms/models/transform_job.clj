@@ -10,7 +10,7 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -162,20 +162,20 @@
 
 (defn- translated-name-and-description [job]
   (let [values {"hourly"
-                [(i18n/deferred-trs "Hourly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
+                [(i18n-be/deferred-trs "Hourly job")
+                 (i18n-be/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
 
                 "daily"
-                [(i18n/deferred-trs "Daily job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
+                [(i18n-be/deferred-trs "Daily job")
+                 (i18n-be/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
 
                 "weekly"
-                [(i18n/deferred-trs "Weekly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
+                [(i18n-be/deferred-trs "Weekly job")
+                 (i18n-be/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
 
                 "monthly"
-                [(i18n/deferred-trs "Monthly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
+                [(i18n-be/deferred-trs "Monthly job")
+                 (i18n-be/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
         [name description] (get values (:built_in_type job))]
     {:name name :description description}))
 

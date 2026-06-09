@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [some mapv])
   (:require
    #?@(:clj ([metabase.lib.filter.desugar.jvm :as lib.filter.desugar.jvm]
-             [metabase.util.i18n :as i18n])
+             [metabase.util.i18n-be.core :as i18n-be])
        :cljs ([metabase.util.log :as log]))
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
@@ -302,7 +302,7 @@
    opts :- :map
    unit :- :keyword
    n    :- :int]
-  (let [user-locale #?(:clj  (i18n/user-locale)
+  (let [user-locale #?(:clj  (i18n-be/user-locale)
                        :cljs nil)]
     (-> (lib.expression/case
          (mapv (fn [raw-value]

@@ -30,6 +30,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
@@ -1115,7 +1116,7 @@
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
     (fn []
-      (some-> (.getString rs i) u/parse-currency))
+      (some-> (.getString rs i) util-be/parse-currency))
     (fn []
       (.getObject rs i))))
 

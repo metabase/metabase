@@ -20,7 +20,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -116,7 +116,7 @@
 (defn- decode-query
   "Decode a base64-encoded query response to a Clojure map, then normalize it so lib functions work."
   [response]
-  (-> response :query u/decode-base64 json/decode+kw lib.normalize/normalize))
+  (-> response :query util-be/decode-base64 json/decode+kw lib.normalize/normalize))
 
 ;;; ---------------------------------------- Repr JSON helpers ----------------------------------------
 
@@ -309,7 +309,7 @@
     (let [native-query {:database (mt/id)
                         :type     "native"
                         :native   {:query "select 1"}}
-          base64-query (u/encode-base64 (json/encode native-query))
+          base64-query (util-be/encode-base64 (json/encode native-query))
           resp         (mt/user-http-request :rasta :post 400 "agent/v1/execute"
                                              {:query base64-query})]
       (is (re-find #"Native queries are not supported" (str resp))))))
@@ -402,7 +402,7 @@
   (-> {:query {:database (mt/id) :stages [{:source-table (mt/id :orders)}]}
        :pagination pagination}
       json/encode
-      u/encode-base64))
+      util-be/encode-base64))
 
 (deftest continuation-token-validation-test
   (testing "Malformed pagination ints in a continuation token produce a 400, not a 500.
@@ -715,7 +715,7 @@
       (let [cycle-query  {:database (mt/id)
                           :type     :query
                           :query    {:source-table (str "card__" card-id)}}
-            base64-query (u/encode-base64 (json/encode cycle-query))]
+            base64-query (util-be/encode-base64 (json/encode cycle-query))]
         (mt/user-http-request :rasta :put 400 (str "agent/v1/question/" card-id)
                               {:query base64-query}))
       ;; Persisted query unchanged - source-table still the orders table id, not the card.
@@ -965,11 +965,11 @@
       (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
                             {:database_id (mt/id)
                              :sql         "SELECT 1 AS audit_probe"})
-      (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
-                                                               {:order-by [[:started_at :desc]]}))
-                            :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
-                            :timeout-ms  5000
-                            :interval-ms 50})]
+      (let [latest (util-be/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
+                                                                     {:order-by [[:started_at :desc]]}))
+                                  :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
+                                  :timeout-ms  5000
+                                  :interval-ms 50})]
         (is (some? latest) "QueryExecution row should be inserted within 5s")
         (is (= :agent (:context latest)))))))
 

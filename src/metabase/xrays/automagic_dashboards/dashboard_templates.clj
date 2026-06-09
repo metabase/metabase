@@ -11,7 +11,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]
@@ -25,10 +25,10 @@
 (def ^:private LocalizedString
   [:schema
    {:decode/dashboard-template (fn [s]
-                                 (if (i18n/localized-string? s)
+                                 (if (i18n-be/localized-string? s)
                                    s
-                                   (i18n/->UserLocalizedString s nil {})))}
-   i18n/LocalizedString])
+                                   (i18n-be/->UserLocalizedString s nil {})))}
+   i18n-be/LocalizedString])
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."

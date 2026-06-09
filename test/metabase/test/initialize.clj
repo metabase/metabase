@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.notification.core :as notification]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +41,7 @@
   (try
     (log-init-message step)
     (binding [*initializing* (conj *initializing* step)]
-      (u/with-timeout init-timeout-ms
+      (util-be/with-timeout init-timeout-ms
         (do-initialization! step)))
     (catch Throwable e
       (log/fatalf e "Error initializing %s" step)

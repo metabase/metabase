@@ -13,6 +13,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms.test-util :as transforms.test-util]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -116,7 +117,7 @@
   (str/replace table-or-field-name #"-" "_"))
 
 (mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
-  (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
+  (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (util-be/varargs BigQuery$DatasetOption))
   (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
 (defn execute!
@@ -147,9 +148,9 @@
   (println "Deleting dataset: " dataset-id)
   (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
     (.printStackTrace (Exception. "This should not happen")))
-  (.delete (bigquery) dataset-id (u/varargs
-                                   BigQuery$DatasetDeleteOption
-                                   [(BigQuery$DatasetDeleteOption/deleteContents)]))
+  (.delete (bigquery) dataset-id (util-be/varargs
+                                  BigQuery$DatasetDeleteOption
+                                  [(BigQuery$DatasetDeleteOption/deleteContents)]))
   (execute-params!
    (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
            (project-id))
@@ -201,11 +202,11 @@
 (defn- create-table*!
   [dataset-id table-id field-definitions]
   (let [tbl-id (TableId/of dataset-id table-id)
-        schema (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
-                                                                             :base-type :type/Integer}
-                                                                            field-definitions))))
+        schema (Schema/of (util-be/varargs Field (field-definitions->Fields (cons {:field-name "id"
+                                                                                   :base-type :type/Integer}
+                                                                                  field-definitions))))
         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-    (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
+    (.create (bigquery) tbl (util-be/varargs BigQuery$TableOption))))
 
 (mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
@@ -213,7 +214,7 @@
    field-definitions]
   (create-table*! dataset-id table-id field-definitions)
   ;; now verify that the Table was created
-  (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
+  (.listTables (bigquery) dataset-id (util-be/varargs BigQuery$TableListOption))
   (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
@@ -266,7 +267,7 @@
 (defn- rows->request ^InsertAllRequest [^String dataset-id ^String table-id row-maps]
   (let [insert-rows (map (fn [r]
                            (InsertAllRequest$RowToInsert/of (str (get r :id)) (->json r))) row-maps)]
-    (InsertAllRequest/of (TableId/of dataset-id table-id) (u/varargs InsertAllRequest$RowToInsert insert-rows))))
+    (InsertAllRequest/of (TableId/of dataset-id table-id) (util-be/varargs InsertAllRequest$RowToInsert insert-rows))))
 
 (def ^:private max-rows-per-request
   "Max number of rows BigQuery lets us insert at once."

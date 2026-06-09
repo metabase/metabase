@@ -7,7 +7,8 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.fonts :as u.fonts]
-   [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be :refer [available-locales-with-names deferred-tru]]
    [metabase.util.log :as log]))
 
 (defsetting site-uuid
@@ -81,13 +82,13 @@
   :encryption :no
   :getter     (fn []
                 (let [value (setting/get-value-of-type :string :site-locale)]
-                  (when (i18n/available-locale? value)
+                  (when (i18n-be/available-locale? value)
                     value)))
   :setter     (fn [new-value]
                 (when new-value
-                  (when-not (i18n/available-locale? new-value)
+                  (when-not (i18n-be/available-locale? new-value)
                     (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
-                (setting/set-value-of-type! :string :site-locale (some-> new-value i18n/normalized-locale-string))))
+                (setting/set-value-of-type! :string :site-locale (some-> new-value i18n-be/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")

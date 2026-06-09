@@ -56,6 +56,7 @@
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -1671,7 +1672,7 @@
   (testing "ssl key can be set via the gui (#20319)"
     (mt/with-dynamic-fn-redefs [secret/value-as-file!
                                 (fn [driver details secret-property & [_ext]]
-                                  (str "file:" secret-property "="  (u/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
+                                  (str "file:" secret-property "="  (util-be/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
               (#'postgres/ssl-params
@@ -2329,7 +2330,7 @@
                      (run-pg-sleep)
                      (catch Exception e
                        (is (true? (some #(instance? java.net.SocketTimeoutException %)
-                                        (u/full-exception-chain e))))
+                                        (util-be/full-exception-chain e))))
                        (throw e)))))))
           (testing "network hangs are not interrupted before *network-timeout-ms*"
             (is (true? (run-pg-sleep)))))))))

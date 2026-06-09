@@ -24,6 +24,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -62,7 +63,7 @@
    :updated_at    default-updated-at})
 
 (defn- document-hash [search-doc]
-  (u/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc)))))
+  (util-be/encode-base64-bytes (buddy-hash/sha1 (json/encode (into (sorted-map) search-doc)))))
 
 (defn- ->instant
   ^Instant [inst]

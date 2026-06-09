@@ -21,7 +21,8 @@
    [metabase.settings.core :as setting]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -133,7 +134,7 @@
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
                        :version            (search.spec/index-version-hash)
-                       :lang_code          (i18n/site-locale-string)
+                       :lang_code          (i18n-be/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state
                        :index-state-after  @@#'search.index/*indexes*
@@ -144,10 +145,10 @@
       (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
         ;; wait for a bit for the queue to be drained
         (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
-          (when-not (u/poll {:thunk       pending-updates
-                             :done?       zero?
-                             :timeout-ms  2000
-                             :interval-ms 100})
+          (when-not (util-be/poll {:thunk       pending-updates
+                                   :done?       zero?
+                                   :timeout-ms  2000
+                                   :interval-ms 100})
             (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
       (let [weights (search.config/weights search-ctx)
             scorers (search.scoring/scorers search-ctx)

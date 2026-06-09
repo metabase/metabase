@@ -9,7 +9,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trun tru]]
+   [metabase.util-be.core :as util-be]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :refer [deferred-trun]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -73,7 +75,7 @@
     (let [constraint (last (str/split constraint #"\."))
           columns (constraint->column-names database constraint)]
       {:type    error-type
-       :message (tru "{0} already {1}." (u/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
+       :message (tru "{0} already {1}." (util-be/build-sentence (map str/capitalize columns) :stop? false) (deferred-trun "exists" "exist" (count columns)))
        :errors  (reduce (fn [acc col]
                           (assoc acc col (tru "This {0} value already exists." (str/capitalize col))))
                         {}

@@ -17,7 +17,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -61,7 +61,7 @@
 
 (deftest ^:parallel trash-collection-name-is-localized-test
   (let [trash (collection/trash-collection)]
-    (is (-> trash :name i18n/localized-string?)
+    (is (-> trash :name i18n-be/localized-string?)
         "Trash name must be a localized string")))
 
 (deftest ^:parallel library-collection-names-localized-test

@@ -11,6 +11,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cache :as lib.metadata.cache]
+   [metabase.lib.metadata.cache.macros :refer [with-cached-value]]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
@@ -292,7 +293,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (lib.metadata.cache/with-cached-value query (cache-key ::metadata query stage-number x {})
+   (with-cached-value query (cache-key ::metadata query stage-number x {})
      (metadata-method query stage-number x))))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
@@ -637,7 +638,7 @@
                      ;; ignore any other ones. As a bonus, this means undocumented options keys that aren't part of
                      ;; the schema will effectively be ignored.
                      (select-keys visible-columns-options-keys))]
-     (lib.metadata.cache/with-cached-value query (cache-key ::visible-columns query stage-number nil options)
+     (with-cached-value query (cache-key ::visible-columns query stage-number nil options)
        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.stage/-visible-columns)
         query
         stage-number

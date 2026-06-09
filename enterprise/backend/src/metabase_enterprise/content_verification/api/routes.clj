@@ -4,7 +4,7 @@
    [metabase-enterprise.content-verification.api.moderation-review]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (comment metabase-enterprise.content-verification.api.moderation-review/keep-me)
 

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.support-access-grants.settings
   (:require
    [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n-be.core :refer [deferred-tru]]))
 
 (defsetting support-access-grant-email
   (deferred-tru "Email to grant temporary access to for support")

@@ -1,5 +1,5 @@
 (ns metabase.lib.common
-  (:refer-clojure :exclude [mapv every? #?(:clj for)])
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -8,8 +8,7 @@
    [metabase.lib.schema.common :as schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv #?@(:clj [every? for])]])
-  #?(:cljs (:require-macros [metabase.lib.common])))
+   [metabase.util.performance :refer [mapv]]))
 
 (comment lib.options/keep-me
          mu/keep-me)
@@ -76,20 +75,3 @@
   (into [op-name {:lib/uuid (str (random-uuid))}]
         (map ->op-arg)
         args))
-
-#?(:clj
-   (defmacro defop
-     "Defines a clause creating function with given args.
-      Calling the clause without query and stage produces a fn that can be resolved later."
-     [op-name & argvecs]
-     {:pre [(symbol? op-name)
-            (every? vector? argvecs) (every? #(every? symbol? %) argvecs)
-            (every? #(not-any? #{'query 'stage-number} %) argvecs)]}
-     `(mu/defn ~op-name :- ~(keyword "mbql.clause" (name op-name))
-        ~(format "Create a standalone clause of type `%s`." (name op-name))
-        ~@(for [argvec argvecs
-                :let [arglist-expr (if (contains? (set argvec) '&)
-                                     (cons `list* (remove #{'&} argvec))
-                                     argvec)]]
-            `([~@argvec]
-              (defop-create ~(keyword op-name) ~arglist-expr))))))

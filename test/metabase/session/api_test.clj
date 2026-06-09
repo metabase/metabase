@@ -19,6 +19,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
@@ -247,7 +248,7 @@
   (testing "POST /api/session/forgot_password - initiate password reset"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-fake-inbox
         (letfn [(reset-fields-set? []
                   (let [{:keys [reset_token reset_triggered]} (t2/select-one [:model/User :reset_token :reset_triggered]
@@ -268,7 +269,7 @@
   (testing "POST /api/session/forgot_password - uses site-url in email"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (let [my-url "abcdefghij"]
         (mt/with-temporary-setting-values [site-url my-url]
           (mt/with-fake-inbox
@@ -290,7 +291,7 @@
   (testing "POST /api/session/forgot_password - Google SSO user cannot reset when Google SSO enabled"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -310,7 +311,7 @@
   (testing "POST /api/session/forgot_password - Google SSO user can reset when Google SSO disabled"
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-temp [:model/User g-user {:first_name "g"
                                          :last_name "user"
                                          :email "g-user@gmail.com"
@@ -333,7 +334,7 @@
         ;; Mock sso-source-enabled? to return false (provider is disabled, e.g., after downgrade)
         (with-redefs [api.session/forgot-password-impl
                       (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                        (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))
                       metabase.sso.settings/sso-source-enabled? (constantly false)]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
@@ -354,7 +355,7 @@
         ;; Mock sso-source-enabled? to return true (provider is active)
         (with-redefs [api.session/forgot-password-impl
                       (let [orig @#'api.session/forgot-password-impl]
-                        (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))
+                        (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))
                       metabase.sso.settings/sso-source-enabled? (fn [src] (= (keyword src) sso-source))]
           (mt/with-temp [:model/User sso-user {:first_name "sso"
                                                :last_name  "user"
@@ -372,7 +373,7 @@
   (mt/with-premium-features #{:audit-app}
     (with-redefs [api.session/forgot-password-impl
                   (let [orig @#'api.session/forgot-password-impl]
-                    (fn [& args] (u/deref-with-timeout (apply orig args) 1000)))]
+                    (fn [& args] (util-be/deref-with-timeout (apply orig args) 1000)))]
       (mt/with-model-cleanup [:model/User]
         (testing "Test that forgot password event is logged."
           (mt/client :post 204 "session/forgot_password"

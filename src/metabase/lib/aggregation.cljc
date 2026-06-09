@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.common.macros :refer [defop]]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
@@ -307,22 +308,22 @@
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
-(lib.common/defop count       [] [x])
-(lib.common/defop cum-count   [] [x])
-(lib.common/defop count-where [x])
-(lib.common/defop avg         [x])
-(lib.common/defop distinct    [x])
-(lib.common/defop distinct-where [expr condition])
-(lib.common/defop max         [x])
-(lib.common/defop median      [x])
-(lib.common/defop min         [x])
-(lib.common/defop percentile  [x y])
-(lib.common/defop share       [x])
-(lib.common/defop stddev      [x])
-(lib.common/defop sum         [x])
-(lib.common/defop cum-sum     [x])
-(lib.common/defop sum-where   [x y])
-(lib.common/defop var         [x])
+(defop count       [] [x])
+(defop cum-count   [] [x])
+(defop count-where [x])
+(defop avg         [x])
+(defop distinct    [x])
+(defop distinct-where [expr condition])
+(defop max         [x])
+(defop median      [x])
+(defop min         [x])
+(defop percentile  [x y])
+(defop share       [x])
+(defop stddev      [x])
+(defop sum         [x])
+(defop cum-sum     [x])
+(defop sum-where   [x y])
+(defop var         [x])
 
 (defmethod lib.ref/ref-method :aggregation
   [aggregation-clause]

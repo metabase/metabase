@@ -5,7 +5,8 @@
    [metabase.system.settings :as system.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :as i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -83,8 +84,8 @@
 (deftest tru-translates
   (mt/with-mock-i18n-bundles! {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
-      (is (= (i18n/locale "zz")
-             (i18n/user-locale)))
+      (is (= (i18n-be/locale "zz")
+             (i18n-be/user-locale)))
       (is (= "HOST"
              (tru "Host"))))))
 

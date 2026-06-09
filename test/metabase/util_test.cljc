@@ -716,3 +716,35 @@
       nil    []
       \c     "abc"
       [:b 2] {:a 1 :b 2})))
+
+(defspec nano-id-from-bytes-shape 200
+  (prop/for-all [bs (gen/vector (gen/choose 0 255) 21)]
+    (let [id (u/nano-id-from-bytes 21 #(nth bs %))]
+      (boolean (re-matches #"[A-Za-z0-9_\-]{21}" id)))))
+
+(defspec nano-id-from-bytes-variable-size 100
+  (prop/for-all [size (gen/large-integer* {:min 1 :max 64})]
+    (let [zeros (vec (repeat size 0))
+          id    (u/nano-id-from-bytes size #(nth zeros %))]
+      (= size (count id)))))
+
+(defspec generate-nano-id-shape 200
+  (prop/for-all [_ (gen/return nil)]
+    (boolean (re-matches #"[A-Za-z0-9_\-]{21}" (u/generate-nano-id)))))
+
+#?(:clj
+   (defspec seeded-generate-nano-id-is-deterministic 100
+     (prop/for-all [seed (gen/fmap #(format "%016x" %)
+                                   (gen/large-integer* {:min 0}))]
+       (let [a (u/generate-nano-id seed)
+             b (u/generate-nano-id seed)]
+         (and (= a b)
+              (boolean (re-matches #"[A-Za-z0-9_\-]{21}" a)))))))
+
+#?(:clj
+   (defspec seeded-generate-nano-id-distinguishes-seeds 100
+     (prop/for-all [s1 (gen/large-integer* {:min 0})
+                    s2 (gen/large-integer* {:min 0})]
+       (or (= s1 s2)
+           (not= (u/generate-nano-id (format "%016x" s1))
+                 (u/generate-nano-id (format "%016x" s2)))))))

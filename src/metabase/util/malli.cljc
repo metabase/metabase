@@ -4,8 +4,8 @@
    #?@(:clj
        ([metabase.util.malli.fn :as mu.fn]
         [metabase.util.malli.defn :as mu.defn]
-        [net.cgrand.macrovich :as macros]
-        [potemkin :as p]))
+        [metabase.util.namespaces :as u.ns]
+        [net.cgrand.macrovich :as macros]))
    [clojure.core :as core]
    [malli.core :as mc]
    [malli.destructure]
@@ -16,7 +16,7 @@
   #?(:cljs (:require-macros [metabase.util.malli])))
 
 #?(:clj
-   (p/import-vars
+   (u.ns/import-fns
     [mu.fn fn instrument-ns?]
     [mu.defn defn defn-]))
 
@@ -38,8 +38,13 @@
 
 (def localized-string-schema
   "Schema for localized string."
+  ;; The CLJ predicate is wrapped in `requiring-resolve` so loading this
+  ;; namespace does not pull `metabase.util.i18n-be.macros` (and transitively
+  ;; `clojure.walk`, `potemkin.types`, `i18n.validation`) onto shadow-cljs's
+  ;; macro-load path. The lookup happens on first validation call — runtime
+  ;; behaviour is unchanged.
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            i18n/localized-string?]
+            (fn [x] ((requiring-resolve 'metabase.util.i18n-be.macros/localized-string?) x))]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))

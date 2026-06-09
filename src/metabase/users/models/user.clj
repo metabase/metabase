@@ -18,7 +18,8 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -99,7 +100,7 @@
   "Validate that the locale is available in the system."
   [locale]
   (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
+    (assert (i18n-be/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
 
 (defn- validate-user-type!
   "Validate that the user type is one of the allowed types."
@@ -215,7 +216,7 @@
   [user]
   (cond-> user
     (:email user) (update :email u/lower-case-en)
-    (:locale user) (update :locale i18n/normalized-locale-string)
+    (:locale user) (update :locale i18n-be/normalized-locale-string)
     ;; Only hash reset_token if it's not already a bcrypt hash (starts with $2a$ or $2b$)
     (and (:reset_token user)
          (not (re-matches #"^\$2[ab]\$.*" (:reset_token user))))

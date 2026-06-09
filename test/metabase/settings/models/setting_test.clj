@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :refer [deferred-tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -1277,7 +1277,7 @@
         (ns nested-setting-test
           (:require
            [metabase.settings.models.setting :refer [defsetting]]
-           [metabase.util.i18n :as i18n :refer [deferred-tru]]))
+           [metabase.util.i18n-be.core :as i18n :refer [deferred-tru]]))
         (defsetting foo (deferred-tru "A testing setting") :visibility :public :encryption :when-encryption-key-set)
         (catch Exception e
           (is (=? {:existing-setting

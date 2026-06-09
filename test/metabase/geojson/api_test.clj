@@ -6,7 +6,7 @@
    [metabase.geojson.settings :as geojson.settings]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [ring.adapter.jetty :as ring-jetty])
   (:import
    (java.net InetAddress)
@@ -72,12 +72,12 @@
     (testing "test that we can set the value of geojson.settings/custom-geojson via the normal routes"
       (is (= (merge (@#'geojson.settings/builtin-geojson) test-custom-geojson)
              ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
-             (u/auto-retry 3
-               ;; bind a temporary value so it will get set back to its old value here after the API calls are done
-               ;; stomping all over it
-               (mt/with-temporary-setting-values [custom-geojson nil]
-                 (mt/user-http-request :crowberto :put 204 "setting/custom-geojson" {:value test-custom-geojson})
-                 (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))
+             (util-be/auto-retry 3
+                                 ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+                                 ;; stomping all over it
+                                 (mt/with-temporary-setting-values [custom-geojson nil]
+                                   (mt/user-http-request :crowberto :put 204 "setting/custom-geojson" {:value test-custom-geojson})
+                                   (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))
     (testing "passing in an invalid URL" ; see above validation test
       (is (= (str "Invalid GeoJSON file location: must start with http:// or https://. "
                   "URLs referring to hosts that supply internal hosting metadata are prohibited.")
@@ -99,11 +99,11 @@
                                 (assoc (first (vals test-custom-geojson))
                                        :url "test.geojson")}]
           (is (= (merge (@#'geojson.settings/builtin-geojson) resource-geojson)
-                 (u/auto-retry 3
-                   (mt/with-temporary-setting-values [custom-geojson nil]
-                     (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
-                                           {:value resource-geojson})
-                     (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))))))
+                 (util-be/auto-retry 3
+                                     (mt/with-temporary-setting-values [custom-geojson nil]
+                                       (mt/user-http-request :crowberto :put 204 "setting/custom-geojson"
+                                                             {:value resource-geojson})
+                                       (mt/user-http-request :crowberto :get 200 "setting/custom-geojson"))))))))))
 
 (deftest ^:parallel url-proxy-endpoint-test
   (with-geojson-mocks

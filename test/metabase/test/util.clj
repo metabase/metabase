@@ -41,6 +41,7 @@
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.random :as u.random]
@@ -1600,7 +1601,7 @@
 (defn bytes->base64-data-uri
   "Encodes bytes in base64 and wraps with data-uri similar to mimic browser uploads."
   [^bytes bs]
-  (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
+  (str "data:application/octet-stream;base64," (util-be/encode-base64-bytes bs)))
 
 (defn format-env-key ^String [env-key]
   (let [[_ header body footer]
@@ -1609,7 +1610,7 @@
 
 (defn priv-key->base64-uri [priv-key]
   (-> (format-env-key priv-key)
-      u/string-to-bytes
+      util-be/string-to-bytes
       bytes->base64-data-uri))
 
 (defn works-after

@@ -6,7 +6,6 @@
    [malli.destructure :as md]
    [malli.error :as me]
    [metabase.config.core :as config]
-   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]
@@ -220,8 +219,8 @@
                 config/is-test?)
           ;; In dev and test, throw an exception.
           (throw (ex-info (case error-type
-                            ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
-                            ::invalid-output (i18n/tru "Invalid output: {0}" (pr-str humanized)))
+                            ::invalid-input  (format "Invalid input: %s" (pr-str humanized))
+                            ::invalid-output (format "Invalid output: %s" (pr-str humanized)))
                           details))
           ;; In prod, log a warning.
           (log/warn

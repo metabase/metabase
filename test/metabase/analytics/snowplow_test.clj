@@ -8,7 +8,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.version.core :as version]
    [toucan2.core :as t2])
@@ -38,7 +38,7 @@
         ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test
         ;; cases
         properties                         (-> (or (:ue_pr payload)
-                                                   (u/decode-base64 (:ue_px payload)))
+                                                   (util-be/decode-base64 (:ue_px payload)))
                                                json/decode)
         subject                            (when-let [subject (.getSubject event)]
                                              (-> subject .getSubject normalize-map))

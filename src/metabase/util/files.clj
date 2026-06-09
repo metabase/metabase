@@ -9,8 +9,8 @@
    [babashka.fs :as fs]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import
    (java.io FileNotFoundException)
@@ -26,7 +26,7 @@
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
 
 (defn- get-path-in-filesystem ^Path [^FileSystem filesystem ^String path-component & more-components]
-  (.getPath filesystem path-component (u/varargs String more-components)))
+  (.getPath filesystem path-component (u.jvm/varargs String more-components)))
 
 (defn get-path
   "Get a `Path` for a file or directory in the default (i.e., system) filesystem named by string path component(s).
@@ -50,12 +50,12 @@
 (defn exists?
   "Does file at `path` actually exist?"
   [^Path path]
-  (Files/exists path (u/varargs LinkOption)))
+  (Files/exists path (u.jvm/varargs LinkOption)))
 
 (defn regular-file?
   "True if `path` refers to a regular file (as opposed to something like directory)."
   [^Path path]
-  (Files/isRegularFile path (u/varargs LinkOption)))
+  (Files/isRegularFile path (u.jvm/varargs LinkOption)))
 
 (defn readable?
   "True if we can read the file at `path`."
@@ -70,7 +70,7 @@
   (when-let [parent (fs/parent path)]
     (create-dir-if-not-exists! parent))
   (when-not (exists? path)
-    (Files/createDirectory path (u/varargs FileAttribute))))
+    (Files/createDirectory path (u.jvm/varargs FileAttribute))))
 
 (defn files-seq
   "Get a sequence of all files in `path`, presumably a directory or an archive of some sort (like a JAR)."
@@ -81,7 +81,7 @@
 
 (defn- last-modified-timestamp ^java.time.Instant [^Path path]
   (when (exists? path)
-    (.toInstant (Files/getLastModifiedTime path (u/varargs LinkOption)))))
+    (.toInstant (Files/getLastModifiedTime path (u.jvm/varargs LinkOption)))))
 
 (defn copy-file!
   "Copy a file from `source` -> `dest`."
@@ -89,8 +89,8 @@
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
     (log/infof "Extract file %s -> %s" source dest)
-    (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
-                                                   StandardCopyOption/COPY_ATTRIBUTES]))))
+    (Files/copy source dest (u.jvm/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
+                                                       StandardCopyOption/COPY_ATTRIBUTES]))))
 
 (defn copy-files!
   "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as
@@ -126,7 +126,7 @@
   ;; cached instance via FileSystems/getFileSystem and close it inside a with-open block, killing the original
   ;; filesystem and breaking any long-lived consumer (e.g. GraalPy contexts pinned to that filesystem). The Path-based
   ;; overload bypasses the cache, giving an independent instance whose lifecycle the caller fully controls.
-  (-> (Path/of path (u/varargs String))
+  (-> (Path/of path (u.jvm/varargs String))
       (FileSystems/newFileSystem Collections/EMPTY_MAP)))
 
 (defn do-with-open-path-to-resource
@@ -173,7 +173,7 @@
   (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
     (let [file-path (apply get-path-in-filesystem fs path-components)]
       (when (exists? file-path)
-        (with-open [is (Files/newInputStream file-path (u/varargs OpenOption))]
+        (with-open [is (Files/newInputStream file-path (u.jvm/varargs OpenOption))]
           (slurp is))))))
 
 (defn unzip-file

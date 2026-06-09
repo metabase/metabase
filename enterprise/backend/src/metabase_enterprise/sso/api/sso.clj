@@ -14,6 +14,7 @@
    [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -105,7 +106,7 @@
         :idp-url (sso-settings/saml-identity-provider-slo-uri)
         :issuer (sso-settings/saml-application-name)
         :user-email email
-        :relay-state (u/encode-base64
+        :relay-state (util-be/encode-base64
                       (str (system/site-url) metabase-slo-redirect-url))))}))
 
 ;; POST /auth/sso/to_session

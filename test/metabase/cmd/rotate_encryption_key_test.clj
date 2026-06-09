@@ -19,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)))
@@ -71,7 +71,7 @@
                       ;; locale setting is returned, instead of the setting code having to query the app DB for it, and
                       ;; hence no error occurs, but for a cache miss, then the error happens
                       ;; this dynamic rebinding will bypass the call to `i18n/site-locale` and hence avoid that whole mess
-                      i18n/*site-locale-override*  "en"
+                      i18n-be/*site-locale-override*  "en"
 
                       ;; while we're at it, disable the setting cache entirely; we are effectively creating a new app DB
                       ;; so the cache itself is invalid and can only mask the real issues

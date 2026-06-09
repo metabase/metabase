@@ -14,7 +14,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.bigquery-cloud-sdk.workspaces :as bigquery.ws]
-   [metabase.util :as u])
+   [metabase.util-be.core :as util-be])
   (:import
    (com.google.api.gax.core CredentialsProvider)
    (com.google.auth.oauth2 ImpersonatedCredentials ServiceAccountCredentials)
@@ -100,7 +100,7 @@
   [^BigQuery client project-id dataset-name]
   (.create client
            (.build (DatasetInfo/newBuilder (DatasetId/of project-id dataset-name)))
-           (u/varargs BigQuery$DatasetOption [])))
+           (util-be/varargs BigQuery$DatasetOption [])))
 
 (defn drop-dataset!
   "Drop a BQ dataset and its contents. Idempotent: no-op if not present.
@@ -109,18 +109,18 @@
    that side-effect."
   [^BigQuery client project-id dataset-name]
   (let [ds-id (DatasetId/of project-id dataset-name)]
-    (when (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))
+    (when (.getDataset client ds-id (util-be/varargs BigQuery$DatasetOption []))
       (.delete client ds-id
-               (u/varargs BigQuery$DatasetDeleteOption
-                 [(BigQuery$DatasetDeleteOption/deleteContents)])))))
+               (util-be/varargs BigQuery$DatasetDeleteOption
+                                [(BigQuery$DatasetDeleteOption/deleteContents)])))))
 
 (defn list-tables
   "Return a vector of `{:schema dataset :table table-id}` maps for every table
    in `dataset-name`. Empty vector when the dataset doesn't exist."
   [^BigQuery client project-id dataset-name]
   (let [ds-id (DatasetId/of project-id dataset-name)]
-    (if-let [_ds (.getDataset client ds-id (u/varargs BigQuery$DatasetOption []))]
-      (vec (for [^Table t (.iterateAll (.listTables client ds-id (u/varargs BigQuery$TableListOption [])))]
+    (if-let [_ds (.getDataset client ds-id (util-be/varargs BigQuery$DatasetOption []))]
+      (vec (for [^Table t (.iterateAll (.listTables client ds-id (util-be/varargs BigQuery$TableListOption [])))]
              {:schema dataset-name :table (.. t getTableId getTable)}))
       [])))
 
@@ -210,7 +210,7 @@
   [project-id ^BigQuery admin-client out-dataset]
   (testing "workspace output dataset is dropped"
     (let [ds-id (DatasetId/of project-id out-dataset)
-          ds   (.getDataset admin-client ds-id (u/varargs BigQuery$DatasetOption []))]
+          ds   (.getDataset admin-client ds-id (util-be/varargs BigQuery$DatasetOption []))]
       (is (nil? ds)
           (format "output dataset %s should be removed after destroy" out-dataset)))))
 

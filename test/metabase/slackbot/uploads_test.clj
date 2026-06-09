@@ -11,7 +11,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload.impl]
-   [metabase.util :as u]))
+   [metabase.util-be.core :as util-be]))
 
 (set! *warn-on-reflection* true)
 
@@ -68,9 +68,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with error message"
@@ -96,9 +96,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "file was downloaded from Slack"
                     (is (= 1 (count @download-calls)))
                     (is (= (:url_private tu/slack-csv-file) (first @download-calls))))
@@ -131,9 +131,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "no download was attempted"
                     (is (= 0 (count @download-calls))))
                   (testing "no upload was attempted"
@@ -165,9 +165,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @post-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @post-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   ;; When AI is called, there are 2 posts (Thinking... then response) and 1 delete.
                   ;; When AI is skipped, there is just 1 post and no deletes.
                   (testing "AI was not called (only 1 post, no deletes)"
@@ -211,9 +211,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "only CSV/TSV files were downloaded"
                     (is (= 2 (count @download-calls)))
                     (is (= #{"https://files.slack.com/files/data.csv"
@@ -243,9 +243,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "file was not downloaded due to size"
                     (is (= 0 (count @download-calls))))
                   (testing "upload was not attempted"
@@ -269,9 +269,9 @@
                                           (tu/slack-request-options event-body)
                                           event-body)]
                   (is (= "ok" response))
-                  (u/poll {:thunk #(>= (count @stop-stream-calls) 1)
-                           :done? true?
-                           :timeout-ms 5000})
+                  (util-be/poll {:thunk #(>= (count @stop-stream-calls) 1)
+                                 :done? true?
+                                 :timeout-ms 5000})
                   (testing "no upload was attempted"
                     (is (= 0 (count @upload-calls))))
                   (testing "AI responds with permission error"

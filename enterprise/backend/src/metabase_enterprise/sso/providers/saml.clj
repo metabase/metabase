@@ -9,6 +9,7 @@
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -77,7 +78,7 @@
     (try
       (let [idp-url (sso-settings/saml-identity-provider-uri)
             relay-state (when redirect-url
-                          (u/encode-base64 redirect-url))
+                          (util-be/encode-base64 redirect-url))
             response (saml/idp-redirect-response {:request-id (str "id-" (random-uuid))
                                                   :sp-name (sso-settings/saml-application-name)
                                                   :issuer (sso-settings/saml-application-name)

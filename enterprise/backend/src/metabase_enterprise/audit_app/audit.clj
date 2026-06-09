@@ -13,6 +13,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -214,10 +215,10 @@
    files (single hash over sorted pairs)."
   ([root] (directory-content-checksum root ""))
   ([^Path root suffix]
-   (with-open [stream (Files/walk root (u/varargs FileVisitOption))]
+   (with-open [stream (Files/walk root (util-be/varargs FileVisitOption))]
      (->> (iterator-seq (.iterator stream))
           (filter (fn [^Path p]
-                    (and (Files/isRegularFile p (u/varargs LinkOption))
+                    (and (Files/isRegularFile p (util-be/varargs LinkOption))
                          (str/ends-with? (str (.getFileName p)) suffix))))
           (mapv (fn [^Path path]
                   [(str (.relativize root path))

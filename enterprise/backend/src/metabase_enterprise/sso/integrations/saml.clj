@@ -44,6 +44,7 @@
    [metabase.session.core :as session]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [ring.util.response :as response]
@@ -135,7 +136,7 @@
   "Process the RelayState to extract continue URL and related parameters"
   [relay-state]
   (let [continue-url (u/ignore-exceptions
-                       (when-let [s (some-> relay-state u/decode-base64)]
+                       (when-let [s (some-> relay-state util-be/decode-base64)]
                          (when-not (str/blank? s)
                            s)))
         ;; Extract token value from URL parameter

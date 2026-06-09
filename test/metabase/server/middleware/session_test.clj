@@ -16,7 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
    [toucan2.core :as t2]))
@@ -422,7 +422,7 @@
 
 (deftest bind-locale-test
   (let [handler        (-> (fn [_ respond _]
-                             (respond i18n/*user-locale*))
+                             (respond i18n-be/*user-locale*))
                            mw.session/bind-current-user
                            mw.session/wrap-current-user-info)
         session-locale (fn [session-key & {:as more}]

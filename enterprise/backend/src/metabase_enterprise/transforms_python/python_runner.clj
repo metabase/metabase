@@ -18,6 +18,7 @@
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -371,12 +372,12 @@
         (:timeout body)
         {:status  :failed
          :logs    events
-         :message (i18n/deferred-tru "Python execution timed out")}
+         :message (i18n-be/deferred-tru "Python execution timed out")}
 
         (not= 200 status)
         {:status  :failed
          :logs    events
-         :message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
+         :message (i18n-be/deferred-tru "Python execution failure (exit code {0})" (:exit_code body "?"))}
 
         :else
         (let [output-manifest (read-output-manifest @shared-storage-ref)
@@ -386,7 +387,7 @@
           #_(if-not (seq fields)
               {:status  :failed
                :logs    events
-               :message (i18n/deferred-tru "No fields in output metadata")})
+               :message (i18n-be/deferred-tru "No fields in output metadata")})
           (with-open [in  (open-output @shared-storage-ref)
                       rdr (io/reader in)]
             (let [cols (mapv (fn [c]

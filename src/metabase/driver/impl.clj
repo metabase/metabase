@@ -5,6 +5,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.lib.core :as lib]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -94,14 +95,14 @@
         ;; driver may have become registered while we were waiting for the lock, check again to be sure
         (when-not (registered? driver)
           (classloader/the-classloader) ;; Ensure the classloader is properly set before loading namespaces.
-          (u/profile (trs "Load driver {0}" driver)
-            (require-driver-ns driver)
-            ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
-            (when-not (registered? driver)
-              (require-driver-ns driver :reload)
-              ;; if *still* not registered, throw an Exception
-              (when-not (registered? driver)
-                (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
+          (util-be/profile (trs "Load driver {0}" driver)
+                           (require-driver-ns driver)
+                           ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
+                           (when-not (registered? driver)
+                             (require-driver-ns driver :reload)
+                             ;; if *still* not registered, throw an Exception
+                             (when-not (registered? driver)
+                               (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------
 
@@ -207,7 +208,7 @@
           (doseq [parent (parents hierarchy driver)]
             (initialize-if-needed! parent init-fn))
           (log/info (u/format-color :yellow "Initializing driver %s..." driver))
-          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
+          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (util-be/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
 

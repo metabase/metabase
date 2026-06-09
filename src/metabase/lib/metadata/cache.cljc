@@ -13,8 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [not-empty]])
-  #?(:cljs (:require-macros [metabase.lib.metadata.cache])))
+   [metabase.util.performance :refer [not-empty]]))
 
 (mr/def ::cache-key
   [:cat
@@ -137,10 +136,3 @@
         (*cache-miss-hook* k)
         (cache-value! metadata-providerable k v)
         v))))
-
-(defmacro with-cached-value
-  "Return the cached value for [[cache-key]] `k` if one already exists in the CachedMetadataProvider's general cache;
-  otherwise calculate the value by executing `body`, save it the cache, then return it."
-  {:style/indent 2}
-  [metadata-providerable k & body]
-  `(do-with-cached-value ~metadata-providerable ~k (fn [] ~@body)))

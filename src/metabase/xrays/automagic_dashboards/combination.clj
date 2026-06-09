@@ -28,7 +28,7 @@
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
@@ -133,7 +133,7 @@
   [x context available-metrics bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (i18n/localized-string? form)
+         (if (i18n-be/localized-string? form)
            (let [s     (str form)
                  new-s (fill-templates :string context bindings s)]
              (if (not= new-s s)

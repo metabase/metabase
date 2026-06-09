@@ -27,6 +27,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -664,11 +665,11 @@
             the middleware. The distinct values must still come back correctly."
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset native-dataset
-        (let [category-field-id (u/auto-retry 1
-                                  (try (mt/id :fv_partitioned_table :category)
-                                       (catch Exception e
-                                         (sync/sync-database! (mt/db) {:scan :schema})
-                                         (throw e))))
+        (let [category-field-id (util-be/auto-retry 1
+                                                    (try (mt/id :fv_partitioned_table :category)
+                                                         (catch Exception e
+                                                           (sync/sync-database! (mt/db) {:scan :schema})
+                                                           (throw e))))
               category-field    (t2/select-one :model/Field :id category-field-id)
               table             (t2/select-one :model/Table :id (:table_id category-field))]
           (testing "Dispatcher identifies this as a non-batch-able table"
@@ -688,13 +689,13 @@
       :bigquery-cloud-sdk
       (mt/dataset
         native-dataset
-        (let [category-field-id (u/auto-retry
+        (let [category-field-id (util-be/auto-retry
                                  1
-                                  (try
-                                    (mt/id :fv_partitioned_table :category)
-                                    (catch Exception e
-                                      (sync/sync-database! (mt/db) {:scan :schema})
-                                      (throw e))))]
+                                 (try
+                                   (mt/id :fv_partitioned_table :category)
+                                   (catch Exception e
+                                     (sync/sync-database! (mt/db) {:scan :schema})
+                                     (throw e))))]
           (t2/update! :model/Field category-field-id {:has_field_values :search})
           (t2/delete! :model/FieldValues :field_id category-field-id)
           (= [["coffee"]]

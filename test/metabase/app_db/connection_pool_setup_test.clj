@@ -11,6 +11,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
@@ -66,7 +67,7 @@
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
         (simulate-db-activity)
-        (u/deref-with-timeout updated? 200)
+        (util-be/deref-with-timeout updated? 200)
         (let [recent-checkin (deref (var-get #'mdb.connection-pool-setup/latest-activity))]
           (is (some? recent-checkin)
               "Database activity did not reset latest-checkin")
@@ -193,5 +194,5 @@
             (.setReadOnly conn true)
             (is (.isReadOnly conn)))
           (testing "on-check-in should be called; Connection read-only should be reset after checking in"
-            (let [^java.sql.Connection conn (u/deref-with-timeout connection* (u/seconds->ms 5))]
+            (let [^java.sql.Connection conn (util-be/deref-with-timeout connection* (u/seconds->ms 5))]
               (is (not (.isReadOnly conn))))))))))

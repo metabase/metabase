@@ -85,7 +85,8 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n-be.core :as i18n-be :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -142,7 +143,7 @@
 (defn- check-one [condition code message]
   (when-not condition
     (let [[message info] (if (and (map? message)
-                                  (not (i18n/localized-string? message)))
+                                  (not (i18n-be/localized-string? message)))
                            [(:message message) message]
                            [message])]
       (throw (ex-info (str message) (assoc info :status-code code)))))

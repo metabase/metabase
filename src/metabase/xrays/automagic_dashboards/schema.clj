@@ -9,13 +9,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mr/def ::string-or-18n-string
-  [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]])
+  [:or :string [:fn {:error/message "localized string"} i18n-be/localized-string?]])
 
 (mr/def ::root.entity
   [:multi

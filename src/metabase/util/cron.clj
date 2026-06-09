@@ -4,7 +4,7 @@
    format."
   (:require
    [clojure.string :as str]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
@@ -29,7 +29,7 @@
          true
          (catch Throwable _
            false)))]]
-   (i18n/deferred-tru "value must be a valid Quartz cron schedule string.")))
+   (i18n-be/deferred-tru "value must be a valid Quartz cron schedule string.")))
 
 (def CronScheduleString
   "Malli Schema for a valid cron schedule string."
@@ -50,7 +50,7 @@
     [:schedule_frame  {:optional true} [:maybe [:enum "first" "mid" "last"]]]
     [:schedule_hour   {:optional true} [:maybe ::CronHour]]
     [:schedule_minute {:optional true} [:maybe ::CronMinute]]]
-   (i18n/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
+   (i18n-be/deferred-tru "value must be a valid schedule map. See schema in metabase.util.cron for details.")))
 
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."

@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -88,7 +89,7 @@
         (when (a/<! canceled-chan)
           (reset! canceled? ::canceled-chan-message)
           (future-cancel futur))))
-    (u/deref-with-timeout futur 5000)))
+    (util-be/deref-with-timeout futur 5000)))
 
 (defmethod driver/connection-properties ::test-driver
   [& _]
@@ -191,9 +192,9 @@
             (.read ^InputStream (:body res)) ;; start the handler
             ;; NOTE: this is the gist here, calling .close on the body will consume request *completely*
             (.close ^Closeable (:http-client res))
-            (u/poll {:thunk       #(deref canceled)
-                     :done?       some?
-                     :interval-ms 5})
+            (util-be/poll {:thunk       #(deref canceled)
+                           :done?       some?
+                           :interval-ms 5})
             ;; it's been 29 when I tested this, if it every becomes flaky maybe decrease the number?
             (is (< 20 @cnt) "Stopped writing when channel closed")
             (testing "cancellation is working"

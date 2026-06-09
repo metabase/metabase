@@ -3,11 +3,12 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.test :as mt]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]))
 
 (deftest ^:parallel available-locales-test
   (testing "Should return locale in normalized format"
-    (is (contains? (set (i18n/available-locales-with-names))
+    (is (contains? (set (i18n-be/available-locales-with-names))
                    ["pt_BR", "Portuguese (Brazil)"]))))
 
 (deftest tru-test
@@ -18,9 +19,9 @@
                          "tru with str"
                          (fn [] (i18n/tru (str "must be " "{0} characters or less") 140))
                          "deferred-tru"
-                         (fn [] (str (i18n/deferred-tru "must be {0} characters or less" 140)))
+                         (fn [] (str (i18n-be/deferred-tru "must be {0} characters or less" 140)))
                          "deferred-tru with str"
-                         (fn [] (str (i18n/deferred-tru (str "must be " "{0} characters or less") 140)))}]
+                         (fn [] (str (i18n-be/deferred-tru (str "must be " "{0} characters or less") 140)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -47,9 +48,9 @@
                          "trs with str"
                          (fn [] (i18n/trs (str "must be " "{0} characters or less") 140))
                          "deferred-trs"
-                         (fn [] (str (i18n/deferred-trs "must be {0} characters or less" 140)))
+                         (fn [] (str (i18n-be/deferred-trs "must be {0} characters or less" 140)))
                          "deferred-trs with str"
-                         (fn [] (str (i18n/deferred-trs (str "must be " "{0} characters or less") 140)))}]
+                         (fn [] (str (i18n-be/deferred-trs (str "must be " "{0} characters or less") 140)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -71,7 +72,7 @@
             {"trun"
              (fn [n] (i18n/trun "{0} table" "{0} tables" n))
              "deferred-trun"
-             (fn [n] (str (i18n/deferred-trun "{0} table" "{0} tables" n)))}]
+             (fn [n] (str (i18n-be/deferred-trun "{0} table" "{0} tables" n)))}]
       (testing message
         (testing "should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -101,10 +102,10 @@
              (fn [n] (i18n/trsn "{0} table" "{0} tables" n))
 
              "deferred-trsn - singular"
-             (fn [n] (str (i18n/deferred-trsn "{0} table" "{0} tables" n)))
+             (fn [n] (str (i18n-be/deferred-trsn "{0} table" "{0} tables" n)))
 
              "deferred-trsn - plural"
-             (fn [n] (str (i18n/deferred-trsn "{0} table" "{0} tables" n)))}]
+             (fn [n] (str (i18n-be/deferred-trsn "{0} table" "{0} tables" n)))}]
       (testing message
         (testing "Should fall back to English if user locale & system locale are unset"
           (mt/with-temporary-setting-values [site-locale nil]
@@ -125,9 +126,9 @@
 
 (deftest ^:parallel localized-string?-test
   (is (true?
-       (i18n/localized-string? (i18n/deferred-trs "WOW"))))
+       (i18n-be/localized-string? (i18n-be/deferred-trs "WOW"))))
   (is (= false
-         (i18n/localized-string? "WOW"))))
+         (i18n-be/localized-string? "WOW"))))
 
 (deftest ^:parallel validate-number-of-args-test
   (testing "`trs` and `tru` should validate that the are being called with the correct number of args\n"
@@ -138,7 +139,7 @@
       (is (thrown-with-msg?
            AssertionError
            #"expects 2 args, got 1"
-           (#'i18n/validate-number-of-args "{0} {1}" [0]))))
+           (#'i18n-be/validate-number-of-args "{0} {1}" [0]))))
     (testing "too many args"
       (is (thrown?
            clojure.lang.Compiler$CompilerException
@@ -146,7 +147,7 @@
       (is (thrown-with-msg?
            AssertionError
            #"expects 2 args, got 3"
-           (#'i18n/validate-number-of-args "{0} {1}" [0 1 2]))))
+           (#'i18n-be/validate-number-of-args "{0} {1}" [0 1 2]))))
     (testing "Missing format specifiers (e.g. {1} but no {0})"
       (testing "num args match num specifiers"
         (is (thrown?
@@ -155,7 +156,7 @@
         (is (thrown-with-msg?
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
-             (#'i18n/validate-number-of-args "{1}" [0]))))
+             (#'i18n-be/validate-number-of-args "{1}" [0]))))
       (testing "num args match num specifiers if none were missing"
         (is (thrown?
              clojure.lang.Compiler$CompilerException
@@ -163,7 +164,7 @@
         (is (thrown-with-msg?
              AssertionError
              #"missing some \{\} placeholders\. Expected \{0\}, \{1\}"
-             (#'i18n/validate-number-of-args "{1}" [0 1])))))))
+             (#'i18n-be/validate-number-of-args "{1}" [0 1])))))))
 
 (deftest ^:parallel validate-number-of-args-test-2
   (testing "The number of args is still validated if the first argument is a `str` form"
@@ -173,7 +174,7 @@
     (is (thrown-with-msg?
          AssertionError
          #"expects 2 args, got 1"
-         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0])))))
+         (#'i18n-be/validate-number-of-args '(str "{0}" "{1}") [0])))))
 
 (deftest ^:parallel validate-number-of-args-test-3
   (testing "`trsn` and `trun` should validate that they are being called with at most one arg\n"
@@ -183,11 +184,11 @@
     (is (thrown-with-msg?
          AssertionError
          #"only supports a single \{0\} placeholder"
-         (#'i18n/validate-n "{1}" "{1}")))
+         (#'i18n-be/validate-n "{1}" "{1}")))
     (is (thrown?
          clojure.lang.Compiler$CompilerException
          (walk/macroexpand-all `(i18n/trsn "{0} {1}" "{0} {1}" n))))
     (is (thrown-with-msg?
          AssertionError
          #"only supports a single \{0\} placeholder"
-         (#'i18n/validate-n "{0} {1}" "{0} {1}")))))
+         (#'i18n-be/validate-n "{0} {1}" "{0} {1}")))))

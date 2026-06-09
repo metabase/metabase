@@ -27,6 +27,7 @@
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -165,7 +166,7 @@
         persisted?     (qp.persisted/can-substitute? card persisted-info)
         query          (lib/card->underlying-query metadata-providerable card)]
     ;; log the query at this point, it's useful for some purposes
-    (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
+    (log/debugf "Fetched query from Card %s:\n%s" card-id (util-be/cprint-to-str (select-keys query [:stages :parameters])))
     (cond-> query
       ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
@@ -372,8 +373,8 @@
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
-                (u/cprint-to-str stage)
-                (u/cprint-to-str replacement-stages))
+                (util-be/cprint-to-str stage)
+                (util-be/cprint-to-str replacement-stages))
     replacement-stages))
 
 (mu/defn- apply-sandboxes :- ::lib.schema/query

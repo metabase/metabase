@@ -21,6 +21,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util-be.core :as util-be]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
@@ -170,15 +171,15 @@
   ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
   ;; fix #45874
   (try
-    (u/auto-retry (if driver-api/is-prod? 2 5)
-      (try
-        {:tables (into #{} (describe-database-tables database))}
-        (catch Throwable e
-          ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
-          ;; a better chance of it succeeding.
-          (when-not driver-api/is-prod?
-            (Thread/sleep 1000))
-          (throw e))))
+    (util-be/auto-retry (if driver-api/is-prod? 2 5)
+                        (try
+                          {:tables (into #{} (describe-database-tables database))}
+                          (catch Throwable e
+                            ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
+                            ;; a better chance of it succeeding.
+                            (when-not driver-api/is-prod?
+                              (Thread/sleep 1000))
+                            (throw e))))
     (catch Throwable e
       (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}

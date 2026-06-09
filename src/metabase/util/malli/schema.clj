@@ -7,7 +7,7 @@
    [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :as i18n :refer [deferred-tru]]
+   [metabase.util.i18n-be.core :as i18n-be :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
@@ -157,7 +157,7 @@
 
 (def LocalizedString
   "Schema that is a localized string."
-  [:fn i18n/localized-string?])
+  [:fn i18n-be/localized-string?])
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -326,7 +326,7 @@
     NonBlankString
     [:fn
      {:error/message "valid locale"}
-     i18n/available-locale?]]
+     i18n-be/available-locale?]]
    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. ''en'' or ''en_US''.")))
 
 (def NanoIdString

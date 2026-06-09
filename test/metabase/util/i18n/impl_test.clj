@@ -6,6 +6,7 @@
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util.i18n :as i18n]
+   [metabase.util.i18n-be.core :as i18n-be]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.log :as log])
   (:import
@@ -139,8 +140,8 @@
         ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
         (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
-            (is (nil? (i18n/site-locale))
-                `i18n/site-locale)
+            (is (nil? (i18n-be/site-locale))
+                `i18n-be/site-locale)
             (is (nil? (system/site-locale))
                 `system/site-locale))
           (testing "we should still be able to (no-op) i18n stuff"

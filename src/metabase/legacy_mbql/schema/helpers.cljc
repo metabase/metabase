@@ -1,12 +1,23 @@
 (ns metabase.legacy-mbql.schema.helpers
   (:refer-clojure :exclude [distinct not-empty #?(:clj for)])
   (:require
+   #?(:cljs [goog.string :as gstring])
+   #?(:cljs goog.string.format)
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.util :as lib.util]
    [metabase.types.core]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [not-empty #?(:clj for)]]))
+
+;;; Local `format` polyfill — using `metabase.lib.util/format` here would pull
+;;; the entire `metabase.lib.schema.*` graph onto shadow-cljs's macro-load
+;;; path (because the only consumer here is [[defclause]], itself called
+;;; from [[metabase.legacy-mbql.schema.macros]], whose CLJ side is loaded as
+;;; macros). We only need standard printf-style formatting for docstrings, so
+;;; defer to `clojure.core/format` on CLJ and Closure's port on CLJS.
+(def ^:private format-string
+  #?(:clj  clojure.core/format
+     :cljs gstring/format))
 
 (comment metabase.types.core/keep-me)
 
@@ -23,7 +34,7 @@
         registry-name (clause-registry-name clause-name)]
     (mr/def
       registry-name
-      (lib.util/format "Schema for a valid MBQL 4 %s clause." clause-name)
+      (format-string "Schema for a valid MBQL 4 %s clause." clause-name)
       schema)))
 
 (defn possibly-unnormalized-mbql-clause?

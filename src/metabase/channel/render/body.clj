@@ -19,7 +19,8 @@
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-trs trs tru]]
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n-be.core :refer [deferred-trs]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
