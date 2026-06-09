@@ -1,6 +1,7 @@
+import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
-import App from "metabase/App.tsx";
+import App from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
@@ -49,6 +50,7 @@ import {
   PLUGIN_TENANTS,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import type { State } from "metabase/redux/store";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
 import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
@@ -82,7 +84,11 @@ import {
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 
-export const getRoutes = (store) => {
+type AppStore = Store<State> & {
+  dispatch: ThunkDispatch<State, void, UnknownAction>;
+};
+
+export const getRoutes = (store: AppStore) => {
   const hasUserSetup = getSetting(store.getState(), "has-user-setup");
 
   return (
@@ -100,7 +106,7 @@ export const getRoutes = (store) => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
-        disableCommandPalette
+        props={{ disableCommandPalette: true }}
       />
 
       {/* For compatibility: use the standard setup for embedding */}
@@ -111,7 +117,7 @@ export const getRoutes = (store) => {
         onEnter={async (nextState, replace, done) => {
           await store.dispatch(loadCurrentUser());
           trackPageView(nextState.location.pathname);
-          done();
+          done?.();
         }}
         onChange={(prevState, nextState) => {
           if (nextState.location.pathname !== prevState.location.pathname) {
@@ -163,7 +169,7 @@ export const getRoutes = (store) => {
 
           <Route path="search" component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}
-          <Redirect from="archive" to="trash" replace />
+          <Redirect from="archive" to="trash" />
           <Route path="trash" component={TrashCollectionLanding} />
 
           <Route path="document/:entityId" component={DocumentPageOuter}>
@@ -422,6 +428,10 @@ export const getRoutes = (store) => {
         from="/collections/permissions"
         to="/admin/permissions/collections"
       />
+
+      {/* Transforms moved from /admin to /data-studio */}
+      <Redirect from="/admin/transforms" to="/data-studio/transforms" />
+      <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />

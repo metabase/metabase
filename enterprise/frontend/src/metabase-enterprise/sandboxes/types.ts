@@ -1,8 +1,8 @@
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
-  DimensionRef,
   GroupTableAccessPolicy,
+  ParameterTarget,
   UserAttributeKey,
 } from "metabase-types/api";
 
@@ -22,7 +22,7 @@ export type GroupTableAccessPolicyDraft = Pick<
   "card_id" | "table_id" | "group_id"
 > & {
   attribute_remappings: {
-    [key: string]: string | DimensionRef | null;
+    [key: string]: string | ParameterTarget | null;
   };
 };
 

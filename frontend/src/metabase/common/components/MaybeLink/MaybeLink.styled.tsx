@@ -6,8 +6,6 @@ import type { HTMLAttributes } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
 import { Link } from "metabase/common/components/Link";
-import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { Icon } from "metabase/ui";
 import { maybeColor } from "metabase/ui/utils/colors";
 
 interface RawMaybeLinkProps {
@@ -32,6 +30,9 @@ const hoverStyle = (props: RawMaybeLinkProps) => css`
   ${props.activeColor ? `color: ${maybeColor(props.activeColor)};` : ""}
 `;
 
+/**
+ * @deprecated styled components are deprecated
+ */
 export const MaybeLink = styled(RawMaybeLink)`
   display: flex;
   align-items: center;
@@ -44,18 +45,4 @@ export const MaybeLink = styled(RawMaybeLink)`
   :hover {
     ${(props) => (props.to || props.onClick) && hoverStyle(props)}
   }
-`;
-
-export const BadgeIcon = styled(
-  Icon,
-  doNotForwardProps("hasMargin", "targetOffsetX"),
-)<{ hasMargin: boolean }>`
-  margin-right: ${(props) => (props.hasMargin ? "5px" : 0)};
-  flex-shrink: 0;
-`;
-
-export const BadgeText = styled.span<{ isSingleLine: boolean }>`
-  overflow: ${(props) => (props.isSingleLine ? "hidden" : "")};
-  text-overflow: ${(props) => (props.isSingleLine ? "ellipsis" : "")};
-  white-space: ${(props) => (props.isSingleLine ? "nowrap" : "")};
 `;

@@ -283,7 +283,8 @@
 
 (defn- ee-sso-configured? []
   (when config/ee-available?
-    (setting/get :other-sso-enabled?)))
+    (or (setting/get :other-sso-enabled?)
+        (setting/get :oidc-enabled))))
 
 (defn sso-enabled?
   "Any SSO provider is configured and enabled"
@@ -308,7 +309,7 @@
      ;; regardless of license status.
      :saml   (setting/get :saml-enabled)
      :jwt    (setting/get :jwt-enabled)
-     :oidc   (setting/get :oidc-enabled?)
+     :oidc   (setting/get :oidc-enabled)
      :slack  (setting/get :slack-connect-enabled)
      :scim   (setting/get :scim-enabled)
      ;; Unknown sso_source -- treat as disabled to allow password reset

@@ -73,6 +73,7 @@
                               :database-routing                       true
                               :metadata/table-existence-check         true
                               :regex/lookaheads-and-lookbehinds       false
+                              :transforms/accurate-rows-affected      false
                               :transforms/python                      true
                               :transforms/table                       true
                               :workspace                              false}]
