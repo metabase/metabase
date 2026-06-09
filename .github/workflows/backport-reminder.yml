@@ -50,7 +50,7 @@ jobs:
           needs.files-changed.outputs.docs == 'true' &&
           needs.flags.outputs.has_backport_label == 'false'
         run: |
-          echo "::error::PR is missing a backport decision label. Add one of: no-backport, backport, double-backport, triple-backport"
+          echo "::error::PR has docs changes and is missing a backport decision label. Add one of: no-backport, backport, single-backport, double-backport, or triple-backport"
           exit 1
 
   priority-backport-reminder:

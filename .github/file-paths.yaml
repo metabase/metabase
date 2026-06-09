@@ -195,7 +195,6 @@ documentation:
   - "docs/**"
   - "**/*.md"
 
-# Used only in .github/workflows/backport-reminder.yml
 docs:
   - "docs/**"
 
