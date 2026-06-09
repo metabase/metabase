@@ -235,11 +235,9 @@ const config = {
       cacheGroups: {
         vendors: {
           test: /[\\/]node_modules[\\/]/,
-          // The data-app iframe is self-contained — keep its node_modules
-          // (incl. React, Emotion, Mantine CSS) inside its own chunks so
-          // `data-app.html` doesn't need to load the main app's vendor
-          // bundle. Otherwise the iframe would have to link `vendor.[hash]`
-          // and inherit whatever else lives in that shared chunk.
+          // The data-app iframe is isolated from main-app CSS/JS by design;
+          // sharing the vendor chunk would re-link them. Keep its
+          // node_modules in its own chunks.
           chunks: (chunk) =>
             chunk.name !== "data-app-vendors" && chunk.name !== "app-data-app",
           name: "vendor",
