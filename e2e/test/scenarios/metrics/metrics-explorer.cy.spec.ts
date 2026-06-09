@@ -23,6 +23,10 @@ type CompactMetricsViewerUrlState = {
     i?: string;
     t?: string;
     l?: string;
+    D?: Array<{
+      i?: number;
+      d?: string;
+    }>;
   }>;
   a?: string | null;
 };
@@ -124,12 +128,22 @@ const ALL_MODELS = [
 
 const SNAPSHOT_NAME = "metrics-explorer-snapshot";
 
+const getMetricSearchResultMatcher = (name: string) => {
+  if (name === "Count of orders") {
+    return /Count of orders(?!\s+over\s+time)/;
+  }
+
+  return name;
+};
+
 // ============================================================================
 // Test Helpers
 // ============================================================================
 
 const selectMetricSearchResult = (name: string) => {
-  H.MetricsViewer.searchResults().contains('[role="menuitem"]', name).click();
+  H.MetricsViewer.searchResults()
+    .contains('[role="menuitem"]', getMetricSearchResultMatcher(name))
+    .click();
 };
 
 /**
@@ -183,6 +197,11 @@ const addMetricMath = (
 
 const runFormula = () => {
   H.MetricsViewer.runButton().should("not.be.disabled").click();
+};
+
+const runFormulaWithKeyboard = () => {
+  H.MetricsViewer.runButton().should("not.be.disabled");
+  H.MetricsViewer.searchInput().type("{enter}");
 };
 
 /**
@@ -267,25 +286,46 @@ const showColumnLabels = () => {
 const getMetricsViewerUrlState =
   (): Cypress.Chainable<CompactMetricsViewerUrlState> => {
     return cy.location("hash").then((hash) => {
-      const encodedHash = hash.replace(/^#/, "");
-      const base64 = encodedHash.replace(/-/g, "+").replace(/_/g, "/");
-      const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-      const bytes = Uint8Array.from(atob(paddedBase64), (char) =>
-        char.charCodeAt(0),
-      );
-
-      return JSON.parse(
-        new TextDecoder().decode(bytes),
-      ) as CompactMetricsViewerUrlState;
+      return decodeMetricsViewerUrlHash(hash);
     });
   };
 
+const decodeMetricsViewerUrlHash = (
+  hash: string,
+): CompactMetricsViewerUrlState => {
+  const encodedHash = hash.replace(/^#/, "");
+  const base64 = encodedHash.replace(/-/g, "+").replace(/_/g, "/");
+  const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const bytes = Uint8Array.from(atob(paddedBase64), (char) =>
+    char.charCodeAt(0),
+  );
+
+  return JSON.parse(
+    new TextDecoder().decode(bytes),
+  ) as CompactMetricsViewerUrlState;
+};
+
+const waitForSerializedDimensionBreakout = () => {
+  cy.location("hash").should((hash) => {
+    const state = decodeMetricsViewerUrlHash(hash);
+    const [dimensionBreakout] = state.t ?? [];
+
+    expect(state.t).to.have.length(1);
+    expect(state.a).to.equal(dimensionBreakout?.i);
+    expect(dimensionBreakout?.D).to.have.length(2);
+  });
+};
+
 const addOrdersProductsExpression = () => {
-  addMetricMath([
-    { metricName: "Count of orders" },
-    "+",
-    { metricName: "Count of products" },
-  ]);
+  addMetricMath(
+    [
+      { metricName: "Count of orders" },
+      "+",
+      { metricName: "Count of products" },
+    ],
+    false,
+  );
+  runFormulaWithKeyboard();
   cy.wait("@dataset");
 };
 
@@ -1016,6 +1056,7 @@ describe("scenarios > metrics > explorer", () => {
       "contain.text",
       "Multiple dimensions",
     );
+    waitForSerializedDimensionBreakout();
 
     cy.log("Reload the page and verify the dimension choice persists");
     cy.reload();

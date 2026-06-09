@@ -367,10 +367,16 @@ export function useViewerState({
           }
         }
 
+        let selectedDimensionBreakoutId = prev.selectedDimensionBreakoutId;
+        if (selectedDimensionBreakoutId == null) {
+          selectedDimensionBreakoutId = dimensionBreakouts[0]?.id ?? null;
+        }
+
         return {
           ...prev,
           formulaEntities,
           dimensionBreakouts,
+          selectedDimensionBreakoutId,
         };
       }),
     [],
