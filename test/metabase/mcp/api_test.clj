@@ -704,6 +704,11 @@
                     _              (reset! question-id (:id question-data))
                     _              (is (= (format "https://stats.metabase.test/question/%d" @question-id)
                                           (:url question-data)))
+                    ;; No collection_id given → defaults to the caller's personal collection;
+                    ;; collection_path must survive MCP forwarding.
+                    _              (is (= (t2/select-one-fn :name :model/Collection
+                                                            :personal_owner_id (mt/user->id :crowberto))
+                                          (:collection_path question-data)))
                     _              (call-tool session-id "update_question"
                                               {:id          (:id question-data)
                                                :description "Smoke updated description"})
