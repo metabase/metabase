@@ -148,7 +148,7 @@
       ;; Warm up the cache
       (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
       (testing "Do we use cached values when available?"
-        (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
+        (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
           (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
           (is (= 1 (t2/count :model/FieldValues
                              :field_id (:id field)
@@ -174,8 +174,8 @@
               (is (some? fv-id)))
             (t2/update! :model/FieldValues fv-id
                         {:values new-values})
-            (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
-                                                                    :has_more_values false})]
+            (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
+                                                                                  :has_more_values false})]
               (is (= (map vector new-values)
                      (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))
           (finally
@@ -186,8 +186,8 @@
         ;; make sure we have a cache
         (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
         (let [old-sandbox-fv-id (t2/select-one-pk :model/FieldValues :field_id (:id field) :type :advanced)]
-          (with-redefs [field-values/advanced-field-values-expired? (fn [fv]
-                                                                      (= (:id fv) old-sandbox-fv-id))]
+          (mt/with-dynamic-fn-redefs [field-values/advanced-field-values-expired? (fn [fv]
+                                                                                    (= (:id fv) old-sandbox-fv-id))]
             (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
             ;; did the old one get deleted?
             (is (not (t2/exists? :model/FieldValues :id old-sandbox-fv-id)))

@@ -185,35 +185,31 @@ We use ESLint to enforce additional rules. It is integrated into the Webpack bui
 - Avoid creating separate `Container` and `Components` directories. In some cases it makes sense to separate components for data loading and viewing, but this is easy to do in a single file.
 - Avoid nested ternaries as they often result in code that is difficult to read. If you have logical branches in your code that are dependent on the value of a string, prefer using an object as a map to multiple values (when evaluation is trivial) or a `switch` statement. Where logic is complex, we often use [ts-pattern](https://github.com/gvergnaud/ts-pattern) over a set of if/else statement.
 - Be conservative with what comments you add to the codebase. Ideally, code should be written in such a way that it explains itself clearly. When it does not, you should first try rewriting the code. If for whatever reason you are unable to write something clearly, add a comment to explain the "why".
-- Avoid breaking JSX up into separate method calls within a single component. Prefer inlining JSX so that you can better see what the relation is of the JSX a `render` method returns to what is in the `state` or `props` of a component. By inlining JSX you'll also get a better sense of what parts should and should not be separate components.
+- Avoid using `renderThing()` functions within a component. These are sometimes (but rarely!) useful for performance reasons, but in nearly all cases, simple subcomponents are more readable, testable, and maintainable.
 
-```ts
+```tsx
 // don't do this
-render () {
-  return (
-    <div>
-      {this.renderThing1()}
-      {this.renderThing2()}
-      {this.state.thing3Needed && this.renderThing3()}
-    </div>
-  );
-}
+return (
+  <div>
+    {renderThing1()}
+    {renderThing2()}
+    {thing3Needed && renderThing3()}
+  </div>
+);
 
 // do this
-render () {
-  return (
-    <div>
-      <button onClick={this.toggleThing3Needed}>toggle</button>
-      <Thing2 randomProp={this.props.foo} />
-      {this.state.thing3Needed && <Thing3 randomProp2={this.state.bar} />}
-    </div>
-  );
-}
+return (
+  <div>
+    <button onClick={toggleThing3Needed}>toggle</button>
+    <Thing2 randomProp={foo} />
+    {thing3Needed && <Thing3 randomProp2={bar} />}
+  </div>
+);
 ```
 
 - Avoid complex logical expressions inside of if statements. Often extracting logic to a well-named boolean variable can make code much easier to read.
 
-```javascript
+```ts
 // don't do this
 if (typeof children === "string" && children.split(/\n/g).length > 1) {
   // ...

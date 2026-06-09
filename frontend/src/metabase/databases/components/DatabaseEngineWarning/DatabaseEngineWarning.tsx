@@ -1,9 +1,9 @@
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { Alert } from "metabase/common/components/Alert";
+import { Anchor, Box } from "metabase/ui";
 import type { Engine } from "metabase-types/api";
-
-import { Warning, WarningLink } from "./DatabaseEngineWarning.styled";
 
 export interface DatabaseEngineWarningProps {
   engineKey?: string;
@@ -69,14 +69,22 @@ interface NewEngineWarningProps {
 }
 
 const NewEngineWarning = ({ engineName, onChange }: NewEngineWarningProps) => (
-  <Warning>
-    {t`This driver will be removed in a future release.`}{" "}
-    {jt`We recommend you upgrade to the ${(
-      <WarningLink key="link" onClick={onChange}>
-        {t`new ${engineName} driver`}
-      </WarningLink>
-    )}.`}
-  </Warning>
+  <Box mb="xl">
+    <Alert>
+      {t`This driver will be removed in a future release.`}{" "}
+      {jt`We recommend you upgrade to the ${(
+        <Anchor
+          component="button"
+          key="link"
+          c="brand"
+          fw={700}
+          onClick={onChange}
+        >
+          {t`new ${engineName} driver`}
+        </Anchor>
+      )}.`}
+    </Alert>
+  </Box>
 );
 
 interface OldEngineWarningProps {
@@ -85,22 +93,32 @@ interface OldEngineWarningProps {
 }
 
 const OldEngineWarning = ({ engineName, onChange }: OldEngineWarningProps) => (
-  <Warning>
-    {t`This is our new ${engineName} driver.`}{" "}
-    {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
-    {jt`If you really need to use it, you can ${(
-      <WarningLink key="link" onClick={onChange}>
-        {t`find it here`}
-      </WarningLink>
-    )}.`}
-  </Warning>
+  <Box mb="xl">
+    <Alert>
+      {t`This is our new ${engineName} driver.`}{" "}
+      {t`The old driver has been deprecated and will be removed in a future release.`}{" "}
+      {jt`If you really need to use it, you can ${(
+        <Anchor
+          component="button"
+          key="link"
+          c="brand"
+          fw={700}
+          onClick={onChange}
+        >
+          {t`find it here`}
+        </Anchor>
+      )}.`}
+    </Alert>
+  </Box>
 );
 
 const CommunityEngineWarning = () => (
-  <Warning icon="info">
-    {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
-    {t`This is a community-developed driver and not supported by Metabase. `}
-  </Warning>
+  <Box mb="xl">
+    <Alert icon="info">
+      {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings */}
+      {t`This is a community-developed driver and not supported by Metabase. `}
+    </Alert>
+  </Box>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

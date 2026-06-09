@@ -87,7 +87,7 @@ export const NotificationsAdminPage = ({
       limit: 1,
       offset: 0,
       active: true,
-      last_send_status: "failing",
+      last_check_status: "failing",
     });
   const { data: ownerlessData, isLoading: isOwnerlessLoading } =
     useAdminListNotificationsQuery({

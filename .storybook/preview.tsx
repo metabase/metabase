@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 
-import { ThemeProvider } from "metabase/ui";
+import { PortalContainer, ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/utils/delay
 // This will skip the skippable delays in stories
@@ -139,6 +140,7 @@ const decorators = [
         <ThemeProvider resolvedColorScheme={resolvedColorScheme}>
           <Global styles={globalStyles} />
           <CssVariables />
+          {createPortal(<PortalContainer />, document.body)}
           <Story />
         </ThemeProvider>
       </EmotionCacheProvider>

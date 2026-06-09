@@ -51,7 +51,7 @@ const elements = [
   createElement({ type: "shared", name: "account" }),
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
-  createElement({ type: "shared", name: "auth" }),
+  createElement({ type: "feature", name: "auth" }),
   createElement({ type: "shared", name: "browse" }),
   createElement({ type: "shared", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
@@ -96,8 +96,9 @@ const elements = [
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "shared", name: "metrics" }),
   createElement({ type: "shared", name: "metrics-viewer" }),
-  createElement({ type: "shared", name: "models" }),
+  createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "new" }),
+  createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
   createElement({ type: "shared", name: "pulse" }),
@@ -156,6 +157,9 @@ const elements = [
     "frontend/src/metabase/routes-public.tsx",
     "frontend/src/metabase/AppThemeProvider.tsx",
     "frontend/src/metabase/AppColorSchemeProvider.tsx",
+    // Entry point for the static-viz bundle (server-side chart rendering in
+    // GraalJS) - like app.js, it composes OSS + EE code for a build artifact.
+    "frontend/src/metabase/static-viz/index.tsx",
   ].map((path) =>
     createElement({
       type: "app",
@@ -170,6 +174,10 @@ const elements = [
     pattern: "frontend/src/metabase/app/nav/**",
     enforceOutgoing: true,
   }),
+  // static-viz must come after the app entries rather than in the
+  // alphabetical shared list: its entry point (static-viz/index.tsx) is app
+  // tier, and the first matching element wins.
+  createElement({ type: "shared", name: "static-viz" }),
   // catch-all for unmoduled files - must be last
   createElement({
     type: "shared",
