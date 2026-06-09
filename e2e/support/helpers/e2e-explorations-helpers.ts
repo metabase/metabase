@@ -32,10 +32,7 @@ export function visitNewExploration(): void {
 }
 
 /**
- * Enter the manual data-picking flow from the entry page. The "+ Data" /
- * "+ Events" pickers (the `research-content` plan pane) only mount after the
- * user clicks "Manual setup", so manual-flow tests must call this after
- * `visitNewExploration()`. Waits for the "+ Data" button as the load signal.
+ * Enter the manual data-picking flow from the entry page.
  */
 export function startManualExploration(): void {
   cy.findByRole("button", { name: /Manual setup/i }).click();
@@ -44,10 +41,7 @@ export function startManualExploration(): void {
 
 /**
  * The metrics picker opens on the "Library" tab whenever the metrics library is
- * enabled (it is, under the pro token these specs activate), which lists only
- * `in_library` metrics and hides ad-hoc seeded test metrics. Switch to the
- * "All" tab so every metric is listed. No-op when the library is disabled — the
- * tabs aren't rendered then.
+ * enabled (it is, under the pro token these specs activate).
  */
 export function selectAllMetricsTab(): void {
   cy.findByRole("dialog").then(($dialog) => {
@@ -63,11 +57,7 @@ export interface AddMetricsAndDimensionsOptions {
 }
 
 /**
- * Pick metrics + dimensions through the "+ Data" picker. The header
- * "Data" menu opens a modal per entity type; each row is a `Checkbox`
- * labelled with the entity name, and an "Add" button commits the
- * newly-checked rows. Assumes `visitNewExploration()` registered the
- * `@getDimensions` intercept already.
+ * Pick metrics + dimensions through the "+ Data" picker.
  */
 export function addMetricsAndDimensions({
   metrics,
@@ -94,8 +84,6 @@ export function addMetricsAndDimensions({
 
 /**
  * Pick the named timelines (one or many) through the "+ Events" modal.
- * Each row is a `Checkbox` labelled with the timeline name; the "Add"
- * button commits the selection.
  */
 export function addTimelinesToExploration(names: string | string[]): void {
   const list = Array.isArray(names) ? names : [names];
@@ -108,8 +96,7 @@ export function addTimelinesToExploration(names: string | string[]): void {
 
 /**
  * Click `Start research`, wait for the create-exploration POST,
- * and assert we navigated to the detail page. Yields the new
- * exploration's id so callers can chain detail-page assertions.
+ * and assert we navigated to the detail page.
  */
 export function beginResearch(): Cypress.Chainable<number> {
   cy.intercept("POST", "/api/exploration").as("createExploration");
@@ -125,10 +112,7 @@ export function beginResearch(): Cypress.Chainable<number> {
 }
 
 /**
- * Shape of a single tool-call event the explorations agent emits
- * over the AI-streaming protocol (Vercel AI SDK style — see
- * `frontend/src/metabase/api/ai-streaming/process-stream.ts`
- * `StreamingPartTypeRegistry`).
+ * Shape of a single tool-call event the explorations agent emits over the AI-streaming protocol.
  */
 export interface ExplorationToolCall {
   toolCallId: string;
@@ -201,16 +185,6 @@ export interface CreateExplorationViaApiOptions {
   timelineIds?: number[];
 }
 
-/**
- * Seed an exploration directly via the BE API without going
- * through the new-exploration UI. Picks the first metric +
- * dimension exposed by `/api/exploration/dimensions` unless the
- * caller provides explicit ids.
- *
- * Yields the new exploration's id. Note: query results are
- * generated asynchronously by the BE; callers must wait for them
- * separately (e.g. `cy.findAllByLabelText("Ready")`).
- */
 export function createExplorationViaApi({
   name = "Test exploration",
   metricCardIds,
@@ -247,13 +221,6 @@ export function createExplorationViaApi({
           return [firstDim.id];
         })();
 
-      // The BE's `generate-queries!` only materializes queries for
-      // (metric, dimension) pairs where the metric's snapshotted
-      // `dimension_mappings` resolves a target for that dimension.
-      // Pass `null` and we get an exploration with zero queries —
-      // the sidebar tree renders only the empty section headings
-      // and `findAllByRole("treeitem")` finds nothing. Echo back
-      // the BE's own mappings so query generation succeeds.
       const metrics = metricIds.map((id) => {
         const m = body.metrics.find((mm) => mm.id === id);
         return {
@@ -273,10 +240,7 @@ export function createExplorationViaApi({
           semantic_type: d.semantic_type,
         };
       });
-      // The create endpoint persists one `ExplorationThreadGroup` per `:groups`
-      // entry — there's no top-level metrics/dimensions any more. Mirror the
-      // manual UI's one-block-per-metric shape: a metric-anchored group per
-      // metric, each crossed with the chosen dimensions.
+
       const groups = metrics.map((metric) => ({
         type: "metric" as const,
         metrics: [metric],
@@ -311,7 +275,5 @@ interface ExplorationDimensionsResponse {
 
 export function visitExploration(id: number): void {
   cy.visit(`/question/research/${id}`);
-  // Sidebar rows use `role="treeitem"`. Wait for at least one to
-  // appear so subsequent queries don't race the initial render.
   cy.findAllByRole("treeitem").first().should("be.visible");
 }

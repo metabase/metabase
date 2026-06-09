@@ -27,9 +27,7 @@ export interface MetricBlock {
   kind: "metric";
   id: string;
   metric: ExplorationMetric;
-  // All of the metric's dimensions (candidates), sorted by interestingness.
-  dimensions: MetricDimension[];
-  // The subset the user actually wants to research.
+  dimensions: MetricDimension[]; // sorted by interestingness
   selectedDimensionIds: Set<DimensionId>;
 }
 
@@ -38,7 +36,6 @@ export interface DimensionBlock {
   id: string;
   dimension: MetricDimension;
   groupDimensions: MetricDimension[];
-  // All metrics related to the dimension (candidates).
   metrics: ExplorationMetric[];
   selectedMetricIds: Set<ExplorationMetric["id"]>;
 }
@@ -102,7 +99,6 @@ export interface ExplorationSelection {
 
   removeBlock: (blockId: string) => void;
 
-  // Flip whether a candidate child is selected within an existing block.
   toggleDimensionSelected: (blockId: string, dimensionId: DimensionId) => void;
   toggleMetricSelected: (
     blockId: string,
@@ -129,8 +125,7 @@ function buildMetricBlock(
       .filter((d): d is MetricDimension => d != null),
   );
   const interesting = referencedDims.filter(isInterestingDimension);
-  // Select the interesting dimensions; fall back to all so the block is
-  // never created with an empty selection (BE rejects a metric with no dims).
+
   const selected = interesting.length > 0 ? interesting : referencedDims;
   return {
     kind: "metric",

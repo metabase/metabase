@@ -13,7 +13,6 @@ import type { Timeline } from "metabase-types/api";
 
 import S from "./NewExplorationData.module.css";
 
-/** How many selected pills to show on a collapsed block before "+N". */
 const COLLAPSED_PILL_LIMIT = 3;
 
 interface SelectedPill {
@@ -25,7 +24,6 @@ interface SelectedPillsProps {
   pills: SelectedPill[];
 }
 
-/** Collapsed view: plain, non-removable pills for the selected children. */
 export function SelectedPills({ pills }: SelectedPillsProps) {
   if (pills.length === 0) {
     return (
@@ -57,11 +55,6 @@ interface SelectedTimelinePillsProps {
   onShowMore: () => void;
 }
 
-/**
- * Picked timelines rendered inline beside the "Events" button: the first
- * (most-relevant) one as a removable blue pill, the rest collapsed into a
- * "+N" pill that opens the events picker.
- */
 export function SelectedTimelinePills({
   timelines,
   disabled,

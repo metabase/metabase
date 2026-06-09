@@ -15,7 +15,6 @@ import type {
   MetricDimension,
 } from "metabase-types/api";
 
-/** Coarse, user-facing semantic type used to tab/group dimensions. */
 export type DimensionTypeKey =
   | "date"
   | "geolocation"
@@ -23,7 +22,6 @@ export type DimensionTypeKey =
   | "number"
   | "other";
 
-/** Stable tab order for the dimension type tabs. */
 export const DIMENSION_TYPE_ORDER: DimensionTypeKey[] = [
   "date",
   "geolocation",

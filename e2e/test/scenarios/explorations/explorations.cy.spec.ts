@@ -112,8 +112,6 @@ describe("scenarios > explorations > new research > manual flow", () => {
 
     H.explorationsMetabotPromptInput().should("be.visible");
 
-    // Manual setup opens the research plan, whose header exposes the
-    // "+ Data" and "+ Events" affordances for adding to the plan.
     H.startManualExploration();
     cy.findByTestId("research-content")
       .findByRole("button", { name: /Data/ })
@@ -121,6 +119,7 @@ describe("scenarios > explorations > new research > manual flow", () => {
     cy.findByTestId("research-content")
       .findByRole("button", { name: /Events/ })
       .should("be.visible");
+
     // CTA only appears once at least one block is added.
     cy.findByRole("button", { name: /Start research/i }).should("not.exist");
   });
@@ -133,8 +132,6 @@ describe("scenarios > explorations > new research > manual flow", () => {
       metrics: ["Count of orders"],
     });
 
-    // Adding the metric creates a research-plan block headed by the
-    // metric name, with its interesting dimensions selected inside.
     cy.findByTestId("research-content")
       .findByText("Count of orders")
       .should("be.visible");
@@ -354,8 +351,6 @@ describe("scenarios > explorations > new research > metabot flow", () => {
       H.visitNewExploration();
 
       H.explorationsMetabotPromptInput().type("Why are signups down?");
-      // The entry page submits via "Create plan" (which switches to the plan
-      // view); the plan-page chat's send button isn't present yet.
       cy.findByRole("button", { name: /Create plan/i }).click();
 
       // The chat dispatch went through with the `explorations`

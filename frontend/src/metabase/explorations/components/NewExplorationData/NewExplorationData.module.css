@@ -4,6 +4,8 @@
 
 .blocksContainer {
   overflow-y: auto;
+
+  /* show scrollbar a bit to the side, so it doesn't overlap with block borders */
   margin-left: -1rem;
   margin-right: -1rem;
   padding-left: 1rem;
