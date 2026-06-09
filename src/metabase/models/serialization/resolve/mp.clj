@@ -147,8 +147,9 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
-  Inactive (`:active false`) matches are treated as a miss (BOT-739): the app-DB row can outlive its
-  warehouse table (e.g. a deleted or re-uploaded upload)."
+  Inactive (`:active false`) matches are treated as a miss: the app-DB row can outlive its warehouse
+  table (e.g. a deleted or re-uploaded upload). (Surfaced while investigating BOT-739, though likely
+  not its cause.)"
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)
