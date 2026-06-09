@@ -22,5 +22,4 @@ export interface DocumentsState {
   hoveredChildTargetId: string | undefined;
   hasUnsavedChanges: boolean;
   isHistorySidebarOpen: boolean;
-  loadingCardIds: number[];
 }

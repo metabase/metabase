@@ -31,6 +31,7 @@ export interface PrefetchQueue {
   reportLoading(id: string, loading: boolean): void;
   notifyViewportChange(): void;
   hasTicket(id: string): boolean;
+  hasInflightLoads(): boolean;
   subscribe(cb: Listener): () => void;
   destroy(): void;
 }
@@ -112,6 +113,10 @@ export class PrefetchQueueStore implements PrefetchQueue {
 
   hasTicket(id: string): boolean {
     return this.prefetchedIds.has(id);
+  }
+
+  hasInflightLoads(): boolean {
+    return this.inflightLoads.size > 0;
   }
 
   subscribe(cb: Listener): () => void {

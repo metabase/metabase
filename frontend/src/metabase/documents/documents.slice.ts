@@ -41,7 +41,6 @@ export const initialState: DocumentsState = {
   hoveredChildTargetId: undefined,
   hasUnsavedChanges: false,
   isHistorySidebarOpen: false,
-  loadingCardIds: [],
 };
 
 const documentsSlice = createSlice({
@@ -134,16 +133,6 @@ const documentsSlice = createSlice({
     setIsHistorySidebarOpen: (state, action: PayloadAction<boolean>) => {
       state.isHistorySidebarOpen = action.payload;
     },
-    documentCardLoadingStarted: (state, action: PayloadAction<number>) => {
-      if (!state.loadingCardIds.includes(action.payload)) {
-        state.loadingCardIds.push(action.payload);
-      }
-    },
-    documentCardLoadingFinished: (state, action: PayloadAction<number>) => {
-      state.loadingCardIds = state.loadingCardIds.filter(
-        (id) => id !== action.payload,
-      );
-    },
   },
 });
 
@@ -163,8 +152,6 @@ export const {
   setHoveredChildTargetId,
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
-  documentCardLoadingStarted,
-  documentCardLoadingFinished,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

@@ -1,21 +1,17 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { skipToken, useGetCardQuery, useGetCardQueryQuery } from "metabase/api";
 import {
   useGetAdhocPivotQueryQuery,
   useGetAdhocQueryQuery,
 } from "metabase/api/dataset";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 import type { Card, Dataset, RawSeries } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
-import {
-  documentCardLoadingFinished,
-  documentCardLoadingStarted,
-} from "../documents.slice";
 import { getCardWithDraft } from "../selectors";
 
 interface UseCardDataProps {
@@ -164,19 +160,6 @@ export function useCardData({
   );
 
   const isLoading = isLoadingCard || isLoadingDataset;
-
-  const dispatch = useDispatch();
-  // Track this card in `loadingCardIds` while its query is in flight, clearing
-  // it on cleanup so a skipped/unmounted mid-load card leaves no stale entry.
-  useEffect(() => {
-    if (skip || !isLoading) {
-      return;
-    }
-    dispatch(documentCardLoadingStarted(id));
-    return () => {
-      dispatch(documentCardLoadingFinished(id));
-    };
-  }, [isLoading, skip, id, dispatch]);
 
   const hasDataForVisualization = cardToUse && dataset?.data;
   const series = hasDataForVisualization
