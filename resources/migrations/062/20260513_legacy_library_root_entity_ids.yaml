@@ -4,7 +4,28 @@ databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
 
   - changeSet:
-      id: v62.2026-05-13T11:59:58
+      id: v62.2026-05-13T11:00:00
+      author: andsalves
+      comment: >-
+        This migration has been patched to resolve a mismatch collation issue on MySQL/MariaDB, @see #75458.
+        To update it without breaking the checkSum rules, we replace the original changeset ids and delete the
+        original ids from databasechangelog to keep the migration history clean.
+        As these migrations are idempotent, we won't have problems if we need to rollback instances.
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM ${databasechangelog.name} WHERE id IN (
+                'v62.2026-05-13T11:59:58',
+                'v62.2026-05-13T11:59:59',
+                'v62.2026-05-13T12:00:00',
+                'v62.2026-05-13T12:00:01',
+                'v62.2026-05-13T12:00:02'
+              );
+      rollback:
+        - empty: {}
+
+  - changeSet:
+      id: v62.2026-05-13T11:00:01
       author: andsalves
       comment: Backfill type column value for Library collections
       changes:
@@ -24,7 +45,7 @@ databaseChangeLog:
       rollback:
         - empty: {}
   - changeSet:
-      id: v62.2026-05-13T11:59:59
+      id: v62.2026-05-13T11:00:02
       author: andsalves
       comment: Make sure the root collection with library type and canonical entity_id is unique
       changes:
@@ -42,7 +63,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:00
+      id: v62.2026-05-13T11:00:03
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library root collection
       changes:
@@ -55,18 +76,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:00.500
-      author: andsalves
-      comment: Set MySQL/MariaDB session collation for Library root child path comparisons
-      changes:
-        - sql:
-            dbms: mysql,mariadb
-            sql: SET collation_connection = 'utf8mb4_unicode_ci'
-      rollback:
-        - empty: {}
-
-  - changeSet:
-      id: v62.2026-05-13T12:00:01
+      id: v62.2026-05-13T11:00:04
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Data section
       changes:
@@ -103,7 +113,7 @@ databaseChangeLog:
               WHERE type = 'library-data'
                 AND location IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') AS loc
+                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -114,7 +124,7 @@ databaseChangeLog:
                     FROM collection child
                     WHERE child.type = 'library-data'
                       AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/')
+                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
@@ -124,7 +134,7 @@ databaseChangeLog:
         - empty: {}
 
   - changeSet:
-      id: v62.2026-05-13T12:00:02
+      id: v62.2026-05-13T11:00:05
       author: andsalves
       comment: Backfill canonical entity_id for legacy Library Metrics section
       changes:
@@ -161,7 +171,7 @@ databaseChangeLog:
               WHERE type = 'library-metrics'
                 AND location IN (
                   SELECT loc FROM (
-                    SELECT CONCAT('/', CAST(id AS CHAR), '/') AS loc
+                    SELECT CONCAT('/', CAST(id AS CHAR), '/') COLLATE utf8mb4_unicode_ci AS loc
                     FROM collection
                     WHERE type = 'library' AND location = '/'
                   ) lib_loc
@@ -172,7 +182,7 @@ databaseChangeLog:
                     FROM collection child
                     WHERE child.type = 'library-metrics'
                       AND child.location IN (
-                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/')
+                        SELECT CONCAT('/', CAST(lib.id AS CHAR), '/') COLLATE utf8mb4_unicode_ci
                         FROM collection lib
                         WHERE lib.type = 'library' AND lib.location = '/'
                       )
