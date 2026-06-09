@@ -2454,7 +2454,7 @@
       },
       "metabase-enterprise.security-center.schema.semver" : {
         "type" : "string",
-        "pattern" : "^\\d+\\.\\d+\\.\\d+$"
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
       },
       "metabase-enterprise.security-center.schema.severity" : {
         "type" : "string",
@@ -5430,6 +5430,25 @@
       "metabase.frontend-errors.api.frontend-error-type" : {
         "type" : "string",
         "enum" : [ "component-crash", "chart-render-error" ]
+      },
+      "metabase.health-inspector.api.result" : {
+        "type" : "object",
+        "properties" : {
+          "check_name" : {
+            "type" : "string"
+          },
+          "health" : {
+            "type" : "number"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "run_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "check_name", "health", "message", "run_at" ]
       },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
@@ -35397,6 +35416,36 @@
           }
         },
         "tags" : [ "/api/google" ]
+      }
+    },
+    "/api/health-inspector" : {
+      "get" : {
+        "operationId" : "get-api-health-inspector",
+        "summary" : "GET /api/health-inspector",
+        "description" : "Get a list of recent health check runs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.health-inspector.api.result"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/health-inspector" ]
       }
     },
     "/api/ldap/settings" : {
