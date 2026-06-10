@@ -41,7 +41,7 @@
 (mu/defn- mark-fingerprinting-failed!
   "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
   fingerprinting fails for a non-transient reason, so that the Fields are not re-selected by [[fields-to-fingerprint]]
-  and retried on every subsequent sync. Transient failures (see [[metabase.sync.util/do-not-retry-exception?]]) are
+  and retried on every subsequent sync. Transient failures (see [[metabase.sync.util/transient-exception?]]) are
   left untouched so they are retried."
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (when-let [ids (seq (map u/the-id fields))]
@@ -215,9 +215,9 @@
                 (fingerprint-fields! table fields))]
           (if-let [throwable (:throwable stats)]
             (do
-              ;; `do-not-retry-exception?` flags transient connection/environment errors, which abort this run and
-              ;; retry on the next sync; for any other (permanent) error, give up so we don't re-attempt every sync.
-              (when-not (sync-util/do-not-retry-exception? throwable)
+              ;; transient connection/environment errors abort this run and retry on the next sync; for any other
+              ;; (permanent) error, give up so we don't re-attempt every sync.
+              (when-not (sync-util/transient-exception? throwable)
                 (mark-fingerprinting-failed! fields))
               (merge (empty-stats-map 0) stats))
             stats)))
