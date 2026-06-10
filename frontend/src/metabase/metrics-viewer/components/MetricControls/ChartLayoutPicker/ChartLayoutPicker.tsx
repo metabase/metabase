@@ -16,6 +16,7 @@ export function ChartLayoutPicker({
 }: ChartLayoutPickerProps) {
   return (
     <Flex
+      className={S.root}
       gap="xs"
       bg="background-secondary"
       p="xs"
@@ -25,6 +26,7 @@ export function ChartLayoutPicker({
       <Tooltip label={t`Default layout`}>
         <ActionIcon
           w="2rem"
+          h="1.5rem"
           variant={!isStacked ? "filled" : "subtle"}
           bg={!isStacked ? "background-primary" : undefined}
           onClick={() => onToggle(false)}
@@ -40,6 +42,7 @@ export function ChartLayoutPicker({
       <Tooltip label={t`Stack layout`}>
         <ActionIcon
           w="2rem"
+          h="1.5rem"
           variant={isStacked ? "filled" : "subtle"}
           bg={isStacked ? "background-primary" : undefined}
           onClick={() => {

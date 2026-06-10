@@ -14,7 +14,6 @@ import {
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 import { useDispatch } from "metabase/redux";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
-import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
@@ -24,6 +23,7 @@ import {
 } from "metabase/utils/constants";
 import type {
   CollectionItem,
+  SearchContext,
   SearchModel,
   SearchResult as SearchResultType,
   SearchResponse as SearchResultsType,
@@ -47,7 +47,7 @@ export type SearchResultsProps = {
   models?: SearchModel[];
   footerComponent?: SearchResultsFooter;
   onFooterSelect?: () => void;
-  isSearchBar?: boolean;
+  context: SearchContext;
 };
 
 export const SearchLoadingSpinner = () => (
@@ -62,7 +62,7 @@ export const SearchResults = ({
   models,
   footerComponent,
   onFooterSelect,
-  isSearchBar = false,
+  context,
 }: SearchResultsProps) => {
   const dispatch = useDispatch();
 
@@ -82,17 +82,14 @@ export const SearchResults = ({
     q?: string;
     limit: number;
     models?: SearchModel[];
-    context?: "search-bar" | "search-app";
+    context: SearchContext;
   } & SearchFilters = {
     q: debouncedSearchText,
     limit: DEFAULT_SEARCH_LIMIT,
+    context,
     ...searchFilters,
     models: models ?? searchFilters.type,
   };
-
-  if (isSearchBar) {
-    query.context = SearchContextTypes.SEARCH_BAR;
-  }
 
   const { data: response, isLoading } = useSearchQuery(
     debouncedSearchText ? query : skipToken,
@@ -170,7 +167,7 @@ export const SearchResults = ({
                 isSelected={cursorIndex === index}
                 onClick={onClick}
                 index={index}
-                context="search-bar"
+                context={context}
                 searchTerm={searchText}
               />
             </li>

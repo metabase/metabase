@@ -283,10 +283,7 @@
                       (is (some? @run-id-atom))
                       (is (=? {:status :failed
                                :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom)))
-                      ;; crowberto is a superuser/admin, so they receive the notification
-                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                      (is (mt/received-email-body? :crowberto #"Uncaught error")))))))))))))
+                              (t2/select-one :model/TransformJobRun :id @run-id-atom))))))))))))))
 
 (deftest job-run-boom-manual-no-email-test
   (mt/with-premium-features #{:transforms-basic}
@@ -334,57 +331,6 @@
                                :message string?}
                               (t2/select-one :model/TransformJobRun :id @run-id-atom)))
                       (is (zero? (count @mt/inbox))))))))))))))
-
-(deftest timeout-old-runs-notifies-admins-for-cron-runs-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-model-cleanup [:model/Notification
-                            :model/TransformJobRun]
-      (mt/with-fake-inbox
-        (mt/fetch-user :crowberto)
-        (notification.seed/seed-notification!)
-        (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
-                                                :schedule "0 0 * * * ? *"}]
-          (let [run (t2/insert-returning-instance! :model/TransformJobRun
-                                                   {:job_id     (:id job)
-                                                    :run_method :cron
-                                                    :status     :started
-                                                    :is_active  true})]
-            ;; push updated_at well past the 4h default timeout so the watchdog fires
-            (t2/update! :model/TransformJobRun
-                        :id (:id run)
-                        {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/timeout-and-notify-old-runs!)
-            (is (=? {:status    :timeout
-                     :is_active nil
-                     :message   "Timed out by metabase"}
-                    (t2/select-one :model/TransformJobRun :id (:id run))))
-            ;; crowberto is a superuser and receives the admin notification
-            (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-            (is (mt/received-email-body? :crowberto #"Timed out by metabase"))))))))
-
-(deftest timeout-old-runs-does-not-notify-for-manual-runs-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-model-cleanup [:model/Notification
-                            :model/TransformJobRun]
-      (mt/with-fake-inbox
-        (mt/fetch-user :crowberto)
-        (notification.seed/seed-notification!)
-        (mt/with-temp [:model/TransformJob job {:name "stalled-manual-job"
-                                                :schedule "0 0 * * * ? *"}]
-          (let [run (t2/insert-returning-instance! :model/TransformJobRun
-                                                   {:job_id     (:id job)
-                                                    :run_method :manual
-                                                    :status     :started
-                                                    :is_active  true})]
-            (t2/update! :model/TransformJobRun
-                        :id (:id run)
-                        {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/timeout-and-notify-old-runs!)
-            (is (=? {:status :timeout}
-                    (t2/select-one :model/TransformJobRun :id (:id run)))
-                "run is still timed out by the watchdog")
-            (is (zero? (count @mt/inbox))
-                "manual runs do not trigger admin notifications")))))))
 
 (deftest job-run-with-tranform-run-failure-test
   (mt/with-premium-features #{:transforms-basic}
@@ -596,14 +542,19 @@
                           on-enter        (fn [] (await-barrier barrier-enter))
                           on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
                           original-insert transforms.u/try-start-unless-already-running]
-                      (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
-                                                  (fn [transform-id run-method user-id]
-                                                    (on-enter)
-                                                    (let [[ret ex] (try
-                                                                     [(original-insert transform-id run-method user-id)]
-                                                                     (catch Throwable t [nil t]))]
-                                                      (on-exit)
-                                                      (if ex (throw ex) ret)))]
+                      ;; with-redefs, not with-dynamic-fn-redefs: run-transforms! dispatches each transform on an
+                      ;; ExecutorService worker (transforms-sql-worker), which doesn't convey dynamic bindings, so a
+                      ;; proxy-based redef is invisible there and the barrier choreography silently no-ops. A global
+                      ;; root swap is seen by every thread.
+                      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+                      (with-redefs [transforms.u/try-start-unless-already-running
+                                    (fn [transform-id run-method user-id]
+                                      (on-enter)
+                                      (let [[ret ex] (try
+                                                       [(original-insert transform-id run-method user-id)]
+                                                       (catch Throwable t [nil t]))]
+                                        (on-exit)
+                                        (if ex (throw ex) ret)))]
                         (let [run1 (transforms.job-run/start-run! (:id job) :manual)
                               run2 (transforms.job-run/start-run! (:id job) :manual)
                               fut1 (future

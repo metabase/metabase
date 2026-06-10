@@ -810,14 +810,14 @@
                                        :tables
                                        set)
                       default-table-set (tables-set)
-                      do-with-resolved-connection sql-jdbc.execute/do-with-resolved-connection]
-                  (with-redefs [sql-jdbc.execute/do-with-resolved-connection
-                                (fn [driver db options f]
-                                  (do-with-resolved-connection driver db options
-                                                               (fn [conn]
-                                                                 (when-not (:connection db)
-                                                                   (driver/set-role! driver/*driver* conn role-a))
-                                                                 (f conn))))]
+                      do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
+                  (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                              (fn [driver db options f]
+                                                (do-with-resolved-connection driver db options
+                                                                             (fn [conn]
+                                                                               (when-not (:connection db)
+                                                                                 (driver/set-role! driver/*driver* conn role-a))
+                                                                               (f conn))))]
                     (is (= default-table-set (tables-set)))))))))))))
 
 (defn do-on-all-connection-in-pool [driver db-id options f]
@@ -1106,3 +1106,22 @@
           (is (some? thrown) "expected validate-impersonated-query* to throw")
           (is (= qp.error-type/invalid-query (:type (ex-data thrown))))
           (is (re-find #"single select statement" (ex-message thrown))))))))
+
+(deftest ^:parallel validate-impersonated-query-keys-on-allow-write-flag-test
+  (testing "validate-impersonated-query* derives read-vs-write from :impersonation/allow-write?"
+    (let [query   (fn [sql allow-write?]
+                    (cond-> {:stages [{:lib/type :mbql.stage/native :native sql}]}
+                      allow-write? (assoc :impersonation/allow-write? true)))
+          outcome (fn [q]
+                    (try
+                      (driver.sql/validate-impersonated-query* :postgres q)
+                      :ok
+                      (catch clojure.lang.ExceptionInfo _ :rejected)))
+          select  "SELECT 1 AS x"
+          write   "UPDATE t SET x = 1 WHERE id = -1"]
+      (testing "without :impersonation/allow-write?: SELECT allowed, write rejected"
+        (is (= :ok       (outcome (query select false))))
+        (is (= :rejected (outcome (query write  false)))))
+      (testing "with :impersonation/allow-write? true: write allowed, SELECT rejected"
+        (is (= :ok       (outcome (query write  true))))
+        (is (= :rejected (outcome (query select true))))))))

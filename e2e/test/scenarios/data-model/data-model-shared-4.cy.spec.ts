@@ -121,18 +121,35 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         TableSection.clickDetailsTab();
       }
       cy.log("sync");
-      TableSection.getSyncOptionsButton().click();
-      H.modal().button("Sync table schema").click();
+
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-sync schema").click();
+      } else {
+        TableSection.getSyncOptionsButton().click();
+        H.modal().button("Sync table schema").click();
+      }
       verifyAndCloseToast("Failed to start sync");
 
-      cy.log("scan");
-      H.modal().button("Re-scan table").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Re-scan field values").click();
+      } else {
+        H.modal().button("Re-scan table").click();
+      }
       verifyAndCloseToast("Failed to start scan");
 
-      cy.log("discard field values");
-      H.modal().button("Discard cached field values").click();
+      if (area === "data studio") {
+        TableSection.getActionsMenuButton().click();
+        H.popover().findByText("Discard cached field values").click();
+      } else {
+        H.modal().button("Discard cached field values").click();
+      }
+
       verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      if (area === "admin") {
+        cy.realPress("Escape");
+      }
 
       if (area === "data studio") {
         TableSection.clickFieldsTab();
@@ -388,7 +405,14 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
 
       cy.log("JSON unfolding");
       TablePicker.getDatabase("Writable Postgres12").click();
+      // Switching tables loads the new table's metadata async; wait for that
+      // specific request so the field interaction doesn't run against the
+      // previously-selected table (a fresh alias avoids matching a stale one).
+      cy.intercept("GET", "/api/table/*/query_metadata*").as(
+        "manyTypesMetadata",
+      );
       TablePicker.getTable("Many Data Types").click();
+      cy.wait("@manyTypesMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
@@ -399,7 +423,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
 
       cy.log("formatting");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("ordersMetadata");
       TablePicker.getTable("Orders").click();
+      cy.wait("@ordersMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }

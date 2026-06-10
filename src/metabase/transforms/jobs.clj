@@ -357,19 +357,6 @@
                                                  :message (structure-message (::message failure))})
                                               failures)}))))
 
-(defn- notify-job-failure
-  "Notify admins of a catastrophic job failure (not individual transform failures)."
-  [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)
-        admin-emails (keep :email (active-admins))]
-    (doseq [email admin-emails]
-      (events/publish-event! :event/transform-failed
-                             {:email email
-                              :job_name (:name job)
-                              :job_href (urls/transform-job-url job-id)
-                              :failure_count 1
-                              :failures [{:message (structure-message message)}]}))))
-
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
@@ -395,13 +382,11 @@
                                 (log/error e "Error when failing a transform run.")))))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
-                  ;; We should clean up in this case and notify the admin users.
                   (try
                     (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                    (when (= :cron run-method)
-                      (if (::transform-failure (ex-data t))
-                        (notify-transform-failures job-id (::failures (ex-data t)))
-                        (notify-job-failure job-id (.getMessage t))))
+                    (when (and (::transform-failure (ex-data t))
+                               (= :cron run-method)) ;; Catastrophic job failures are included in the digest
+                      (notify-transform-failures job-id (::failures (ex-data t))))
                     (catch Exception e
                       (log/error e "Error when failing a transform job run.")))
                   (throw t)))))
@@ -409,27 +394,20 @@
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
-(defn- timeout-and-notify-old-runs!
-  "Time out stale job runs and notify admins for each cron-scheduled run that was
-  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
-  notification behavior."
+(defn- timeout-old-runs!
+  "Time out stale transform job runs."
   []
   (let [timed-out (transforms.job-run/timeout-old-runs!
                    (transforms.settings/transform-timeout) :minute)]
     (when (seq timed-out)
       (log/infof "Timed out %d transform job run(s)." (count timed-out)))
-    (doseq [{:keys [job_id run_method message]} timed-out
-            :when (= run_method :cron)]
-      (try
-        (notify-job-failure job_id (or message "Timed out by metabase"))
-        (catch Throwable t
-          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
+    timed-out))
 
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
   (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "job"}
-    (timeout-and-notify-old-runs!)))
+    (timeout-old-runs!)))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

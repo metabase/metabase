@@ -1,11 +1,10 @@
 (ns metabase.mcp.api
   "MCP (Model Context Protocol) Streamable HTTP transport handler.
-   Exposes Metabase's agent tools via JSON-RPC 2.0 over a single `/api/mcp` endpoint."
+   Exposes Metabase's agent tools via JSON-RPC 2.0 over each of the MCP endpoints."
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
    [compojure.response :as compojure.response]
-   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.api.macros.scope :as scope]
    [metabase.api.open-api :as open-api]
@@ -22,7 +21,6 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [oidc-provider.store :as oidc.store]
    [throttle.core :as throttle])
   (:import
    (java.io BufferedWriter OutputStreamWriter)
@@ -33,19 +31,10 @@
 ;;; -------------------------------------------------- Auth --------------------------------------------------------
 
 (defn- validate-bearer-token
-  "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure."
+  "Look up and validate an OAuth bearer token. Returns `{:user-id <int> :scopes <set>}` on success, nil on failure.
+   Delegates to the shared resolver so MCP and the core session middleware agree on token validity and scopes."
   [token-string]
-  (when-let [provider (oauth-server/get-provider)]
-    (when-let [token-data (oidc.store/get-access-token (:token-store provider) token-string)]
-      (let [expiry (:expiry token-data)]
-        (when (or (nil? expiry)
-                  (t/after? (t/instant expiry) (t/instant)))
-          (let [user-id (some-> (:user-id token-data) parse-long)
-                scopes  (when-let [scope-vec (:scope token-data)]
-                          (into #{} scope-vec))]
-            (when user-id
-              {:user-id user-id
-               :scopes  (or scopes #{})})))))))
+  (oauth-server/resolve-access-token token-string))
 
 ;;; ------------------------------------------------- JSON-RPC 2.0 --------------------------------------------------
 
@@ -347,8 +336,23 @@
 
 ;;; ---------------------------------------------------- Handler ---------------------------------------------------
 
-(defn- www-authenticate-discovery []
-  (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource/api/mcp\""))
+;; Source of truth for the route aliases — keep in sync with the route-map in
+;; [[metabase.api-routes.routes]] and resource-metadata endpoints in [[metabase.oauth-server.api.metadata]].
+(def ^:private endpoint-paths
+  "URL paths that serve the MCP endpoint, relative to site-url.
+   `/api/metabase-mcp` is canonical (the advertised URL); `/api/mcp` is a legacy alias kept for
+   back-compat with existing clients."
+  #{"/api/metabase-mcp" "/api/mcp"})
+
+(defn- www-authenticate-discovery
+  "Build the `WWW-Authenticate` header advertising OAuth discovery for the path the client hit.
+   A client connecting via an alias is pointed at that same alias as the protected resource."
+  [request]
+  ;; Routing matches on the first path segment, so a trailing slash (e.g. `/api/metabase-mcp/`) still
+  ;; reaches the handler — strip it so the alias is recognized rather than falling back to canonical.
+  (let [uri  (str/replace (:uri request) #"/+$" "")
+        path (if (contains? endpoint-paths uri) uri "/api/metabase-mcp")]
+    (str "Bearer realm=\"mcp\" resource_metadata=\"" (system/site-url) "/.well-known/oauth-protected-resource" path "\"")))
 
 (def +mcp-enabled
   "Wrap routes so they may only be accessed when the MCP server is enabled."
@@ -400,5 +404,5 @@
            ;; No auth at all — return 401 with discovery
            :else
            (respond (json-response 401 (jsonrpc-error nil -32603 "Authentication required")
-                                   {"WWW-Authenticate" (www-authenticate-discovery)}))))))
+                                   {"WWW-Authenticate" (www-authenticate-discovery request)}))))))
    (constantly nil)))

@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -70,8 +71,10 @@
         credentials-provider (when token (credentials-provider remote-url token))]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
     (try
-      (-> command
-          (.setCredentialsProvider credentials-provider)
+      (-> (doto command
+            ;; bound the network operation so a stalled connection can't hang the sync forever (GHY-3727)
+            (.setTimeout (int (setting/get :remote-sync-git-timeout-seconds)))
+            (.setCredentialsProvider credentials-provider))
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -87,13 +90,15 @@
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
   of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
-    (u/prog1 (call-remote-command (.fetch git) git-source))
-    (log/info "Successfully fetched repository")))
+    (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
+                                  git-source)
+      (log/info "Successfully fetched repository"))))
 
 (defn- repo-path [{:keys [^String remote-url ^String token]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
@@ -410,7 +415,7 @@
   (FileUtils/deleteDirectory repo-path))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
+  (if-let [obj (when (.exists path) (get @jgit (.getPath path)))]
     obj
     (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
                                                                      :token      token})
@@ -426,7 +431,9 @@
   (let [version (commit-sha source (:branch source))]
     (if version
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+      (throw (ex-info (str "Invalid branch: " (:branch source))
+                      {:error-type :missing-branch
+                       :branch (:branch source)})))))
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."

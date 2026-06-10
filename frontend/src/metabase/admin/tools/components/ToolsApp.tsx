@@ -58,6 +58,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             icon="database"
             location={location}
           />
+          <ToolsNavItem
+            label={t`Alerts management`}
+            path={Urls.adminToolsNotifications()}
+            icon="bell"
+            location={location}
+          />
         </AdminNavWrapper>
       }
     >

@@ -4,13 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getTimelineName } from "metabase/common/utils/timelines";
-import { Ellipsified } from "metabase/ui";
+import { Checkbox, Ellipsified } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";
 
 import {
-  CardCheckbox,
   CardContent,
   CardHeader,
   CardIcon,
@@ -90,7 +89,8 @@ const TimelineCard = ({
         onClick={handleHeaderClick}
         aria-label={t`Timeline card header`}
       >
-        <CardCheckbox
+        <Checkbox
+          size="sm"
           checked={anyEventVisible}
           indeterminate={anyEventVisible && !allEventsVisible}
           onClick={handleCheckboxClick}

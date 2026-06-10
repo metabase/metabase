@@ -1,48 +1,19 @@
 // eslint-disable-next-line no-restricted-imports
-import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Card } from "metabase/common/components/Card";
 import { Link } from "metabase/common/components/Link";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
 
-const LIST_H_MARGINS = "var(--mantine-spacing-md)";
-
 export const UndoList = styled.ul`
   position: fixed;
   left: 0;
   bottom: 0;
-  margin: ${LIST_H_MARGINS};
+  margin: var(--mantine-spacing-md);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-`;
-
-export const ToastCard = styled(Card)<{
-  translateY?: number;
-  color?: string;
-  noBorder?: boolean;
-}>`
-  padding: 10px var(--mantine-spacing-md);
-  margin-top: var(--mantine-spacing-sm);
-  max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: ${(props) =>
-    props.dark
-      ? "var(--mb-color-background-primary-inverse)"
-      : "var(--mb-color-background-primary)"};
-  color: ${(props) =>
-    props.dark
-      ? "var(--mb-color-text-secondary-inverse)"
-      : "var(--mb-color-text-primary)"};
-  ${({ noBorder }) =>
-    noBorder &&
-    css`
-      border: none;
-      overflow-x: hidden;
-    `};
 `;
 
 export const CardContent = styled.div`

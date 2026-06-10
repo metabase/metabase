@@ -81,10 +81,11 @@
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
   (let [result (impl/has-remote-changes? {:force-refresh? force-refresh})]
-    {:has_changes (:has-changes? result)
-     :remote_version (:remote-version result)
-     :local_version (:local-version result)
-     :cached (:cached? result)}))
+    (cond-> {:has_changes (:has-changes? result)
+             :remote_version (:remote-version result)
+             :local_version (:local-version result)
+             :cached (:cached? result)}
+      (:branch-missing? result) (assoc :branch_missing true))))
 
 (api.macros/defendpoint :get "/dirty" :- remote-sync.schema/DirtyResponse
   "Return all models with changes that have not been pushed to the remote sync source in any
@@ -130,12 +131,14 @@
 (api.macros/defendpoint :get "/current-task" :- [:maybe remote-sync.schema/SyncTask]
   "Get the current sync task"
   []
+  (api/check-superuser)
   (when-let [task (remote-sync.task/most-recent-task)]
     (t2/hydrate task :status)))
 
 (api.macros/defendpoint :post "/current-task/cancel" :- remote-sync.schema/SyncTask
   "Cancels the current task if one is running"
   []
+  (api/check-superuser)
   (let [task (remote-sync.task/most-recent-task)]
     (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
     (remote-sync.task/cancel-sync-task! (:id task))

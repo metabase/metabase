@@ -282,7 +282,8 @@ function DatabaseItemList({
 }: {
   parent: MiniPickerDatabaseItem | MiniPickerSchemaItem;
 }) {
-  const { setPath, onChange, isHidden, models } = useMiniPickerContext();
+  const { setPath, onChange, isHidden, models, includeHiddenSchemas } =
+    useMiniPickerContext();
   // Callers opt schemas in as a terminal pick by including "schema" in
   // `models`. Affects three things: schemas fire `onChange` instead of
   // `setPath`, single-schema DBs no longer auto-drill to tables, and the
@@ -291,7 +292,11 @@ function DatabaseItemList({
   const { data: allSchemas, isLoading: isLoadingSchemas } =
     useListDatabaseSchemasQuery(
       parent.model === "database"
-        ? { id: parent.id, "can-query": true }
+        ? {
+            id: parent.id,
+            "can-query": true,
+            include_hidden: includeHiddenSchemas,
+          }
         : skipToken,
     );
 
@@ -480,6 +485,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
       q: query,
       models: models as SearchModel[],
       limit: 50,
+      context: "data-picker",
     };
     const extraParams =
       typeof searchParams === "function" ? searchParams(params) : searchParams;
@@ -571,7 +577,13 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
 }
 
 export const MiniPickerListLoader = () => (
-  <Stack px="1rem" pt="0.5rem" pb="13px" gap="1rem">
+  <Stack
+    data-testid="mini-picker-list-loader"
+    px="1rem"
+    pt="0.5rem"
+    pb="13px"
+    gap="1rem"
+  >
     <Repeat times={3}>
       <Skeleton
         height="1.5rem"

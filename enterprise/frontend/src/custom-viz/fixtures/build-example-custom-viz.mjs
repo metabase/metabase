@@ -35,6 +35,14 @@ const visualizations = [
     manifest: resolve(PLUGIN_ROOT, "manifests/demo-viz-security.json"),
     out: resolve(E2E_ASSETS, "example_custom_viz_plugin_3_security.tgz"),
   },
+  {
+    index: resolve(PLUGIN_ROOT, "src/index-widget-security-component.tsx"),
+    manifest: resolve(PLUGIN_ROOT, "manifests/demo-viz-security-component.json"),
+    out: resolve(
+      E2E_ASSETS,
+      "example_custom_viz_plugin_4_security_component.tgz",
+    ),
+  },
 ];
 
 export async function buildCustomVizFixtures() {

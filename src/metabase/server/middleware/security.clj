@@ -17,6 +17,7 @@
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
   (:import
+   (java.net URI)
    (java.security MessageDigest SecureRandom)))
 
 (set! *warn-on-reflection* true)
@@ -115,16 +116,62 @@
    "https://www.metabase.com/"
    "https://metabase.com/"])
 
+(def ^:private always-allowed-resource-hosts
+  "Implicitly-allowed `img-src`/`font-src` hosts: our own origin and `data:` URIs."
+  ["'self'" "data:"])
+
+(defn- parse-hosts-string
+  "Split a comma/whitespace-separated `hosts-string` into individual hosts, adding wildcard prefixes as needed."
+  [hosts-string]
+  (->> (str/split (or hosts-string "") #"[ ,\s\r\n]+")
+       (remove str/blank?)
+       (mapcat add-wildcard-entries)))
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
-  (->> (str/split hosts-string #"[ ,\s\r\n]+")
-       (remove str/blank?)
-       (mapcat add-wildcard-entries)
-       (into always-allowed-iframe-hosts)))
+  (into always-allowed-iframe-hosts (parse-hosts-string hosts-string)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
+
+(defn- parse-allowed-resource-hosts*
+  [hosts-string]
+  (into always-allowed-resource-hosts (parse-hosts-string hosts-string)))
+
+(def ^{:doc "Parse a string of allowed resource hosts (e.g. for `img-src`), adding wildcard prefixes as needed."}
+  parse-allowed-resource-hosts
+  (memoize parse-allowed-resource-hosts*))
+
+(defn- bracket-ipv6-host
+  "`URI#getHost` returns IPv6 literals unbracketed, but CSP origins require the brackets."
+  [host]
+  (if (and (str/includes? host ":") (not (str/starts-with? host "[")))
+    (str "[" host "]")
+    host))
+
+(defn- font-file-src->origin
+  "Extract the `scheme://host[:port]` origin from a custom font file `src` URL, or nil if it is
+  blank, relative, or unparseable."
+  [src]
+  (when (and (string? src) (not (str/blank? src)))
+    (try
+      (let [uri    (URI. src)
+            scheme (.getScheme uri)
+            host   (some-> uri .getHost bracket-ipv6-host)
+            port   (.getPort uri)]
+        (when (and scheme host)
+          (str scheme "://" host (when (pos? port) (str ":" port)))))
+      (catch Exception _ nil))))
+
+(defn- application-font-files->hosts
+  "Origins of any custom font files configured via the `application-font-files` setting, so that
+  `font-src` allows the fonts an admin has explicitly opted into without a separate setting."
+  []
+  (->> (setting/get-value-of-type :json :application-font-files)
+       (keep (comp font-file-src->origin :src))
+       distinct
+       vec))
 
 (def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
 (def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
@@ -175,9 +222,13 @@
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
-                  :font-src     ["*"]
-                  :img-src      ["*"
-                                 "'self' data:"]
+                  :font-src     (into (cond-> always-allowed-resource-hosts
+                                        config/is-dev? (conj frontend-address))
+                                      (application-font-files->hosts))
+                  :img-src      (if (server.settings/csp-img-enabled)
+                                  (cond-> (parse-allowed-resource-hosts (server.settings/csp-img-allowed-hosts))
+                                    config/is-dev? (conj frontend-address))
+                                  (into ["*"] always-allowed-resource-hosts))
                   :connect-src  ["'self'"
                                  ;; Google Identity Services
                                  "https://accounts.google.com"
@@ -306,9 +357,7 @@
                                                           (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
-   {;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
+   {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}

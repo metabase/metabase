@@ -2,15 +2,15 @@ import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
 import { Form, FormProvider } from "metabase/forms";
-
-import { CheckBox } from "../CheckBox";
+import { Checkbox } from "metabase/ui";
 
 import { FormInput } from "./FormInput";
 
 const TitleActions = () => {
   const [checked, setChecked] = useState(true);
   return (
-    <CheckBox
+    <Checkbox
+      size="sm"
       onChange={() => setChecked((checked) => !checked)}
       checked={checked}
       label="Show field"

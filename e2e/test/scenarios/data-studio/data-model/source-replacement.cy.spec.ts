@@ -827,6 +827,7 @@ function openReplacementModal(sourceTableLabel: string) {
   H.DataModel.TablePicker.getTable(sourceTableLabel).click();
   H.DataModel.TableSection.get().should("be.visible");
 
+  H.DataModel.TableSection.getActionsMenuButton().click();
   SourceReplacement.getFindAndReplaceButton().click();
   SourceReplacement.getModal()
     .findByText("Find and replace a data source")
@@ -847,7 +848,10 @@ function pickTarget(targetTableLabel: string) {
 function confirmReplacement() {
   SourceReplacement.getModal()
     .findByRole("tab", {
+      // The affected-items count comes from an async dependents computation
+      // that can exceed the default 4s timeout, so wait longer for the tab.
       name: /\d+ items? will be changed/,
+      timeout: 15000,
     })
     .should("be.visible");
 
@@ -1441,7 +1445,9 @@ function setNestedCardColumnTitle({
 
 function assertTargetRowVisible() {
   H.main()
-    .findAllByText(COMPATIBLE_TARGET_ROW_VALUE)
+    // Visiting the question re-runs its query against the writable DB; allow
+    // more than the default 4s for the result rows to render.
+    .findAllByText(COMPATIBLE_TARGET_ROW_VALUE, { timeout: 15000 })
     .first()
     .should("be.visible");
 }

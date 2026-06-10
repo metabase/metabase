@@ -1,7 +1,9 @@
 (ns metabase-enterprise.data-complexity-score.models.data-complexity-score
   "Persistence for cached Data Complexity Score snapshots."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
+   [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,6 +33,18 @@
   ([fingerprint source]
    (some-> (latest-entry fingerprint source)
            score-with-calculated-at)))
+
+(defn scored-within-cooldown?
+  "True when a `source` snapshot for `fingerprint` was recorded within the last `cooldown-hours` hours.
+  The cutoff is computed in database time, since `created_at` defaults to the DB `current_timestamp` —
+  we never compare it against the app server's clock.
+  Lets the scoring task skip a run that would only re-publish a still-fresh score."
+  [fingerprint source cooldown-hours]
+  (t2/exists? :model/DataComplexityScore
+              {:where [:and
+                       [:= :fingerprint fingerprint]
+                       [:= :source source]
+                       [:>= :created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- cooldown-hours) :hour)]]}))
 
 (defn record-score!
   "Persist one append-only Data Complexity Score snapshot."

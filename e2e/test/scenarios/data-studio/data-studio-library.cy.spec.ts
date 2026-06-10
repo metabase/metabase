@@ -403,8 +403,17 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.visit();
 
       cy.log("Verify Data empty state is visible initially");
+      // `Library.visit()` only waits for the page container, not the library
+      // tree fetch. The empty-state row renders once that resolves; under
+      // fetch (microtask) timing the load can exceed the default assertion
+      // timeout, so give this first post-visit assertion a longer one.
       H.DataStudio.Library.libraryPage()
-        .findByText("Cleaned, pre-transformed data sources ready for exploring")
+        .findByText(
+          "Cleaned, pre-transformed data sources ready for exploring",
+          {
+            timeout: 10000,
+          },
+        )
         .should("be.visible");
 
       cy.log("Publish a table via the +New menu");

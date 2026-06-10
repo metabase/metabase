@@ -6,6 +6,7 @@
 
   Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -13,7 +14,8 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -115,6 +117,100 @@
     (let [r (resolve.mp/import-resolver mp-ambiguous-by-schema)]
       (is (= 30 (resolve/import-table-fk r ["DW" "RAW"   "ORDERS"])))
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
+
+(deftest import-table-fk-cache-collision-test
+  (testing "two real tables sharing a name across schemas: app-DB-backed resolver must not drop either"
+    ;; Reproduces a production failure where `query` / `construct_query` returned
+    ;; `:unknown-table` for a portable FK that `entity_details` had just emitted, then
+    ;; verifies the fix.
+    ;;
+    ;; Production wraps every `application-database-metadata-provider` with
+    ;; `cached-metadata-provider`. The cached provider's by-name cache key drops `:schema`
+    ;; and stores at most one metadata per requested name, so when two warehouse tables
+    ;; share a `name` across schemas, `(p/metadatas mp {:name #{n}})` returns at most one
+    ;; row -- the schema post-filter in `find-table` then yields 0 candidates for the
+    ;; schema that didn't win the cache write.
+    ;;
+    ;; The fix in [[resolve.mp/find-table]] bypasses the metadata provider for app-DB-backed
+    ;; lookups and queries `metabase_table` directly with schema in the WHERE clause, the
+    ;; same shape `metabase.models.serialization.resolve.db/import-table-fk` has always
+    ;; used.
+    (mt/with-temp [:model/Database db {:name (str "DW " (random-uuid)) :engine :h2}
+                   :model/Table    raw-orders   {:name "ORDERS" :schema "RAW"   :db_id (:id db)}
+                   :model/Table    clean-orders {:name "ORDERS" :schema "CLEAN" :db_id (:id db)}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (is (= (:id raw-orders)   (resolve/import-table-fk r [(:name db) "RAW"   "ORDERS"])))
+        (is (= (:id clean-orders) (resolve/import-table-fk r [(:name db) "CLEAN" "ORDERS"])))))))
+
+(deftest import-table-fk-inactive-table-test
+  (testing "a portable FK to an inactive table (deleted / re-uploaded CSV) must NOT resolve"
+    ;; A deleted / re-uploaded upload leaves an inactive app-DB row whose warehouse table is gone;
+    ;; a stale FK to it must miss, with a message identical to a never-existed miss (asserted
+    ;; below) since distinguishing them would be an existence oracle.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_38513168ae9131" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_38513168ae9131"])
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d   (ex-data e)
+                  msg (.getMessage e)]
+              (is (= :unknown-table (:error d)))
+              (is (= 400 (:status-code d)))
+              (is (true? (:agent-error? d)))
+              (is (re-find #"entity_details" msg) "message points the LLM at entity_details to re-list")
+              (testing "inactive-row miss is indistinguishable from a never-existed miss (no oracle)"
+                (let [never-existed (try (resolve/import-table-fk r [(:name db) "PUBLIC" "never_existed_xyz"])
+                                         (catch clojure.lang.ExceptionInfo e2 (.getMessage e2)))]
+                  ;; same wording modulo the echoed portable FK (which the caller supplied either way)
+                  (is (= (str/replace msg #"\[.*?\]" "[FK]")
+                         (str/replace never-existed #"\[.*?\]" "[FK]"))))))))))))
+
+(deftest import-table-fk-inactive-after-cache-warmed-test
+  (testing "a table cached while active, then marked inactive, must NOT resolve via the stale cache"
+    ;; The dangerous case the app-DB-existence check guards against: the cached metadata provider
+    ;; warms its by-name cache with the `:active true` row, then the table is marked inactive
+    ;; (deleted / re-uploaded upload). The cache still surfaces the stale active row, so
+    ;; `table-candidates` MUST consult the app DB for existence — find the inactive row — and treat
+    ;; it as a 0-candidate miss rather than falling back to the stale cache.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    gone  {:name   "metabot2_cafef00dbabe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active true}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)
+            by-name #(lib.metadata.protocols/metadatas
+                      mp {:lib/type :metadata/table :name #{"metabot2_cafef00dbabe01"}})]
+        (testing "warm the provider's by-name cache while the table is still active"
+          (is (= [true] (mapv :active (by-name))))
+          (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
+        (t2/update! :model/Table (:id gone) {:active false})
+        (testing "the cache still surfaces the stale ACTIVE row by name"
+          (is (= [true] (mapv :active (by-name)))))
+        (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"No table found matching portable FK"
+               (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))))))
+
+(deftest matching-tables-via-provider-drops-inactive-test
+  (testing "matching-tables-via-provider filters the inactive rows the provider surfaces by name"
+    ;; Isolates the provider-side filter. By-name `metadatas` lookups skip the provider's SQL
+    ;; `active = true` clause (it only guards enumerate-all queries), so the inactive row reaches
+    ;; `matching-tables-via-provider`, whose filter is the only thing that drops it.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    _gone {:name   "metabot2_deadbeefcafe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active false}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))]
+        (testing "the provider DOES surface the inactive row on a raw by-name lookup"
+          (is (= [false]
+                 (mapv :active
+                       (lib.metadata.protocols/metadatas
+                        mp {:lib/type :metadata/table :name #{"metabot2_deadbeefcafe01"}})))))
+        (testing "...but matching-tables-via-provider drops it"
+          (is (empty? (#'resolve.mp/matching-tables-via-provider mp "PUBLIC" "metabot2_deadbeefcafe01"))))))))
 
 (deftest ^:parallel import-table-fk-error-test
   (testing "unknown table name → :unknown-table, agent-error?, 400, no info leak"

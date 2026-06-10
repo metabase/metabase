@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -175,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -248,7 +250,6 @@
   {:team "Graphy"
    :api  #{metabase.analyze.core}
    :uses #{config
-           driver
            lib
            models
            query-processor
@@ -338,8 +339,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -702,8 +702,8 @@
            query-processor
            search
            settings
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
                     :model/DashboardCardSeries
@@ -845,7 +845,6 @@
            config
            driver-api
            events
-           legacy-mbql
            lib
            lib-be
            premium-features
@@ -1013,6 +1012,17 @@
   {:team "Graphy"
    :api  #{metabase.graph.core}
    :uses #{util}}
+
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
 
   indexed-entities
   {:team "UX West"
@@ -1397,6 +1407,7 @@
    :uses #{analytics
            analytics-interface
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1427,6 +1438,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/TaskHistory
                     :model/User}}
 
   oauth-server
@@ -1435,6 +1447,7 @@
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -1666,6 +1679,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -1679,6 +1693,7 @@
            query-processor
            request
            search
+           sync
            util
            view-log
            warehouse-schema}
@@ -1766,6 +1781,7 @@
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
+              metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
@@ -1776,8 +1792,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info
-              metabase.query-processor.util.persisted-cache}
+              metabase.query-processor.util.add-alias-info}
    :uses #{analytics
            analytics-interface
            analyze
@@ -1977,6 +1992,7 @@
            tracing
            users
            util
+           enterprise/custom-viz-plugin
            enterprise/sso}
    :model-imports #{:model/Session}}
 
@@ -2141,6 +2157,7 @@
   {:team "Graphy"
    :api  #{metabase.sync.api
            metabase.sync.core
+           metabase.sync.field-values
            metabase.sync.init
            metabase.sync.schedules
            metabase.sync.task.sync-databases
@@ -2156,6 +2173,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
@@ -2203,6 +2221,7 @@
            task
            tracing
            util}
+   :model-exports #{:model/TaskHistory}
    :model-imports #{:model/Card :model/Dashboard :model/Database}}
 
   tenants
@@ -2325,6 +2344,7 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
@@ -2501,6 +2521,7 @@
   warehouse-schema
   {:team "UX West"
    :api  #{metabase.warehouse-schema.field
+           metabase.warehouse-schema.field-values.distinct-batch
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
@@ -2675,10 +2696,11 @@
            driver
            events
            lib
+           lib-be
            models
            query-processor
-           util
-           warehouse-schema}
+           sync
+           util}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -2894,7 +2916,8 @@
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
-           metabase-enterprise.custom-viz-plugin.init}
+           metabase-enterprise.custom-viz-plugin.init
+           metabase-enterprise.custom-viz-plugin.settings}
    :uses #{api
            config
            events

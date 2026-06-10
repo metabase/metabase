@@ -11,7 +11,7 @@ import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
 import type Question from "metabase-lib/v1/Question";
-import type { Notification } from "metabase-types/api";
+import type { Notification, VisualizationSettings } from "metabase-types/api";
 
 import { CreateOrEditQuestionAlertModal } from "../CreateOrEditQuestionAlertModal";
 
@@ -26,25 +26,35 @@ type AlertModalMode =
 
 export const QuestionAlertListModal = ({
   question,
+  visualizationSettings,
   onClose,
+  onAlertCreated,
+  onAlertUpdated,
 }: {
   question: Question;
+  visualizationSettings?: VisualizationSettings;
   onClose: () => void;
+  onAlertCreated?: () => void;
+  onAlertUpdated?: () => void;
 }) => {
   const [editingItem, setEditingItem] = useState<Notification | null>(null);
 
   const [sendToast] = useToast();
 
-  const { data: questionNotifications } = useListNotificationsQuery({
-    card_id: question.id(),
-    include_inactive: false,
-  });
+  const { data: questionNotifications, isFetching } = useListNotificationsQuery(
+    {
+      card_id: question.id(),
+      include_inactive: false,
+    },
+  );
 
   const [updateNotification] = useUpdateNotificationMutation();
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
 
   const [activeModal, setActiveModal] = useState<AlertModalMode | null>(
-    questionNotifications ? getDefaultActiveModal(questionNotifications) : null,
+    questionNotifications && !isFetching
+      ? getDefaultActiveModal(questionNotifications)
+      : null,
   );
 
   useEffect(() => {
@@ -55,11 +65,17 @@ export const QuestionAlertListModal = ({
      * loaded and activeModal will not be null. However, in the SDK,
      * we'll need to wait for the data to load, so the activeModal
      * will be null at first.
+     *
+     * We wait for `isFetching` to settle before deciding so the choice
+     * is based on fresh data. On reopen the cached list can momentarily
+     * be stale (e.g. still containing a just-deleted alert) while a
+     * refetch is in flight; deciding from that stale data would lock us
+     * into the wrong modal.
      */
-    if (questionNotifications && activeModal === null) {
+    if (questionNotifications && !isFetching && activeModal === null) {
       setActiveModal(getDefaultActiveModal(questionNotifications));
     }
-  }, [activeModal, questionNotifications]);
+  }, [activeModal, questionNotifications, isFetching]);
 
   const previousActiveModal = usePreviousDistinct(activeModal);
 
@@ -148,14 +164,21 @@ export const QuestionAlertListModal = ({
       {(activeModal === "create-modal" || activeModal === "update-modal") && (
         <CreateOrEditQuestionAlertModal
           question={question}
+          visualizationSettings={visualizationSettings}
           editingNotification={
             activeModal === "update-modal" && editingItem
               ? editingItem
               : undefined
           }
           onClose={handleInternalModalClose}
-          onAlertCreated={handleInternalModalClose}
-          onAlertUpdated={handleInternalModalClose}
+          onAlertCreated={() => {
+            onAlertCreated?.();
+            handleInternalModalClose();
+          }}
+          onAlertUpdated={() => {
+            onAlertUpdated?.();
+            handleInternalModalClose();
+          }}
         />
       )}
 

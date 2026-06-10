@@ -116,12 +116,12 @@
 
 (mr/def ::FKMetadataEntry
   [:map
-   [:fk-table-name    ::lib.schema.common/non-blank-string]
-   [:fk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
-   [:fk-column-name   ::lib.schema.common/non-blank-string]
-   [:pk-table-name    ::lib.schema.common/non-blank-string]
-   [:pk-table-schema  [:maybe ::lib.schema.common/non-blank-string]]
-   [:pk-column-name   ::lib.schema.common/non-blank-string]])
+   [:fk-table-name   ::lib.schema.common/non-blank-string]
+   [:fk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:fk-column-name  ::lib.schema.common/non-blank-string]
+   [:pk-table-name   ::lib.schema.common/non-blank-string]
+   [:pk-table-schema [:maybe ::lib.schema.common/non-blank-string]]
+   [:pk-column-name  ::lib.schema.common/non-blank-string]])
 
 (def FKMetadataEntry
   "Schema for an entry in the expected output of [[metabase.driver/describe-fks]]."

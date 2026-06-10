@@ -37,14 +37,38 @@
         (is (nil? (:id_token_signing_alg_values_supported response)))))))
 
 (deftest protected-resource-metadata-test
-  (testing "GET /.well-known/oauth-protected-resource/api/mcp returns correct metadata"
+  (testing "the canonical and legacy MCP paths each advertise themselves as the OAuth protected resource (RFC 9728)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (doseq [path ["/api/metabase-mcp" "/api/mcp"]]
+        (testing path
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (str ".well-known/oauth-protected-resource" path))]
+            (is (=? {:resource                 (str "http://localhost:3000" path)
+                     :authorization_servers    ["http://localhost:3000"]
+                     :bearer_methods_supported ["header"]
+                     :scopes_supported         sequential?}
+                    response))))))))
+
+(deftest protected-resource-metadata-bare-path-test
+  (testing "GET /.well-known/oauth-protected-resource (no resource suffix) serves JSON advertising the canonical resource (BOT-1617)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [response (mt/user-http-request :crowberto :get 200
-                                           ".well-known/oauth-protected-resource/api/mcp")]
-        (is (=? {:resource                "http://localhost:3000/api/mcp"
-                 :authorization_servers   ["http://localhost:3000"]
+                                           ".well-known/oauth-protected-resource")]
+        (is (=? {:resource                 "http://localhost:3000/api/metabase-mcp"
+                 :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))))))
+
+(deftest discovery-endpoint-rebuilds-on-site-url-change-test
+  (testing "Discovery advertises endpoints for the *current* site-url, even after it changes (BOT-1617)"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (is (=? {:issuer "http://localhost:3000"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (is (=? {:issuer                "https://mb.example.com"
+               :authorization_endpoint "https://mb.example.com/oauth/authorize"
+               :token_endpoint         "https://mb.example.com/oauth/token"}
+              (mt/user-http-request :crowberto :get 200 ".well-known/oauth-authorization-server"))))))
 
 ;;; ----------------------------------------- Dynamic Client Registration ----------------------------------------------
 
