@@ -1,4 +1,3 @@
-import Color from "color";
 import { type EChartsType, graphic } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
@@ -9,6 +8,10 @@ import type {
   TreemapChartColumns,
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
+import {
+  HOVER_OVERLAY_Z,
+  TREEMAP_HOVER_OVERLAY_FILL,
+} from "metabase/visualizations/echarts/graph/treemap/style";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type {
   ClickObject,
@@ -31,18 +34,6 @@ type TreemapSeriesMouseEvent = EChartsSeriesMouseEvent<{ id?: unknown }>;
 export type TreemapHoverOverlay = InstanceType<typeof graphic.Rect>;
 export type TreemapHoverOverlayRef =
   MutableRefObject<TreemapHoverOverlay | null>;
-
-// Draw the overlay above the tiles and their labels.
-const HOVER_OVERLAY_Z = 100;
-
-// The hover tint: a 10% black wash over the hovered tile/section (covering its
-// tiles, inter-tile gaps, and the group header chip). Computed at runtime, so no
-// color literal lands in source (the `no-color-literals` lint rule only flags
-// written hex/rgb literals).
-export const TREEMAP_HOVER_OVERLAY_FILL = Color("black")
-  .alpha(0.1)
-  .rgb()
-  .string();
 
 /**
  * Treemap series nodes carry path-encoded ids: `"0"` for a top-level grouping,

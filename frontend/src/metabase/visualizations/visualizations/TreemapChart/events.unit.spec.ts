@@ -5,6 +5,7 @@ import type {
   TreemapChartColumns,
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
+import { TREEMAP_HOVER_OVERLAY_FILL } from "metabase/visualizations/echarts/graph/treemap/style";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 import {
@@ -17,7 +18,6 @@ import {
 } from "metabase-types/api/mocks/dataset";
 
 import {
-  TREEMAP_HOVER_OVERLAY_FILL,
   type TreemapHoverOverlay,
   type TreemapHoverOverlayRef,
   dispatchTreemapViewRoot,

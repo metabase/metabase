@@ -67,3 +67,10 @@ const PADDING_COMPACT = 24;
 export function getChartPadding(isCompact: boolean) {
   return isCompact ? PADDING_COMPACT : PADDING_REGULAR;
 }
+
+export const TREEMAP_HOVER_OVERLAY_FILL = Color("black")
+  .alpha(0.1)
+  .rgb()
+  .string();
+
+export const HOVER_OVERLAY_Z = 100;
