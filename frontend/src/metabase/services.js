@@ -73,16 +73,6 @@ export const ModerationReviewApi = {
   update: PUT("/api/moderation-review/:id"),
 };
 
-export const PulseApi = {
-  list: GET("/api/pulse"),
-  create: POST("/api/pulse"),
-  get: GET("/api/pulse/:pulseId"),
-  update: PUT("/api/pulse/:id"),
-  test: POST("/api/pulse/test"),
-  form_input: GET("/api/pulse/form_input"),
-  unsubscribe: DELETE("/api/pulse/:id/subscription"),
-};
-
 /// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
 export const PulseUnsubscribeApi = {
   unsubscribe: POST("/api/pulse/unsubscribe"),
