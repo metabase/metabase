@@ -122,7 +122,8 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       const interactiveQuestionEvent = events.find(
         (event) => event.component === "InteractiveQuestion",
       );
-      expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to.exist;
+      expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to
+        .exist;
       expect(
         interactiveQuestionEvent?.properties?.["id_new"],
         "id_new property",
