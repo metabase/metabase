@@ -38,11 +38,11 @@ export const InteractiveDashboardContent = (
 
   const {
     dashboardId,
-    withTitle = true,
-    withDownloads = false,
-    withSubscriptions = false,
+    withTitle,
+    withDownloads,
+    withSubscriptions,
     autoRefreshInterval,
-    enableEntityNavigation = false,
+    enableEntityNavigation,
   } = props;
 
   useTrackSdkComponentMount("InteractiveDashboard", dashboardId, {

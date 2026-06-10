@@ -32,11 +32,11 @@ const EditableDashboardContent = (props: EditableDashboardProps) => {
 
   const {
     dashboardId,
-    withTitle = true,
-    withDownloads = false,
-    withSubscriptions = false,
+    withTitle,
+    withDownloads,
+    withSubscriptions,
     autoRefreshInterval,
-    enableEntityNavigation = false,
+    enableEntityNavigation,
   } = props;
 
   useTrackSdkComponentMount("EditableDashboard", dashboardId, {
