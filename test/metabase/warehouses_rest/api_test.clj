@@ -2998,6 +2998,38 @@
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
                                 {:admin_details {:host "admin-host"}}))))))
 
+(deftest update-database-admin-details-preserved-on-partial-update-test
+  (testing "PUT /api/database/:id with a partial body must not clear admin_details"
+    (mt/with-temp [:model/Database {db-id :id} {:engine        :h2
+                                                :details       {:host "localhost"}
+                                                :admin_details {:host "admin-host" :password "admin-pass"}}]
+      (with-redefs [driver/can-connect? (constantly true)]
+        (testing "flipping a database-local Setting (admin_details omitted from the request) preserves it"
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:settings {:database-enable-actions true}})
+          (is (= {:host "admin-host" :password "admin-pass"}
+                 (:admin_details (t2/select-one :model/Database :id db-id)))))
+        (testing "an explicit nil still clears admin_details"
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:admin_details nil})
+          (is (nil? (:admin_details (t2/select-one :model/Database :id db-id)))))))))
+
+(deftest update-database-write-data-details-preserved-on-partial-update-test
+  (testing "PUT /api/database/:id with a partial body must not clear write_data_details"
+    (mt/with-temp [:model/Database {db-id :id} {:engine             :h2
+                                                :details            {:host "localhost"}
+                                                :write_data_details {:host "write-host" :password "write-pass"}}]
+      (with-redefs [driver/can-connect? (constantly true)]
+        (testing "flipping a database-local Setting (write_data_details omitted from the request) preserves it"
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:settings {:database-enable-actions true}})
+          (is (= {:host "write-host" :password "write-pass"}
+                 (:write_data_details (t2/select-one :model/Database :id db-id)))))
+        (testing "an explicit nil still clears write_data_details"
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:write_data_details nil})
+          (is (nil? (:write_data_details (t2/select-one :model/Database :id db-id)))))))))
+
 (deftest put-validates-admin-details-connection-test
   (when config/ee-available?
     (testing "PUT /api/database/:id returns 400 when admin connection test fails"

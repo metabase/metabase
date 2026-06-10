@@ -16,6 +16,7 @@ const getDefaultWorkspaces = () => ({
   getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
   WorkspaceDatabaseSection: PluginPlaceholder<WorkspaceDatabaseSectionProps>,
+  WorkspaceSettingsSection: PluginPlaceholder,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultWorkspaces();
