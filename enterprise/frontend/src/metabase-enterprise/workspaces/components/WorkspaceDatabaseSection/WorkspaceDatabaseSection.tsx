@@ -81,16 +81,17 @@ export function WorkspaceDatabaseSection({
   return (
     <DatabaseInfoSection
       name={t`Workspaces`}
-      description={t`Use Workspaces to develop your semantic layer safely. They isolate transformed tables into a separate schema so you can build and test changes before syncing them back to production.`}
+      description={t`Workspaces isolate transformed tables into a separate schema so you can build and test changes before syncing them back to production.`}
       data-testid="workspace-database-section"
     >
       <Group justify="space-between">
         <Box>
-          <Label htmlFor="workspace-enable-toggle">{t`Enable Workspaces`}</Label>
+          <Label htmlFor="workspace-enable-toggle">{t`Enable workspaces`}</Label>
         </Box>
         <Switch
           id="workspace-enable-toggle"
           checked={isEnabled}
+          disabled={isDbRoutingEnabled}
           onChange={(event) => handleToggle(event.currentTarget.checked)}
         />
       </Group>
@@ -104,7 +105,7 @@ export function WorkspaceDatabaseSection({
             icon={<FixedSizeIcon name="info" />}
             mb="md"
           >
-            {t`Workspaces can't be enabled when Database Routing is enabled.`}
+            {t`Workspaces can't be enabled when database routing is enabled.`}
           </Alert>
         </>
       )}
@@ -112,14 +113,18 @@ export function WorkspaceDatabaseSection({
       {isEnabled && (
         <>
           <DatabaseInfoSectionDivider />
-          <Stack>
-            <Box fw="bold" lh="lg">{t`Workspace database connection`}</Box>
+          <Stack gap={hasAdminConnection ? "md" : 0}>
+            <Box fw="bold" lh="lg">{t`Admin database connection`}</Box>
             <Group justify="space-between">
-              {hasAdminConnection && (
+              {hasAdminConnection ? (
                 <DatabaseConnectionHealthInfo
                   databaseId={database.id}
                   connectionType="admin"
                 />
+              ) : (
+                <Box c="text-secondary">
+                  {t`Used to create isolated schemas and temporary users for workspaces.`}
+                </Box>
               )}
               <Group>
                 <Button

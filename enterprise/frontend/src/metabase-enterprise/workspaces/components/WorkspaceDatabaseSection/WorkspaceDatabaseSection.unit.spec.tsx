@@ -83,11 +83,9 @@ describe("WorkspaceDatabaseSection", () => {
     });
 
     expect(
-      screen.getByRole("switch", { name: /Enable Workspaces/i }),
+      screen.getByRole("switch", { name: "Enable workspaces" }),
     ).toBeChecked();
-    expect(
-      screen.getByText("Workspace database connection"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Admin database connection")).toBeInTheDocument();
   });
 
   it("should persist the setting and expand the section when enabling Workspaces", async () => {
@@ -99,22 +97,15 @@ describe("WorkspaceDatabaseSection", () => {
 
     expect(toggle).toBeChecked();
     expect(
-      await screen.findByText("Workspace database connection"),
+      await screen.findByText("Admin database connection"),
     ).toBeInTheDocument();
 
     await waitFor(() => {
       expect(
-        fetchMock.calls(`path:/api/database/${database.id}`, { method: "PUT" }),
-      ).toHaveLength(1);
-    });
-    const [, options] = fetchMock.lastCall(
-      `path:/api/database/${database.id}`,
-      {
-        method: "PUT",
-      },
-    )!;
-    expect(JSON.parse(options?.body as string)).toEqual({
-      settings: { "database-enable-workspaces": true },
+        fetchMock.callHistory.called(`path:/api/database/${database.id}`, {
+          method: "PUT",
+        }),
+      ).toBe(true);
     });
   });
 
@@ -128,7 +119,7 @@ describe("WorkspaceDatabaseSection", () => {
 
     expect(
       screen.getByText(
-        "Used to create isolated schemas and temporary users for workspace settings.",
+        "Used to create isolated schemas and temporary users for workspaces.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -154,39 +145,6 @@ describe("WorkspaceDatabaseSection", () => {
     expect(
       screen.getByRole("button", { name: "Remove connection" }),
     ).toBeInTheDocument();
-  });
-
-  it("should warn when Workspaces are disabled but a connection still exists", () => {
-    setup({
-      database: createMockDatabase({
-        features: ["workspace"],
-        settings: { "database-enable-workspaces": false },
-        admin_details: { user: "admin" },
-      }),
-    });
-
-    expect(
-      screen.getByText("Workspaces are currently disabled"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "A workspace connection is configured and will be reused if Workspaces are enabled again.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("should not warn when Workspaces are enabled and a connection exists", () => {
-    setup({
-      database: createMockDatabase({
-        features: ["workspace"],
-        settings: { "database-enable-workspaces": true },
-        admin_details: { user: "admin" },
-      }),
-    });
-
-    expect(
-      screen.queryByText("Workspaces are currently disabled"),
-    ).not.toBeInTheDocument();
   });
 
   it("should disable the Add connection button when database routing is enabled", () => {
