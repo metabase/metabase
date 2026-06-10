@@ -10,6 +10,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
 import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
@@ -28,6 +29,8 @@ export function TransformsUpsellPage() {
   const { error, hadTransforms, isLoading, basicTransformsAddOn } =
     useTransformsBilling();
   const { isStoreUser, anyStoreUserEmailAddress } = useSelector(getStoreUsers);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canPurchaseTransforms = isStoreUser || isAdmin;
 
   const [settingUpModalOpened, settingUpModalHandlers] = useDisclosure(false);
   const { sendErrorToast } = useMetadataToasts();
@@ -100,7 +103,7 @@ export function TransformsUpsellPage() {
           <EnableTransformsCard
             onEnableClick={onEnableClick}
             permissionsErrorMessage={
-              !isStoreUser && (
+              !canPurchaseTransforms && (
                 <Text fz="1rem" fw="bold">
                   {t`To enable Transforms, please contact a store administrator`}
                   {anyStoreUserEmailAddress && ` (${anyStoreUserEmailAddress})`}

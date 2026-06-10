@@ -1,4 +1,5 @@
-import type { MantineColor } from "@mantine/core/lib/core";
+/* eslint-disable-next-line no-restricted-imports */
+import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";

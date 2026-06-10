@@ -14,6 +14,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Drawer, Stack } from "metabase/ui";
 import Question from "metabase-lib/v1/Question";
 
+import { trackAlertsManagementEditClicked } from "../analytics";
+
 import { SidebarBody } from "./SidebarBody";
 import { SidebarHeader } from "./SidebarHeader";
 import { SIDEBAR_WIDTH } from "./constants";
@@ -40,9 +42,9 @@ export const NotificationDetailSidebar = ({
 
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
-  const cardId = notification?.payload.card_id;
+  const cardId = notification?.payload?.card_id;
   const { currentData: card, isFetching: isCardLoading } = useGetCardQuery(
-    cardId !== undefined ? { id: cardId } : skipToken,
+    cardId != null ? { id: cardId } : skipToken,
   );
 
   useEffect(() => {
@@ -86,7 +88,10 @@ export const NotificationDetailSidebar = ({
             isQuestionLoading={isCardLoading}
             onClose={onClose}
             onDelete={onDelete}
-            onEdit={() => setIsEditModalOpen(true)}
+            onEdit={() => {
+              trackAlertsManagementEditClicked(notificationId);
+              setIsEditModalOpen(true);
+            }}
           />
           {notification ? (
             <SidebarBody
@@ -103,7 +108,6 @@ export const NotificationDetailSidebar = ({
         <CreateOrEditQuestionAlertModal
           editingNotification={notification}
           question={question}
-          skipUrlUpdate
           onAlertUpdated={() => setIsEditModalOpen(false)}
           onClose={() => setIsEditModalOpen(false)}
         />

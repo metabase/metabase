@@ -178,7 +178,7 @@
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
-  (doseq [table-metadata new-table-metadatas]
+  (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
     (create-or-reactivate-table! database table-metadata)))
 
 (mu/defn- retire-tables!

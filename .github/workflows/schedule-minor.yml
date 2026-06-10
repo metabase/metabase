@@ -14,21 +14,39 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - name: Dispatch minor release for the current major
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Dispatch a minor release for every supported major
         uses: actions/github-script@v9
+        env:
+          AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
         with:
           script: | # js
-            // Minor releases only go out for the current major; the
-            // previous major gets patches only.
-            const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
+            // Every supported major line gets regular minor releases so the
+            // branches we backport into don't go stale. Support is read from
+            // `major_version_support` in version-info.json via getSupportedMajors —
+            // the same source the auto-backport workflow uses to pick its targets.
+            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'release-auto.yml',
-              ref: 'refs/heads/master',
-              inputs: {
-                version: String(currentRelease),
-                kind: 'minor',
-              },
-            }).catch(console.error);
+            const majors = await getSupportedMajors();
+            console.log('supported majors', majors);
+
+            // release-auto.yml releases one major per dispatch.
+            await Promise.all(majors.map(version =>
+              github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'release-auto.yml',
+                ref: 'refs/heads/master',
+                inputs: {
+                  version: String(version),
+                  kind: 'minor',
+                },
+              }).catch(console.error)
+            ));

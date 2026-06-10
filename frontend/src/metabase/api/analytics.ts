@@ -1,4 +1,5 @@
 import { trackSchemaEvent } from "metabase/analytics";
+import { isTrackedSearchContext } from "metabase/search/analytics";
 import { openSaveDialog } from "metabase/utils/dom";
 import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
@@ -87,7 +88,9 @@ export const trackSearchRequest = (
       verified_items: !!searchRequest.verified,
       search_native_queries: !!searchRequest.search_native_query,
       search_archived: !!searchRequest.archived,
-      context: searchRequest.context ?? null,
+      context: isTrackedSearchContext(searchRequest.context)
+        ? searchRequest.context
+        : null,
       runtime_milliseconds: duration,
       total_results: searchResponse.total,
       page_results: searchResponse.limit,
