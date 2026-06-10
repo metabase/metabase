@@ -3,7 +3,7 @@
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
-      id: v62.2026-05-28T00:00:00
+      id: v63.2026-05-28T00:00:00
       author: timofei
       comment: Create data_app table for uploaded data-app bundles
       preConditions:
@@ -71,7 +71,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v62.2026-05-28T00:00:01
+      id: v63.2026-05-28T00:00:01
       author: timofei
       comment: Use longblob for data_app.bundle on MySQL/MariaDB so it can hold multi-MB uploads
       changes:
