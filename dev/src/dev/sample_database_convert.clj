@@ -12,6 +12,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.driver-api.core :as driver-api]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs])
@@ -161,9 +162,10 @@
     (instance? Timestamp v) (str (.toLocalDateTime ^Timestamp v))
     (instance? Date v) (str (.toLocalDate ^Date v))
     (instance? Time v) (str (.toLocalTime ^Time v))
-    ;; CLOB columns (H2 CHARACTER LARGE OBJECT) come back as a java.sql.Clob, not a String. Read the
-    ;; characters out; otherwise SQLite-JDBC stores the Clob's toString (H2's internal SCRIPT dump).
-    (instance? Clob v) (let [^Clob c v] (.getSubString c 1 (int (.length c))))
+    ;; CLOB columns (H2 CHARACTER LARGE OBJECT) come back as a java.sql.Clob, not a String. Decode with the
+    ;; same helper the H2 driver uses (read-column-thunk :h2); otherwise SQLite-JDBC stores the Clob's
+    ;; toString (H2's internal SCRIPT dump).
+    (instance? Clob v) (driver-api/clob->str v)
     :else v))
 
 (defn- copy-table!

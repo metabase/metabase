@@ -50,9 +50,9 @@
   equal, while genuinely different values still differ:
    - numbers are compared numerically (H2 returns Long/Double, SQLite Integer/Double for the same column);
    - booleans are folded to 1.0/0.0 (SQLite has no boolean type, so H2 `true`/`false` lands as `1`/`0`);
-   - line-break characters are dropped: the bodies are byte-identical in both files (bare `\\r` separators),
-     but next.jdbc's drivers disagree on how to surface them (the H2 CLOB reader turns `\\r` into `\\n`, the
-     SQLite TEXT reader drops it), so stripping `\\r`/`\\n` compares the text modulo line-ending handling;
+   - line-break characters are dropped: the H2 source bodies use bare `\\r` separators, but the converter
+     decodes CLOBs through the H2 driver's helper (which normalizes to `\\n`), so SQLite stores `\\n` while
+     a direct read of the H2 CLOB still yields `\\r`. Stripping `\\r`/`\\n` compares the text content itself;
    - dates/timestamps are reduced to a canonical `yyyy-MM-dd[ HH:mm:ss[.fff]]` wall-clock string. H2 returns
      java.sql.Timestamp/Date (space separator, seconds always present); SQLite returns ISO-8601 strings
      (`T` separator, seconds and zero fractionals omitted). Seconds are padded and trailing fractional zeros
