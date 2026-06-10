@@ -3,12 +3,12 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations]
    [metabase.app-db.liquibase.h2 :as liquibase.h2]
    [metabase.app-db.liquibase.mysql :as liquibase.mysql]
-   [metabase.app-db.query :as app-db.query]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -597,7 +597,9 @@
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql   (app-db.query/compile remaining-query)
+                 ;; allowing direct use of [[sql/format]] here since using [[metabase.app-db.query/compile]] would
+                 ;; cause circular deps
+                 formatted-sql   #_{:clj-kondo/ignore [:discouraged-var]} (sql/format remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)
                (log/warnf "The following changesets were not rolled back. Likely because %s: %s"
