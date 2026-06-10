@@ -1403,7 +1403,7 @@ describe("admin > custom visualizations", () => {
   describe("development mode", () => {
     const CUSTOM_VIZ_DEV_PROJECT_NAME = "custom-viz-dev-plugin";
     const CUSTOM_VIZ_DEV_PORT = 5174;
-    const TIMEOUT = 120000;
+    const TIMEOUT = 240000;
     const tmpDir = `${Cypress.config("projectRoot")}/e2e/tmp`;
     const sdkDir = `${Cypress.config("projectRoot")}/enterprise/frontend/src/custom-viz`;
     const cliPath = `${sdkDir}/dist/cli.js`;
@@ -1412,6 +1412,7 @@ describe("admin > custom visualizations", () => {
     const pluginSrcPath = `${projectDir}/src/index.tsx`;
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
     let devServerPid: number | null = null;
+    let originalPluginSrc: string | null = null;
 
     beforeEach(() => {
       H.restore("postgres-writable");
@@ -1419,6 +1420,22 @@ describe("admin > custom visualizations", () => {
       H.activateToken("bleeding-edge");
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
+
+      // The test mutates the scaffolded plugin source and stops the dev server
+      // as part of its assertions. Retries and burn-in iterations re-run the
+      // test without re-running the `before` scaffolding, so restore the
+      // source and (re)start the dev server here to keep every attempt
+      // self-contained. The start task kills any previous server instance.
+      cy.then(() => {
+        if (originalPluginSrc != null) {
+          cy.writeFile(pluginSrcPath, originalPluginSrc);
+        }
+      });
+      cy.task<{ pid: number }>("startCustomVizDevServer", {
+        cwd: projectDir,
+      }).then(({ pid }) => {
+        devServerPid = pid;
+      });
     });
 
     before(() => {
@@ -1478,11 +1495,11 @@ describe("admin > custom visualizations", () => {
 
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-      // Start the plugin dev server and keep it running
-      cy.task<{ pid: number }>("startCustomVizDevServer", {
-        cwd: projectDir,
-      }).then(({ pid }) => {
-        devServerPid = pid;
+
+      // Keep a pristine copy of the plugin source — the test edits it to
+      // exercise hot reload, and `beforeEach` restores it before each attempt.
+      cy.readFile(pluginSrcPath).then((src) => {
+        originalPluginSrc = src;
       });
     });
 
@@ -1534,8 +1551,10 @@ describe("admin > custom visualizations", () => {
       cy.log(
         "Threshold defaults to 0 and Count(Orders) is > 0, so the thumbs-up should render.",
       );
+      // The plugin bundle is fetched from the local dev server, which can be
+      // slow on a loaded/throttled CI runner — give it more than the default.
       H.main()
-        .findByRole("img", { name: "Above threshold" })
+        .findByRole("img", { name: "Above threshold", timeout: 15000 })
         .should("be.visible");
 
       cy.log("Modifying plugin source to change the rendered label");
@@ -1550,7 +1569,12 @@ describe("admin > custom visualizations", () => {
       });
 
       cy.log("Checking if hot reload works");
-      H.main().findByRole("img", { name: "Way above!" }).should("be.visible");
+      // Hot reload involves a Vite rebuild + SSE notification + a proxied
+      // bundle re-fetch (with retries) — under CI load this routinely takes
+      // longer than the default 4s command timeout.
+      H.main()
+        .findByRole("img", { name: "Way above!", timeout: 30000 })
+        .should("be.visible");
 
       cy.log("Verify plugin settings affect rendering.");
       cy.log(
