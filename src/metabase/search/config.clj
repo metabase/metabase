@@ -231,19 +231,17 @@
 
 (defn- normalize-override-keys
   "Re-key persisted weight overrides ([[search.settings/experimental-search-weight-overrides]]) by
-  [[normalized-context]], so an override saved under a context that has since been collapsed (e.g.
-  `:command-palette` -> `:global`) is still applied.
-  When a raw alias and its normalized context both carry overrides, the normalized one wins -- it's
-  what the weights API writes today.
-  Legacy overrides (pre-#50338) were a flat {scorer weight} map with no context layer, so they applied
-  to every context. Fold those bare weights into the `:default` base to preserve that, with an explicit
-  `:default` context override still winning on conflict."
+  [[normalized-context]], merging overrides whose alias has since collapsed onto the surviving context.
+  Legacy flat `{scorer weight}` overrides fold into the `:default` base, losing to an explicit `:default`."
   [overrides]
-  (let [;; legacy flat overrides are the entries whose value is a bare weight, not a per-context map
+  (let [;; legacy overrides (pre-#50338) were a flat {scorer weight} map with no context layer, so they
+        ;; applied to every context; these are the entries whose value is a bare weight, not a per-context map
         legacy (into {} (remove (comp map? val)) overrides)
         nested (reduce-kv (fn [acc context weight-overrides]
                             (let [normalized (normalized-context context)]
                               (update acc normalized
+                                      ;; when an alias and its normalized context both carry overrides the
+                                      ;; normalized one wins -- it's what the weights API writes today
                                       (if (= context normalized)
                                         #(merge % weight-overrides)
                                         #(merge weight-overrides %)))))
@@ -252,6 +250,7 @@
                           ;; normalized context (the normalized key still wins; among aliases the lowest-sorted)
                           (into (sorted-map) (filter (comp map? val)) overrides))]
     (cond-> nested
+      ;; :default feeds every context, so folding the flat weights there preserves their global reach
       (seq legacy) (update :default #(merge legacy %)))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
