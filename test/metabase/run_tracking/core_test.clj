@@ -7,7 +7,7 @@
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
   (:import
-   (java.time Duration OffsetDateTime ZoneOffset)))
+   (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -18,25 +18,25 @@
 
 ;;; --------------------------------------------- pure helpers ---------------------------------------------
 
-(deftest ^:parallel unit->duration-test
-  (testing "produces an exact Duration for each supported unit"
-    (is (= (Duration/ofSeconds 30) (rt/unit->duration 30 :second)))
-    (is (= (Duration/ofMinutes 5)  (rt/unit->duration 5  :minute)))
-    (is (= (Duration/ofHours 2)    (rt/unit->duration 2  :hour))))
+(deftest ^:parallel unit->ms-test
+  (testing "converts each supported unit to milliseconds"
+    (is (= 30000   (rt/unit->ms 30 :second)))
+    (is (= 300000  (rt/unit->ms 5  :minute)))
+    (is (= 7200000 (rt/unit->ms 2  :hour))))
   (testing "unknown unit throws"
-    (is (thrown? IllegalArgumentException (rt/unit->duration 1 :day)))))
+    (is (thrown? IllegalArgumentException (rt/unit->ms 1 :day)))))
 
 (deftest ^:parallel detection-latency-ms-test
   (let [^OffsetDateTime reference-ts (OffsetDateTime/of 2026 1 1 0 0 0 0 ZoneOffset/UTC)
-        timeout-dur                  (Duration/ofMinutes 10)
-        deadline                     (.plus (.toInstant reference-ts) timeout-dur)]
+        timeout-ms                   (rt/unit->ms 10 :minute)
+        deadline-ms                  (+ (inst-ms (.toInstant reference-ts)) timeout-ms)]
     (testing "zero at the deadline"
-      (is (zero? (rt/detection-latency-ms reference-ts timeout-dur deadline))))
+      (is (zero? (rt/detection-latency-ms reference-ts timeout-ms deadline-ms))))
     (testing "clamped to zero before the deadline"
-      (is (zero? (rt/detection-latency-ms reference-ts timeout-dur (.minusMillis deadline 5000)))))
+      (is (zero? (rt/detection-latency-ms reference-ts timeout-ms (- deadline-ms 5000)))))
     (testing "milliseconds past the deadline"
       (is (= 7500
-             (rt/detection-latency-ms reference-ts timeout-dur (.plusMillis deadline 7500)))))))
+             (rt/detection-latency-ms reference-ts timeout-ms (+ deadline-ms 7500)))))))
 
 ;;; --------------------------------------------- reap-rows! -----------------------------------------------
 

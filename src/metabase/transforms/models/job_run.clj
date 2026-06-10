@@ -89,11 +89,11 @@
     :active   [:is_active true]
     :stale    [:< :updated_at (rt/cutoff stale-minutes :minute)]
     :terminal {:status :timeout :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
-    :metrics  {:total-metric     :metabase-transforms/timeouts-total
-               :latency-metric   :metabase-transforms/timeout-detection-latency-ms
-               :tags             {:type "job"}
-               :latency-column   :updated_at
-               :timeout-duration (rt/unit->duration stale-minutes :minute)}}))
+    :metrics  {:total-metric   :metabase-transforms/timeouts-total
+               :latency-metric :metabase-transforms/timeout-detection-latency-ms
+               :tags           {:type "job"}
+               :latency-column :updated_at
+               :timeout-ms     (rt/unit->ms stale-minutes :minute)}}))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."

@@ -7,6 +7,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
+   [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -69,8 +70,11 @@
     (mark-orphaned-tasks! orphaned-run-ids)
     orphaned-run-ids))
 
-(rt/defrun-tracking-jobs TaskRun
-  {:heartbeat-fn     send-heartbeat!
-   :reap-fn          reap-orphans!
-   :reaper-key       "metabase.task.task-run-reaper.job"
-   :interval-minutes 10})
+(defmethod task/init! ::TaskRunHeartbeat [_]
+  (rt/start-heartbeat! send-heartbeat! 10))
+
+(defmethod task/init! ::TaskRunReaper [_]
+  (rt/schedule-reaper! {:job-key          "metabase.task.task-run-reaper.job"
+                        :label            "task run"
+                        :reap-fn          reap-orphans!
+                        :interval-minutes 10}))

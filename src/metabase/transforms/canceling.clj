@@ -193,10 +193,13 @@
 
 (def ^:private transform-heartbeat-stale-minutes 5)
 
-(rt/defrun-tracking-jobs TransformRun
-  {:heartbeat-fn heartbeat-and-reconcile-runs!
-   :reap-fn      #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)
-   :reaper-key   "metabase.transforms.reaper"})
+(defmethod task/init! ::TransformRunHeartbeat [_]
+  (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
+
+(defmethod task/init! ::TransformRunReaper [_]
+  (rt/schedule-reaper! {:job-key "metabase.transforms.reaper"
+                        :label   "transform run"
+                        :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")

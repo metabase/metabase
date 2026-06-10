@@ -166,11 +166,11 @@
                    :active   [:is_active true]
                    :stale    [:< stale-column (rt/cutoff age unit)]
                    :terminal {:status :timeout :end_time :%now :is_active nil :message message}
-                   :metrics  {:total-metric     :metabase-transforms/timeouts-total
-                              :latency-metric   :metabase-transforms/timeout-detection-latency-ms
-                              :tags             {:type "transform"}
-                              :latency-column   stale-column
-                              :timeout-duration (rt/unit->duration age unit)}})]
+                   :metrics  {:total-metric   :metabase-transforms/timeouts-total
+                              :latency-metric :metabase-transforms/timeout-detection-latency-ms
+                              :tags           {:type "transform"}
+                              :latency-column stale-column
+                              :timeout-ms     (rt/unit->ms age unit)}})]
     (doseq [run reaped]
       (publish-timeout-event! (assoc run
                                      :status    :timeout

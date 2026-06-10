@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
    [metabase.run-tracking.core :as rt]
+   [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -497,8 +498,9 @@
           (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))
     reaped))
 
-;; No `:heartbeat-fn`: the coordinator heartbeats its own run from inside `run-transforms!` so that
-;; liveness tracks actual progress, not a background timer. Only the orphan reaper is scheduled here.
-(rt/defrun-tracking-jobs TransformJobRun
-  {:reap-fn    reap-and-notify-orphaned-runs!
-   :reaper-key "metabase.transforms.jobs.reaper-job"})
+;; No heartbeat task here: the coordinator heartbeats its own run from inside `run-transforms!` so
+;; that liveness tracks actual progress, not a background timer.
+(defmethod task/init! ::TransformJobRunReaper [_]
+  (rt/schedule-reaper! {:job-key "metabase.transforms.jobs.reaper-job"
+                        :label   "transform job run"
+                        :reap-fn #'reap-and-notify-orphaned-runs!}))
