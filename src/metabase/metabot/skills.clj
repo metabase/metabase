@@ -48,13 +48,12 @@
    [:dialect {:optional true} :string]])
 
 (def ^:private *skills
-  "Map of skill-id (keyword) -> skill definition map."
-  (atom {}))
-
-(def ^:private *skills-by-id-string
-  "Map of skill-id *string* -> skill definition map.
-  Lets `load_skill` resolve caller-supplied ids without keywordizing them first."
-  (atom {}))
+  "Registry of skills, indexed two ways:
+   `:by-id`     skill-id (keyword) -> skill — for internal callers.
+   `:by-id-str` skill-id (string)  -> skill — lets `load_skill` resolve caller-supplied ids
+                                              without keywordizing them first.
+  Both indexes are swapped together in one `reset!` so readers always see them in sync."
+  (atom {:by-id {} :by-id-str {}}))
 
 ;;; Registration
 
@@ -155,12 +154,13 @@
   "Scan the skill resource directories and (re)populate the registry.
   Runs at namespace load; public so a REPL can refresh the registry after editing skill files."
   []
-  ;; Build the full map before touching the registry: a failed refresh (e.g. a malformed skill file)
+  ;; Build the full registry before touching the atom: a failed refresh (e.g. a malformed skill file)
   ;; throws without clobbering the existing registry, and readers never observe a partial one.
   ;; The reset! also means re-initializing drops removed or renamed skills.
-  (let [skills (concat (markdown-skills) (dialect-skills))]
-    (reset! *skills (into {} (map (juxt :id identity)) skills))
-    (reset! *skills-by-id-string (into {} (map (juxt (comp name :id) identity)) skills))))
+  ;; `vec` realizes the (lazy) skill seq once so resources aren't slurped+parsed once per index.
+  (let [skills (vec (concat (markdown-skills) (dialect-skills)))]
+    (reset! *skills {:by-id     (into {} (map (juxt :id identity)) skills)
+                     :by-id-str (into {} (map (juxt (comp name :id) identity)) skills)})))
 
 (load-skills!)
 
@@ -169,18 +169,18 @@
 (defn get-skill
   "Return the skill definition for `id` (keyword), or nil."
   [id]
-  (get @*skills id))
+  (get-in @*skills [:by-id id]))
 
 (defn get-skill-by-id-string
   "Return the skill definition for string `id`, or nil.
   Unlike [[get-skill]], looks up by string so we don't need to keywordize `id` first."
   [id]
-  (get @*skills-by-id-string id))
+  (get-in @*skills [:by-id-str id]))
 
 (defn all-skills
   "Return all registered skill definitions."
   []
-  (vals @*skills))
+  (vals (:by-id @*skills)))
 
 (defn skills-for-tool
   "Return non-dialect skills associated with `tool-name` (a string)."
