@@ -100,7 +100,7 @@ export const TreemapChart = ({
     const seriesOption = getTreemapChartOption({
       tree,
       colors,
-      isDrilled: viewRootId != null,
+      isDrilled: viewRootId !== null,
       showParentLabels: shouldShowParentLabels(gridSize, settings),
       showLeafLabels,
       labelLayout,

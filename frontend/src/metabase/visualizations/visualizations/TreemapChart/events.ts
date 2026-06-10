@@ -109,13 +109,12 @@ export function showTreemapHoverOverlay(
   }
 }
 
-/** Remove the hover overlay (if any) from the chart's zrender layer. */
 export function hideTreemapHoverOverlay(
   chartRef: MutableRefObject<EChartsType | undefined>,
   overlayRef: TreemapHoverOverlayRef,
 ): void {
   const overlay = overlayRef.current;
-  if (overlay == null) {
+  if (overlay === null) {
     return;
   }
   const chart = chartRef.current;
