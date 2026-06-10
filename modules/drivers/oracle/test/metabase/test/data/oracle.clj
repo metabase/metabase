@@ -186,7 +186,7 @@
 
 (sql/register-fn! ::insert-all #'format-insert-all)
 
-(deftest ^:parallel insert-all-test
+(deftest ^:parallel format-insert-all-test
   (is (= ["INSERT ALL (?) (?) (?) SELECT * FROM dual" 1 2 3]
          (sql.qp/format-honeysql :oracle [::insert-all :oracle [[1] [2] [3]]]))))
 

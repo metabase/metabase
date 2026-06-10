@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations]

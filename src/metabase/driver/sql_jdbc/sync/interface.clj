@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc.sync.interface
   (:require
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.quoting :refer [quote-identifier]]
    [metabase.driver.sql.query-processor :as sql.qp]

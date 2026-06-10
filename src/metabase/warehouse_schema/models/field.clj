@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.app-db.core :as app-db]
+   [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
@@ -168,7 +168,7 @@
                    [:= :fk_target_field_id (:id field)]
                    [:not [:in :id {:select [:field_id]
                                    :from [:metabase_field_user_settings]}]]]}
-        sql (app-db/compile q)]
+        sql (mdb/compile q)]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
                      (t2/query sql)))))
