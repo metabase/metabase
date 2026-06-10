@@ -84,4 +84,11 @@
     (is (= 80 (search.config/weight {:context :data-picker} :library))))
   (testing "in the data picker, an exact name match can overpower the library boost"
     (is (> (search.config/weight {:context :data-picker} :exact)
-           (search.config/weight {:context :data-picker} :library)))))
+           (search.config/weight {:context :data-picker} :library))))
+  (testing "curation badges are tie-breakers by default; the data picker boosts them, but the library boost
+            outweighs both badges combined"
+    (is (= 1 (search.config/weight {:context :global} :official-collection)))
+    (is (= 1 (search.config/weight {:context :global} :verified)))
+    (is (> (search.config/weight {:context :data-picker} :library)
+           (+ (search.config/weight {:context :data-picker} :official-collection)
+              (search.config/weight {:context :data-picker} :verified))))))
