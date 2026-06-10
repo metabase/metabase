@@ -242,21 +242,22 @@ export const rewriteEmbedPreviewUrl = async ({
 };
 
 /**
- * Register the embed-preview rewrite on the shared client. It runs after the
+ * Registers the embed-preview rewrite on the shared client. It runs after the
  * embed override handlers, so it covers both the override-produced
  * `/api/embed/...` urls and the embed endpoints called directly (e.g.
  * `EmbedApi`, `embedApi`).
  *
- * Registered eagerly at module load rather than from a React effect: the embed
- * route mounts `usePublicEndpoints` on a parent of the dashboard fetcher, and
- * React runs child effects before parent effects, so a lazy registration would
- * miss the very first embed request (the dashboard load). The handler is
- * self-gating via `isEmbedPreview()`, so registering it unconditionally is safe
- * outside previews too.
+ * Idempotent, so call sites can register it at the earliest safe moment without
+ * worrying about duplicates. For public/static embeds it must run *before* the
+ * dashboard fetcher's effect (see `usePublicEndpoints`): React runs child
+ * effects before parent effects, so registering from a parent `useMount` would
+ * miss the very first embed request (the dashboard load).
  */
-if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
-  api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
-}
+export const setupEmbedPreviewRewrite = () => {
+  if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
+    api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
+  }
+};
 
 /**
  * Registers a request interceptor that transforms standard API requests
@@ -264,6 +265,7 @@ if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
  */
 export const overrideRequestsForGuestEmbeds = () => {
   setupRemappingUrls("guest");
+  setupEmbedPreviewRewrite();
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     (data) =>

@@ -5,6 +5,7 @@ import {
   matchUrlPattern,
   overrideRequests,
   rewriteEmbedPreviewUrl,
+  setupEmbedPreviewRewrite,
 } from "./override-requests-for-embeds";
 
 jest.mock("metabase/embedding/config", () => ({
@@ -149,13 +150,24 @@ describe("overrideRequests", () => {
   });
 });
 
-describe("embed-preview rewrite registration", () => {
+describe("setupEmbedPreviewRewrite", () => {
   // The embed route registers `usePublicEndpoints` on a parent of the dashboard
-  // fetcher, and React runs child effects before parent effects. Registering the
-  // rewrite from an effect would miss the first embed request, so it must be
-  // registered eagerly when the module loads.
-  it("registers rewriteEmbedPreviewUrl on the shared client at import time", () => {
-    expect(api.beforeRequestHandlers).toContain(rewriteEmbedPreviewUrl);
+  // fetcher, and React runs child effects before parent effects, so this must be
+  // called synchronously (not from an effect) to catch the first embed request.
+  it("registers rewriteEmbedPreviewUrl on the shared client, idempotently", () => {
+    const before = api.beforeRequestHandlers.filter(
+      (handler) => handler === rewriteEmbedPreviewUrl,
+    ).length;
+
+    setupEmbedPreviewRewrite();
+    setupEmbedPreviewRewrite();
+
+    const after = api.beforeRequestHandlers.filter(
+      (handler) => handler === rewriteEmbedPreviewUrl,
+    ).length;
+
+    expect(after).toBe(Math.max(before, 1));
+    expect(after).toBeLessThanOrEqual(1);
   });
 });
 
