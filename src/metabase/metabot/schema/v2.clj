@@ -31,11 +31,9 @@
 (defn- tool-type? [t] (and (string? t) (str/starts-with? t "tool-")))
 
 (mr/def ::provider-metadata
-  ;; mirrors providerMetadataSchema — Record<string, Record<string, JSONValue>>
   [:map-of :keyword [:map-of :keyword :any]])
 
 (mr/def ::ui-message-chunk
-  ;; mirrors uiMessageChunkSchema
   [:multi {:dispatch (fn [chunk]
                        (let [t (:type chunk)]
                          (if (data-type? t) ::data t)))}
@@ -162,7 +160,6 @@
                              [:message_metadata :any]]]])
 
 (mr/def ::tool-ui-part
-  ;; mirrors ToolUIPart / UIToolInvocation
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
                           [:type [:fn tool-type?]]
@@ -243,7 +240,6 @@
                                       [:reason {:optional true} :string]]]]]])
 
 (mr/def ::dynamic-tool-ui-part
-  ;; mirrors DynamicToolUIPart — carries :tool_name explicitly
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
@@ -331,7 +327,6 @@
                                       [:reason {:optional true} :string]]]]]])
 
 (mr/def ::ui-message-part
-  ;; mirrors UIMessagePart
   [:multi {:dispatch (fn [part]
                        (let [t (:type part)]
                          (cond
@@ -378,7 +373,6 @@
                        [:data :any]]]])
 
 (mr/def ::ui-message
-  ;; mirrors UIMessage; nonempty :parts per the uiMessagesSchema runtime validator
   [:map {:closed true}
    [:id :string]
    [:role [:enum "system" "user" "assistant"]]
