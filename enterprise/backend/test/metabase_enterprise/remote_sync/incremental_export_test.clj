@@ -295,6 +295,38 @@
           (is (= "write-files-version" (written-version task))
               "a present file with no entity_id fails the safety check and falls back to full"))))))
 
+(deftest malformed-yaml-occupant-falls-back-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      (let [a-eid  (t2/select-one-fn :entity_id :model/Card :id card-a)
+            a-path (path-for-eid mock a-eid)]
+        ;; No stored file_path, and the repo file at the computed path is malformed YAML that can't be
+        ;; parsed. Reading it throws — the row must be treated as unsyncable and fall back to a full
+        ;; export rather than crashing the whole export.
+        (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-a {:file_path nil})
+        (swap! (:files-atom mock) assoc-in ["main" a-path] "a: b: c")
+        (t2/update! :model/Card card-a {:description "edit A"})
+        (set-status! "Card" card-a "update")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "malformed occupant")]
+          (is (= :success (:status result)))
+          (is (= "write-files-version" (written-version task))
+              "a malformed YAML file at the target path falls back to full export instead of crashing"))))))
+
+(deftest create-onto-same-entity-stays-incremental-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      ;; card-a is already exported: its file sits at its computed path holding its own entity_id. A
+      ;; fresh "create" whose target path already holds THIS same entity is a safe overwrite, so it must
+      ;; stay incremental rather than fall back (the path is occupied, but by us).
+      (let [a-eid (t2/select-one-fn :entity_id :model/Card :id card-a)]
+        (set-status! "Card" card-a "create")
+        (let [task (new-task!)]
+          (impl/export! (source.p/snapshot mock) task "re-create A")
+          (is (= "apply-changes-version" (written-version task))
+              "a create whose path already holds the same entity stays incremental")
+          (is (entity-exported? mock a-eid) "card A is still exported"))))))
+
 ;;; ---------------------------------- Required-closure regression (GHY-3725) ------------------------------------
 ;;; A full export pulls a card's source cards via `serdes/descendants` (transitively, through
 ;;; `resolve-targets`), even when the source card lives outside the synced collection. The incremental

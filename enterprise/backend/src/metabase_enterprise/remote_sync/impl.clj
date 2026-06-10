@@ -376,64 +376,75 @@
   {:upserts :delete-paths :synced :removed-ids :pull} (any subset), or `:remote-sync/unsyncable-record`
   if the row can't be synced incrementally and the whole batch must fall back to a full export."
   [opts snapshot {:keys [status file_path] :as row}]
-  (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
-                        (let [spec (source/entity->file-spec opts entity)]
-                          {:entity entity
-                           :spec spec
-                           :eid (:entity_id entity)
-                           :new-path (:path spec)})))]
-    (cond
-      (not= :entity-id ;; only entity-id models can be synced incrementally
-            (:identity (spec/spec-for-model-type (:model_type row))))
-      :remote-sync/unsyncable-record
+  (try
+    (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+                          (let [spec (source/entity->file-spec opts entity)
+                                content (source.p/read-file snapshot (:path spec))
+                                yaml (when content
+                                       ;; errors parsing should throw an invalidate the row
+                                       (yaml/parse-string content))]
+                            {:entity entity
+                             :spec spec
+                             :eid (:entity_id entity)
+                             :new-path (:path spec)
+                             :file-exists? (boolean content)
+                             :file-eid (:entity_id yaml)})))]
+      (cond
+        (not= :entity-id ;; only entity-id models can be synced incrementally
+              (:identity (spec/spec-for-model-type (:model_type row))))
+        :remote-sync/unsyncable-record
 
-      (not (#{"create" "update" "removed" "delete"} status))
-      :remote-sync/unsyncable-record
+        (not (#{"create" "update" "removed" "delete"} status))
+        :remote-sync/unsyncable-record
 
-      (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
-           (str/blank? file_path))
-      :remote-sync/unsyncable-record
+        (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
+             (str/blank? file_path))
+        :remote-sync/unsyncable-record
 
-      (#{"removed" "delete"} status)
-      {:delete-paths [file_path]
-       :removed-ids [(:id row)]}
+        (#{"removed" "delete"} status)
+        {:delete-paths [file_path]
+         :removed-ids [(:id row)]}
 
-      ;; past here, we're seeing create and update statuses
-      (not @info) ;; entity no longer exists
-      :remote-sync/unsyncable-record
+        ;; past here, we're seeing create and update statuses
+        (not @info) ;; entity no longer exists
+        :remote-sync/unsyncable-record
 
-      ;; create: brand-new file, no old path to delete.
-      ;; Target must be free or same entity id
-      (and (= "create" status)
-           (path-free-for? snapshot (:new-path @info) (:eid @info)))
-      {:pull (untracked-content-deps (:model_type row) (:model_id row))
-       :upserts [(:spec @info)]
-       :synced [{:id (:id row) :file_path (:new-path @info)}]}
+        ;; create: brand-new file, no old path to delete.
+        ;; Target must be free or same entity id
+        (and (= "create" status)
+             (or (not (:file-exists? @info))
+                 (= (:eid @info) (:file-eid @info))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]}
 
-      ;; in-place update: at its stored path, or (no stored path) the repo file at
-      ;; new-path is already this entity — overwrite.
-      (and (= "update" status)
-           (or (= file_path (:new-path @info))
-               (and (str/blank? file_path)
-                    (= (:eid @info) (file-entity-id (source.p/read-file snapshot (:new-path @info)))))))
-      {:pull (untracked-content-deps (:model_type row) (:model_id row))
-       :upserts [(:spec @info)]
-       :synced [{:id (:id row) :file_path (:new-path @info)}]}
+        ;; in-place update: at its stored path, or (no stored path) the repo file at
+        ;; new-path is already this entity — overwrite.
+        (and (= "update" status)
+             (or (= file_path (:new-path @info))
+                 (and (str/blank? file_path)
+                      (= (:eid @info) (:file-eid @info)))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]}
 
-      ;; rename: update whose stored path differs from new path. Write the
-      ;; new file and delete the old one.
-      (and (= "update" status)
-           (not (str/blank? file_path))
-           (not= file_path (:new-path @info))
-           (path-free-for? snapshot (:new-path @info) (:eid @info)))
-      {:pull (untracked-content-deps (:model_type row) (:model_id row))
-       :upserts [(:spec @info)]
-       :synced [{:id (:id row) :file_path (:new-path @info)}]
-       :delete-paths [file_path]}
+        ;; rename: update whose stored path differs from new path. Write the
+        ;; new file and delete the old one.
+        (and (= "update" status)
+             (not (str/blank? file_path))
+             (not= file_path (:new-path @info))
+             (or (not (:file-exists? @info))
+                 (= (:eid @info) (:file-eid @info))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]
+         :delete-paths [file_path]}
 
-      ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
-      ;; a full export
-      :else
+        ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
+        ;; a full export
+        :else
+        :remote-sync/unsyncable-record))
+    (catch Exception _
       :remote-sync/unsyncable-record)))
 
 (defn- incremental-plan
