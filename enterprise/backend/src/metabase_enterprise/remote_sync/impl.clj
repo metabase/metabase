@@ -311,24 +311,6 @@
 
 ;;; ------------------------------------------- Incremental Export Fast-Path -------------------------------------------
 
-(defn- file-entity-id
-  "Parses serialized YAML `content` and returns its top-level entity_id, or nil if the content is
-  absent, unparseable, or has no entity_id."
-  [content]
-  (when content
-    (try
-      (:entity_id (yaml/parse-string content))
-      (catch Exception _ nil))))
-
-(defn- path-free-for?
-  "True if `path` in the repo is absent, or is present and already holds the entity with `entity-id`.
-  A present file whose entity_id can't be read counts as occupied (not free): overwriting it could
-  clobber a different entity. Guards against dedup name collisions."
-  [snapshot path entity-id]
-  (if-let [content (source.p/read-file snapshot path)]
-    (= (file-entity-id content) entity-id)
-    true))
-
 (def ^:private closure-opts
   {:include-field-values false :include-database-secrets false
    :continue-on-error false :skip-archived true})
@@ -368,7 +350,14 @@
                      (map (fn [[mt id]] {:model_type mt :model_id id}))
                      spec/extract-entities-for-rows
                      (map (fn [e] [(source/entity->file-spec opts e) (:entity_id e)])))]
-      (when (every? (fn [[spec eid]] (path-free-for? snapshot (:path spec) eid)) specs)
+      ;; keep going only if every dependency's target path is free: absent, or already holding that
+      ;; same entity. A present file whose entity_id can't be read counts as occupied — don't clobber it.
+      (when (every? (fn [[spec eid]]
+                      (if-let [content (source.p/read-file snapshot (:path spec))]
+                        (= eid (try (:entity_id (yaml/parse-string content))
+                                    (catch Exception _ nil)))
+                        true))
+                    specs)
         (mapv first specs)))))
 
 (defn- incremental-updates-for-row
