@@ -39,10 +39,20 @@ export const toActionExecuteError = (error: unknown): ActionExecuteError => {
         : typeof (data as { message?: unknown })?.message === "string"
           ? (data as { message: string }).message
           : undefined;
+    // The execute endpoint may also include an `errors` map keyed by
+    // parameter slug (`{ <slug>: <message> }`), or an empty `{}` for
+    // whole-request failures. Pass it through when present and well-shaped.
+    const rawErrors = (data as { errors?: unknown })?.errors;
+    const errors =
+      rawErrors != null &&
+      typeof rawErrors === "object" &&
+      !Array.isArray(rawErrors)
+        ? (rawErrors as Record<string, string>)
+        : undefined;
 
     return {
       status,
-      data: { message },
+      data: { message, ...(errors ? { errors } : {}) },
       isCancelled: isAbort || Boolean(isCancelled),
     };
   }

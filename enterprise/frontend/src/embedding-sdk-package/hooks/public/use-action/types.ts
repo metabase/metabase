@@ -95,6 +95,10 @@ export type AnyActionResult =
  *     const message = error?.data?.message;
  *
  * `error.data.message` is the actionable diagnostic for end users.
+ * `error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the
+ * backend reports parameter-level validation failures; it is `{}` for
+ * whole-request failures (e.g. a foreign-key constraint:
+ * `{ message: "Other rows refer to this row…", errors: {} }`).
  * `status` is absent for transport-layer failures (offline, aborted) where
  * no HTTP response was received.
  *
@@ -104,6 +108,7 @@ export type ActionExecuteError = {
   status?: number;
   data: {
     message?: string;
+    errors?: Record<string, string>;
   };
   isCancelled: boolean;
 };
