@@ -2517,7 +2517,7 @@
                     :model/TransformTag}}
 
   typed-schemas
-  {:team "Gadget"
+  {:team "Embedding"
    :api  #{metabase.typed-schemas.api}
    :uses #{actions
            api
