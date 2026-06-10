@@ -143,18 +143,20 @@
   (some seq (vals in-flight)))
 
 (defn- submit-transform!
-  "Run `transform` on its own thread; returns a future yielding a `::status` completion map."
-  [run-id run-method user-id transform]
+  "Run `transform` on its own thread, delivering a `::status` completion map to the `result` promise
+  when it finishes (normally or interrupted)."
+  [run-id run-method user-id transform result]
   (future
-    (try
-      (run-transform! run-id run-method user-id transform)
-      {::status :succeeded ::transform transform}
-      (catch Throwable t
-        (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
-        {::status    :failed
-         ::transform transform
-         ::message   (or (ex-message t) (str t))
-         ::throwable t}))))
+    (let [ret (try
+                (run-transform! run-id run-method user-id transform)
+                {::status :succeeded ::transform transform}
+                (catch Throwable t
+                  (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
+                  {::status    :failed
+                   ::transform transform
+                   ::message   (or (ex-message t) (str t))
+                   ::throwable t}))]
+      (deliver result ret))))
 
 (defn- transform-target-key
   "A coarse identity for a transform's output table, used to keep two transforms that write the
@@ -196,70 +198,55 @@
 
          (and (every? succeeded dep-ids)
               (< (count in-flight-now) (lanes lane-key)))
-         (let [fut (submit-transform! run-id run-method user-id t)]
-           (cond-> (assoc-in st [:in-flight lane-key id] {:future fut :timer (u/start-timer) :tkey tkey :transform t})
+         (let [result (promise)
+               fut    (submit-transform! run-id run-method user-id t result)]
+           (cond-> (assoc-in st [:in-flight lane-key id]
+                             {:future fut :result result :timer (u/start-timer) :tkey tkey :transform t})
              tkey (update :in-flight-targets conj tkey)))
 
          :else st)))
    st
    plan))
 
-(defn- drain-completed-workers
-  "Fold every finished in-flight worker into the state."
-  [st]
-  (reduce-kv
-   (fn [st lane-key workers]
-     (reduce-kv
-      (fn [st id {fut :future :keys [draining tkey]}]
-        (if (future-done? fut)
-          (let [st               (cond-> (update-in st [:in-flight lane-key] dissoc id)
-                                   tkey (update :in-flight-targets disj tkey))
-                {::keys [status]
-                 :as    completion} (when-not draining @fut)]
-            (cond
-              draining              st
-              (= status :succeeded) (update st :succeeded conj id)
-              ;; preserve the worker's failure context (::message / ::throwable)
-              :else                 (-> st
-                                        (update :failed conj id)
-                                        (update :failures conj (dissoc completion ::status)))))
-
-          st))
-      st
-      workers))
-   st
-   (:in-flight st)))
-
-(defn- sweep-overdue-workers!
-  "Interrupt and fail any worker that has outrun `timeout-ms` — the hard backstop for a worker that
-  ignored its own (query/cancel) timeout."
+(defn- sweep-workers!
+  "Fold finished workers into the state, interrupt and fail workers that have outrun `timeout-ms`, and
+  give up on interrupted workers that still haven't stopped after the drain grace."
   [st timeout-ms]
   (reduce-kv
    (fn [st lane-key workers]
      (reduce-kv
-      (fn [st id {fut :future :keys [timer draining tkey] :as worker}]
-        (cond
-          ;; interrupted earlier and still running: abandon it once the drain grace is up
-          draining
-          (if (>= (u/since-ms draining) transform-worker-grace-ms)
-            (-> st
-                (update-in [:in-flight lane-key] dissoc id)
-                (cond-> tkey (update :in-flight-targets disj tkey)))
-            st)
+      (fn [st id {:keys [result timer draining tkey transform] fut :future}]
+        (let [freed (cond-> (update-in st [:in-flight lane-key] dissoc id)
+                      tkey (update :in-flight-targets disj tkey))]
+          (cond
+            (realized? result)
+            (let [{::keys [status] :as completion} @result]
+              (cond
+                draining              freed
+                (= status :succeeded) (update freed :succeeded conj id)
+                ;; preserve the worker's failure context (::message / ::throwable)
+                :else                 (-> freed
+                                          (update :failed conj id)
+                                          (update :failures conj (dissoc completion ::status)))))
 
-          ;; not overdue, or finished
-          (or (< (u/since-ms timer) timeout-ms) (future-done? fut))
-          st
+            draining
+            (if (>= (u/since-ms draining) transform-worker-grace-ms)
+              (do (log/warnf "Interrupted worker for transform %s still running after the drain grace; abandoning its thread"
+                             (pr-str id))
+                  freed)
+              st)
 
-          :else
-          (do (log/warnf "Transform %s exceeded its deadline; interrupting worker" (pr-str id))
-              (future-cancel fut)
-              (-> st
-                  (assoc-in [:in-flight lane-key id :draining] (u/start-timer))
-                  (update :failed conj id)
-                  (update :failures conj
-                          {::transform (:transform worker)
-                           ::message   (i18n/trs "Transform did not complete within the timeout and was interrupted.")})))))
+            (>= (u/since-ms timer) timeout-ms)
+            (do (log/warnf "Transform %s exceeded its deadline; interrupting worker" (pr-str id))
+                (future-cancel fut)
+                (-> st
+                    (assoc-in [:in-flight lane-key id :draining] (u/start-timer))
+                    (update :failed conj id)
+                    (update :failures conj
+                            {::transform transform
+                             ::message   (i18n/trs "Transform did not complete within the timeout and was interrupted.")})))
+
+            :else st)))
       st
       workers))
    st
@@ -283,10 +270,10 @@
       :error)))
 
 (defn- run-coordinator-loop!
-  "Dispatch ready transforms; then each round fold in finished workers, sweep overdue ones, refill
-  freed slots, and heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in
-  flight. Returns the final state, with `:aborted?` set if a heartbeat found the run terminated
-  externally (in-flight workers are then interrupted)."
+  "Dispatch ready transforms; then each round sweep the in-flight workers, refill freed slots, and
+  heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in flight. Returns
+  the final state, with `:aborted?` set if a heartbeat found the run terminated externally (in-flight
+  workers are then interrupted)."
   [init-state {:keys [run-id timeout-ms] :as ctx}]
   ;; the initial beat catches a run reaped during (slow) planning, before we dispatch anything
   (if (= :gone (heartbeat! run-id))
@@ -304,8 +291,7 @@
 
           :else
           (let [st (-> st
-                       drain-completed-workers
-                       (sweep-overdue-workers! timeout-ms)
+                       (sweep-workers! timeout-ms)
                        (dispatch-ready! ctx))]
             (Thread/sleep 250)
             (recur st (if beat? (u/start-timer) hb))))))))
@@ -325,7 +311,7 @@
         init-state {:succeeded         #{}
                     :failed            #{}
                     :failures          []
-                    ;; per lane: transform-id -> {:future :timer :tkey :transform :draining}
+                    ;; per lane: transform-id -> {:future :result :timer :tkey :transform :draining}
                     :in-flight         {:sql {} :py {}}
                     ;; target tables currently being written by an in-flight transform
                     :in-flight-targets #{}}
