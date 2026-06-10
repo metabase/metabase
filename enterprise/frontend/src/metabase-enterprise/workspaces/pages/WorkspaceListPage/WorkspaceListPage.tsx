@@ -54,11 +54,10 @@ function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
         <WorkspaceHeader />
         <Group justify="flex-end">
           <Button
-            variant="filled"
             leftSection={<FixedSizeIcon name="add" aria-hidden />}
             onClick={openCreate}
           >
-            {t`Add`}
+            {t`New`}
           </Button>
         </Group>
         <WorkspaceTable
