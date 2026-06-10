@@ -138,6 +138,7 @@
    "SourceDimensionDaily"
    "SourceDimensionProfileDaily"
    "SourceMetricDaily"
+   "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
    "SupportAccessGrantLog"
    "TableRemapping"

@@ -8,9 +8,12 @@
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
+   [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
+   [metabase.usage-metadata.schema :as usage-metadata.schema]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -144,6 +147,37 @@
                 :group-by [:source_type :source_id :field_id :temporal_unit :binning]
                 :order-by [[:total_count :desc]]})))
 
+(defn- decode-atom-fingerprints [x]
+  (cond
+    (sequential? x) (vec x)
+    (string? x)     (vec (json/decode x))
+    :else           []))
+
+(defn- grouped-composite-rows
+  "Group + sum `source_segment_composite_daily` counts for a source filter.
+
+  Each returned row carries the whole-clause JSON, the atom-fingerprint array, and the summed count
+  across the window — the input shape expected by the FIM pass."
+  [{:keys [source-type source-id bucket-start bucket-end]}]
+  (let [where (cond-> [:and
+                       [:in :ownership_mode ["direct" "projected"]]]
+                source-type  (conj [:= :source_type (name source-type)])
+                source-id    (conj [:= :source_id source-id])
+                bucket-start (conj [:>= :bucket_date bucket-start])
+                bucket-end   (conj [:<= :bucket_date bucket-end]))]
+    (->> (t2/select [:model/SourceSegmentCompositeDaily
+                     :source_type
+                     :source_id
+                     :clause
+                     :atom_fingerprints
+                     :atom_count
+                     [[:sum :count] :total_count]]
+                    {:where    where
+                     :group-by [:source_type :source_id :clause :atom_fingerprints :atom_count]
+                     :order-by [[:total_count :desc]]})
+         (mapv (fn [row]
+                 (update row :atom_fingerprints decode-atom-fingerprints))))))
+
 (defn- grouped-profile-rows
   "Group + sum `source_dimension_profile_daily` counts for a source filter."
   [{:keys [source-type source-id bucket-start bucket-end]}]
@@ -243,20 +277,13 @@
   []
   (existing-metric-signatures*-memo ::all))
 
-(defn implicit-segments
+(mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
   "Top implicit segments recorded across usage-metadata rollups.
 
   Predicates that correspond to *existing* saved Segments are filtered out — only truly
-  ad-hoc filter patterns are returned.
-
-  Returns a flat ranked sequence of:
-    {:predicate <mbql-clause>
-     :source {:type :id :name :display-name}
-     :fields [{:id :name :display-name} ...]
-     :count <long>}"
-  ([]
-   (implicit-segments {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ad-hoc filter patterns are returned."
+  ([] (implicit-segments {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [existing    (existing-segment-predicates opts)
          raw-rows    (remove (fn [{:keys [source_type source_id predicate]}]
                                (contains? existing [source_type source_id predicate]))
@@ -281,18 +308,17 @@
                           {:predicate (::decoded row)
                            :source    source
                            :fields    fields
-                           :count     (:total_count row)})))))
+                           :count     (long (:total_count row))})))))
             (take limit))
            enriched))))
 
-(defn implicit-metrics
+(mu/defn implicit-metrics :- [:sequential ::usage-metadata.schema/implicit-metric]
   "Top implicit metrics recorded across usage-metadata rollups.
 
   Aggregations that correspond to *existing* saved Metrics (Cards of type `metric`) are
   filtered out — only truly ad-hoc aggregation patterns are returned."
-  ([]
-   (implicit-metrics {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (implicit-metrics {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [existing   (existing-metric-signatures)
          rows       (remove (fn [{:keys [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]}]
                               (contains? existing [source_type source_id agg_type agg_field_id temporal_field_id temporal_unit]))
@@ -310,15 +336,14 @@
                                      :field          (field-idx agg_field_id)
                                      :temporal-field (field-idx temporal_field_id)
                                      :temporal-unit  temporal_unit}
-                       :count       total_count})))
+                       :count       (long total_count)})))
             (take limit))
            rows))))
 
-(defn implicit-dimensions
+(mu/defn implicit-dimensions :- [:sequential ::usage-metadata.schema/implicit-dimension]
   "Top implicit dimensions recorded across usage-metadata rollups."
-  ([]
-   (implicit-dimensions {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (implicit-dimensions {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-dimension-rows opts)
          source-idx (build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
@@ -333,15 +358,206 @@
                          :dimension {:field         field
                                      :temporal-unit temporal_unit
                                      :binning       (decode-binning binning)}
-                         :count     total_count}))))
+                         :count     (long total_count)}))))
             (take limit))
            rows))))
 
-(defn profile-observations
+(def ^:private fim-absolute-support-floor 2)
+(def ^:private fim-relative-support-floor 0.2)
+(def ^:private fim-k-min 2)
+(def ^:private fim-k-max 5)
+(def ^:private fim-default-limit 20)
+
+(defn- rows->baskets
+  "Project rollup rows to `{:atoms #{...} :count n}` baskets for mining.
+
+  Coerces `total_count` to `long` so downstream FIM math (and the `:support` field) stays
+  integer — MariaDB/MySQL return `SUM(int_col)` as `BigDecimal`."
+  [rows]
+  (into []
+        (keep (fn [{:keys [atom_fingerprints total_count]}]
+                (when (>= (count atom_fingerprints) fim-k-min)
+                  {:atoms (set atom_fingerprints)
+                   :count (long total_count)})))
+        rows))
+
+(defn- itemset-support
+  [baskets itemset]
+  (reduce (fn [acc {:keys [atoms count]}]
+            (if (every? atoms itemset)
+              (+ acc count)
+              acc))
+          0
+          baskets))
+
+(defn- any-atom-support
+  "Number of baskets containing at least one atom of `itemset` (denominator for the relative support check)."
+  [baskets itemset]
+  (reduce (fn [acc {:keys [atoms count]}]
+            (if (some atoms itemset)
+              (+ acc count)
+              acc))
+          0
+          baskets))
+
+(defn- frequent-singletons
+  [baskets absolute-floor]
+  (let [counts (reduce (fn [m {:keys [atoms count]}]
+                         (reduce (fn [m a] (update m a (fnil + 0) count)) m atoms))
+                       {}
+                       baskets)]
+    (into {}
+          (filter (fn [[_ n]] (>= n absolute-floor)))
+          counts)))
+
+(defn- apriori-join
+  "Generate k+1 candidate itemsets by joining k-itemsets sharing a k-1 prefix."
+  [lk-vecs]
+  (let [by-prefix (group-by (fn [is] (subvec is 0 (dec (count is)))) lk-vecs)]
+    (into #{}
+          (mapcat (fn [group]
+                    (for [a group
+                          b group
+                          :when (neg? (compare (peek a) (peek b)))]
+                      (conj a (peek b)))))
+          (vals by-prefix))))
+
+(defn- has-all-k-subsets?
+  [lk-set candidate]
+  (let [n (count candidate)]
+    (every? (fn [i]
+              (let [sub (into (subvec candidate 0 i) (subvec candidate (inc i)))]
+                (contains? lk-set sub)))
+            (range n))))
+
+(defn- mine-itemsets
+  "Apriori up to size `fim-k-max`. Returns `{itemset-vec support}` for itemsets of size ≥ `fim-k-min`."
+  [baskets]
+  (let [singletons (frequent-singletons baskets fim-absolute-support-floor)
+        l1-vecs    (vec (sort (map vector (keys singletons))))]
+    (loop [lk       l1-vecs
+           k        1
+           acc      {}]
+      (if (or (empty? lk) (>= k fim-k-max))
+        acc
+        (let [lk-set     (set lk)
+              candidates (apriori-join lk)
+              pruned     (into [] (filter (partial has-all-k-subsets? lk-set)) candidates)
+              counted    (into {}
+                               (keep (fn [c]
+                                       (let [s (itemset-support baskets (set c))]
+                                         (when (>= s fim-absolute-support-floor) [c s]))))
+                               pruned)
+              next-k     (inc k)
+              acc        (if (>= next-k fim-k-min)
+                           (merge acc counted)
+                           acc)]
+          (recur (vec (sort (keys counted))) next-k acc))))))
+
+(defn- closed-only
+  "Keep only itemsets that have no proper superset of equal support — the closed frequent itemsets."
+  [itemset->support]
+  (let [entries (vec itemset->support)]
+    (into {}
+          (remove (fn [[is sup]]
+                    (let [is-set (set is)
+                          is-n   (count is)]
+                      (some (fn [[other other-sup]]
+                              (and (= sup other-sup)
+                                   (> (count other) is-n)
+                                   (every? (set other) is-set)))
+                            entries))))
+          entries)))
+
+(defn- relative-support-ok?
+  [baskets itemset support]
+  (let [denom (any-atom-support baskets itemset)]
+    (or (zero? denom)
+        (>= (/ support (double denom)) fim-relative-support-floor))))
+
+(defn- rebuild-and-clause
+  [fingerprints]
+  (let [atoms (into []
+                    (keep decode-predicate)
+                    fingerprints)]
+    (when (>= (count atoms) fim-k-min)
+      (lib/simplify-compound-filter (apply lib/and atoms)))))
+
+(defn- existing-composite-atomsets*
+  [[source-type source-id]]
+  (let [where     (cond-> [:and [:= :archived false]]
+                    (and (= source-type :table) source-id) (conj [:= :table_id source-id]))
+        segments  (t2/select [:model/Segment :id :table_id :definition] {:where where})
+        table-ids (into #{} (comp (keep :table_id) (filter pos-int?)) segments)
+        table->db (when (seq table-ids)
+                    (into {}
+                          (map (juxt :id :db_id))
+                          (t2/select [:model/Table :id :db_id] :id [:in table-ids])))]
+    (lib-be/with-metadata-provider-cache
+      (into #{}
+            (mapcat (fn [{:keys [table_id definition]}]
+                      (when (and (pos-int? table_id) (seq definition))
+                        (when-let [db-id (get table->db table_id)]
+                          (let [facts (:composites (extract-facts db-id definition))]
+                            (for [{:keys [atom-fingerprints]} facts
+                                  :when (>= (count atom-fingerprints) fim-k-min)]
+                              [:table table_id (set atom-fingerprints)]))))))
+            segments))))
+
+(def ^:private existing-composite-atomsets*-memo
+  (memoize/ttl existing-composite-atomsets* :ttl/threshold cache-ttl-ms))
+
+(defn- existing-composite-atomsets
+  "Set of `[source-type source-id #{atom-fingerprint ...}]` tuples for non-archived Segments whose
+  definitions are whole-:and baskets. Used to filter out suggestions that already exist as saved Segments."
+  [{:keys [source-type source-id]}]
+  (existing-composite-atomsets*-memo [source-type source-id]))
+
+(mu/defn suggested-segments-for-owner :- [:sequential ::usage-metadata.schema/suggested-segment]
+  "Suggest composite (`:and`) segment definitions that recur across a source's query history but
+  have not been saved as Segments yet. Implemented as Apriori FIM over composite rollup baskets:
+  each rollup row is a basket whose items are the atomic predicates of one stage's top-level `:and`.
+  We mine closed frequent itemsets and reconstruct each surviving itemset as an `:and` MBQL clause.
+
+  `:itemset-size` is bounded by `fim-k-min`/`fim-k-max` (2..5). `:support` is the weighted count of
+  baskets containing ALL of the itemset's atoms (basket weight = the rollup row's `:count`).
+  `:support-ratio` is `support / any-atom-support` and is floored by `fim-relative-support-floor`.
+
+  Results are sorted by `:support` desc, then by `:itemset-size` desc — at equal support, larger
+  recurring `:and`s rank higher, since they encode more user intent. Truncated to `:limit`."
+  ([] (suggested-segments-for-owner {}))
+  ([{:keys [limit] :or {limit fim-default-limit} :as opts} :- ::usage-metadata.schema/opts]
+   (let [rows          (grouped-composite-rows opts)
+         by-source     (group-by (juxt :source_type :source_id) rows)
+         source-idx    (build-source-index (keys by-source))
+         candidates    (into []
+                             (mapcat (fn [[[source-type source-id] source-rows]]
+                                       (when-let [source (source-idx [source-type source-id])]
+                                         (let [baskets  (rows->baskets source-rows)
+                                               existing (existing-composite-atomsets {:source-type source-type
+                                                                                      :source-id   source-id})
+                                               mined    (closed-only (mine-itemsets baskets))]
+                                           (for [[itemset-vec support] mined
+                                                 :let  [itemset (set itemset-vec)]
+                                                 :when (and (relative-support-ok? baskets itemset-vec support)
+                                                            (not (contains? existing [source-type source-id itemset])))
+                                                 :let  [clause (rebuild-and-clause itemset-vec)
+                                                        denom  (any-atom-support baskets itemset-vec)]
+                                                 :when clause]
+                                             {:clause        clause
+                                              :itemset-size  (count itemset-vec)
+                                              :source        source
+                                              :support       support
+                                              :support-ratio (if (pos? denom) (/ support (double denom)) 0.0)})))))
+                             by-source)]
+     (into []
+           (take limit)
+           (sort-by (juxt (comp - :support) (comp - :itemset-size)) candidates)))))
+
+(mu/defn profile-observations :- [:sequential ::usage-metadata.schema/profile-observation]
   "Top dimension profile observations recorded across usage-metadata rollups."
-  ([]
-   (profile-observations {}))
-  ([{:keys [limit] :or {limit 10} :as opts}]
+  ([] (profile-observations {}))
+  ([{:keys [limit] :or {limit 10} :as opts} :- ::usage-metadata.schema/opts]
    (let [rows       (grouped-profile-rows opts)
          source-idx (build-source-index
                      (into #{} (map (juxt :source_type :source_id)) rows))
@@ -358,6 +574,6 @@
                          :basis       source_basis
                          :observation {:type  observation_type
                                        :value observation_value}
-                         :count       total_count}))))
+                         :count       (long total_count)}))))
             (take limit))
            rows))))

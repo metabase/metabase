@@ -64,33 +64,33 @@
     :else
     nil))
 
-(defn- column-metadata?
-  [x]
-  (and (map? x) (= :metadata/column (:lib/type x))))
-
-(defn- participants-from-parts
-  [root-owner parts]
-  (letfn [(walk [node]
-            (cond
-              (column-metadata? node)
-              (when-let [field-id (:id node)]
-                (when (pos-int? field-id)
-                  (when-let [owner (owner-from-metadata root-owner node)]
-                    [{:field-id field-id :owner owner}])))
-
-              (and (map? node) (= :mbql/expression-parts (:lib/type node)))
-              (mapcat walk (:args node))
-
-              :else
-              nil))]
-    (-> (walk parts) distinct vec)))
-
-(defn- expression-parts-safe
+(defn- referenced-columns-safe
   [query stage-number clause]
   (try
-    (lib/expression-parts query stage-number clause)
+    (lib/referenced-columns query stage-number clause)
     (catch Throwable e
-      (log/debugf e "usage-metadata: expression-parts failed (stage %s)" stage-number)
+      (log/debugf e "usage-metadata: referenced-columns failed (stage %s)" stage-number)
+      nil)))
+
+(defn- field-participants-of-clause
+  "For one MBQL clause, returns distinct `{:field-id ... :owner ...}` maps for each referenced
+  column whose `:id` resolves to a real Field and has a derivable owner."
+  [query stage-number root-owner clause]
+  (into []
+        (comp (keep (fn [col]
+                      (when-let [field-id (:id col)]
+                        (when (pos-int? field-id)
+                          (when-let [owner (owner-from-metadata root-owner col)]
+                            {:field-id field-id :owner owner})))))
+              (distinct))
+        (referenced-columns-safe query stage-number clause)))
+
+(defn- aggregation-operator-safe
+  [query stage-number aggregation]
+  (try
+    (:operator (lib/expression-parts query stage-number aggregation))
+    (catch Throwable e
+      (log/debugf e "usage-metadata: aggregation operator extraction failed (stage %s)" stage-number)
       nil)))
 
 (defn- breakout-column-safe
@@ -104,8 +104,7 @@
 (defn- segment-facts-for-clause
   [query stage-number clause]
   (let [root-owner (query-source-table-or-card query)
-        parts      (expression-parts-safe query stage-number clause)
-        field-refs (participants-from-parts root-owner parts)
+        field-refs (field-participants-of-clause query stage-number root-owner clause)
         owners     (set (map :owner field-refs))
         predicate  (canonicalize-for-storage clause)]
     (cond
@@ -167,12 +166,44 @@
     :sum-where
     :var})
 
+(defn- composite-facts-for-stage
+  "Emit at most one composite fact per stage, treating the stage's top-level filter list as a single
+  implicit-`:and` basket. `lib/atomic-filters` flattens any explicit `:and` children so the basket's
+  atom membership matches the atom rollup's per-atom facts. Stages with fewer than two atoms are
+  skipped (the atom rollup already captures single predicates)."
+  [query stage-number]
+  (let [atoms      (or (lib/atomic-filters query stage-number) [])
+        atom-count (count atoms)]
+    (when (>= atom-count 2)
+      (let [root-owner       (query-source-table-or-card query)
+            synthetic-and    (apply lib/and atoms)
+            canonical-clause (canonicalize-for-storage synthetic-and)
+            canonical-atoms  (vec (sort (map canonicalize-for-storage atoms)))
+            field-refs       (into []
+                                   (comp (mapcat (partial field-participants-of-clause query stage-number root-owner))
+                                         (distinct))
+                                   atoms)
+            owners           (set (map :owner field-refs))
+            base             {:clause            canonical-clause
+                              :atom-fingerprints canonical-atoms
+                              :atom-count        atom-count}]
+        (cond
+          (empty? field-refs)
+          []
+
+          (= 1 (count owners))
+          [(merge (first owners) base {:ownership-mode :direct})]
+
+          :else
+          (into [(merge base {:source-type nil :source-id nil :ownership-mode :mixed})]
+                (map (fn [owner] (merge owner base {:ownership-mode :projected})))
+                owners))))))
+
 (defn- metric-bases
   [query stage-number aggregation]
   (let [root-owner (query-source-table-or-card query)
-        parts      (expression-parts-safe query stage-number aggregation)
-        agg-type   (:operator parts)
-        field-refs (participants-from-parts root-owner parts)
+        agg-type   (aggregation-operator-safe query stage-number aggregation)
+        field-refs (field-participants-of-clause query stage-number root-owner aggregation)
         owners     (set (map :owner field-refs))]
     (cond
       ;; Skip composite aggregations and saved-metric references — only record
@@ -260,11 +291,13 @@
   "Extract fact-level usage tuples from a normalized MBQL query."
   [query]
   (reduce
-   (fn [{:keys [segments metrics dimensions]} stage-number]
+   (fn [{:keys [segments composites metrics dimensions]} stage-number]
      {:segments   (into segments (segment-facts-for-stage query stage-number))
+      :composites (into composites (composite-facts-for-stage query stage-number))
       :metrics    (into metrics (metric-facts-for-stage query stage-number))
       :dimensions (into dimensions (dimension-facts-for-stage query stage-number))})
-   {:segments []
-    :metrics []
+   {:segments   []
+    :composites []
+    :metrics    []
     :dimensions []}
    (range (lib/stage-count query))))

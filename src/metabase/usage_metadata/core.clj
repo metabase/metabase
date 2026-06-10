@@ -1,48 +1,41 @@
 (ns metabase.usage-metadata.core
-  "Public API for usage-metadata rollups. Internal consumers should call the fns here rather than reaching into
-  `metabase.usage-metadata.insights`; this boundary pins the opts shape and return shape for future consumers."
+  "Public API for usage-metadata rollups."
   (:require
    [metabase.usage-metadata.insights :as insights]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.usage-metadata.schema :as usage-metadata.schema]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::source-type [:enum :table :card])
-
-(mr/def ::opts
-  [:map {:closed true}
-   [:source-type  {:optional true} [:maybe ::source-type]]
-   [:source-id    {:optional true} [:maybe pos-int?]]
-   [:bucket-start {:optional true} [:maybe :time/local-date]]
-   [:bucket-end   {:optional true} [:maybe :time/local-date]]
-   [:limit        {:optional true} [:maybe pos-int?]]])
-
-(mu/defn implicit-segments :- [:sequential :map]
-  "Top implicit (ad-hoc, not-saved-as-a-Segment) filter patterns, ranked by usage count across the window.
-
-  Each result is `{:predicate <mbql-clause>, :source {:type :id :name :display-name}, :fields [<field-map>...], :count <long>}`."
-  [opts :- ::opts]
+(mu/defn implicit-segments :- [:sequential ::usage-metadata.schema/implicit-segment]
+  "Filter predicates users have run ad-hoc that aren't already saved as Segments — surface candidates
+  for promotion to first-class Segments."
+  [opts :- ::usage-metadata.schema/opts]
   (insights/implicit-segments opts))
 
-(mu/defn implicit-metrics :- [:sequential :map]
-  "Top implicit (ad-hoc, not-saved-as-a-Metric-card) aggregation patterns, ranked by usage count.
-
-  Each result is `{:source <source-map>, :aggregation {:type :field :temporal-field :temporal-unit}, :count <long>}`."
-  [opts :- ::opts]
+(mu/defn implicit-metrics :- [:sequential ::usage-metadata.schema/implicit-metric]
+  "Aggregation patterns users have run ad-hoc that aren't already saved as Metric cards — surface
+  candidates for promotion to first-class Metrics."
+  [opts :- ::usage-metadata.schema/opts]
   (insights/implicit-metrics opts))
 
-(mu/defn implicit-dimensions :- [:sequential :map]
-  "Top dimensions used in breakouts across the window, ranked by usage count.
-
-  Each result is `{:source <source-map>, :dimension {:field :temporal-unit :binning}, :count <long>}`."
-  [opts :- ::opts]
+(mu/defn implicit-dimensions :- [:sequential ::usage-metadata.schema/implicit-dimension]
+  "Columns users have grouped by (breakouts) across the window — surface candidates for promotion
+  to first-class dimensions or pre-aggregations."
+  [opts :- ::usage-metadata.schema/opts]
   (insights/implicit-dimensions opts))
 
-(mu/defn profile-observations :- [:sequential :map]
-  "Top profile observations (e.g. `:single-value`, `:all-null`, `:low-cardinality`) recorded for dimensions surfaced by
-  usage-metadata, ranked by usage count.
+(mu/defn suggested-segments :- [:sequential ::usage-metadata.schema/suggested-segment]
+  "Composite (`:and`) segment definitions that recur across a source's query history. Mined via
+  Apriori FIM over composite rollup baskets: each basket is the atom-set of one stage's top-level
+  `:and`. Itemsets whose atom-set matches a saved Segment's definition are filtered out, so the
+  results are genuinely ad-hoc."
+  [opts :- ::usage-metadata.schema/opts]
+  (insights/suggested-segments-for-owner opts))
 
-  Each result is `{:source <source-map>, :field <field-map>, :basis <keyword>, :observation {:type :value}, :count <long>}`."
-  [opts :- ::opts]
+(mu/defn profile-observations :- [:sequential ::usage-metadata.schema/profile-observation]
+  "Profile observations recorded for dimensions surfaced by usage-metadata — `:single-value`,
+  `:all-null`, `:low-cardinality` — useful for spotting low-value columns or columns whose
+  cardinality makes them suitable as facets."
+  [opts :- ::usage-metadata.schema/opts]
   (insights/profile-observations opts))
