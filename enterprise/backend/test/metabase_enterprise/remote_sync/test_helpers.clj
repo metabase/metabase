@@ -189,8 +189,9 @@ width: fixed
       :auth-error (throw (Exception. "Authentication failed"))
       :repo-not-found (throw (Exception. "Repository not found"))
       :branch-error (throw (Exception. "Invalid branch specified"))
-      ;; Default success case - return file content from atom
-      (get-in @files-atom [branch path] "")))
+      ;; Default success case - return file content from atom, or nil if absent (matches the real
+      ;; git read-file contract).
+      (get-in @files-atom [branch path])))
 
   (write-files! [_this _message files]
     (case fail-mode

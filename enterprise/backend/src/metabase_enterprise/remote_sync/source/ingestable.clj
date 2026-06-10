@@ -17,8 +17,10 @@
   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
 (defn- ingest-all
-  "Returns {:entities {stripped-hierarchy [hierarchy content]}, :errors [Exception...]}.
-  Dotfiles are silently skipped (editor temp files, see #41567).
+  "Returns {:entities {stripped-hierarchy {:content <yaml-string> :path <repo-path>}}, :errors [Exception...]}.
+  The repo `:path` is the actual file the entity was read from (including any dedup suffix), so callers
+  can record where each entity lives without recomputing — recomputation would diverge on name
+  collisions and slug changes. Dotfiles are silently skipped (editor temp files, see #41567).
   Non-dotfile YAML parse/read failures are collected in :errors."
   [snapshot]
   (let [errors (atom [])]
@@ -39,7 +41,7 @@
                                                (swap! errors conj (ex-info (format "Failed to parse file: %s" path) {:file path} e))
                                                nil))]
                               :when loaded]
-                          [(serialization/strip-labels loaded) [loaded content]]))
+                          [(serialization/strip-labels loaded) {:content content :path path}]))
      :errors @errors}))
 
 ;; Wraps another Ingestable calling a callback when a file is ingested
@@ -128,9 +130,19 @@
     (populate-cache! cache errors-atom #(ingest-all snapshot))
     (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
-        (ingest-content (second target))
+        (ingest-content (:content target))
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
 
   (ingest-errors [_]
     (or @errors-atom [])))
+
+(defn cached-file-paths
+  "Given an `IngestableSnapshot` whose cache has been populated by a prior ingestion, returns a seq of
+  {:model_type :entity_id :path} — the actual repo file each entity was read from. Lets the importer
+  record `file_path` so later renames and deletes resolve the real file."
+  [{:keys [cache]}]
+  (for [[hierarchy {:keys [path]}] @cache
+        :let [{:keys [model id]} (last hierarchy)]
+        :when (and model id path)]
+    {:model_type model :entity_id id :path path}))

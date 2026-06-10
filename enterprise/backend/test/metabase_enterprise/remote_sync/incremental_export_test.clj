@@ -44,6 +44,13 @@
   (t2/update! :model/RemoteSyncObject :model_type model-type :model_id model-id
               {:status status :status_changed_at (t/offset-date-time)}))
 
+(defn- seed-create-row!
+  "Seeds a `create`-status RemoteSyncObject row, so the next export writes the entity (and records its
+  file_path). Use when a test needs to get an entity into the repo."
+  [model-type model-id]
+  (seed-synced-row! model-type model-id)
+  (set-status! model-type model-id "create"))
+
 (defn- rso [model-type model-id]
   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
 
@@ -65,26 +72,26 @@
                  (files mock))))
 
 (defn- with-exported-collection!
-  "Sets up a remote-synced collection with two cards plus synced RemoteSyncObject rows, runs a full
-  export into a fresh empty MockSource (which writes the files and records each entity's file_path),
-  then calls `f` with `{:mock :coll-id :card-a :card-b}`."
+  "Sets up a remote-synced collection with two cards, marks the three entities as new (`create`), and
+  runs an initial export into a fresh empty MockSource — writing the files and recording each entity's
+  file_path. Then calls `f` with `{:mock :coll-id :card-a :card-b}`."
   [f]
   (mt/with-temporary-setting-values [remote-sync-type :read-write
                                      remote-sync-transforms false]
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Bench" :is_remote_synced true :location "/"}
                    :model/Card {card-a :id} {:name "Card A" :collection_id coll-id}
                    :model/Card {card-b :id} {:name "Card B" :collection_id coll-id}]
-      ;; Reset RSO and seed synced rows for the three entities so the full export can record their
-      ;; file_path (in production these rows come from events / import).
+      ;; Reset RSO and seed `create` rows for the three entities (in production these come from events /
+      ;; enabling sync) so the initial export writes them and records their file_path.
       (t2/delete! :model/RemoteSyncObject)
-      (seed-synced-row! "Collection" coll-id)
-      (seed-synced-row! "Card" card-a)
-      (seed-synced-row! "Card" card-b)
+      (doseq [[model-type model-id] [["Collection" coll-id] ["Card" card-a] ["Card" card-b]]]
+        (seed-create-row! model-type model-id))
       (let [mock        (rs.test/create-mock-source :initial-files {"main" {}})
             init-task   (new-task!)
             init-result (impl/export! (source.p/snapshot mock) init-task "init")]
-        (is (= :success (:status init-result)) "initial full export succeeds")
-        (is (= "write-files-version" (written-version init-task)) "initial export uses full write-files!")
+        (is (= :success (:status init-result)) "initial export succeeds")
+        (is (= "apply-changes-version" (written-version init-task))
+            "the three new entities are written incrementally")
         (f {:mock mock :coll-id coll-id :card-a card-a :card-b card-b})))))
 
 (deftest full-export-records-file-path-test
@@ -270,6 +277,24 @@
           (is (= "write-files-version" (written-version task))
               "a path holding a different entity fails the safety check and falls back to full"))))))
 
+(deftest unparseable-occupant-falls-back-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      (let [a-eid  (t2/select-one-fn :entity_id :model/Card :id card-a)
+            a-path (path-for-eid mock a-eid)]
+        ;; No stored file_path (post-import), and the repo file at the computed path is present but has
+        ;; no readable entity_id. We can't tell whose file it is, so the safety check must treat it as
+        ;; occupied — not free — and fall back to full rather than clobber an unidentifiable entity.
+        (t2/update! :model/RemoteSyncObject :model_type "Card" :model_id card-a {:file_path nil})
+        (swap! (:files-atom mock) assoc-in ["main" a-path] "name: Not A Serialized Entity\nother: value\n")
+        (t2/update! :model/Card card-a {:description "edit A"})
+        (set-status! "Card" card-a "update")
+        (let [task   (new-task!)
+              result (impl/export! (source.p/snapshot mock) task "unparseable occupant")]
+          (is (= :success (:status result)))
+          (is (= "write-files-version" (written-version task))
+              "a present file with no entity_id fails the safety check and falls back to full"))))))
+
 ;;; ---------------------------------- Required-closure regression (GHY-3725) ------------------------------------
 ;;; A full export pulls a card's source cards via `serdes/descendants` (transitively, through
 ;;; `resolve-targets`), even when the source card lives outside the synced collection. The incremental
@@ -288,7 +313,7 @@
                    :model/Card {y-id :id} {:name "Outside Card" :collection_id ext-id
                                            :database_id (mt/id) :dataset_query (venues-query)}]
       (t2/delete! :model/RemoteSyncObject)
-      (seed-synced-row! "Collection" c-id)
+      (seed-create-row! "Collection" c-id)
       (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
             y-eid (t2/select-one-fn :entity_id :model/Card :id y-id)]
         (impl/export! (source.p/snapshot mock) (new-task!) "init")
@@ -301,8 +326,8 @@
       (fn [{:keys [mock c-id y-id y-eid]}]
         (mt/with-temp [:model/Card {x-id :id} {:name "Synced Card" :collection_id c-id
                                                :database_id (mt/id) :dataset_query (venues-query)}]
-          (seed-synced-row! "Card" x-id)
-          (impl/export! (source.p/snapshot mock) (new-task!) "add x") ; X now in repo (full), Y still not
+          (seed-create-row! "Card" x-id)
+          (impl/export! (source.p/snapshot mock) (new-task!) "add x") ; X now in repo, Y still not
           ;; Edit X to reference the external card Y, then export the single in-place change.
           (t2/update! :model/Card x-id {:dataset_query (card-source-query y-id)})
           (set-status! "Card" x-id "update")
@@ -341,10 +366,8 @@
                                              :database_id (mt/id)
                                              :dataset_query (card-source-query y-id)}]
         (t2/delete! :model/RemoteSyncObject)
-        (seed-synced-row! "Collection" c-id)
-        (seed-synced-row! "Collection" d-id)
-        (seed-synced-row! "Card" x-id)
-        (seed-synced-row! "Card" y-id)
+        (doseq [[model-type model-id] [["Collection" c-id] ["Collection" d-id] ["Card" x-id] ["Card" y-id]]]
+          (seed-create-row! model-type model-id))
         (let [mock  (rs.test/create-mock-source :initial-files {"main" {}})
               y-eid (t2/select-one-fn :entity_id :model/Card :id y-id)]
           (impl/export! (source.p/snapshot mock) (new-task!) "init")
