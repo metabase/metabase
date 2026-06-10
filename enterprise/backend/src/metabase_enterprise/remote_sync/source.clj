@@ -15,8 +15,9 @@
 
 (set! *warn-on-reflection* true)
 
-;; Wrapping snapshot accepts a list of path regexes to apply to paths in the source returning
-;; nil when they do not match
+;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
+;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the
+;; unfiltered source snapshot — so the write methods throw rather than silently filtering writes.
 (defrecord WrappingSnapshot [original-snapshot path-filters]
   source.p/SourceSnapshot
 
@@ -29,17 +30,11 @@
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
-  (write-files! [_ message files]
-    (source.p/write-files! original-snapshot message
-                           (filter (fn [file-spec]
-                                     (some (fn [path-filter] (re-matches path-filter (:path file-spec))) path-filters))
-                                   files)))
+  (write-files! [_ _message _files]
+    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
-  (apply-changes! [_ message upserts delete-paths]
-    (let [path-allowed? (fn [path] (some (fn [path-filter] (re-matches path-filter path)) path-filters))]
-      (source.p/apply-changes! original-snapshot message
-                               (filter (comp path-allowed? :path) upserts)
-                               (filter path-allowed? delete-paths))))
+  (apply-changes! [_ _message _upserts _delete-paths]
+    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
   (version [_]
     (source.p/version original-snapshot)))
