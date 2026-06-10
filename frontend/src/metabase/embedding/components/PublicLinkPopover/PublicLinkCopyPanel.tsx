@@ -49,62 +49,52 @@ export const PublicLinkCopyPanel = ({
         )
       }
     />
-    <Box pos="relative">
-      <Group
-        mt="sm"
-        pos="absolute"
-        w="100%"
-        justify="space-between"
-        align="center"
-      >
-        <Box>
-          {onRemoveLink && (
-            // The container is needed to center the tooltip on the anchor
-            <Tooltip
-              label={
-                <Text fw={700} c="inherit">
-                  {removeTooltipLabel}
-                </Text>
+    <Group mt="sm" w="100%" justify="space-between" align="center">
+      <Box>
+        {onRemoveLink && (
+          // The container is needed to center the tooltip on the anchor
+          <Tooltip
+            label={
+              <Text fw={700} c="inherit">
+                {removeTooltipLabel}
+              </Text>
+            }
+          >
+            <Anchor
+              component="button"
+              className={S.removeLink}
+              fz="sm"
+              c="error"
+              fw={700}
+              onClick={onRemoveLink}
+            >
+              {removeButtonLabel}
+            </Anchor>
+          </Tooltip>
+        )}
+      </Box>
+      <Group gap="sm" justify="flex-end">
+        {extensions &&
+          extensions.length > 0 &&
+          extensions.map((extension) => (
+            <Anchor
+              data-testid="extension-option"
+              key={extension}
+              tt="uppercase"
+              c={
+                extension === selectedExtension ? "core-brand" : "text-tertiary"
+              }
+              fw={700}
+              onClick={() =>
+                onChangeExtension?.(
+                  extension === selectedExtension ? null : extension,
+                )
               }
             >
-              <Anchor
-                component="button"
-                className={S.removeLink}
-                fz="sm"
-                c="error"
-                fw={700}
-                onClick={onRemoveLink}
-              >
-                {removeButtonLabel}
-              </Anchor>
-            </Tooltip>
-          )}
-        </Box>
-        <Group gap="sm" justify="flex-end">
-          {extensions &&
-            extensions.length > 0 &&
-            extensions.map((extension) => (
-              <Anchor
-                data-testid="extension-option"
-                key={extension}
-                tt="uppercase"
-                c={
-                  extension === selectedExtension
-                    ? "core-brand"
-                    : "text-tertiary"
-                }
-                fw={700}
-                onClick={() =>
-                  onChangeExtension?.(
-                    extension === selectedExtension ? null : extension,
-                  )
-                }
-              >
-                {extension}
-              </Anchor>
-            ))}
-        </Group>
+              {extension}
+            </Anchor>
+          ))}
       </Group>
-    </Box>
+    </Group>
   </Stack>
 );
