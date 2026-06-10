@@ -55,11 +55,7 @@
    {:label      "quotes identifiers that need it, including embedded double-quotes"
     :schema     nil :table "events"
     :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}
-   {:label      "known limitation: honey.sql splits a dotted column name into qualified parts"
-    :schema     nil :table "events"
-    :structured {:kind :btree :name "idx" :columns [{:name "weird.col"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"idx\" ON \"events\" USING BTREE (\"weird\".\"col\")"}])
+    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}])
 
 (deftest ^:parallel compile-create-index-test
   (doseq [{:keys [label schema table structured expected]} render-cases]

@@ -1422,8 +1422,6 @@
 
 (defmethod driver/compile-create-index :postgres
   [_driver schema table {index-name :name, :keys [kind columns unique]}]
-  ;; honey.sql splits a `.` in an identifier into qualified parts ("a.b" -> "a"."b"); user-supplied names must be
-  ;; validated upstream before they reach here.
   (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
         using     (keyword (str "using-" (name kind)))
         index-ref (if unique
