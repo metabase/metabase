@@ -104,7 +104,7 @@ export async function handleResponse(
   rawResponse?: boolean,
 ): Promise<ResponseResult> {
   // The status is authoritative, so skip reading the body and return the untouched
-  // Response — this keeps a binary paylod like a map tile or a streamed export
+  // Response — this keeps a binary payload like a map tile or a streamed export
   // from being decoded as text. A streamed export that fails mid-flight aborts the
   // connection, so a body that reads to completion is a genuine success; there is
   // no error blob to recover from the body here. A failed rawResponse request
