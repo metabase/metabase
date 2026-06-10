@@ -143,6 +143,8 @@ The hook normalizes whatever the underlying network client throws into a clean, 
 
 `error.status` is **optional**: present for HTTP-level failures (4xx / 5xx), absent for transport-layer failures (offline, aborted) where no HTTP response was received. The actionable diagnostic for end users lives at `error.data.message`.
 
+`error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level validation failures, keyed by the same parameter slugs you pass to `execute`. For whole-request failures (e.g. a foreign-key constraint) it is an empty `{}` and the message lives in `error.data.message`.
+
 #### API Reference
 
 - [ActionExecuteError](./api/ActionExecuteError.html)

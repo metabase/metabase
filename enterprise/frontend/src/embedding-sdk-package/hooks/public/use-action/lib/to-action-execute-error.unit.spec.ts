@@ -26,7 +26,7 @@ describe("toActionExecuteError", () => {
       expect(result.status).toBe(500);
     });
 
-    it("drops internal legacy-client fields (errors / via / cause / trace)", () => {
+    it("passes through the per-field `errors` map but drops internal fields (via / cause / trace)", () => {
       const result = toActionExecuteError({
         status: 400,
         data: {
@@ -43,17 +43,66 @@ describe("toActionExecuteError", () => {
 
       expect(result).toEqual({
         status: 400,
-        data: { message: "bad input" },
+        data: { message: "bad input", errors: { discount: "must be positive" } },
         isCancelled: false,
       });
-      expect(result.data).not.toHaveProperty("errors");
       expect(result.data).not.toHaveProperty("via");
       expect(result.data).not.toHaveProperty("cause");
       expect(result.data).not.toHaveProperty("trace");
       expect(result).not.toHaveProperty("diagnostic");
     });
 
-    it("leaves message undefined when data has no string message", () => {
+    it("extracts the message from a raw driver error (via / trace / cause / nested data dropped)", () => {
+      const sqlMessage =
+        'Value too long for column "STATE CHARACTER(2)": "\'dasddasd\' (8)"; SQL statement:\n' +
+        'INSERT INTO "PUBLIC"."PEOPLE" ("STATE", "NAME", "EMAIL") VALUES (CAST(? AS VARCHAR), CAST(? AS VARCHAR), CAST(? AS VARCHAR)) [22001-214]';
+
+      const result = toActionExecuteError({
+        status: 400,
+        data: {
+          via: [{ type: "clojure.lang.ExceptionInfo", message: sqlMessage }],
+          trace: [["metabase.driver.sql_jdbc.actions", "invoke", "actions.clj", 71]],
+          cause: sqlMessage,
+          data: { message: sqlMessage, "status-code": 400 },
+          message: sqlMessage,
+        },
+      });
+
+      // message preserved verbatim (incl. the SQL statement + newline); no errors key
+      expect(result).toEqual({
+        status: 400,
+        data: { message: sqlMessage },
+        isCancelled: false,
+      });
+      expect(result.data).not.toHaveProperty("via");
+      expect(result.data).not.toHaveProperty("trace");
+      expect(result.data).not.toHaveProperty("cause");
+      expect(result.data).not.toHaveProperty("errors");
+      // the nested internal `data` block must not leak through
+      expect(result.data).not.toHaveProperty("status-code");
+    });
+
+    it("surfaces a whole-request failure with an empty `errors` map (e.g. FK constraint)", () => {
+      const result = toActionExecuteError({
+        status: 400,
+        data: {
+          message: "Other rows refer to this row so it cannot be deleted.",
+          errors: {},
+        },
+        isCancelled: false,
+      });
+
+      expect(result).toEqual({
+        status: 400,
+        data: {
+          message: "Other rows refer to this row so it cannot be deleted.",
+          errors: {},
+        },
+        isCancelled: false,
+      });
+    });
+
+    it("keeps `errors` even when there is no string message", () => {
       const result = toActionExecuteError({
         status: 403,
         data: { errors: { id: "required" } },
@@ -62,9 +111,29 @@ describe("toActionExecuteError", () => {
 
       expect(result).toEqual({
         status: 403,
-        data: { message: undefined },
+        data: { message: undefined, errors: { id: "required" } },
         isCancelled: false,
       });
+    });
+
+    it("omits `errors` when the body has none", () => {
+      const result = toActionExecuteError({
+        status: 403,
+        data: { message: "denied" },
+        isCancelled: false,
+      });
+
+      expect(result.data).not.toHaveProperty("errors");
+    });
+
+    it("ignores a non-object `errors` value", () => {
+      const result = toActionExecuteError({
+        status: 400,
+        data: { message: "x", errors: "not-a-map" },
+        isCancelled: false,
+      });
+
+      expect(result.data).not.toHaveProperty("errors");
     });
 
     it("coerces a truthy isCancelled to true", () => {
