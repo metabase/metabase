@@ -798,7 +798,6 @@ describe("QB Actions > initializeQB", () => {
 
   describe("database list preload", () => {
     it("loads the database list before dispatching INITIALIZE_QB so the data selector mounts with a complete list (metabase#75173)", async () => {
-      jest.useRealTimers();
       const card = createSavedStructuredCard({ id: 1, name: "first" });
       const { getState } = makeState();
       const dispatch = jest.fn((action) => action);
