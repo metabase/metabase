@@ -13,6 +13,8 @@ Schema viewer helps you understand relationships between tables in your database
 
 ![Schema viewer](./images/schema-viewer.png)
 
+If you're looking for a visual representation of dependencies between _Metabase entities_ (questions, metrics etc) and their underlying tables, check out [Dependency graph](./dependencies/graph.md) instead.
+
 ## What schema viewer shows
 
 For a particular schema (if your), the schema viewer will display:
@@ -56,3 +58,4 @@ Data analysts need to have at least [query builder](../permissions/data.md) perm
 - [Managing tables](./managing-tables.md)
 - [Table metadata](../data-modeling/metadata-editing.md)
 - [Syncs and scans](../databases/sync-scan.md)
+- [Dependency graph](./dependencies/graph.md)
