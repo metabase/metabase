@@ -448,8 +448,8 @@
       :remote-sync/unsyncable-record)))
 
 (defn- incremental-plan
-  "Builds a plan for a safe incremental export of the current `dirty-rows`, or nil if any row can't be
-  handled incrementally.
+  "Builds a plan for a safe incremental export of the current `dirty-rows`, or `:remote-sync/unsyncable-batch` if any
+  row can't be handled incrementally.
 
   Every row must be on an entity-id model and be one of:
   - `create`/`update` — re-serialize the entity and upsert its file. A create, or an update whose path
@@ -463,24 +463,22 @@
   Returns one of:
   - {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]} — a safe
     incremental plan;
-  - `:remote-sync/unsyncable-batch` — a row (or a dependency path collision) forces a full export;
-  - nil — there is nothing to do (no dirty rows)."
+  - `:remote-sync/unsyncable-batch` — a row (or a dependency path collision) forces a full export."
   [snapshot dirty-rows]
-  (when (seq dirty-rows)
-    (let [opts (serdes/storage-base-context)
-          plan (->> dirty-rows
-                    (map #(incremental-updates-for-row opts snapshot %))
-                    (reduce (fn [plan updates]
-                              (if (= updates :remote-sync/unsyncable-record)
-                                (reduced :remote-sync/unsyncable-batch)
-                                (merge-with into plan updates)))
-                            {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}))]
-      (if (= plan :remote-sync/unsyncable-batch)
-        :remote-sync/unsyncable-batch
-        (if-let [deps (dep-upserts snapshot opts (:pull plan))]
-          (-> plan (update :upserts into deps) (dissoc :pull))
-          ;; a dependency's path is occupied by a different entity — needs a full export
-          :remote-sync/unsyncable-batch)))))
+  (let [opts (serdes/storage-base-context)
+        plan (->> dirty-rows
+                  (map #(incremental-updates-for-row opts snapshot %))
+                  (reduce (fn [plan updates]
+                            (if (= updates :remote-sync/unsyncable-record)
+                              (reduced :remote-sync/unsyncable-batch)
+                              (merge-with into plan updates)))
+                          {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}))]
+    (if (= plan :remote-sync/unsyncable-batch)
+      :remote-sync/unsyncable-batch
+      (if-let [deps (dep-upserts snapshot opts (:pull plan))]
+        (-> plan (update :upserts into deps) (dissoc :pull))
+        ;; a dependency's path is occupied by a different entity — needs a full export
+        :remote-sync/unsyncable-batch))))
 
 (defn- record-exported-paths!
   "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
@@ -561,17 +559,24 @@
                                      (map path-top-level-dir)
                                      (some (disabled-content-dirs))
                                      boolean)
-              plan              (if disabled-content?
-                                  ;; disabled content (e.g. transforms turned off) leaves stale files
-                                  ;; that only a full export reconciles away; the incremental path
-                                  ;; never deletes untracked files.
-                                  :remote-sync/unsyncable-batch
-                                  (incremental-plan snapshot (remote-sync.object/dirty-rows)))]
+              dirty-rows (seq (remote-sync.object/dirty-rows))
+              plan (delay (incremental-plan snapshot dirty-rows))]
           (cond
-            (map? plan)
+            disabled-content?
+            (full-export! snapshot task-id message sync-timestamp)
+
+            (empty? dirty-rows)
+            (do
+              (log/info "Remote sync export: no changes to export")
+              {:status :success})
+
+            (= @plan :remote-sync/unsyncable-batch)
+            (full-export! snapshot task-id message sync-timestamp)
+
             ;; Incremental fast-path: write only the changed entities and delete only the removed
             ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
-            (let [{:keys [upserts delete-paths synced removed-ids]} plan]
+            :else
+            (let [{:keys [upserts delete-paths synced removed-ids]} @plan]
               (remote-sync.task/update-progress! task-id 0.3)
               (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                 (remote-sync.task/set-version! task-id written-version))
@@ -582,18 +587,6 @@
                 (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
               (log/infof "Remote sync incremental export: wrote %d, deleted %d"
                          (count upserts) (count delete-paths))
-              {:status :success})
-
-            (= plan :remote-sync/unsyncable-batch)
-            ;; Full export: re-serialize the entire synced set. Covers name collisions, collection or
-            ;; path-model changes, and disabled content needing a reconcile.
-            (full-export! snapshot task-id message sync-timestamp)
-
-            :else
-            ;; Nothing to do: no dirty rows and no disabled content to reconcile. (Imports record each
-            ;; entity's file_path, so a clean state needs no backfilling full export.)
-            (do
-              (log/info "Remote sync export: no changes to export")
               {:status :success}))))
       (catch Exception e
         ;; handle-task-result! records the failure on this result, and skips entirely when the task
