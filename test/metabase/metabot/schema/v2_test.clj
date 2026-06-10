@@ -1,7 +1,7 @@
-(ns metabase.metabot.schema.v5-test
+(ns metabase.metabot.schema.v2-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.schema.v5 :as schema.v5]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private chunk-cases
@@ -36,14 +36,14 @@
 (deftest ^:parallel ui-message-chunk-test
   (doseq [[payload required-key] chunk-cases]
     (testing (:type payload)
-      (is (mr/validate ::schema.v5/ui-message-chunk payload))
-      (is (not (mr/validate ::schema.v5/ui-message-chunk (assoc payload :unexpected-key 1))))
+      (is (mr/validate ::schema.v2/ui-message-chunk payload))
+      (is (not (mr/validate ::schema.v2/ui-message-chunk (assoc payload :unexpected-key 1))))
       (when required-key
-        (is (not (mr/validate ::schema.v5/ui-message-chunk (dissoc payload required-key))))))))
+        (is (not (mr/validate ::schema.v2/ui-message-chunk (dissoc payload required-key))))))))
 
 (deftest ^:parallel ui-message-chunk-unknown-type-test
-  (is (not (mr/validate ::schema.v5/ui-message-chunk {:type "no-such-chunk"})))
-  (is (not (mr/validate ::schema.v5/ui-message-chunk {:id "t1"}))))
+  (is (not (mr/validate ::schema.v2/ui-message-chunk {:type "no-such-chunk"})))
+  (is (not (mr/validate ::schema.v2/ui-message-chunk {:id "t1"}))))
 
 (def ^:private ui-message-part-cases
   [[{:type "text" :text "Hello" :state "done"}                                              :text]
@@ -71,32 +71,32 @@
 (deftest ^:parallel ui-message-part-test
   (doseq [[payload required-key] ui-message-part-cases]
     (testing (str (:type payload) " " (:state payload))
-      (is (mr/validate ::schema.v5/ui-message-part payload))
-      (is (not (mr/validate ::schema.v5/ui-message-part (assoc payload :unexpected-key 1))))
+      (is (mr/validate ::schema.v2/ui-message-part payload))
+      (is (not (mr/validate ::schema.v2/ui-message-part (assoc payload :unexpected-key 1))))
       (when required-key
-        (is (not (mr/validate ::schema.v5/ui-message-part (dissoc payload required-key))))))))
+        (is (not (mr/validate ::schema.v2/ui-message-part (dissoc payload required-key))))))))
 
 (deftest ^:parallel tool-approval-shape-test
   (testing "approval-requested approvals carry only an id"
     (let [part {:type "tool-search" :tool_call_id "tc1" :state "approval-requested"
                 :input {:q "x"} :approval {:id "ap1"}}]
-      (is (mr/validate ::schema.v5/ui-message-part part))
-      (is (not (mr/validate ::schema.v5/ui-message-part (assoc-in part [:approval :approved] true))))))
+      (is (mr/validate ::schema.v2/ui-message-part part))
+      (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] true))))))
   (testing "approval-responded approvals require the approved flag"
     (let [part {:type "tool-search" :tool_call_id "tc1" :state "approval-responded"
                 :input {:q "x"} :approval {:id "ap1" :approved false :reason "no"}}]
-      (is (mr/validate ::schema.v5/ui-message-part part))
-      (is (not (mr/validate ::schema.v5/ui-message-part (update part :approval dissoc :approved))))))
+      (is (mr/validate ::schema.v2/ui-message-part part))
+      (is (not (mr/validate ::schema.v2/ui-message-part (update part :approval dissoc :approved))))))
   (testing "output-available approvals must be approved"
     (let [part {:type "tool-search" :tool_call_id "tc1" :state "output-available"
                 :input {:q "x"} :output {:rows []} :approval {:id "ap1" :approved true}}]
-      (is (mr/validate ::schema.v5/ui-message-part part))
-      (is (not (mr/validate ::schema.v5/ui-message-part (assoc-in part [:approval :approved] false))))))
+      (is (mr/validate ::schema.v2/ui-message-part part))
+      (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] false))))))
   (testing "output-denied approvals must be denied"
     (let [part {:type "dynamic-tool" :tool_name "mcp_tool" :tool_call_id "tc1" :state "output-denied"
                 :input {:q "x"} :approval {:id "ap1" :approved false}}]
-      (is (mr/validate ::schema.v5/ui-message-part part))
-      (is (not (mr/validate ::schema.v5/ui-message-part (assoc-in part [:approval :approved] true)))))))
+      (is (mr/validate ::schema.v2/ui-message-part part))
+      (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] true)))))))
 
 (deftest ^:parallel ui-message-test
   (let [message {:id    "msg1"
@@ -104,8 +104,8 @@
                  :parts [{:type "text" :text "Hello"}
                          {:type "tool-search" :tool_call_id "tc1" :state "output-available"
                           :input {:q "x"} :output {:rows []}}]}]
-    (is (mr/validate ::schema.v5/ui-message message))
-    (is (not (mr/validate ::schema.v5/ui-message (assoc message :role "tool"))))
-    (is (not (mr/validate ::schema.v5/ui-message (dissoc message :id))))
-    (is (not (mr/validate ::schema.v5/ui-message (assoc message :parts []))))
-    (is (not (mr/validate ::schema.v5/ui-message (assoc message :unexpected-key 1))))))
+    (is (mr/validate ::schema.v2/ui-message message))
+    (is (not (mr/validate ::schema.v2/ui-message (assoc message :role "tool"))))
+    (is (not (mr/validate ::schema.v2/ui-message (dissoc message :id))))
+    (is (not (mr/validate ::schema.v2/ui-message (assoc message :parts []))))
+    (is (not (mr/validate ::schema.v2/ui-message (assoc message :unexpected-key 1))))))

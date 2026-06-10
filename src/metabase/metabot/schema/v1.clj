@@ -1,25 +1,27 @@
-(ns metabase.metabot.schema.v4
-  "Schemas for the v4 at-rest `metabot_message.data` formats. A `data` value is a vector in one
-  of three self-describing shapes: data-stream parts (persisted AI SDK v4 `DataStreamPart`s,
-  tagged by uppercase `:_type`), parts (message parts keyed by lowercase `:type`), or a
-  user message. Validates post-select values, i.e. JSON decoded with keywordized keys.
+(ns metabase.metabot.schema.v1
+  "Schemas for the v1 at-rest `metabot_message.data` formats — the bespoke legacy formats
+  written before the AI SDK upgrade. A `data` value is a vector in one of three self-describing
+  shapes: ai-service entries (tagged by uppercase `:_type`), native entries (message parts
+  keyed by lowercase `:type`), or a user message. Validates post-select values, i.e. JSON
+  decoded with keywordized keys.
 
-  Upstream protocol: https://github.com/vercel/ai (ai@4, packages/ui-utils/src/data-stream-parts.ts)"
+  These are internal formats: the ai-service entries borrow names and concepts from AI SDK v4
+  `DataStreamPart`s (https://github.com/vercel/ai, ai@4, packages/ui-utils/src/data-stream-parts.ts)
+  but do not conform to them."
   (:require
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::data-stream-part
-  "The at-rest form of AI SDK v4 `DataStreamPart`s. The `:_type` tags are the upstream part
-  names, uppercased. Two divergences from upstream:
+(mr/def ::ai-service-entry
+  "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`.
+  The `:_type` tags are the v4 part names, uppercased, but the shapes diverge from v4's:
 
-  - field names are renamed at the persistence boundary: `tool_call`'s `{toolCallId, toolName,
-    args}` is stored as `:tool_calls [{:id :name :arguments}]`, `tool_result`'s
-    `{toolCallId, result}` as `:tool_call_id`/`:content`, and `finish_message`'s `finishReason`
-    as `:finish_reason`
-  - only the persisted subset of the upstream union appears here; the other part types
-    (`start_step`, `reasoning`, `tool_call_delta`, …) never reach the column"
+  - fields are renamed: `tool_call`'s `{toolCallId, toolName, args}` is stored as
+    `:tool_calls [{:id :name :arguments}]`, `tool_result`'s `{toolCallId, result}` as
+    `:tool_call_id`/`:content`, and `finish_message`'s `finishReason` as `:finish_reason`
+  - only a subset of the v4 union appears; the other part types (`start_step`, `reasoning`,
+    `tool_call_delta`, …) never reach the column"
   [:multi {:dispatch :_type}
    ["TEXT"           [:map {:closed true}
                       [:role :string]
@@ -52,8 +54,8 @@
                       [:finish_reason :string]
                       [:usage :map]]]])
 
-(mr/def ::part
-  "A message part, keyed by lowercase `:type`."
+(mr/def ::native-entry
+  "An entry written by the clojure-native agent: a message part keyed by lowercase `:type`."
   [:multi {:dispatch :type}
    ["text"        [:map {:closed true}
                    [:type [:= "text"]]
@@ -90,19 +92,19 @@
    [:content :string]])
 
 (mr/def ::message-data
-  "A whole `metabot_message.data` value in the v4 format. Entries within a row are homogeneous;
+  "A whole `metabot_message.data` value in the v1 format. Entries within a row are homogeneous;
   assistant placeholder rows are `[]`."
   [:or
    [:sequential {:max 0} :any]
    [:sequential {:min 1} ::user-message]
-   [:sequential {:min 1} ::data-stream-part]
-   [:sequential {:min 1} ::part]])
+   [:sequential {:min 1} ::ai-service-entry]
+   [:sequential {:min 1} ::native-entry]])
 
 (defn normalize-entry
   "Maps the non-compliant entry shapes found in production data onto their
   [[::message-data]]-compliant equivalents; compliant entries pass through unchanged:
 
-  - `tool-output` [[::part]]s carrying full tool results (`:instructions`, `:resources`,
+  - `tool-output` [[::native-entry]]s carrying full tool results (`:instructions`, `:resources`,
     `:data-parts`, …) are trimmed to the persisted subset
   - `{:type \"error\" :errorText ...}` entries are rewritten to `{:type \"error\" :error ...}`"
   [entry]
@@ -122,7 +124,7 @@
 
 (comment
   ;; validate a CSV dump of metabot_message (`id` and `data` columns, header row) against the
-  ;; v4 at-rest schema, e.g. from psql:
+  ;; v1 at-rest schema, e.g. from psql:
   ;;   \copy (select id, data from metabot_message) to 'dump.csv' with csv header
   (require '[clojure.data.csv :as csv]
            '[clojure.java.io :as io]
