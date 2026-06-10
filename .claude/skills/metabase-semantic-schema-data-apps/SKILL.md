@@ -204,6 +204,8 @@ const { data } = useMetabaseQuery<DailyRevenue>({
 - Time-series charts need multiple ordered buckets. Do not fake sparklines for scalar or one-point results.
 - Multi-series charts with different units or magnitudes need separate axes or normalization.
 - Format user-facing values: currency to at most 2 decimals, counts as whole numbers, dates as readable labels.
+- Do not assume a field with a name like `margin`, `rate`, `score`, or `percent` is already a 0-1 ratio. Check the returned values and column metadata before multiplying by 100 or adding `%`. If the source value is an amount, format it as an amount; if a ratio is needed, derive it explicitly from returned numerator and denominator fields.
+- Empty results are distinct from loading. After `isLoading` is false, render a clear empty state instead of leaving a skeleton or blank KPI.
 
 ## Important: TypeScript Checks
 
@@ -247,6 +249,7 @@ Good transforms:
 - Sort and slice rows for ranked lists.
 - Pick chart types from actual data shape.
 - Show loading, error, and empty states.
+- Bound dense result displays. Tables, alert lists, logs, and ranked lists should use a top-N slice, grouping, pagination, or a fixed/max-height scroll area so a large result set cannot stretch the entire page.
 
 When a page feels like a raw table browser, look for schema-backed ways to enrich it:
 
