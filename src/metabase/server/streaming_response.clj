@@ -405,6 +405,8 @@
                                    ;; stream — so a mid-stream failure that aborts the connection (see
                                    ;; [[abort-connection!]]) would be silently accepted by the client as a complete
                                    ;; body. With chunked framing the client gets a protocol error instead.
+                                   ;; (HTTP/2 has no chunked encoding, but an aborted stream becomes an RST_STREAM,
+                                   ;; which the client surfaces as an error just the same.)
                                    "Transfer-Encoding" "chunked")
                       gzip? (assoc "Content-Encoding" "gzip"))]
         (#'servlet/set-headers response headers)
