@@ -574,19 +574,12 @@ export class UnconnectedDataSelector extends Component {
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
       this.props.selectedDatabaseId == null &&
-      // Wait until the database list is fully loaded. While it is still
-      // hydrating, `databases` can transiently hold a single database (the
-      // others' metadata hasn't arrived yet) and we'd wrongly treat it as the
-      // only one — auto-selecting it and skipping the list (metabase#52411).
       this.props.databasesLoaded
     ) {
       const databases = this.getDatabases();
       const enabledDatabases = databases.filter(
         (db) => !databaseIsDisabled?.(db),
       );
-      // Only auto-select when there is exactly one enabled database; with
-      // several we must show the list so the user can choose. (Using `>= 1`
-      // here auto-selected the first of many and skipped the database list.)
       if (enabledDatabases.length === 1) {
         this.onChangeDatabase(enabledDatabases[0]);
       }
