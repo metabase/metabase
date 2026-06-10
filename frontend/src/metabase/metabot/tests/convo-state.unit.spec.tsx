@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { screen, waitFor } from "__support__/ui";
 import { getMetabotRequestState } from "metabase/metabot/state";
 
 import {
+  type SSEEvent,
   assertConversation,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   enterChatMessage,
   erroredResponse,
@@ -20,11 +22,12 @@ describe("metabot > convo state", () => {
       getMetabotRequestState(store.getState(), "omnibot");
 
     mockAgentEndpoint({
-      stream: createMockReadableStream(
-        (async function* () {
-          yield `2:{"type":"state","version":1,"value":{"queries":{}}}\n`;
+      stream: createMockSSEStream(
+        (async function* (): AsyncGenerator<SSEEvent | string> {
+          yield { type: "data-state", id: "d1", data: { queries: {} } };
           expect(getConvoReqState()).toEqual({});
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "finish" };
+          yield "[DONE]";
         })(),
       ),
     });
@@ -40,8 +43,8 @@ describe("metabot > convo state", () => {
       getMetabotRequestState(store.getState(), "omnibot");
 
     mockAgentEndpoint({
-      textChunks: [
-        `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+      events: [
+        { type: "data-state", id: "d1", data: { queries: {} } },
         ...erroredResponse,
       ],
     });
@@ -57,10 +60,11 @@ describe("metabot > convo state", () => {
       getMetabotRequestState(store.getState(), "omnibot");
 
     mockAgentEndpoint({
-      textChunks: [
-        `0:"here ya go"`,
-        `2:{"type":"state","version":1,"value":{"testing":123}}`,
-        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+      events: [
+        { type: "text-start", id: "t1" },
+        { type: "text-delta", id: "t1", delta: "here ya go" },
+        { type: "text-end", id: "t1" },
+        { type: "data-state", id: "d1", data: { testing: 123 } },
       ],
     });
     await enterChatMessage("gimme state plz");
@@ -72,11 +76,12 @@ describe("metabot > convo state", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
-        (async function* () {
-          yield `0:"blah blah blah"\n`;
+      stream: createMockSSEStream(
+        (async function* (): AsyncGenerator<SSEEvent | string> {
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "blah blah blah" };
           await pause1.promise;
-          yield `0:"something something"\n`;
+          yield { type: "text-delta", id: "t1", delta: "something something" };
         })(),
       ),
     });
@@ -99,16 +104,22 @@ describe("metabot > convo state", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
-        (async function* () {
-          yield `2:{"type":"state","version":1,"value":{"testing":123}}`;
+      stream: createMockSSEStream(
+        (async function* (): AsyncGenerator<SSEEvent | string> {
+          yield { type: "data-state", id: "d1", data: { testing: 123 } };
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "updating state..." };
           await pause1.promise;
         })(),
       ),
     });
     await enterChatMessage("hi");
+    expect(await screen.findByText("updating state...")).toBeInTheDocument();
     await userEvent.click(await stopResponseButton());
-    const reqState = getMetabotRequestState(store.getState(), "omnibot");
-    expect(reqState).toEqual({ testing: 123 });
+    await waitFor(() => {
+      expect(getMetabotRequestState(store.getState(), "omnibot")).toEqual({
+        testing: 123,
+      });
+    });
   });
 });

@@ -98,6 +98,7 @@
         "dompurify": "^3.4.0",
         "echarts": "6.0.0",
         "events": "^3.3.0",
+        "eventsource-parser": "^3.0.6",
         "fast-text-encoding": "^1.0.6",
         "formik": "^2.4.5",
         "frimousse": "^0.3.0",
@@ -204,6 +205,7 @@
         "@rspack/dev-server": "^2.0.1",
         "@rspack/plugin-react-refresh": "^2.0.0",
         "@sinonjs/fake-timers": "^9.1.2",
+        "@stardazed/streams-text-encoding": "^1.0.2",
         "@storybook/addon-a11y": "^8.5.0",
         "@storybook/addon-actions": "^8.5.0",
         "@storybook/addon-essentials": "^8.5.0",
@@ -1479,6 +1481,8 @@
     "@snowplow/browser-tracker-core": ["@snowplow/browser-tracker-core@3.1.6", "", { "dependencies": { "@snowplow/tracker-core": "3.1.6", "sha1": "^1.1.1", "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-IOsQaI5EOaaOHxxgIGAeSZIR7oM8sre0dDjgBwqsUFpQgpha2/c5mP0ui59hXhBzGFlXA+10wml50OXx/YwMCw=="],
 
     "@snowplow/tracker-core": ["@snowplow/tracker-core@3.1.6", "", { "dependencies": { "tslib": "^2.3.0", "uuid": "^3.4.0" } }, "sha512-b2O1xXEqQRzuhIol+3mhk9Xvz/smiW+6pQ3W1fVWonXrYoKtTyak2K+98phj2e0V+H/jUXeviH8adLEdbRkCYA=="],
+
+    "@stardazed/streams-text-encoding": ["@stardazed/streams-text-encoding@1.0.2", "", {}, "sha512-f2Z15BId3t44a/u21yYSGXFAkCyKocmAyduoAy7swnZ4xIfbaZlOWsgly/jDNNOuj6hYQN72UaBRe3Z/tOHfqg=="],
 
     "@storybook/addon-a11y": ["@storybook/addon-a11y@8.5.0", "", { "dependencies": { "@storybook/addon-highlight": "8.5.0", "@storybook/test": "8.5.0", "axe-core": "^4.2.0", "vitest-axe": "^0.1.0" } }, "sha512-dTKlnhOaDsAXxkmHz7m6/qb98IENoaXTCG3fXo2iwJ1xT27fZF+i8fz8oQprLAN5r7xlnz66ARJvEIKJ+Lxjgw=="],
 

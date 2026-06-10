@@ -1,8 +1,9 @@
 import { screen } from "__support__/ui";
 
 import {
+  type SSEEvent,
   assertConversation,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   enterChatMessage,
   input,
@@ -18,7 +19,7 @@ describe("metabot > message", () => {
     setup();
 
     const { sendResponse } = mockAgentEndpoint({
-      textChunks: whoIsYourFavoriteResponse,
+      events: whoIsYourFavoriteResponse,
       waitForResponse: true,
     });
 
@@ -39,7 +40,7 @@ describe("metabot > message", () => {
 
   it("should be able to send a message via send button", async () => {
     setup();
-    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+    mockAgentEndpoint({ events: whoIsYourFavoriteResponse });
 
     await enterChatMessage("Who is your favorite?", false);
     expect(await input()).toHaveTextContent("Who is your favorite?");
@@ -55,12 +56,15 @@ describe("metabot > message", () => {
 
     const [pause1] = createPauses(1);
     mockAgentEndpoint({
-      stream: createMockReadableStream(
-        (async function* () {
-          yield `0:"You, but "\n`;
+      stream: createMockSSEStream(
+        (async function* (): AsyncGenerator<SSEEvent | string> {
+          yield { type: "text-start", id: "t1" };
+          yield { type: "text-delta", id: "t1", delta: "You, but " };
           await pause1.promise;
-          yield `0:"don't tell anyone."\n`;
-          yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          yield { type: "text-delta", id: "t1", delta: "don't tell anyone." };
+          yield { type: "text-end", id: "t1" };
+          yield { type: "finish" };
+          yield "[DONE]";
         })(),
       ),
     });

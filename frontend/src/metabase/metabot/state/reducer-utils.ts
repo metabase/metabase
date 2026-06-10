@@ -11,6 +11,7 @@ import type {
   MetabotAgentTurnDisplayError,
   MetabotAgentTurnError,
   MetabotConverstationState,
+  MetabotDebugToolCallMessage,
   MetabotState,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -104,6 +105,15 @@ export const getConversationOrThrow = (
   }
   return convo;
 };
+
+export const findLastToolCallMessage = (
+  convo: WritableDraft<MetabotConverstationState>,
+  toolCallId: string,
+) =>
+  convo.messages.findLast(
+    (m): m is MetabotDebugToolCallMessage =>
+      m.type === "tool_call" && m.id === toolCallId,
+  );
 
 export const convoReducer =
   <

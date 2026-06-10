@@ -7,6 +7,9 @@ import {
   addSuggestedTransform,
   deactivateSuggestedTransform,
   metabotReducer,
+  toolCallArgs,
+  toolCallEnd,
+  toolCallStart,
 } from "metabase/metabot/state";
 import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
@@ -231,6 +234,124 @@ describe("metabot reducer", () => {
             active: false,
           }),
         ]);
+      });
+    });
+  });
+
+  describe("tool calls", () => {
+    const getConvo = (store: ReturnType<typeof createTestStore>) =>
+      store.getState().metabot.conversations.omnibot!;
+
+    describe("toolCallStart", () => {
+      it("should be idempotent for the same toolCallId", () => {
+        const store = createTestStore();
+        const payload = {
+          agentId: "omnibot" as const,
+          toolCallId: "tc-1",
+          toolName: "analyze_data",
+        };
+
+        store.dispatch(toolCallStart(payload));
+        store.dispatch(toolCallStart(payload));
+
+        const convo = getConvo(store);
+        expect(convo.messages).toHaveLength(1);
+        expect(convo.activeToolCalls).toHaveLength(1);
+        expect(convo.messages[0]).toMatchObject({
+          id: "tc-1",
+          type: "tool_call",
+          name: "analyze_data",
+          status: "started",
+        });
+      });
+    });
+
+    describe("toolCallArgs", () => {
+      it("should update the args of an existing tool call", () => {
+        const store = createTestStore();
+        store.dispatch(
+          toolCallStart({
+            agentId: "omnibot",
+            toolCallId: "tc-1",
+            toolName: "analyze_data",
+          }),
+        );
+
+        store.dispatch(
+          toolCallArgs({
+            agentId: "omnibot",
+            toolCallId: "tc-1",
+            toolName: "analyze_data",
+            args: '{"query":"test"}',
+          }),
+        );
+
+        const convo = getConvo(store);
+        expect(convo.messages).toHaveLength(1);
+        expect(convo.messages[0]).toMatchObject({
+          id: "tc-1",
+          type: "tool_call",
+          args: '{"query":"test"}',
+        });
+      });
+
+      it("should create the tool call when no prior toolCallStart was dispatched", () => {
+        const store = createTestStore();
+
+        store.dispatch(
+          toolCallArgs({
+            agentId: "omnibot",
+            toolCallId: "tc-1",
+            toolName: "analyze_data",
+            args: '{"query":"test"}',
+          }),
+        );
+
+        const convo = getConvo(store);
+        expect(convo.messages).toHaveLength(1);
+        expect(convo.messages[0]).toMatchObject({
+          id: "tc-1",
+          type: "tool_call",
+          name: "analyze_data",
+          args: '{"query":"test"}',
+          status: "started",
+        });
+        expect(convo.activeToolCalls).toHaveLength(1);
+      });
+    });
+
+    describe("toolCallEnd", () => {
+      it("should set is_error on the message when isError is true", () => {
+        const store = createTestStore();
+        store.dispatch(
+          toolCallStart({
+            agentId: "omnibot",
+            toolCallId: "tc-1",
+            toolName: "analyze_data",
+          }),
+        );
+
+        store.dispatch(
+          toolCallEnd({
+            agentId: "omnibot",
+            toolCallId: "tc-1",
+            result: "something broke",
+            isError: true,
+          }),
+        );
+
+        const convo = getConvo(store);
+        expect(convo.messages[0]).toMatchObject({
+          id: "tc-1",
+          type: "tool_call",
+          status: "ended",
+          result: "something broke",
+          is_error: true,
+        });
+        expect(convo.activeToolCalls[0]).toMatchObject({
+          id: "tc-1",
+          status: "ended",
+        });
       });
     });
   });

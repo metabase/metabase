@@ -8,7 +8,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+export type MetabotDataPart = Exclude<KnownDataPart, { type: "data-state" }>;
 
 export type MetabotDataPartMetadata = {
   codeEditBuffer?: MetabotCodeEditorBufferContext;
@@ -18,6 +18,7 @@ export type MetabotDataPartMetadata = {
 
 export type MetabotAgentTurnError = {
   message?: string;
+  error_code?: string;
   type?: string;
   data?: unknown;
 };

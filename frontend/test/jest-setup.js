@@ -1,7 +1,8 @@
 import { webcrypto } from "crypto";
 import { TextDecoder, TextEncoder } from "util";
 
-import { ReadableStream } from "web-streams-polyfill";
+import { TextDecoderStream } from "@stardazed/streams-text-encoding";
+import { ReadableStream, TransformStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-canvas-mock";
@@ -65,6 +66,10 @@ global.TextDecoder = TextDecoder;
 
 // replace node's ReadableStream what one that matches what is in the browser
 global.ReadableStream = ReadableStream;
+
+// jsdom doesn't provide the stream globals the SSE parsing pipeline needs
+global.TransformStream = TransformStream;
+global.TextDecoderStream = TextDecoderStream;
 
 // https://github.com/jsdom/jsdom/issues/3002
 Range.prototype.getBoundingClientRect = () => ({

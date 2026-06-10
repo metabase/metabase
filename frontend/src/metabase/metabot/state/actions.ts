@@ -58,6 +58,7 @@ export const {
   setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
+  toolCallArgs,
   toolCallEnd,
   setMetabotReqIdOverride,
   setDebugMode,
@@ -396,14 +397,14 @@ export const sendAgentRequest = createAsyncThunk<
 
             match(part)
               // only update the convo state if the request is successful
-              .with({ type: "state" }, (part) => (state = part.value))
-              .with({ type: "todo_list" }, (part) => {
+              .with({ type: "data-state" }, (part) => (state = part.data))
+              .with({ type: "data-todo_list" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "code_edit" }, (part) => {
-                dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+              .with({ type: "data-code_edit" }, (part) => {
+                dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
-                if (part.value.buffer_id === "qb") {
+                if (part.data.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
                 pushDataPart({
@@ -412,24 +413,24 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: {
                     codeEditBuffer: findCodeEditBuffer(
                       request.context,
-                      part.value.buffer_id,
+                      part.data.buffer_id,
                     ),
                   },
                 });
               })
-              .with({ type: "navigate_to" }, (part) => {
-                dispatch(setNavigateToPath(part.value));
+              .with({ type: "data-navigate_to" }, (part) => {
+                dispatch(setNavigateToPath(part.data));
 
                 if (!isEmbeddingSdk()) {
-                  dispatch(push(part.value) as UnknownAction);
+                  dispatch(push(part.data) as UnknownAction);
                 }
                 pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "transform_suggestion" }, (part) => {
+              .with({ type: "data-transform_suggestion" }, (part) => {
                 const suggestionId = nanoid();
                 const suggestedTransform = {
-                  ...part.value,
-                  id: part.value.id || undefined,
+                  ...part.data,
+                  id: part.data.id || undefined,
                   active: true,
                   suggestionId,
                 };
@@ -446,35 +447,73 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
-              .with({ type: "adhoc_viz" }, (part) => {
+              .with({ type: "data-adhoc_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "static_viz" }, (part) => {
+              .with({ type: "data-static_viz" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
               .exhaustive();
           },
-          onStartMessagePart: function handleStartMessagePart(part) {
+          onStartMessagePart: function handleStartMessagePart(event) {
+            if (event.messageId) {
+              dispatch(
+                setPendingMessageExternalId({
+                  agentId,
+                  externalId: event.messageId,
+                }),
+              );
+            }
+          },
+          onTextPart: function handleTextPart(delta) {
+            dispatch(addAgentTextDelta({ agentId, text: delta }));
+          },
+          onToolInputStart: function handleToolInputStart(event) {
             dispatch(
-              setPendingMessageExternalId({
+              toolCallStart({
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
                 agentId,
-                externalId: part.messageId,
               }),
             );
           },
-          onTextPart: function handleTextPart(part) {
-            dispatch(addAgentTextDelta({ agentId, text: String(part) }));
+          onToolInputAvailable: function handleToolInputAvailable(event) {
+            dispatch(
+              toolCallArgs({
+                toolCallId: event.toolCallId,
+                toolName: event.toolName,
+                args:
+                  typeof event.input === "string"
+                    ? event.input
+                    : JSON.stringify(event.input),
+                agentId,
+              }),
+            );
           },
-          onToolCallPart: function handleToolCallPart(part) {
-            dispatch(toolCallStart({ ...part, agentId }));
+          onToolResultPart: function handleToolResultPart(event) {
+            dispatch(
+              toolCallEnd({
+                toolCallId: event.toolCallId,
+                result:
+                  typeof event.output === "string"
+                    ? event.output
+                    : JSON.stringify(event.output),
+                agentId,
+              }),
+            );
           },
-          onToolResultPart: function handleToolResultPart(part) {
-            dispatch(toolCallEnd({ ...part, agentId }));
+          onToolErrorPart: function handleToolErrorPart(event) {
+            dispatch(
+              toolCallEnd({
+                toolCallId: event.toolCallId,
+                result: event.errorText,
+                isError: true,
+                agentId,
+              }),
+            );
           },
-          onError: function handleError(part) {
-            streamedError = isMatching({ message: P.string }, part)
-              ? part
-              : { message: String(part) };
+          onError: function handleError(error) {
+            streamedError = error;
           },
         },
       );
@@ -490,7 +529,7 @@ export const sendAgentRequest = createAsyncThunk<
           shouldRetry: true,
           error: streamedError,
           display: isMatching(
-            { "error-code": "ai_usage_limit_reached", message: P.string },
+            { error_code: "ai_usage_limit_reached", message: P.string },
             streamedError,
           )
             ? // special case where we want to show the returned error from the backend

@@ -6,6 +6,7 @@ import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "./requests";
+import type { SSEEvent } from "./sse-types";
 import { mockStreamedEndpoint } from "./test-utils";
 
 const endpoint = "/some-streamed-endpoint";
@@ -26,7 +27,7 @@ describe("ai requests", () => {
       const fetchSpy = jest.spyOn(global, "fetch");
 
       mockStreamedEndpoint(endpoint, {
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
 
       await aiStreamingQuery({ url: endpoint, body: {} });
@@ -42,7 +43,7 @@ describe("ai requests", () => {
 
     it("should return full result of a successful request", async () => {
       mockStreamedEndpoint(endpoint, {
-        textChunks: whoIsYourFavoriteResponse,
+        events: whoIsYourFavoriteResponse,
       });
       const result = await aiStreamingQuery({ url: endpoint, body: {} });
       expect(result).toMatchSnapshot();
@@ -50,19 +51,25 @@ describe("ai requests", () => {
 
     it("should call callbacks for relevant chunk types", async () => {
       mockStreamedEndpoint(endpoint, {
-        textChunks: [
-          `0:"Testing"`,
-          `2:{"type":"state","version":1,"value":{}}`,
-          `9:{"toolCallId":"x","toolName":"x","args":""}`,
-          `a:{"toolCallId":"x","result":""}`,
-          `d:{"finishReason":"stop","usage":{"promptTokens":1,"completionTokens":1}}`,
+        events: [
+          { type: "text-start", id: "t1" },
+          { type: "text-delta", id: "t1", delta: "Testing" },
+          { type: "text-end", id: "t1" },
+          { type: "data-state", id: "d1", data: {} },
+          {
+            type: "tool-input-available",
+            toolCallId: "x",
+            toolName: "x",
+            input: { query: "test" },
+          },
+          { type: "tool-output-available", toolCallId: "x", output: "ok" },
         ],
       });
 
       const successCbs = {
         onTextPart: jest.fn(),
         onDataPart: jest.fn(),
-        onToolCallPart: jest.fn(),
+        onToolInputAvailable: jest.fn(),
         onToolResultPart: jest.fn(),
         onError: jest.fn(),
       };
@@ -70,14 +77,12 @@ describe("ai requests", () => {
       await aiStreamingQuery({ url: endpoint, body: {} }, successCbs);
       expect(successCbs.onTextPart).toHaveBeenCalled();
       expect(successCbs.onDataPart).toHaveBeenCalled();
-      expect(successCbs.onToolCallPart).toHaveBeenCalled();
+      expect(successCbs.onToolInputAvailable).toHaveBeenCalled();
       expect(successCbs.onToolResultPart).toHaveBeenCalled();
       expect(successCbs.onError).not.toHaveBeenCalled();
 
       mockStreamedEndpoint(endpoint, {
-        textChunks: [
-          `3:{}`, // error after finish to trigger all callbacks
-        ],
+        events: [{ type: "error", errorText: "test error" }],
       });
 
       const failureCbs = {
@@ -86,7 +91,10 @@ describe("ai requests", () => {
       try {
         await aiStreamingQuery({ url: endpoint, body: {} }, failureCbs);
       } catch (_) {}
-      expect(failureCbs.onError).toHaveBeenCalled();
+      expect(failureCbs.onError).toHaveBeenCalledWith({
+        message: "test error",
+        error_code: undefined,
+      });
     });
 
     it("throw error if bad http status code", async () => {
@@ -118,7 +126,7 @@ describe("ai requests", () => {
 
     it("throw error if no response", async () => {
       mockStreamedEndpoint(endpoint, {
-        textChunks: undefined,
+        events: undefined,
       });
       await expect(
         aiStreamingQuery({ url: endpoint, body: {} }),
@@ -141,7 +149,7 @@ describe("ai requests", () => {
     describe("in-flight request tracking", () => {
       it("should register/unregister with inflight requests on a successful request", async () => {
         mockStreamedEndpoint(endpoint, {
-          textChunks: whoIsYourFavoriteResponse,
+          events: whoIsYourFavoriteResponse,
         });
         expect(findMatchingInflightAiStreamingRequests(endpoint).length).toBe(
           0,
@@ -183,8 +191,9 @@ describe("ai requests", () => {
   });
 });
 
-const whoIsYourFavoriteResponse = [
-  `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+const whoIsYourFavoriteResponse: SSEEvent[] = [
+  { type: "text-start", id: "t1" },
+  { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "text-end", id: "t1" },
+  { type: "data-state", id: "d1", data: { queries: {} } },
 ];

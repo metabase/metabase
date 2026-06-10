@@ -14,9 +14,10 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import {
   type MockStreamedEndpointParams,
-  createMockReadableStream,
+  createMockSSEStream,
   createPauses,
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
@@ -40,7 +41,8 @@ import {
 } from "../state";
 import { getMetabotInitialState } from "../state/reducer-utils";
 
-export { createMockReadableStream, createPauses };
+export { createMockSSEStream, createPauses };
+export type { SSEEvent };
 
 export const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/metabot/agent-streaming", params);
@@ -137,22 +139,31 @@ export const lastReqBody = async (
 };
 
 // Common mock response fixtures
-export const whoIsYourFavoriteResponse = [
-  `f:{"messageId":"msg_test_favorite"}`,
-  `0:"You, but don't tell anyone."`,
-  `2:{"type":"state","version":1,"value":{"queries":{}}}`,
-  `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+export const whoIsYourFavoriteResponse: SSEEvent[] = [
+  { type: "start", messageId: "msg_test_favorite" },
+  { type: "text-start", id: "t1" },
+  { type: "text-delta", id: "t1", delta: "You, but don't tell anyone." },
+  { type: "text-end", id: "t1" },
+  { type: "data-state", id: "d1", data: { queries: {} } },
 ];
 
-export const erroredResponse = [
-  `3:"Anthropic API key expired or invalid"`,
-  `d:{"finishReason":"error","usage":{}}`,
+export const erroredResponse: SSEEvent[] = [
+  { type: "error", errorText: "Anthropic API key expired or invalid" },
 ];
 
-// Admin-configured quota exceeded — carries ai_usage_limit_reached error-code
-export const adminQuotaLimitErroredResponse = [
-  `3:{"message":"You have reached your AI usage limit for the current period. Please contact your administrator.","error-code":"ai_usage_limit_reached"}`,
-  `d:{"finishReason":"error","usage":{}}`,
+// Admin-configured quota exceeded — carries ai_usage_limit_reached error_code
+const ADMIN_QUOTA_LIMIT_MESSAGE =
+  "You have reached your AI usage limit for the current period. Please contact your administrator.";
+export const adminQuotaLimitErroredResponse: SSEEvent[] = [
+  {
+    type: "data-error_details",
+    id: "e1",
+    data: {
+      message: ADMIN_QUOTA_LIMIT_MESSAGE,
+      error_code: "ai_usage_limit_reached",
+    },
+  },
+  { type: "error", errorText: ADMIN_QUOTA_LIMIT_MESSAGE },
 ];
 
 type DefaultMetabotOverrides = {
