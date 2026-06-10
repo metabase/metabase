@@ -36,11 +36,6 @@ export const initSdkTracker = (metabaseInstanceUrl: string): void => {
     encodeBase64: false,
     // Deliver through the instance proxy, not the collector's tp2 path.
     postPath: "/api/analytics-proxy",
-    // Cross-origin POST to the instance. Metabase's SDK CORS sends a wildcard
-    // `Access-Control-Allow-Origin` with no `Allow-Credentials`, so a credentialed
-    // request (v4's "include" default) is browser-blocked; "omit" keeps it
-    // non-credentialed and avoids leaking the session cookie to a public endpoint.
-    credentials: "omit",
     // No cookies / localStorage: the SDK must not touch the host page's storage.
     // This also makes cookie-domain config (e.g. discoverRootDomain) irrelevant.
     stateStorageStrategy: "none",
