@@ -13,7 +13,7 @@ import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { trackWorkspaceCreated } from "../../../analytics";
+import { trackWorkspaceCreated } from "../../../../analytics";
 
 type CreateWorkspaceModalProps = {
   opened: boolean;
@@ -28,7 +28,7 @@ export function CreateWorkspaceModal({
 }: CreateWorkspaceModalProps) {
   return (
     <Modal
-      title={t`Create a new branch for this workspace`}
+      title={t`Create a workspace`}
       opened={opened}
       padding="xl"
       onClose={onClose}
@@ -74,8 +74,8 @@ function CreateWorkspaceForm({ onCreate, onClose }: CreateWorkspaceFormProps) {
         <Stack gap="lg">
           <FormTextInput
             name="name"
-            aria-label={t`Name`}
-            placeholder={t`My workspace`}
+            label={t`New git branch for this workspace`}
+            placeholder={t`my-new-workspace`}
             data-autofocus
           />
           <FormErrorMessage />
