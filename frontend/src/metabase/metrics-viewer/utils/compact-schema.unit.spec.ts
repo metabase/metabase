@@ -155,7 +155,7 @@ describe("defineCompactSchema", () => {
 
     it("round-trips a complex object with all fields", () => {
       const original = {
-        id: "tab-1",
+        id: "dimensionBreakout-1",
         type: "time",
         label: "By Month",
         display: "bar",
@@ -174,7 +174,7 @@ describe("defineCompactSchema", () => {
 
     it("round-trips a minimal object with only required and default fields", () => {
       const original = {
-        id: "tab-1",
+        id: "dimensionBreakout-1",
         type: "time",
         label: "",
         display: "line",

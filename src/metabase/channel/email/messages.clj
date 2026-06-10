@@ -178,14 +178,18 @@
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         username     (or (:first_name user-info) (:last_name user-info) (:email user-info))
-        context      (merge (common-context)
-                            {:first-name username
-                             :device     (:device_description login-history)
-                             :location   (:location login-history)
-                             :timestamp  timestamp})
+        context      {:context    {:application_name     (appearance/application-name)
+                                   :application_color    (channel.render/primary-color)
+                                   :application_logo_url  (logo-url)
+                                   :site_url             (system/site-url)}
+                      :payload    {:style {:color_text_dark channel.render/color-text-dark}}
+                      :first-name username
+                      :device     (:device_description login-history)
+                      :location   (:location login-history)
+                      :timestamp  timestamp}
         message-body (channel.template/render "metabase/channel/email/login_from_new_device.hbs"
                                               context)]
-    (email/send-message!
+    (send-email-with-logo!
      {:subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) username)
       :recipients   [(:email user-info)]
       :message-type :html
@@ -224,8 +228,10 @@
                                                       [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
-  "Format and send an email informing the user about errors in the persistent model refresh task."
-  [database-id persisted-infos trigger]
+  "Format and send an email informing the user about errors in the persistent model refresh task.
+  `trigger-label` is the human-readable label (e.g. \"Scheduled\" or \"Manual\") rendered as
+  `Last run trigger` in the email."
+  [database-id persisted-infos trigger-label]
   {:pre [(seq persisted-infos)]}
   (let [database (:database (first persisted-infos))
         emails (admin-or-ee-monitoring-details-emails database-id)
@@ -243,7 +249,7 @@
                     :collection-name (:name collection)
                     ;; February 1, 2022, 3:10 PM
                     :last-run-at (t/format "MMMM d, yyyy, h:mm a z" (t/zoned-date-time (:refresh_begin persisted-info) timezone))
-                    :last-run-trigger trigger
+                    :last-run-trigger trigger-label
                     :card-url (urls/card-url (:id card))
                     :collection-url (urls/collection-url (:id collection))
                     :caching-log-details-url (urls/tools-caching-details-url (:id persisted-info))})}

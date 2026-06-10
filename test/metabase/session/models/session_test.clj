@@ -90,10 +90,9 @@
                     (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                       (is (string? message))
                       (when (string? message)
-                        (doseq [expected-str [(format "We've noticed a new login on your <a href=\"%s\">Metabase</a> account."
-                                                      (or site-url ""))
-                                              (format "We noticed a login on your <a href=\"%s\">Metabase</a> account from a new device."
-                                                      (or site-url ""))
+                        (doseq [expected-str ["We've noticed a new login on your Metabase account."
+                                              (format "Hi, %s. We noticed a login on your Metabase account from a new device."
+                                                      first-name)
                                               "Browser (Chrome/Windows) - San Francisco, California, United States"
                                               ;; `format-human-readable` has slightly different output on different JVMs
                                               (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]

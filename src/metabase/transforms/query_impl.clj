@@ -46,7 +46,7 @@
        (when start-promise (deliver start-promise [:started run-id]))
        (driver.conn/with-write-connection
          (log/info "Executing transform" id "with target" (pr-str target)
-                   (when (driver.conn/write-connection-requested?) " using write connection"))
+                   "using" (driver.conn/connection-telemetry-info))
          (let [target-type (keyword (:type target))]
            (tracing/with-span :tasks "task.transform.query"
              {:transform/id                   id

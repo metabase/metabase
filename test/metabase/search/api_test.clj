@@ -310,6 +310,23 @@
   [& args]
   (map clean-result (apply search-request-data-with identity args)))
 
+(deftest context-param-test
+  (testing "context is an enum parameter that defaults to :api"
+    (testing "a missing context is accepted and resolves to :api"
+      (let [captured (atom nil)]
+        (mt/with-dynamic-fn-redefs [search/search (fn [search-ctx]
+                                                    (reset! captured search-ctx)
+                                                    {:data [] :total 0 :engine "test"})]
+          (is (=? {:engine string?}
+                  (mt/user-http-request :crowberto :get 200 "search" :q "x"))))
+        (is (= :api (:context @captured)))))
+    (testing "an unknown context value is rejected"
+      (is (=? {:errors {:context #"enum of.*"}}
+              (mt/user-http-request :crowberto :get 400 "search" :q "x" :context "bogus"))))
+    (testing "a known context value is accepted"
+      (is (=? {:engine string?}
+              (mt/user-http-request :crowberto :get 200 "search" :q "x" :context "search-app"))))))
+
 (deftest basic-test
   (testing "Basic search, should find 1 of each entity type, all items in the root collection"
     (with-search-items-in-root-collection "test"
@@ -1813,6 +1830,16 @@
         (is (=? {:model/dataset 5.0}
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param search-ctx :model :dataset)))))))
+
+(deftest ^:synchronized weights-normalize-context-test
+  (mt/with-temporary-setting-values [experimental-search-weight-overrides nil]
+    (testing "the /weights endpoints normalize context, so introspection and overrides match search"
+      (testing "surfaces that share a normalized context report the same weights"
+        (is (= (mt/user-http-request :crowberto :get 200 (weights-url :global {}))
+               (mt/user-http-request :crowberto :get 200 (weights-url :command-palette {})))))
+      (testing "an override set via one normalized surface is read back via another"
+        (mt/user-http-request :crowberto :put 200 (weights-url :command-palette {:recency 9}))
+        (is (= 9.0 (:recency (mt/user-http-request :crowberto :get 200 (weights-url :search-app {})))))))))
 
 (deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"

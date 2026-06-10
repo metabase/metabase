@@ -185,12 +185,10 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      (
-        GET(tileUrl, {
-          signal: controller.signal,
-          rawResponse: true,
-        })() as Promise<Response>
-      )
+      GET(tileUrl, {
+        signal: controller.signal,
+        rawResponse: true,
+      })()
         .then((response) => response.blob())
         .then((blob) => {
           const reader = new FileReader();

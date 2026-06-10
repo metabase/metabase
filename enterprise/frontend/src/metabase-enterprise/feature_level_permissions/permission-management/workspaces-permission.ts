@@ -8,10 +8,8 @@ import {
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
   DataPermissionType,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
 } from "metabase/admin/permissions/types";
 import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
 import {
@@ -19,6 +17,8 @@ import {
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
 } from "metabase-types/api";
 
 export const WORKSPACES_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
@@ -79,7 +79,7 @@ const getWorkspacesDisabledTooltip = (
 };
 
 export const buildWorkspacesPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,

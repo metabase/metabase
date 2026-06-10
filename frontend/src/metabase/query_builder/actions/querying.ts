@@ -1,7 +1,7 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import { isAbortError } from "metabase/api/legacy-client";
+import { isAbortError } from "metabase/api/client";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/querying/run-query";
 import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { createThunkAction } from "metabase/redux";

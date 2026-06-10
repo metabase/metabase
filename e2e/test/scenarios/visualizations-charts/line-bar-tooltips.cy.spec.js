@@ -437,8 +437,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         cy.button("Settings").click();
         updateColumnTitle(originalSeriesName, updatedOriginalSeriesName);
         updateColumnTitle(addedSeriesName, updatedAddedSeriesName);
-        cy.button("Save").click();
       });
+      // Use the helper (instead of an inline Save click) so we wait for the
+      // modal to close and the dashcard change to commit. Otherwise
+      // `saveDashboard()` can run before the dashboard is marked dirty and no
+      // PUT /api/dashboard/* request is ever made.
+      H.saveDashcardVisualizerModalSettings();
       H.saveDashboard();
 
       showTooltipForCircleInSeries("#88BF4D");
