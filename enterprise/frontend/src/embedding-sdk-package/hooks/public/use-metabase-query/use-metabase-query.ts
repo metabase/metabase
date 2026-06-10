@@ -338,6 +338,7 @@ export type MetabaseMetricDimensionFilter =
 
 type QuestionQuery<TQuestion> = {
   questionId: SdkQuestionId;
+  table?: never;
   tableId?: never;
   metricId?: never;
   metric?: never;
@@ -347,8 +348,19 @@ type QuestionQuery<TQuestion> = {
   enabled?: boolean;
 };
 
-type TableQuery<TTable> = {
-  tableId: ID;
+type TableReference<TTable> =
+  | {
+      table: TTable extends TableSchema ? TTable : TableSchema;
+      tableId?: never;
+      databaseId?: never;
+    }
+  | {
+      table?: never;
+      tableId: ID;
+      databaseId?: ID;
+    };
+
+type TableQuery<TTable> = TableReference<TTable> & {
   questionId?: never;
   metricId?: never;
   metric?: never;
@@ -372,6 +384,7 @@ type MetricQuery<TMetric> = {
     ? MetricReference<MappedTableId<TMetric>>
     : MetricReference;
   questionId?: never;
+  table?: never;
   tableId?: never;
   metricId?: never;
   filters?: TMetric extends MetricReference
@@ -447,7 +460,9 @@ type InferQuerySchema<TEntity, TQuery> = InferSchema<
 /** @notExported InferQuerySchema */
 type InferQueryEntity<TQuery> = TQuery extends { metric: infer TMetric }
   ? TMetric
-  : undefined;
+  : TQuery extends { table: infer TTable }
+    ? TTable
+    : undefined;
 
 type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
@@ -555,7 +570,8 @@ const useMetabaseQueryImpl = <
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const queryKey = useMemo(() => JSON.stringify(query), [query]);
+  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
+  const tableDatasetQueryObject = useTableDatasetQueryObject(query);
   const queryRef = useRef(query);
 
   useEffect(() => {
@@ -597,7 +613,8 @@ const useMetabaseQueryImpl = <
         }
 
         const result = await queryDataset(reduxStore)({
-          datasetQuery: buildTableDatasetQuery(currentQuery),
+          datasetQuery:
+            tableDatasetQueryObject ?? buildTableDatasetQuery(currentQuery),
         });
 
         setData(mapDatasetQueryData(result));
@@ -620,7 +637,13 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [queryDataset, queryMetric, queryQuestion, reduxStore]);
+  }, [
+    queryDataset,
+    queryMetric,
+    queryQuestion,
+    reduxStore,
+    tableDatasetQueryObject,
+  ]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -638,18 +661,77 @@ const useMetabaseQueryImpl = <
 
 export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
+export function useMetabaseQueryObject(
+  query: TableQuery<unknown>,
+): StructuredDatasetQuery {
+  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
+  const queryRef = useRef(query);
+
+  queryRef.current = query;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
+  return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
+}
+
+export function createMetabaseQuery(
+  query: TableQuery<unknown>,
+): StructuredDatasetQuery {
+  const databaseId = getTableDatabaseId(query);
+
+  if (databaseId == null) {
+    throw new Error(
+      "Query creation requires a generated table schema or databaseId.",
+    );
+  }
+
+  return {
+    ...buildTableDatasetQuery(query),
+    database: Number(databaseId),
+  };
+}
+
+function useTableDatasetQueryObject(
+  query: MetabaseQueryOptions<unknown, unknown>,
+) {
+  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
+  const queryRef = useRef(query);
+
+  queryRef.current = query;
+
+  return useMemo(() => {
+    const currentQuery = queryRef.current;
+
+    if (!isTableQuery(currentQuery)) {
+      return null;
+    }
+
+    return getTableDatabaseId(currentQuery) == null
+      ? buildTableDatasetQuery(currentQuery)
+      : createMetabaseQuery(currentQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
+  }, [queryKey]);
+}
+
 function buildTableDatasetQuery(
   query: TableQuery<unknown>,
 ): Omit<StructuredDatasetQuery, "database"> {
+  const tableId = getTableId(query);
+
+  if (tableId == null) {
+    throw new Error(
+      "Table query requires a generated table schema or tableId.",
+    );
+  }
+
   validateTableScopedInputs({
-    allowedTableIds: [Number(query.tableId)],
+    allowedTableIds: [Number(tableId)],
     filters: query.filters,
     measures: query.measures,
     context: "Table query",
   });
 
   const mbql: StructuredDatasetQuery["query"] = {
-    "source-table": Number(query.tableId),
+    "source-table": Number(tableId),
   };
 
   const filters = query.filters?.map(buildTableFilter).filter(Boolean);
@@ -686,7 +768,7 @@ function isQuestionQuery(
 function isTableQuery(
   query: MetabaseQueryOptions<unknown, unknown>,
 ): query is TableQuery<unknown> {
-  return query.tableId != null;
+  return getTableId(query) != null;
 }
 
 function isMetricQuery(
@@ -889,6 +971,26 @@ function isNotNull<TValue>(value: TValue | null): value is TValue {
   return value !== null;
 }
 
+function stableStringifyQuery(query: unknown) {
+  return JSON.stringify(sortQueryObject(query));
+}
+
+function sortQueryObject(value: unknown): unknown {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(sortQueryObject);
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+      .map(([key, value]) => [key, sortQueryObject(value)]),
+  );
+}
+
 function getMetricId(query: unknown): ID | null {
   if (typeof query !== "object" || query == null) {
     return null;
@@ -900,6 +1002,34 @@ function getMetricId(query: unknown): ID | null {
 
   if ("metric" in query && isMetricReference(query.metric)) {
     return query.metric.id;
+  }
+
+  return null;
+}
+
+function getTableId(query: unknown): ID | null {
+  if (typeof query !== "object" || query == null) {
+    return null;
+  }
+
+  if ("table" in query && isTableReference(query.table)) {
+    return query.table.id;
+  }
+
+  if ("tableId" in query && query.tableId != null) {
+    return query.tableId as ID;
+  }
+
+  return null;
+}
+
+function getTableDatabaseId(query: TableQuery<unknown>): ID | null {
+  if ("table" in query && isTableReference(query.table)) {
+    return query.table.databaseId;
+  }
+
+  if ("databaseId" in query && query.databaseId != null) {
+    return query.databaseId;
   }
 
   return null;
@@ -1051,6 +1181,15 @@ function isMetricReference(value: unknown): value is MetricReference {
     "id" in value &&
     "mappedTableIds" in value &&
     Array.isArray(value.mappedTableIds)
+  );
+}
+
+function isTableReference(value: unknown): value is TableSchema {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "id" in value &&
+    "databaseId" in value
   );
 }
 

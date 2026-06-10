@@ -1,4 +1,10 @@
-export { breakout, filter, useMetabaseQuery } from "./use-metabase-query";
+export {
+  breakout,
+  createMetabaseQuery,
+  filter,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "./use-metabase-query";
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,

@@ -1,13 +1,19 @@
 import { waitFor } from "@testing-library/react";
 
-import { screen } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
-import { breakout, filter, useMetabaseQuery } from "./use-metabase-query";
+import {
+  breakout,
+  createMetabaseQuery,
+  filter,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "./use-metabase-query";
 
 const TEST_SCHEMA = {
   tables: {
@@ -368,6 +374,39 @@ const _invalidMetricAdHocMeasureQuery = {
 } satisfies MetabaseQueryOptions;
 
 describe("useMetabaseQuery", () => {
+  describe("createMetabaseQuery", () => {
+    const expectedOrdersQuery = {
+      type: "query",
+      database: 1,
+      query: {
+        "source-table": 1,
+        filter: ["=", ["field", 101, {}], "paid"],
+        breakout: [["field", 103, {}]],
+      },
+      parameters: [],
+    };
+
+    it("builds a complete dataset query from a generated table schema", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+        }),
+      ).toEqual(expectedOrdersQuery);
+    });
+
+    it("memoizes a complete dataset query from a generated table schema", () => {
+      render(<MetabaseQueryObjectComponent />);
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual(expectedOrdersQuery);
+    });
+  });
+
   it("raises a runtime error when metric segments are not from mapped tables", async () => {
     const queryMetric = jest.fn();
 
@@ -430,6 +469,36 @@ describe("useMetabaseQuery", () => {
     });
   });
 
+  it("queries generated table objects via a memoized dataset query object", async () => {
+    const queryDatasetApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryDataset = jest.fn(() => queryDatasetApi);
+
+    setup({
+      queryMetric: jest.fn(),
+      queryDataset,
+      component: <TableObjectComponent />,
+    });
+
+    await waitFor(() => {
+      expect(queryDatasetApi).toHaveBeenCalledWith({
+        datasetQuery: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": 1,
+            filter: ["=", ["field", 101, {}], "paid"],
+          },
+          parameters: [],
+        },
+      });
+    });
+  });
+
   it("queries metrics with measures via the metric dataset endpoint", async () => {
     const queryMetricApi = jest.fn().mockResolvedValue({
       rowCount: null,
@@ -456,9 +525,9 @@ const TestComponent = () => {
   const query = {
     metric: TEST_SCHEMA.metrics.orderCount,
     filters: [TEST_SCHEMA.tables.products.segments.active],
-  } as unknown as MetabaseQueryOptions;
+  };
 
-  const result = useMetabaseQuery(query);
+  const result = useMetabaseQuery(query as never);
 
   return (
     <div data-testid="error">
@@ -471,9 +540,9 @@ const InvalidTableMeasureComponent = () => {
   const query = {
     tableId: TEST_SCHEMA.tables.orders.id,
     measures: [{ name: "count" }],
-  } as unknown as MetabaseQueryOptions;
+  };
 
-  const result = useMetabaseQuery(query);
+  const result = useMetabaseQuery(query as never);
 
   return (
     <div data-testid="error">
@@ -482,11 +551,30 @@ const InvalidTableMeasureComponent = () => {
   );
 };
 
+const MetabaseQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    table: TEST_SCHEMA.tables.orders,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
 const TableFieldIdComponent = () => {
   useMetabaseQuery<OrdersTable>({
     tableId: TEST_SCHEMA.tables.orders.id,
     filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+  });
+
+  return null;
+};
+
+const TableObjectComponent = () => {
+  useMetabaseQuery({
+    table: TEST_SCHEMA.tables.orders,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
   });
 
   return null;
