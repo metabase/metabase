@@ -89,6 +89,7 @@
          metabase.cloud-migration.api/keep-me
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
+         metabase.curated-search.api/keep-me
          metabase.dashboards-rest.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
@@ -112,7 +113,6 @@
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
-         metabase.curated-search.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -180,6 +180,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
+   "/curated-search"       (+auth 'metabase.curated-search.api)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
@@ -223,7 +224,6 @@
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
-   "/curated-search" (+auth 'metabase.curated-search.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
