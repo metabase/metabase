@@ -1,13 +1,24 @@
 (ns metabase.metabot.schema.v5
   "Schemas for the AI SDK v5 message formats: `UIMessageChunk` (wire/SSE) and
   `UIMessage`/`UIMessagePart` (at-rest). One family covers both v5 and v6 — it encodes the v6
-  superset with v6-only members optional, so payloads from either version validate.
+  superset with v6-only members optional, so payloads from either version validate. Validates
+  keywordized values (post JSON decode).
+
+  Deliberate divergences from upstream:
+
+  - map keys are snake_case keywords where upstream uses camelCase (`toolCallId` →
+    `:tool_call_id`); `:type` and `:state` string values are unchanged
+  - fields that are `z.unknown()` upstream (`:input`, `:output`, `:data`, `:message_metadata`)
+    are required keys here unless the TypeScript type marks the value `| undefined`
+  - maps are closed; upstream's `validateUIMessages` schema ignores unknown keys on at-rest
+    parts
 
   Derived (ported from TypeScript/Zod to Malli) from the Vercel AI SDK, used under the
   Apache License 2.0, © 2023 Vercel, Inc.:
 
     - UIMessageChunk (wire):    packages/ai/src/ui-message-stream/ui-message-chunks.ts
-    - UIMessage/part (at-rest): packages/ai/src/ui/ui-messages.ts
+    - UIMessage/part (at-rest): packages/ai/src/ui/ui-messages.ts and
+                                packages/ai/src/ui/validate-ui-messages.ts
 
   Upstream: https://github.com/vercel/ai (pinned to ai@6.0.37)
   License:  https://github.com/vercel/ai/blob/main/LICENSE"
@@ -21,8 +32,8 @@
 (defn- tool-type? [t] (and (string? t) (str/starts-with? t "tool-")))
 
 (mr/def ::provider-metadata
-  ;; mirrors providerMetadataSchema — Record<string, Record<string, JSONValue>>, open by design
-  :map)
+  ;; mirrors providerMetadataSchema — Record<string, Record<string, JSONValue>>
+  [:map-of :keyword [:map-of :keyword :any]])
 
 (mr/def ::ui-message-chunk
   ;; mirrors uiMessageChunkSchema; v6-only members included so v5 and v6 streams both validate
@@ -32,100 +43,100 @@
    ["text-start"            [:map {:closed true}
                              [:type [:= "text-start"]]
                              [:id :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["text-delta"            [:map {:closed true}
                              [:type [:= "text-delta"]]
                              [:id :string]
                              [:delta :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["text-end"              [:map {:closed true}
                              [:type [:= "text-end"]]
                              [:id :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["reasoning-start"       [:map {:closed true}
-                             [:type [:= "reasoning-start"]]
-                             [:id :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["reasoning-delta"       [:map {:closed true}
-                             [:type [:= "reasoning-delta"]]
-                             [:id :string]
-                             [:delta :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
-   ["reasoning-end"         [:map {:closed true}
-                             [:type [:= "reasoning-end"]]
-                             [:id :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["error"                 [:map {:closed true}
                              [:type [:= "error"]]
-                             [:errorText :string]]]
+                             [:error_text :string]]]
    ["tool-input-start"      [:map {:closed true}
                              [:type [:= "tool-input-start"]]
-                             [:toolCallId :string]
-                             [:toolName :string]
-                             [:providerExecuted {:optional true} :boolean]
+                             [:tool_call_id :string]
+                             [:tool_name :string]
+                             [:provider_executed {:optional true} :boolean]
                              [:dynamic {:optional true} :boolean]
                              [:title {:optional true} :string]]]
    ["tool-input-delta"      [:map {:closed true}
                              [:type [:= "tool-input-delta"]]
-                             [:toolCallId :string]
-                             [:inputTextDelta :string]]]
+                             [:tool_call_id :string]
+                             [:input_text_delta :string]]]
    ["tool-input-available"  [:map {:closed true}
                              [:type [:= "tool-input-available"]]
-                             [:toolCallId :string]
-                             [:toolName :string]
+                             [:tool_call_id :string]
+                             [:tool_name :string]
                              [:input :any]
-                             [:providerExecuted {:optional true} :boolean]
-                             [:providerMetadata {:optional true} ::provider-metadata]
+                             [:provider_executed {:optional true} :boolean]
+                             [:provider_metadata {:optional true} ::provider-metadata]
                              [:dynamic {:optional true} :boolean]
                              [:title {:optional true} :string]]]
    ["tool-input-error"      [:map {:closed true}
                              [:type [:= "tool-input-error"]]
-                             [:toolCallId :string]
-                             [:toolName :string]
+                             [:tool_call_id :string]
+                             [:tool_name :string]
                              [:input :any]
-                             [:providerExecuted {:optional true} :boolean]
-                             [:providerMetadata {:optional true} ::provider-metadata]
+                             [:provider_executed {:optional true} :boolean]
+                             [:provider_metadata {:optional true} ::provider-metadata]
                              [:dynamic {:optional true} :boolean]
-                             [:errorText :string]
+                             [:error_text :string]
                              [:title {:optional true} :string]]]
    ["tool-approval-request" [:map {:closed true}
                              [:type [:= "tool-approval-request"]]
-                             [:approvalId :string]
-                             [:toolCallId :string]]]
+                             [:approval_id :string]
+                             [:tool_call_id :string]]]
    ["tool-output-available" [:map {:closed true}
                              [:type [:= "tool-output-available"]]
-                             [:toolCallId :string]
+                             [:tool_call_id :string]
                              [:output :any]
-                             [:providerExecuted {:optional true} :boolean]
+                             [:provider_executed {:optional true} :boolean]
                              [:dynamic {:optional true} :boolean]
                              [:preliminary {:optional true} :boolean]]]
    ["tool-output-error"     [:map {:closed true}
                              [:type [:= "tool-output-error"]]
-                             [:toolCallId :string]
-                             [:errorText :string]
-                             [:providerExecuted {:optional true} :boolean]
+                             [:tool_call_id :string]
+                             [:error_text :string]
+                             [:provider_executed {:optional true} :boolean]
                              [:dynamic {:optional true} :boolean]]]
    ["tool-output-denied"    [:map {:closed true}
                              [:type [:= "tool-output-denied"]]
-                             [:toolCallId :string]]]
+                             [:tool_call_id :string]]]
+   ["reasoning-start"       [:map {:closed true}
+                             [:type [:= "reasoning-start"]]
+                             [:id :string]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
+   ["reasoning-delta"       [:map {:closed true}
+                             [:type [:= "reasoning-delta"]]
+                             [:id :string]
+                             [:delta :string]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
+   ["reasoning-end"         [:map {:closed true}
+                             [:type [:= "reasoning-end"]]
+                             [:id :string]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["source-url"            [:map {:closed true}
                              [:type [:= "source-url"]]
-                             [:sourceId :string]
+                             [:source_id :string]
                              [:url :string]
                              [:title {:optional true} :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["source-document"       [:map {:closed true}
                              [:type [:= "source-document"]]
-                             [:sourceId :string]
-                             [:mediaType :string]
+                             [:source_id :string]
+                             [:media_type :string]
                              [:title :string]
                              [:filename {:optional true} :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    ["file"                  [:map {:closed true}
                              [:type [:= "file"]]
                              [:url :string]
-                             [:mediaType :string]
-                             [:providerMetadata {:optional true} ::provider-metadata]]]
+                             [:media_type :string]
+                             [:provider_metadata {:optional true} ::provider-metadata]]]
    [::data                  [:map {:closed true}
                              [:type [:fn data-type?]]
                              [:id {:optional true} :string]
@@ -137,168 +148,188 @@
                              [:type [:= "finish-step"]]]]
    ["start"                 [:map {:closed true}
                              [:type [:= "start"]]
-                             [:messageId {:optional true} :string]
-                             [:messageMetadata {:optional true} :any]]]
+                             [:message_id {:optional true} :string]
+                             [:message_metadata {:optional true} :any]]]
    ["finish"                [:map {:closed true}
                              [:type [:= "finish"]]
-                             [:finishReason {:optional true}
+                             [:finish_reason {:optional true}
                               [:enum "stop" "length" "content-filter" "tool-calls" "error" "other"]]
-                             [:messageMetadata {:optional true} :any]]]
+                             [:message_metadata {:optional true} :any]]]
    ["abort"                 [:map {:closed true}
                              [:type [:= "abort"]]
                              [:reason {:optional true} :string]]]
    ["message-metadata"      [:map {:closed true}
                              [:type [:= "message-metadata"]]
-                             [:messageMetadata :any]]]])
-
-(mr/def ::tool-approval
-  ;; mirrors the per-state approval objects of UIToolInvocation, collapsed into one shape
-  [:map {:closed true}
-   [:id :string]
-   [:approved {:optional true} :boolean]
-   [:reason {:optional true} :string]])
+                             [:message_metadata :any]]]])
 
 (mr/def ::tool-ui-part
   ;; mirrors ToolUIPart / UIToolInvocation; v6 approval states included
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "input-streaming"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input {:optional true} :any]]]
    ["input-available"    [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "input-available"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]]]
    ["approval-requested" [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "approval-requested"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]]]]]
    ["approval-responded" [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "approval-responded"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]
+                                      [:approved :boolean]
+                                      [:reason {:optional true} :string]]]]]
    ["output-available"   [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-available"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
                           [:output :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
                           [:preliminary {:optional true} :boolean]
-                          [:approval {:optional true} ::tool-approval]]]
+                          [:approval {:optional true} [:map {:closed true}
+                                                       [:id :string]
+                                                       [:approved [:= true]]
+                                                       [:reason {:optional true} :string]]]]]
    ["output-error"       [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-error"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input {:optional true} :any]
-                          [:rawInput {:optional true} :any]
-                          [:errorText :string]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval {:optional true} ::tool-approval]]]
+                          [:raw_input {:optional true} :any]
+                          [:error_text :string]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval {:optional true} [:map {:closed true}
+                                                       [:id :string]
+                                                       [:approved [:= true]]
+                                                       [:reason {:optional true} :string]]]]]
    ["output-denied"      [:map {:closed true}
                           [:type [:fn tool-type?]]
-                          [:toolCallId :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-denied"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]])
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]
+                                      [:approved [:= false]]
+                                      [:reason {:optional true} :string]]]]]])
 
 (mr/def ::dynamic-tool-ui-part
-  ;; mirrors DynamicToolUIPart — carries :toolName explicitly, no rawInput in output-error
+  ;; mirrors DynamicToolUIPart — carries :tool_name explicitly
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "input-streaming"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input {:optional true} :any]]]
    ["input-available"    [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "input-available"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]]]
    ["approval-requested" [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "approval-requested"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]]]]]
    ["approval-responded" [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "approval-responded"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]
+                                      [:approved :boolean]
+                                      [:reason {:optional true} :string]]]]]
    ["output-available"   [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-available"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
                           [:output :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
                           [:preliminary {:optional true} :boolean]
-                          [:approval {:optional true} ::tool-approval]]]
+                          [:approval {:optional true} [:map {:closed true}
+                                                       [:id :string]
+                                                       [:approved [:= true]]
+                                                       [:reason {:optional true} :string]]]]]
    ["output-error"       [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-error"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:errorText :string]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval {:optional true} ::tool-approval]]]
+                          [:raw_input {:optional true} :any]
+                          [:error_text :string]
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval {:optional true} [:map {:closed true}
+                                                       [:id :string]
+                                                       [:approved [:= true]]
+                                                       [:reason {:optional true} :string]]]]]
    ["output-denied"      [:map {:closed true}
                           [:type [:= "dynamic-tool"]]
-                          [:toolName :string]
-                          [:toolCallId :string]
+                          [:tool_name :string]
+                          [:tool_call_id :string]
                           [:state [:= "output-denied"]]
                           [:title {:optional true} :string]
-                          [:providerExecuted {:optional true} :boolean]
+                          [:provider_executed {:optional true} :boolean]
                           [:input :any]
-                          [:callProviderMetadata {:optional true} ::provider-metadata]
-                          [:approval ::tool-approval]]]])
+                          [:call_provider_metadata {:optional true} ::provider-metadata]
+                          [:approval [:map {:closed true}
+                                      [:id :string]
+                                      [:approved [:= false]]
+                                      [:reason {:optional true} :string]]]]]])
 
 (mr/def ::ui-message-part
   ;; mirrors UIMessagePart
@@ -313,31 +344,31 @@
                        [:type [:= "text"]]
                        [:text :string]
                        [:state {:optional true} [:enum "streaming" "done"]]
-                       [:providerMetadata {:optional true} ::provider-metadata]]]
+                       [:provider_metadata {:optional true} ::provider-metadata]]]
    ["reasoning"       [:map {:closed true}
                        [:type [:= "reasoning"]]
                        [:text :string]
                        [:state {:optional true} [:enum "streaming" "done"]]
-                       [:providerMetadata {:optional true} ::provider-metadata]]]
+                       [:provider_metadata {:optional true} ::provider-metadata]]]
    ["source-url"      [:map {:closed true}
                        [:type [:= "source-url"]]
-                       [:sourceId :string]
+                       [:source_id :string]
                        [:url :string]
                        [:title {:optional true} :string]
-                       [:providerMetadata {:optional true} ::provider-metadata]]]
+                       [:provider_metadata {:optional true} ::provider-metadata]]]
    ["source-document" [:map {:closed true}
                        [:type [:= "source-document"]]
-                       [:sourceId :string]
-                       [:mediaType :string]
+                       [:source_id :string]
+                       [:media_type :string]
                        [:title :string]
                        [:filename {:optional true} :string]
-                       [:providerMetadata {:optional true} ::provider-metadata]]]
+                       [:provider_metadata {:optional true} ::provider-metadata]]]
    ["file"            [:map {:closed true}
                        [:type [:= "file"]]
-                       [:mediaType :string]
+                       [:media_type :string]
                        [:filename {:optional true} :string]
                        [:url :string]
-                       [:providerMetadata {:optional true} ::provider-metadata]]]
+                       [:provider_metadata {:optional true} ::provider-metadata]]]
    ["step-start"      [:map {:closed true}
                        [:type [:= "step-start"]]]]
    ["dynamic-tool"    ::dynamic-tool-ui-part]
@@ -348,37 +379,9 @@
                        [:data :any]]]])
 
 (mr/def ::ui-message
-  ;; mirrors UIMessage
+  ;; mirrors UIMessage; nonempty :parts per the uiMessagesSchema runtime validator
   [:map {:closed true}
    [:id :string]
    [:role [:enum "system" "user" "assistant"]]
    [:metadata {:optional true} :any]
-   [:parts [:sequential ::ui-message-part]]])
-
-(mr/def ::metabase-ui-message-part
-  "The subset of [[::ui-message-part]] that Metabase persists in `metabot_message.data`. Unlike
-  upstream `ToolUIPart`, the tool part carries an explicit `:toolName` and only three states."
-  [:multi {:dispatch (fn [part]
-                       (let [t (:type part)]
-                         (cond
-                           (tool-type? t) ::tool
-                           (data-type? t) ::data
-                           :else          t)))}
-   ["text" [:map {:closed true}
-            [:type [:= "text"]]
-            [:text :string]]]
-   [::tool [:map {:closed true}
-            [:type [:fn tool-type?]]
-            [:toolCallId :string]
-            [:toolName :string]
-            [:state [:enum "input-available" "output-available" "output-error"]]
-            [:input [:or :map :string]]
-            [:output {:optional true} :any]
-            [:errorText {:optional true} :string]]]
-   [::data [:map {:closed true}
-            [:type [:fn data-type?]]
-            [:data :any]]]])
-
-(mr/def ::metabase-ui-message-parts
-  "A `metabot_message.data` value: a vector of [[::metabase-ui-message-part]]s."
-  [:sequential ::metabase-ui-message-part])
+   [:parts [:sequential {:min 1} ::ui-message-part]]])

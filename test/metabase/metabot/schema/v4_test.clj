@@ -7,7 +7,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
-(def ^:private stream-part-cases
+(def ^:private data-stream-part-cases
   [[{:role "assistant" :_type "TEXT" :content "Hi there"}                          :content]
    [{:role "assistant" :_type "ERROR" :content "Something went wrong"}             :content]
    [{:_type "DATA" :type "navigate_to" :version 1 :value "/question/1"}            :version]
@@ -26,9 +26,9 @@
    [{:type "error" :error {:message "boom"}}                                       :error]])
 
 (deftest ^:parallel entry-test
-  (doseq [[schema cases] {::schema.v4/stream-part-entry  stream-part-cases
-                          ::schema.v4/part-entry         part-cases
-                          ::schema.v4/user-message-entry [[{:role "user" :content "Do we have orders data?"} :content]]}
+  (doseq [[schema cases] {::schema.v4/data-stream-part data-stream-part-cases
+                          ::schema.v4/part             part-cases
+                          ::schema.v4/user-message     [[{:role "user" :content "Do we have orders data?"} :content]]}
           [payload required-key] cases]
     (testing (str schema " " (or (:_type payload) (:type payload) (:role payload)))
       (is (mr/validate schema payload))
