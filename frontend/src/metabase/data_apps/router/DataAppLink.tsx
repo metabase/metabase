@@ -1,10 +1,12 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
-import { Link } from "react-router";
+import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
+import { browserHistory } from "react-router";
 
 import { getBasename } from "./DataAppRouter";
 
-interface DataAppLinkProps
-  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
+export interface DataAppLinkProps extends Omit<
+  AnchorHTMLAttributes<HTMLAnchorElement>,
+  "href"
+> {
   to: string;
   children?: ReactNode;
 }
@@ -12,21 +14,61 @@ interface DataAppLinkProps
 /**
  * Internal-only navigation link inside a data app.
  *
- * Renders react-router 3's `<Link>` under the hood — middle-click /
- * cmd-click / modifier-key handling and `<a href>` rendering all come
- * from v3's implementation. When MB upgrades to a newer router, this
- * file's `import { Link } from "react-router"` changes; the bundle's
- * `<DataAppLink to="…">` usage doesn't.
- *
- * The `to` prop is bundle-relative (e.g. `to="/customers/42"`); we add
- * the auto-detected basename before handing the URL to v3's `Link`.
- *
- * Must be rendered inside a `<DataAppRouter>` — v3's `<Link>` reads its
- * router from the surrounding `<Router>` (which `<DataAppRouter>` mounts)
- * and will throw without it.
+ * Deliberately does NOT delegate to react-router 3's `<Link>` —
+ * v3 components use deprecated React APIs (`getDefaultProps`,
+ * `childContextTypes`) that emit dev-mode warnings and will be removed
+ * in React 19.
  */
-export const DataAppLink = ({ to, children, ...rest }: DataAppLinkProps) => (
-  <Link to={getBasename() + to} {...rest}>
-    {children}
-  </Link>
-);
+export const DataAppLink = ({
+  to,
+  children,
+  onClick,
+  target,
+  rel,
+  ...rest
+}: DataAppLinkProps) => {
+  const href = getBasename() + to;
+
+  const isExternalTarget = target != null && target !== "_self";
+  const resolvedRel = rel ?? (isExternalTarget ? "noopener noreferrer" : rel);
+
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (isExternalTarget) {
+      // Explicit `target="_blank"` etc. — let the browser handle it.
+      return;
+    }
+
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      // Modifier keys / middle / right click → browser handles it (new tab,
+      // download, etc.). Don't preventDefault — we want the native action.
+      return;
+    }
+
+    event.preventDefault();
+    browserHistory.push(href);
+  };
+
+  return (
+    <a
+      href={href}
+      target={target}
+      rel={resolvedRel}
+      onClick={handleClick}
+      {...rest}
+    >
+      {children}
+    </a>
+  );
+};

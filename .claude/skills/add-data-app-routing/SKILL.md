@@ -17,17 +17,11 @@ That's the entire surface. **No `react-router` of any version, no `<BrowserRoute
 
 ## When to use this skill
 
-- The user has a working data-app project — `vite.config.ts` with `name: "__dataAppFactory__"`, an `src/index.tsx` that exports a factory, and an `src/dev.tsx` for the dev preview.
+- The user has a working data-app project — scaffolded from the `data-app-template` repo, so `vite.config.ts` with `name: "__dataAppFactory__"`, an `src/index.tsx` that exports a factory, and an `src/dev.tsx` for the dev preview already exist.
 - The user wants the bundle to render different content at different URLs (`/overview`, `/customers/:id`).
-- **Do not use this skill** to scaffold a project from scratch — it only patches an existing data-app project. If there is no project yet, stop and tell the user a project needs to exist first.
+- **Do not use this skill** to scaffold a project from scratch — it only patches an existing data-app project. If there is no project yet, invoke the `create-data-app` skill first.
 
-## Prerequisite — `data-app` subpath externalized in `vite.config.ts`
-
-Before continuing, confirm `vite.config.ts` has both `react` *and* `@metabase/embedding-sdk-react/data-app` in `rollupOptions.external` and a corresponding entry in `output.globals` (mapping to `__metabase_data_app__`). A correctly scaffolded data-app project ships with this already.
-
-If it's missing, the routing primitives below will work in dev preview and silently break in the production iframe: the bundler inlines the subpath's implementations into `dist/index.js`, those run inside the Near Membrane sandbox, and React's state batching swallows the navigation `setState`. URL changes, UI doesn't.
-
-If you see that symptom after following the steps below, missing externals is the cause.
+The template already externalizes `@metabase/embedding-sdk-react/data-app` in `vite.config.ts`. You do NOT need to edit `vite.config.ts` to add routing — just edit `src/App.tsx` (and add more component files as needed) per the step below.
 
 ## Step 1 — Wrap `App.tsx` with `<DataAppRouter>`
 
@@ -152,8 +146,8 @@ function useCustomerIdFromPath(): number | null {
 
 | Symptom | Fix |
 |---|---|
-| `DataAppLink must be rendered inside a <DataAppRouter>` thrown at runtime. | Wrap the tree with `<DataAppRouter>`. |
-| URL changes in dev preview but the production iframe shows the bundle re-render itself on every navigation (or routes don't work in prod at all). | `vite.config.ts` is missing `@metabase/embedding-sdk-react/data-app` in `external` / `output.globals` — see Step 1. Without it Vite inlines the package's implementation into `dist/index.js`, which runs inside the Near Membrane sandbox and breaks React's state batching. |
+| `<DataAppLink>` renders as plain text (no clickable link) on initial load. | The bundle hasn't finished loading and the fallback path is showing. Confirm the tree is wrapped in `<MetabaseProvider authConfig=…>` (dev) or `<DataAppProvider>` (host) so the bundle gets triggered. The fallback resolves to a real link once the bundle is up. |
+| URL changes in dev preview but the production iframe shows the bundle re-render itself on every navigation (or routes don't work in prod at all). | `vite.config.ts` got edited and lost `@metabase/embedding-sdk-react/data-app` from `external` / `output.globals`. Restore from the [template](https://github.com/metabase/data-app-template) — without it, Vite inlines the package's implementation into `dist/index.js`, which runs inside the Near Membrane sandbox and breaks React's state batching. |
 | URL changes but UI doesn't. | A `<BrowserRouter>`/`<HashRouter>` is still in the tree. Strip the router library out and use `<DataAppRouter>` / `<DataAppLink>` instead — the Near Membrane interaction with React-18 batching breaks every router that runs its own `setState` inside the bundle. |
 | Reload at a deep URL in dev (`localhost:5174/customers/42`) shows a blank page. | Vite's dev server is serving the route as a 404 instead of falling back to `index.html`. Set `appType: "spa"` in `vite.config.ts` (it's the default — only an issue if someone overrode it). |
 | Middle-click on a `<DataAppLink>` does nothing. | The link uses `event.button !== 0` to skip non-left clicks; check you haven't wrapped it in another component that swallows the event. |

@@ -210,6 +210,11 @@ type MetricQuery<TMetric, TSchema> = {
   enabled?: boolean;
 };
 
+/**
+ * @notExported QuestionQuery
+ * @notExported TableQuery
+ * @notExported MetricQuery
+ */
 export type MetabaseQueryOptions<TEntity, TSchema = unknown> =
   | QuestionQuery<TEntity>
   | TableQuery<TEntity>
@@ -259,6 +264,7 @@ type InferQuerySchema<TEntity, TQuery> = InferSchema<
 > &
   RowsFromColumns<QueryBreakoutColumns<TQuery> | QueryMeasureColumns<TQuery>>;
 
+/** @notExported InferQuerySchema */
 export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
   isLoading: boolean;

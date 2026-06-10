@@ -1,5 +1,6 @@
 import createVirtualEnvironment from "@locker/near-membrane-dom";
 import * as React from "react";
+import * as ReactJsxRuntime from "react/jsx-runtime";
 
 import { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -13,7 +14,9 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
+// eslint-disable-next-line no-restricted-imports
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
+// eslint-disable-next-line no-restricted-imports
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
 import {
   DataAppLink,
@@ -55,6 +58,7 @@ export function createDataAppSandbox(
       liveTargetCallback: isLiveTarget,
       endowments: Object.getOwnPropertyDescriptors({
         React,
+        __react_jsx_runtime__: ReactJsxRuntime,
         __metabase_sdk__: {
           // Data fetching
           useQuestionQuery,

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import { useDeleteDataAppMutation, useListDataAppsQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import {
   Box,
@@ -14,7 +15,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useDeleteDataAppMutation, useListDataAppsQuery } from "metabase/api";
 
 import { DataAppListItem } from "./DataAppListItem";
 import S from "./ManageDataAppsPage.module.css";

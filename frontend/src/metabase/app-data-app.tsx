@@ -28,7 +28,6 @@ function _init() {
   const rootElement = document.getElementById("root");
 
   if (!rootElement) {
-    // eslint-disable-next-line no-console
     console.error("no #root element on data-app iframe entry");
     return;
   }
