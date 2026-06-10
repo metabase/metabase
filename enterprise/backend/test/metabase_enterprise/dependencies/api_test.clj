@@ -338,6 +338,36 @@
                        :bad_transforms []}
                       response)))))))))
 
+(deftest check-card-native-explicit-columns-not-broken-test
+  (testing "POST /api/ee/dependencies/check-card does not report a native card (or its consumer) as broken when an
+            edit switches SELECT * to an explicit, valid column list yielding the same columns (GHY-3682)"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "ghy3682@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+            (let [mp (mt/metadata-provider)
+                  ;; Native source card originally selecting all columns.
+                  source-card (card/create-card!
+                               (card-with-query "Products source"
+                                                (lib/native-query mp "SELECT * FROM products"))
+                               user)
+                  ;; A downstream question that consumes the source card.
+                  consumer-query (lib/native-query mp (str "select * from {{#" (:id source-card) "}} src"))
+                  consumer-card (card/create-card!
+                                 (card-with-query "Consumer" consumer-query)
+                                 user)
+                  ;; Propose editing the source to an explicit column list that yields the same columns.
+                  proposed-card {:id (:id source-card)
+                                 :type :question
+                                 :dataset_query (lib/native-query mp "SELECT id, category, price FROM products")
+                                 :result_metadata nil}
+                  _ (deps.test/synchronously-run-backfill!)
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check-card" proposed-card)]
+              (is (some? consumer-card))
+              (is (= {:success true :bad_cards [] :bad_transforms []}
+                     response)
+                  "Switching a native card to explicit valid columns must not report the card itself or its consumer as broken"))))))))
+
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check-transform"
     (mt/with-premium-features #{:dependencies :transforms-basic}
