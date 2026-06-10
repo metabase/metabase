@@ -49,6 +49,11 @@ type MetricDimensionName<TMetric> = TMetric extends {
       : string
   : string;
 
+/**
+ * @notExported MetricDimensionName
+ * @notExported MetricDimensionSchema
+ * @notExported MetricFilterOperator
+ */
 export type MetricFilter<TMetric = unknown> = {
   dimension: MetricDimensionName<TMetric> | MetricDimensionSchema;
   operator: MetricFilterOperator;
@@ -56,6 +61,10 @@ export type MetricFilter<TMetric = unknown> = {
   values?: readonly unknown[];
 };
 
+/**
+ * @notExported MetricDimensionName
+ * @notExported MetricDimensionSchema
+ */
 export type MetricBreakout<TMetric = unknown> =
   | MetricDimensionName<TMetric>
   | MetricDimensionSchema
@@ -69,6 +78,7 @@ export type MetricBreakout<TMetric = unknown> =
       };
     };
 
+/** @notExported JsMetricDefinition */
 export type UseMetricQueryOptions<TMetric = unknown> = {
   enabled?: boolean;
   definition?: JsMetricDefinition;
@@ -76,6 +86,7 @@ export type UseMetricQueryOptions<TMetric = unknown> = {
   breakouts?: readonly MetricBreakout<TMetric>[];
 };
 
+/** @notExported InferSchema */
 export type UseMetricQueryResult<TMetric = unknown> = {
   data: QueryData<InferSchema<TMetric, Record<string, unknown>>> | null;
   isLoading: boolean;

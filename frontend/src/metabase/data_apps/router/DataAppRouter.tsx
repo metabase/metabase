@@ -1,21 +1,21 @@
-import { type ReactNode, createContext, useContext } from "react";
-import { Router, browserHistory } from "react-router";
+import type { ReactNode } from "react";
 
 import { DATA_APP_EMBED_PREFIX } from "metabase/data_apps/constants";
 
 /**
  * Data-app routing primitives.
  *
- * Implementation uses Metabase's bundled `react-router@3` — same library
- * MB uses everywhere else. The bundle never sees the router library: it
- * only depends on the `{ pathname, navigate }` shape exposed by
- * `useDataAppLocation` and on the `<DataAppLink>` component. When MB
- * jumps v3 → v6/v7, this file's internals change; bundles stay untouched.
+ * The bundle never sees a router library directly — it only depends on
+ * the `{ pathname, navigate }` shape exposed by `useDataAppLocation` and
+ * on the `<DataAppLink>` component. All routing state lives on the
+ * `browserHistory` singleton (from `react-router`, but used only for its
+ * function-based `push` / `listen` API — no React components, no legacy
+ * context).
  *
- * Lives in host code, endowed to the bundle via
- * `@metabase/embedding-sdk-react/data-app`. All routing state lives on
- * `browserHistory` (a `react-router` singleton) — no custom React Context
- * is needed across the public API.
+ * `<DataAppRouter>` itself is a pass-through today. It stays as a
+ * dedicated component so future additions (error boundaries, suspense,
+ * routing-scoped providers) can land here without a breaking change to
+ * the bundle's `<DataAppRouter>` usage.
  */
 
 /**
@@ -50,12 +50,6 @@ const DATA_APP_BASENAME_RE = new RegExp(
 export const getBasename = (): string =>
   window.location.pathname.match(DATA_APP_BASENAME_RE)?.[1] ?? "";
 
-const RouteContentBridge = createContext<ReactNode>(null);
-
-const RouteContent = () => useContext(RouteContentBridge);
-
-const STABLE_ROUTES = { path: "*", component: RouteContent };
-
 interface DataAppRouterProps {
   children?: ReactNode;
 }
@@ -70,7 +64,5 @@ interface DataAppRouterProps {
  * just the raw pathname.
  */
 export const DataAppRouter = ({ children }: DataAppRouterProps) => (
-  <RouteContentBridge.Provider value={children}>
-    <Router history={browserHistory} routes={STABLE_ROUTES} />
-  </RouteContentBridge.Provider>
+  <>{children}</>
 );
