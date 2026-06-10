@@ -11,6 +11,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -310,7 +311,9 @@
 (defn- table-refs->results
   [ids]
   (when (seq ids)
-    (for [t (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids])]
+    ;; only surface tables the current user can read — a curated entry may point at one they can't access
+    (for [t (filter mi/can-read?
+                    (t2/select [:model/Table :id :name :display_name :db_id :schema :description] :id [:in ids]))]
       {:id              (:id t)
        :type            "table"
        :name            (:name t)
@@ -324,9 +327,11 @@
   [refs]
   (let [ids       (map :id refs)
         id->type  (into {} (map (juxt :id :type)) refs)
+        ;; only surface cards the current user can read (collection perms) — see table-refs->results
         cards     (when (seq ids)
-                    (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
-                               :id [:in ids]))
+                    (filter mi/can-read?
+                            (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                                       :id [:in ids])))
         coll-ids  (->> cards (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))

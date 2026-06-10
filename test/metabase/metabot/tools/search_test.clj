@@ -453,6 +453,23 @@
             (testing "refs whose entity no longer exists are dropped"
               (is (= 3 (count results))))))))))
 
+(deftest entity-refs->search-results-respects-read-perms-test
+  (testing "hydration drops entities the current user can't read — a curated entry may point at a restricted one"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {restricted-id :id}
+                     {:name "Secret Card" :collection_id coll-id
+                      :database_id (mt/id) :table_id (mt/id :orders)
+                      :dataset_query {:database (mt/id) :type :query
+                                      :query {:source-table (mt/id :orders)}}}]
+        (let [refs [{:model "card" :id restricted-id}]]
+          (testing "a superuser can read it"
+            (mt/with-test-user :crowberto
+              (is (= [restricted-id] (map :id (search/entity-refs->search-results refs))))))
+          (testing "a user without access to its collection does not see it"
+            (mt/with-test-user :rasta
+              (is (empty? (search/entity-refs->search-results refs))))))))))
+
 (deftest enrich-with-metric-base-tables-test
   (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
                 "`source-table:` without a separate entity_details call. We look up\n"
