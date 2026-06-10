@@ -7,6 +7,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { useCreateDataAppMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -17,7 +18,6 @@ import {
 import { useDispatch } from "metabase/redux";
 import { Box, Button, Flex, Group, Stack, Text, Title } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useCreateDataAppMutation } from "metabase/api";
 
 import {
   JsBundleDropzone,

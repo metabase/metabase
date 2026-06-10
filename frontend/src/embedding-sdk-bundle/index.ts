@@ -53,6 +53,8 @@ import { queryMetric } from "embedding-sdk-bundle/lib/query-metric";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
 import { defineBuildInfo } from "metabase/embedding-sdk/lib/define-build-info";
 import { validateFunctionSchema } from "embedding-sdk-bundle/lib/validate-function-schema";
+import { DataAppLink, DataAppRouter } from "metabase/data_apps/router";
+import { dataAppRouting } from "embedding-sdk-bundle/lib/data-app/router";
 
 defineBuildInfo("METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO");
 
@@ -65,6 +67,8 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser,
   CreateDashboardModal,
   CreateQuestion,
+  DataAppLink,
+  DataAppRouter,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
@@ -87,6 +91,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   queryDataset,
   queryMetric,
   queryQuestion,
+  dataAppRouting,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
