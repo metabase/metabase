@@ -96,15 +96,16 @@ You don't need to have an [AI provider](settings.md#choose-ai-provider) configur
 
 ## Using the MCP server
 
-Metabase MCP server works best for ephemeral, in-the-moment questions like "hey what was our Q3 revenue?". Metabase's MCP server is also useful when combined with other MCP servers. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
 
-When you ask a question that can handled by Metabase MCP, the MCP server will return the result as either text or an inline chart, depending on the question you asked.
+The MCP server will return results as either text or an inline chart, depending on the question you asked.
 
 If you want the MCP server to return an inline chart, ask it to "show" or "visualize" the data:
 
 ![Show me the stuff](./images/mcp-chart.png)
 
-Currently, Metabase MCP server supports inline bar and line charts. On inline charts, you can drill-through, change time granularity, or explore them in Metabase.
+Currently,  the Metabase MCP server supports bar and line charts. You can drill-through through the charts, change time granularity, or explore them in Metabase. 
+
+If your client is connected to other MCP servers, you can asks questions that combine data from multiple sources. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform (Though maybe you should put all that data into your Metabase).
 
 See [Available tools](#available-tools) for the list of functionality supported by the MCP server.
 
