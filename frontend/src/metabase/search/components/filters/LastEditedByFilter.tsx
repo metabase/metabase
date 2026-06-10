@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
+import { parseUserIdArray, stringifyUserIdArray } from "metabase/common/search";
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker/SearchUserPicker";
 import { SearchUserPickerContainer } from "metabase/search/components/SearchUserPicker/SearchUserPicker.styled";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay/UserNameDisplay";
-import { parseUserIdArray, stringifyUserIdArray } from "metabase/utils/search";
-import type { SearchFilterDropdown } from "metabase/utils/search/types";
 
 export const LastEditedByFilter: SearchFilterDropdown<"last_edited_by"> = {
   iconName: "person",

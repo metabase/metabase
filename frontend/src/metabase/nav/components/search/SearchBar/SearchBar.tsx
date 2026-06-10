@@ -14,6 +14,12 @@ import { t } from "ttag";
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+  isSearchPageLocation,
+} from "metabase/common/search";
+import type { SearchAwareLocation } from "metabase/common/search/types";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -22,12 +28,6 @@ import { Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
-import {
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-  isSearchPageLocation,
-} from "metabase/utils/search";
-import type { SearchAwareLocation } from "metabase/utils/search/types";
 import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";

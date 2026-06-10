@@ -1,4 +1,4 @@
-import type { SearchQueryParamValue } from "metabase/utils/search/types";
+import type { SearchQueryParamValue } from "metabase/common/search/types";
 import { isNotNull } from "metabase/utils/types";
 import type { UserId } from "metabase-types/api";
 

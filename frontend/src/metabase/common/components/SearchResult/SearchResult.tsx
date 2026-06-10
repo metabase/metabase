@@ -3,11 +3,11 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Group, Icon, Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
-import { trackSearchClick } from "metabase/utils/search/analytics";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { SearchContext, SearchResult } from "metabase-types/api";
 

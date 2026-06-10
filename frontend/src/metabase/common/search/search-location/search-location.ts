@@ -1,10 +1,10 @@
 import _ from "underscore";
 
-import { SearchFilterKeys } from "metabase/utils/search/constants";
+import { SearchFilterKeys } from "metabase/common/search/constants";
 import type {
   SearchAwareLocation,
   URLSearchFilterQueryParams,
-} from "metabase/utils/search/types";
+} from "metabase/common/search/types";
 
 export function isSearchPageLocation(location?: SearchAwareLocation): boolean {
   return location ? /^\/?search$/.test(location.pathname) : false;

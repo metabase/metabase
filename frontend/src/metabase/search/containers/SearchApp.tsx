@@ -9,6 +9,19 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import {
+  filterEnabledSearchTypes,
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+} from "metabase/common/search";
+import {
+  SearchContextTypes,
+  SearchFilterKeys,
+} from "metabase/common/search/constants";
+import type {
+  SearchAwareLocation,
+  URLSearchFilterQueryParams,
+} from "metabase/common/search/types";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
@@ -21,21 +34,7 @@ import {
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
 import { Box, Group, Paper, Text } from "metabase/ui";
-import {
-  filterEnabledSearchTypes,
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-} from "metabase/utils/search";
-import {
-  SearchContextTypes,
-  SearchFilterKeys,
-} from "metabase/utils/search/constants";
 import type { SearchRequest } from "metabase-types/api";
-
-import type {
-  SearchAwareLocation,
-  URLSearchFilterQueryParams,
-} from "metabase/utils/search/types";
 
 const getPageFromLocation = (location: SearchAwareLocation) => {
   const maybePage = location.query?.page

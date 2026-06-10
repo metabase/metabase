@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
 import { Text } from "metabase/ui";
-import type { SearchFilterDropdown } from "metabase/utils/search/types";
 
 export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"] =
   ({ value }) => {

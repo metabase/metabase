@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { SearchFilterDateDisplay } from "metabase/querying/filters/components/SearchFilterDateDisplay";
 import { SearchFilterDatePicker } from "metabase/querying/filters/components/SearchFilterDatePicker";
 import { Box } from "metabase/ui";
-import type { SearchFilterDropdown } from "metabase/utils/search/types";
 
 export const LastEditedAtFilter: SearchFilterDropdown<"last_edited_at"> = {
   iconName: "calendar",

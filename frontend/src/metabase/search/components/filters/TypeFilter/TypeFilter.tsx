@@ -3,11 +3,11 @@ import { t } from "ttag";
 import {
   filterEnabledSearchTypes,
   isEnabledSearchModelType,
-} from "metabase/utils/search/enabled-search-type";
+} from "metabase/common/search/enabled-search-type";
 import type {
   SearchFilterComponent,
   TypeFilterProps,
-} from "metabase/utils/search/types";
+} from "metabase/common/search/types";
 
 import { TypeFilterContent } from "./TypeFilterContent";
 import { TypeFilterDisplay } from "./TypeFilterDisplay";

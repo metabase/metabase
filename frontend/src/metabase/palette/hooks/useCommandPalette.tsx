@@ -9,6 +9,7 @@ import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { getCollection } from "metabase/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { useSetting } from "metabase/common/hooks";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import {
@@ -23,7 +24,6 @@ import * as Urls from "metabase/urls";
 import { modelToUrl } from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
-import { trackSearchClick } from "metabase/utils/search/analytics";
 import {
   type RecentCollectionItem,
   type RecentItem,

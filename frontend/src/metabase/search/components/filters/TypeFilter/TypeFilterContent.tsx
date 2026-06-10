@@ -1,11 +1,11 @@
 import { useState } from "react";
 
 import { useSearchQuery } from "metabase/api";
+import { enabledSearchTypes } from "metabase/common/search/constants";
+import type { SearchFilterDropdown } from "metabase/common/search/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { SearchFilterPopoverWrapper } from "metabase/search/components/SearchFilterPopoverWrapper";
 import { Checkbox, Stack } from "metabase/ui";
-import { enabledSearchTypes } from "metabase/utils/search/constants";
-import type { SearchFilterDropdown } from "metabase/utils/search/types";
 import type { EnabledSearchModel } from "metabase-types/api";
 
 const EMPTY_SEARCH_QUERY = {

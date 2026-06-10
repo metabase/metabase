@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { SearchFilterToggle } from "metabase/utils/search/types";
+import type { SearchFilterToggle } from "metabase/common/search/types";
 
 export const PersonalCollectionsFilter: SearchFilterToggle = {
   label: () => t`Search all personal collections`,

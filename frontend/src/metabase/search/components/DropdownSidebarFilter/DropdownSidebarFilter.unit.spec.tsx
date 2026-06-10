@@ -4,7 +4,7 @@ import userEvent, {
 import { useState } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
-import type { SearchFilterComponent } from "metabase/utils/search/types";
+import type { SearchFilterComponent } from "metabase/common/search/types";
 
 import type { DropdownSidebarFilterProps } from "./DropdownSidebarFilter";
 import { DropdownSidebarFilter } from "./DropdownSidebarFilter";

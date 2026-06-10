@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 import { pick } from "underscore";
 
 import { skipToken, useSearchQuery } from "metabase/api";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { Stack } from "metabase/ui";
-import { trackSearchClick } from "metabase/utils/search/analytics";
 import {
   SEARCH_MODELS,
   type SchemaName,

@@ -7,6 +7,7 @@ import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
+import type { SearchFilters } from "metabase/common/search/types";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -20,7 +21,6 @@ import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
 } from "metabase/utils/constants";
-import type { SearchFilters } from "metabase/utils/search/types";
 import type {
   CollectionItem,
   SearchContext,

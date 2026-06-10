@@ -1,7 +1,7 @@
 import {
   filterEnabledSearchTypes,
   isEnabledSearchModelType,
-} from "metabase/utils/search";
+} from "metabase/common/search";
 
 const TEST_VALID_VALUES = [
   "collection",
