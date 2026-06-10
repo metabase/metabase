@@ -110,10 +110,8 @@
             ;; this, such turns finalize as `:finished true :error nil` — indistinguishable
             ;; from a clean success.
             thrown     (volatile! nil)
-            ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
-                                                       :external-id external-id}))]
+                             (self.core/parts->aisdk-sse-xf {:message-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)

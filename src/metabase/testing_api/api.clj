@@ -349,6 +349,7 @@
                  :role            role
                  :profile_id      profile-id
                  :data            []
+                 :data_version    2
                  :total_tokens    0
                  :created_at      created-at}))
   (t2/insert! :model/AiUsageLog

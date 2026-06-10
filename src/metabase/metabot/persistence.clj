@@ -1,11 +1,15 @@
 (ns metabase.metabot.persistence
   "Persistence for Metabot conversations and messages."
   (:require
+   [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
+   [metabase.metabot.schema.v2 :as schema.v2]
+   [metabase.metabot.schema.validate :as validate]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -27,24 +31,68 @@
   (when (map? structured)
     (not-empty (select-keys structured persisted-structured-output-keys))))
 
-(defn strip-tool-output-bloat
-  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
-  the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
-  [{:keys [type] :as part}]
-  (if (= :tool-output type)
-    (update part :result
-            (fn [r]
-              (cond-> (select-keys r [:output])
-                (trim-structured-output (:structured-output r))
-                (assoc :structured-output (trim-structured-output (:structured-output r)))
-                (trim-structured-output (:structured_output r))
-                (assoc :structured_output (trim-structured-output (:structured_output r))))))
-    part))
+(defn- tool-result->storable-output
+  "The stored `:output` value for a v2 tool part: the trimmed result map. Keeps
+  `:output` (all the LLM adapters read on history replay) and the
+  `persisted-structured-output-keys` subset of structured output (what the
+  analytics extractor reads off persisted messages), canonicalized to
+  `:structured_output`. Everything else (`:resources`, `:data-parts`,
+  `:reactions`, …) is dropped — that's where the bulk of the bloat lives."
+  [result]
+  (let [structured (trim-structured-output (or (:structured-output result)
+                                               (:structured_output result)))]
+    (cond-> (select-keys result [:output])
+      structured (assoc :structured_output structured))))
+
+(defn internal-parts->storable
+  "Convert internal agent-loop parts to v2 at-rest parts
+  (`:metabase.metabot.schema.v2/message-data`). `:tool-input`/`:tool-output`
+  pairs merge into a single `tool-<name>` part whose `:state` reflects the
+  outcome; the stored `:output` is the trimmed result map
+  (see [[tool-result->storable-output]])."
+  [parts]
+  (let [outputs (into {}
+                      (comp (filter #(= :tool-output (:type %)))
+                            (map (juxt :id identity)))
+                      parts)]
+    (->> parts
+         (remove #(= :tool-output (:type %)))
+         (into []
+               (keep (fn [part]
+                       (case (:type part)
+                         :text {:type "text" :text (:text part)}
+                         :tool-input
+                         (let [output (get outputs (:id part))
+                               error  (:error output)]
+                           (cond-> {:type         (str "tool-" (:function part))
+                                    :tool_call_id (:id part)
+                                    :state        (cond
+                                                    (some? error)  "output-error"
+                                                    (some? output) "output-available"
+                                                    :else          "input-available")
+                                    :input        (:arguments part)}
+                             (and (some? output) (nil? error))
+                             (assoc :output (tool-result->storable-output (:result output)))
+
+                             (some? error)
+                             (assoc :error_text (migrate/error->text error))))
+                         :data {:type (str "data-" (or (:data-type part) "data"))
+                                :data (:data part)}
+                         (do (log/warn "Dropping internal part with no v2 storage representation"
+                                       {:type (:type part)})
+                             nil))))))))
+
+(defn parts->storable-content
+  "Drop transient/lifecycle parts and convert what remains to the v2 at-rest
+  format. Stream metadata (`:start`/`:usage`/`:finish`/`:error`) and `state`
+  data parts (salvaged separately into `MetabotConversation.state`) carry no
+  history value."
+  [parts]
+  (->> parts
+       (remove #(#{:start :usage :finish :error} (:type %)))
+       (filter streaming/persistable-data-part?)
+       internal-parts->storable
+       (validate/check ::schema.v2/message-data "metabot_message.data")))
 
 (defn extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -119,7 +167,7 @@
   earlier turn's assistant reply when reads sort by `created_at`.
 
   Positional args: `conversation-id`, `profile-id`, `user-message` (a single message
-  map matching the existing `:data` block shape, e.g. `{:role \"user\" :content ...}`).
+  map shaped `{:role \"user\" :content ...}`; stored as a v2 text part).
 
   Keyword args:
   - `:hostname` — always-on `embedding_hostname`; recorded on conversation insert only.
@@ -182,7 +230,9 @@
                                     (assoc :slack_thread_ts slack-thread-ts))))
       (t2/insert! :model/MetabotMessage
                   (cond-> {:conversation_id conversation-id
-                           :data            [user-message]
+                           :data            (validate/check ::schema.v2/message-data "metabot_message.data"
+                                                            [{:type "text" :text (:content user-message)}])
+                           :data_version    2
                            :role            :user
                            :profile_id      profile-id
                            :external_id     (str (random-uuid))
@@ -197,6 +247,7 @@
                 :model/MetabotMessage
                 (cond-> {:conversation_id conversation-id
                          :data            []
+                         :data_version    2
                          :role            :assistant
                          :profile_id      profile-id
                          :external_id     assistant-external-id
@@ -214,7 +265,8 @@
   a state data part is present in `parts`.
 
   `parts` should be the post-[[combine-text-parts-xf]] parts vector. Stream metadata
-  (`:start`/`:usage`/`:finish`/`:error`) is filtered out before storage; usage is
+  (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
+  the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
   accumulated separately into the `usage` column; the error part body, if any,
   is captured into the `error` column via the `:error` kwarg.
 
@@ -235,12 +287,12 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
-        ;; used-table extraction needs the value before `strip-tool-output-bloat` so it can see keys that strip
-        ;; discards, e.g. `:transform`
-        pre-strip  (->> parts
+        ;; used-table extraction needs the raw internal parts before conversion trims
+        ;; tool outputs, so it can see keys the stored format discards, e.g. `:transform`
+        kept-parts (->> parts
                         (remove #(#{:start :usage :finish :error} (:type %)))
                         (filter streaming/persistable-data-part?))
-        content    (mapv strip-tool-output-bloat pre-strip)]
+        content    (parts->storable-content parts)]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -250,6 +302,7 @@
                     {:state (:data state-part)}))
       (t2/update! :model/MetabotMessage assistant-msg-id
                   (cond-> {:data         content
+                           :data_version 2
                            :usage        usage
                            :total_tokens (->> (vals usage)
                                               (map #(+ (:prompt %) (:completion %)))
@@ -261,7 +314,7 @@
     ;; Hand the (potentially slow) used-table extraction + insert off to a background worker *after* the message
     ;; UPDATE transaction commits, so it neither blocks nor fails the turn. The assistant row already exists, so its
     ;; `message_id` FK is valid even before the UPDATE completes.
-    (used-tables/record-used-tables! assistant-msg-id pre-strip)))
+    (used-tables/record-used-tables! assistant-msg-id kept-parts)))
 
 (defn set-response-slack-msg-id!
   "Backfill slack_msg_id on a MetabotMessage by primary key."
@@ -272,72 +325,51 @@
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
 (defn- convert-content-block
-  "Convert a single raw content block from `:data` into a frontend `MetabotChatMessage` map.
-   Returns nil for blocks that should be skipped (tool-output, unknown types).
+  "Convert a single v2 part from `:data` into a frontend `MetabotChatMessage` map.
+   Returns nil for parts that should be skipped (unknown types).
 
-   `external-id` (the parent row's `metabot_message.external_id`) is attached to
-   agent text and data part chat messages as `:externalId` — the stable key for
-   feedback; the per-block `:id` stays unique."
-  [external-id block]
-  (let [block-type (:type block)
-        block-role (:role block)]
+   `row-role` decides whether text parts render as user or agent messages — v2
+   text parts carry no role of their own. `external-id` (the parent row's
+   `metabot_message.external_id`) is attached to agent text and data part chat
+   messages as `:externalId` — the stable key for feedback; the per-block `:id`
+   stays unique."
+  [row-role external-id part]
+  (let [part-type (:type part)]
     (cond
-      ;; User text: {:role "user" :content "..."}
-      (= "user" block-role)
-      {:id (str (random-uuid)) :role "user" :type "text" :message (:content block)}
+      (= "text" part-type)
+      (if (= :user row-role)
+        {:id (str (random-uuid)) :role "user" :type "text" :message (:text part)}
+        (cond-> {:id      (str (random-uuid))
+                 :role    "agent"
+                 :type    "text"
+                 :message (:text part)}
+          external-id (assoc :externalId external-id)))
 
-      ;; Assistant text (standard): {:type "text" :text "..."}
-      (= "text" block-type)
-      (cond-> {:id (or (:id block) (str (random-uuid)))
-               :role "agent"
-               :type "text"
-               :message (:text block)}
-        external-id (assoc :externalId external-id))
+      (and (string? part-type) (str/starts-with? part-type "tool-"))
+      (cond-> {:id     (:tool_call_id part)
+               :role   "agent"
+               :type   "tool_call"
+               :name   (subs part-type 5)
+               :args   (when-let [i (:input part)] (if (string? i) i (json/encode i)))
+               :status "ended"}
+        (= "output-available" (:state part))
+        (assoc :result (json/encode (:output part)) :is_error false)
 
-      ;; Assistant text (slack format): {:role "assistant" :_type "TEXT" :content "..."}
-      (and (= "assistant" block-role) (= "TEXT" (:_type block)))
-      (cond-> {:id (str (random-uuid))
-               :role "agent"
-               :type "text"
-               :message (:content block)}
-        external-id (assoc :externalId external-id))
+        ;; errored calls store no output — :result stays nil, matching the
+        ;; pre-v2 chat shape the FE renders
+        (= "output-error" (:state part))
+        (assoc :result nil :is_error true))
 
-      ;; Tool input: {:type "tool-input" :id "..." :function "..." :arguments {...}}
-      (= "tool-input" block-type)
-      {:id     (:id block)
-       :role   "agent"
-       :type   "tool_call"
-       :name   (:function block)
-       :args   (when-let [a (:arguments block)] (json/encode a))
-       :status "ended"}
-
-      ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
-      (= "data" block-type)
+      (and (string? part-type) (str/starts-with? part-type "data-"))
       (cond-> {:id   (str (random-uuid))
                :role "agent"
                :type "data_part"
-               :part {:type    (:data-type block)
-                      :version (or (:version block) 1)
-                      :value   (:data block)}}
+               :part {:type    (subs part-type 5)
+                      :version 1
+                      :value   (:data part)}}
         external-id (assoc :externalId external-id))
 
-      ;; Tool output — skip here, merged via merge-tool-results
       :else nil)))
-
-(defn- merge-tool-results
-  "Merge tool-output blocks into their matching tool_call chat messages."
-  [chat-messages blocks]
-  (let [result-map (->> blocks
-                        (filter #(= "tool-output" (:type %)))
-                        (into {} (map (fn [o]
-                                        [(:id o)
-                                         {:result   (when-let [r (:result o)] (json/encode r))
-                                          :is_error (boolean (:error o))}]))))]
-    (mapv (fn [msg]
-            (if-let [r (and (= "tool_call" (:type msg)) (get result-map (:id msg)))]
-              (merge msg r)
-              msg))
-          chat-messages)))
 
 (defn- decode-error
   "JSON-decode a row's `:error` column value (a string written by
@@ -395,17 +427,16 @@
   [message]
   (let [blocks       (or (:data message) [])
         external-id  (:external_id message)
-        chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)
-        merged       (merge-tool-results chat-msgs blocks)
+        chat-msgs    (into [] (keep #(convert-content-block (:role message) external-id %)) blocks)
         ;; Absent :finished is treated as true (success); only explicit nil
         ;; (stale placeholder) or false (aborted) should drive the stub branch.
         not-finished (and (contains? message :finished)
                           (not (true? (:finished message))))
         with-stub    (if (and (= :assistant (:role message))
-                              (empty? merged)
+                              (empty? chat-msgs)
                               (or (some? (:error message)) not-finished))
                        [(empty-agent-placeholder message)]
-                       merged)]
+                       chat-msgs)]
     (annotate-agent-messages with-stub message)))
 
 (defn- errored-agent-row?
