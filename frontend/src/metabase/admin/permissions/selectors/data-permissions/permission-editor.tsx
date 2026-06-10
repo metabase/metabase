@@ -17,8 +17,7 @@ import {
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
-import { getTokenFeature } from "metabase/setup";
+import { getSetting, getTokenFeature } from "metabase/selectors/settings";
 import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
@@ -26,16 +25,16 @@ import type {
   DatabaseId,
   Group,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import type {
   DataRouteParams,
-  EntityId,
   PermissionEditorType,
   PermissionSectionConfig,
-  PermissionSubject,
   RawGroupRouteParams,
-  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
 import {
@@ -183,7 +182,7 @@ const hasViewDataOptions = (entities: any[]) => {
 type EntityWithPermissions = {
   id: string | number;
   name: string;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   canSelect?: boolean;
   permissions: PermissionSectionConfig[];
   callout?: string;

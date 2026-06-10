@@ -68,7 +68,7 @@
 (mr/def ::connection-type
   (into [:enum] connection-types))
 
-(def ^:dynamic *connection-type*
+(def ^:dynamic ^:private *connection-type*
   "Which connection details [[effective-details]] should resolve.
 
    - `:default` — primary `:details`
@@ -79,9 +79,16 @@
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]], [[with-default-connection]], [[with-admin-connection]], or
-   [[with-transform-connection]], not directly."
+   Bind via [[with-write-connection]], [[with-admin-connection]], or [[with-transform-connection]],
+   not directly."
   :default)
+
+(defn do-with-write-connection
+  "Functional core of [[with-write-connection]]. Public so the macro can delegate here instead of
+   expanding `binding` at call sites — that keeps `*connection-type*` referenced only within this namespace."
+  [thunk]
+  (binding [*connection-type* :write-data]
+    (thunk)))
 
 (defmacro with-write-connection
   "Establishes a write-connection context for body.
@@ -89,8 +96,16 @@
    [[effective-details]] calls within this scope resolve to take `:write-data-details`
    into account (if configured) instead of only primary `:details`."
   [& body]
-  `(binding [*connection-type* :write-data]
-     ~@body))
+  `(do-with-write-connection (fn [] ~@body)))
+
+(defn do-with-admin-connection
+  "Functional core of [[with-admin-connection]]."
+  [thunk]
+  (let [prior *connection-type*]
+    (when (not= prior :admin)
+      (log/infof "Entering :admin connection scope (from %s)" prior))
+    (binding [*connection-type* :admin]
+      (thunk))))
 
 (defmacro with-admin-connection
   "Establishes an admin-connection context for body.
@@ -101,19 +116,13 @@
    ownership, schema management). Code that needs admin access must opt in
    explicitly."
   [& body]
-  `(let [prior# *connection-type*]
-     (when (not= prior# :admin)
-       (log/infof "Entering :admin connection scope (from %s)" prior#))
-     (binding [*connection-type* :admin]
-       ~@body)))
+  `(do-with-admin-connection (fn [] ~@body)))
 
-(defmacro with-default-connection
-  "Establishes a default-connection context for body.
-
-   Use this to compile or execute a read query from inside a broader write-connection context."
-  [& body]
-  `(binding [*connection-type* :default]
-     ~@body))
+(defn do-with-transform-connection
+  "Functional core of [[with-transform-connection]]."
+  [thunk]
+  (binding [*connection-type* :transform]
+    (thunk)))
 
 (defmacro with-transform-connection
   "Establishes a transform-connection context for body.
@@ -123,8 +132,7 @@
    through a separate connection pool keyed on `:transform` so the pool can carry its own
    c3p0 properties. See [[*connection-type*]] for the rationale."
   [& body]
-  `(binding [*connection-type* :transform]
-     ~@body))
+  `(do-with-transform-connection (fn [] ~@body)))
 
 (def ^:dynamic ^:private *suppress-resolution-telemetry*
   false)
@@ -165,7 +173,7 @@
 
    `:transform` resolves the same `:write-data-details` as `:write-data` — transforms write,
    so they get write-data credentials when set. The two still resolve to *different* pool keys
-   (see [[effective-connection-type]]) so the pool properties can differ."
+   (see [[connection-pool-type]]) so the pool properties can differ."
   [database connection-type]
   (case connection-type
     :default    nil
@@ -213,7 +221,7 @@
                              {:connection-type (name *connection-type*)})
              (catch Exception _ nil)))
       (-> (driver.w/maybe-swap-details (:id database) base)
-          (assoc ::effective-connection-type eff-type)
+          (assoc ::connection-pool-type eff-type)
           (assoc ::database-id (u/id database))))))
 
 (defn details-for-exact-type
@@ -230,17 +238,14 @@
       :transform  (:details database)
       :admin      (database-admin-details database))))
 
-(defn write-connection-requested?
-  "True if currently executing within a [[with-write-connection]] scope."
+(defn connection-telemetry-info
+  "A human-readable description of the current connection context, for logging only. Prose, not a
+   token — interpolate it into log messages, never branch on it. If you need a value to act on, use
+   [[connection-pool-type]]."
   []
-  (= *connection-type* :write-data))
+  (str "the " (name *connection-type*) " connection"))
 
-(defn admin-connection-requested?
-  "True if currently executing within a [[with-admin-connection]] scope."
-  []
-  (= *connection-type* :admin))
-
-(defn effective-connection-type
+(defn connection-pool-type
   "Returns the effective pool key for the given database. Return value matches malli schema
   [[::connection-type]].
 
@@ -265,7 +270,7 @@
    Call at the point where a driver actually obtains a connection (e.g., pool checkout).
    Non-JDBC drivers that manage their own connections should call this explicitly."
   [connection-details]
-  (if-let [conn-type (::effective-connection-type connection-details)]
+  (if-let [conn-type (::connection-pool-type connection-details)]
     (do
       (log/debugf "Acquiring %s connection for db %s" conn-type (::database-id connection-details))
       (try (analytics/inc! :metabase-db-connection/write-op {:connection-type (name conn-type)})

@@ -38,11 +38,7 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import {
-  RouterTablePicker,
-  SyncOptionsModal,
-  TableSection,
-} from "../../components";
+import { RouterTablePicker, TableSection } from "../../components";
 import type { TreePath } from "../../components/TablePicker/types";
 import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
@@ -91,8 +87,6 @@ function DataModelContent({ params }: Props) {
   );
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
-  const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
-    useDisclosure();
   const [
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
@@ -139,7 +133,7 @@ function DataModelContent({ params }: Props) {
         activeElement instanceof HTMLElement &&
         (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
           activeElement.isContentEditable);
-      const isModalOpen = isSyncModalOpen || isFieldValuesModalOpen;
+      const isModalOpen = isFieldValuesModalOpen;
 
       if (event.key === "Escape" && !isInputFocused && !isModalOpen) {
         event.stopPropagation();
@@ -287,7 +281,6 @@ function DataModelContent({ params }: Props) {
                     activeTab={activeTab}
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
-                    onSyncOptionsClick={openSyncModal}
                     onUpdate={() =>
                       onUpdateCallback?.({
                         databaseId: table.db_id,
@@ -388,14 +381,6 @@ function DataModelContent({ params }: Props) {
           </Box>
         )}
       </>
-
-      {table && (
-        <SyncOptionsModal
-          isOpen={isSyncModalOpen}
-          tableIds={[table.id]}
-          onClose={closeSyncModal}
-        />
-      )}
 
       {fieldId && (
         <FieldValuesModal

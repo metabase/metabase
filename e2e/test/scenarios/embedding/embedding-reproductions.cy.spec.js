@@ -1441,10 +1441,19 @@ describe("issue 51934 (EMB-189)", () => {
         .should("have.length.at.least", 1)
         .last();
 
+    // Each click below swaps the picker view (or selects an item), which
+    // remounts the popover. A single `latestPopover().within(...)` would pin
+    // the popover element from its first command, so a later command in the
+    // same block hits the now-detached node. Re-acquire `latestPopover()` for
+    // every remounting action so Cypress re-queries onto the newest popover.
     cy.log("select a table as a data source");
     latestPopover().within(() => {
       cy.findByText("Raw Data").click();
+    });
+    latestPopover().within(() => {
       cy.findByRole("heading", { name: QA_DB_NAME }).click();
+    });
+    latestPopover().within(() => {
       cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
     });
     H.getNotebookStep("data").button("Join data").click();
@@ -1465,6 +1474,8 @@ describe("issue 51934 (EMB-189)", () => {
     cy.log('go back to the "Bucket" step');
     latestPopover().within(() => {
       cy.icon("chevronleft").click();
+    });
+    latestPopover().within(() => {
       cy.icon("chevronleft").click();
     });
 
@@ -1473,9 +1484,9 @@ describe("issue 51934 (EMB-189)", () => {
     );
     latestPopover().within(() => {
       cy.findByText("Saved Questions").click();
-      clickPickerItem(COLLECTION_NAME);
-      clickPickerItem(QUESTION_IN_COLLECTION_NAME);
     });
+    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
+    latestPopover().within(() => clickPickerItem(QUESTION_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1494,15 +1505,16 @@ describe("issue 51934 (EMB-189)", () => {
     );
     H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
 
+    // Go back to the "Bucket" step
     latestPopover().within(() => {
-      // Go back to the "Bucket" step
       cy.findByText("Saved Questions").click();
-
-      // We're now at the "Bucket" step
-      cy.findByText("Models").click();
-      clickPickerItem(COLLECTION_NAME);
-      clickPickerItem(MODEL_IN_COLLECTION_NAME);
     });
+    // We're now at the "Bucket" step
+    latestPopover().within(() => {
+      cy.findByText("Models").click();
+    });
+    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
+    latestPopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1520,10 +1532,8 @@ describe("issue 51934 (EMB-189)", () => {
       "select a data source after selecting a join step should refresh the data picker on the join step",
     );
     H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
-    latestPopover().within(() => {
-      clickPickerItem("Our analytics");
-      clickPickerItem(MODEL_IN_ROOT_NAME);
-    });
+    latestPopover().within(() => clickPickerItem("Our analytics"));
+    latestPopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
 
     latestPopover().within(() => {
       cy.log("the collection of the new data source should be selected");

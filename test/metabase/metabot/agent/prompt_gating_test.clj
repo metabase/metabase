@@ -5,14 +5,22 @@
    [metabase.metabot.scope :as scope]
    [metabase.test :as mt]))
 
+(def ^:private active-sql-tool-names
+  "Active-tool names including a SQL write tool, so SQL guidance gates on permissions rather than on
+  the SQL tools being absent."
+  ["create_sql_query"])
+
 (defn- render-internal-template
-  "Render the internal.selmer template with given permission flags."
-  [perms]
-  (binding [scope/*current-user-metabot-permissions* perms]
-    (prompts/build-system-message-content
-     {:prompt-template "internal.selmer"}
-     {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
+  The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
+  ([perms] (render-internal-template perms active-sql-tool-names))
+  ([perms active-tool-names]
+   (binding [scope/*current-user-metabot-permissions* perms]
+     (prompts/build-system-message-content
+      {:prompt-template "internal.selmer"}
+      {:current_time "2026-03-25T12:00:00Z"}
+      (zipmap active-tool-names (repeat nil))
+      []))))
 
 (def ^:private all-yes-perms
   {:permission/metabot-sql-generation :yes
@@ -52,6 +60,13 @@
       (is (re-find #"You cannot write SQL" rendered)))
     (testing "denial suggests NLQ as alternative"
       (is (re-find #"natural language query builder" rendered)))))
+
+(deftest ^:parallel prompt-excludes-sql-sections-when-tools-inactive-test
+  (testing "SQL permission alone does not render SQL guidance when no SQL write tool is active
+           (the tools are capability-gated, so the prompt must not cite tools/skills that are absent)"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query"])]
+      (is (not (re-find #"# Writing SQL" rendered)))
+      (is (re-find #"You cannot write SQL" rendered)))))
 
 (deftest ^:parallel prompt-gates-nql-section-test
   (let [with-nql    (render-internal-template all-yes-perms)
@@ -143,7 +158,8 @@
     (prompts/build-system-message-content
      {:prompt-template "slackbot.selmer"}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest ^:parallel slackbot-nlq-sections-gated-test
   (let [with-nlq    (render-slackbot-template all-yes-perms)
@@ -208,7 +224,8 @@
     (prompts/build-system-message-content
      {:prompt-template template-name}
      {:current_time "2026-03-25T12:00:00Z"}
-     {})))
+     {}
+     [])))
 
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
