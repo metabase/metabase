@@ -89,7 +89,7 @@ function AddPersonForm({ onCreated }: { onCreated: () => void }) {
 
 ## Showing the error message
 
-When `execute(...)` fails, surface the backend message in the UI. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message? }, isCancelled }` where the human-readable diagnostic lives at `error.data.message` (SQL constraint violations, validation failures, permission denials all land there). Read it directly, no cast:
+When `execute(...)` fails, surface the backend message in the UI. The hook's `error` is typed `ActionExecuteError | null` — shape `{ status?, data: { message?, errors? }, isCancelled }` where the human-readable diagnostic lives at `error.data.message` (SQL constraint violations, validation failures, permission denials all land there). `error.data.errors` is a per-field map (`{ <slug>: <message> }`) when the backend reports parameter-level failures, or `{}` for whole-request failures. Read both directly, no cast:
 
 ```tsx
 {error ? (
@@ -109,11 +109,11 @@ SQL statement:
 UPDATE "PUBLIC"."PEOPLE" SET … WHERE "PUBLIC"."PEOPLE"."ID" = 1 [22001-214]
 ```
 
-That whole string is `error.message`. Render it as-is.
+That whole string is `error.data.message`. Render it as-is.
 
 **Don't:**
 
-- Render `"Failed"` / `"Something went wrong"` / `String(error)` instead of `error.message` — the user loses the only fix-it info they have.
+- Render `"Failed"` / `"Something went wrong"` / `String(error)` instead of `error.data.message` — the user loses the only fix-it info they have.
 - Paraphrase the message into a "friendlier" version. The raw H2/Postgres/SQL error is more actionable than any rewrite.
 
 ## After an action runs — keeping the UI honest
