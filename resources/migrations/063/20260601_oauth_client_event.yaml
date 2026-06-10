@@ -2,10 +2,8 @@
 ## One row is recorded when a client registers, and one row per approve/deny decision.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/063_update_migrations.yaml
-
   - changeSet:
-      id: v63.2026-06-01T00:00:00
+      id: v63.k7m2qd
       author: bshepherdson
       comment: Create oauth_client_event table to audit DCR registration and decision events
       changes:
@@ -48,7 +46,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v63.2026-06-01T00:00:01
+      id: v63.r9w4xb
       author: bshepherdson
       comment: Add index on oauth_client_event.oauth_client_id
       changes:
@@ -60,7 +58,7 @@ databaseChangeLog:
                   name: oauth_client_id
 
   - changeSet:
-      id: v63.2026-06-01T00:00:02
+      id: v63.t3z8np
       author: bshepherdson
       comment: Add FK on oauth_client_event.oauth_client_id
       changes:
@@ -73,7 +71,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v63.2026-06-01T00:00:03
+      id: v63.h5c1vj
       author: bshepherdson
       comment: Add FK on oauth_client_event.user_id
       changes:

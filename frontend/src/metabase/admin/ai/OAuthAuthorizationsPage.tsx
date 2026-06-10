@@ -38,6 +38,7 @@ import {
   OAUTH_EVENT_TYPES,
   OAUTH_PAGE_SIZE,
   getOAuthEventTypeLabel,
+  isOAuthEventType,
 } from "./oauth-utils";
 
 const ALL_EVENT_TYPES = "all";
@@ -73,9 +74,7 @@ function parsePage(param: QueryParam): number {
 
 function parseEventType(param: QueryParam): EventTypeFilter {
   const value = getFirstParamValue(param);
-  return value && (OAUTH_EVENT_TYPES as string[]).includes(value)
-    ? (value as OAuthClientEventType)
-    : ALL_EVENT_TYPES;
+  return value && isOAuthEventType(value) ? value : ALL_EVENT_TYPES;
 }
 
 export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
@@ -118,7 +117,7 @@ export const OAuthAuthorizationsPage = ({ location }: WithRouterProps) => {
         value={eventType}
         onChange={(value) =>
           patchUrlState({
-            eventType: (value as EventTypeFilter) ?? ALL_EVENT_TYPES,
+            eventType: value ?? ALL_EVENT_TYPES,
             page: 0,
           })
         }

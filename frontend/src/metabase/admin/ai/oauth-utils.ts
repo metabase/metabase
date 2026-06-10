@@ -22,3 +22,7 @@ export function getOAuthEventTypeLabel(
       return t`Denied`;
   }
 }
+
+export function isOAuthEventType(value: string): value is OAuthClientEventType {
+  return OAUTH_EVENT_TYPES.some((v) => v === value);
+}
