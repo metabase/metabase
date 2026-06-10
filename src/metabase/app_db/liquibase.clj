@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations]
@@ -597,8 +596,7 @@
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql (sql/format remaining-query)
-                 remaining-ids   (map :id (t2/query conn formatted-sql))]
+                 remaining-ids   (map :id (t2/query conn remaining-query))]
              (when (seq remaining-ids)
                (log/warnf "The following changesets were not rolled back. Likely because %s: %s"
                           (if (seq @error-ids)
