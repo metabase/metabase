@@ -2322,6 +2322,7 @@
            task-history
            tracing
            transforms-base
+           upload
            util}
    :friends #{models
               enterprise/transforms-python}
