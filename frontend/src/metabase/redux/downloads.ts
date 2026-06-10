@@ -20,7 +20,7 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { DownloadsState, State } from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
-import { getTokenFeature } from "metabase/setup/selectors";
+import { getTokenFeature } from "metabase/selectors/settings";
 import * as Urls from "metabase/urls";
 import { openSaveDialog } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";

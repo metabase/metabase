@@ -115,7 +115,7 @@ const elements = [
     enforceOutgoing: false,
   }),
   createElement({ type: "shared", name: "search" }),
-  createElement({ type: "shared", name: "setup" }),
+  createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
