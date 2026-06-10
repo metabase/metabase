@@ -107,10 +107,10 @@
                          :target ["field" {} (mt/id :venues :price)]}]
               dims     [{:dimension_id "d1" :display_name "Price" :effective_type "type/Number"}]
               mk       (fn [] (first (t2/insert-returning-instances!
-                                       :model/ExplorationThreadGroup
-                                       {:exploration_thread_id (:id t)
-                                        :metrics    [{:card_id cid :dimension_mappings mappings}]
-                                        :dimensions dims :position 0})))
+                                      :model/ExplorationThreadGroup
+                                      {:exploration_thread_id (:id t)
+                                       :metrics    [{:card_id cid :dimension_mappings mappings}]
+                                       :dimensions dims :position 0})))
               g1       (mk)
               g2       (mk)]
           (is (= :ok (query-plan/generate-query-plan! (:id t))))

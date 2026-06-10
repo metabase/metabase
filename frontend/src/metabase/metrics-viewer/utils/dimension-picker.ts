@@ -27,7 +27,7 @@ export type {
   SourceDisplayInfo,
 } from "../types";
 
-import {  getDimensionsByType } from "./dimension-breakouts";
+import { getDimensionsByType } from "./dimension-breakouts";
 import type { MetricSlot } from "./metric-slots";
 
 // ── Dimension picker ──
