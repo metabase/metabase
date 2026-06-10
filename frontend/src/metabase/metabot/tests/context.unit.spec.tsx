@@ -87,7 +87,7 @@ describe("metabot > context", () => {
     expect(
       _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
     ).toEqual({
-      capabilities: ["permission:save_questions"],
+      capabilities: ["frontend:inline_viz_v1", "permission:save_questions"],
     });
   });
 
