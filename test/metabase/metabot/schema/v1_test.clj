@@ -22,8 +22,11 @@
    [{:type "tool-output" :id "tc1" :function "search"
      :result {:output "rows" :structured-output {:type "table"}}
      :error nil :duration-ms 12.5}                                                 :id]
+   [{:type "tool-output" :id "tc1"
+     :result {:output "rows" :instructions "..." :resources [] :data-parts []}}    :result]
    [{:type "data" :data-type "navigate_to" :version 1 :data "/question/1"}         :data-type]
-   [{:type "error" :error {:message "boom"}}                                       :error]])
+   [{:type "error" :error {:message "boom"}}                                       :error]
+   [{:type "error" :errorText "Overloaded"}                                        :errorText]])
 
 (deftest ^:parallel entry-test
   (doseq [[schema cases] {::schema.v1/ai-service-entry ai-service-entry-cases
@@ -55,32 +58,6 @@
   (testing "extra keys fail"
     (is (not (mr/validate ::schema.v1/message-data
                           [{:role "user" :content "hi" :unexpected-key 1}])))))
-
-(deftest ^:parallel normalize-entry-test
-  (testing "full tool-output results are trimmed to the persisted subset"
-    (let [entry {:type   "tool-output"
-                 :id     "tc1"
-                 :result {:output            "rows"
-                          :structured-output {:type "table"}
-                          :instructions      "..."
-                          :resources         []
-                          :data-parts        []}}]
-      (is (= {:type   "tool-output"
-              :id     "tc1"
-              :result {:output "rows" :structured-output {:type "table"}}}
-             (schema.v1/normalize-entry entry)))))
-  (testing "nil results pass through"
-    (is (= {:type "tool-output" :id "tc1" :result nil}
-           (schema.v1/normalize-entry {:type "tool-output" :id "tc1" :result nil}))))
-  (testing "errorText errors are rewritten to the error key"
-    (is (= {:type "error" :error "Overloaded"}
-           (schema.v1/normalize-entry {:type "error" :errorText "Overloaded"}))))
-  (testing "compliant entries pass through unchanged"
-    (is (= {:type "error" :error {:message "boom"}}
-           (schema.v1/normalize-entry {:type "error" :error {:message "boom"}})))
-    (is (= {:type "text" :id "t1" :text "hi"}
-           (schema.v1/normalize-entry {:type "text" :id "t1" :text "hi"})))
-    (is (= "not a map" (schema.v1/normalize-entry "not a map")))))
 
 (defn- persistence-round-trip
   "Simulate `mi/transform-json` write + read: keyword values become strings, keys stay keywords."
