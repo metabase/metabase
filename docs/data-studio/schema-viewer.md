@@ -9,21 +9,21 @@ _Data Studio > Schema viewer_
 
 {% include plans-blockquote.html feature="Schema viewer" %}
 
-Schema viewer helps you understand relationships between tables in your database.
+The schema viewer helps you understand relationships between tables in your database.
 
 ![Schema viewer](./images/schema-viewer.png)
 
-If you're looking for a visual representation of dependencies between _Metabase entities_ (questions, metrics etc) and their underlying tables, check out [Dependency graph](./dependencies/graph.md) instead.
+If you're looking for a visual representation of dependencies between _Metabase entities_ (questions, metrics etc) and their underlying tables, check out the [dependency graph](./dependencies/graph.md) instead.
 
-## What schema viewer shows
+## What the schema viewer shows
 
 For a particular schema (if your), the schema viewer will display:
 
 - All tables in the schema (including hidden tables)
 - Database names for tables and fields
 - Database types for fields
-- Foreign key relationships _defined in Metabase_ (as arrows between tables)
-- Entity keys _defined in Metabase_
+- Foreign key relationships _set in Metabase_ (as arrows between tables)
+- Entity keys _set in Metabase_
 
 Schema viewer displays relationships based on the [Foreign Key semantic type](../data-modeling/metadata-editing.md) defined in Metabase, not based on constraints defined directly in your database. However, during [database sync](../databases/sync-scan.md), Metabase automatically maps database foreign key constraints to foreign key semantic types, so in most cases you won't need to set these manually.
 
@@ -41,17 +41,17 @@ To see the table relationships in the schema viewer:
 
 In the schema viewer, you can:
 
-- Use the mini-map in the bottom right to focus on specific parts of your schema;
-- Search for a table and center the schema viewer on that table;
-- Drag and rearrange the tables;
-- Click a table header to open an info panel;
+- Use the mini-map in the bottom right to focus on specific parts of your schema.
+- Search for a table and center the schema viewer on that table.
+- Drag and rearrange the tables.
+- Click a table header to open an info panel.
 - Click a foreign key field to navigate the connected table.
 
 ## Permissions for schema viewer
 
-Only admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group can access the schema viewer.
+The schema viewer is part of Data studio, which only people in the Admin or [Data Analysts](../people-and-groups/managing.md#data-analysts) groups can access.
 
-Data analysts need to have at least [query builder](../permissions/data.md) permissions for at least one table in the database to be able to use the schema viewer for that database.
+The Data Analyst group additionally needs to have at least [query builder](../permissions/data.md) permissions for one or more tables in a database to use the schema viewer for that database.
 
 ## Further reading
 
