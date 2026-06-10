@@ -54,7 +54,7 @@ export function computeMetricSlots(
             entityIndex: i,
             sourceId: token.sourceId,
             tokenPosition: j,
-            occurrenceCount: token.count,
+            occurrenceCount: token.occurrenceCount,
           });
         }
       }

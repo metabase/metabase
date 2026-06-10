@@ -10,9 +10,9 @@ describe("computeMetricSlots", () => {
         type: "expression",
         name: "Repeated Revenue",
         tokens: [
-          { type: "metric", sourceId: "metric:1", count: 1 },
+          { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
           { type: "operator", op: "+" },
-          { type: "metric", sourceId: "metric:1", count: 2 },
+          { type: "metric", sourceId: "metric:1", occurrenceCount: 2 },
         ],
       },
     ];
