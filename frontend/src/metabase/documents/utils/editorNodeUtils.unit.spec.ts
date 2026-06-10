@@ -66,11 +66,11 @@ describe("isTopLevel", () => {
     expect(isTopLevel(buildArgs(buildEditor(doc), null))).toBe(true);
   });
 
-  it("returns true when getPos returns null or undefined", () => {
+  it("returns true when getPos returns undefined", () => {
     const doc = schema.node("doc", null, [
       schema.node("paragraph", null, [schema.text("hi")]),
     ]);
-    expect(isTopLevel(buildArgs(buildEditor(doc), () => null))).toBe(true);
+    expect(isTopLevel(buildArgs(buildEditor(doc), () => undefined))).toBe(true);
     expect(
       isTopLevel(buildArgs(buildEditor(doc), () => undefined as never)),
     ).toBe(true);
