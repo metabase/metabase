@@ -98,8 +98,8 @@
 
 (task/defjob ^{:doc "Reap orphaned (stale-heartbeat) runs for a registered run model."
                org.quartz.DisallowConcurrentExecution true}
-  RunTrackingReaper [^JobExecutionContext ctx]
-  (let [job-key (.. ctx getJobDetail getKey getName)
+  RunTrackingReaper [ctx]
+  (let [job-key (.. ^JobExecutionContext ctx getJobDetail getKey getName)
         {:keys [reap-fn label]} (@reapers job-key)]
     (when-let [reaped (and reap-fn (not-empty (reap-fn)))]
       (log/infof "Reaped %d orphaned %s(s) with stale heartbeats." (count reaped) label))))
