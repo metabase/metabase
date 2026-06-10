@@ -229,25 +229,28 @@
                           (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
-              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
-                                    {:message         "go"
-                                     :context         {}
-                                     :conversation_id (str (random-uuid))
-                                     :history         []
-                                     :state           {}})
-              (u/poll {:thunk       #(deref stored-kwargs)
-                       :done?       some?
-                       :interval-ms 10
-                       :timeout-ms  3000})
-              (is (some? @stored-kwargs)
-                  "finalize-assistant-turn! is called from the finally even when setup threw")
-              (is (true? (:finished? @stored-kwargs))
-                  "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
-              (is (=? {:message #"(?i)agent setup exploded"
-                       :type    "clojure.lang.ExceptionInfo"
-                       :data    {:status 503 :provider :test}}
-                      (:error @stored-kwargs))
-                  "the throwable becomes a structured error payload"))))))))
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "go"
+                                                    :context         {}
+                                                    :conversation_id (str (random-uuid))
+                                                    :history         []
+                                                    :state           {}})]
+                (u/poll {:thunk       #(deref stored-kwargs)
+                         :done?       some?
+                         :interval-ms 10
+                         :timeout-ms  3000})
+                (is (some? @stored-kwargs)
+                    "finalize-assistant-turn! is called from the finally even when setup threw")
+                (is (true? (:finished? @stored-kwargs))
+                    "a thrown turn is :finished? true — `finished=false` is reserved for client aborts")
+                (is (=? {:message #"(?i)agent setup exploded"
+                         :type    "clojure.lang.ExceptionInfo"
+                         :data    {:status 503 :provider :test}}
+                        (:error @stored-kwargs))
+                    "the throwable becomes a structured error payload")
+                (testing "the failure is streamed to the client as an AI SDK error part (3:...) rather than a silent close"
+                  (is (some #(str/starts-with? % "3:") (str/split-lines response)))
+                  (is (re-find #"(?i)agent setup exploded" response)))))))))))
 
 (deftest settings-get-returns-live-models-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
