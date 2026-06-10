@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { useUpdateDataAppMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
@@ -10,7 +11,6 @@ import {
 } from "metabase/forms";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useUpdateDataAppMutation } from "metabase/api";
 import type { DataApp } from "metabase-types/api";
 
 import {

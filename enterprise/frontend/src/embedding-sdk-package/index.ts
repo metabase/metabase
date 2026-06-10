@@ -53,11 +53,9 @@ export type {
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 
-export {
-  DataAppRouter,
-  DataAppLink,
-  useDataAppLocation,
-} from "metabase/data_apps/router";
+export { DataAppRouter } from "./components/public/DataAppRouter";
+export { DataAppLink } from "./components/public/DataAppLink";
+export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 
 export {
   type CollectionBrowserProps,

@@ -77,10 +77,15 @@ export type SchemaValue<TColumn extends SchemaColumn> =
           ? string | Date | null
           : RowValue | null;
 
+/** @notExported SchemaValue */
 export type SchemaRow<TSchema extends { columns: readonly SchemaColumn[] }> = {
   [TColumn in TSchema["columns"][number] as TColumn["name"]]: SchemaValue<TColumn>;
 };
 
+/**
+ * @notExported DatasetColumn
+ * @notExported RowValues
+ */
 export type QueryData<TRow> = {
   id?: QueryQuestionResult["id"] | null;
   name?: QueryQuestionResult["name"] | null;
