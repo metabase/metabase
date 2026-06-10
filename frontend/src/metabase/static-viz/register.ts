@@ -15,6 +15,7 @@ import { SankeyChart } from "metabase/visualizations/visualizations/SankeyChart"
 import { Scalar } from "metabase/visualizations/visualizations/Scalar";
 import { ScatterPlot } from "metabase/visualizations/visualizations/ScatterPlot";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
+import { TreemapChart } from "metabase/visualizations/visualizations/TreemapChart";
 import { WaterfallChart } from "metabase/visualizations/visualizations/WaterfallChart";
 
 export const registerStaticVisualizations = () => {
@@ -42,6 +43,8 @@ export const registerStaticVisualizations = () => {
   registerVisualization(PieChart);
   // @ts-expect-error: incompatible prop types with registerVisualization
   registerVisualization(SankeyChart);
+  // @ts-expect-error: incompatible prop types with registerVisualization
+  registerVisualization(TreemapChart);
   // @ts-expect-error: incompatible prop types with registerVisualization
   registerVisualization(RowChart);
   // @ts-expect-error: incompatible prop types with registerVisualization

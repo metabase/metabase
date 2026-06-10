@@ -13,6 +13,7 @@ import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
+import { TreemapChart } from "../TreemapChart";
 import { WaterfallChart } from "../WaterfallChart/WaterfallChart";
 
 registerStaticVisualizations();
@@ -56,6 +57,8 @@ export const StaticVisualization = ({
       return <PieChart {...props} />;
     case "sankey":
       return <SankeyChart {...props} />;
+    case "treemap":
+      return <TreemapChart {...props} />;
     case "progress":
       return <ProgressBar {...props} />;
     case "row":
