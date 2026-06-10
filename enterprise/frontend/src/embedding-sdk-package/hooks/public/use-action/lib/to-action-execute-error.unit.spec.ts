@@ -43,7 +43,10 @@ describe("toActionExecuteError", () => {
 
       expect(result).toEqual({
         status: 400,
-        data: { message: "bad input", errors: { discount: "must be positive" } },
+        data: {
+          message: "bad input",
+          errors: { discount: "must be positive" },
+        },
         isCancelled: false,
       });
       expect(result.data).not.toHaveProperty("via");
@@ -61,7 +64,9 @@ describe("toActionExecuteError", () => {
         status: 400,
         data: {
           via: [{ type: "clojure.lang.ExceptionInfo", message: sqlMessage }],
-          trace: [["metabase.driver.sql_jdbc.actions", "invoke", "actions.clj", 71]],
+          trace: [
+            ["metabase.driver.sql_jdbc.actions", "invoke", "actions.clj", 71],
+          ],
           cause: sqlMessage,
           data: { message: sqlMessage, "status-code": 400 },
           message: sqlMessage,
