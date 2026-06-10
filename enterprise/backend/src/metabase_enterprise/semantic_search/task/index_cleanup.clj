@@ -5,7 +5,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -32,7 +31,7 @@
              :where [:and
                      [:like :t.table_name [:inline "index_table_%"]]
                      [:= :meta.table_name nil]]}
-            (sql/format :quoted true))]
+            semantic.u/format-honeysql)]
     (->> (jdbc/execute! pgvector orphaned-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name))))
 
@@ -56,7 +55,7 @@
         repair-tables-sql (-> {:select [:t.table_name]
                                :from [[:information_schema.tables :t]]
                                :where [:like :t.table_name [:inline "repair_%"]]}
-                              (sql/format :quoted true))
+                              semantic.u/format-honeysql)
         all-repair-tables (->> (jdbc/execute! pgvector repair-tables-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                                (map :table_name))
         old-tables (filter (fn [table-name]
@@ -75,9 +74,8 @@
   (let [orphan-tables (orphan-repair-tables pgvector)]
     (when (seq orphan-tables)
       (let [tables-to-drop (map keyword orphan-tables)
-            drop-table-sql (sql/format
-                            (apply sql.helpers/drop-table :if-exists tables-to-drop)
-                            :quoted true)]
+            drop-table-sql (semantic.u/format-honeysql
+                            (apply sql.helpers/drop-table :if-exists tables-to-drop))]
         (log/infof "Dropping %d orphaned repair tables: %s"
                    (count tables-to-drop)
                    (str/join ", " orphan-tables))
@@ -100,7 +98,7 @@
                                      [:or
                                       [:= :meta.indexer_last_seen nil]
                                       [:< :meta.indexer_last_seen retention-cutoff]]]}
-                            (sql/format :quoted true))]
+                            semantic.u/format-honeysql)]
     (->> (jdbc/execute! pgvector stale-index-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
          (map :table_name))))
 
@@ -119,7 +117,7 @@
                      (-> {:select [:m.*]
                           :from [[(keyword control-table-name) :c]]
                           :join [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
-                         (sql/format :quoted true))
+                         semantic.u/format-honeysql)
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- cleanup-old-gate-tombstones!
@@ -141,7 +139,7 @@
                                                  [:= :document nil]
                                                  [:= :document_hash nil]
                                                  [:< :gated_at retention-cutoff]]}
-                                        (sql/format :quoted true))
+                                        semantic.u/format-honeysql)
               deleted-count (::jdbc/update-count (jdbc/execute-one! pgvector tombstone-cleanup-sql))]
           (when (pos? deleted-count)
             (log/infof "Cleaned up %d old tombstone records from gate table" deleted-count)))))
@@ -153,9 +151,8 @@
   (let [stale-table-names    (map keyword (stale-index-tables pgvector index-metadata))
         orphaned-table-names (map keyword (orphan-index-tables pgvector index-metadata))
         tables-to-drop       (concat stale-table-names orphaned-table-names)
-        drop-table-sql       (sql/format
-                              (apply sql.helpers/drop-table :if-exists tables-to-drop)
-                              :quoted true)]
+        drop-table-sql       (semantic.u/format-honeysql
+                              (apply sql.helpers/drop-table :if-exists tables-to-drop))]
     (when (seq tables-to-drop)
       (log/infof "Found %d semantic search index tables to clean up" (count tables-to-drop))
       (doseq [table-name stale-table-names]

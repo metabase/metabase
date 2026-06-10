@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [environ.core :refer [env]]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.db.migration :as semantic.db.migration]
@@ -509,14 +508,14 @@
   (jdbc/execute! pgvector
                  (-> {:select [:*]
                       :from   [(keyword (:metadata-table-name index-metadata))]}
-                     (sql/format :quoted true))
+                     semantic.util/format-honeysql)
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn get-control-rows [pgvector index-metadata]
   (jdbc/execute! pgvector
                  (-> {:select [:*]
                       :from   [(keyword (:control-table-name index-metadata))]}
-                     (sql/format :quoted true))
+                     semantic.util/format-honeysql)
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn cleanup-index-metadata!
@@ -576,7 +575,7 @@
   (let [result (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
                                   (-> (sql.helpers/select [:%count.* :count])
                                       (sql.helpers/from (keyword (:table-name index)))
-                                      semantic.index/sql-format-quoted)
+                                      semantic.util/format-honeysql)
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (or (:count result) 0)))
 
@@ -588,7 +587,7 @@
   (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
                       (-> (sql.helpers/select :model :model_id :content :creator_id :embedding)
                           (sql.helpers/from (keyword (:table-name mock-index)))
-                          semantic.index/sql-format-quoted)
+                          semantic.util/format-honeysql)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
@@ -602,7 +601,7 @@
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
-                          semantic.index/sql-format-quoted)
+                          semantic.util/format-honeysql)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv decode-embedding)))
 
@@ -617,7 +616,7 @@
                           (sql.helpers/where :and
                                              [:= :model model]
                                              [:= :model_id model_id])
-                          semantic.index/sql-format-quoted)
+                          semantic.util/format-honeysql)
                       {:builder-fn jdbc.rs/as-unqualified-lower-maps})
        (mapv unwrap-tsvectors)))
 

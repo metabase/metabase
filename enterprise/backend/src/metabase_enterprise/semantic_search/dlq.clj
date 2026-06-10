@@ -12,14 +12,13 @@
   Initial write to the dead letter queue happen inside the indexer
   when stall conditions are detected (see indexer.clj stall handling).
 
-  The queue is continuously drained (entries retried, and removed on success) by the indexer as part of normal index maintenance - there is no additional job
-  and writes & reads remain coordinated, ordering is preserved.
+  The queue is continuously drained (entries retried, and removed on success) by the indexer as part of normal index
+  maintenance - there is no additional job and writes & reads remain coordinated, ordering is preserved.
 
   Documents will be rescheduled for retries on failure - there is a transient-policy (for temporary errors)
   and a permanent-policy (that is likely only resolved with manual intervention, a patch to the code).
   Even 'permanent' errors are retried however - due to inherent ambiguity - it just effects the backoff climb."
   (:require
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.util :as semantic.util]
@@ -36,7 +35,8 @@
 (def ^:private dlq-table-schema
   "The database schema definition for a DLQ table.
   The schema includes:
-  - gate_id: PK & reference to the gate table entry that failed (NOTE: no FK, the DLQ is index specific and does not impose any change to the behaviour of the gate table)
+  - gate_id: PK & reference to the gate table entry that failed (NOTE: no FK, the DLQ is index specific and does not
+    impose any change to the behavior of the gate table)
   - retry_count: Number of retry attempts made for this entry
   - attempt_at: Next scheduled retry timestamp (based on backoff policy)
   - last_attempted_at: Timestamp of the most recent retry attempt
@@ -64,11 +64,11 @@
     ;; create table
     (let [ddl {:create-table [dlq-table :if-not-exists]
                :with-columns dlq-table-schema}
-          sql (sql/format ddl :quoted true)]
+          sql (semantic.util/format-honeysql ddl)]
       (jdbc/execute-one! pgvector sql))
     ;; create attempt_at index
     (let [ddl {:create-index [[(keyword (str (name dlq-table) "_attempt_at_idx")) :if-not-exists] [dlq-table :attempt_at]]}
-          sql (sql/format ddl :quoted true)]
+          sql (semantic.util/format-honeysql ddl)]
       (jdbc/execute-one! pgvector sql))
     nil))
 
@@ -76,7 +76,7 @@
   "Drops the DLQ table for the specified index if it exists."
   [pgvector index-metadata index-id]
   (let [ddl {:drop-table [:if-exists (dlq-table-name-kw index-metadata index-id)]}
-        sql (sql/format ddl :quoted true)]
+        sql (semantic.util/format-honeysql ddl)]
     (jdbc/execute-one! pgvector sql)
     nil))
 
@@ -202,7 +202,7 @@
                                ;; prefer the new attempt_at / retry_count from the gate to the prior DLQ entry.
                                :where  [:<= [:. (dlq-table-name-kw index-metadata index-id) :error_gated_at]
                                         :excluded.error_gated_at]}}
-          sql (sql/format dml :quoted true)
+          sql (semantic.util/format-honeysql dml)
           {upsert-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
       (log/debugf "Added/updated %d DLQ entries for index %s" upsert-count index-id)
       upsert-count)))
@@ -227,7 +227,7 @@
                :where       [:in [:composite :gate_id :error_gated_at]
                              (for [{:keys [id gated_at]} gate-docs]
                                [id gated_at])]}
-          sql (sql/format dml :quoted true)
+          sql (semantic.util/format-honeysql dml)
           {delete-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)]
       (when (pos? delete-count)
         (log/debugf "Deleted %d DLQ entries for index %s" delete-count index-id))
@@ -286,7 +286,7 @@
              :left-join [[(keyword (:gate-table-name index-metadata)) :g] [:= :d.gate_id :g.id]]
              :where     [:<= :d.attempt_at (.instant clock)]
              :limit     poll-limit}
-        sql (sql/format q :quoted true)
+        sql (semantic.util/format-honeysql q)
         results (jdbc/execute! pgvector sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     (when (seq results)
       (log/debugf "Polled %d DLQ entries ready for retry from index %s" (count results) index-id))

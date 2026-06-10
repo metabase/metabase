@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.indexer-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
@@ -9,15 +8,17 @@
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.indexer :as semantic.indexer]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.io Closeable)
-           (java.sql Timestamp)
-           (java.time Duration Instant InstantSource)))
+  (:import
+   (java.io Closeable)
+   (java.sql Timestamp)
+   (java.time Duration Instant InstantSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -25,10 +26,9 @@
 
 (defn- get-metadata-row! [pgvector index-metadata index]
   (jdbc/execute-one! pgvector
-                     (sql/format {:select [:*]
-                                  :from   [(keyword (:metadata-table-name index-metadata))]
-                                  :where  [:= :table_name (:table-name index)]}
-                                 :quoted true)
+                     (semantic.util/format-honeysql {:select [:*]
+                                                     :from   [(keyword (:metadata-table-name index-metadata))]
+                                                     :where  [:= :table_name (:table-name index)]})
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- ts ^Timestamp [s]
@@ -495,7 +495,7 @@
 
 (defn- get-dlq-rows! [pgvector index-metadata index-id]
   (let [q {:select [:*] :from [(semantic.dlq/dlq-table-name-kw index-metadata index-id)]}]
-    (jdbc/execute! pgvector (sql/format q :quoted true) {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
+    (jdbc/execute! pgvector (semantic.util/format-honeysql q) {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (deftest indexer-stall-and-recovery-test
   (mt/with-prometheus-system! [_ system]
@@ -611,7 +611,7 @@
         poisoned-doc-id  (volatile! nil)
         get-indexed-docs (fn []
                            (jdbc/execute! pgvector
-                                          (sql/format {:select [:model_id] :from [(keyword (:table-name index))]} :quoted true)
+                                          (semantic.util/format-honeysql {:select [:model_id] :from [(keyword (:table-name index))]})
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
         upsert-index!    semantic.index/upsert-index!]
     (with-open [_            (semantic.tu/open-metadata! pgvector index-metadata)

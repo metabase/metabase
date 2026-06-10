@@ -109,6 +109,8 @@
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
   (let [sql-args (try
+                   ;; this is one of the officially supported functions you're asked to use instead
+                   #_{:clj-kondo/ignore [:discouraged-var]}
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running

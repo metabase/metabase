@@ -3,7 +3,7 @@
    [honey.sql :as sql]
    [metabase.driver.sql.query-processor :as sql.qp]))
 
-(defmacro with-quoting
+(defmacro ^:private with-quoting
   "Helper macro for quoting identifiers."
   [driver & body]
   `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))

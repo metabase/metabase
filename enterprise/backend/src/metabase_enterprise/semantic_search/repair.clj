@@ -7,10 +7,10 @@
   the gate table to find lost deletes that we issue tombstones for."
   (:require
    [clojure.set :as set]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str]
@@ -31,7 +31,7 @@
                          (sql.helpers/values repair-records)
                          (sql.helpers/on-conflict :model :model_id)
                          (sql.helpers/do-nothing)
-                         (sql/format :quoted true))]
+                         semantic.util/format-honeysql)]
       (jdbc/execute! pgvector insert-sql)
       (log/debugf "Populated repair table with %d document records" (count repair-records)))))
 
@@ -50,7 +50,7 @@
                                                                                (keyword gate-table-name "model")]
                                                                               [:= (keyword repair-table-name "model_id")
                                                                                (keyword gate-table-name "model_id")]]))]])
-                            (sql/format :quoted true))
+                            semantic.util/format-honeysql)
           results (jdbc/execute! pgvector anti-join-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (log/infof "Found %d documents in gate table that should be deleted" (count results))
       results)
@@ -75,7 +75,7 @@
                              (sql.helpers/with-columns [[:model :text :not-null]
                                                         [:model_id :text :not-null]
                                                         [[:primary-key :model :model_id]]])
-                             (sql/format :quoted true))]
+                             semantic.util/format-honeysql)]
     (log/debugf "Creating repair table: %s" repair-table-name)
     (jdbc/execute! pgvector repair-table-ddl)))
 
@@ -83,7 +83,7 @@
   [pgvector repair-table-name]
   (try
     (jdbc/execute! pgvector (-> (sql.helpers/drop-table :if-exists (keyword repair-table-name))
-                                (sql/format :quoted true)))
+                                semantic.util/format-honeysql))
     (log/infof "Cleaned up repair table: %s" repair-table-name)
     (catch Exception e
       (log/warnf e "Failed to drop repair table: %s" repair-table-name))))

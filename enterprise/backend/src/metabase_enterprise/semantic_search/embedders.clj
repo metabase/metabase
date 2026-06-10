@@ -4,9 +4,9 @@
   omitting entities not in the index."
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.metabot.core :as metabot]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -78,10 +78,9 @@
   (let [where   (into [:or]
                       (for [[m mid] pairs]
                         [:and [:= :model m] [:= :model_id mid]]))
-        sql-vec (sql/format {:select   [:model :model_id :name :embedding]
-                             :from     [(keyword table-name)]
-                             :where    where}
-                            {:quoted true})]
+        sql-vec (semantic.util/format-honeysql {:select   [:model :model_id :name :embedding]
+                                                :from     [(keyword table-name)]
+                                                :where    where})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
 (defn- reduce-batched-rows

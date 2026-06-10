@@ -284,6 +284,6 @@
           (.delete truststore)
           (.delete keystore))))))
 
-(deftest bytes-to-varbinary-test
+(deftest ^:parallel bytes-to-varbinary-test
   (is (= ["FROM_BASE64(?)" "YSBzdHJpbmc="]
-         (sql/format (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))
+         (sql.qp/format-honeysql :presto-jdbc (sql.qp/->honeysql :presto-jdbc (.getBytes "a string"))))))

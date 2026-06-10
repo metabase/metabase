@@ -1013,12 +1013,9 @@
     (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
-              dialect (sql.qp/quote-style driver)
-              sql     (sql/format {::load   [file-path (keyword table-name)]
-                                   :columns (quote-columns driver column-names)}
-                                  :quoted true
-                                  :dialect dialect)]
+        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
+              sql  (sql.qp/format-honeysql driver {::load   [file-path (keyword table-name)]
+                                                   :columns (quote-columns driver column-names)})]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
@@ -1169,54 +1166,56 @@
 
 (defmethod sql-jdbc.sync/describe-fields-sql :mysql
   [driver & {:keys [table-names details]}]
-  (sql/format {:select [[:c.column_name :name]
-                        [[:- :c.ordinal_position 1] :database-position]
-                        [nil :table-schema]
-                        [:c.table_name :table-name]
-                        (if (some-> details :additional-options (str/includes? "tinyInt1isBit=false"))
-                          [[:upper :c.data_type] :database-type]
-                          [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
-                        [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
-                        [[:and
-                          [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
-                          [:= :is_nullable [:inline "NO"]]
-                          [:not [:= :c.extra [:inline "auto_increment"]]]]
-                         :database-required]
-                        [[:= :c.column_key [:inline "PRI"]] :pk?]
-                        [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
-                        [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
-                        [[:and
-                          ;; mariadb
-                          [:!= :generation_expression nil]
-                          ;; mysql
-                          [:<> :generation_expression ""]]
-                         :database-is-generated]
-                        [[:nullif :c.column_comment [:inline ""]] :field-comment]]
-               :from [[:information_schema.columns :c]]
-               :where
-               [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys','mysql')"]
-                [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
-                (when-let [db-name ((some-fn :db :dbname) details)]
-                  [:= :c.table_schema db-name])
-                (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
-               :order-by [:c.table_name :c.ordinal_position]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [[:c.column_name :name]
+             [[:- :c.ordinal_position 1] :database-position]
+             [nil :table-schema]
+             [:c.table_name :table-name]
+             (if (some-> details :additional-options (str/includes? "tinyInt1isBit=false"))
+               [[:upper :c.data_type] :database-type]
+               [[:if [:= :column_type [:inline "tinyint(1)"]] [:inline "BIT"] [:upper :c.data_type]] :database-type])
+             [[:= :c.extra [:inline "auto_increment"]] :database-is-auto-increment]
+             [[:and
+               [:or [:= :column_default nil] [:= [:lower :column_default] [:inline "null"]]]
+               [:= :is_nullable [:inline "NO"]]
+               [:not [:= :c.extra [:inline "auto_increment"]]]]
+              :database-required]
+             [[:= :c.column_key [:inline "PRI"]] :pk?]
+             [[:= :is_nullable [:inline "YES"]] :database-is-nullable]
+             [[:if [:= [:lower :column_default] [:inline "null"]] nil :column_default] :database-default]
+             [[:and
+               ;; mariadb
+               [:!= :generation_expression nil]
+               ;; mysql
+               [:<> :generation_expression ""]]
+              :database-is-generated]
+             [[:nullif :c.column_comment [:inline ""]] :field-comment]]
+    :from [[:information_schema.columns :c]]
+    :where
+    [:and [:raw "c.table_schema not in ('information_schema','performance_schema','sys','mysql')"]
+     [:raw "c.table_name not in ('innodb_table_stats', 'innodb_index_stats')"]
+     (when-let [db-name ((some-fn :db :dbname) details)]
+       [:= :c.table_schema db-name])
+     (when (seq table-names) [:in [:lower :c.table_name] (map u/lower-case-en table-names)])]
+    :order-by [:c.table_name :c.ordinal_position]}))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :mysql
   [driver & {:keys [table-names]}]
-  (sql/format {:select [[nil :pk-table-schema]
-                        [:a.referenced_table_name :pk-table-name]
-                        [:a.referenced_column_name :pk-column-name]
-                        [nil :fk-table-schema]
-                        [:a.table_name :fk-table-name]
-                        [:a.column_name :fk-column-name]]
-               :from [[:information_schema.key_column_usage :a]]
-               :join [[:information_schema.table_constraints :b] [:using :constraint_schema :constraint_name :table_name]]
-               :where [:and [:= :b.constraint_type [:inline "FOREIGN KEY"]]
-                       [:!= :a.referenced_table_schema nil]
-                       (when (seq table-names) [:in :a.table_name table-names])]
-               :order-by [:a.table_name]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [[nil :pk-table-schema]
+             [:a.referenced_table_name :pk-table-name]
+             [:a.referenced_column_name :pk-column-name]
+             [nil :fk-table-schema]
+             [:a.table_name :fk-table-name]
+             [:a.column_name :fk-column-name]]
+    :from [[:information_schema.key_column_usage :a]]
+    :join [[:information_schema.table_constraints :b] [:using :constraint_schema :constraint_name :table_name]]
+    :where [:and [:= :b.constraint_type [:inline "FOREIGN KEY"]]
+            [:!= :a.referenced_table_schema nil]
+            (when (seq table-names) [:in :a.table_name table-names])]
+    :order-by [:a.table_name]}))
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types

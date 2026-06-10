@@ -3,12 +3,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
@@ -29,7 +29,7 @@
         ctx     (cond-> {:search-string "pasta" :archived? false}
                   strategy (assoc :vector-search-strategy strategy))
         embedding [0.1 0.2 0.3]]
-    (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
+    (first (semantic.util/format-honeysql (#'semantic.index/semantic-search-query index embedding ctx)))))
 
 (deftest semantic-search-query-strategy-test
   (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"

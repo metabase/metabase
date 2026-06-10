@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [colorize.core :as colorize]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -239,9 +238,9 @@
                                    ["SET LANGUAGE Italian;"]]]
              (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
                (.execute stmt)))
-           (let [[sql & params] (sql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                             :from   [:temp]}
-                                            :dialect :ansi, :allow-dashed-names? true)]
+           (let [[sql & params] (sql.qp/format-honeysql :sqlserver
+                                                        {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                                         :from   [:temp]})]
              (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
                          rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]

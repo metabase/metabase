@@ -2,7 +2,7 @@
   "Honey SQL 2 utilities and extra registered functions/operators."
   (:refer-clojure
    :exclude
-   [+ - / * abs mod inc dec cast concat format second])
+   [+ - / * abs mod inc dec cast concat second])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -15,31 +15,6 @@
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
-
-;; We really don't want people compiling SQL without quoting identifiers, as that can be a potential avenue toward SQL
-;; injection... wrap the original [[honey.sql/format]] function so that it throws an exception if we're compiling
-;; without quoting unless [[*DANGEROUS-allow-sql-compilation-with-quoting-disabled*]] is explicitly enabled.
-
-(defonce ^:private original-format
-  (let [f sql/format]
-    (fn original-format
-      [data & {:as opts}]
-      (f data opts))))
-
-(def ^:private ^:dynamic *DANGEROUS-allow-sql-compilation-with-quoting-disabled* false)
-
-(defn- wrapped-format
-  [data & {:as opts}]
-  (when (and (not *DANGEROUS-allow-sql-compilation-with-quoting-disabled*)
-             ;; if `:quoted` is set in opts, it must be truthy; otherwise if unset `:dialect` must be present, which
-             ;; will cause quoting to be enabled so long as `:quoted` is not set to something falsey
-             (not (if (contains? opts :quoted)
-                    (:quoted opts)
-                    (:dialect opts))))
-    (throw (ex-info "Error: compiling SQL without quoting identifiers! This can be dangerous!!" {:opts opts})))
-  (original-format data opts))
-
-(alter-var-root #'sql/format (constantly wrapped-format))
 
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
@@ -424,16 +399,6 @@
 
 (defn inc "Add 1 to `x`."        [x] (+ x 1))
 (defn dec "Subtract 1 from `x`." [x] (- x 1))
-
-(defn format
-  "SQL `format` function."
-  [format-str expr]
-  (sql/call :format expr (literal format-str)))
-
-(defn round
-  "SQL `round` function."
-  [x decimal-places]
-  (sql/call :round x decimal-places))
 
 (defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
 (defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))

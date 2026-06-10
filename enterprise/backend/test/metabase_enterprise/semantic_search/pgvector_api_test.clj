@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.pgvector-api-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -10,14 +9,16 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.io Closeable)
-           (java.time Duration)))
+  (:import
+   (java.io Closeable)
+   (java.time Duration)))
 
 (set! *warn-on-reflection* true)
 
@@ -211,8 +212,7 @@
                 (is (= current-results (remove-scores (:results (mt/as-admin (semantic.index/query-index pgvector @index-ref search)))))))))
           (testing "throws exception when no active index exists"
             ;; corrupt the control table
-            (jdbc/execute! pgvector (sql/format {:delete-from (keyword (:control-table-name index-metadata))}
-                                                :quoted true))
+            (jdbc/execute! pgvector (semantic.util/format-honeysql {:delete-from (keyword (:control-table-name index-metadata))}))
             (is (thrown-with-msg? Exception #"No active semantic search index" (sut pgvector index-metadata search)))))))))
 
 (deftest e2e-index-a-sample-db-with-gate-test
@@ -255,7 +255,7 @@
                 get-indexed-q    {:select [:model [:model_id :id]] :from [(keyword (:table-name index))]}
                 get-indexed      (fn [] (frequencies
                                          (jdbc/execute! pgvector
-                                                        (sql/format get-indexed-q :quoted true)
+                                                        (semantic.util/format-honeysql get-indexed-q)
                                                         {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
                 expected-indexed (frequencies (distinct (map (fn [{:keys [model id]}]
                                                                {:model model

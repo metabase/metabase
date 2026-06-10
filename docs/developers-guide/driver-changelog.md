@@ -36,6 +36,10 @@ title: Driver interface changelog
 
 - `metabase.driver/splice-parameters-into-native-query`, deprecated in 0.51.0 and unused since, has been removed.
 
+- `metabase.driver.sql-jdbc.quoting/with-quoting`, which confusingly did not work when used with `honey.sql/format`
+  has been marked `^:private` to avoid potential misuse in the future. Remove usages of it and use
+  `metabase.driver.sql.query-processor/format-honeysql` instead of `honey.sql/format`.
+
 ## Metabase 0.62.0
 
 - `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and

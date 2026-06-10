@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -119,17 +118,18 @@
 (defn- get-tables-sql
   [driver {:keys [catalog multi-level-schema]}]
   (assert (string? (not-empty catalog)))
-  (sql/format {:select [[:t.table_name :name]
-                        (if multi-level-schema
-                          [[:concat :t.table_catalog [:inline "."] :t.table_schema] :schema]
-                          [:t.table_schema :schema])
-                        [:t.comment :description]]
-               :from [[:system.information_schema.tables :t]]
-               :where [:and
-                       (when-not multi-level-schema [:= :t.table_catalog catalog])
-                       [:<> :t.table_schema [:inline "information_schema"]]
-                       [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [[:t.table_name :name]
+             (if multi-level-schema
+               [[:concat :t.table_catalog [:inline "."] :t.table_schema] :schema]
+               [:t.table_schema :schema])
+             [:t.comment :description]]
+    :from [[:system.information_schema.tables :t]]
+    :where [:and
+            (when-not multi-level-schema [:= :t.table_catalog catalog])
+            [:<> :t.table_schema [:inline "information_schema"]]
+            [:not [:startswith :t.table_catalog [:inline "__databricks"]]]]}))
 
 (defmethod driver/describe-database* :databricks
   [driver database]
@@ -161,86 +161,88 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :databricks
   [driver & {:keys [schema-names table-names] {:keys [catalog multi-level-schema]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
-  (sql/format {:select [[:c.column_name :name]
-                        [:c.full_data_type :database-type]
-                        [:c.ordinal_position :database-position]
-                        (if multi-level-schema
-                          [[:concat :c.table_catalog [:inline "."] :c.table_schema] :table-schema]
-                          [:c.table_schema :table-schema])
-                        [:c.table_name :table-name]
-                        [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
-                        [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
-               :from [[:system.information_schema.columns :c]]
-               ;; Following links contains contains diagram of `information_schema`:
-               ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
-               :left-join [[{:select   [[:tc.table_catalog :table_catalog]
-                                        [:tc.table_schema :table_schema]
-                                        [:tc.table_name :table_name]
-                                        [:ccu.column_name :column_name]
-                                        [:tc.constraint_type :constraint_type]]
-                             :from     [[:system.information_schema.table_constraints :tc]]
-                             :join     [[:system.information_schema.constraint_column_usage :ccu]
-                                        [:and
-                                         [:= :tc.constraint_catalog :ccu.constraint_catalog]
-                                         [:= :tc.constraint_schema :ccu.constraint_schema]
-                                         [:= :tc.constraint_name :ccu.constraint_name]]]
-                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]
-                             ;; In case on pk constraint is used by multiple columns this query would return duplicate
-                             ;; rows. Group by ensures all rows are distinct. This may not be necessary, but rather
-                             ;; safe than sorry.
-                             :group-by [:tc.table_catalog
-                                        :tc.table_schema
-                                        :tc.table_name
-                                        :ccu.column_name
-                                        :tc.constraint_type]}
-                            :cs]
-                           [:and
-                            [:= :c.table_catalog :cs.table_catalog]
-                            [:= :c.table_schema :cs.table_schema]
-                            [:= :c.table_name :cs.table_name]
-                            [:= :c.column_name :cs.column_name]]]
-               :where [:and
-                       (when-not multi-level-schema [:= :c.table_catalog catalog])
-                       [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
-                       [:not [:in :c.table_schema [[:inline "information_schema"]]]]
-                       (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
-                       (when table-names [:in :c.table_name table-names])]
-               :order-by [:table-schema :table-name :database-position]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [[:c.column_name :name]
+             [:c.full_data_type :database-type]
+             [:c.ordinal_position :database-position]
+             (if multi-level-schema
+               [[:concat :c.table_catalog [:inline "."] :c.table_schema] :table-schema]
+               [:c.table_schema :table-schema])
+             [:c.table_name :table-name]
+             [[:case [:= :cs.constraint_type [:inline "PRIMARY KEY"]] true :else false] :pk?]
+             [[:case [:not= :c.comment [:inline ""]] :c.comment :else nil] :field-comment]]
+    :from [[:system.information_schema.columns :c]]
+    ;; Following links contains contains diagram of `information_schema`:
+    ;; https://docs.databricks.com/en/sql/language-manual/sql-ref-information-schema.html
+    :left-join [[{:select   [[:tc.table_catalog :table_catalog]
+                             [:tc.table_schema :table_schema]
+                             [:tc.table_name :table_name]
+                             [:ccu.column_name :column_name]
+                             [:tc.constraint_type :constraint_type]]
+                  :from     [[:system.information_schema.table_constraints :tc]]
+                  :join     [[:system.information_schema.constraint_column_usage :ccu]
+                             [:and
+                              [:= :tc.constraint_catalog :ccu.constraint_catalog]
+                              [:= :tc.constraint_schema :ccu.constraint_schema]
+                              [:= :tc.constraint_name :ccu.constraint_name]]]
+                  :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]
+                  ;; In case on pk constraint is used by multiple columns this query would return duplicate
+                  ;; rows. Group by ensures all rows are distinct. This may not be necessary, but rather
+                  ;; safe than sorry.
+                  :group-by [:tc.table_catalog
+                             :tc.table_schema
+                             :tc.table_name
+                             :ccu.column_name
+                             :tc.constraint_type]}
+                 :cs]
+                [:and
+                 [:= :c.table_catalog :cs.table_catalog]
+                 [:= :c.table_schema :cs.table_schema]
+                 [:= :c.table_name :cs.table_name]
+                 [:= :c.column_name :cs.column_name]]]
+    :where [:and
+            (when-not multi-level-schema [:= :c.table_catalog catalog])
+            [:not [:startswith :c.table_catalog [:inline "__databricks"]]]
+            [:not [:in :c.table_schema [[:inline "information_schema"]]]]
+            (schema-names-filter schema-names multi-level-schema :c.table_catalog :c.table_schema)
+            (when table-names [:in :c.table_name table-names])]
+    :order-by [:table-schema :table-name :database-position]}))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :databricks
   [driver & {:keys [schema-names table-names] {:keys [catalog multi-level-schema]} :details}]
   (assert (string? (not-empty catalog)) "`catalog` is required for sync.")
-  (sql/format {:select
-               [(if multi-level-schema
-                  [[:concat :fk_kcu.table_catalog [:inline "."] :fk_kcu.table_schema] "fk-table-schema"]
-                  [:fk_kcu.table_schema "fk-table-schema"])
-                [:fk_kcu.table_name "fk-table-name"]
-                [:fk_kcu.column_name "fk-column-name"]
-                (if multi-level-schema
-                  [[:concat :pk_kcu.table_catalog [:inline "."] :pk_kcu.table_schema] "pk-table-schema"]
-                  [:pk_kcu.table_schema "pk-table-schema"])
-                [:pk_kcu.table_name "pk-table-name"]
-                [:pk_kcu.column_name "pk-column-name"]]
-               :from [[:system.information_schema.key_column_usage :fk_kcu]]
-               :join [[:system.information_schema.referential_constraints :rc]
-                      [:and
-                       [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
-                       [:= :fk_kcu.constraint_schema :rc.constraint_schema]
-                       [:= :fk_kcu.constraint_name :rc.constraint_name]]
-                      [:system.information_schema.key_column_usage :pk_kcu]
-                      [[:and
-                        [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
-                        [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
-                        [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
-               :where [:and
-                       (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
-                       [:not [:startswith :fk_kcu.table_catalog [:inline "__databricks"]]]
-                       [:not [:in :fk_kcu.table_schema ["information_schema"]]]
-                       (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
-                       (when table-names [:in :fk_kcu.table_name table-names])]
-               :order-by [:fk-table-schema :fk-table-name]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select
+    [(if multi-level-schema
+       [[:concat :fk_kcu.table_catalog [:inline "."] :fk_kcu.table_schema] "fk-table-schema"]
+       [:fk_kcu.table_schema "fk-table-schema"])
+     [:fk_kcu.table_name "fk-table-name"]
+     [:fk_kcu.column_name "fk-column-name"]
+     (if multi-level-schema
+       [[:concat :pk_kcu.table_catalog [:inline "."] :pk_kcu.table_schema] "pk-table-schema"]
+       [:pk_kcu.table_schema "pk-table-schema"])
+     [:pk_kcu.table_name "pk-table-name"]
+     [:pk_kcu.column_name "pk-column-name"]]
+    :from [[:system.information_schema.key_column_usage :fk_kcu]]
+    :join [[:system.information_schema.referential_constraints :rc]
+           [:and
+            [:= :fk_kcu.constraint_catalog :rc.constraint_catalog]
+            [:= :fk_kcu.constraint_schema :rc.constraint_schema]
+            [:= :fk_kcu.constraint_name :rc.constraint_name]]
+           [:system.information_schema.key_column_usage :pk_kcu]
+           [[:and
+             [:= :pk_kcu.constraint_catalog :rc.unique_constraint_catalog]
+             [:= :pk_kcu.constraint_schema :rc.unique_constraint_schema]
+             [:= :pk_kcu.constraint_name :rc.unique_constraint_name]]]]
+    :where [:and
+            (when-not multi-level-schema [:= :fk_kcu.table_catalog [:inline catalog]])
+            [:not [:startswith :fk_kcu.table_catalog [:inline "__databricks"]]]
+            [:not [:in :fk_kcu.table_schema ["information_schema"]]]
+            (schema-names-filter schema-names multi-level-schema :fk_kcu.table_catalog :fk_kcu.table_schema)
+            (when table-names [:in :fk_kcu.table_name table-names])]
+    :order-by [:fk-table-schema :fk-table-name]}))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks
   [_driver]

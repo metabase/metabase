@@ -171,8 +171,12 @@
 ;;
 ;; So this custom HoneySQL type below generates the correct DDL statement
 
-(defn- format-insert-all [_fn [rows]]
-  (let [rows-sql-args (mapv sql/format rows)
+(mu/defn- format-insert-all
+  [_insert-all              :- [:= ::insert-all]
+   [driver rows, :as _args] :- [:catn
+                                [:driver :keyword]
+                                [:rows   [:schema [:sequential [:sequential :any]]]]]]
+  (let [rows-sql-args (mapv (partial sql.qp/format-honeysql driver) rows)
         sqls          (map first rows-sql-args)
         args          (mapcat rest rows-sql-args)]
     (into [(format
@@ -181,6 +185,10 @@
           args)))
 
 (sql/register-fn! ::insert-all #'format-insert-all)
+
+(deftest ^:parallel insert-all-test
+  (is (= ["INSERT ALL (?) (?) (?) SELECT * FROM dual" 1 2 3]
+         (sql.qp/format-honeysql :oracle [::insert-all :oracle [[1] [2] [3]]]))))
 
 ;;; normal Honey SQL `:into` doesn't seem to work with our `identifier` type, so define a custom version here that does.
 (defn- format-into [_fn identifier]
@@ -203,8 +211,10 @@
 
 (defmethod ddl/insert-rows-honeysql-form :oracle
   [driver table-identifier row-or-rows]
-  [::insert-all (mapv (partial row->into driver table-identifier)
-                      (u/one-or-many row-or-rows))])
+  [::insert-all
+   driver
+   (mapv (partial row->into driver table-identifier)
+         (u/one-or-many row-or-rows))])
 
 ;;; see also [[metabase.driver.oracle-test/insert-rows-ddl-test]]
 (deftest ^:parallel insert-all-test
@@ -343,7 +353,7 @@
     (u/ignore-exceptions
       ;; If exists does not exist in oracle
       (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
-                     (sql/format
-                      {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
-                      :dialect (sql.qp/quote-style driver))
+                     (sql.qp/format-honeysql
+                      driver
+                      {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]})
                      {:transaction? false}))))

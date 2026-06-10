@@ -20,17 +20,18 @@
   but are not coordinated with any gated updates and therefore might race if gate indexers are also running."
   (:require
    [buddy.core.hash :as buddy-hash]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.sql Timestamp)
-           (java.time Duration Instant OffsetDateTime)
-           (org.postgresql.util PGobject PSQLException)))
+  (:import
+   (java.sql Timestamp)
+   (java.time Duration Instant OffsetDateTime)
+   (org.postgresql.util PGobject PSQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -146,7 +147,7 @@
                                                   ;; update if new value is different
                                                   :else
                                                   [:!= (keyword gate-table-name "document_hash") :excluded.document_hash]]]}}
-            upsert-sql (sql/format upsert-q :quoted true)]
+            upsert-sql (semantic.util/format-honeysql upsert-q)]
         (jdbc/execute! tx [(format "SET LOCAL statement_timeout = %d" (.toMillis gate-write-timeout))]) ; note pg cannot accept a parameter here
         (let [stmt-start (u/start-timer)]
           (try
@@ -235,7 +236,7 @@
                                       :order-by [[:gated_at] [:id]]
                                       :limit    limit}
                                      :q]]}]}
-        poll-sql                (sql/format poll-q :quoted true)
+        poll-sql                (semantic.util/format-honeysql poll-q)
         rs                      (jdbc/execute! pgvector poll-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
         poll-time               (some #(when (nil? (:id %)) (:gated_at %)) rs)
         _                       (assert poll-time "expected poll time record (nil id)")
@@ -274,7 +275,7 @@
                                      :indexer_last_seen      (:gated_at last-seen)
                                      :indexer_last_seen_hash (:document_hash last-seen)}
                             :where  [:= :table_name (:table-name index)]}
-        update-count       (::jdbc/update-count (jdbc/execute! pgvector (sql/format update-q :quoted true)))]
+        update-count       (::jdbc/update-count (jdbc/execute! pgvector (semantic.util/format-honeysql update-q)))]
     (when (= 0 update-count)
       (log/debugf "Watermark was flushed but a record was not updated, this might mean the metadata row is missing. Index %s" (:table-name index)))
     nil))

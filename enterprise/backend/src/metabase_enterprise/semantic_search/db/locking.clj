@@ -1,8 +1,8 @@
 (ns metabase-enterprise.semantic-search.db.locking
   (:require
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.util :as semantic.db.util]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
   (:import
@@ -32,7 +32,7 @@
   (assert (supported-lock-types lock-type))
   (assert (integer? lock-id))
   (semantic.db.util/tx-or-throw! conn)
-  (let [sql (sql/format (sql.helpers/select [[lock-type [:raw lock-id]] :acquired]))
+  (let [sql (semantic.util/format-honeysql (sql.helpers/select [[lock-type [:raw lock-id]] :acquired]))
         acquired? (:acquired (try (jdbc/execute-one! conn sql)
                                   (catch SQLException e
                                     (if (lock-not-avail-ex? e)

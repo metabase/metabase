@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.task.metric-collector-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -10,6 +9,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.task.metric-collector :as semantic.task.collector]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
 
@@ -32,9 +32,9 @@
   [pgvector index-metadata documents]
   (jdbc/execute!
    pgvector
-   (sql/format {:insert-into [[:raw (:gate-table-name index-metadata)]]
-                :columns [:id :model :model_id :updated_at]
-                :values documents})))
+   (semantic.util/format-honeysql {:insert-into [[:raw (:gate-table-name index-metadata)]]
+                                   :columns [:id :model :model_id :updated_at]
+                                   :values documents})))
 
 (defn- mock-documents-into-dlq-table!
   [pgvector index-metadata docs]
@@ -44,9 +44,9 @@
                       (-> active-index :metadata-row :id))]
     (jdbc/execute!
      pgvector
-     (sql/format {:insert-into dlq-table-kw
-                  :columns [:gate_id :retry_count :attempt_at :last_attempted_at :error_gated_at]
-                  :values docs}))))
+     (semantic.util/format-honeysql {:insert-into dlq-table-kw
+                                     :columns [:gate_id :retry_count :attempt_at :last_attempted_at :error_gated_at]
+                                     :values docs}))))
 
 (defn- drop-dlq-table-entries!
   [pgvector index-metadata]
@@ -56,13 +56,13 @@
                       (-> active-index :metadata-row :id))]
     (jdbc/execute!
      pgvector
-     (sql/format {:delete-from dlq-table-kw}))))
+     (semantic.util/format-honeysql {:delete-from dlq-table-kw}))))
 
 (defn- drop-gate-table-entries!
   [pgvector index-metadata]
   (jdbc/execute!
    pgvector
-   (sql/format {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
+   (semantic.util/format-honeysql {:delete-from [[:raw (:gate-table-name index-metadata)]]})))
 
 (deftest metric-collector-test
   (mt/with-premium-features #{:semantic-search}

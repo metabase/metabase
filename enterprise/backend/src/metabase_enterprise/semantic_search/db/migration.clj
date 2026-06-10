@@ -1,12 +1,12 @@
 (ns metabase-enterprise.semantic-search.db.migration
   (:require
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase-enterprise.semantic-search.db.migration.impl :as semantic.db.migration.impl]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
   (:import
-   [java.sql SQLException]))
+   (java.sql SQLException)))
 
 (def ^:private columns
   ;; No serial -- ids are chosen by migration authors
@@ -20,7 +20,7 @@
 
 (defn- migration-table-sql
   []
-  (sql/format migration-table-hsql))
+  (semantic.util/format-honeysql migration-table-hsql))
 
 (defn- ensure-migration-table!
   [tx]
@@ -38,15 +38,15 @@
   [tx]
   (or (:max_version
        (jdbc/execute-one! tx
-                          (sql/format {:select [[[:max :version] :max_version]]
-                                       :from [:migration]})))
+                          (semantic.util/format-honeysql {:select [[[:max :version] :max_version]]
+                                                          :from [:migration]})))
       -1))
 
 (defn- write-successful-migration!
   [tx]
-  (jdbc/execute-one! tx (sql/format (-> (sql.helpers/insert-into :migration)
-                                        (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
-                                                              :status "success"}])))))
+  (jdbc/execute-one! tx (semantic.util/format-honeysql (-> (sql.helpers/insert-into :migration)
+                                                           (sql.helpers/values [{:version semantic.db.migration.impl/schema-version
+                                                                                 :status "success"}])))))
 
 (defn maybe-migrate-schema!
   "Execute schema migration (control, meta, gate, ...) if appropriate."
@@ -71,10 +71,10 @@
 (defn- index-metadata-table-exists?
   [tx]
   (jdbc/execute-one! tx
-                     (sql/format {:select [[[:raw 1] :exists]]
-                                  :from [:information_schema.tables]
-                                  :where [[:= :information_schema.tables.table_name [:inline "index_metadata"]]]
-                                  :limit 1})))
+                     (semantic.util/format-honeysql {:select [[[:raw 1] :exists]]
+                                                     :from [:information_schema.tables]
+                                                     :where [[:= :information_schema.tables.table_name [:inline "index_metadata"]]]
+                                                     :limit 1})))
 
 (defn- lowest-dynamic-db-version
   "Lowest index version. If there is lower than defined in code dynamic schema migration will be attempted."
@@ -82,8 +82,8 @@
   (or (when (index-metadata-table-exists? tx)
         (:min_index
          (jdbc/execute-one! tx
-                            (sql/format {:select [[[:min :index_version] :min_index]]
-                                         :from [:index_metadata]}))))
+                            (semantic.util/format-honeysql {:select [[[:min :index_version] :min_index]]
+                                                            :from [:index_metadata]}))))
       0))
 
 (defn maybe-migrate-dynamic-schema!
@@ -116,4 +116,4 @@
 (defn drop-migration-table!
   "Drop migration table."
   [connectable]
-  (jdbc/execute! connectable (sql/format (sql.helpers/drop-table :if-exists :migration))))
+  (jdbc/execute! connectable (semantic.util/format-honeysql (sql.helpers/drop-table :if-exists :migration))))

@@ -6,7 +6,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -1003,10 +1002,8 @@
 
 (defmethod driver/rename-table! :snowflake
   [driver db-id from-table to-table]
-  (let [sql (first (sql/format {:alter-table (keyword from-table)
-                                :rename-table (keyword to-table)}
-                               :quoted true
-                               :dialect (sql.qp/quote-style driver)))]
+  (let [sql (first (sql.qp/format-honeysql driver {:alter-table (keyword from-table)
+                                                   :rename-table (keyword to-table)}))]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 

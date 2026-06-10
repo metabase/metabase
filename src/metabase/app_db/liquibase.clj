@@ -9,6 +9,7 @@
    [metabase.app-db.custom-migrations]
    [metabase.app-db.liquibase.h2 :as liquibase.h2]
    [metabase.app-db.liquibase.mysql :as liquibase.mysql]
+   [metabase.app-db.query :as app-db.query]
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.util :as u]
@@ -597,7 +598,7 @@
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql (sql/format remaining-query)
+                 formatted-sql   (app-db.query/compile remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)
                (log/warnf "The following changesets were not rolled back. Likely because %s: %s"

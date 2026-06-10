@@ -2,7 +2,6 @@
   "Integration tests for repair-index! functionality."
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.core :as semantic.core]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -24,7 +23,7 @@
                  (-> {:select [:id :model :model_id :document :document_hash :updated_at :gated_at]
                       :from   [(keyword gate-table-name)]
                       :order-by [:gated_at :id]}
-                     (sql/format :quoted true))
+                     semantic.util/format-honeysql)
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- create-test-document
@@ -54,7 +53,7 @@
   [pgvector gate-table-name]
   (jdbc/execute! pgvector
                  (-> {:delete-from [(keyword gate-table-name)]}
-                     (sql/format :quoted true))))
+                     semantic.util/format-honeysql)))
 
 (deftest repair-index-integration-test
   (testing "repair-index! properly handles document additions and deletions via gate table"

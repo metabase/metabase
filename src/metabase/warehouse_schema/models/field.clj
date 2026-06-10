@@ -1,9 +1,8 @@
 (ns metabase.warehouse-schema.models.field
   (:require
    [clojure.string :as str]
-   [honey.sql :as sql]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.core :as app-db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
@@ -169,7 +168,7 @@
                    [:= :fk_target_field_id (:id field)]
                    [:not [:in :id {:select [:field_id]
                                    :from [:metabase_field_user_settings]}]]]}
-        sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
+        sql (app-db/compile q)]
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
                      (t2/query sql)))))

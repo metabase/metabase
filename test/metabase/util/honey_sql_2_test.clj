@@ -1,4 +1,5 @@
 (ns metabase.util.honey-sql-2-test
+  {:clj-kondo/config '{:linters {:discouraged-var {honey.sql/format {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]
@@ -7,17 +8,13 @@
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(defn- format-unquoted [data]
-  (binding [h2x/*DANGEROUS-allow-sql-compilation-with-quoting-disabled* true]
-    (sql/format data {:quoted false})))
-
 (deftest ^:parallel inline-Ratio-test
   (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
     (is (= ["SELECT 4 / (1.0 / 3.0) AS x"]
-           (format-unquoted {:select [[[:/
-                                        [:inline 4]
-                                        [:inline (/ 1 3)]]
-                                       :x]]})))))
+           (sql/format {:select [[[:/
+                                   [:inline 4]
+                                   [:inline (/ 1 3)]]
+                                  :x]]})))))
 
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
@@ -52,7 +49,7 @@
 (deftest ^:parallel format-test
   (testing "Basic format test not including a specific quoting option"
     (is (= ["SELECT setting"]
-           (format-unquoted {:select [[:setting]]}))))
+           (sql/format {:select [[:setting]]} {:quoted false}))))
   (testing "`:h2` quoting will uppercase and quote the identifier"
     (is (= ["SELECT \"SETTING\""]
            (sql/format {:select [[:setting]]} {:dialect :h2})))))
@@ -60,23 +57,29 @@
 (deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
     (is (= ["WHERE name = 'Cam'"]
-           (format-unquoted {:where [:= :name (h2x/literal "Cam")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam")]}
+                       {:quoted false}))))
   (testing (str "`literal` should properly escape single-quotes inside the literal string double-single-quotes is how "
                 "to escape them in SQL")
     (is (= ["WHERE name = 'Cam''s'"]
-           (format-unquoted {:where [:= :name (h2x/literal "Cam's")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam's")]}
+                       {:quoted false}))))
   (testing "`literal` should only escape single quotes that aren't already escaped -- with two single quotes..."
     (is (= ["WHERE name = 'Cam''s'"]
-           (format-unquoted {:where [:= :name (h2x/literal "Cam''s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam''s")]}
+                       {:quoted false}))))
   (testing "...or with a slash"
     (is (= ["WHERE name = 'Cam\\'s'"]
-           (format-unquoted {:where [:= :name (h2x/literal "Cam\\'s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "Cam\\'s")]}
+                       {:quoted false}))))
   (testing "`literal` should escape strings that start with a single quote"
     (is (= ["WHERE name = '''s'"]
-           (format-unquoted {:where [:= :name (h2x/literal "'s")]}))))
+           (sql/format {:where [:= :name (h2x/literal "'s")]}
+                       {:quoted false}))))
   (testing "`literal` should handle namespaced keywords correctly"
     (is (= ["WHERE name = 'ab/c'"]
-           (format-unquoted {:where [:= :name (h2x/literal :ab/c)]})))))
+           (sql/format {:where [:= :name (h2x/literal :ab/c)]}
+                       {:quoted false})))))
 
 (deftest ^:parallel identifier-test
   (testing "make sure `identifier` properly handles components with dots and both strings & keywords"
@@ -152,7 +155,7 @@
          (sql/format {:select [[(h2x/quoted-cast "bird type" "toucan")]]} {:quoted true, :dialect :ansi}))))
 
 (defn- ->sql [expr]
-  (format-unquoted {:select [[expr]]}))
+  (sql/format {:select [[expr]]} {:quoted false}))
 
 (deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"

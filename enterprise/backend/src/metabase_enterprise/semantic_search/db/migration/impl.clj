@@ -1,7 +1,7 @@
 (ns metabase-enterprise.semantic-search.db.migration.impl
   (:require
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -16,17 +16,17 @@
   [tx]
   (let [table-names (map (comp first vals)
                          (jdbc/execute! tx
-                                        (sql/format
+                                        (semantic.util/format-honeysql
                                          {:select [[:tablename :xi]]
-                                          :from [:pg_tables]
-                                          :where [:and
-                                                  [:<> :schemaname [:inline "information_schema"]]
-                                                  [:<> :schemaname [:inline "pg_catalog"]]
-                                                  [:<> :tablename  [:inline "migration"]]]})))]
+                                          :from   [:pg_tables]
+                                          :where  [:and
+                                                   [:<> :schemaname [:inline "information_schema"]]
+                                                   [:<> :schemaname [:inline "pg_catalog"]]
+                                                   [:<> :tablename  [:inline "migration"]]]})))]
     (doseq [table table-names]
       (jdbc/execute! tx
-                     (sql/format
-                      {:drop-table  [[[:raw table]]]})))))
+                     (semantic.util/format-honeysql
+                      {:drop-table [[[:raw table]]]})))))
 
 (defn migrate-schema!
   "Migrate schema (control, metadata, gate, ...). Migration author is responsible for removing leftovers if necessary
@@ -49,7 +49,7 @@
    in place to be cleaned up or re-created elsewhere."
   [tx index-metadata target-version alter-fn]
   (let [metadata-table  (keyword (:metadata-table-name index-metadata))
-        execute!        (fn [q] (jdbc/execute! tx (sql/format q)))
+        execute!        (fn [q] (jdbc/execute! tx (semantic.util/format-honeysql q)))
         candidate-names (->> (execute! {:select-distinct [:table_name]
                                         :from            [metadata-table]
                                         :where           [[:< :index_version target-version]]})
