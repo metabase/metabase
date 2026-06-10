@@ -77,7 +77,10 @@ export const subscriptionApi = Api.injectEndpoints({
           idTag("subscription", id),
         ]),
     }),
-    testSubscription: builder.mutation<{ ok: boolean }, DashboardSubscriptionData>({
+    testSubscription: builder.mutation<
+      { ok: boolean },
+      DashboardSubscriptionData
+    >({
       query: (body) => ({
         method: "POST",
         url: "/api/pulse/test",
