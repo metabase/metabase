@@ -12,10 +12,14 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as rs])
   (:import
-   (java.sql ResultSetMetaData Types)))
+   (java.sql Clob Date ResultSet ResultSetMetaData Time Timestamp Types)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private h2-source-path
   "resources/sample-database.db.mv.db")
@@ -27,8 +31,7 @@
   ;; Read-only; do not touch the bundled artifact. H2 expects the dbname WITHOUT
   ;; the `.mv.db` suffix on disk.
   {:dbtype "h2"
-   :dbname (str (-> (io/file h2-source-path) .getAbsolutePath
-                    (str/replace #"\.mv\.db$" ""))
+   :dbname (str (str/replace (.getAbsolutePath (io/file h2-source-path)) #"\.mv\.db$" "")
                 ";ACCESS_MODE_DATA=r;IFEXISTS=TRUE")})
 
 (defn- sqlite-db []
@@ -149,15 +152,18 @@
   "Coerce H2 values to types SQLite-JDBC accepts cleanly."
   [v]
   (cond
-    (nil? v)                              nil
-    (instance? java.time.LocalDate v)     (str v)
-    (instance? java.time.LocalDateTime v) (str v)
-    (instance? java.time.LocalTime v)     (str v)
-    (instance? java.time.OffsetDateTime v) (str v)
-    (instance? java.time.ZonedDateTime v) (str v)
-    (instance? java.sql.Timestamp v)      (str (.toLocalDateTime ^java.sql.Timestamp v))
-    (instance? java.sql.Date v)           (str (.toLocalDate ^java.sql.Date v))
-    (instance? java.sql.Time v)           (str (.toLocalTime ^java.sql.Time v))
+    (nil? v) nil
+    (instance? LocalDate v) (str v)
+    (instance? LocalDateTime v) (str v)
+    (instance? LocalTime v) (str v)
+    (instance? OffsetDateTime v) (str v)
+    (instance? ZonedDateTime v) (str v)
+    (instance? Timestamp v) (str (.toLocalDateTime ^Timestamp v))
+    (instance? Date v) (str (.toLocalDate ^Date v))
+    (instance? Time v) (str (.toLocalTime ^Time v))
+    ;; CLOB columns (H2 CHARACTER LARGE OBJECT) come back as a java.sql.Clob, not a String. Read the
+    ;; characters out; otherwise SQLite-JDBC stores the Clob's toString (H2's internal SCRIPT dump).
+    (instance? Clob v) (let [^Clob c v] (.getSubString c 1 (int (.length c))))
     :else v))
 
 (defn- copy-table!
@@ -167,7 +173,7 @@
         pks      (pk-defs h2 schema table)
         ddl      (create-table-sql table cols fks pks)
         ins-sql  (insert-sql table cols)]
-    (println "  Creating table" table "with" (count cols) "columns")
+    (log/info "  Creating table" table "with" (count cols) "columns")
     (jdbc/execute! sqlite [ddl])
     (let [row-count (atom 0)]
       (with-open [conn (jdbc/get-connection h2)]
@@ -175,7 +181,7 @@
                                                  (str/join ", "
                                                            (map #(format "\"%s\"" (:name %)) cols))
                                                  schema table))]
-          (with-open [^java.sql.ResultSet rs (.executeQuery ps)]
+          (with-open [^ResultSet rs (.executeQuery ps)]
             (with-open [scon (jdbc/get-connection sqlite)]
               (.setAutoCommit scon false)
               (with-open [insert-ps (.prepareStatement scon ins-sql)]
@@ -192,23 +198,23 @@
                     (.executeBatch insert-ps)))
                 (.executeBatch insert-ps))
               (.commit scon)))))
-      (println "  Wrote" @row-count "rows to" table))))
+      (log/info "  Wrote" @row-count "rows to" table))))
 
 (defn convert!
   "Run the H2 -> SQLite conversion. Deletes any existing SQLite file first."
   []
   (let [target (io/file sqlite-target-path)]
     (when (.exists target)
-      (println "Deleting existing" sqlite-target-path)
+      (log/info "Deleting existing" sqlite-target-path)
       (.delete target)))
-  (println "Converting H2 sample DB ->" sqlite-target-path)
+  (log/info "Converting H2 sample DB ->" sqlite-target-path)
   (let [h2     (h2-db)
         sqlite (sqlite-db)
         tables (list-tables h2)]
-    (println "Found" (count tables) "tables in PUBLIC schema")
+    (log/info "Found" (count tables) "tables in PUBLIC schema")
     (doseq [[schema table] tables]
       (copy-table! h2 sqlite schema table))
-    (println "Done. Output:" (.getAbsolutePath (io/file sqlite-target-path)))))
+    (log/info "Done. Output:" (.getAbsolutePath (io/file sqlite-target-path)))))
 
 (comment
   (convert!))
