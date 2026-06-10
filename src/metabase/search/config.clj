@@ -234,18 +234,25 @@
   [[normalized-context]], so an override saved under a context that has since been collapsed (e.g.
   `:command-palette` -> `:global`) is still applied.
   When a raw alias and its normalized context both carry overrides, the normalized one wins -- it's
-  what the weights API writes today."
+  what the weights API writes today.
+  Legacy overrides (pre-#50338) were a flat {scorer weight} map with no context layer, so they applied
+  to every context. Fold those bare weights into the `:default` base to preserve that, with an explicit
+  `:default` context override still winning on conflict."
   [overrides]
-  (reduce-kv (fn [acc context weight-overrides]
-               (let [normalized (normalized-context context)]
-                 (update acc normalized
-                         (if (= context normalized)
-                           #(merge % weight-overrides)
-                           #(merge weight-overrides %)))))
-             {}
-             ;; sorted so the winner is deterministic when several aliases collapse to one normalized
-             ;; context (the normalized key still wins; among aliases the lowest-sorted one does)
-             (into (sorted-map) overrides)))
+  (let [;; legacy flat overrides are the entries whose value is a bare weight, not a per-context map
+        legacy (into {} (remove (comp map? val)) overrides)
+        nested (reduce-kv (fn [acc context weight-overrides]
+                            (let [normalized (normalized-context context)]
+                              (update acc normalized
+                                      (if (= context normalized)
+                                        #(merge % weight-overrides)
+                                        #(merge weight-overrides %)))))
+                          {}
+                          ;; sorted so the winner is deterministic when several aliases collapse to one
+                          ;; normalized context (the normalized key still wins; among aliases the lowest-sorted)
+                          (into (sorted-map) (filter (comp map? val)) overrides))]
+    (cond-> nested
+      (seq legacy) (update :default #(merge legacy %)))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
