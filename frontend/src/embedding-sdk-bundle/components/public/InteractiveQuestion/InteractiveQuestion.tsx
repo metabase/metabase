@@ -112,12 +112,9 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
   const questionId = (props as { questionId?: SdkQuestionId | null })
     .questionId;
   const title = (props as { title?: unknown }).title;
-  const withDownloads: boolean =
-    (props as { withDownloads?: boolean }).withDownloads ?? false;
-  const isSaveEnabled: boolean =
-    (props as { isSaveEnabled?: boolean }).isSaveEnabled ?? true;
-  const withAlerts: boolean =
-    (props as { withAlerts?: boolean }).withAlerts ?? false;
+  const withDownloads = (props as { withDownloads?: boolean }).withDownloads;
+  const isSaveEnabled = (props as { isSaveEnabled?: boolean }).isSaveEnabled;
+  const withAlerts = (props as { withAlerts?: boolean }).withAlerts;
 
   const isNewQuestion = questionId === "new" || questionId === "new-native";
   const trackingEntityId = questionId != null ? questionId : null;
