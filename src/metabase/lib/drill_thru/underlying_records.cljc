@@ -48,6 +48,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv empty? #?(:clj for)]]))
 
@@ -169,11 +170,6 @@
      query
      filter-clauses)))
 
-(defn- restore-implicit-join-fields [join]
-  (if (some? (:fields join))
-    join
-    (lib.join/with-join-fields join :all)))
-
 (defn drill-underlying-records
   "Drops aggregations, breakouts, orders, limits and field, then applies a filter for each of the dimensions (including
   for metrics, and aggregations that imply a filter like `:sum-where`).
@@ -208,8 +204,9 @@
 
                                  ;; Default: no filters to add.
                                  nil)))
-        ;; make all joins include all fields
-        new-joins (mapv restore-implicit-join-fields
+        ;; A join with no `:fields` contributes no columns, so default it to `:all` (#48032).
+        ;; Joins with explicit `:fields` keep the user's column selection (#69105).
+        new-joins (mapv #(u/assoc-default % :fields :all)
                         (lib.join/joins agg-filtered))]
     ;; if we have new joins to add, update query with the new joins
     (if (empty? new-joins)
