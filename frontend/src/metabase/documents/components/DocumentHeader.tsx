@@ -8,6 +8,7 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
@@ -87,26 +88,33 @@ export const DocumentHeader = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const { prepareForPrint, isPrinting } = usePrintContext();
+  const { prepareForPrint } = usePrintContext();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
 
   const handlePrint = useCallback(async () => {
-    await prepareForPrint();
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
     window.print();
     trackDocumentPrint(document);
-    setIsMenuOpen(false);
   }, [document, prepareForPrint]);
 
   const handleMenuChange = useCallback(
     (opened: boolean) => {
-      if (!opened && isPrinting) {
+      if (!opened && isPreparingForPrint) {
         return;
       }
 
       setIsMenuOpen(opened);
     },
-    [isPrinting],
+    [isPreparingForPrint],
   );
 
   return (
@@ -220,10 +228,15 @@ export const DocumentHeader = ({
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item
-                leftSection={<Icon name="document" />}
-                rightSection={isPrinting ? <Loader size="xs" /> : undefined}
+                leftSection={
+                  isPreparingForPrint ? (
+                    <Loader size="xs" />
+                  ) : (
+                    <Icon name="document" />
+                  )
+                }
                 closeMenuOnClick={false}
-                disabled={isPrinting}
+                disabled={isPreparingForPrint}
                 onClick={handlePrint}
               >
                 {t`Print Document`}

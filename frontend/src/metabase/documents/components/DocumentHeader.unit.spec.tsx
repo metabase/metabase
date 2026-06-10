@@ -2,6 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  PrintContext,
+  type PrintContextValue,
+} from "metabase/documents/contexts/PrintContext";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
@@ -29,6 +33,7 @@ const setup = ({
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
   onShowHistory = jest.fn(),
+  printContext = undefined as PrintContextValue | undefined,
 } = {}) => {
   const props = {
     document,
@@ -51,7 +56,15 @@ const setup = ({
     target_id: document.id,
   });
 
-  renderWithProviders(<DocumentHeader {...props} />, {
+  const header = printContext ? (
+    <PrintContext.Provider value={printContext}>
+      <DocumentHeader {...props} />
+    </PrintContext.Provider>
+  ) : (
+    <DocumentHeader {...props} />
+  );
+
+  renderWithProviders(header, {
     storeInitialState: {
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: {
@@ -138,9 +151,63 @@ describe("DocumentHeader", () => {
 
       await userEvent.click(screen.getByLabelText("More options"));
       await userEvent.click(screen.getByText("Print Document"));
-      // handlePrint dispatches beforeprint and waits two animation frames
-      // so off-screen card embeds re-render before window.print() snapshots.
       await waitFor(() => expect(window.print).toHaveBeenCalled());
+
+      window.print = originalPrint;
+    });
+
+    it("should close the menu before opening the print dialog", async () => {
+      const originalPrint = window.print;
+      let menuExpandedAtPrintTime: string | null = null;
+      window.print = jest.fn(() => {
+        menuExpandedAtPrintTime = screen
+          .getByLabelText("More options")
+          .getAttribute("aria-expanded");
+      });
+
+      setup();
+
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(screen.getByText("Print Document"));
+      await waitFor(() => expect(window.print).toHaveBeenCalled());
+
+      // The menu must already be closed when window.print() blocks the
+      // renderer, so no stale spinner frame is shown while the dialog is
+      // open or after it closes.
+      expect(menuExpandedAtPrintTime).toBe("false");
+
+      window.print = originalPrint;
+    });
+
+    it("should disable the print option only while preparing for print", async () => {
+      const originalPrint = window.print;
+      window.print = jest.fn();
+      let resolvePrepare: () => void = () => {};
+      const prepareForPrint = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolvePrepare = resolve;
+          }),
+      );
+
+      setup({ printContext: { isPrinting: false, prepareForPrint } });
+
+      await userEvent.click(screen.getByLabelText("More options"));
+      await userEvent.click(screen.getByText("Print Document"));
+
+      // Preparation is in progress: the item is disabled with a spinner.
+      expect(
+        screen.getByRole("menuitem", { name: /Print Document/ }),
+      ).toBeDisabled();
+      expect(window.print).not.toHaveBeenCalled();
+
+      resolvePrepare();
+
+      // Once preparation resolves, the menu closes and printing starts.
+      await waitFor(() => expect(window.print).toHaveBeenCalled());
+      expect(
+        screen.queryByRole("menuitem", { name: /Print Document/ }),
+      ).not.toBeInTheDocument();
 
       window.print = originalPrint;
     });
