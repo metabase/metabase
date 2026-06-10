@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.core :as eid-translation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -230,11 +231,12 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [id]} :- [:map
-                    [:id ::actions.schema/id]]
+                    [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/read-check (actions/select-action :id id :archived false))]
+  (let [resolved-id (eid-translation/->id-or-404 :action id)
+        {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (when (= type :http)
       (throw (ex-info (tru "HTTP actions are not supported.")
                       {:type        :http
@@ -243,7 +245,7 @@
                             {:event     :action-executed
                              :source    :model_detail
                              :type      type
-                             :action_id id})
+                             :action_id resolved-id})
     (actions/execute-action! action
                              (remap-parameter-keys action
                                                    (update-keys parameters name)))))

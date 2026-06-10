@@ -568,6 +568,24 @@
                                      (format "action/%s/execute" action-id)
                                      {:parameters {:id 1 :name "European"}})))))))
 
+(deftest execute-action-by-entity-id-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (mt/with-actions [{:keys [action-id]} unshared-action-opts]
+      (let [entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+        (testing "Action can be executed by entity_id"
+          (is (=? {:rows-affected 1}
+                  (mt/user-http-request :crowberto
+                                        :post 200
+                                        (format "action/%s/execute" entity-id)
+                                        {:parameters {:id 1 :name "European"}}))))
+        (testing "Unknown entity_id returns 404"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto
+                                       :post 404
+                                       (format "action/%s/execute"
+                                               "AAAAAAAAAAAAAAAAAAAAA")
+                                       {:parameters {:id 1 :name "European"}}))))))))
+
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled
     (mt/with-actions [{:keys [action-id]} unshared-action-opts]
