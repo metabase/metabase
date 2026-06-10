@@ -13,17 +13,16 @@ import {
   getTreemapData,
 } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
-import type {
-  TreemapLabelLayout,
-  TreemapParentLabelLayout,
-} from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import {
   MIN_FULL_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_WIDTH,
+  type TreemapLabelLayout,
+  type TreemapParentLabelLayout,
   getTreemapLabelLayouts,
   getTreemapLayoutNodes,
   getTreemapParentLabelLayouts,
+  shouldShowParentLabels,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
@@ -54,11 +53,7 @@ import {
 // width is the rendered tile width minus this on both sides.
 const LABEL_PADDING = TREEMAP_CHART_STYLE.nodeLabels.position[0];
 
-// Below this dashboard-grid size the group header chips are too cramped to be
-// legible, so parent labels are hidden regardless of the setting. Only enforced
-// when `gridSize` is present (dashboard/document); the query builder is unbounded.
-const PARENT_LABEL_MIN_GRID_WIDTH = 12;
-const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
+type NodeId = string;
 
 export const TreemapChart = ({
   rawSeries,
@@ -77,29 +72,15 @@ export const TreemapChart = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
-  // `null` = overview (initial 2-level view); `"0".."N-1"` = drilled into that
-  // top-level group. The breadcrumb and the bottom inset render from
-  // `viewRootId` state; the tooltip formatter reads the synced `viewRootIdRef`
-  // live (its option is built once, so it can't close over state).
-  // `handleViewRootChange` keeps both in sync.
-  const [viewRootId, setViewRootId] = useState<string | null>(null);
+  const [viewRootId, setViewRootId] = useState<NodeId | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
-  // Per-leaf label layout (show + wrap width), derived from the rendered tile
-  // sizes after each layout (the second pass — see `handleLabelMeasure`). Empty
-  // until the first `finished`; the option builder falls back to its area-share
-  // heuristic for any id not yet measured, so the first paint is sensible.
   const [labelLayout, setLabelLayout] = useState<
-    Record<string, TreemapLabelLayout>
+    Record<NodeId, TreemapLabelLayout>
   >({});
-  // Per-group header-text visibility, keyed by group node id, measured the same
-  // way as `labelLayout` (second pass): per group, whether the header chip shows
-  // its name text (too-narrow chips suppress it while keeping the band) and
-  // whether it also shows the right-aligned value+percentage. Empty until the
-  // first `finished`; missing ids default to showing the text.
   const [parentLabelLayout, setParentLabelLayout] = useState<
-    Record<string, TreemapParentLabelLayout>
+    Record<NodeId, TreemapParentLabelLayout>
   >({});
-  const handleViewRootChange = useCallback((id: string | null) => {
+  const handleViewRootChange = useCallback((id: NodeId | null) => {
     viewRootIdRef.current = id;
     setViewRootId(id);
   }, []);
@@ -117,9 +98,6 @@ export const TreemapChart = ({
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
-  // Column-aware value/percent formatters, shared by the option builder, the
-  // tooltip, and the label measurement pass (so the widths it measures match
-  // what renders).
   const formatters = useMemo(
     () =>
       chartData
@@ -128,21 +106,11 @@ export const TreemapChart = ({
     [chartData, settings],
   );
 
-  // Cards smaller than 12×8 grid cells can't fit legible group headers, so hide
-  // parent labels there even when the setting is on. Unbounded contexts (the
-  // query builder) have no `gridSize` and are never restricted.
-  const fitsParentLabels =
-    gridSize == null ||
-    (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
-      gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
-
-  // Whether tiles render their metric value inline (the leaf "full" block / the
-  // group-header value+percentage). When off, the measurement pass below skips
-  // sizing the value so tiles stay at name-only (the value never qualifies).
   const showLeafValues = settings["treemap.show_leaf_values"] ?? true;
   const showParentValues = settings["treemap.show_parent_values"] ?? true;
 
   const option = useMemo(() => {
+    const showLeafLabels = settings["treemap.show_leaf_labels"] ?? true;
     if (!chartData || !formatters) {
       return null;
     }
@@ -151,9 +119,8 @@ export const TreemapChart = ({
       tree,
       colors,
       isDrilled: viewRootId != null,
-      showParentLabels:
-        (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels,
-      showLeafLabels: settings["treemap.show_leaf_labels"] ?? true,
+      showParentLabels: shouldShowParentLabels(gridSize, settings),
+      showLeafLabels,
       labelLayout,
       parentLabelLayout,
       formatValue: formatters.value,
@@ -174,13 +141,13 @@ export const TreemapChart = ({
     };
   }, [
     chartData,
+    gridSize,
     formatters,
     settings,
     viewRootId,
     labelLayout,
     parentLabelLayout,
     renderingContext,
-    fitsParentLabels,
   ]);
 
   const handleInit = useCallback((chart: EChartsType) => {

@@ -1,4 +1,7 @@
+import type { VisualizationGridSize } from "custom-viz";
 import type { EChartsType } from "echarts/core";
+
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 /**
  * Tiles narrower than this (in rendered px) hide their label entirely. Wrapping
@@ -359,4 +362,19 @@ export function getTreemapLayoutNodes(chart: EChartsType): TreemapLayoutNode[] {
     });
   });
   return nodes;
+}
+
+export function shouldShowParentLabels(
+  gridSize: VisualizationGridSize | undefined,
+  settings: VisualizationProps["settings"],
+) {
+  const PARENT_LABEL_MIN_GRID_WIDTH = 12;
+  const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
+
+  const fitsParentLabels =
+    gridSize === undefined ||
+    (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
+      gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
+
+  return (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels;
 }

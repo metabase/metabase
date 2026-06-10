@@ -46,3 +46,4 @@ export const registerEChartsModules = () => {
     TooltipComponent,
   ]);
 };
+export { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
