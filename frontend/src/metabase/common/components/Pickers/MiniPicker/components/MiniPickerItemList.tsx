@@ -318,6 +318,21 @@ function DatabaseItemList({
         ? schemas[0] // if there's one schema, go straight to tables
         : null;
 
+  // Schema-less DBs (MySQL, Mongo, SQLite, …) report a single nameless schema.
+  // In that case, select the DB immediately instead of showing a blank row at 'schema' step.
+  const shouldAutoSelectNamelessSchema =
+    schemasArePickable &&
+    parent.model === "database" &&
+    schemas?.length === 1 &&
+    schemas[0] === "";
+
+  useEffect(() => {
+    if (shouldAutoSelectNamelessSchema) {
+      setPath([]);
+      onChange({ model: "schema", id: "", database_id: dbId, name: "" });
+    }
+  }, [shouldAutoSelectNamelessSchema, onChange, setPath, dbId]);
+
   const { data: tablesData, isLoading: isLoadingTables } =
     useListDatabaseSchemaTablesQuery(
       schemaName !== null
@@ -329,7 +344,7 @@ function DatabaseItemList({
         : skipToken,
     );
 
-  if (isLoadingSchemas) {
+  if (isLoadingSchemas || shouldAutoSelectNamelessSchema) {
     return <MiniPickerListLoader />;
   }
 

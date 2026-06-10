@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch } from "metabase/redux";
@@ -45,7 +46,20 @@ export function SchemaPickerInput({
     [dispatch, onSchemaChange],
   );
 
-  const hasSchema = schema != null && schema.length > 0;
+  const { data: database } = useGetDatabaseQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+
+  const hasNamedSchema = schema != null && schema.length > 0;
+  // Schema-less DBs (MySQL, Mongo, …) report a single nameless schema (`""`);
+  // For this scenario we want to display DB name instead of the schema name.
+  const hasNamelessSchema = schema === "" && databaseId != null;
+  const isInputEmpty = !hasNamedSchema && !hasNamelessSchema;
+  const label = hasNamedSchema
+    ? schema
+    : hasNamelessSchema
+      ? database?.name
+      : null;
 
   return (
     <MiniPicker
@@ -67,23 +81,23 @@ export function SchemaPickerInput({
         leftSection={
           <FixedSizeIcon
             name="database"
-            c={hasSchema ? undefined : "text-tertiary"}
+            c={isInputEmpty ? "text-tertiary" : undefined}
           />
         }
         rightSection={
           <FixedSizeIcon
             name="chevrondown"
-            c={hasSchema ? undefined : "text-tertiary"}
+            c={isInputEmpty ? "text-tertiary" : undefined}
           />
         }
         data-testid="schema-picker-button"
       >
-        {hasSchema ? (
-          schema
-        ) : (
+        {isInputEmpty ? (
           <Text c="text-secondary" fw={700}>
             {t`Pick a schema to view`}
           </Text>
+        ) : (
+          label
         )}
       </Button>
     </MiniPicker>
