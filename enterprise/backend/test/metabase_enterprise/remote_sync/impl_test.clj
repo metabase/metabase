@@ -1050,10 +1050,8 @@
                           :table_id table-id
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                  result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
