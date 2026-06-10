@@ -2539,20 +2539,6 @@
            metabase.types.init}
    :uses #{util}}
 
-  typed-schemas
-  {:team "Embedding"
-   :api  #{metabase.typed-schemas.api}
-   :uses #{api
-           collections
-           lib
-           lib-be
-           metabot
-           metrics
-           models
-           system
-           util}
-   :model-imports #{:model/Card :model/Database :model/Measure :model/Table}}
-
   upload
   {:team "Graphy"
    :api  #{metabase.upload.api
