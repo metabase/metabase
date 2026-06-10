@@ -83,7 +83,7 @@ runs:
     # but only when it did NOT pass, to avoid spamming summaries/comments for healthy runs.
     # Never include logs or stack traces — only the real status and a link to the run.
     - name: Report info-level driver result (job summary)
-      if: ${{ always() && inputs.driver-status == 'info' && inputs.previous-step-outcome != 'success' }}
+      if: ${{ always() && inputs.driver-status == 'info' && inputs.previous-step-outcome == 'failure' }}
       shell: bash
       env:
         OUTCOME: ${{ inputs.previous-step-outcome }}
@@ -125,13 +125,15 @@ runs:
           // comments from a previous version get cleaned up on the next sync.
           const PREFIX = "<!-- info-driver-result";
           const marker = `<!-- info-driver-results:${sha} -->`;
-          const header = `${marker}\nℹ️ **Info-level drivers** ran non-blocking on \`${sha.slice(0, 7)}\` — these do not gate:`;
+          const header = `${marker}\nℹ️ **Info-level drivers** failed (non-blocking) on \`${sha.slice(0, 7)}\` — these do not gate:`;
           const lineKey = `${LABEL}:${VARIANT}`;
           const title = VARIANT ? `${LABEL} (${VARIANT})` : LABEL;
           const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
-          const ourLine = OUTCOME === "success"
-            ? null
-            : `<!--l:${lineKey}--> • **${title}** — ❌ \`${OUTCOME}\`. [Logs](${runUrl})`;
+          // Only real failures are reported; cancelled/skipped/success remove this leg's line.
+          // List-item line with the hidden key tag at the END so markdown (links) renders.
+          const ourLine = OUTCOME === "failure"
+            ? `- **${title}** — ❌ \`${OUTCOME}\` ([Logs](${runUrl})) <!--l:${lineKey}-->`
+            : null;
           const linesOf = (body) => body.split("\n").filter((l) => l.includes("<!--l:"));
 
           const sync = async () => {
@@ -165,7 +167,7 @@ runs:
               if (target) await github.rest.issues.deleteComment({ owner, repo, comment_id: target.id }).catch(() => {});
               return;
             }
-            const body = [header, ...lines].join("\n");
+            const body = [header, "", ...lines].join("\n");
             if (target) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: target.id, body });
             } else {
