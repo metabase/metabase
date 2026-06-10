@@ -1497,3 +1497,17 @@ databaseChangeLog:
                   remarks: JSON-encoded effective-data-access token (sandbox/impersonation/routing fingerprint) for the creator's lens this snapshot was computed under. Compared against a viewer's token to gate cached reads. NULL means creator+admin only.
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v63.storedresultdataaccesstokenbf
+      author: nvoxland
+      comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).
+      changes:
+        - update:
+            tableName: stored_result
+            columns:
+              - column:
+                  name: data_access_token
+                  value: "{}"
+            where: data_access_token IS NULL
+      rollback:

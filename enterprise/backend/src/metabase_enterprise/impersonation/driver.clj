@@ -116,7 +116,7 @@
 (defenterprise impersonation-token-for-db
   "Connection-impersonation fingerprint for the current user on `db-id` (the resolved database
   role), or nil when not impersonated (including admins)."
-  :feature :advanced-permissions
+  :feature :none
   [db-id]
   (when-let [role (and api/*current-user-id* (connection-impersonation-role db-id))]
     {:role role}))

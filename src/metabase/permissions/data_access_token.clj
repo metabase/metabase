@@ -34,7 +34,8 @@
 
 (defenterprise impersonation-token-for-db
   "Connection-impersonation fingerprint for the current user on `db-id`, or nil when not
-  impersonated (including admins). The token is the resolved database role."
+  impersonated (including admins). The token is a map {:role <role-string>} representing the
+  resolved database role, or nil when not impersonated."
   metabase-enterprise.impersonation.driver
   [_db-id]
   nil)
@@ -42,7 +43,8 @@
 (defenterprise routing-token-for-db
   "Database-routing fingerprint for the current user on router `db-id`, or nil when the user
   resolves to the router db itself (admins, or non-admins routed via the __METABASE_ROUTER__
-  sentinel). The token is the resolved destination database id. May throw when a routed
+  sentinel). The token is a map {:destination-db-id <db-id>} representing the resolved
+  destination database, or nil when the user resolves to the router database itself. May throw when a routed
   non-admin is missing the required routing attribute."
   metabase-enterprise.database-routing.common
   [_db-id]

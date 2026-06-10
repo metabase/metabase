@@ -92,7 +92,7 @@
   thus see any creator's snapshot), and two genuinely-sandboxed users \"share a sandbox\" iff
   they'd see the same rows. The card's `:updated_at` (element 1) is stringified so the token is
   EDN-safe for storage on `stored_result.data_access_token`."
-  :feature :sandboxes
+  :feature :none
   [table-id]
   (let [field {:table_id table-id}]
     (when (field-is-sandboxed? field)
