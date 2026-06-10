@@ -86,9 +86,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            test
-          </MetabaseProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
         </>,
       );
 
@@ -157,9 +155,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            test
-          </MetabaseProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
         </>,
       );
 
@@ -207,9 +203,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            test
-          </MetabaseProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
         </>,
       );
 
@@ -259,9 +253,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            test
-          </MetabaseProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
         </>,
       );
 
@@ -418,9 +410,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
           <>
             <ComponentWithHook actionId={actionId} />
 
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-              test
-            </MetabaseProvider>
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
           </>,
         );
 
@@ -576,9 +566,7 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-            test
-          </MetabaseProvider>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
         </>,
       );
 
