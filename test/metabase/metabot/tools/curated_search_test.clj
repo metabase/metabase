@@ -2,7 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.curated-search.core :as cs.core]
    [metabase.metabot.tools.curated-search :as curated-search]
+   [metabase.metabot.tools.search :as tools.search]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -25,6 +27,38 @@
     (testing "similarity is pulled from the :similarity score factor"
       (is (= 0.8 (similarity {:scores [{:name :similarity :score 0.8} {:name :verified :score 1.0}]})))
       (is (= 0.0 (similarity {:scores [{:name :verified :score 1.0}]}))))))
+
+(deftest build-matches-permission-filters-before-take-test
+  (testing "hydration permission-filters the whole candidate set before take-n, so an unreadable top hit doesn't crowd out readable matches just past the cut"
+    (let [build-matches (var-get #'curated-search/build-matches)
+          ;; three distinct entities, best-first
+          raw (vec (for [id [1 2 3]]
+                     {:entity              {:model "table" :id id}
+                      :saved_search_prompt (str "p" id)
+                      :usage_instructions  ""
+                      :score               {:total_score (- 1.0 (/ id 10.0))
+                                            :scores [{:name :similarity :score 0.8}]}}))]
+      (mt/with-dynamic-fn-redefs [cs.core/search (fn [_ _] raw)
+                                  ;; entity 1 (the top hit) is unreadable → dropped during hydration
+                                  tools.search/entity-refs->search-results
+                                  (fn [refs] (for [{:keys [model id]} refs :when (not= 1 id)]
+                                               {:type model :id id :name (str "e" id)}))]
+        (testing "asking for 2 returns the 2 readable entities (2 and 3), not just the 1 below the old top-2 cut"
+          (is (= [2 3] (mapv (comp :id :entity) (build-matches "q" 2)))))))))
+
+(deftest match->xml-locale-independent-test
+  (testing "score/similarity render with a '.' decimal separator even under a comma-decimal default locale"
+    (let [match->xml (var-get #'curated-search/match->xml)
+          orig       (java.util.Locale/getDefault)]
+      (try
+        (java.util.Locale/setDefault (java.util.Locale/forLanguageTag "de-DE"))
+        (let [out (match->xml {:saved_search_prompt "p" :usage_instructions ""
+                               :score {:total_score 0.95} :similarity 0.78 :weak? false
+                               :entity {:type "table" :id 1 :name "T" :database_id 1}})]
+          (is (str/includes? out "score=\"0.950\""))
+          (is (str/includes? out "similarity=\"0.780\"")))
+        (finally
+          (java.util.Locale/setDefault orig))))))
 
 (deftest dedupe-by-entity-test
   (let [dedupe (var-get #'curated-search/dedupe-by-entity)

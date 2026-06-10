@@ -82,31 +82,39 @@
        second))
 
 (defn- build-matches
-  "Fetch, dedupe to distinct entities, take `n`, and hydrate each match's entity ref into a full search
-  record.
+  "Fetch, dedupe to distinct entities, hydrate each match's entity ref into a full search record, and
+  return the top `n` the current user can read.
   Each match: `{:saved_search_prompt :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
   (let [raw     (curated-search/search
                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
-        top     (take n (dedupe-by-entity raw))
+        deduped (dedupe-by-entity raw)
+        ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
+        ;; so hydrate the whole deduped candidate set and take `n` from the readable survivors — taking
+        ;; `n` first would let unreadable top hits shrink the result below `n` while readable matches sit
+        ;; just past the cut.
         by-key  (into {} (map (juxt (juxt :type :id) identity))
-                      (tools.search/entity-refs->search-results (distinct (map :entity top))))]
-    (for [{:keys [saved_search_prompt usage_instructions entity score]} top
-          ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
-          ;; (plain "card" refs hydrate as "question")
-          :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
-                sim      (similarity score)]
-          :when resolved]
-      {:saved_search_prompt saved_search_prompt
-       :usage_instructions  usage_instructions
-       :score               score
-       :similarity          sim
-       :weak?               (< sim weak-similarity-threshold)
-       :entity              resolved})))
+                      (tools.search/entity-refs->search-results (distinct (map :entity deduped))))]
+    (->> (for [{:keys [saved_search_prompt usage_instructions entity score]} deduped
+               ;; hydrated records use the agent-facing entity type, so normalize the ref's model to match
+               ;; (plain "card" refs hydrate as "question")
+               :let [resolved (get by-key [(tools.search/ref-model->entity-type (:model entity)) (:id entity)])
+                     sim      (similarity score)]
+               :when resolved]
+           {:saved_search_prompt saved_search_prompt
+            :usage_instructions  usage_instructions
+            :score               score
+            :similarity          sim
+            :weak?               (< sim weak-similarity-threshold)
+            :entity              resolved})
+         (take n))))
 
 (defn- match->xml [{:keys [saved_search_prompt usage_instructions score similarity weak? entity]}]
-  (str (format "<match score=\"%.3f\" similarity=\"%.3f\" confidence=\"%s\">\n"
-               (double (:total_score score)) (double similarity) (if weak? "weak" "strong"))
+  ;; String/format with Locale/ROOT so %.3f uses a '.' decimal separator regardless of the instance's
+  ;; site locale (clojure.core/format always uses the default locale).
+  (str (String/format java.util.Locale/ROOT "<match score=\"%.3f\" similarity=\"%.3f\" confidence=\"%s\">\n"
+                      (object-array [(double (:total_score score)) (double similarity)
+                                     (if weak? "weak" "strong")]))
        "<saved_search_prompt>" (llm-shape/escape-xml saved_search_prompt) "</saved_search_prompt>\n"
        (when-not (str/blank? usage_instructions)
          (str "<usage_instructions>" (llm-shape/escape-xml usage_instructions) "</usage_instructions>\n"))
