@@ -87,6 +87,9 @@
 (defn- clean-result [result]
   (cond-> (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
                   :creator_common_name :creator_id
+                  ;; table search surfaces data_authority, whose default value is DB-specific
+                  ;; (e.g. "unconfigured" on H2/Postgres vs NULL on MySQL/MariaDB) — incidental here
+                  :data_authority
                   ;; false for new search segments... not sure why
                   :created_at)
     (false? (:model_id result))
@@ -929,7 +932,6 @@
      :model               "table"
      :database_id         true
      :database_name       "test-data (h2)"
-     :data_authority      "unconfigured"
      :pk_ref              nil
      :initial_sync_status "complete"})))
 
