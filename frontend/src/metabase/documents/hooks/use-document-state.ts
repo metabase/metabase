@@ -10,6 +10,7 @@ import {
   setCardEmbeds,
   setIsCommentSidebarOpen,
 } from "../documents.slice";
+import { doesDocumentNeedMigration } from "../utils/editorNodeUtils";
 
 export function useDocumentState(documentData?: {
   name: string;
@@ -20,6 +21,7 @@ export function useDocumentState(documentData?: {
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
     null,
   );
+  const [documentNeedsMigration, setDocumentNeedsMigration] = useState(false);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
   useEffect(() => {
@@ -27,6 +29,9 @@ export function useDocumentState(documentData?: {
     if (documentData) {
       setDocumentTitle(documentData.name);
       setDocumentContent(documentData.document);
+      setDocumentNeedsMigration(
+        doesDocumentNeedMigration(documentData.document),
+      );
     } else {
       setDocumentContent(null);
     }
@@ -67,6 +72,7 @@ export function useDocumentState(documentData?: {
     setDocumentTitle,
     documentContent,
     setDocumentContent,
+    documentNeedsMigration,
     updateCardEmbeds,
     openCommentSidebar,
     closeCommentSidebar,

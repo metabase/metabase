@@ -635,6 +635,7 @@ describe("scenarios > explorations > detail page", () => {
 
         for (const doc of [scratchpadDoc!, autoDoc!]) {
           cy.visit(`/question/research/${id}/document/${doc.id}`);
+          cy.findByRole("button", { name: "Save" }).should("not.exist");
           cy.findByLabelText("More options").click();
           // `metabase/documents/components/DocumentMenu.tsx` puts
           // the trash action behind a `canWrite && onArchive` gate;
@@ -707,6 +708,7 @@ describe("scenarios > explorations > detail page", () => {
         // card embed (not N per-query embeds).
         cy.url().should("include", `/question/research/${id}/document/`);
         cy.findAllByTestId("document-card-embed").should("have.length", 1);
+        cy.findByRole("button", { name: "Save" }).should("not.exist");
 
         cy.log("timeline should be visible in the document");
         H.echartsIcon("star").should("be.visible");
@@ -945,6 +947,7 @@ describe("scenarios > explorations > detail page", () => {
         // one cardEmbed — not N separate embeds, which would be the
         // pre-composite per-query behaviour.
         cy.findAllByTestId("document-card-embed").should("have.length", 1);
+        cy.findByRole("button", { name: "Save" }).should("not.exist");
       },
     );
   });

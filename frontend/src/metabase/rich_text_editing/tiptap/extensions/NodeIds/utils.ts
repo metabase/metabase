@@ -24,15 +24,17 @@ export function createIdAttribute() {
 }
 
 // keep in sync with nodes-with-id on the backend
-type NodesWithId =
-  | "paragraph"
-  | "heading"
-  | "bulletList"
-  | "orderedList"
-  | "blockquote"
-  | "codeBlock"
-  | "cardEmbed"
-  | "supportingText";
+export const NODES_WITH_ID = [
+  "paragraph",
+  "heading",
+  "bulletList",
+  "orderedList",
+  "blockquote",
+  "codeBlock",
+  "cardEmbed",
+  "supportingText",
+] as const;
+export type NodesWithId = (typeof NODES_WITH_ID)[number];
 
 // needed to upgrade documents without ids and to fix duplicated ids when splitting nodes
 export function createProseMirrorPlugin(nodeName: NodesWithId) {

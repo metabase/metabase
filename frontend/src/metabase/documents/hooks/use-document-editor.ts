@@ -143,6 +143,7 @@ export function useDocumentEditor({
     setDocumentTitle,
     documentContent,
     setDocumentContent,
+    documentNeedsMigration,
     updateCardEmbeds,
   } = useDocumentState(documentData);
 
@@ -192,9 +193,19 @@ export function useDocumentEditor({
           settledContentRef.current = content;
         }
       }, 0);
-      dispatch(setHasUnsavedChanges(false));
+      if (documentNeedsMigration) {
+        dispatch(setHasUnsavedChanges(true));
+      } else {
+        dispatch(setHasUnsavedChanges(false));
+      }
     }
-  }, [dispatch, documentContent, isNewDocument, editorInstance]);
+  }, [
+    dispatch,
+    documentContent,
+    isNewDocument,
+    editorInstance,
+    documentNeedsMigration,
+  ]);
 
   // Scroll to anchor block when navigating with URL hash
   const blockId = location.hash ? location.hash.slice(1) : null;
@@ -254,12 +265,17 @@ export function useDocumentEditor({
         return;
       }
 
+      if (documentNeedsMigration) {
+        dispatch(setHasUnsavedChanges(true));
+        return;
+      }
+
       const baseline = settledContentRef.current;
       if (baseline) {
         dispatch(setHasUnsavedChanges(!_.isEqual(content, baseline)));
       }
     },
-    [dispatch, editorInstance, isNewDocument],
+    [dispatch, editorInstance, isNewDocument, documentNeedsMigration],
   );
 
   const handleSave = useCallback(

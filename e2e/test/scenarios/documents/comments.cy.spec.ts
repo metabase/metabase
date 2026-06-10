@@ -199,27 +199,13 @@ describe("document comments", () => {
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
 
-    cy.findByRole("button", { name: "Save" }).should("not.exist");
-
-    H.documentContent().click();
-    cy.realType(" Edited.");
+    cy.log("document is dirty after schema migration");
     cy.findByRole("button", { name: "Save" }).should("be.visible").click();
     cy.findByRole("button", { name: "Save" }).should("not.exist");
 
-    cy.log("the upgraded paragraph now carries a persisted _id");
-    cy.get<DocumentId>("@documentId").then((documentId) => {
-      cy.request("GET", `/api/document/${documentId}`).then(({ body }) => {
-        const paragraph = body.document.content[0];
-        expect(paragraph.type).to.eq("paragraph");
-        expect(paragraph.attrs?._id, "paragraph gained an _id").to.be.a(
-          "string",
-        );
-      });
-    });
-
     cy.reload();
 
-    cy.log("document is clean after reload");
+    cy.log("document is not dirty after persisting the missing _id");
     cy.findByRole("textbox", { name: "Document Title" })
       .should("be.visible")
       .and("have.value", "Lorem ipsum");
