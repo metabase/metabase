@@ -2,6 +2,7 @@ import Color from "color";
 import { type EChartsType, graphic } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
+import { isNative } from "metabase/common/utils/card";
 import { getTreemapNodePath } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
@@ -16,9 +17,8 @@ import type {
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import type { ClickObjectDimension } from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import type { Card, RawSeries, RowValue } from "metabase-types/api";
+import type { RawSeries, RowValue } from "metabase-types/api";
 
 type TreemapSeriesMouseEvent = EChartsSeriesMouseEvent<{ id?: unknown }>;
 
@@ -124,10 +124,6 @@ export function hideTreemapHoverOverlay(
   overlayRef.current = null;
 }
 
-function isNativeQuery(card: Card): boolean {
-  return new Question(card).isNative();
-}
-
 /**
  * Build a Metabase drill-through `ClickObject` from a clicked tile. The clicked
  * node id ("0" for a 1-level grouping node, "0-1" for a drilled-in leaf) is
@@ -196,7 +192,7 @@ export function getTreemapClickData({
     settings,
   };
 
-  if (!isNativeQuery(rawSeries[0].card)) {
+  if (!isNative(rawSeries[0].card)) {
     clickData.dimensions = dimensions;
   }
 
