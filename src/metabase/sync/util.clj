@@ -216,6 +216,14 @@
   (or (isa? (class e) ::exception-class-not-to-retry)
       (some-> (ex-cause e) recur)))
 
+(defn transient-sync-error?
+  "True if `e` (or any of its causes) is a connection/environment-level failure — database unreachable, connection
+  pool exhausted, SSL handshake failure, and similar — rather than a failure that says anything about the data being
+  synced. Such failures are expected to clear on a later sync, so callers should retry them rather than treat the
+  affected entity as permanently failed."
+  [e]
+  (do-not-retry-exception? e))
+
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
