@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 

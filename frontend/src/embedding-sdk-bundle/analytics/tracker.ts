@@ -1,19 +1,24 @@
 import { useEffect } from "react";
 
-import { EMBEDDING_SDK_SCHEMA } from "embedding-sdk-bundle/analytics/events";
+import {
+  EMBEDDING_SDK_SCHEMA,
+  useIsTrackingEnabled,
+} from "embedding-sdk-bundle/analytics/component-events";
+import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
   getSdkAuthMethod,
   getSdkLocaleUsed,
   initSdkTracker,
   trackSdkEvent,
 } from "embedding-sdk-bundle/analytics/snowplow";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
-export function deriveAuthMethod(authConfig: MetabaseAuthConfig): string {
+export function deriveAuthMethod(
+  authConfig: MetabaseAuthConfig,
+): SdkAuthMethod {
   if (authConfig.isGuest) {
     return "guest";
   }
@@ -26,14 +31,12 @@ export function deriveAuthMethod(authConfig: MetabaseAuthConfig): string {
 // Initialize the SDK Snowplow tracker and fire the provider-init adoption beacon.
 // Waits for anon-tracking-enabled to be loaded from the instance settings so the
 // opt-out gate is respected. Fires once per JS load; idempotent under re-renders.
-export function useSdkTrackerInit(
+export function useInitSdkTracker(
   authConfig: MetabaseAuthConfig,
   reduxStore: SdkStore,
   localeUsed: boolean,
 ) {
-  const isTrackingEnabled = useSdkSelector(
-    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? false,
-  );
+  const isTrackingEnabled = useIsTrackingEnabled();
 
   useEffect(() => {
     if (!isTrackingEnabled) {

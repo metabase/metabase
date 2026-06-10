@@ -2,7 +2,7 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
-import { useSdkTrackerInit } from "embedding-sdk-bundle/analytics/tracker-init";
+import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
@@ -106,7 +106,7 @@ export const ComponentProviderInternal = (
   });
 
   useInitPlugins(reduxStore);
-  useSdkTrackerInit(authConfig, reduxStore, locale != null);
+  useInitSdkTracker(authConfig, reduxStore, locale != null);
 
   useSdkCustomLoader();
 

@@ -5,6 +5,13 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 
 import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
 
+// Default matches the BE setting (:default true in analytics/settings.clj).
+export function useIsTrackingEnabled(): boolean {
+  return useSdkSelector(
+    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? true,
+  );
+}
+
 export const EMBEDDING_SDK_SCHEMA =
   "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0";
 
@@ -21,11 +28,16 @@ export type SdkComponentName =
   | "MetabotQuestion"
   | "CreateDashboardModal";
 
-type DashboardProperties = {
+// StaticDashboard omits enableEntityNavigation from its public props —
+// entity navigation requires drill-through, which static mode doesn't support.
+type StaticDashboardProperties = {
   with_title: boolean;
   with_downloads: boolean;
   with_subscriptions: boolean;
   auto_refresh: boolean;
+};
+
+type DashboardProperties = StaticDashboardProperties & {
   enable_entity_navigation: boolean;
 };
 
@@ -35,22 +47,69 @@ type QuestionBaseProperties = {
   with_alerts: boolean;
 };
 
+// CollectionBrowser and CreateDashboardModal have no configurable dimensions —
+// the event itself signals presence. Sending { used: true } was always trivially
+// true and added no analytical signal, so we send empty properties instead.
+type EmptyProperties = Record<never, never>;
+
 type NewQuestionProperties = QuestionBaseProperties & {
   id_new: boolean;
   id_new_native: boolean;
 };
 
 export type SdkComponentProperties = {
-  StaticDashboard: DashboardProperties;
+  StaticDashboard: StaticDashboardProperties;
   InteractiveDashboard: DashboardProperties;
   EditableDashboard: DashboardProperties;
   StaticQuestion: QuestionBaseProperties | NewQuestionProperties;
-  InteractiveQuestion:
-    | (QuestionBaseProperties & { is_save_enabled: boolean })
-    | (NewQuestionProperties & { is_save_enabled: boolean });
-  CollectionBrowser: { used: boolean };
+  InteractiveQuestion: (QuestionBaseProperties | NewQuestionProperties) & {
+    is_save_enabled: boolean;
+  };
+  CollectionBrowser: EmptyProperties;
   MetabotQuestion: { layout: "auto" | "sidebar" | "stacked" };
-  CreateDashboardModal: { used: boolean };
+  CreateDashboardModal: EmptyProperties;
+};
+
+// Centralized defaults — mirrors modular embedding's DEFAULT_VALUES pattern.
+// Components pass raw prop values; the hook fills gaps via spread merge.
+// id_new and id_new_native are excluded: they are always set explicitly.
+const SDK_COMPONENT_DEFAULT_PROPERTIES: {
+  [C in SdkComponentName]: Partial<SdkComponentProperties[C]>;
+} = {
+  StaticDashboard: {
+    with_title: true,
+    with_downloads: false,
+    with_subscriptions: false,
+    auto_refresh: false,
+  },
+  InteractiveDashboard: {
+    with_title: true,
+    with_downloads: false,
+    with_subscriptions: false,
+    auto_refresh: false,
+    enable_entity_navigation: false,
+  },
+  EditableDashboard: {
+    with_title: true,
+    with_downloads: false,
+    with_subscriptions: false,
+    auto_refresh: false,
+    enable_entity_navigation: false,
+  },
+  StaticQuestion: {
+    with_title: true,
+    with_downloads: false,
+    with_alerts: false,
+  },
+  InteractiveQuestion: {
+    with_title: true,
+    with_downloads: false,
+    with_alerts: false,
+    is_save_enabled: true,
+  },
+  CollectionBrowser: {},
+  MetabotQuestion: { layout: "auto" },
+  CreateDashboardModal: {},
 };
 
 // In-memory dedup registry. Module-scoped so it survives re-renders and
@@ -68,15 +127,15 @@ const firedKeys = new Set<string>();
 //
 // Timing: events wait for both anon-tracking-enabled (opt-out gate) and
 // sdkTrackerReady (set by ComponentProvider after initSdkTracker completes).
-// This prevents events from firing before the tracker or auth_method are ready.
+// Without the sdkTrackerReady gate, firing early would either silently drop the
+// event (Snowplow discards calls before newTracker runs) or record auth_method
+// as "" because initSdkTracker hasn't written it yet.
 export function useTrackSdkComponentMount<C extends SdkComponentName>(
   componentName: C,
   entityId: number | string | null,
-  properties: SdkComponentProperties[C],
+  properties: Partial<SdkComponentProperties[C]>,
 ): void {
-  const isTrackingEnabled = useSdkSelector(
-    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? false,
-  );
+  const isTrackingEnabled = useIsTrackingEnabled();
   const isTrackerReady = useSdkSelector((state) => state.sdk.sdkTrackerReady);
 
   useEffect(() => {
@@ -97,9 +156,14 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     const sdkVersion =
       getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
+    const mergedProperties = {
+      ...SDK_COMPONENT_DEFAULT_PROPERTIES[componentName],
+      ...properties,
+    } as SdkComponentProperties[C];
+
     const serializedProperties = Object.fromEntries(
       Object.entries(
-        properties as Record<string, boolean | string | null | undefined>,
+        mergedProperties as Record<string, boolean | string | null | undefined>,
       ).map(([key, value]) => [key, value == null ? null : String(value)]),
     );
 

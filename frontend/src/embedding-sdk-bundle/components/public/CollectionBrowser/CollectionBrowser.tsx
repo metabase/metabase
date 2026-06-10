@@ -1,7 +1,7 @@
 import { type ComponentType, useEffect } from "react";
 import { t } from "ttag";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import {
   CollectionNotFoundError,
   SdkLoader,

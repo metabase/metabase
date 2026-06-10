@@ -16,8 +16,13 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 // Named tracker, isolated from the main-app tracker ("sp").
 const SDK_TRACKER_NAME = "sdk";
 
+export type SdkAuthMethod = "guest" | "api_key" | "sso";
+
+// true = tracker initialized for the first time; false = already running (idempotent call)
+type WasJustInitialized = boolean;
+
 let trackerInitialized = false;
-let sdkAuthMethod: string = "";
+let sdkAuthMethod: SdkAuthMethod | "" = "";
 let sdkLocaleUsed: boolean = false;
 
 // Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
@@ -28,13 +33,12 @@ export function initSdkTracker({
   store,
 }: {
   metabaseInstanceUrl: string;
-  authMethod?: string;
+  authMethod?: SdkAuthMethod | "";
   localeUsed?: boolean;
   store: { getState: () => SdkStoreState };
-}): boolean {
-  const wasJustInitialized = !trackerInitialized;
-  if (!wasJustInitialized) {
-    return wasJustInitialized;
+}): WasJustInitialized {
+  if (trackerInitialized) {
+    return false;
   }
   trackerInitialized = true;
   sdkAuthMethod = authMethod;
@@ -60,10 +64,10 @@ export function initSdkTracker({
     withCredentials: false,
     plugins: [createSdkInstanceContextPlugin(store)],
   });
-  return wasJustInitialized;
+  return true;
 }
 
-export function getSdkAuthMethod(): string {
+export function getSdkAuthMethod(): SdkAuthMethod | "" {
   return sdkAuthMethod;
 }
 
@@ -71,6 +75,9 @@ export function getSdkLocaleUsed(): boolean {
   return sdkLocaleUsed;
 }
 
+// Attaches the instance context to every SDK event. Omits userId — unlike the
+// main-app tracker, SDK component usage is tracked at instance granularity;
+// the analytics-uuid already identifies the account.
 function createSdkInstanceContextPlugin(store: {
   getState: () => SdkStoreState;
 }) {

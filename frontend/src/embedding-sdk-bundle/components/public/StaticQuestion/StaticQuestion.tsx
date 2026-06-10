@@ -1,6 +1,6 @@
 import { type FC, type PropsWithChildren, useMemo } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { RenderIfHasContent } from "embedding-sdk-bundle/components/private/RenderIfHasContent/RenderIfHasContent";

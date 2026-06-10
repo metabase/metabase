@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkInternalNavigationBackButton } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationBackButton";
 import {

@@ -1,4 +1,4 @@
-import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/events";
+import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";

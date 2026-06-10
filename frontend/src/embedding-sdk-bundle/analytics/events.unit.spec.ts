@@ -20,7 +20,7 @@ import { renderHook } from "@testing-library/react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 
-import { useTrackSdkComponentMount } from "./events";
+import { useTrackSdkComponentMount } from "./component-events";
 import { trackSdkEvent } from "./snowplow";
 
 const mockTrackSdkEvent = jest.mocked(trackSdkEvent);
