@@ -110,15 +110,6 @@ export function getEmbeddingColorPalette(
     ...chartColors,
   };
 
-  // These 3 assignments are temporary compatibility layer for colors migration (GDGT-2517)
-  // Whitelabel `application-colors` flows in via `appPalette` directly under
-  // the legacy `brand`/`filter`/`summarize` keys as it's their names in DB and they previously
-  // matched semantic token names (but now semantic tokens renamed to core-*). Mirror them here
-  // so consumers reading `var(--mb-color-core-brand)` gets the right brand color.
-  merged["core-brand"] = merged.brand;
-  merged["core-filter"] = merged.filter;
-  merged["core-summarize"] = merged.summarize;
-
   return merged;
 }
 
