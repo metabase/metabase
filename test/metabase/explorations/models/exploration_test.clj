@@ -81,7 +81,9 @@
                                                :creator_id    (:id owner)
                                                :collection_id (:id coll)}
                    :model/ExplorationThread t {:exploration_id (:id e)}
+                   :model/ExplorationThreadGroup g {:exploration_thread_id (:id t)}
                    :model/ExplorationQuery  q {:exploration_thread_id (:id t)
+                                               :group_id     (:id g)
                                                :card_id      (:id card)
                                                :dimension_id "d1"
                                                :dataset_query (venues-count-query)}]

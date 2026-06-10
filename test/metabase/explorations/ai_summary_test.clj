@@ -120,9 +120,12 @@
                        :visualization_settings {}
                        :creator_id    user-id
                        :dataset_query oq}))
+        group-id (t2/insert-returning-pk! :model/ExplorationThreadGroup
+                                          {:exploration_thread_id thread-id})
         eq    (first (t2/insert-returning-instances!
                       :model/ExplorationQuery
                       {:exploration_thread_id thread-id
+                       :group_id              group-id
                        :card_id               (:id card)
                        :dimension_id          "d1"
                        :dataset_query         oq

@@ -822,9 +822,14 @@
           (is (nil? (:completed_at rerun)) "completion gate cleared")
           (is (empty? (:queries rerun)) "previously generated queries are wiped")
           (testing "selections are preserved"
-            (is (= 1 (count (:metrics rerun))))
-            (is (= "d1" (-> rerun :dimensions first :dimension_id)))
-            (is (= 1 (count (:dimensions rerun))))
+            ;; Selections live in the thread's ExplorationThreadGroup rows, which restart does
+            ;; NOT delete (only the materialized queries are wiped, so the query-derived
+            ;; :groups tree in the response is empty until the planner re-runs below).
+            (let [groups (t2/select :model/ExplorationThreadGroup :exploration_thread_id orig-tid)]
+              (is (= 1 (count groups)) "the Research-plan group survives the restart")
+              (is (= 1 (count (:metrics (first groups)))) "its metric selection is preserved")
+              (is (= ["d1"] (mapv :dimension_id (:dimensions (first groups))))
+                  "its dimension selection is preserved"))
             (is (= 1 (count (:timelines rerun)))))
           (testing "the planner regenerates queries for the same thread"
             (query-plan/generate-query-plan! orig-tid)

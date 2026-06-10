@@ -152,7 +152,7 @@
     (let [profile {:prompt-template "explorations.selmer"}
           context {}
           tools {}
-          content (prompts/build-system-message-content profile context tools)]
+          content (prompts/build-system-message-content profile context tools [])]
       (is (string? content))
       (is (not (str/includes? content "{% include"))
           "unresolved {% include %} tags mean rendering failed and the raw template was returned"))))

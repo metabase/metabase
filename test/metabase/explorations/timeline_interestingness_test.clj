@@ -132,10 +132,13 @@
                  :model/Card card {:type :metric :creator_id (:id u)
                                    :dataset_query (count-query)}
                  :model/Timeline tl {:name "Promotions" :creator_id (:id u)}]
-    (let [thread (temp-thread! (:id u))
+    (let [thread   (temp-thread! (:id u))
+          group-id (t2/insert-returning-pk! :model/ExplorationThreadGroup
+                                            {:exploration_thread_id (:id thread)})
           q      (first (t2/insert-returning-instances!
                          :model/ExplorationQuery
                          {:exploration_thread_id (:id thread)
+                          :group_id              group-id
                           :card_id               (:id card)
                           :dimension_id          "d1"
                           :dataset_query         (count-query)

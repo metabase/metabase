@@ -230,193 +230,6 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.bjiofd
-      author: nvoxland
-      comment: Create exploration_thread_metric join table
-      changes:
-        - createTable:
-            tableName: exploration_thread_metric
-            remarks: Metrics (Cards of type=metric) selected on a thread.
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  remarks: Primary key
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: exploration_thread_id
-                  type: int
-                  remarks: The thread this selection belongs to
-                  constraints:
-                    nullable: false
-              - column:
-                  name: card_id
-                  type: int
-                  remarks: The selected metric Card (report_card.id)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: dimension_mappings
-                  type: ${text.type}
-                  remarks: JSON snapshot of the metric Card's dimension_mappings at selection time
-                  constraints:
-                    nullable: true
-              - column:
-                  name: position
-                  type: int
-                  defaultValueNumeric: 0
-                  remarks: Ordering of metric selections within a thread
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the selection was created
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the selection was last updated
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v63.98ubfd
-      author: nvoxland
-      comment: Unique constraint on exploration_thread_metric (thread, card)
-      changes:
-        - addUniqueConstraint:
-            tableName: exploration_thread_metric
-            columnNames: exploration_thread_id, card_id
-            constraintName: uq_exploration_thread_metric_thread_card
-
-  - changeSet:
-      id: v63.ifddba
-      author: nvoxland
-      comment: FK exploration_thread_metric.exploration_thread_id -> exploration_thread.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_thread_metric
-            baseColumnNames: exploration_thread_id
-            referencedTableName: exploration_thread
-            referencedColumnNames: id
-            constraintName: fk_exploration_thread_metric_thread_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v63.bjiare
-      author: nvoxland
-      comment: FK exploration_thread_metric.card_id -> report_card.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_thread_metric
-            baseColumnNames: card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_exploration_thread_metric_card_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v63.jibredf
-      author: nvoxland
-      comment: Create exploration_thread_dimension join table
-      changes:
-        - createTable:
-            tableName: exploration_thread_dimension
-            remarks: Dimensions selected on a thread. Dimension IDs are virtual strings (not Field FKs).
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  remarks: Primary key
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: exploration_thread_id
-                  type: int
-                  remarks: The thread this dimension belongs to
-                  constraints:
-                    nullable: false
-              - column:
-                  name: dimension_id
-                  type: ${text.type}
-                  remarks: Virtual dimension ID from the metric definition
-                  constraints:
-                    nullable: false
-              - column:
-                  name: display_name
-                  type: ${text.type}
-                  remarks: Snapshot display name for the dimension
-                  constraints:
-                    nullable: true
-              - column:
-                  name: effective_type
-                  type: varchar(254)
-                  remarks: Snapshot effective type for the dimension
-                  constraints:
-                    nullable: true
-              - column:
-                  name: semantic_type
-                  type: varchar(254)
-                  remarks: Snapshot semantic type for the dimension
-                  constraints:
-                    nullable: true
-              - column:
-                  name: position
-                  type: int
-                  defaultValueNumeric: 0
-                  remarks: Ordering of dimensions within a thread
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the selection was created
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  defaultValueComputed: current_timestamp
-                  remarks: When the selection was last updated
-                  constraints:
-                    nullable: false
-
-  - changeSet:
-      id: v63.nbwerg
-      author: nvoxland
-      comment: Index on exploration_thread_dimension.exploration_thread_id
-      changes:
-        - createIndex:
-            tableName: exploration_thread_dimension
-            indexName: idx_exploration_thread_dimension_thread_id
-            columns:
-              - column:
-                  name: exploration_thread_id
-
-  - changeSet:
-      id: v63.4598gd
-      author: nvoxland
-      comment: FK exploration_thread_dimension.exploration_thread_id -> exploration_thread.id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: exploration_thread_dimension
-            baseColumnNames: exploration_thread_id
-            referencedTableName: exploration_thread
-            referencedColumnNames: id
-            constraintName: fk_exploration_thread_dimension_thread_id
-            onDelete: CASCADE
-
-  - changeSet:
       id: v63.bhresdfg
       author: nvoxland
       comment: Create exploration_thread_timeline join table
@@ -489,6 +302,18 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_thread_timeline_thread_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v63.ettltimelineidx
+      author: nvoxland
+      comment: Index on exploration_thread_timeline.timeline_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread_timeline
+            indexName: idx_exploration_thread_timeline_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
 
   - changeSet:
       id: v63.hvdawe
@@ -950,7 +775,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.62346w
       author: nvoxland
-      comment: Add nullable exploration_thread_id column to document table
+      comment: Add document.exploration_thread_id
       changes:
         - addColumn:
             tableName: document
@@ -990,7 +815,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.7gjeaasdg
       author: nvoxland
-      comment: Backfill an empty Findings document for each existing exploration_thread that doesn't already have one
+      comment: Backfill an empty Findings document per exploration_thread
       changes:
         - sql:
             sql: >-
@@ -1093,6 +918,18 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v63.eqtitimelineidx
+      author: nvoxland
+      comment: Index on exploration_query_timeline_interestingness.timeline_id
+      changes:
+        - createIndex:
+            tableName: exploration_query_timeline_interestingness
+            indexName: idx_eqti_timeline_id
+            columns:
+              - column:
+                  name: timeline_id
+
+  - changeSet:
       id: v63.qtinterestfkt
       author: jdswanson
       comment: FK exploration_query_timeline_interestingness.timeline_id -> timeline.id
@@ -1108,7 +945,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.g4ersd
       author: nvoxland
-      comment: Add exploration_thread.completed_at as the gate for completion hooks
+      comment: Add exploration_thread.completed_at
       changes:
         - addColumn:
             tableName: exploration_thread
@@ -1123,7 +960,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.7438dfsed
       author: nvoxland
-      comment: Backfill completed_at for pre-existing threads so legacy data doesn't trigger auto-insights on first deploy
+      comment: Backfill exploration_thread.completed_at for pre-existing threads
       changes:
         - update:
             tableName: exploration_thread
@@ -1137,7 +974,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.startedat
       author: nvoxland
-      comment: Add exploration_thread.analysis_started_at — CAS claim gate for the auto-insights handler. completed_at now marks end of analysis (after auto-insights doc is written); analysis_started_at marks when the handler claimed the thread.
+      comment: Add exploration_thread.analysis_started_at
       changes:
         - addColumn:
             tableName: exploration_thread
@@ -1152,7 +989,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.startedatbf
       author: nvoxland
-      comment: Backfill analysis_started_at for pre-existing threads so the CAS predicate doesn't re-fire the handler on already-completed legacy data.
+      comment: Backfill exploration_thread.analysis_started_at for pre-existing threads
       changes:
         - update:
             tableName: exploration_thread
@@ -1166,7 +1003,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.gr324asd
       author: nvoxland
-      comment: Raw stats on the chart
+      comment: Add exploration_query_result.chart_stats
       changes:
         - addColumn:
             tableName: exploration_query_result
@@ -1175,21 +1012,6 @@ databaseChangeLog:
                   name: chart_stats
                   type: ${text.type}
                   remarks: JSON-encoded raw stats on the chart
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v63.aitranscript
-      author: nvoxland
-      comment: Capture the LLM transcript used to generate the AI Summary document
-      changes:
-        - addColumn:
-            tableName: exploration_thread
-            columns:
-              - column:
-                  name: ai_summary_transcript
-                  type: ${text.type}
-                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's AI Summary doc. Debug-only — not surfaced to the user.
                   constraints:
                     nullable: true
 
@@ -1236,7 +1058,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.864345s
       author: nvoxland
-      comment: Backfill exploration_thread.ai_summary_document_id from the existing 'AI Summary' document on each thread, if any.
+      comment: Backfill exploration_thread.ai_summary_document_id from each thread's 'AI Summary' document
       changes:
         - sql:
             sql: >-
@@ -1466,7 +1288,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expeidnull
       author: nvoxland
-      comment: Make exploration.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
+      comment: Make exploration.entity_id nullable so serdes drop-entity-ids! can NULL it
       changes:
         - dropNotNullConstraint:
             tableName: exploration
@@ -1476,7 +1298,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expthreadeidnull
       author: nvoxland
-      comment: Make exploration_thread.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
+      comment: Make exploration_thread.entity_id nullable so serdes drop-entity-ids! can NULL it
       changes:
         - dropNotNullConstraint:
             tableName: exploration_thread
@@ -1486,7 +1308,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expqueryeidnull
       author: nvoxland
-      comment: Make exploration_query.entity_id nullable so serdes drop-entity-ids! can NULL it (#36365)
+      comment: Make exploration_query.entity_id nullable so serdes drop-entity-ids! can NULL it
       changes:
         - dropNotNullConstraint:
             tableName: exploration_query
@@ -1496,7 +1318,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expthreadcancelat
       author: johnswanson
-      comment: Add exploration_thread.canceled_at — set when the user clicks "Stop running" on an in-flight thread. Stamped together with completed_at so existing terminal-state predicates keep working; canceled_at IS NOT NULL is the cause marker that distinguishes a user cancel from a natural completion.
+      comment: Add exploration_thread.canceled_at
       changes:
         - addColumn:
             tableName: exploration_thread
@@ -1509,35 +1331,9 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v63.9867d98rfs
-      author: nvoxland
-      comment: Drop exploration_thread.ai_summary_transcript
-      changes:
-        - dropColumn:
-            tableName: exploration_thread
-            columnName: ai_summary_transcript
-      rollback:
-        - addColumn:
-            tableName: exploration_thread
-            columns:
-              - column:
-                  name: ai_summary_transcript
-                  type: ${text.type}
-                  remarks: EDN-encoded transcript of the LLM exchange (prompt + responses + validation errors + final document) used to generate this thread's AI Summary doc. Debug-only — not surfaced to the user.
-                  constraints:
-                    nullable: true
-
-  # PRE-MERGE TODO: squash the changesets below into a few coherent chunks (they were appended
-  # incrementally during development). When squashing:
-  #   - collapse the exploration_query.group_id addColumn + addNotNullConstraint into a single
-  #     NOT NULL column definition (the constraint is split out here only to stay backwards
-  #     compatible with the already-applied nullable version).
-  #   - fold the exploration_thread_metric / exploration_thread_dimension drops into their
-  #     original createTable changesets (i.e. just delete those tables outright).
-  - changeSet:
       id: v63.expthreadgroup
       author: johnswanson
-      comment: Create exploration_thread_group — one row per Research-plan block (a set of metrics × dimensions). Immutable after create. Replaces the flat exploration_thread_metric/exploration_thread_dimension tables; metrics and dimensions are stored as JSON so a group is the unit of selection the planners iterate.
+      comment: Create exploration_thread_group table
       changes:
         - createTable:
             tableName: exploration_thread_group
@@ -1592,6 +1388,18 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v63.etgthreadidx
+      author: nvoxland
+      comment: Index on exploration_thread_group.exploration_thread_id
+      changes:
+        - createIndex:
+            tableName: exploration_thread_group
+            indexName: idx_exploration_thread_group_thread_id
+            columns:
+              - column:
+                  name: exploration_thread_id
+
+  - changeSet:
       id: v63.expthreadgroupfk
       author: johnswanson
       comment: FK exploration_thread_group.exploration_thread_id -> exploration_thread.id
@@ -1607,7 +1415,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expqgroupcol
       author: johnswanson
-      comment: Add exploration_query.group_id — the Research-plan block a materialized query belongs to. Stamped by the planner; lets the read side mirror the user's blocks and disambiguates a (card, dim) pair that appears in more than one block.
+      comment: Add exploration_query.group_id
       changes:
         - addColumn:
             tableName: exploration_query
@@ -1647,7 +1455,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.expqgroupnotnull
       author: johnswanson
-      comment: Make exploration_query.group_id NOT NULL — the planner always stamps it. Added as a separate changeset (rather than editing the addColumn above) so it's safe for anyone who already ran the nullable version. No backfill needed since the feature is undeployed and every query row is created by the planner with a group_id set.
+      comment: Make exploration_query.group_id NOT NULL
       changes:
         - addNotNullConstraint:
             tableName: exploration_query
@@ -1655,25 +1463,9 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v63.dropexpthreadmetric
-      author: johnswanson
-      comment: Drop exploration_thread_metric — replaced by exploration_thread_group, which stores selected metrics as JSON per Research-plan block.
-      changes:
-        - dropTable:
-            tableName: exploration_thread_metric
-
-  - changeSet:
-      id: v63.dropexpthreaddim
-      author: johnswanson
-      comment: Drop exploration_thread_dimension — replaced by exploration_thread_group, which stores selected dimensions as JSON per Research-plan block.
-      changes:
-        - dropTable:
-            tableName: exploration_thread_dimension
-
-  - changeSet:
       id: v63.expgrouptype
       author: denisberezin
-      comment: Add exploration_thread_group.type — whether the block is anchored on a metric ("metric") or a dimension ("dimension"). The read side uses it to build the sidebar heading ("By <dimension>" vs the metric name) and sub-item names. Nullable; legacy rows fall back to inferring from the metric count.
+      comment: Add exploration_thread_group.type
       changes:
         - addColumn:
             tableName: exploration_thread_group
