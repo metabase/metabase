@@ -55,12 +55,8 @@
 
 (defn entity->file-spec
   "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
-  `opts` (from `serdes/storage-base-context`).
-
-  Throws if `entity` is an Exception instance."
+  `opts` (from `serdes/storage-base-context`)."
   [opts entity]
-  (when (instance? Exception entity)
-    (throw entity))
   {:path    (remote-sync-path opts entity)
    :content (yaml/generate-string (serialization/serialization-deep-sort entity)
                                   {:dumper-options {:flow-style :block :split-lines false}})})
@@ -73,9 +69,7 @@
   identifier used to track progress updates), and a message (the commit message to use when writing
   files to the source).
 
-  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`.
-
-  Throws Exception if any entity in the stream is an Exception instance."
+  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`."
   [stream snapshot task-id message]
   (let [opts         (serdes/storage-base-context)
         stream-count (bounded-count 10000 stream)
