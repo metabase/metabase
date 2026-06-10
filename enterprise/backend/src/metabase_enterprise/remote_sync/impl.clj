@@ -222,7 +222,21 @@
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))
 
-(declare record-exported-paths!)
+(defn- record-exported-paths!
+  "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
+  deletes can resolve the old path. `entries` is a seq of {:model_type :entity_id :path}; only
+  entity-id models are recorded. Correlates entity_id -> model_id per model type."
+  [entries]
+  (doseq [[model-type es] (group-by :model_type entries)
+          :let [spec (spec/spec-for-model-type model-type)]
+          :when (and spec (= :entity-id (:identity spec)))]
+    (let [eid->path (into {} (map (juxt :entity_id :path)) es)
+          id->eid   (t2/select-pk->fn :entity_id (:model-key spec) :entity_id [:in (vec (keys eid->path))])]
+      (doseq [[id eid] id->eid
+              :let [path (eid->path eid)]
+              :when path]
+        (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
+                    {:file_path path})))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -468,22 +482,6 @@
         (-> plan (update :upserts into deps) (dissoc :pull))
         ;; a dependency's path is occupied by a different entity — needs a full export
         :remote-sync/unsyncable-batch))))
-
-(defn- record-exported-paths!
-  "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
-  deletes can resolve the old path. `entries` is a seq of {:model_type :entity_id :path}; only
-  entity-id models are recorded. Correlates entity_id -> model_id per model type."
-  [entries]
-  (doseq [[model-type es] (group-by :model_type entries)
-          :let [spec (spec/spec-for-model-type model-type)]
-          :when (and spec (= :entity-id (:identity spec)))]
-    (let [eid->path (into {} (map (juxt :entity_id :path)) es)
-          id->eid   (t2/select-pk->fn :entity_id (:model-key spec) :entity_id [:in (vec (keys eid->path))])]
-      (doseq [[id eid] id->eid
-              :let [path (eid->path eid)]
-              :when path]
-        (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
-                    {:file_path path})))))
 
 (defn- path-top-level-dir [^String path]
   (let [i (str/index-of path "/")]
