@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitFor } from "__support__/ui";
+import { trackExplorationPlanEdited } from "metabase/explorations/analytics";
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
@@ -33,6 +34,11 @@ jest.mock("metabase/metabot/components/MetabotChat/MetabotChatMessage", () => ({
 
 jest.mock("metabase/metabot/components/MetabotChat/MetabotThinking", () => ({
   MetabotThinking: () => null,
+}));
+
+jest.mock("metabase/explorations/analytics", () => ({
+  trackExplorationAgentMessageSent: jest.fn(),
+  trackExplorationPlanEdited: jest.fn(),
 }));
 
 jest.mock("metabase/metabot/hooks", () => ({
@@ -294,6 +300,12 @@ describe("NewExplorationChat", () => {
         metricsByDimension: expect.any(Map),
       },
     );
+
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+      "agent",
+      "dimensions",
+    );
   });
 
   it("sets the exploration name from a set name tool call response", async () => {
@@ -341,6 +353,15 @@ describe("NewExplorationChat", () => {
     });
     expect(selection.removeBlock).toHaveBeenCalledWith("dim:customer.segment");
     expect(selection.removeBlock).toHaveBeenCalledTimes(2);
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+      "agent",
+      "dimensions",
+    );
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+      "agent",
+      "timelines",
+    );
   });
 
   it("deselects members from a remove_from_research_plan tool call response", async () => {
@@ -376,6 +397,15 @@ describe("NewExplorationChat", () => {
       { metricIds: [2], dimensionIds: undefined },
     );
     expect(selection.removeBlock).not.toHaveBeenCalled();
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+      "agent",
+      "dimensions",
+    );
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+      "agent",
+      "timelines",
+    );
   });
 
   it("removes timelines from a remove_from_research_plan tool call response", async () => {
@@ -399,5 +429,17 @@ describe("NewExplorationChat", () => {
       expect(selection.removeTimelinesById).toHaveBeenCalledWith([7, 9]);
     });
     expect(selection.removeBlock).not.toHaveBeenCalled();
+    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+      "agent",
+      "timelines",
+    );
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+      "agent",
+      "metrics",
+    );
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+      "agent",
+      "dimensions",
+    );
   });
 });

@@ -330,7 +330,11 @@ describe("useExplorationSelection", () => {
       });
 
       expect(result.current.blocks).toHaveLength(1);
-      expect(result.current.metrics.map((m) => m.id).sort()).toEqual([1, 2]);
+      expect(
+        [
+          ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
+        ].sort(),
+      ).toEqual([1, 2]);
     });
   });
 
@@ -445,7 +449,9 @@ describe("useExplorationSelection", () => {
         result.current.removeBlockMembers("dim:dim-a", { metricIds: [1] });
       });
 
-      expect(result.current.metrics.map((m) => m.id)).toEqual([2]);
+      expect([
+        ...(result.current.blocks[0] as DimensionBlock).selectedMetricIds,
+      ]).toEqual([2]);
     });
 
     it("drops the dimension block when its last selected metric is removed", () => {
@@ -534,7 +540,7 @@ describe("useExplorationSelection", () => {
       });
 
       act(() => {
-        result.current.toggleTimeline(timeline1);
+        result.current.addTimelinesById([1]);
       });
       act(() => {
         result.current.addTimelinesById([1, 2, 999]);
@@ -553,7 +559,7 @@ describe("useExplorationSelection", () => {
       });
 
       act(() => {
-        result.current.toggleTimeline(timeline1);
+        result.current.addTimelinesById([1]);
       });
       const timelinesAfterFirst = result.current.timelines;
 

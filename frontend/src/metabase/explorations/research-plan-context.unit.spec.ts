@@ -1,10 +1,13 @@
-import type { MetricDimension, Timeline } from "metabase-types/api";
+import type {
+  ExplorationMetric,
+  MetricDimension,
+  Timeline,
+} from "metabase-types/api";
 import { createMockMetric } from "metabase-types/api/mocks/metric";
 import { createMockTimeline } from "metabase-types/api/mocks/timeline";
 
 import { selectionToResearchPlanContext } from "./research-plan-context";
 import { mockDimensionBlock, mockMetricBlock } from "./test-utils";
-import type { ExplorationMetric } from "./types";
 
 function metric(id: number, name: string): ExplorationMetric {
   return createMockMetric({ id, name }) as ExplorationMetric;

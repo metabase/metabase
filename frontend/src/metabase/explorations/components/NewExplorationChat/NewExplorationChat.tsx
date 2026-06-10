@@ -9,7 +9,6 @@ import {
 } from "metabase/explorations/analytics";
 import type { ExplorationSelection } from "metabase/explorations/hooks";
 import { selectionToResearchPlanContext } from "metabase/explorations/research-plan-context";
-import type { ExplorationMetric } from "metabase/explorations/types";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotChatEditor } from "metabase/metabot/components/MetabotChat/MetabotChatEditor";
@@ -29,6 +28,7 @@ import type {
   AddResearchGroupsResponse,
   DimensionId,
   ExplorationDimensionGroup,
+  ExplorationMetric,
   RemoveFromResearchPlanResponse,
 } from "metabase-types/api";
 
@@ -109,7 +109,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
 
-      let addedAny = false;
+      let editedMetrics = false;
+      let editedDimensions = false;
 
       try {
         for (const message of messages) {
@@ -153,31 +154,31 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
             if (group.anchor === "metric") {
               const metric = metricsById.get(group.metric_id);
               if (metric) {
-                // Call unconditionally (no `||=` short-circuit), then OR the result so
-                // every add still runs even after one has already changed the plan.
-                const changed = addMetric(metric, {
+                addMetric(metric, {
                   dimensionsById,
                   additionalSelectedDimensionIds: new Set(
                     group.dimension_ids ?? [],
                   ),
                 });
-                addedAny = addedAny || changed;
+                editedMetrics = true;
               }
             } else {
               const dimensionGroup = groupByDimensionId.get(group.dimension_id);
-              if (dimensionGroup) {
-                const changed = addDimension(dimensionGroup.dimensions[0], {
+              if (dimensionGroup?.dimensions[0]) {
+                addDimension(dimensionGroup.dimensions[0], {
                   group: dimensionGroup,
                   metricsByDimension,
                 });
-                addedAny = addedAny || changed;
+                editedDimensions = true;
               }
             }
           }
         }
-
-        if (addedAny) {
+        if (editedMetrics) {
           trackExplorationPlanEdited("agent", "metrics");
+        }
+        if (editedDimensions) {
+          trackExplorationPlanEdited("agent", "dimensions");
         }
       } catch (error) {
         console.error(error);
@@ -197,31 +198,38 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
 
-      let removedGroups = false;
-      let removedTimelines = false;
+      let editedMetrics = false;
+      let editedDimensions = false;
+      let editedTimelines = false;
 
       try {
         for (const message of messages) {
           const { block_ids, members, timeline_ids } = JSON.parse(
             message.result,
           ) as RemoveFromResearchPlanResponse;
-          // Removing a block/member/timeline that isn't in the plan is a no-op, so only
-          // flag a change when the mutator reports it actually removed something. Call
-          // each mutator unconditionally (no `||=` short-circuit) so every removal runs.
           for (const blockId of block_ids ?? []) {
-            const removed = removeBlock(blockId);
-            removedGroups = removedGroups || removed;
+            removeBlock(blockId);
+            if (blockId.startsWith("metric:")) {
+              editedMetrics = true;
+            } else if (blockId.startsWith("dim:")) {
+              editedDimensions = true;
+            }
           }
           for (const member of members ?? []) {
-            const removed = removeBlockMembers(member.block_id, {
+            removeBlockMembers(member.block_id, {
               metricIds: member.metric_ids,
               dimensionIds: member.dimension_ids,
             });
-            removedGroups = removedGroups || removed;
+            if (member.metric_ids?.length) {
+              editedMetrics = true;
+            }
+            if (member.dimension_ids?.length) {
+              editedDimensions = true;
+            }
           }
           if (timeline_ids?.length) {
-            const removed = removeTimelinesById(timeline_ids);
-            removedTimelines = removedTimelines || removed;
+            removeTimelinesById(timeline_ids);
+            editedTimelines = true;
           }
         }
       } catch (error) {
@@ -234,10 +242,13 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
         return;
       }
 
-      if (removedGroups) {
+      if (editedMetrics) {
         trackExplorationPlanEdited("agent", "metrics");
       }
-      if (removedTimelines) {
+      if (editedDimensions) {
+        trackExplorationPlanEdited("agent", "dimensions");
+      }
+      if (editedTimelines) {
         trackExplorationPlanEdited("agent", "timelines");
       }
     },
@@ -273,9 +284,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           };
           return parsed.timeline_ids;
         });
-        if (addTimelinesById(timelineIds)) {
-          trackExplorationPlanEdited("agent", "timelines");
-        }
+        addTimelinesById(timelineIds);
+        trackExplorationPlanEdited("agent", "timelines");
       } catch (error) {
         console.error(error);
         sendToast({

@@ -3,7 +3,6 @@ import {
   type SetStateAction,
   useCallback,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { t } from "ttag";
@@ -63,8 +62,6 @@ export function dimensionBlockId(dimensionId: DimensionId): string {
 
 export interface ToggleMetricContext {
   dimensionsById: Map<DimensionId, MetricDimension>;
-  // Dimensions to select in addition to the interesting defaults (e.g. dimensions Metabot
-  // explicitly chose to fit the user's question). Restricted to the metric's own dimensions.
   additionalSelectedDimensionIds?: Set<DimensionId>;
 }
 
@@ -92,37 +89,25 @@ export interface ExplorationSelection {
   setName: Dispatch<SetStateAction<string>>;
   setCollection: (collection: Required<ExplorationCollection>) => void;
 
-  // Add mutators return true iff they actually changed the selection (a no-op add
-  // returns false), so callers can avoid over-counting analytics edits.
-  addMetric: (
-    metric: ExplorationMetric,
-    context: ToggleMetricContext,
-  ) => boolean;
+  addMetric: (metric: ExplorationMetric, context: ToggleMetricContext) => void;
   addDimension: (
     dimension: MetricDimension,
     context: ToggleDimensionContext,
-  ) => boolean;
+  ) => void;
 
-  toggleTimeline: (timeline: Timeline) => void;
-  // Return true iff the selection actually changed (no-op adds/removes return false),
-  // so callers can avoid over-counting analytics edits.
-  addTimelinesById: (timelineIds: number[]) => boolean;
-  removeTimelinesById: (timelineIds: number[]) => boolean;
+  addTimelinesById: (timelineIds: number[]) => void;
+  removeTimelinesById: (timelineIds: number[]) => void;
 
-  removeBlock: (blockId: string) => boolean;
+  removeBlock: (blockId: string) => void;
 
-  // Deselect metrics and/or dimensions within a block. Metric ids apply to a dimension block,
-  // dimension ids to a metric block; a mismatched family is ignored. If the removal empties the
-  // block's selection, the whole block is dropped.
   removeBlockMembers: (
     blockId: string,
     members: {
       metricIds?: ExplorationMetric["id"][];
       dimensionIds?: DimensionId[];
     },
-  ) => boolean;
+  ) => void;
 
-  // Flip whether a candidate child is selected within an existing block.
   toggleDimensionSelected: (blockId: string, dimensionId: DimensionId) => void;
   toggleMetricSelected: (
     blockId: string,
@@ -207,45 +192,6 @@ export function useExplorationSelection(): ExplorationSelection {
     name: t`Personal collection`,
   });
 
-  // Refs mirror the latest blocks/timelines so mutators can compute a change-delta
-  // synchronously (the setState functional updater runs async/batched, so its result
-  // can't be read back in time to gate analytics). They also stay correct across
-  // several mutator calls within a single handler-loop iteration, before React commits.
-  const blocksRef = useRef(blocks);
-  const timelinesRef = useRef(timelines);
-  blocksRef.current = blocks;
-  timelinesRef.current = timelines;
-
-  // Apply a pure updater to blocks: update the ref synchronously, schedule the state
-  // update, and return whether the reference actually changed.
-  const updateBlocks = useCallback(
-    (updater: (prev: ExplorationBlock[]) => ExplorationBlock[]): boolean => {
-      const prev = blocksRef.current;
-      const next = updater(prev);
-      blocksRef.current = next;
-      if (next !== prev) {
-        setBlocks(next);
-        return true;
-      }
-      return false;
-    },
-    [],
-  );
-
-  const updateTimelines = useCallback(
-    (updater: (prev: Timeline[]) => Timeline[]): boolean => {
-      const prev = timelinesRef.current;
-      const next = updater(prev);
-      timelinesRef.current = next;
-      if (next !== prev) {
-        setTimelines(next);
-        return true;
-      }
-      return false;
-    },
-    [],
-  );
-
   const {
     data: allTimelines = [],
     isLoading: timelinesLoading,
@@ -256,8 +202,8 @@ export function useExplorationSelection(): ExplorationSelection {
     (
       metric: ExplorationMetric,
       { dimensionsById, additionalSelectedDimensionIds }: ToggleMetricContext,
-    ): boolean => {
-      return updateBlocks((prevBlocks) => {
+    ) => {
+      setBlocks((prevBlocks) => {
         const existing = prevBlocks.find(
           (b): b is MetricBlock =>
             isMetricBlock(b) && b.metric.id === metric.id,
@@ -295,13 +241,13 @@ export function useExplorationSelection(): ExplorationSelection {
         ];
       });
     },
-    [updateBlocks],
+    [],
   );
 
   const addDimension = useCallback(
-    (dimension: MetricDimension, context: ToggleDimensionContext): boolean => {
+    (dimension: MetricDimension, context: ToggleDimensionContext) => {
       const id = dimensionBlockId(dimension.id);
-      return updateBlocks((prevBlocks) => {
+      setBlocks((prevBlocks) => {
         const existing = prevBlocks.find(
           (b): b is DimensionBlock => b.id === id && isDimensionBlock(b),
         );
@@ -326,22 +272,13 @@ export function useExplorationSelection(): ExplorationSelection {
         return [...prevBlocks, buildDimensionBlock(dimension, context)];
       });
     },
-    [updateBlocks],
+    [],
   );
 
-  const toggleTimeline = useCallback((timeline: Timeline) => {
-    setTimelines((prev) => {
-      const isSelected = prev.some((t) => t.id === timeline.id);
-      return isSelected
-        ? prev.filter((t) => t.id !== timeline.id)
-        : [...prev, timeline];
-    });
-  }, []);
-
   const addTimelinesById = useCallback(
-    (timelineIds: number[]): boolean => {
+    (timelineIds: number[]) => {
       const timelinesById = new Map(allTimelines.map((t) => [t.id, t]));
-      return updateTimelines((prev) => {
+      setTimelines((prev) => {
         const have = new Set(prev.map((t) => t.id));
         const merged = [...prev];
         for (const id of timelineIds) {
@@ -354,31 +291,23 @@ export function useExplorationSelection(): ExplorationSelection {
         return merged.length === prev.length ? prev : merged;
       });
     },
-    [allTimelines, updateTimelines],
+    [allTimelines],
   );
 
-  const removeTimelinesById = useCallback(
-    (timelineIds: number[]): boolean => {
-      const remove = new Set(timelineIds);
-      return updateTimelines((prev) => {
-        const next = prev.filter((t) => !remove.has(t.id));
-        // Preserve the reference when no selected timeline matched (no-op for unknown ids).
-        return next.length === prev.length ? prev : next;
-      });
-    },
-    [updateTimelines],
-  );
+  const removeTimelinesById = useCallback((timelineIds: number[]) => {
+    const remove = new Set(timelineIds);
+    setTimelines((prev) => {
+      const next = prev.filter((t) => !remove.has(t.id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, []);
 
-  const removeBlock = useCallback(
-    (blockId: string): boolean => {
-      return updateBlocks((prev) => {
-        const next = prev.filter((b) => b.id !== blockId);
-        // Preserve the reference when the id wasn't in the plan (no-op).
-        return next.length === prev.length ? prev : next;
-      });
-    },
-    [updateBlocks],
-  );
+  const removeBlock = useCallback((blockId: string) => {
+    setBlocks((prev) => {
+      const next = prev.filter((b) => b.id !== blockId);
+      return next.length === prev.length ? prev : next;
+    });
+  }, []);
 
   const removeBlockMembers = useCallback(
     (
@@ -390,8 +319,8 @@ export function useExplorationSelection(): ExplorationSelection {
         metricIds?: ExplorationMetric["id"][];
         dimensionIds?: DimensionId[];
       },
-    ): boolean => {
-      return updateBlocks((prev) => {
+    ) => {
+      setBlocks((prev) => {
         let changed = false;
         const next: ExplorationBlock[] = [];
         for (const block of prev) {
@@ -440,11 +369,10 @@ export function useExplorationSelection(): ExplorationSelection {
             }
           }
         }
-        // Preserve the reference when nothing changed (no-op for unknown block/members).
         return changed ? next : prev;
       });
     },
-    [updateBlocks],
+    [],
   );
 
   const toggleDimensionSelected = useCallback(
@@ -526,7 +454,6 @@ export function useExplorationSelection(): ExplorationSelection {
     setCollection,
     addMetric,
     addDimension,
-    toggleTimeline,
     addTimelinesById,
     removeTimelinesById,
     removeBlock,

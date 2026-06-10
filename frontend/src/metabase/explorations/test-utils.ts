@@ -121,7 +121,6 @@ export function makeMockSelection(
     setTimelines: jest.fn(),
     addMetric: jest.fn(),
     addDimension: jest.fn(),
-    toggleTimeline: jest.fn(),
     addTimelinesById: jest.fn(),
     removeTimelinesById: jest.fn(),
     removeBlock: jest.fn(),
