@@ -1,6 +1,6 @@
 import type { EChartsType } from "echarts/core";
-import type SeriesData from "echarts/types/src/data/SeriesData";
 import type { TreeNode } from "echarts/types/src/data/Tree";
+import type GlobalModel from "echarts/types/src/model/Global";
 
 import type {
   NodeId,
@@ -16,17 +16,12 @@ type TreeNodeLayout =
 
 /**
  * The treemap's laid-out tree (with per-node pixel layout) lives on the raw
- * series data (`.tree.root`), which ECharts' public types don't expose — hence
- * the narrow cast. Returns `undefined` before the first layout.
+ * series data (`.tree.root`). `getModel()` is declared `private` in ECharts'
+ * types, so a cast exposes it; everything past it is typed by ECharts.
+ * Returns `undefined` before the first layout.
  */
 function getTreemapRoot(chart: EChartsType): TreeNode | undefined {
-  return (
-    chart as unknown as {
-      getModel(): {
-        getSeriesByIndex(i: number): { getRawData(): SeriesData } | null;
-      };
-    }
-  )
+  return (chart as unknown as { getModel(): GlobalModel })
     .getModel()
     ?.getSeriesByIndex(0)
     ?.getRawData()?.tree?.root;
