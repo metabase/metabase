@@ -1,13 +1,13 @@
-(ns metabase.metabot.schema.v4-test
+(ns metabase.metabot.schema.v1-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [metabase.metabot.schema.v4 :as schema.v4]
+   [metabase.metabot.schema.v1 :as schema.v1]
    [metabase.metabot.util :as metabot.u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
-(def ^:private data-stream-part-cases
+(def ^:private ai-service-entry-cases
   [[{:role "assistant" :_type "TEXT" :content "Hi there"}                          :content]
    [{:role "assistant" :_type "ERROR" :content "Something went wrong"}             :content]
    [{:_type "DATA" :type "navigate_to" :version 1 :value "/question/1"}            :version]
@@ -16,7 +16,7 @@
    [{:role "tool" :_type "TOOL_RESULT" :tool_call_id "tc1" :content "<result/>"}   :tool_call_id]
    [{:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}    :usage]])
 
-(def ^:private part-cases
+(def ^:private native-entry-cases
   [[{:type "text" :id "t1" :text "Hello"}                                          :text]
    [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}          :function]
    [{:type "tool-output" :id "tc1" :function "search"
@@ -26,9 +26,9 @@
    [{:type "error" :error {:message "boom"}}                                       :error]])
 
 (deftest ^:parallel entry-test
-  (doseq [[schema cases] {::schema.v4/data-stream-part data-stream-part-cases
-                          ::schema.v4/part             part-cases
-                          ::schema.v4/user-message     [[{:role "user" :content "Do we have orders data?"} :content]]}
+  (doseq [[schema cases] {::schema.v1/ai-service-entry ai-service-entry-cases
+                          ::schema.v1/native-entry             native-entry-cases
+                          ::schema.v1/user-message     [[{:role "user" :content "Do we have orders data?"} :content]]}
           [payload required-key] cases]
     (testing (str schema " " (or (:_type payload) (:type payload) (:role payload)))
       (is (mr/validate schema payload))
@@ -37,23 +37,23 @@
 
 (deftest ^:parallel message-data-test
   (testing "assistant placeholder rows are empty"
-    (is (mr/validate ::schema.v4/message-data [])))
+    (is (mr/validate ::schema.v1/message-data [])))
   (testing "homogeneous rows validate"
-    (is (mr/validate ::schema.v4/message-data
+    (is (mr/validate ::schema.v1/message-data
                      [{:role "user" :content "hi"}]))
-    (is (mr/validate ::schema.v4/message-data
+    (is (mr/validate ::schema.v1/message-data
                      [{:role "assistant" :_type "TEXT" :content "Hello"}
                       {:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}]))
-    (is (mr/validate ::schema.v4/message-data
+    (is (mr/validate ::schema.v1/message-data
                      [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
                       {:type "tool-output" :id "tc1" :result {:output "rows"} :error nil :duration-ms 3}
                       {:type "text" :id "t1" :text "Found it"}])))
   (testing "rows mixing sub-variants fail"
-    (is (not (mr/validate ::schema.v4/message-data
+    (is (not (mr/validate ::schema.v1/message-data
                           [{:role "user" :content "hi"}
                            {:type "text" :id "t1" :text "Hello"}]))))
   (testing "extra keys fail"
-    (is (not (mr/validate ::schema.v4/message-data
+    (is (not (mr/validate ::schema.v1/message-data
                           [{:role "user" :content "hi" :unexpected-key 1}])))))
 
 (deftest ^:parallel normalize-entry-test
@@ -68,19 +68,19 @@
       (is (= {:type   "tool-output"
               :id     "tc1"
               :result {:output "rows" :structured-output {:type "table"}}}
-             (schema.v4/normalize-entry entry)))))
+             (schema.v1/normalize-entry entry)))))
   (testing "nil results pass through"
     (is (= {:type "tool-output" :id "tc1" :result nil}
-           (schema.v4/normalize-entry {:type "tool-output" :id "tc1" :result nil}))))
+           (schema.v1/normalize-entry {:type "tool-output" :id "tc1" :result nil}))))
   (testing "errorText errors are rewritten to the error key"
     (is (= {:type "error" :error "Overloaded"}
-           (schema.v4/normalize-entry {:type "error" :errorText "Overloaded"}))))
+           (schema.v1/normalize-entry {:type "error" :errorText "Overloaded"}))))
   (testing "compliant entries pass through unchanged"
     (is (= {:type "error" :error {:message "boom"}}
-           (schema.v4/normalize-entry {:type "error" :error {:message "boom"}})))
+           (schema.v1/normalize-entry {:type "error" :error {:message "boom"}})))
     (is (= {:type "text" :id "t1" :text "hi"}
-           (schema.v4/normalize-entry {:type "text" :id "t1" :text "hi"})))
-    (is (= "not a map" (schema.v4/normalize-entry "not a map")))))
+           (schema.v1/normalize-entry {:type "text" :id "t1" :text "hi"})))
+    (is (= "not a map" (schema.v1/normalize-entry "not a map")))))
 
 (defn- persistence-round-trip
   "Simulate `mi/transform-json` write + read: keyword values become strings, keys stay keywords."
@@ -94,5 +94,5 @@
                                                 (-> (io/resource (str "metabase/metabot/aisdkstream" n ".txt"))
                                                     io/reader
                                                     line-seq))]
-        (is (nil? (mr/explain ::schema.v4/message-data
+        (is (nil? (mr/explain ::schema.v1/message-data
                               (persistence-round-trip messages))))))))

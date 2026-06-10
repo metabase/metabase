@@ -1,8 +1,7 @@
-(ns metabase.metabot.schema.v5
-  "Schemas for the AI SDK v5 message formats: `UIMessageChunk` (wire/SSE) and
-  `UIMessage`/`UIMessagePart` (at-rest). One family covers both v5 and v6 — it encodes the v6
-  superset with v6-only members optional, so payloads from either version validate. Validates
-  keywordized values (post JSON decode).
+(ns metabase.metabot.schema.v2
+  "Schemas for the v2 message formats, ported from AI SDK v6's `UIMessageChunk` (wire/SSE)
+  and `UIMessage`/`UIMessagePart` (at-rest) definitions. Validates keywordized values (post
+  JSON decode).
 
   Deliberate divergences from upstream:
 
@@ -21,7 +20,7 @@
                                 packages/ai/src/ui/validate-ui-messages.ts
 
   Upstream: https://github.com/vercel/ai (pinned to ai@6.0.37)
-  License:  https://github.com/vercel/ai/blob/main/LICENSE"
+  License:  https://github.com/vercel/ai/blob/ai%406.0.37/LICENSE"
   (:require
    [clojure.string :as str]
    [metabase.util.malli.registry :as mr]))
@@ -36,7 +35,7 @@
   [:map-of :keyword [:map-of :keyword :any]])
 
 (mr/def ::ui-message-chunk
-  ;; mirrors uiMessageChunkSchema; v6-only members included so v5 and v6 streams both validate
+  ;; mirrors uiMessageChunkSchema
   [:multi {:dispatch (fn [chunk]
                        (let [t (:type chunk)]
                          (if (data-type? t) ::data t)))}
@@ -163,7 +162,7 @@
                              [:message_metadata :any]]]])
 
 (mr/def ::tool-ui-part
-  ;; mirrors ToolUIPart / UIToolInvocation; v6 approval states included
+  ;; mirrors ToolUIPart / UIToolInvocation
   [:multi {:dispatch :state}
    ["input-streaming"    [:map {:closed true}
                           [:type [:fn tool-type?]]
