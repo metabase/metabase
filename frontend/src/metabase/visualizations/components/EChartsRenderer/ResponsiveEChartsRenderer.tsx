@@ -45,7 +45,13 @@ const ResponsiveEChartsRendererInner = forwardRef<
       <Suspense
         fallback={
           <Flex h="100%" w="100%" direction="column">
-            {getChartSkeletonImage(display)}
+            {getChartSkeletonImage(
+              display === "boxplot"
+                ? "scatter"
+                : display === "combo"
+                  ? "bar"
+                  : display,
+            )}
           </Flex>
         }
       >
