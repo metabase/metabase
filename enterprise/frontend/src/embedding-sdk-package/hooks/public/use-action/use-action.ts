@@ -46,9 +46,9 @@ export type UseActionResult<
 
 /**
  * Triggers a pre-existing Metabase action. The first arg is the action's
- * numeric id; supply `TParameters` as the first generic to type the
- * `execute` argument, and optionally `TKind` as the second generic to type
- * the discriminated `result` shape.
+ * numeric id or its `entity_id` string; supply `TParameters` as the first
+ * generic to type the `execute` argument, and optionally `TKind` as the
+ * second generic to type the discriminated `result` shape.
  *
  * Without `TKind`, `result` defaults to a union of every possible response
  * body (`AnyActionResult`) — authors who don't know the kind upfront can

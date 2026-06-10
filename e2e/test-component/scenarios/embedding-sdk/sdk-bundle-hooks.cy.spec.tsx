@@ -263,11 +263,10 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
   describe("useAction", () => {
     // Pre-create a real model + implicit action in the app DB so each test
-    // has a real numeric id and a real `entity_id` to hand to the hook —
-    // not a made-up stub id that never round-trips through the backend.
-    // The outer `beforeEach` signed us out and switched to JWT-mocked auth
-    // for the SDK; we re-sign in as admin to bootstrap resources, then
-    // restore the JWT-mocked state.
+    // has a real numeric id to hand to the hook — not a made-up stub id
+    // that never round-trips through the backend. The outer `beforeEach`
+    // signed us out and switched to JWT-mocked auth for the SDK; we re-sign
+    // in as admin to bootstrap resources, then restore the JWT-mocked state.
     beforeEach(() => {
       cy.signInAsAdmin();
       setActionsEnabledForDB(SAMPLE_DB_ID, true);
@@ -294,7 +293,6 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
             ({ body: actions }) => {
               const action = actions[0];
               cy.wrap(action.id).as("actionId");
-              cy.wrap(action.entity_id).as("actionEntityId");
             },
           );
         });
