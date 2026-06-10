@@ -169,6 +169,11 @@
      query
      filter-clauses)))
 
+(defn- restore-implicit-join-fields [join]
+  (if (some? (:fields join))
+    join
+    (lib.join/with-join-fields join :all)))
+
 (defn drill-underlying-records
   "Drops aggregations, breakouts, orders, limits and field, then applies a filter for each of the dimensions (including
   for metrics, and aggregations that imply a filter like `:sum-where`).
@@ -204,7 +209,7 @@
                                  ;; Default: no filters to add.
                                  nil)))
         ;; make all joins include all fields
-        new-joins (mapv #(lib.join/with-join-fields % :all)
+        new-joins (mapv restore-implicit-join-fields
                         (lib.join/joins agg-filtered))]
     ;; if we have new joins to add, update query with the new joins
     (if (empty? new-joins)
