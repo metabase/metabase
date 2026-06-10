@@ -1,8 +1,8 @@
 import Bowser from "bowser";
 
-import { cardApi } from "metabase/api";
+import { cardApi, dashboardApi } from "metabase/api";
 import type { DispatchFn } from "metabase/redux";
-import { CollectionsApi, DashboardApi } from "metabase/services";
+import { CollectionsApi } from "metabase/services";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
 
 import type { ReportableEntityName } from "./types";
@@ -38,7 +38,9 @@ export const getEntityDetails = ({
         .unwrap()
         .catch(nullOnCatch);
     case "dashboard":
-      return DashboardApi.get({ id }).catch(nullOnCatch);
+      return dispatch(dashboardApi.endpoints.getDashboard.initiate({ id }))
+        .unwrap()
+        .catch(nullOnCatch);
     case "collection":
       return CollectionsApi.get({ id }).catch(nullOnCatch);
     default:
