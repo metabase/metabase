@@ -1,9 +1,9 @@
-import type { TreemapLayoutNode } from "./labels";
 import {
   getTreemapLabelLayout,
   getTreemapLabelLayouts,
   getTreemapParentLabelLayouts,
 } from "./labels";
+import type { TreemapLayoutNode } from "./types";
 
 describe("getTreemapLabelLayout", () => {
   // Inset from each tile edge (matches the option's `label.position`).

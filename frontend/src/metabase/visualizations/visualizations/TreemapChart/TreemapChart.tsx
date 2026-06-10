@@ -20,11 +20,15 @@ import {
   type TreemapLabelLayout,
   type TreemapParentLabelLayout,
   getTreemapLabelLayouts,
-  getTreemapLayoutNodes,
   getTreemapParentLabelLayouts,
   shouldShowParentLabels,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
+import {
+  getNode,
+  getTreemapLayoutNodes,
+} from "metabase/visualizations/echarts/graph/treemap/model/tree";
+import type { NodeId } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
@@ -52,8 +56,6 @@ import {
 // Inset from each tile edge, matching the option's `label.position` — the wrap
 // width is the rendered tile width minus this on both sides.
 const LABEL_PADDING = TREEMAP_CHART_STYLE.nodeLabels.position[0];
-
-type NodeId = string;
 
 export const TreemapChart = ({
   rawSeries,
@@ -183,13 +185,6 @@ export const TreemapChart = ({
       return;
     }
     const nodes = getTreemapLayoutNodes(chart);
-
-    // Resolve a node id ("i" group/1-level tile, "i-j" leaf) to its tree node.
-    const getNode = (id: string) => {
-      const [rootPart, leafPart] = id.split("-");
-      const root = tree[Number(rootPart)];
-      return leafPart == null ? root : root?.children?.[Number(leafPart)];
-    };
     const total = tree.reduce((sum, node) => sum + node.value, 0);
     const formatShare = (value: number) =>
       formatPercent(total === 0 ? 0 : value / total);
@@ -208,7 +203,7 @@ export const TreemapChart = ({
         if (!showLeafValues) {
           return Infinity;
         }
-        const node = getNode(id);
+        const node = getNode(id, tree);
         if (node == null) {
           return Infinity;
         }
@@ -233,14 +228,14 @@ export const TreemapChart = ({
         weight,
       });
     const nextParentLayout = getTreemapParentLabelLayouts(nodes, {
-      getLabel: (id) => getNode(id)?.displayName,
+      getLabel: (id) => getNode(id, tree)?.displayName,
       measureTextWidth: (text) => measureHeader(text, groupHeader.fontWeight),
       getValuePercentWidth: (id) => {
         // Setting off → header never shows the value+percentage cluster.
         if (!showParentValues) {
           return Infinity;
         }
-        const node = getNode(id);
+        const node = getNode(id, tree);
         if (node == null) {
           return Infinity;
         }

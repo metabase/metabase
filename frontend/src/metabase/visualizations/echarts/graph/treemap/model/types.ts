@@ -1,6 +1,8 @@
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import type { RowValue } from "metabase-types/api";
 
+export type NodeId = string;
+
 export interface TreemapChartColumns {
   grouping: ColumnDescriptor;
   subGrouping?: ColumnDescriptor;
@@ -20,4 +22,18 @@ export type TreemapTree = TreemapNode[];
 export interface TreemapBuildResult {
   tree: TreemapTree;
   error?: { message: string };
+}
+
+export interface TreemapRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface TreemapLayoutNode {
+  /** ("0", "0-1"). */
+  id: string;
+  rect: { width: number; height: number };
+  isLeaf: boolean;
 }

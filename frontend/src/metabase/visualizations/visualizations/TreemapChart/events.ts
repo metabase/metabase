@@ -3,7 +3,7 @@ import { type EChartsType, graphic } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
 import { getTreemapNodePath } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/labels";
+import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
   TreemapTree,
