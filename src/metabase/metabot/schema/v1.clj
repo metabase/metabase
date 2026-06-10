@@ -13,6 +13,11 @@
 
 (set! *warn-on-reflection* true)
 
+(mr/def ::data-type
+  "The data-part type vocabulary, shared by both entry formats."
+  [:enum "adhoc_viz" "code_edit" "navigate_to" "state" "static_viz" "todo_list"
+   "transform_suggestion"])
+
 (mr/def ::ai-service-entry
   "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`.
   The `:_type` tags are the v4 part names, uppercased, but the shapes diverge from v4's:
@@ -24,20 +29,20 @@
     `tool_call_delta`, …) never reach the column"
   [:multi {:dispatch :_type}
    ["TEXT"           [:map {:closed true}
-                      [:role :string]
+                      [:role [:= "assistant"]]
                       [:_type [:= "TEXT"]]
                       [:content :string]]]
    ["ERROR"          [:map {:closed true}
-                      [:role :string]
+                      [:role [:= "assistant"]]
                       [:_type [:= "ERROR"]]
                       [:content :string]]]
    ["DATA"           [:map {:closed true}
                       [:_type [:= "DATA"]]
-                      [:type :string]
-                      [:version :int]
+                      [:type ::data-type]
+                      [:version [:= 1]]
                       [:value :any]]]
    ["TOOL_CALL"      [:map {:closed true}
-                      [:role :string]
+                      [:role [:= "assistant"]]
                       [:_type [:= "TOOL_CALL"]]
                       [:tool_calls [:sequential [:map {:closed true}
                                                  [:id :string]
@@ -49,7 +54,7 @@
                       [:tool_call_id :string]
                       [:content :string]]]
    ["FINISH_MESSAGE" [:map {:closed true}
-                      [:role :string]
+                      [:role [:= "assistant"]]
                       [:_type [:= "FINISH_MESSAGE"]]
                       [:finish_reason :string]
                       [:usage :map]]]])
@@ -70,7 +75,7 @@
                    [:type [:= "tool-output"]]
                    [:id :string]
                    [:function {:optional true} [:maybe :string]]
-                   [:result [:maybe [:map {:closed true}
+                   [:result [:maybe [:map
                                      [:output {:optional true} :any]
                                      [:structured-output {:optional true} :map]
                                      [:structured_output {:optional true} :map]]]]
@@ -78,12 +83,16 @@
                    [:duration-ms {:optional true} [:maybe number?]]]]
    ["data"        [:map {:closed true}
                    [:type [:= "data"]]
-                   [:data-type :string]
-                   [:version {:optional true} :int]
+                   [:data-type ::data-type]
+                   [:version {:optional true} [:= 1]]
                    [:data :any]]]
-   ["error"       [:map {:closed true}
-                   [:type [:= "error"]]
-                   [:error [:or :map :string]]]]])
+   ["error"       [:or
+                   [:map {:closed true}
+                    [:type [:= "error"]]
+                    [:error :map]]
+                   [:map {:closed true}
+                    [:type [:= "error"]]
+                    [:errorText :string]]]]])
 
 (mr/def ::user-message
   "A user message."
@@ -99,28 +108,6 @@
    [:sequential {:min 1} ::user-message]
    [:sequential {:min 1} ::ai-service-entry]
    [:sequential {:min 1} ::native-entry]])
-
-(defn normalize-entry
-  "Maps the non-compliant entry shapes found in production data onto their
-  [[::message-data]]-compliant equivalents; compliant entries pass through unchanged:
-
-  - `tool-output` [[::native-entry]]s carrying full tool results (`:instructions`, `:resources`,
-    `:data-parts`, …) are trimmed to the persisted subset
-  - `{:type \"error\" :errorText ...}` entries are rewritten to `{:type \"error\" :error ...}`"
-  [entry]
-  (cond
-    (not (map? entry))
-    entry
-
-    (= "tool-output" (:type entry))
-    (update entry :result #(some-> % (select-keys [:output :structured-output :structured_output])))
-
-    (and (= "error" (:type entry)) (contains? entry :errorText))
-    (-> entry
-        (assoc :error (:errorText entry))
-        (dissoc :errorText))
-
-    :else entry))
 
 (comment
   ;; validate a CSV dump of metabot_message (`id` and `data` columns, header row) against the
@@ -141,8 +128,6 @@
         (reduce (fn [acc row]
                   (let [raw    (nth row data-idx)
                         parsed (try (json/decode+kw raw) (catch Exception e e))
-                        parsed (cond->> parsed
-                                 (sequential? parsed) (mapv normalize-entry))
                         error  (if (instance? Exception parsed)
                                  {:json-parse (ex-message parsed)}
                                  (some-> (explain parsed) me/humanize))]
@@ -154,4 +139,4 @@
                 {:row-count 0 :failure-count 0 :failures []}
                 rows))))
 
-  (validate-csv "/path/to/metabot_message.csv"))
+  (validate-csv "./metabot_message_dump.csv"))
