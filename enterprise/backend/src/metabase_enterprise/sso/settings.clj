@@ -377,7 +377,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
             provider))
         (oidc-providers)))
 
-(defsetting oidc-configured?
+(defsetting oidc-configured
   (deferred-tru "Are any OIDC providers configured with required fields?")
   :type    :boolean
   :default false
@@ -391,7 +391,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
                          (oidc-providers))))
   :export?     false)
 
-(defsetting oidc-enabled?
+(defsetting oidc-enabled
   (deferred-tru "Is any OIDC provider enabled?")
   :type    :boolean
   :default false

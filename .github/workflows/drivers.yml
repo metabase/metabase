@@ -151,11 +151,20 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - name: Driver Tests
+          - name: Driver Tests Part 1
             test-args: >-
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
+              :partition/total 2
+              :partition/index 0
+          - name: Driver Tests Part 2
+            test-args: >-
+              :only-tags [:mb/driver-tests]
+              :exclude-tags [:mb/transforms-python-test]
+              :fail-fast? true
+              :partition/total 2
+              :partition/index 1
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]

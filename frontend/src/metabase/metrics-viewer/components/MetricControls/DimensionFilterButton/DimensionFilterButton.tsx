@@ -7,7 +7,7 @@ import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Button, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
   FilterClause,
@@ -20,6 +20,7 @@ import {
   buildDimensionFilterClause,
   parseFilter,
 } from "../../../utils/dimension-filters";
+import S from "../MetricControls.module.css";
 
 import { getFilterDisplayName } from "./utils";
 
@@ -85,14 +86,15 @@ export function DimensionFilterButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          w={184}
+          className={S.controlButton}
           justify="space-between"
-          fw="bold"
-          py="xs"
-          px="sm"
+          h="2rem"
+          fw={400}
+          py={0}
+          px="md"
+          bdrs="md"
           variant="subtle"
           color="text-primary"
-          rightSection={<Icon name="chevrondown" size={12} />}
           onClick={() => setIsOpen(!isOpen)}
         >
           {filterName}

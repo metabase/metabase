@@ -3,7 +3,7 @@ import { createSelector, weakMapMemoize } from "@reduxjs/toolkit";
 import * as LibMetric from "metabase-lib/metric";
 import type { JsMetricDefinition } from "metabase-types/api";
 
-import type { MetricsViewerTabProjectionConfig } from "../types/viewer-state";
+import type { MetricsViewerDimensionBreakoutProjectionConfig } from "../types/viewer-state";
 
 import {
   applyBreakoutDimension,
@@ -15,17 +15,17 @@ export const getModifiedDefinition = createSelector(
   (
     definition: LibMetric.MetricDefinition,
     _projectionDimensionId: string | undefined,
-    _projection: MetricsViewerTabProjectionConfig,
+    _projection: MetricsViewerDimensionBreakoutProjectionConfig,
   ) => definition,
   (
     _definition: LibMetric.MetricDefinition,
     projectionDimensionId: string | undefined,
-    _projection: MetricsViewerTabProjectionConfig,
+    _projection: MetricsViewerDimensionBreakoutProjectionConfig,
   ) => projectionDimensionId,
   (
     _definition: LibMetric.MetricDefinition,
     _projectionDimensionId: string | undefined,
-    projection: MetricsViewerTabProjectionConfig,
+    projection: MetricsViewerDimensionBreakoutProjectionConfig,
   ) => projection,
   (
     definition,
