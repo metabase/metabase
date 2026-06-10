@@ -1,15 +1,15 @@
 ---
 title: "Modular embedding SDK - actions"
-summary: Trigger pre-existing Metabase actions (basic CRUD or custom SQL) from your embedded application with the `useAction` hook.
+summary: Trigger Metabase actions from your embedded application with the `useAction` hook.
 ---
 
 # Modular embedding SDK - actions
 
 {% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
-A Metabase [action](../../actions/introduction.md) is a server-defined write operation against the data warehouse — a basic CRUD operation on a model (insert / update / delete a row) or a custom SQL command. Actions are configured in Metabase ahead of time. Your embedded app's job is to trigger them when a user does something, like clicking a button or submitting a form.
+With the `useAction` hook, you can trigger an [action](../../actions/introduction.md) when someone clicks a button or submits a form in your app.
 
-The `useAction` hook is the SDK's path for invoking those pre-existing actions. It handles the HTTP request, exposes loading and error state as React state, and types the parameters the action expects.
+The hook handles the HTTP request, exposes loading and error state as React state, and types the parameters the action expects. Basic CRUD and custom SQL actions are supported; HTTP-type actions are not. Always trigger actions through `useAction` — calling `POST /api/action/:id/execute` directly with `fetch` may be blocked in sandboxed embedding contexts.
 
 ## Triggering an action with `useAction`
 
@@ -23,7 +23,7 @@ const { execute, isExecuting, result, error, reset } = useAction<
 - `actionId` — the action's numeric id, its `entity_id` string, or `null`. Find the numeric id in Metabase by opening the action editor and copying it from the URL.
 - `TParameters` — a TypeScript type describing the parameters object that will be passed to `execute`. Keys are the action's parameter slugs (the names shown in the action editor).
 - `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"query"` to get a typed `result` for that single shape. Omit it and `result` defaults to a union of every possible response body (`AnyActionResult`), narrowable with `"<key>" in result`. See [Typing the response](#typing-the-response).
-- `execute(parameters)` — call this from an event handler to trigger the action. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null` or the SDK is not yet initialized. The same error is also written to `error` state so render-time consumers can read it.
+- `execute(parameters)` — call this from an event handler to trigger the action. The hook does not auto-fire on mount. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null` or the SDK is not yet initialized. You can `await` it or fire and forget — the same error is written to `error` state either way, so a render-time error message will appear even without a `try`/`catch`.
 - `isExecuting` — `true` between the call and its resolution. Use it to disable the trigger and prevent double-clicks.
 - `result` — the response body, or `null` before the first call and after `reset()`.
 - `error` — the last thrown error, or `null`. See [Error handling](#error-handling).
@@ -34,9 +34,9 @@ const { execute, isExecuting, result, error, reset } = useAction<
 - [Hook](./api/useAction.html)
 - [Return type](./api/UseActionResult.html)
 
-## Example
+## Example button to trigger an action
 
-A button that calls a custom SQL action to apply a discount to an order:
+This button calls a custom SQL action to apply a discount to an order:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/basic.tsx" %}
@@ -44,18 +44,11 @@ A button that calls a custom SQL action to apply a discount to an order:
 
 ## Parameter keys
 
-Every Metabase action publishes a `parameters` list. Each parameter has two identifiers you can use as a key:
-
-| Field   | Example                                  | Notes                                                                     |
-| ------- | ---------------------------------------- | ------------------------------------------------------------------------- |
-| `id`    | `"d800e41d-edde-49cb-b63b-2386aba34334"` | Internal UUID for custom SQL actions. For basic CRUD actions, the id is the slug-form. |
-| `slug`  | `"discount"`                             | Stable, human-readable. What the Metabase action editor surfaces.          |
-
-**Send parameters keyed by `slug`** — that is the public contract. The backend execute endpoint accepts keys by `slug` or internal `id` and resolves them to the destination parameter, so both work; slug is what shows up in the action editor and what your code should use. The parameter's display `name` (e.g. `"Discount"`) is UI-only and is not accepted as a request key.
+**Send parameters keyed by `slug`**. The parameter's display `name` (e.g. `"Discount"`) won't work; you must use the slug (e.g., `"discount"`).
 
 ### Parameter value types
 
-For string, number, and boolean parameters, just pass the natural TypeScript value. For dates, pass an ISO 8601 string. Examples:
+You can pass strings, number, and boolean parameters. For dates, pass an ISO 8601 string. Examples:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/parameter-values.tsx" snippet="primitives-and-dates" %}
@@ -63,13 +56,13 @@ For string, number, and boolean parameters, just pass the natural TypeScript val
 
 #### Dates and timezones
 
-When the target column is `TIMESTAMP` without timezone (the common Metabase case — values stored as UTC by convention), send the ISO value **without a timezone offset**, or with the `Z` suffix:
+When the target column is `TIMESTAMP` without timezone, send the ISO value **without a timezone offset**, or with the `Z` suffix:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/date-picker.tsx" snippet="timestamp-utc" %}
 ```
 
-A timezone-offset value like `"2024-01-15T10:00:00+05:00"` is silently converted to UTC by the database driver, so the stored wall-clock shifts (the example above would store `05:00:00`). For `TIMESTAMP WITH TIME ZONE` columns the offset is preserved as the same instant; for `DATE` columns timezone is irrelevant.
+A timezone-offset value like `"2024-01-15T10:00:00+05:00"` is typically converted to UTC by the database driver, so the stored wall-clock shifts (the example above would store `05:00:00`). Exact behavior varies by warehouse — check your driver if precise timezone handling matters. For `TIMESTAMP WITH TIME ZONE` columns the offset is preserved as the same instant; for `DATE` columns timezone is irrelevant.
 
 When the value comes from a browser-local date picker (which often returns the user's local TZ), normalize before sending:
 
@@ -110,23 +103,25 @@ Example with a known kind:
 {% include_file "{{ dirname }}/snippets/actions/typed-response.tsx" snippet="known-kind" %}
 ```
 
-### Omitting `TKind`
+### Reading the result
 
-If you don't supply `TKind`, `result` defaults to `AnyActionResult` — the union of every possible response body. This is more accurate than the loose `Record<string, unknown>` you might expect: TypeScript knows the result is one of the five known shapes, just not which one. Narrow with the `in` operator:
+It's common not to read the result at all (see [Refreshing data after an action](#refreshing-data-after-an-action)).
+
+But if you do read the result, specify `TKind` if you know the action's result upfront.
+
+If you don't supply `TKind`, the `result` defaults to `AnyActionResult`, which is the union of every possible response body. TypeScript knows the result is one of the five known shapes, just not which one. You can then narrow with the `in` operator:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/typed-response.tsx" snippet="narrow-result" %}
 ```
 
-The union default catches mistyped reads — `result?.["rows-affected"]` errors directly if the type system can't prove `result` has that key. Specifying `TKind` is the clean way out when you know the action's kind upfront.
-
-If you don't read `result` at all (the common case — see [Refreshing data after an action](#refreshing-data-after-an-action)), neither variant matters.
+The union default catches mistyped reads: if the type system can't prove `result` has a key, it'll error.
 
 ## Refreshing data after an action
 
-When an action succeeds, the data on the screen is likely stale. A list still shows the old rows; a stat tile still shows the old count; the row the user just edited still shows its old values. The action worked, but the UI lies — and there is no automatic refresh.
+When an action succeeds, you'll need to refresh any data in the UI that the action could have changed, otherwise the data on screen may be stale. There is no automatic refresh.
 
-**The rule:** after `execute` resolves successfully, refresh every piece of data on the screen that the action could have changed. Load the data hook above the action trigger so its `refetch` callback can be passed down:
+After `execute` resolves successfully, load the data hook above the action trigger so its `refetch` callback can be passed down:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/with-refresh.tsx" %}
@@ -138,11 +133,11 @@ If a single action invalidates more than one view, kick off the refreshes in par
 {% include_file "{{ dirname }}/snippets/actions/parallel-refresh.tsx" snippet="parallel-refresh" %}
 ```
 
-Don't try to drive list state from `result` directly. The response body is for confirmation (a row count, the inserted row's primary key, etc.) — use it for toasts or detail-view navigation, not as a substitute for re-reading the source.
+Don't try to drive the state from `result` directly. The response body is for confirmation (a row count, the inserted row's primary key, etc.). You can use the `result` for toasts or detail-view navigation, but you still need to re-read the source to update the data on screen.
 
 ## Error handling
 
-The hook normalizes whatever the underlying network client throws into a clean, public-facing shape and types `error` accordingly — no casting required to read its fields:
+The hook normalizes whatever the underlying network client throws into a clean, public-facing shape and types `error` accordingly:
 
 {% include_file "{{ dirname }}/api/snippets/ActionExecuteError.md" snippet="properties" %}
 
@@ -161,14 +156,6 @@ The basic example above renders `error.data.message` with a static fallback when
 ```
 
 Surface the message verbatim. Don't replace it with a generic "Something went wrong" — the raw SQL / validation / permission error is what tells the user how to fix their input.
-
-## Notes on `useAction`
-
-- **The hook does not auto-fire.** `execute` is only called by your code, in response to a user event.
-- **Disable the trigger while a request is in flight.** Drive `disabled={isExecuting}` on your button or form-submit to prevent duplicate submissions.
-- **`execute` can be `await`-ed or fired-and-forgotten.** Both work — the same error is captured into `error` state either way, so a render-time error message will appear even if you don't `try` / `catch` at the call site.
-- **HTTP-type actions are not supported.** The backend rejects them. Use basic CRUD or custom SQL actions.
-- **`useAction` is the only supported path.** Don't try to call `POST /api/action/:id/execute` directly with `fetch`; in sandboxed embedding contexts, raw network calls may be blocked.
 
 ## Related
 
