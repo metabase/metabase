@@ -49,13 +49,14 @@ export function isTopLevel({
     return true;
   }
 
+  const { doc } = editor.state;
   const pos = getPos();
 
-  if (pos === null || pos === undefined) {
+  if (pos === null || pos === undefined || pos < 0 || pos > doc.content.size) {
     return true;
   }
 
-  const resolvedPos = editor.state.doc.resolve(pos);
+  const resolvedPos = doc.resolve(pos);
   return resolvedPos.depth === 0;
 }
 
