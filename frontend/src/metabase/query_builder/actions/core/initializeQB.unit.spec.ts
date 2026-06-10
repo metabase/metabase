@@ -11,6 +11,7 @@ import * as sharedQB from "metabase/redux/query-builder";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Urls from "metabase/urls";
+import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -91,7 +92,7 @@ async function baseSetup({
   jest.runAllTimers();
 
   const actions = dispatch.mock.calls.find(
-    (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+    (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
   );
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
@@ -674,30 +675,30 @@ describe("QB Actions > initializeQB", () => {
     });
   });
 
+  function startInitializeDB(
+    card: Card,
+    dispatch: jest.Mock,
+    getState: () => ReturnType<typeof createMockState>,
+  ) {
+    return initializeQB(getLocationForCard(card), getQueryParamsForCard(card))(
+      dispatch,
+      getState,
+    );
+  }
+
+  function makeState() {
+    const state = createMockState({
+      entities: createMockEntitiesState({
+        databases: [createSampleDatabase()],
+      }),
+      currentUser: createMockUser({
+        permissions: createMockUserPermissions({ can_create_queries: true }),
+      }),
+    });
+    return { state, getState: () => state };
+  }
+
   describe("staleness / overlapping initializeQB calls", () => {
-    function startInit(
-      card: Card,
-      dispatch: jest.Mock,
-      getState: () => ReturnType<typeof createMockState>,
-    ) {
-      return initializeQB(
-        getLocationForCard(card),
-        getQueryParamsForCard(card),
-      )(dispatch, getState);
-    }
-
-    function makeState() {
-      const state = createMockState({
-        entities: createMockEntitiesState({
-          databases: [createSampleDatabase()],
-        }),
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({ can_create_queries: true }),
-        }),
-      });
-      return { state, getState: () => state };
-    }
-
     it("aborts a stale initializeQB once a newer one is in flight", async () => {
       const firstCard = createSavedStructuredCard({ id: 1, name: "first" });
       const secondCard = createSavedStructuredCard({ id: 2, name: "second" });
@@ -719,11 +720,15 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
       // First init: hangs on loadCard
-      const firstInit = startInit(firstCard as Card, dispatch, getState);
+      const firstInit = startInitializeDB(
+        firstCard as Card,
+        dispatch,
+        getState,
+      );
       await Promise.resolve();
 
       // Second init runs to completion, superseding the first
-      await startInit(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard as Card, dispatch, getState);
       jest.runAllTimers();
 
       // Unblock the first init; it should bail out once it sees the version
@@ -733,7 +738,7 @@ describe("QB Actions > initializeQB", () => {
       jest.runAllTimers();
 
       const initActions = dispatch.mock.calls.filter(
-        (call) => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+        (call) => call[0]?.type === sharedQB.INITIALIZE_QB,
       );
       expect(initActions).toHaveLength(1);
       expect(initActions[0][0].payload.card.id).toBe(secondCard.id);
@@ -770,10 +775,14 @@ describe("QB Actions > initializeQB", () => {
       fetchMock.get(`path:/api/card/${firstCard.id}`, firstCard);
       fetchMock.get(`path:/api/card/${secondCard.id}`, secondCard);
 
-      const firstInit = startInit(firstCard as Card, dispatch, getState);
+      const firstInit = startInitializeDB(
+        firstCard as Card,
+        dispatch,
+        getState,
+      );
       await Promise.resolve();
 
-      await startInit(secondCard as Card, dispatch, getState);
+      await startInitializeDB(secondCard as Card, dispatch, getState);
       jest.runAllTimers();
 
       resolveFirstLoad(firstCard as Card);
@@ -789,49 +798,20 @@ describe("QB Actions > initializeQB", () => {
 
   describe("database list preload", () => {
     it("loads the database list before dispatching INITIALIZE_QB so the data selector mounts with a complete list (metabase#75173)", async () => {
-      jest.useFakeTimers();
+      jest.useRealTimers();
       const card = createSavedStructuredCard({ id: 1, name: "first" });
-      const state = createMockState({
-        entities: createMockEntitiesState({
-          databases: [createSampleDatabase()],
-        }),
-        currentUser: createMockUser({
-          permissions: createMockUserPermissions({ can_create_queries: true }),
-        }),
-      });
+      const { getState } = makeState();
       const dispatch = jest.fn((action) => action);
 
-      jest
-        .spyOn(cardActions, "loadCard")
-        .mockReturnValue(Promise.resolve({ ...card } as Card));
-      fetchMock.get(`path:/api/card/${card.id}`, card);
+      jest.spyOn(cardActions, "loadCard").mockResolvedValue(card);
 
-      let resolveDatabases!: () => void;
-      const databasesPromise = new Promise<void>((resolve) => {
-        resolveDatabases = resolve;
-      });
-
-      const actualRunRtkEndpoint = rtkEndpointUtils.runRtkEndpoint;
+      const databasesRequest = defer();
       const runRtkEndpointSpy = jest
         .spyOn(rtkEndpointUtils, "runRtkEndpoint")
-        .mockImplementation((request, innerDispatch, endpoint, options) =>
-          endpoint === databaseApi.endpoints.listDatabases
-            ? databasesPromise
-            : actualRunRtkEndpoint(request, innerDispatch, endpoint, options),
-        );
+        .mockReturnValue(databasesRequest.promise);
 
-      const init = initializeQB(
-        getLocationForCard(card),
-        getQueryParamsForCard(card),
-      )(dispatch, () => state);
+      const initializeDBPromise = startInitializeDB(card, dispatch, getState);
 
-      // Flush every init step other than the pending database list request
-      for (let i = 0; i < 10; i++) {
-        await Promise.resolve();
-      }
-
-      // The query args must match DataSelector's `databaseQuery` cache key, so
-      // its own fetch becomes a cache hit instead of a second network request
       expect(runRtkEndpointSpy).toHaveBeenCalledWith(
         { "can-query": true },
         dispatch,
@@ -839,15 +819,14 @@ describe("QB Actions > initializeQB", () => {
         { forceRefetch: false },
       );
       expect(dispatch).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: "metabase/qb/INITIALIZE_QB" }),
+        expect.objectContaining({ type: sharedQB.INITIALIZE_QB }),
       );
 
-      resolveDatabases();
-      await init;
-      jest.runAllTimers();
+      databasesRequest.resolve();
+      await initializeDBPromise;
 
       expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "metabase/qb/INITIALIZE_QB" }),
+        expect.objectContaining({ type: sharedQB.INITIALIZE_QB }),
       );
     });
   });
