@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Button, FixedSizeIcon } from "metabase/ui";
 
-import { NewInstanceModal } from "../NewInstanceModal";
+import { CreateInstanceModal } from "../CreateInstanceModal";
 
 export function AddInstanceButton() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -16,7 +16,7 @@ export function AddInstanceButton() {
       >
         {t`Add instance`}
       </Button>
-      <NewInstanceModal opened={opened} onCreate={close} onClose={close} />
+      <CreateInstanceModal opened={opened} onCreate={close} onClose={close} />
     </>
   );
 }

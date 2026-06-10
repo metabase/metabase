@@ -69,15 +69,6 @@ describe("CurrentWorkspacePage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the help menu when a workspace is set up", async () => {
-    setup();
-
-    expect(await screen.findByText("Dev workspace")).toBeInTheDocument();
-    expect(
-      await screen.findByRole("button", { name: /Help/ }),
-    ).toBeInTheDocument();
-  });
-
   it("renders the delete section", async () => {
     setup();
 

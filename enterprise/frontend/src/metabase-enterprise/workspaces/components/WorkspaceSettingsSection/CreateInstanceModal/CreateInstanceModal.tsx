@@ -13,17 +13,17 @@ import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceInstanceMutation } from "metabase-enterprise/api";
 import type { WorkspaceInstance } from "metabase-types/api";
 
-type NewInstanceModalProps = {
+type CreateInstanceModalProps = {
   opened: boolean;
   onCreate: (instance: WorkspaceInstance) => void;
   onClose: () => void;
 };
 
-export function NewInstanceModal({
+export function CreateInstanceModal({
   opened,
   onCreate,
   onClose,
-}: NewInstanceModalProps) {
+}: CreateInstanceModalProps) {
   return (
     <Modal
       title={t`Add a development instance`}
@@ -31,38 +31,38 @@ export function NewInstanceModal({
       padding="xl"
       onClose={onClose}
     >
-      <NewInstanceForm onCreate={onCreate} onClose={onClose} />
+      <CreateInstanceForm onCreate={onCreate} onClose={onClose} />
     </Modal>
   );
 }
 
-type NewInstanceFormValues = {
+type CreateInstanceFormValues = {
   name: string;
   url: string;
   api_key: string;
 };
 
-const NEW_INSTANCE_SCHEMA = Yup.object({
+const CREATE_INSTANCE_SCHEMA = Yup.object({
   name: Yup.string().required(Errors.required),
   url: Yup.string().required(Errors.required),
   api_key: Yup.string().required(Errors.required),
 });
 
-const INITIAL_VALUES: NewInstanceFormValues = {
+const INITIAL_VALUES: CreateInstanceFormValues = {
   name: "",
   url: "",
   api_key: "",
 };
 
-type NewInstanceFormProps = {
+type CreateInstanceFormProps = {
   onCreate: (instance: WorkspaceInstance) => void;
   onClose: () => void;
 };
 
-function NewInstanceForm({ onCreate, onClose }: NewInstanceFormProps) {
+function CreateInstanceForm({ onCreate, onClose }: CreateInstanceFormProps) {
   const [createWorkspaceInstance] = useCreateWorkspaceInstanceMutation();
 
-  const handleSubmit = async (values: NewInstanceFormValues) => {
+  const handleSubmit = async (values: CreateInstanceFormValues) => {
     const instance = await createWorkspaceInstance(values).unwrap();
     onCreate(instance);
   };
@@ -70,7 +70,7 @@ function NewInstanceForm({ onCreate, onClose }: NewInstanceFormProps) {
   return (
     <FormProvider
       initialValues={INITIAL_VALUES}
-      validationSchema={NEW_INSTANCE_SCHEMA}
+      validationSchema={CREATE_INSTANCE_SCHEMA}
       onSubmit={handleSubmit}
     >
       <Form>

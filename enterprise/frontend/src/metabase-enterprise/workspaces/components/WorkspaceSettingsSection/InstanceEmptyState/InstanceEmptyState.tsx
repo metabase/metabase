@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Box, Button, Card, Text, Title } from "metabase/ui";
 
-import { NewInstanceModal } from "../NewInstanceModal";
+import { CreateInstanceModal } from "../CreateInstanceModal";
 
 export function InstanceEmptyState() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -31,7 +31,7 @@ export function InstanceEmptyState() {
           </Button>
         </Box>
       </Card>
-      <NewInstanceModal opened={opened} onCreate={close} onClose={close} />
+      <CreateInstanceModal opened={opened} onCreate={close} onClose={close} />
     </>
   );
 }

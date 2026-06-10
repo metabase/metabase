@@ -1,1 +1,1 @@
-export * from "./NewInstanceModal";
+export * from "./CreateInstanceModal";

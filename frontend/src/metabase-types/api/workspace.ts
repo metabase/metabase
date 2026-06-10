@@ -21,9 +21,11 @@ export type Workspace = {
   name: string;
   databases: WorkspaceDatabase[];
   created_at: string;
+  updated_at: string;
   creator_id: UserId;
 
   creator?: UserInfo;
+  instance?: WorkspaceInstance | null;
 };
 
 export type CreateWorkspaceRequest = {
@@ -59,6 +61,8 @@ export type WorkspaceInstance = {
   name: string;
   workspace_id: WorkspaceId | null;
   url: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type CreateWorkspaceInstanceRequest = {

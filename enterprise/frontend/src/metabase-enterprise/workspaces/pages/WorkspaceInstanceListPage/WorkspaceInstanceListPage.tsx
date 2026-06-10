@@ -5,41 +5,50 @@ import { t } from "ttag";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Button, FixedSizeIcon, Flex, Group, Stack } from "metabase/ui";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceId } from "metabase-types/api";
+import { useListWorkspaceInstancesQuery } from "metabase-enterprise/api";
+import type {
+  WorkspaceInstance,
+  WorkspaceInstanceId,
+} from "metabase-types/api";
 
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
+import { CreateInstanceModal } from "../../components/WorkspaceSettingsSection/CreateInstanceModal";
 
-import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
-import S from "./WorkspaceListPage.module.css";
-import { WorkspaceSidebar } from "./WorkspaceSidebar";
-import { WorkspaceTable } from "./WorkspaceTable";
+import S from "./WorkspaceInstanceListPage.module.css";
+import { WorkspaceInstanceSidebar } from "./WorkspaceInstanceSidebar";
+import { WorkspaceInstanceTable } from "./WorkspaceInstanceTable";
 
-export function WorkspaceListPage() {
-  const { data: workspaces, isLoading, error } = useListWorkspacesQuery();
+export function WorkspaceInstanceListPage() {
+  const {
+    data: instances,
+    isLoading,
+    error,
+  } = useListWorkspaceInstancesQuery();
 
-  if (isLoading || error != null || workspaces == null) {
+  if (isLoading || error != null || instances == null) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WorkspaceListPageBody workspaces={workspaces} />;
+  return <WorkspaceInstanceListPageBody instances={instances} />;
 }
 
-type WorkspaceListPageBodyProps = {
-  workspaces: Workspace[];
+type WorkspaceInstanceListPageBodyProps = {
+  instances: WorkspaceInstance[];
 };
 
-function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
+function WorkspaceInstanceListPageBody({
+  instances,
+}: WorkspaceInstanceListPageBodyProps) {
   const { ref: containerRef, width: containerWidth } = useElementSize();
   const [isResizing, { open: startResizing, close: stopResizing }] =
     useDisclosure();
   const [isCreateOpen, { open: openCreate, close: closeCreate }] =
     useDisclosure(false);
-  const [selectedId, setSelectedId] = useState<WorkspaceId>();
+  const [selectedId, setSelectedId] = useState<WorkspaceInstanceId>();
 
-  const selectedWorkspace =
+  const selectedInstance =
     selectedId != null
-      ? workspaces.find((workspace) => workspace.id === selectedId)
+      ? instances.find((instance) => instance.id === selectedId)
       : undefined;
 
   return (
@@ -48,7 +57,7 @@ function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
       ref={containerRef}
       h="100%"
       wrap="nowrap"
-      data-testid="workspace-list-page"
+      data-testid="workspace-instance-list-page"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <WorkspaceHeader />
@@ -61,22 +70,22 @@ function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
             {t`Add`}
           </Button>
         </Group>
-        <WorkspaceTable
-          workspaces={workspaces}
-          selectedWorkspaceId={selectedId}
-          onSelect={(workspace) => setSelectedId(workspace.id)}
+        <WorkspaceInstanceTable
+          instances={instances}
+          selectedInstanceId={selectedId}
+          onSelect={(instance) => setSelectedId(instance.id)}
         />
       </Stack>
-      {selectedWorkspace != null && (
-        <WorkspaceSidebar
-          workspace={selectedWorkspace}
+      {selectedInstance != null && (
+        <WorkspaceInstanceSidebar
+          instance={selectedInstance}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}
           onClose={() => setSelectedId(undefined)}
         />
       )}
-      <CreateWorkspaceModal
+      <CreateInstanceModal
         opened={isCreateOpen}
         onCreate={closeCreate}
         onClose={closeCreate}

@@ -24,6 +24,7 @@ export function createMockWorkspace(opts?: Partial<Workspace>): Workspace {
     name: "Test workspace",
     databases: [],
     created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
     creator_id: 1,
     ...opts,
   };
@@ -37,6 +38,8 @@ export function createMockWorkspaceInstance(
     name: "Test instance",
     workspace_id: null,
     url: "https://metabase.example.com",
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
     ...opts,
   };
 }
