@@ -4,6 +4,7 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -13,7 +14,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -142,13 +142,13 @@
   (h2x/->timestamp expr))
 
 (defn- create-table!-sql
-  [driver table-name column-definitions & {:keys [primary-key]}]
+  [driver qualified-table-name column-definitions & {:keys [primary-key]}]
   (first
    (sql.qp/format-honeysql
     driver
-    {:create-table (keyword table-name)
+    {:create-table (keyword qualified-table-name)
      :with-columns (cond-> (mapv (fn [[col-name type-spec]]
-                                   (vec (cons (quote-identifier driver col-name)
+                                   (vec (cons (h2x/identifier :field col-name)
                                               (if (string? type-spec)
                                                 [[:raw type-spec]]
                                                 type-spec))))
@@ -225,7 +225,8 @@
         chunks (partition-all (or driver/*insert-chunk-rows* 100) values)
         sqls   (binding [driver/*compile-with-inline-parameters* inline?]
                  (mapv #(sql.qp/format-honeysql driver {:insert-into (keyword table-name)
-                                                        :columns     (quote-columns driver column-names)
+                                                        :columns     (for [col column-names]
+                                                                       (h2x/identifier :field col))
                                                         :values      %})
                        chunks))]
     sqls))
@@ -240,27 +241,28 @@
   [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
   (driver/insert-into! driver db-id table-name (mapv :name columns) data))
 
+(defn- add-columns!-sql [driver qualified-table-name column-definitions primary-key-column]
+  (first (sql.qp/format-honeysql
+          driver
+          {:alter-table (keyword qualified-table-name)
+           :add-column  (mapv (fn [[column-name type-and-constraints]]
+                                (cond-> (vec (cons (h2x/identifier :field column-name)
+                                                   (if (string? type-and-constraints)
+                                                     [[:raw type-and-constraints]]
+                                                     type-and-constraints)))
+                                  (= primary-key-column column-name)
+                                  (conj :primary-key)))
+                              column-definitions)})))
+
 (mu/defmethod driver/add-columns! :sql-jdbc
   [driver                  :- :keyword
    db-id                   :- ::lib.schema.id/database
-   table-name              :- :string
+   qualified-table-name    :- :string
    column-definitions      :- ::driver/column-definitions
    & {:keys [primary-key]} :- ::driver/add-columns!-options]
   (mu/validate-throw [:maybe [:cat :keyword]] primary-key) ; we only support adding a single primary key column for now
   (let [primary-key-column (first primary-key)
-        sql                (first (sql.qp/format-honeysql
-                                   driver
-                                   {:alter-table (keyword table-name)
-                                    :add-column  (map (fn [[column-name type-and-constraints]]
-                                                        (cond-> (vec (cons (quote-identifier driver column-name)
-                                                                           (if (string? type-and-constraints)
-                                                                             [[:raw type-and-constraints]]
-                                                                             type-and-constraints)))
-                                                          (= primary-key-column column-name)
-                                                          (conj :primary-key)))
-                                                      column-definitions)}
-                                   :quoted true
-                                   :dialect (sql.qp/quote-style driver)))]
+        sql                (add-columns!-sql driver qualified-table-name column-definitions primary-key-column)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 

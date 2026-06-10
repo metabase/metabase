@@ -21,7 +21,6 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -1252,12 +1251,12 @@
   (case [old-type new-type]
     [[:boolean] [:bigint]]
     [:case
-     (quote-identifier driver column) 1
+     (h2x/identifier :field column) 1
      :else 0]
 
     [[:boolean] [:float]]
     [:case
-     (quote-identifier driver column) 1.0
+     (h2x/identifier :field column) 1.0
      :else 0.0]
 
     nil))
@@ -1267,7 +1266,7 @@
   (->> {:alter-table  (keyword table-name)
         :alter-column (for [[column column-type] column-definitions
                             :let [old-type (get old-types column)]]
-                        (let [base (list* (quote-identifier driver column)
+                        (let [base (list* (h2x/identifier :field column)
                                           :type
                                           (if (string? column-type)
                                             [[:raw column-type]]
@@ -1323,7 +1322,8 @@
           [sql & _]    (sql.qp/format-honeysql
                         driver
                         {::copy       (keyword table-name)
-                         :columns     (quote-columns driver column-names)
+                         :columns     (for [col column-names]
+                                        (h2x/identifier :field col))
                          ::from-stdin "''"})
           ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
           ;; little faster but not by much (3.63m), and 10,000 threw an error:

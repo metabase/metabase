@@ -1,8 +1,8 @@
 (ns metabase.driver.sql-jdbc.sync.interface
   (:require
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-identifier]]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]))
 
 (defmulti active-tables
@@ -154,7 +154,7 @@
           driver
           {:alter-table  (keyword table-name)
            :alter-column (map (fn [[column-name type-and-constraints]]
-                                (vec (cons (quote-identifier driver column-name)
+                                (vec (cons (h2x/identifier :field column-name)
                                            (if (string? type-and-constraints)
                                              [[:raw type-and-constraints]]
                                              type-and-constraints))))

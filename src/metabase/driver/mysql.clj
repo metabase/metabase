@@ -20,7 +20,6 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
@@ -1015,7 +1014,8 @@
       (try
         (let [tsvs (map (partial row->tsv driver (count column-names)) values)
               sql  (sql.qp/format-honeysql driver {::load   [file-path (keyword table-name)]
-                                                   :columns (quote-columns driver column-names)})]
+                                                   :columns (for [col column-names]
+                                                              (h2x/identifier :field col))})]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))

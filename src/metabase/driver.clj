@@ -1498,10 +1498,15 @@
   ;; For most databases, the same limit is used for all identifier types.
   (table-name-length-limit driver))
 
+;; TODO (Cam 2026-06-10) it would better if this had `schema` and `table-name` as separate args.
 (defmulti create-table!
-  "Create a table named `table-name`. If the table already exists it will throw an error.
-  `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
-  that make up the primary key."
+  "Create a table named `table-name`. If the table already exists it will throw an error. `args` is an optional map with
+  an optional entry `primary-key`. The `primary-key` value is a vector of column names that make up the primary key.
+
+  `table-name` may be qualified
+  by schema e.g.
+
+    schema.table"
   {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

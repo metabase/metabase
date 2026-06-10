@@ -305,7 +305,7 @@
        (map #(vector (:id %) (:name %)))
        sort))
 
-(deftest ^:parallel create-table-sql!-test
+(deftest ^:parallel create-table!-sql-test
   (testing "should generate properly quoted SQL for CREATE TABLE statements; don't interpret :%keywords as function calls"
     (is (= ["CREATE TABLE \"%PUBLIC\".\"EXAMPLE_CSV_FILE_925D85BA_AA56_4D3A_9590_1D79C9E4CAC1_20260610183010\" ("
             "  \"_mb_row_id\" BIGINT GENERATED ALWAYS AS IDENTITY,"
@@ -324,6 +324,42 @@
                  [:_mb_row_id])
                 (driver/prettify-native-form :sql-jdbc)
                 str/split-lines)))))
+
+(deftest ^:parallel add-columns!-sql-test
+  (testing "should generate properly quoted SQL for ALTER TABLE ADD COLUMN statements; don't interpret :%keywords as function calls"
+    (is (= ["ALTER TABLE"
+            "  \"%public\".\"table_name\""
+            "ADD"
+            "  COLUMN \"_mb_row_id\" BIGINT GENERATED ALWAYS AS IDENTITY,"
+            "ADD"
+            "  COLUMN \"id\" BIGINT PRIMARY KEY,"
+            "ADD"
+            "  COLUMN \"%name\" VARCHAR"]
+           (->> (#'sql-jdbc/add-columns!-sql
+                 :sql-jdbc
+                 "%public.table_name"
+                 (ordered-map/ordered-map
+                  :_mb_row_id [:bigint :generated-always :as :identity]
+                  :id         [:bigint]
+                  :%name      [:varchar])
+                 :id)
+                (driver/prettify-native-form :sql-jdbc)
+                str/split-lines)))))
+
+(deftest ^:parallel insert-into!-sqls-test
+  (is (= [["INSERT INTO"
+           "  \"%schema\".\"table_name\" (\"id\", \"%name\")"
+           "VALUES"
+           "  (1, 'A'),"
+           "  (2, 'B'),"
+           "  (3, 'C''D')"]]
+         (for [[sql _args] (#'sql-jdbc/insert-into!-sqls
+                            :sql-jdbc
+                            "%schema.table_name"
+                            ["id" "%name"]
+                            [[1 "A"] [2 "B"] [3 "C'D"]]
+                            true)]
+           (str/split-lines (driver/prettify-native-form :sql-jdbc  sql))))))
 
 (deftest rename-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :atomic-renames)
