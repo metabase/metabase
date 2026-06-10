@@ -138,6 +138,8 @@ export {
   type MoveSnippetModalProps,
   type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
+  type SnippetSidebarContext,
+  type SnippetSidebarMenuOption,
 } from "./oss/snippets";
 export {
   PLUGIN_TRANSFORMS,

@@ -1,5 +1,5 @@
 import type { Middleware } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { t } from "ttag";
 
 import noResultsSource from "assets/img/no_results.svg";
@@ -10,6 +10,11 @@ import type {
 } from "metabase/redux/store";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { Dashboard } from "metabase-types/api";
+
+import type {
+  SnippetSidebarContext,
+  SnippetSidebarMenuOption,
+} from "./snippets";
 
 // Types
 export type IllustrationValue = {
@@ -111,9 +116,17 @@ const getDefaultFormWidgets = (): Record<string, ComponentType<any>> => ({});
 
 export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
 
-const getDefaultSnippetSidebarPlusMenuOptions = () => [];
-const getDefaultSnippetSidebarRowRenderers = () => ({});
-const getDefaultSnippetSidebarHeaderButtons = () => [];
+const getDefaultSnippetSidebarPlusMenuOptions = (): ((
+  snippetSidebar: SnippetSidebarContext,
+) => SnippetSidebarMenuOption)[] => [];
+const getDefaultSnippetSidebarRowRenderers = (): Record<
+  string,
+  ComponentType<any> | null
+> => ({});
+const getDefaultSnippetSidebarHeaderButtons = (): ((
+  snippetSidebar: SnippetSidebarContext,
+  opts: { className?: string },
+) => ReactNode)[] => [];
 
 export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS =
   getDefaultSnippetSidebarPlusMenuOptions();
