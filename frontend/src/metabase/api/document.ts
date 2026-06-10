@@ -1,6 +1,7 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {
+  CardId,
   CopyDocumentRequest,
   CreateDocumentRequest,
   Dataset,
@@ -13,7 +14,7 @@ import type {
 
 export interface GetPublicDocumentCardQueryRequest {
   uuid: string;
-  cardId: number;
+  cardId: CardId;
 }
 
 export const documentApi = Api.injectEndpoints({

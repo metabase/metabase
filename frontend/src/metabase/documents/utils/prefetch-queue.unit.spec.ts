@@ -1,4 +1,7 @@
-import { PrefetchQueueStore } from "./prefetch-queue";
+import {
+  MAX_CONCURRENT_PREFETCHES,
+  PrefetchQueueStore,
+} from "./prefetch-queue";
 
 function makeElement(top: number, height = 100): HTMLElement {
   const el = document.createElement("div");
@@ -16,14 +19,14 @@ function makeFakeScheduler() {
   const pending = new Map<number, () => void>();
 
   return {
-    schedule: jest.fn((cb: () => void) => {
+    schedule(cb: () => void) {
       const handle = nextHandle++;
       pending.set(handle, cb);
       return handle;
-    }),
-    cancel: jest.fn((handle: number) => {
+    },
+    cancel(handle: number) {
       pending.delete(handle);
-    }),
+    },
     flush() {
       const cbs = Array.from(pending.values());
       pending.clear();
@@ -38,83 +41,62 @@ function makeFakeScheduler() {
 }
 
 describe("PrefetchQueueStore", () => {
+  let scheduler: ReturnType<typeof makeFakeScheduler>;
+  let queue: PrefetchQueueStore;
+
   beforeEach(() => {
     Object.defineProperty(window, "innerHeight", {
       configurable: true,
       value: 1000,
     });
+    scheduler = makeFakeScheduler();
+    queue = new PrefetchQueueStore(scheduler);
   });
 
-  it("grants tickets only after the idle scheduler fires", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
+  function register(id: string, top: number, isInViewport = false) {
+    const el = makeElement(top);
+    return queue.register({
+      id,
+      getElement: () => el,
+      isInViewport: () => isInViewport,
     });
+  }
+
+  it("grants tickets only after the idle scheduler fires", () => {
+    register("a", 2000);
     expect(queue.hasTicket("a")).toBe(false);
     scheduler.flush();
     expect(queue.hasTicket("a")).toBe(true);
   });
 
   it("sorts off-screen candidates by distance to viewport center", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "far",
-      getElement: () => makeElement(10_000),
-      isInViewport: () => false,
-    });
-    queue.register({
-      id: "near",
-      getElement: () => makeElement(1200),
-      isInViewport: () => false,
-    });
-    queue.register({
-      id: "middle",
-      getElement: () => makeElement(5000),
-      isInViewport: () => false,
-    });
+    register("far", 10_000);
+    register("near", 1200);
+    register("farthest", 20_000);
+    register("middle", 5000);
     scheduler.flush();
 
-    // All three fit under the concurrency cap of 3, so all get tickets.
     expect(queue.hasTicket("near")).toBe(true);
     expect(queue.hasTicket("middle")).toBe(true);
     expect(queue.hasTicket("far")).toBe(true);
+    expect(queue.hasTicket("farthest")).toBe(false);
   });
 
   it("caps tickets at MAX_CONCURRENT_PREFETCHES per idle tick when no slots are taken", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    for (let i = 0; i < 5; i++) {
-      queue.register({
-        id: `card-${i}`,
-        getElement: () => makeElement(2000 + i * 1000),
-        isInViewport: () => false,
-      });
-    }
+    const ids = Array.from(
+      { length: MAX_CONCURRENT_PREFETCHES + 2 },
+      (_, i) => `card-${i}`,
+    );
+    ids.forEach((id, i) => register(id, 2000 + i * 1000));
     scheduler.flush();
 
-    const granted = ["card-0", "card-1", "card-2", "card-3", "card-4"].filter(
-      (id) => queue.hasTicket(id),
-    );
-    expect(granted).toHaveLength(3);
+    const granted = ids.filter((id) => queue.hasTicket(id));
+    expect(granted).toHaveLength(MAX_CONCURRENT_PREFETCHES);
   });
 
   it("skips cards that are currently in viewport", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "in-view",
-      getElement: () => makeElement(500),
-      isInViewport: () => true,
-    });
-    queue.register({
-      id: "off-screen",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
+    register("in-view", 500, true);
+    register("off-screen", 2000);
     scheduler.flush();
 
     expect(queue.hasTicket("in-view")).toBe(false);
@@ -122,34 +104,22 @@ describe("PrefetchQueueStore", () => {
   });
 
   it("respects loading slots: in-flight loads reduce available slots", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    for (let i = 0; i < 5; i++) {
-      queue.register({
-        id: `card-${i}`,
-        getElement: () => makeElement(2000 + i * 1000),
-        isInViewport: () => false,
-      });
-    }
+    const ids = Array.from(
+      { length: MAX_CONCURRENT_PREFETCHES + 2 },
+      (_, i) => `card-${i}`,
+    );
+    ids.forEach((id, i) => register(id, 2000 + i * 1000));
     queue.reportLoading("loading-1", true);
     queue.reportLoading("loading-2", true);
     queue.reportLoading("loading-3", true);
     scheduler.flush();
 
-    const granted = ["card-0", "card-1", "card-2", "card-3", "card-4"].filter(
-      (id) => queue.hasTicket(id),
-    );
+    const granted = ids.filter((id) => queue.hasTicket(id));
     expect(granted).toHaveLength(0);
   });
 
   it("does nothing when network gating disables prefetching", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
+    register("a", 2000);
     queue.setEnabled(false);
     scheduler.flush();
 
@@ -157,27 +127,15 @@ describe("PrefetchQueueStore", () => {
   });
 
   it("notifies subscribers when tickets change", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
     const listener = jest.fn();
     queue.subscribe(listener);
-    queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
+    register("a", 2000);
     scheduler.flush();
     expect(listener).toHaveBeenCalled();
   });
 
   it("releases ticket on unregister", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    const unregister = queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
+    const unregister = register("a", 2000);
     scheduler.flush();
     expect(queue.hasTicket("a")).toBe(true);
     unregister();
@@ -185,18 +143,8 @@ describe("PrefetchQueueStore", () => {
   });
 
   it("coalesces multiple state changes into a single idle tick", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
-    queue.register({
-      id: "b",
-      getElement: () => makeElement(3000),
-      isInViewport: () => false,
-    });
+    register("a", 2000);
+    register("b", 3000);
     queue.notifyViewportChange();
     queue.reportLoading("a", false);
 
@@ -204,21 +152,11 @@ describe("PrefetchQueueStore", () => {
   });
 
   it("re-schedules a new tick after the previous one runs", () => {
-    const scheduler = makeFakeScheduler();
-    const queue = new PrefetchQueueStore(scheduler);
-    queue.register({
-      id: "a",
-      getElement: () => makeElement(2000),
-      isInViewport: () => false,
-    });
+    register("a", 2000);
     scheduler.flush();
     expect(scheduler.pendingCount).toBe(0);
 
-    queue.register({
-      id: "b",
-      getElement: () => makeElement(3000),
-      isInViewport: () => false,
-    });
+    register("b", 3000);
     expect(scheduler.pendingCount).toBe(1);
   });
 });
