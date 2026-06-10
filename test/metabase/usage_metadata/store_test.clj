@@ -32,7 +32,6 @@
       (is (= 1 (t2/count :model/SourceMetricDaily :bucket_date bucket-date)))
       (is (= 1 (t2/count :model/SourceDimensionDaily :bucket_date bucket-date)))
       (is (= 1 (t2/count :model/SourceDimensionProfileDaily :bucket_date bucket-date)))
-
       (usage-metadata.store/replace-day! bucket-date payload-b)
       (is (= 1 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
       (is (= 0 (t2/count :model/SourceMetricDaily :bucket_date bucket-date)))

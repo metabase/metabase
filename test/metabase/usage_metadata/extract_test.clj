@@ -16,15 +16,12 @@
   (testing "table roots are attributed to the table"
     (is (= {:source-type :table, :source-id (meta/id :venues)}
            (extract/query-source-table-or-card (lib.tu/venues-query)))))
-
   (testing "card roots are attributed to the card"
     (is (= {:source-type :card, :source-id 1}
            (extract/query-source-table-or-card (lib.tu/query-with-source-card)))))
-
   (testing "model roots are still attributed as cards"
     (is (= {:source-type :card, :source-id 1}
            (extract/query-source-table-or-card (lib.tu/query-with-source-model)))))
-
   (testing "native queries are skipped"
     (is (nil? (extract/query-source-table-or-card (lib.tu/native-query))))))
 
@@ -216,27 +213,23 @@
       (is (= 1 (count rows)))
       (is (= :sum (:agg (first rows))))
       (is (= (meta/id :orders :subtotal) (:agg-field-id (first rows))))))
-
   (testing "top-level [:metric M1] reference emits no row (F001)"
     (let [query (-> (lib/query metrics-metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} metric-id-1]))
           rows  (:metrics (extract/extract-usage-facts query))]
       (is (= [] rows))))
-
   (testing "composite [:- [:metric M1] [:metric M2]] emits no row (F015)"
     (let [query (-> (lib/query metrics-metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/- [:metric {:lib/uuid (str (random-uuid))} metric-id-1]
                                           [:metric {:lib/uuid (str (random-uuid))} metric-id-2])))
           rows  (:metrics (extract/extract-usage-facts query))]
       (is (= [] rows))))
-
   (testing "composite Sum(A) - Sum(B) emits no row (F015)"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/- (lib/sum (meta/field-metadata :orders :subtotal))
                                           (lib/sum (meta/field-metadata :orders :tax)))))
           rows  (:metrics (extract/extract-usage-facts query))]
       (is (= [] rows))))
-
   (testing "Sum(coalesce(A, 0)) emits a row with field A captured"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/sum (lib/coalesce (meta/field-metadata :orders :subtotal) 0))))
