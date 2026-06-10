@@ -371,6 +371,7 @@ export function waitForSyncToFinish({
   // behind a slow task or bump into an already-running sync, so in some scenarios one-shot
   // schema sync may be silently dropped. If we assume such scenario, we force
   // schema sync to be retriggered occasionally.
+  // (https://linear.app/metabase/issue/QUE2-663/calls-to-sync-schema-are-occasionally-silently-dropped)
   if (retrigger && iteration > 0 && iteration % RESYNC_TRIGGER_INDEX === 0) {
     cy.request("POST", `/api/database/${dbId}/sync_schema`);
   }
