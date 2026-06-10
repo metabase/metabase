@@ -56,6 +56,21 @@
                                  :path        path}
                           child-status (assoc :child-status child-status))))))))
 
+(defn verify-instance-reachable!
+  "Verify a pool instance is reachable and its `api_key` authenticates, by calling the
+   instance's `GET /api/user/current`. A 2xx means the url is reachable AND the key is valid.
+   Throws a 400 ex-info otherwise (the request itself is sanitized by [[child-request!]] so no
+   credentials leak). `instance` is a map with `:url` and `:api_key`."
+  [{:keys [url] :as instance}]
+  (try
+    (child-request! instance :get "/api/user/current" {})
+    nil
+    (catch Exception e
+      (let [child-status (:child-status (ex-data e))]
+        (throw (ex-info "Couldn't reach the instance with the provided URL and API key."
+                        (cond-> {:status-code 400, :url url}
+                          child-status (assoc :child-status child-status))))))))
+
 (defn- bind-workspace-on-child!
   "Apply the workspace config.yml to the child via its runtime advanced-config endpoint.
    Multipart field `config` = the YAML, exactly like the manual `/config` download +

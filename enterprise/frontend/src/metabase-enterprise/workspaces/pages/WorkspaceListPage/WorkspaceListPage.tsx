@@ -1,4 +1,3 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -6,14 +5,16 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Button, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
+import { Stack } from "metabase/ui";
+import {
+  useListWorkspaceInstancesQuery,
+  useListWorkspacesQuery,
+} from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
+import type { WorkspaceInstance } from "metabase-types/api/workspace";
 
-import { NewWorkspaceButton } from "./NewWorkspaceButton";
-import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
-import { WorkspaceItem } from "./WorkspaceItem";
+import { WorkspaceInstanceSection } from "./WorkspaceInstanceSection";
+import { WorkspaceSection } from "./WorkspaceSection";
 
 export function WorkspaceListPage() {
   const {
@@ -22,18 +23,25 @@ export function WorkspaceListPage() {
     error: workspacesError,
   } = useListWorkspacesQuery();
   const {
+    data: workspaceInstances,
+    isLoading: isLoadingWorkspaceInstances,
+    error: workspaceInstancesError,
+  } = useListWorkspaceInstancesQuery();
+  const {
     data: databasesResponse,
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useListDatabasesQuery();
 
-  const isLoading = isLoadingWorkspaces || isLoadingDatabases;
-  const error = workspacesError ?? databasesError;
+  const isLoading =
+    isLoadingWorkspaces || isLoadingWorkspaceInstances || isLoadingDatabases;
+  const error = workspacesError ?? workspaceInstancesError ?? databasesError;
 
   if (
     isLoading ||
     error != null ||
     workspaces == null ||
+    workspaceInstances == null ||
     databasesResponse == null
   ) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -42,6 +50,7 @@ export function WorkspaceListPage() {
   return (
     <WorkspaceListPageBody
       workspaces={workspaces}
+      workspaceInstances={workspaceInstances}
       availableDatabases={databasesResponse.data}
     />
   );
@@ -49,50 +58,26 @@ export function WorkspaceListPage() {
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
+  workspaceInstances: WorkspaceInstance[];
   availableDatabases: Database[];
 };
 
 function WorkspaceListPageBody({
   workspaces,
-  availableDatabases,
+  workspaceInstances,
 }: WorkspaceListPageBodyProps) {
-  const hasWorkspaces = workspaces.length > 0;
-
   return (
     <PageContainer data-testid="workspace-list-page">
       <PaneHeader
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={
-          hasWorkspaces && (
-            <Group gap="sm">
-              <NewWorkspaceButton />
-              <Button
-                component={Link}
-                to={Urls.workspaceInstances()}
-                leftSection={<FixedSizeIcon name="gear" aria-hidden />}
-              >
-                {t`Development instances`}
-              </Button>
-            </Group>
-          )
-        }
         py={0}
       />
-      {hasWorkspaces ? (
-        <Stack data-testid="workspace-list" gap="lg">
-          {workspaces.map((workspace) => (
-            <WorkspaceItem
-              key={workspace.id}
-              workspace={workspace}
-              availableDatabases={availableDatabases}
-            />
-          ))}
-        </Stack>
-      ) : (
-        <WorkspaceEmptyState />
-      )}
+      <Stack gap="lg">
+        <WorkspaceSection workspaces={workspaces} />
+        <WorkspaceInstanceSection workspaceInstances={workspaceInstances} />
+      </Stack>
     </PageContainer>
   );
 }

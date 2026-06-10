@@ -48,7 +48,10 @@
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:output_namespace :string]
-   [:status           WorkspaceStatus]])
+   [:status           WorkspaceStatus]
+   ;; The hydrated `:model/Database` the `:database_id` points at. `:details` is dropped
+   ;; for callers without write permission via `mi/to-json` at JSON-encoding time.
+   [:database         [:maybe :map]]])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -89,17 +92,13 @@
 
 (def ^:private UpdateInstanceParams
   [:map
-   [:url     {:optional true} ms/NonBlankString]
-   [:api_key {:optional true} ms/NonBlankString]
-   [:name    {:optional true} [:maybe :string]]])
+   [:name {:optional true} [:maybe :string]]])
 
 (def ^:private InstanceResponse
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:url          ms/NonBlankString]
    [:name         [:maybe :string]]
-   ;; `status` is derived from `workspace_id`, never stored.
-   [:status       [:enum :free :provisioned]]
    [:workspace_id [:maybe ms/PositiveInt]]
    [:created_at   DateTimeWithTimeZone]
    [:updated_at   DateTimeWithTimeZone]])
@@ -107,7 +106,7 @@
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
-  (select-keys wsd [:database_id :input_schemas :output_namespace :status]))
+  (select-keys wsd [:database_id :input_schemas :output_namespace :status :database]))
 
 (defn- present-creator [creator]
   (when creator
@@ -120,13 +119,11 @@
           (m/update-existing :databases #(mapv present-workspace-database %))))
 
 (defn- present-instance
-  "Shape a `workspace_instance` row for the API: derive `status` and drop the encrypted
-   `api_key` so it never leaves the server."
+  "Shape a `workspace_instance` row for the API: drop the encrypted `api_key` 
+  so it never leaves the server."
   [{:keys [workspace_id] :as instance}]
   (-> instance
-      (select-keys [:id :url :name :workspace_id :created_at :updated_at])
-      (dissoc :api_key)
-      (assoc :status (if workspace_id :provisioned :free))))
+      (select-keys [:id :url :name :workspace_id :created_at :updated_at])))
 
 (defn- reject-workspace-id!
   "An instance is bound to a workspace only by the `:deployment` endpoint. Refuse (400)
@@ -284,24 +281,27 @@
 (def ^:private instance-writable-keys [:url :api_key :name])
 
 (api.macros/defendpoint :post "/instance" :- InstanceResponse
-  "Register a new dev instance in the pool. Starts free (unbound)."
+  "Register a new dev instance in the pool. Starts free (unbound). The instance must be
+   reachable with the provided `api_key` (verified via its `GET /api/user/current`)."
   [_route-params _query-params params :- CreateInstanceParams]
   (api/check-superuser)
   (reject-workspace-id! params)
+  (deployment/verify-instance-reachable! params)
   (let [row (select-keys params instance-writable-keys)]
     (present-instance
      (t2/select-one :model/WorkspaceInstance
                     :id (t2/insert-returning-pk! :model/WorkspaceInstance row)))))
 
 (api.macros/defendpoint :put "/instance/:id" :- InstanceResponse
-  "Update a pool instance's `url`, `api_key`, or `name`. Cannot change `workspace_id`."
+  "Rename a pool instance. Only `name` is editable; `url`/`api_key` are immutable and
+   `workspace_id` is set only by the `:deployment` endpoint."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateInstanceParams]
   (api/check-superuser)
   (reject-workspace-id! params)
   (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))
-  (let [row (select-keys params instance-writable-keys)]
+  (let [row (select-keys params [:name])]
     (when (seq row)
       (t2/update! :model/WorkspaceInstance :id id row)))
   (present-instance (t2/select-one :model/WorkspaceInstance :id id)))

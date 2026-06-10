@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
+  Anchor,
   Card,
   FixedSizeIcon,
   Group,
   Menu,
   Stack,
-  Text,
   Title,
 } from "metabase/ui";
 import type { WorkspaceInstance } from "metabase-types/api";
@@ -36,11 +36,19 @@ export function InstanceItem({ instance }: InstanceItemProps) {
       withBorder
     >
       <Group justify="space-between" align="center" wrap="nowrap">
-        <Stack gap="xs">
+        <Stack gap="xs" miw={0}>
           <Title order={4}>{instance.name}</Title>
-          <Text c="text-secondary" size="sm">
-            {instance.url}
-          </Text>
+          <Anchor
+            href={instance.url}
+            target="_blank"
+            rel="noreferrer"
+            size="sm"
+          >
+            <Group gap="xs" align="center" wrap="nowrap">
+              {instance.url}
+              <FixedSizeIcon name="external" aria-hidden />
+            </Group>
+          </Anchor>
         </Stack>
         <Menu>
           <Menu.Target>
@@ -52,11 +60,11 @@ export function InstanceItem({ instance }: InstanceItemProps) {
             <Menu.Item
               leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
               onClick={openEdit}
-            >{t`Edit`}</Menu.Item>
+            >{t`Rename`}</Menu.Item>
             <Menu.Item
               leftSection={<FixedSizeIcon name="trash" aria-hidden />}
               onClick={openDelete}
-            >{t`Remove`}</Menu.Item>
+            >{t`Delete`}</Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Group>

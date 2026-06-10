@@ -52,8 +52,10 @@
       (mt/with-model-cleanup [:model/Workspace]
         (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
                                                 {:name "DB Test"})]
-          (testing "POST /:id/database adds and provisions"
-            (is (=? {:databases [{:database_id (mt/id) :status "provisioned"}]}
+          (testing "POST /:id/database adds and provisions, with the hydrated :database in the response"
+            (is (=? {:databases [{:database_id (mt/id)
+                                  :status      "provisioned"
+                                  :database    {:id (mt/id) :name (:name (mt/db)) :engine "h2"}}]}
                     (mt/user-http-request :crowberto :post 200
                                           (str "ee/workspace-manager/" ws-id "/database")
                                           {:database_id (mt/id) :input_schemas ["PUBLIC"]}))))
@@ -198,41 +200,68 @@
 (deftest instance-pool-crud-test
   (testing "register, get, list, edit, remove a pool instance"
     (mt/with-model-cleanup [:model/WorkspaceInstance]
-      (let [{id :id :as created} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
-                                                       {:url "https://child-1.example.com"
-                                                        :api_key "mb_key_1"
-                                                        :name "child-1"})]
-        (testing "POST returns a free instance with derived status and no api_key"
-          (is (=? {:id pos-int? :url "https://child-1.example.com" :name "child-1"
-                   :status "free" :workspace_id nil}
-                  created))
-          (is (not (contains? created :api_key))))
-        (testing "GET /:id"
-          (is (=? {:id id :status "free"}
-                  (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id)))))
-        (testing "GET list"
-          (is (=? [{:id id :url "https://child-1.example.com"}]
-                  (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/instance"))))
-        (testing "PUT edits url/name"
-          (is (=? {:id id :url "https://child-1b.example.com" :name "renamed"}
-                  (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/instance/" id)
-                                        {:url "https://child-1b.example.com" :name "renamed"}))))
-        (testing "DELETE removes"
-          (is (=? {:id id :deleted true}
-                  (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/instance/" id))))
-          (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/instance/" id)))))))
+      (with-redefs [http/request (fn [_] {:status 200 :body ""})]
+        (let [{id :id :as created} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                                         {:url "https://child-1.example.com"
+                                                          :api_key "mb_key_1"
+                                                          :name "child-1"})]
+          (testing "POST returns a free (unbound) instance and no api_key"
+            (is (=? {:id pos-int? :url "https://child-1.example.com" :name "child-1"
+                     :workspace_id nil}
+                    created))
+            (is (not (contains? created :api_key))))
+          (testing "GET /:id"
+            (is (=? {:id id :workspace_id nil}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id)))))
+          (testing "GET list"
+            (is (=? [{:id id :url "https://child-1.example.com"}]
+                    (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/instance"))))
+          (testing "PUT edits the name only; url is immutable"
+            (is (=? {:id id :url "https://child-1.example.com" :name "renamed"}
+                    (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/instance/" id)
+                                          {:name "renamed"}))))
+          (testing "PUT ignores url and api_key (immutable — only name is applied)"
+            (is (=? {:id id :url "https://child-1.example.com" :name "again"}
+                    (mt/user-http-request :crowberto :put 200 (str "ee/workspace-manager/instance/" id)
+                                          {:url "https://ignored.example.com"
+                                           :api_key "ignored"
+                                           :name "again"}))))
+          (testing "DELETE removes"
+            (is (=? {:id id :deleted true}
+                    (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/instance/" id))))
+            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/instance/" id))))))))
+
+(deftest instance-pool-create-verifies-reachability-test
+  (testing "POST /instance verifies the instance is reachable with the supplied api key"
+    (mt/with-model-cleanup [:model/WorkspaceInstance]
+      (testing "calls the instance's GET /api/user/current with the x-api-key header"
+        (let [calls (atom [])]
+          (with-redefs [http/request (fn [req] (swap! calls conj req) {:status 200 :body ""})]
+            (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                  {:url "https://reachable.example.com" :api_key "secret-key"}))
+          (is (= 1 (count @calls)))
+          (let [req (first @calls)]
+            (is (= :get (:method req)))
+            (is (= "https://reachable.example.com/api/user/current" (:url req)))
+            (is (= "secret-key" (get-in req [:headers "x-api-key"]))))))
+      (testing "returns 400 and persists nothing when the instance is unreachable / rejects the key"
+        (with-redefs [http/request (fn [_] (throw (ex-info "boom" {:status 401})))]
+          (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance"
+                                {:url "https://unreachable.example.com" :api_key "bad-key"}))
+        (is (empty? (t2/select :model/WorkspaceInstance :url "https://unreachable.example.com")))))))
 
 (deftest instance-pool-rejects-workspace-id-in-body-test
   (testing "the FE cannot bind an instance by setting workspace_id via POST or PUT"
     (mt/with-model-cleanup [:model/WorkspaceInstance]
-      (testing "POST with workspace_id — 400"
-        (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance"
-                              {:url "https://x.example.com" :api_key "k" :workspace_id 1}))
-      (let [{id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
-                                           {:url "https://y.example.com" :api_key "k"})]
-        (testing "PUT with workspace_id — 400"
-          (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/instance/" id)
-                                {:workspace_id 1}))))))
+      (with-redefs [http/request (fn [_] {:status 200 :body ""})]
+        (testing "POST with workspace_id — 400"
+          (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/instance"
+                                {:url "https://x.example.com" :api_key "k" :workspace_id 1}))
+        (let [{id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
+                                             {:url "https://y.example.com" :api_key "k"})]
+          (testing "PUT with workspace_id — 400"
+            (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/instance/" id)
+                                  {:workspace_id 1})))))))
 
 (deftest instance-pool-delete-busy-409-test
   (testing "DELETE refuses a provisioned instance"
@@ -241,7 +270,7 @@
                      :model/WorkspaceInstance {id :id} {:url "https://busy.example.com"
                                                         :api_key "k"
                                                         :workspace_id ws-id}]
-        (is (=? {:status "provisioned" :workspace_id ws-id}
+        (is (=? {:workspace_id ws-id}
                 (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id))))
         (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/instance/" id))))))
 
@@ -269,7 +298,7 @@
               {iid :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
                                               {:url "https://dep.example.com" :api_key "k"})]
           (testing "provision binds the instance"
-            (is (=? {:id iid :status "provisioned" :workspace_id ws-id}
+            (is (=? {:id iid :workspace_id ws-id}
                     (mt/user-http-request :crowberto :post 200
                                           (str "ee/workspace-manager/" ws-id "/deployment")
                                           {:workspace_instance_id iid}))))
@@ -278,7 +307,7 @@
                                   (str "ee/workspace-manager/" ws-id "/deployment")
                                   {:workspace_instance_id iid}))
           (testing "deprovision frees the instance"
-            (is (=? {:id iid :status "free" :workspace_id nil}
+            (is (=? {:id iid :workspace_id nil}
                     (mt/user-http-request :crowberto :delete 200
                                           (str "ee/workspace-manager/" ws-id "/deployment/" iid))))))))))
 

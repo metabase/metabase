@@ -1,4 +1,4 @@
-import type { DatabaseId } from "./database";
+import type { Database, DatabaseId } from "./database";
 import type { UserId, UserInfo } from "./user";
 
 export type WorkspaceId = number;
@@ -13,6 +13,7 @@ export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   status: WorkspaceDatabaseStatus;
+  database: Database;
 };
 
 export type Workspace = {

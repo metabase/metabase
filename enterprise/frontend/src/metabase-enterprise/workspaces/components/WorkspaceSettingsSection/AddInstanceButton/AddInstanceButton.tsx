@@ -5,7 +5,7 @@ import { Button, FixedSizeIcon } from "metabase/ui";
 
 import { NewInstanceModal } from "../NewInstanceModal";
 
-export function NewInstanceButton() {
+export function AddInstanceButton() {
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
@@ -14,7 +14,7 @@ export function NewInstanceButton() {
         leftSection={<FixedSizeIcon name="add" aria-hidden />}
         onClick={open}
       >
-        {t`New`}
+        {t`Add instance`}
       </Button>
       <NewInstanceModal opened={opened} onCreate={close} onClose={close} />
     </>

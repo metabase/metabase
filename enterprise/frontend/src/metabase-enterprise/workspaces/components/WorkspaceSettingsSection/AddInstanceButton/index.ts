@@ -1,1 +1,1 @@
-export * from "./NewInstanceButton";
+export * from "./AddInstanceButton";

@@ -4,6 +4,8 @@ import type {
   WorkspaceInstance,
 } from "../workspace";
 
+import { createMockDatabase } from "./database";
+
 export function createMockWorkspaceDatabase(
   opts?: Partial<WorkspaceDatabase>,
 ): WorkspaceDatabase {
@@ -11,6 +13,7 @@ export function createMockWorkspaceDatabase(
     database_id: 1,
     input_schemas: [],
     status: "provisioned",
+    database: createMockDatabase(),
     ...opts,
   };
 }
