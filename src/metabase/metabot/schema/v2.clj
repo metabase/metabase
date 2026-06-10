@@ -371,3 +371,8 @@
    [:role [:enum "system" "user" "assistant"]]
    [:metadata {:optional true} :any]
    [:parts [:sequential {:min 1} ::ui-message-part]]])
+
+(mr/def ::message-data
+  "A whole `metabot_message.data` value in the v2 format: the at-rest projection of a
+  message's `UIMessagePart`s. Assistant placeholder rows are `[]`."
+  [:sequential ::ui-message-part])
