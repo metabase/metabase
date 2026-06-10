@@ -21,7 +21,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.concurrent ArrayBlockingQueue BlockingQueue ExecutorService Executors Future RejectedExecutionException ThreadFactory TimeUnit)
+   (java.util.concurrent BlockingQueue ExecutorService Executors Future LinkedBlockingQueue RejectedExecutionException ThreadFactory TimeUnit)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -35,8 +35,8 @@
   5)
 
 (def ^:private transform-worker-grace-ms
-  "Slack beyond the transform run timeout before the coordinator hard-cancels a worker that ignored
-  its own timeout."
+  "Slack beyond the transform run timeout before the coordinator interrupts a worker that ignored its
+  own timeout — and again how long an interrupted worker may drain before its thread is abandoned."
   (* transform-job-heartbeat-stale-minutes 60 1000))
 
 (defn- next-transform [ordering transforms-by-id complete]
@@ -225,68 +225,102 @@
    plan))
 
 (defn- apply-completion
-  "Fold a worker completion into the state, freeing its lane slot and target. Late completions for a
-  transform the coordinator already resolved (e.g. a deadline cancel) are ignored."
+  "Fold a worker completion into the state, freeing its lane slot and target. Completions for a worker
+  the coordinator already failed (`:draining`, or abandoned and no longer tracked) don't affect the
+  outcome."
   [st {::keys [transform status] :as completion}]
   (let [id       (:id transform)
         lane-key (lane-for transform)]
-    (if-let [{:keys [tkey]} (get-in st [:in-flight lane-key id])]
-      (let [st' (cond-> (update-in st [:in-flight lane-key] dissoc id)
-                  tkey (update :in-flight-targets disj tkey))]
-        (case status
-          :succeeded (update st' :succeeded conj id)
+    (if-let [{:keys [tkey draining]} (get-in st [:in-flight lane-key id])]
+      (let [st (cond-> (update-in st [:in-flight lane-key] dissoc id)
+                 tkey (update :in-flight-targets disj tkey))]
+        (cond
+          draining              st
+          (= status :succeeded) (update st :succeeded conj id)
           ;; Preserve the worker's failure context (::message / ::throwable); dispatch-ready!'s
           ;; dep-failure path produces a subset of the same shape (::message only).
-          :failed    (-> st'
-                         (update :failed conj id)
-                         (update :failures conj (dissoc completion ::status)))))
+          :else                 (-> st
+                                    (update :failed conj id)
+                                    (update :failures conj (dissoc completion ::status)))))
       st)))
 
-(defn- cancel-overdue-workers!
-  "Interrupt any in-flight worker that has run longer than `timeout-ms` and record it as a failure.
-  The hard backstop for a worker that ignored its own (query/cancel) timeout."
+(defn- sweep-overdue-workers!
+  "Interrupt and fail any worker that has outrun `timeout-ms` — the hard backstop for a worker that
+  ignored its own (query/cancel) timeout. The interrupt only sets a flag: the worker may keep running
+  (and keep writing its target table), so it stays in flight as `:draining`, holding its lane slot and
+  target until its completion arrives ([[apply-completion]]) or the drain grace expires, at which
+  point its thread is abandoned and the slot freed."
   [st timeout-ms]
   (reduce-kv
    (fn [st lane-key workers]
      (reduce-kv
-      (fn [st id worker]
-        (if (>= (u/since-ms (:timer worker)) timeout-ms)
-          (let [^Future fut (:future worker)
-                tkey        (:tkey worker)]
-            (log/warnf "Transform %s exceeded its deadline; interrupting worker" (pr-str id))
-            (.cancel fut true)
-            (-> st
-                (update-in [:in-flight lane-key] dissoc id)
-                (cond-> tkey (update :in-flight-targets disj tkey))
-                (update :failed conj id)
-                (update :failures conj
-                        {::transform (:transform worker)
-                         ::message   (i18n/trs "Transform did not complete within the timeout and was interrupted.")})))
-          st))
+      (fn [st id {:keys [timer draining tkey] :as worker}]
+        (let [^Future fut (:future worker)]
+          (cond
+            ;; interrupted earlier and still running: abandon it once the drain grace is up
+            draining
+            (if (>= (u/since-ms draining) transform-worker-grace-ms)
+              (do (log/warnf "Interrupted worker for transform %s still running after the drain grace; abandoning its thread"
+                             (pr-str id))
+                  (-> st
+                      (update-in [:in-flight lane-key] dissoc id)
+                      (cond-> tkey (update :in-flight-targets disj tkey))))
+              st)
+
+            ;; not overdue, or finished right at the deadline (its queued completion will resolve it)
+            (or (< (u/since-ms timer) timeout-ms) (.isDone fut))
+            st
+
+            :else
+            (do (log/warnf "Transform %s exceeded its deadline; interrupting worker" (pr-str id))
+                (.cancel fut true)
+                (-> st
+                    (assoc-in [:in-flight lane-key id :draining] (u/start-timer))
+                    (update :failed conj id)
+                    (update :failures conj
+                            {::transform (:transform worker)
+                             ::message   (i18n/trs "Transform did not complete within the timeout and was interrupted.")}))))))
       st
       workers))
    st
    (:in-flight st)))
 
+(defn- heartbeat!
+  "Stamp the job run's heartbeat. Returns `:ok`, `:gone` (the run was terminated externally, e.g.
+  reaped — abort), or `:error` (the stamp failed, e.g. transient app-db trouble — keep going)."
+  [run-id]
+  (try
+    (if (pos? (transforms.job-run/heartbeat-runs! [run-id])) :ok :gone)
+    (catch Throwable e
+      (log/warnf e "Failed to heartbeat transform job run %s" (pr-str run-id))
+      :error)))
+
 (defn- run-coordinator-loop!
-  "Dispatch ready transforms, then each round cancel overdue workers, drain a completion, refill freed
-  slots, and heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in
-  flight. Returns the final state."
+  "Dispatch ready transforms; each round sweep overdue workers, drain a completion, refill freed slots,
+  and heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in flight.
+  Returns the final state, with `:aborted?` set if a heartbeat found the run terminated externally
+  (the caller's executor shutdown then interrupts the workers)."
   [init-state {:keys [^BlockingQueue completions run-id timeout-ms] :as ctx}]
-  (transforms.job-run/heartbeat-runs! [run-id])
-  (loop [st (dispatch-ready! init-state ctx)
-         hb (u/start-timer)]
-    (if-not (busy? st)
-      st
+  ;; the initial beat catches a run reaped during (slow) planning, before we dispatch anything
+  (if (= :gone (heartbeat! run-id))
+    (assoc init-state :aborted? true)
+    (loop [st (dispatch-ready! init-state ctx)
+           hb (u/start-timer)]
       (let [beat? (>= (u/since-ms hb) job-heartbeat-interval-ms)]
-        (when beat?
-          (transforms.job-run/heartbeat-runs! [run-id]))
-        (let [st (cancel-overdue-workers! st timeout-ms)
-              st (if-let [completion (.poll completions job-heartbeat-interval-ms TimeUnit/MILLISECONDS)]
-                   (apply-completion st completion)
-                   st)]
-          (recur (dispatch-ready! st ctx)
-                 (if beat? (u/start-timer) hb)))))))
+        (cond
+          (not (busy? st))
+          st
+
+          (and beat? (= :gone (heartbeat! run-id)))
+          (assoc st :aborted? true)
+
+          :else
+          (let [st (sweep-overdue-workers! st timeout-ms)
+                st (if-let [completion (.poll completions job-heartbeat-interval-ms TimeUnit/MILLISECONDS)]
+                     (apply-completion st completion)
+                     st)]
+            (recur (dispatch-ready! st ctx)
+                   (if beat? (u/start-timer) hb))))))))
 
 (defn run-transforms!
   "Run `transform-ids-to-run` and their dependencies, honoring the DAG.
@@ -295,22 +329,28 @@
   a single-slot lane. A failed dependency fails its dependents transitively; a worker that overruns
   the transform timeout (plus grace) is interrupted and failed.
 
-  Returns `{::status :succeeded}` or `{::status :failed ::failures [...]}`."
+  Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
+  when the job run was terminated externally (e.g. reaped) while this coordinator was still running."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
         n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
-        sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
-        py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
+        ;; Unbounded pools: lane concurrency is enforced by dispatch-ready!'s in-flight bookkeeping,
+        ;; not pool size, so a transform dispatched after an abandoned worker gets a fresh thread
+        ;; instead of queueing behind it.
+        sql-executor (Executors/newCachedThreadPool (named-thread-factory "transforms-sql-worker-%d"))
+        py-executor  (Executors/newCachedThreadPool (named-thread-factory "transforms-python-worker-%d"))
         init-state   {:succeeded         #{}
                       :failed            #{}
                       :failures          []
-                      ;; per lane: transform-id -> {:future :timer :tkey :transform}
+                      ;; per lane: transform-id -> {:future :timer :tkey :transform :draining}
                       :in-flight         {:sql {} :py {}}
                       ;; target tables currently being written by an in-flight transform
                       :in-flight-targets #{}}
         ctx          {:plan        plan
                       :deps        deps
-                      :completions (ArrayBlockingQueue. (max 2 (inc n)))
+                      ;; unbounded (each worker puts exactly one completion) so an abandoned worker
+                      ;; can always deposit its late completion and exit
+                      :completions (LinkedBlockingQueue.)
                       :run-id      run-id
                       :run-method  run-method
                       :user-id     user-id
@@ -326,9 +366,10 @@
                           ;; already resolved.
                           (.shutdownNow sql-executor)
                           (.shutdownNow py-executor)))]
-      (if (seq (:failures final-state))
-        {::status :failed ::failures (:failures final-state)}
-        {::status :succeeded}))))
+      (cond
+        (:aborted? final-state)        {::status :aborted}
+        (seq (:failures final-state))  {::status :failed ::failures (:failures final-state)}
+        :else                          {::status :succeeded}))))
 
 (defn- job-transform-ids [job-id]
   (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
@@ -445,6 +486,10 @@
                 (let [result (run-transforms! run-id transforms opts)]
                   (case (::status result)
                     :succeeded (transforms.job-run/succeed-started-run! run-id)
+                    ;; terminated externally (e.g. reaped): the row is already terminal and the
+                    ;; terminator already notified, so just log
+                    :aborted (log/warnf "Transform job run %s for job %s was terminated externally; coordinator aborted."
+                                        (pr-str run-id) (pr-str job-id))
                     :failed (try
                               (transforms.job-run/fail-started-run! run-id {:message (compile-transform-failure-messages (::failures result))})
                               (when (= :cron run-method)
