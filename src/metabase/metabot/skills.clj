@@ -51,6 +51,11 @@
   "Map of skill-id (keyword) -> skill definition map."
   (atom {}))
 
+(def ^:private *skills-by-id-string
+  "Map of skill-id *string* -> skill definition map.
+  Lets `load_skill` resolve caller-supplied ids without keywordizing them first."
+  (atom {}))
+
 ;;; Registration
 
 (def ^:private skills-dir "metabot/skills")
@@ -153,9 +158,9 @@
   ;; Build the full map before touching the registry: a failed refresh (e.g. a malformed skill file)
   ;; throws without clobbering the existing registry, and readers never observe a partial one.
   ;; The reset! also means re-initializing drops removed or renamed skills.
-  (reset! *skills (into {}
-                        (map (juxt :id identity))
-                        (concat (markdown-skills) (dialect-skills)))))
+  (let [skills (concat (markdown-skills) (dialect-skills))]
+    (reset! *skills (into {} (map (juxt :id identity)) skills))
+    (reset! *skills-by-id-string (into {} (map (juxt (comp name :id) identity)) skills))))
 
 (load-skills!)
 
@@ -165,6 +170,12 @@
   "Return the skill definition for `id` (keyword), or nil."
   [id]
   (get @*skills id))
+
+(defn get-skill-by-id-string
+  "Return the skill definition for string `id`, or nil.
+  Unlike [[get-skill]], looks up by string so we don't need to keywordize `id` first."
+  [id]
+  (get @*skills-by-id-string id))
 
 (defn all-skills
   "Return all registered skill definitions."
