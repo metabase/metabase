@@ -31,6 +31,7 @@ import type {
 } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
+import type { DataAppLink, DataAppRouter } from "metabase/data_apps/router";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
@@ -53,12 +54,15 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
   SchemaValidationUtils &
-  InternalComponentExports;
+  InternalComponentExports &
+  DataAppRoutingExports;
 
 type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
+  DataAppLink: typeof DataAppLink;
+  DataAppRouter: typeof DataAppRouter;
   EditableDashboard: InternalComponent<typeof EditableDashboard>;
   InteractiveDashboard: InternalComponent<typeof InteractiveDashboard>;
   InteractiveQuestion: InternalComponent<typeof InteractiveQuestion>;
@@ -67,6 +71,14 @@ type PublicExports = {
   SdkDebugInfo: InternalComponent<typeof SdkDebugInfo>;
   StaticDashboard: InternalComponent<typeof StaticDashboard>;
   StaticQuestion: InternalComponent<typeof StaticQuestion>;
+};
+
+type DataAppRoutingExports = {
+  dataAppRouting: {
+    getBasename: () => string;
+    navigate: (to: string) => void;
+    subscribe: (callback: () => void) => () => void;
+  };
 };
 
 type ReduxStoreExports = {
