@@ -36,12 +36,12 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   buildIncrementalSource,
   buildIncrementalTarget,
   getInitialValues,
 } from "../../components/IncrementalTransform/form";
+import { TransformDisconnectedDatabaseBanner } from "../../components/TransformDisconnectedDatabaseBanner";
 import {
   TransformEditor,
   type TransformEditorProps,

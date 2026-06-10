@@ -43,7 +43,10 @@
   "See [[make-nestable-sql]] but does not wrap in result in parens."
   [sql]
   (-> sql
-      (str/replace #";([\s;]*(--.*\n?)*)*$" "")
+      ;; Strip the trailing run of semicolons / whitespace / line comments. Possessive quantifiers (`*+`) make
+      ;; this match in a single forward pass: without them the nested unbounded quantifiers over overlapping
+      ;; character classes backtrack super-linearly (O(n^2) on many trailing comment lines), which can wedge the JVM.
+      (str/replace #";[\s;]*+(?:--.*+[\s;]*+)*+$" "")
       str/trimr
       (as-> trimmed
             ;; Query could potentially end with a comment.

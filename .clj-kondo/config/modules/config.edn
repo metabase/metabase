@@ -176,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -1447,6 +1448,7 @@
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -2172,6 +2174,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor

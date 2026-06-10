@@ -20,7 +20,7 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { createSnowplowTracker } from "metabase/analytics";
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
@@ -53,13 +53,10 @@ const embedReferrerHandler = async (
   if (_embedReferrer) {
     return {
       ...config,
-      options: {
-        ...config.options,
-        headers: {
-          ...config.options.headers,
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-          "X-Metabase-Embed-Referrer": _embedReferrer,
-        },
+      headers: {
+        ...config.headers,
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+        "X-Metabase-Embed-Referrer": _embedReferrer,
       },
     };
   }
