@@ -39,6 +39,7 @@ export function EmbeddingDataPicker({
     useSearchQuery({
       models: ["dataset", "table"],
       limit: 0,
+      context: "data-picker",
     });
 
   const databaseId = Lib.databaseID(query);

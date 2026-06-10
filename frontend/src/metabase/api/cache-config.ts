@@ -37,9 +37,6 @@ export const cacheConfigApi = Api.injectEndpoints({
         url: "/api/cache",
         body,
       }),
-      extraOptions: {
-        hasBody: true,
-      },
       invalidatesTags: ["cache-config"],
     }),
     invalidateCacheConfigs: builder.mutation<
@@ -56,9 +53,6 @@ export const cacheConfigApi = Api.injectEndpoints({
         url: "/api/cache/invalidate",
         params,
       }),
-      extraOptions: {
-        hasBody: false,
-      },
     }),
   }),
 });

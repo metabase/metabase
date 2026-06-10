@@ -195,6 +195,9 @@ documentation:
   - "docs/**"
   - "**/*.md"
 
+docs:
+  - "docs/**"
+
 embedding_documentation:
   - ".typedoc/**"
   - "docs/embedding/**"

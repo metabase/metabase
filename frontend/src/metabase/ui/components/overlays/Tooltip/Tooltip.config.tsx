@@ -1,7 +1,8 @@
-import { type MantineThemeOverride, Tooltip } from "@mantine/core";
-import cx from "classnames";
-
-import ZIndex from "metabase/css/core/z-index.module.css";
+import {
+  type MantineThemeOverride,
+  Tooltip,
+  getDefaultZIndex,
+} from "@mantine/core";
 
 import { PORTAL_CONTAINER_ID } from "../PortalContainer/constants";
 
@@ -13,6 +14,10 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       arrowSize: 10,
       withArrow: true,
       withinPortal: true,
+      // Mantine puts Tooltip, Popover and Menu on the same "popover" tier, so a
+      // tooltip ties with them and loses on portal DOM order. +1 keeps it in its
+      // tier but always renders above same-tier overlays.
+      zIndex: getDefaultZIndex("popover") + 1,
       portalProps: {
         target: `#${PORTAL_CONTAINER_ID}`,
       },
@@ -28,7 +33,7 @@ export const tooltipOverrides: MantineThemeOverride["components"] = {
       color: "tooltip-background",
     },
     classNames: {
-      tooltip: cx(TooltipStyles.tooltip, ZIndex.Overlay),
+      tooltip: TooltipStyles.tooltip,
       arrow: TooltipStyles.arrow,
     },
   }),

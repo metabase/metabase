@@ -28,9 +28,9 @@ export function NoWritableDatabasesEmptyState() {
           <Title
             order={3}
             ta="center"
-          >{t`To use transforms, you need a writable database connection`}</Title>
+          >{t`No compatible database connection`}</Title>
           <Text ta="center" c="text-secondary">
-            {t`None of your connected databases have a writable connection. Either edit the connection on the database you want to enable transforms on, or connect to a different database.`}
+            {t`None of your connected databases can be used with transforms. Connect a compatible database or check that your existing databases meet the requirements.`}
           </Text>
           {canAccessDatabases && (
             <Button

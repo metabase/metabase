@@ -3,9 +3,8 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, PerformanceTabId } from "metabase/plugins";
 
-import { PerformanceTabId } from "../types";
 import { getPerformanceTabName } from "../utils";
 
 export const PerformanceApp = ({ children }: { children: React.ReactNode }) => (
