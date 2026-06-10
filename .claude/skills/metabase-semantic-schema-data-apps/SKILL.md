@@ -14,10 +14,12 @@ Keep the semantic layer and presentation layer separate.
 - Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
+- Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, customer segments, or chart series.
 - Visualization data must be derived from `useMetabaseQuery` results. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
+- Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
 - Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
 
 ## Generate Schema
@@ -174,6 +176,23 @@ filters: [
 ];
 ```
 
+Use curated segments first when they exactly match the product intent. Use `filter(...)` when the UI needs a threshold, category, date range, text match, boolean condition, or other narrowing that is not already represented by a curated segment.
+
+```ts
+const dailyRevenue = schema.tables.dailyStoreRevenue;
+type DailyRevenue = typeof dailyRevenue;
+
+const { data } = useMetabaseQuery<DailyRevenue>({
+  tableId: dailyRevenue.id,
+  filters: [
+    dailyRevenue.segments.ordersFromThisMonth,
+    filter(dailyRevenue.fields.netRevenue, ">", 1000),
+  ],
+  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "day" })],
+});
+```
+
 ## Result Shape And Charts
 
 - Prefer keyed `data.rows`.
@@ -235,6 +254,8 @@ When a page feels like a raw table browser, look for schema-backed ways to enric
 - Use measures for curated aggregations instead of recalculating everything ad hoc in React.
 - Use filters to focus the query on the UI's intent.
 - Use breakouts to create trends, category comparisons, and grouped summaries.
+
+Avoid manual classification when the semantic layer already has the concept. Prefer curated segments, fields, metrics, or measures over string matching, threshold heuristics, or category reconstruction in React.
 
 If no curated schema entry supports the intended UI, leave the section out or ask for semantic-layer curation. Do not keep mock data or placeholder analytics in the finished app.
 
