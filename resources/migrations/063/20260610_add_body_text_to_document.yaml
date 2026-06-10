@@ -1,0 +1,44 @@
+## Add a derived body_text column to document for UXW-4199.
+##
+## body_text holds the plain text extracted from the prose-mirror document body so the
+## search index can match on document content (not just the name). It is maintained by
+## the model's before-insert/before-update hooks and is never exposed through the API.
+##
+## Order matters: the addColumn must run before the backfill, and both live in this single
+## file because Liquibase processes change-log files alphabetically.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-10T00:00:00
+      author: nickfitzpatrick
+      comment: Add derived body_text column to document so documents are searchable by their content
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: body_text
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: body_text
+                  type: ${text.type}
+                  remarks: Plain text extracted from the document body, maintained for search indexing only
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: document
+            columnName: body_text
+
+  - changeSet:
+      id: v63.2026-06-10T00:00:01
+      author: nickfitzpatrick
+      comment: Backfill body_text for existing documents from their prose-mirror body
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillDocumentBodyText"
+      rollback: # nothing to do, the column is dropped by the preceding changeset's rollback

@@ -2211,3 +2211,30 @@
                              :where  [:and
                                       [:not= :embed_url nil]
                                       [:= :embedding_hostname nil]]})))
+
+(defn- document-ast->body-text
+  "Self-contained prose-mirror text extraction for the body_text backfill. Mirrors
+  [[metabase.documents.prose-mirror/ast->text]], kept inline so the migration does not
+  depend on app model code that may change over time."
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (keep :text)
+       (str/join " ")))
+
+(define-migration BackfillDocumentBodyText
+  ;; Populate the new document.body_text column (added in 063/20260610) from each document's
+  ;; prose-mirror body, so existing documents become searchable by content once the search
+  ;; index is rebuilt. New/edited documents are kept in sync by the model's before-insert /
+  ;; before-update hooks.
+  (run! (fn [{:keys [id document]}]
+          (let [text (try (-> document json/decode+kw document-ast->body-text not-empty)
+                          (catch Throwable _ nil))]
+            (when text
+              (t2/query {:update :document
+                         :set    {:body_text text}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :document]
+                             :from   [:document]
+                             :where  [:and
+                                      [:not= :document nil]
+                                      [:= :body_text nil]]})))

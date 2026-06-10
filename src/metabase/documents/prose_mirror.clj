@@ -1,6 +1,7 @@
 (ns metabase.documents.prose-mirror
   "Manipulate the prose mirror ast for documents"
   (:require
+   [clojure.string :as str]
    [clojure.walk :as walk]))
 
 (def card-embed-type
@@ -55,6 +56,18 @@
   (assert-prose-mirror doc)
   (->> (tree-seq :content :content document)
        (keep collector)))
+
+(defn ast->text
+  "Extract the concatenated plain text from a prose-mirror document AST (the value of a
+  document's `:document` field).
+
+  Walks every node and joins the text from `text` nodes with spaces. Structural and
+  reference nodes (card embeds, smart links, layout containers) carry no inline text and
+  contribute nothing. Returns a (possibly empty) string."
+  [ast]
+  (->> (tree-seq :content :content ast)
+       (keep :text)
+       (str/join " ")))
 
 (defn card-ids
   "Get all card-ids"

@@ -104,7 +104,11 @@
 
 (t2/define-after-select :model/Document
   [document]
-  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
+  ;; :body_text is a derived column that only feeds the search index (see before-insert/before-update);
+  ;; never expose it through the app or API, where it would just duplicate the document body.
+  (-> document
+      (dissoc :body_text)
+      (public-sharing/remove-public-uuid-if-public-sharing-is-disabled)))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -124,7 +128,7 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name]
+   :search-terms [:name :body_text]
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
@@ -193,7 +197,8 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
+   ;; :body_text is derived from :document and re-populated by before-insert on import.
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :body_text]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -241,8 +246,14 @@
 
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  model)
+  (cond-> model
+    (some? (:document model))
+    (assoc :body_text (prose-mirror/ast->text (:document model)))))
 
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  model)
+  ;; keep the search-indexed body text in sync whenever the body itself changes
+  (let [changes (t2/changes model)]
+    (cond-> model
+      (contains? changes :document)
+      (assoc :body_text (prose-mirror/ast->text (:document changes))))))

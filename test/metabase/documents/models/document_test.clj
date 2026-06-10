@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as document]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -432,7 +433,7 @@
     (let [spec (serdes/make-spec "Document" {})]
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
-      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id] (:skip spec)))
+      (is (= [:view_count :last_viewed_at :public_uuid :made_public_by_id :body_text] (:skip spec)))
       (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
       (is (contains? (:transform spec) :updated_at))
@@ -805,3 +806,23 @@
             (binding [mi/*deserializing?* true]
               (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
+
+(defn- raw-body-text [doc-id]
+  (:body_text (t2/query-one {:select [:body_text] :from [:document] :where [:= :id doc-id]})))
+
+(deftest body-text-derived-from-document-test
+  (testing "body_text mirrors the document body for search indexing (UXW-4199)"
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:name "Doc"
+                    :document (documents.test-util/text->prose-mirror-ast "hello searchable world")}]
+      (testing "populated from the body on insert and stored in the DB"
+        (is (= "hello searchable world" (raw-body-text doc-id))))
+      (testing "kept out of model selects and API responses"
+        (is (not (contains? (t2/select-one :model/Document :id doc-id) :body_text))))
+      (testing "re-derived on update when the body changes"
+        (t2/update! :model/Document doc-id
+                    {:document (documents.test-util/text->prose-mirror-ast "updated body content")})
+        (is (= "updated body content" (raw-body-text doc-id))))
+      (testing "left untouched by updates that don't change the body"
+        (t2/update! :model/Document doc-id {:name "Renamed"})
+        (is (= "updated body content" (raw-body-text doc-id)))))))

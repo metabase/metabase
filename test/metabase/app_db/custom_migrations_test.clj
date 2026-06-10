@@ -2938,3 +2938,32 @@
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
             (is (= "New Target Table" (:display_name provisional)))))))))
+
+(deftest backfill-document-body-text-test
+  (testing "v63.2026-06-10T00:00:01 : backfill document.body_text from existing prose-mirror bodies"
+    (impl/test-migrations ["v63.2026-06-10T00:00:00" "v63.2026-06-10T00:00:01"] [migrate!]
+      (let [user-id (first (t2/insert-returning-pks! (t2/table-name :model/User) (table-default :core_user)))
+            insert-doc! (fn [nm ast]
+                          (first (t2/insert-returning-pks!
+                                  :document
+                                  {:name           nm
+                                   :document       (json/encode ast)
+                                   :content_type   "application/json+vnd.prose-mirror"
+                                   :creator_id     user-id
+                                   :created_at     :%now
+                                   :updated_at     :%now
+                                   :last_viewed_at :%now
+                                   :view_count     0
+                                   :archived       false})))
+            with-text-id (insert-doc! "Has text"
+                                      {:type "doc"
+                                       :content [{:type "heading" :content [{:type "text" :text "Annual"}]}
+                                                 {:type "paragraph" :content [{:type "text" :text "quarterly revenue projections"}]}]})
+            no-text-id   (insert-doc! "No text"
+                                      {:type "doc" :content [{:type "cardEmbed" :attrs {:id 7}}]})
+            body-text    (fn [id] (:body_text (t2/query-one {:select [:body_text] :from [:document] :where [:= :id id]})))]
+        (migrate!)
+        (testing "text from the prose-mirror body is extracted and stored"
+          (is (= "Annual quarterly revenue projections" (body-text with-text-id))))
+        (testing "documents with no extractable text are left null"
+          (is (nil? (body-text no-text-id))))))))

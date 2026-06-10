@@ -135,3 +135,15 @@
                   (is (= doc-id (:id doc-result)))
                   ;; User recency affects scoring
                   (is (some #(= "user-recency" (:name %)) (:scores doc-result))))))))))))
+
+(deftest document-content-search-test
+  (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
+                                                   :document (text->prose-mirror-ast "quarterly revenue projections and growth")}]
+        (testing "found by a term that appears only in the body"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
+            (is (contains? (set (map :id (:data results))) doc-id))))
+        (testing "still found by its name"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Annual" :models "document")]
+            (is (contains? (set (map :id (:data results))) doc-id))))))))
