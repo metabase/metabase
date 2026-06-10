@@ -26,17 +26,23 @@
 
 (def ^:private ^String h2-sample-database-filename "sample-database.db.mv.db")
 
+(def ^:dynamic *sample-database-engine-override*
+  "When bound to a keyword, forces [[sample-database-engine]] to that engine. Used by the SQLite->H2
+  downgrade path to extract+sync the H2 sample database even though this jar otherwise ships SQLite."
+  nil)
+
 (defn- sample-database-engine
   "Engine of the bundled sample database. Defaults to `:sqlite` (what we ship). E2E tests set
   `MB_SAMPLE_DATABASE_ENGINE=h2` so the sample database is the H2 one the suite was written against,
   deferring the test migration to SQLite without changing what we ship."
   []
-  (or (#{:h2 :sqlite} (keyword (System/getenv "MB_SAMPLE_DATABASE_ENGINE")))
+  (or *sample-database-engine-override*
+      (#{:h2 :sqlite} (keyword (System/getenv "MB_SAMPLE_DATABASE_ENGINE")))
       :sqlite))
 
 (defn- sample-database-filename
-  [engine]
-  (case engine
+  []
+  (case (sample-database-engine)
     :h2     h2-sample-database-filename
     :sqlite sqlite-sample-database-filename))
 
@@ -49,23 +55,23 @@
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
 ;; to exist and be writable.
 (defn- target-path
-  [engine]
+  []
   (let [base-dir (or (sample-db-dir-from-env)
                      (plugins/plugins-dir))]
-    (u.files/append-to-path base-dir (sample-database-filename engine))))
+    (u.files/append-to-path base-dir (sample-database-filename))))
 
 (defn- extract-sample-database!
   "Copy the bundled sample database file out to the plugins dir and return its destination path."
-  [engine]
-  (u.files/with-open-path-to-resource [sample-db-path (sample-database-filename engine)]
-    (let [dest-path (target-path engine)]
+  []
+  (u.files/with-open-path-to-resource [sample-db-path (sample-database-filename)]
+    (let [dest-path (target-path)]
       (u.files/copy-file! sample-db-path dest-path)
       (str dest-path))))
 
 (defn- sample-database-details
-  "Build the `:details` map for the sample database of `engine` extracted to `dest-path`."
-  [engine dest-path]
-  (case engine
+  "Build the `:details` map for the sample database extracted to `dest-path`, per engine."
+  [dest-path]
+  (case (sample-database-engine)
     ;; SQLite `:details` only need a filesystem path. URL-decode in case it got URL-encoded from a JAR `URL`.
     ;; The bundled file is read-only.
     :sqlite {:db (codec/url-decode dest-path), :read-only? true}
@@ -76,10 +82,10 @@
                      (str ";USER=GUEST;PASSWORD=guest"))}))
 
 (defn- try-to-extract-sample-database!
-  "Extracts the `engine` sample database out of the JAR to the plugins dir and returns a db-details map.
-   SQLite-JDBC requires a real file on disk, so the plugins-dir-must-be-writable assumption is load-bearing."
-  [engine]
-  (let [filename (sample-database-filename engine)
+  "Extracts the sample database out of the JAR to the plugins dir and returns a db-details map. SQLite-JDBC
+   requires a real file on disk, so the plugins-dir-must-be-writable assumption is load-bearing."
+  []
+  (let [filename (sample-database-filename)
         ^URL resource (io/resource filename)]
     (when-not resource
       (throw (ex-info (trs "Sample database file ''{0}'' cannot be found." filename)
@@ -87,29 +93,27 @@
     (when (:temp (plugins/plugins-dir-info))
       (log/warn (str "Plugins directory is a temp directory; the sample database will be re-extracted on every startup. "
                      "Set MB_PLUGINS_DIR to a writable directory to make this stable.")))
-    (sample-database-details engine (extract-sample-database! engine))))
+    (sample-database-details (extract-sample-database!))))
 
 (defn extract-and-sync-sample-database!
-  "Adds the `engine` sample database as a Metabase DB if it doesn't already exist. If it does exist in the
-  app DB, we update its details. `engine` defaults to the bundled [[sample-database-engine]]."
-  ([]
-   (extract-and-sync-sample-database! (sample-database-engine)))
-  ([engine]
-   (try
-     (log/info "Loading sample database")
-     (let [details (try-to-extract-sample-database! engine)
-           db (if (t2/exists? :model/Database :is_sample true)
-                (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
-                (first (t2/insert-returning-instances! :model/Database
-                                                       :name      sample-database-name
-                                                       :details   details
-                                                       :engine    engine
-                                                       :is_sample true)))]
-       (log/debug "Syncing Sample Database...")
-       (sync/sync-database! db))
-     (log/debug "Finished adding Sample Database.")
-     (catch Throwable e
-       (log/error e "Failed to load sample database")))))
+  "Adds the sample database as a Metabase DB if it doesn't already exist. If it does exist in the app DB,
+  we update its details."
+  []
+  (try
+    (log/info "Loading sample database")
+    (let [details (try-to-extract-sample-database!)
+          db (if (t2/exists? :model/Database :is_sample true)
+               (t2/select-one :model/Database (first (t2/update-returning-pks! :model/Database :is_sample true {:details details})))
+               (first (t2/insert-returning-instances! :model/Database
+                                                      :name      sample-database-name
+                                                      :details   details
+                                                      :engine    (sample-database-engine)
+                                                      :is_sample true)))]
+      (log/debug "Syncing Sample Database...")
+      (sync/sync-database! db))
+    (log/debug "Finished adding Sample Database.")
+    (catch Throwable e
+      (log/error e "Failed to load sample database"))))
 
 (defn- sample-database-dashboard-ids
   "IDs of Dashboards holding at least one card backed by `database-id`. Captured before the sample
@@ -134,14 +138,15 @@
 (defn recreate-sample-database!
   "Extract + sync a fresh sample database of `engine` and, unless running under test endpoints, reseed
   its Example collection. Gated on sample content being enabled, and assumes any prior sample database
-  has already been removed. `engine` is passed explicitly so callers can recreate an engine other than
-  what this jar ships (the SQLite->H2 downgrade migration passes `:h2`)."
+  has already been removed. `engine` is forced via [[*sample-database-engine-override*]] so callers can
+  recreate an engine other than what this jar ships (the SQLite->H2 downgrade migration forces `:h2`)."
   [engine]
-  (when (config/load-sample-content?)
-    (extract-and-sync-sample-database! engine)
-    (when-not (config/config-bool :mb-enable-test-endpoints)
-      (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
-        (example-content/recreate-example-content! new-db-id)))))
+  (binding [*sample-database-engine-override* engine]
+    (when (config/load-sample-content?)
+      (extract-and-sync-sample-database!)
+      (when-not (config/config-bool :mb-enable-test-endpoints)
+        (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
+          (example-content/recreate-example-content! new-db-id))))))
 
 (defn- replace-sample-database!
   "The bundled sample database's engine changed (e.g. H2 -> SQLite on upgrade). The old sample
@@ -172,6 +177,6 @@
    (when sample-db
      (if (not= (:engine sample-db) (sample-database-engine))
        (replace-sample-database! sample-db)
-       (let [intended (try-to-extract-sample-database! (sample-database-engine))]
+       (let [intended (try-to-extract-sample-database!)]
          (when (not= (:details sample-db) intended)
            (t2/update! :model/Database (:id sample-db) {:details intended})))))))

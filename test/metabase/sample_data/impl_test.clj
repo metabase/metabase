@@ -26,7 +26,7 @@
   "Sample DB is SQLite-backed and always read-only: `try-to-extract-sample-database!` returns details with
   `:read-only? true`, which the SQLite driver honors by opening the connection in read-only `open_mode`."
   []
-  {:details (#'sample-data/try-to-extract-sample-database! :sqlite)
+  {:details (#'sample-data/try-to-extract-sample-database!)
    :engine  :sqlite
    :name    "Sample Database"})
 
@@ -120,7 +120,7 @@
                                              :is_sample true
                                              :details {:db "/stale/path/sample-database.sqlite"})]
       (let [extract-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [& _] (reset! extract-called? true))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
           (#'sample-data/update-sample-database-if-needed! db))
         (testing "the existing sample DB row is not replaced"
           (is (false? @extract-called?))
@@ -142,7 +142,7 @@
        :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id sample-card)}
        :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}]
       (let [extract-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [& _] (reset! extract-called? true))]
+        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
           (#'sample-data/update-sample-database-if-needed! old-sample))
         (testing "the old sample DB is deleted, cascading to its cards"
           (is (not (t2/exists? :model/Database :id (:id old-sample))))
@@ -156,21 +156,21 @@
           (is (true? @extract-called?)))))))
 
 (deftest recreate-sample-database-forces-engine-test
-  (testing "recreate-sample-database! passes the requested engine through even though this jar ships SQLite"
+  (testing "recreate-sample-database! forces the requested engine even though this jar ships SQLite"
     (let [seen-engine (atom nil)]
       (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database!
-                                  (fn [engine] (reset! seen-engine engine))
+                                  (fn [] (reset! seen-engine (#'sample-data/sample-database-engine)))
                                   example-content/recreate-example-content!
                                   (fn [_db-id] nil)]
         (#'sample-data/recreate-sample-database! :h2))
-      (testing "the heavy extraction/sync ran with the requested engine"
+      (testing "the heavy extraction/sync ran with the engine override applied"
         (is (= :h2 @seen-engine))))))
 
 (deftest recreate-sample-database-respects-sample-content-flag-test
   (testing "recreate-sample-database! does nothing when sample content is disabled"
     (let [extract-called? (atom false)]
       (mt/with-dynamic-fn-redefs [config/load-sample-content?                (constantly false)
-                                  sample-data/extract-and-sync-sample-database! (fn [& _] (reset! extract-called? true))]
+                                  sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
         (#'sample-data/recreate-sample-database! :h2))
       (is (false? @extract-called?)))))
 

@@ -10,7 +10,7 @@
    [toucan2.core :as t2]))
 
 (defn- sample-database-db []
-  {:details (#'metabase.sample-data.impl/try-to-extract-sample-database! :sqlite)
+  {:details (#'metabase.sample-data.impl/try-to-extract-sample-database!)
    :engine  :sqlite
    :name    "Sample Database"})
 
