@@ -91,26 +91,6 @@ describe("Metabot Query Builder", () => {
     cy.url().should("include", "/metabot/conversation/");
   });
 
-  it("should navigate to a question when the agent returns a navigate_to", () => {
-    cy.visit("/");
-
-    // go to new button and click "AI exploration"
-    H.newButton("AI exploration").click();
-    cy.url().should("include", "/question/ask");
-    cy.findByTestId("metabot-chat").should("not.exist");
-
-    const questionHash = H.adhocQuestionHash(allOrdersQuestion);
-    H.mockMetabotResponse({
-      body: mockNavigateToResponse(`/question#${questionHash}`),
-      delay: 100,
-    });
-    H.sendMetabotMessage("Show me all orders");
-
-    // when we receive a navigate_to, we should be taken to a question
-    cy.url().should("include", "/question#");
-    cy.findByTestId("qb-header").should("contain", "Orders");
-  });
-
   it("should support clicking suggested prompts", () => {
     // mock suggested prompts
     cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
@@ -122,16 +102,15 @@ describe("Metabot Query Builder", () => {
     H.metabotChatInput().should("be.visible");
 
     // click suggested prompt
-    const questionHash = H.adhocQuestionHash(allOrdersQuestion);
     H.mockMetabotResponse({
-      body: mockNavigateToResponse(`/question#${questionHash}`),
+      body: mockGeneratedEntityResponse(allOrdersQuestion.dataset_query),
     });
     cy.get("main").findByText("Show me all orders").click();
 
-    // should be taken to a question
+    // the chart renders inline and we stay on the /ask page
     cy.wait("@metabotAgent");
-    cy.url().should("include", "/question#");
-    cy.findByTestId("qb-header").should("contain", "Orders");
+    cy.findByTestId("metabot-inline-chart").should("be.visible");
+    cy.url().should("include", "/question/ask");
   });
 
   it("should handle errors", () => {
@@ -151,9 +130,6 @@ describe("Metabot Query Builder", () => {
 });
 
 // Response helpers
-const mockNavigateToResponse = (path: string) =>
-  H.createMetabotSSEBody(H.metabotDataPart("navigate_to", path));
-
 const mockTextOnlyResponse = (text: string) =>
   H.createMetabotSSEBody(H.metabotTextPart(text));
 

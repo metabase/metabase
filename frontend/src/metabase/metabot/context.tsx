@@ -168,7 +168,7 @@ export const MetabotProvider = ({
       current_time_with_timezone: dayjs.tz(dayjs()).format(),
       // Unjustified type cast. FIXME
       capabilities: _.compact([
-        "frontend:navigate_user_v1",
+        "frontend:inline_viz_v1",
         hasDataAccess && "permission:save_questions",
         hasNativeWrite && "permission:write_sql_queries",
         isAdmin && "permission:write_transforms",

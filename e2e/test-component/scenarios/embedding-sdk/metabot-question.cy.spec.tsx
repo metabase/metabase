@@ -32,10 +32,17 @@ const adHocQuestionPath = `/question#${btoa(
 const metabotResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
 );
-const metabotResponseWithNavigateTo = H.createMetabotSSEBody(
-  H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
-  H.metabotDataPart("navigate_to", adHocQuestionPath),
-);
+// Metabot surfaces a chart to the SDK via a `generated_entity` card data part.
+const metabotResponseWithChart = H.createMetabotSSEBody([
+  ...H.metabotTextPart(`Here is the [question link](${adHocQuestionPath})`),
+  H.metabotDataPart("generated_entity", {
+    type: "card",
+    id: "card-1",
+    title: "Question",
+    query: { id: "query-1", query: { database: 1, type: "query", query } },
+    display: "table",
+  }),
+]);
 
 const metabotRetryResponse = H.createMetabotSSEBody(
   H.metabotTextPart(`Retry: Here is the [question link](${adHocQuestionPath})`),
@@ -101,7 +108,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should show drill-through results after drilling from a metabot question", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -125,7 +132,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   });
 
   it("should automatically show the ad-hoc question for the last agent message containing ad-hoc question link", () => {
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     mountSdkContent(<MetabotQuestion />);
 
@@ -139,7 +146,7 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
   it("should allow saving a question", () => {
     cy.intercept("POST", "/api/card").as("postCard");
 
-    setup(metabotResponseWithNavigateTo);
+    setup(metabotResponseWithChart);
 
     cy.get("@collectionId").then((collectionId) => {
       mountSdkContent(
