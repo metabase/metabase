@@ -286,7 +286,11 @@
         (.write os ^bytes pdf-bytes))
       {:type         :attachment
        :content-type "application/pdf"
-       :file-name    (str (or (not-empty (some-> dashboard-name str/trim)) "dashboard") ".pdf")
+       :file-name    (-> dashboard-name
+                         (some-> str/trim)
+                         not-empty
+                         (or "dashboard")
+                         (str ".pdf"))
        :content      (.. temp-file toURI toURL)
        :description  (format "PDF of dashboard '%s'" (or dashboard-name "dashboard"))})
     (catch Throwable e

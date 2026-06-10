@@ -263,7 +263,11 @@
   (try
     (let [pdf-bytes (channel.render/render-dashboard-to-pdf (:id dashboard) creator-id (vec parameters))]
       {:bytes    pdf-bytes
-       :filename (str (or (not-empty (some-> (:name dashboard) str/trim)) "dashboard") ".pdf")})
+       :filename (-> dashboard
+                     (some-> :name str/trim)
+                     not-empty
+                     (or "dashboard")
+                     (str ".pdf"))})
     (catch Throwable e
       (log/error e "Error rendering dashboard subscription PDF for Slack; skipping PDF attachment")
       nil)))
