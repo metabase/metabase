@@ -1,3 +1,4 @@
+import { api } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
 
 import {
@@ -145,6 +146,16 @@ describe("overrideRequests", () => {
 
     expect(result.url).toBe("/api/embed/card/:token/query");
     expect(result.method).toBe("GET");
+  });
+});
+
+describe("embed-preview rewrite registration", () => {
+  // The embed route registers `usePublicEndpoints` on a parent of the dashboard
+  // fetcher, and React runs child effects before parent effects. Registering the
+  // rewrite from an effect would miss the first embed request, so it must be
+  // registered eagerly when the module loads.
+  it("registers rewriteEmbedPreviewUrl on the shared client at import time", () => {
+    expect(api.beforeRequestHandlers).toContain(rewriteEmbedPreviewUrl);
   });
 });
 
