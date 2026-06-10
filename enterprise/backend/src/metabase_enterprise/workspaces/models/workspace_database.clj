@@ -46,13 +46,15 @@
 ;;; ------------------------------------------ Database discovery ------------------------------------------
 
 (defn eligible-databases
-  "Return every Database that can participate in a workspace: the driver supports the
-   `:workspace` feature and the database-local `database-enable-workspaces` setting is
-   enabled for that database."
-  []
+  "Return every Database that can participate in a workspace for `user-id`: the
+   database-local `database-enable-workspaces` setting is enabled, the user has the
+   workspaces permission on the database, and the driver supports the `:workspace`
+   feature."
+  [user-id]
   (into []
         (filter (fn [db]
                   (and (get-in db [:settings :database-enable-workspaces])
+                       (perms/has-db-workspaces-permission? user-id (:id db))
                        (driver.u/supports? (:engine db) :workspace db))))
         (t2/select :model/Database {:order-by [[:id :asc]]})))
 

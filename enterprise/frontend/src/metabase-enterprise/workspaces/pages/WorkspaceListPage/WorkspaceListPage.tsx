@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -9,10 +10,14 @@ import {
   useListWorkspaceInstancesQuery,
   useListWorkspacesQuery,
 } from "metabase-enterprise/api";
-import type { Workspace, WorkspaceInstance } from "metabase-types/api";
+import type {
+  Database,
+  Workspace,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
-import { WorkspaceInstanceEmptyState } from "./WorkspaceInstanceEmptyState";
-import { WorkspaceInstanceSection } from "./WorkspaceInstanceSection/WorkspaceInstanceSection";
+import { InstanceEmptyState } from "./InstanceEmptyState";
+import { InstanceSection } from "./InstanceSection/InstanceSection";
 import { WorkspaceSection } from "./WorkspaceSection/WorkspaceSection";
 
 export function WorkspaceListPage() {
@@ -26,26 +31,45 @@ export function WorkspaceListPage() {
     isLoading: isLoadingInstances,
     error: instancesError,
   } = useListWorkspaceInstancesQuery();
-  const isLoading = isLoadingWorkspaces || isLoadingInstances;
-  const error = workspacesError ?? instancesError;
+  const {
+    data: databasesData,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
+  const databases = databasesData?.data;
+  const isLoading =
+    isLoadingWorkspaces || isLoadingInstances || isLoadingDatabases;
+  const error = workspacesError ?? instancesError ?? databasesError;
 
-  if (isLoading || error != null || workspaces == null || instances == null) {
+  if (
+    isLoading ||
+    error != null ||
+    workspaces == null ||
+    instances == null ||
+    databases == null
+  ) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   return (
-    <WorkspaceListPageBody workspaces={workspaces} instances={instances} />
+    <WorkspaceListPageBody
+      workspaces={workspaces}
+      instances={instances}
+      databases={databases}
+    />
   );
 }
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
   instances: WorkspaceInstance[];
+  databases: Database[];
 };
 
 function WorkspaceListPageBody({
   workspaces,
   instances,
+  databases,
 }: WorkspaceListPageBodyProps) {
   return (
     <PageContainer data-testid="workspace-list-page">
@@ -57,12 +81,16 @@ function WorkspaceListPageBody({
       />
       {instances.length === 0 ? (
         <Flex justify="center">
-          <WorkspaceInstanceEmptyState />
+          <InstanceEmptyState />
         </Flex>
       ) : (
         <>
-          <WorkspaceSection workspaces={workspaces} />
-          <WorkspaceInstanceSection instances={instances} />
+          <WorkspaceSection
+            workspaces={workspaces}
+            databases={databases}
+            instances={instances}
+          />
+          <InstanceSection instances={instances} />
         </>
       )}
     </PageContainer>

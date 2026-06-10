@@ -7,7 +7,7 @@ import { Box, Button, Card, Stack, Text, Title } from "metabase/ui";
 
 import { CreateInstanceModal } from "../CreateInstanceModal";
 
-export function WorkspaceInstanceEmptyState() {
+export function InstanceEmptyState() {
   const applicationName = useSelector(getApplicationName);
   const [
     createModalOpened,

@@ -194,7 +194,7 @@
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
 (defn create-workspace!
-  "Create a new Workspace. Discovers every eligible database (see
+  "Create a new Workspace. Discovers every database eligible for the creator (see
    [[workspace-database/eligible-databases]]), attaches it to the workspace, and
    provisions it — all in a single transaction (blocking). Provisioning failures are
    logged per database and leave that row `:unprovisioned`. Returns the created
@@ -202,7 +202,7 @@
   [params]
   (t2/with-transaction [_conn]
     (let [ws (workspace/create-workspace! (select-keys params [:name :creator_id]))]
-      (doseq [db (workspace-database/eligible-databases)]
+      (doseq [db (workspace-database/eligible-databases (:creator_id params))]
         (workspace-database/create-workspace-database! (:id ws) db))
       (provisioning/provision-workspace! (:id ws))
       (workspace/get-workspace (:id ws)))))

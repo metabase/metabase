@@ -1,23 +1,27 @@
-import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { Button, Group, Icon, Stack, Title } from "metabase/ui";
-import type { Workspace } from "metabase-types/api";
+import { Group, Stack, Title } from "metabase/ui";
+import type {
+  Database,
+  Workspace,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
-import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
+import { CreateWorkspaceButton } from "./CreateWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceItem } from "./WorkspaceItem";
 
 type WorkspaceSectionProps = {
   workspaces: Workspace[];
+  databases: Database[];
+  instances: WorkspaceInstance[];
 };
 
-export function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
-  const [
-    createModalOpened,
-    { open: openCreateModal, close: closeCreateModal },
-  ] = useDisclosure(false);
-
+export function WorkspaceSection({
+  workspaces,
+  databases,
+  instances,
+}: WorkspaceSectionProps) {
   const isEmpty = workspaces.length === 0;
 
   return (
@@ -25,13 +29,17 @@ export function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
       <Group justify="space-between">
         <Title order={4}>{t`Active workspaces`}</Title>
         {!isEmpty && (
-          <Button leftSection={<Icon name="add" />} onClick={openCreateModal}>
-            {t`Create`}
-          </Button>
+          <CreateWorkspaceButton
+            databases={databases}
+            workspaceInstances={instances}
+          />
         )}
       </Group>
       {isEmpty ? (
-        <WorkspaceEmptyState onCreate={openCreateModal} />
+        <WorkspaceEmptyState
+          databases={databases}
+          workspaceInstances={instances}
+        />
       ) : (
         <Stack>
           {workspaces.map((workspace) => (
@@ -39,11 +47,6 @@ export function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
           ))}
         </Stack>
       )}
-      <CreateWorkspaceModal
-        opened={createModalOpened}
-        onClose={closeCreateModal}
-        onCreate={closeCreateModal}
-      />
     </Stack>
   );
 }

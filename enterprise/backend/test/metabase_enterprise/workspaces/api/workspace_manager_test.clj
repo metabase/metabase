@@ -29,23 +29,37 @@
     (grant! [_ _ _ _ _] nil)
     (destroy! [_ _ _ _] nil)))
 
+(defmacro ^:private with-free-instance
+  "Provide a free pool instance and stub child HTTP calls so `POST /` can auto-deploy."
+  [& body]
+  `(mt/with-temp [:model/WorkspaceInstance ~'_ {:url "https://child.example.com" :api_key "k"}]
+     (with-redefs [http/request (fn [~'_] {:status 200 :body ""})]
+       ~@body)))
+
 (deftest crud-smoke-test
   (testing "create, get, list, delete round-trip"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
-                                                     {:name "Smoke Test"})]
-        (is (=? {:id pos-int? :name "Smoke Test" :databases [] :creator some?}
-                ws))
-        (testing "get"
-          (is (=? {:id ws-id :name "Smoke Test"}
-                  (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))))
-        (testing "list"
-          (is (=? [{:id ws-id}]
-                  (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/"))))
-        (testing "delete"
-          (is (=? {:id ws-id :deleted true}
-                  (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id))))
-          (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id)))))))
+      (with-free-instance
+        (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                                       {:name "Smoke Test"})]
+          (is (=? {:id pos-int? :name "Smoke Test" :databases [] :creator some?}
+                  ws))
+          (testing "the workspace was deployed onto the free pool instance"
+            (is (= ws-id (t2/select-one-fn :workspace_id :model/WorkspaceInstance
+                                           :url "https://child.example.com"))))
+          (testing "get"
+            (is (=? {:id ws-id :name "Smoke Test"}
+                    (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id)))))
+          (testing "list"
+            (is (=? [{:id ws-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/workspace-manager/"))))
+          (testing "delete"
+            (is (=? {:id ws-id :deleted true}
+                    (mt/user-http-request :crowberto :delete 200 (str "ee/workspace-manager/" ws-id))))
+            (mt/user-http-request :crowberto :get 404 (str "ee/workspace-manager/" ws-id))
+            (testing "deleting the workspace returns the instance to the pool (FK SET NULL)"
+              (is (nil? (t2/select-one-fn :workspace_id :model/WorkspaceInstance
+                                          :url "https://child.example.com"))))))))))
 
 (deftest create-workspace-auto-discovery-test
   (testing "POST / attaches every eligible database (workspace-capable driver + database-enable-workspaces on) and provisions it, with the hydrated :database in the response"
@@ -53,42 +67,20 @@
                   driver/database-supports?            (constantly true)]
       (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
         (mt/with-model-cleanup [:model/Workspace]
-          (is (=? {:databases [{:database_id   (mt/id)
-                                :input_schemas ["PUBLIC"]
-                                :status        "provisioned"
-                                :database      {:id (mt/id) :name (:name (mt/db)) :engine "h2"}}]}
-                  (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
-                                        {:name "DB Test"}))))))))
+          (with-free-instance
+            (is (=? {:databases [{:database_id   (mt/id)
+                                  :input_schemas ["PUBLIC"]
+                                  :status        "provisioned"
+                                  :database      {:id (mt/id) :name (:name (mt/db)) :engine "h2"}}]}
+                    (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/"
+                                          {:name "DB Test"})))))))))
 
-(deftest metadata-export-test
-  (testing "GET /:id/metadata/export streams metadata scoped to the workspace's databases + input"
-    (mt/with-temp [:model/Database {db-id :id db-name :name} {:engine :postgres :details {}}
-                   :model/Table {t1-id :id} {:db_id db-id :schema "schema-1" :name "table-1" :active true}
-                   :model/Table {t2-id :id} {:db_id db-id :schema "schema-2" :name "table-2" :active true}
-                   :model/Field {f1-id :id} {:table_id t1-id :name "field-1" :active true
-                                             :base_type :type/Integer :database_type "BIGINT"}
-                   :model/Field _           {:table_id t2-id :name "field-2" :active true
-                                             :base_type :type/Text :database_type "TEXT"}
-                   :model/Workspace         {ws-id :id} {:name       "Export"
-                                                         :creator_id (mt/user->id :crowberto)}
-                   :model/WorkspaceDatabase _          {:workspace_id     ws-id
-                                                        :database_id      db-id
-                                                        :database_details {}
-                                                        :output_namespace ""
-                                                        ;; schema-2 is deliberately excluded
-                                                        :input_schemas    ["schema-1"]
-                                                        :status           :provisioned}]
-      ;; Only schema-1's table + field are kept; schema-2's are excluded entirely.
-      ;; Length mismatch in any section would fail `=?` — that's how we assert the
-      ;; schema filter is doing its job.
-      (is (=? {:databases [{:id db-id :name db-name :engine "postgres"}]
-               :tables    [{:id t1-id :db_id db-id :name "table-1" :schema "schema-1"}]
-               :fields    [{:id f1-id :table_id t1-id :name "field-1" :base_type "type/Integer"}]}
-              (mt/user-http-request :crowberto :get 202
-                                    (str "ee/workspace-manager/" ws-id "/metadata/export")
-                                    :with-databases true
-                                    :with-tables    true
-                                    :with-fields    true))))))
+(deftest create-workspace-requires-free-instance-test
+  (testing "POST / 400s straight away — before creating anything — when the pool has no free instance"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/user-http-request :crowberto :post 400 "ee/workspace-manager/" {:name "No Pool"})
+      (testing "no workspace row was created"
+        (is (not (t2/exists? :model/Workspace :name "No Pool")))))))
 
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
@@ -99,33 +91,30 @@
      ~@body))
 
 (deftest get-endpoints-use-workspace-can-read?-test
-  (testing "GET /, GET /:id, and GET /:id/metadata/export dispatch through `Workspace.can-read?` — Data Analyst alone passes"
+  (testing "GET / and GET /:id dispatch through `Workspace.can-read?` — Data Analyst alone passes"
     (mt/with-temp [:model/Workspace {ws-id :id} {}]
       (with-data-analyst
         (mt/user-http-request :rasta :get 200 "ee/workspace-manager/")
-        (mt/user-http-request :rasta :get 200 (str "ee/workspace-manager/" ws-id))
-        (mt/user-http-request :rasta :get 202
-                              (str "ee/workspace-manager/" ws-id "/metadata/export"))))))
+        (mt/user-http-request :rasta :get 200 (str "ee/workspace-manager/" ws-id))))))
 
 (deftest post-workspace-uses-workspace-can-create?-test
   (testing "POST / dispatches through `Workspace.can-create?` — Data Analyst alone is rejected; granting `:perms/workspaces` on any DB lets the call through"
     (mt/with-model-cleanup [:model/Workspace]
-      (with-data-analyst
-        (mt/user-http-request :rasta :post 403 "ee/workspace-manager/" {:name "Nope"})
-        (with-workspaces-perm (mt/id)
-          (is (=? {:name "OK"}
-                  (mt/user-http-request :rasta :post 200 "ee/workspace-manager/" {:name "OK"}))))))))
+      (with-free-instance
+        (with-data-analyst
+          (mt/user-http-request :rasta :post 403 "ee/workspace-manager/" {:name "Nope"})
+          (with-workspaces-perm (mt/id)
+            (is (=? {:name "OK"}
+                    (mt/user-http-request :rasta :post 200 "ee/workspace-manager/" {:name "OK"})))))))))
 
 (deftest workspace-write-endpoints-use-workspace-can-write?-test
-  (testing "PUT /:id, DELETE /:id, and GET /:id/config dispatch through `Workspace.can-write?` — Data Analyst alone is rejected (rules out `can-read?`); granting `:perms/workspaces` on any DB lets the call through"
+  (testing "PUT /:id and DELETE /:id dispatch through `Workspace.can-write?` — Data Analyst alone is rejected (rules out `can-read?`); granting `:perms/workspaces` on any DB lets the call through"
     (mt/with-temp [:model/Workspace {ws-id :id} {}]
       (with-data-analyst
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
-        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))
         (with-workspaces-perm (mt/id)
           (mt/user-http-request :rasta :put 200 (str "ee/workspace-manager/" ws-id) {:name "OK"})
-          (mt/user-http-request :rasta :get 200 (str "ee/workspace-manager/" ws-id "/config"))
           (mt/user-http-request :rasta :delete 200 (str "ee/workspace-manager/" ws-id)))))))
 
 ;;; ------------------------------------------- Instance pool CRUD ---------------------------------------------
@@ -196,7 +185,7 @@
             (mt/user-http-request :crowberto :put 400 (str "ee/workspace-manager/instance/" id)
                                   {:workspace_id 1})))))))
 
-(deftest instance-pool-delete-busy-409-test
+(deftest instance-pool-delete-busy-400-test
   (testing "DELETE refuses a provisioned instance"
     (mt/with-model-cleanup [:model/WorkspaceInstance]
       (mt/with-temp [:model/Workspace {ws-id :id} {:name "Bound"}
@@ -205,48 +194,36 @@
                                                         :workspace_id ws-id}]
         (is (=? {:workspace_id ws-id}
                 (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/instance/" id))))
-        (mt/user-http-request :crowberto :delete 409 (str "ee/workspace-manager/instance/" id))))))
+        (mt/user-http-request :crowberto :delete 400 (str "ee/workspace-manager/instance/" id))))))
 
-(deftest instance-pool-superuser-gated-test
-  (testing "all instance-pool endpoints require a superuser"
-    (mt/with-temp [:model/WorkspaceInstance {id :id} {:url "https://gate.example.com" :api_key "k"}]
-      (mt/user-http-request :rasta :get 403 "ee/workspace-manager/instance")
-      (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/instance/" id))
-      (mt/user-http-request :rasta :post 403 "ee/workspace-manager/instance"
-                            {:url "https://nope.example.com" :api_key "k"})
-      (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/instance/" id) {:name "nope"})
-      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/instance/" id)))))
-
-;;; --------------------------------------- Deployment (provision / deprovision) ------------------------------
-
-(deftest deployment-provision-deprovision-smoke-test
-  (testing "POST then DELETE /:id/deployment provisions a free instance and returns it to the pool"
-    (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
-      (with-redefs [http/request (fn [_] {:status 200 :body ""})]
-        (let [db-id   (t2/insert-returning-pk! :model/Database {:name (str (gensym "dep")) :engine :h2 :details {}})
-              ws-id   (t2/insert-returning-pk! :model/Workspace {:name "dep-ws" :creator_id (mt/user->id :crowberto)})
-              _       (t2/insert! :model/WorkspaceDatabase {:workspace_id ws-id :database_id db-id
-                                                            :database_details {:user "u"} :output_namespace "o"
-                                                            :input_schemas ["public"] :status :provisioned})
-              {iid :id} (mt/user-http-request :crowberto :post 200 "ee/workspace-manager/instance"
-                                              {:url "https://dep.example.com" :api_key "k"})]
-          (testing "provision binds the instance"
-            (is (=? {:id iid :workspace_id ws-id}
-                    (mt/user-http-request :crowberto :post 200
-                                          (str "ee/workspace-manager/" ws-id "/deployment")
-                                          {:workspace_instance_id iid}))))
-          (testing "re-provision the now-busy instance to another workspace — 409"
-            (mt/user-http-request :crowberto :post 409
-                                  (str "ee/workspace-manager/" ws-id "/deployment")
-                                  {:workspace_instance_id iid}))
-          (testing "deprovision frees the instance"
-            (is (=? {:id iid :workspace_id nil}
-                    (mt/user-http-request :crowberto :delete 200
-                                          (str "ee/workspace-manager/" ws-id "/deployment/" iid))))))))))
-
-(deftest deployment-superuser-gated-test
-  (testing "deployment endpoints require a superuser"
-    (mt/with-temp [:model/Workspace {ws-id :id} {:name "g"}]
-      (mt/user-http-request :rasta :post 403 (str "ee/workspace-manager/" ws-id "/deployment")
-                            {:workspace_instance_id 1})
-      (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id "/deployment/1")))))
+(deftest instance-pool-permissions-test
+  (testing "instance endpoints dispatch through the `WorkspaceInstance` permission predicates"
+    (mt/with-model-cleanup [:model/WorkspaceInstance]
+      (mt/with-temp [:model/WorkspaceInstance {id :id} {:url "https://gate.example.com" :api_key "k"}]
+        (testing "a regular user (not a Data Analyst) is rejected everywhere"
+          (mt/user-http-request :rasta :get 403 "ee/workspace-manager/instance")
+          (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/instance/" id))
+          (mt/user-http-request :rasta :post 403 "ee/workspace-manager/instance"
+                                {:url "https://nope.example.com" :api_key "k"})
+          (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/instance/" id) {:name "nope"})
+          (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/instance/" id)))
+        (testing "a Data Analyst alone can read but not write"
+          (with-data-analyst
+            (mt/user-http-request :rasta :get 200 "ee/workspace-manager/instance")
+            (is (=? {:id id}
+                    (mt/user-http-request :rasta :get 200 (str "ee/workspace-manager/instance/" id))))
+            (mt/user-http-request :rasta :post 403 "ee/workspace-manager/instance"
+                                  {:url "https://nope.example.com" :api_key "k"})
+            (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/instance/" id) {:name "nope"})
+            (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/instance/" id))))
+        (testing "a Data Analyst with `:perms/workspaces` on any DB can create, edit, and delete"
+          (with-data-analyst
+            (with-workspaces-perm (mt/id)
+              (with-redefs [http/request (fn [_] {:status 200 :body ""})]
+                (is (=? {:id id :name "renamed"}
+                        (mt/user-http-request :rasta :put 200 (str "ee/workspace-manager/instance/" id)
+                                              {:name "renamed"})))
+                (let [{new-id :id} (mt/user-http-request :rasta :post 200 "ee/workspace-manager/instance"
+                                                         {:url "https://da.example.com" :api_key "k"})]
+                  (mt/user-http-request :rasta :delete 200
+                                        (str "ee/workspace-manager/instance/" new-id)))))))))))

@@ -8,8 +8,9 @@
    section) *writably* — it does NOT lock the instance (the lock is a boot-only /
    `MB_INSTANCE_WORKSPACE` concern), so the matching deprovision over HTTP keeps working.
 
-   See [[metabase-enterprise.workspaces.api.workspace-manager]] for the `:deployment`
-   endpoints that call these."
+   Deployment is automatic: `POST /api/ee/workspace-manager` (see
+   [[metabase-enterprise.workspaces.api.workspace-manager]]) calls [[provision!]], which
+   claims any free pool instance — there are no standalone deployment endpoints."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -130,24 +131,40 @@
                  (:id instance) coll-id task-id)
       task-id)))
 
-(defn- claim-instance!
-  "Atomically claim a free pool instance for `workspace-id`. Uses a conditional update —
-   `workspace_id` is set only WHERE it is currently NULL — as a compare-and-swap so two
-   concurrent provisions can't both grab the same instance. Returns the claimed instance,
-   or throws 404 (no such instance) / 409 (already provisioned)."
-  [instance-id workspace-id]
-  ;; Existence probe only (so a missing instance is 404, not 409); the conditional update
-  ;; below is the actual compare-and-swap.
-  (let [instance (t2/select-one :model/WorkspaceInstance :id instance-id)]
-    (when-not instance
-      (throw (ex-info "Pool instance not found" {:status-code 404 :instance_id instance-id})))
-    ;; CAS: claim only if still free. A 0-row update means someone else claimed it first.
-    (when (zero? (t2/update! :model/WorkspaceInstance
-                             :id instance-id :workspace_id nil
-                             {:workspace_id workspace-id}))
-      (throw (ex-info "Instance is already provisioned; deprovision it first."
-                      {:status-code 409 :instance_id instance-id})))
-    (assoc instance :workspace_id workspace-id)))
+(defn- no-free-instance-ex []
+  (ex-info "No free workspace instance is available; add one or free one up first."
+           {:status-code 400}))
+
+(defn check-free-instance-available!
+  "Throw a 400 immediately when the pool has no free instance (`workspace_id` IS NULL).
+   Probe only — the atomic claim happens inside [[provision!]]; callers use this to fail
+   fast before creating anything."
+  []
+  (when-not (t2/exists? :model/WorkspaceInstance :workspace_id nil)
+    (throw (no-free-instance-ex))))
+
+(defn check-instance-deletable!
+  "Throw a 400 when the pool instance is currently provisioned (bound to a workspace) —
+   it must be deprovisioned before it can be deleted."
+  [{:keys [workspace_id]}]
+  (when workspace_id
+    (throw (ex-info "Cannot delete a provisioned instance; deprovision it first."
+                    {:status-code 400 :workspace_id workspace_id}))))
+
+(defn- claim-free-instance!
+  "Atomically claim any free pool instance (`workspace_id` IS NULL) for `workspace-id`.
+   Each candidate is claimed with a conditional update — `workspace_id` is set only WHERE
+   it is currently NULL — as a compare-and-swap, so two concurrent provisions can't both
+   grab the same instance; on a lost race we move on to the next candidate. Returns the
+   claimed instance, or throws 400 when no instance is free."
+  [workspace-id]
+  (or (some (fn [instance]
+              (when (pos? (t2/update! :model/WorkspaceInstance
+                                      :id (:id instance) :workspace_id nil
+                                      {:workspace_id workspace-id}))
+                (assoc instance :workspace_id workspace-id)))
+            (t2/select :model/WorkspaceInstance :workspace_id nil {:order-by [[:id :asc]]}))
+      (throw (no-free-instance-ex))))
 
 (defn- release-instance!
   "Best-effort: free a claimed instance (workspace_id -> null) and unbind the child, used to
@@ -167,9 +184,10 @@
       (log/warnf "Rollback appdb-free failed on instance %d" (:id instance)))))
 
 (defn provision!
-  "Bind workspace `workspace-id` to the free pool instance `instance-id`.
+  "Bind workspace `workspace-id` to any free pool instance.
 
-   1. Atomically claim the instance (CAS on `workspace_id` IS NULL) — 404/409 otherwise.
+   1. Atomically claim a free instance (CAS on `workspace_id` IS NULL) — 400 when the
+      pool has none.
    2. Build the workspace `config.yml` (409 if the workspace has un-provisioned databases).
    3. POST it to the child (creates DB connections + binds the workspace, writably).
    4. If `remote-sync` config is supplied, configure remote-sync on the child + trigger
@@ -181,9 +199,9 @@
    the child while free in the pool, nor busy in the pool while unconfigured.
 
    `remote-sync` is optional `{:url ..., :token ..., :branch ...}`; when omitted the
-   workspace is bound but no content is synced."
-  [workspace-id instance-id remote-sync]
-  (let [instance (claim-instance! instance-id workspace-id)]
+   workspace is bound but no content is synced. Returns the bound instance."
+  [workspace-id remote-sync]
+  (let [instance (claim-free-instance! workspace-id)]
     (try
       (let [config (or (ws.config/build-workspace-config workspace-id)
                        (throw (ex-info "Workspace not found" {:status-code 404 :workspace_id workspace-id})))
@@ -191,8 +209,8 @@
         (bind-workspace-on-child! instance yaml)
         (when remote-sync
           (configure-remote-sync! instance remote-sync))
-        (log/infof "Provisioned workspace %d onto instance %d" workspace-id instance-id)
-        (t2/select-one :model/WorkspaceInstance :id instance-id))
+        (log/infof "Provisioned workspace %d onto instance %d" workspace-id (:id instance))
+        (t2/select-one :model/WorkspaceInstance :id (:id instance)))
       (catch Exception e
         (release-instance! instance)
         (throw e)))))

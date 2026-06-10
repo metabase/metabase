@@ -6,15 +6,13 @@ import type { WorkspaceInstance } from "metabase-types/api";
 
 import { CreateInstanceModal } from "../CreateInstanceModal";
 
-import { WorkspaceInstanceItem } from "./WorkspaceInstanceItem";
+import { InstanceItem } from "./InstanceItem";
 
-type WorkspaceInstanceSectionProps = {
+type InstanceSectionProps = {
   instances: WorkspaceInstance[];
 };
 
-export function WorkspaceInstanceSection({
-  instances,
-}: WorkspaceInstanceSectionProps) {
+export function InstanceSection({ instances }: InstanceSectionProps) {
   const [
     createModalOpened,
     { open: openCreateModal, close: closeCreateModal },
@@ -30,7 +28,7 @@ export function WorkspaceInstanceSection({
       </Group>
       <Stack>
         {instances.map((instance) => (
-          <WorkspaceInstanceItem key={instance.id} instance={instance} />
+          <InstanceItem key={instance.id} instance={instance} />
         ))}
       </Stack>
       <CreateInstanceModal

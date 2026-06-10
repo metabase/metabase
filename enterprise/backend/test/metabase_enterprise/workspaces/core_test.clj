@@ -59,17 +59,21 @@
 ;;; ----------------------------------------- Database auto-discovery ------------------------------------------
 
 (deftest eligible-databases-test
-  (testing "eligible iff the driver supports :workspace AND database-enable-workspaces is on"
-    (letfn [(eligible? [] (boolean (some #(= (mt/id) (:id %)) (workspace-database/eligible-databases))))]
+  (testing "eligible iff the driver supports :workspace, database-enable-workspaces is on, AND the user has the workspaces permission"
+    (letfn [(eligible? [user-kw]
+              (boolean (some #(= (mt/id) (:id %))
+                             (workspace-database/eligible-databases (mt/user->id user-kw)))))]
       (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
         (testing "setting on, driver unsupported (H2) — not eligible"
-          (is (false? (eligible?))))
-        (testing "setting on, driver supported — eligible"
-          (with-redefs [driver/database-supports? (constantly true)]
-            (is (true? (eligible?))))))
+          (is (false? (eligible? :crowberto))))
+        (with-redefs [driver/database-supports? (constantly true)]
+          (testing "setting on, driver supported, superuser — eligible"
+            (is (true? (eligible? :crowberto))))
+          (testing "setting on, driver supported, but the user lacks the workspaces permission — not eligible"
+            (is (false? (eligible? :rasta))))))
       (testing "driver supported, setting off — not eligible"
         (with-redefs [driver/database-supports? (constantly true)]
-          (is (false? (eligible?))))))))
+          (is (false? (eligible? :crowberto))))))))
 
 (deftest create-workspace-discovers-and-provisions-test
   (testing "create-workspace! attaches every eligible database, derives its input schemas

@@ -5,20 +5,14 @@
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.schema :as serialization.schema]
-   [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.deployment :as deployment]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -116,11 +110,11 @@
   (select-keys instance [:id :url :name :workspace_id :created_at :updated_at]))
 
 (defn- reject-workspace-id!
-  "An instance is bound to a workspace only by the `:deployment` endpoint. Refuse (400)
-   any attempt to set `workspace_id` directly through CRUD."
+  "An instance is bound to a workspace only by the automatic deployment on workspace
+   creation. Refuse (400) any attempt to set `workspace_id` directly through CRUD."
   [params]
   (when (contains? params :workspace_id)
-    (throw (ex-info "workspace_id cannot be set via this endpoint; use the provision endpoint."
+    (throw (ex-info "workspace_id cannot be set via this endpoint; it is bound automatically on workspace creation."
                     {:status-code 400}))))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
@@ -144,13 +138,17 @@
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
   "Create a new Workspace. Every database whose driver supports the `:workspace`
-   feature and whose `database-enable-workspaces` setting is enabled is added to the
-   workspace and provisioned automatically, all in a single transaction (blocking)."
+   feature, whose `database-enable-workspaces` setting is enabled, and on which the
+   caller has the workspaces permission is added to the workspace and provisioned
+   automatically, all in a single transaction (blocking). The workspace is then
+   deployed onto any free pool instance — 400 straight away when the pool has no
+   free instance."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
-  (present-workspace
-   (ws/create-workspace!
-    (assoc params :creator_id api/*current-user-id*))))
+  (deployment/check-free-instance-available!)
+  (let [workspace (ws/create-workspace! (assoc params :creator_id api/*current-user-id*))]
+    (deployment/provision! (:id workspace) nil)
+    (present-workspace (api/check-404 (ws/get-workspace (:id workspace))))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update a workspace's name."
@@ -170,72 +168,26 @@
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
-;;; ------------------------------------------- Config download --------------------------------------------------
-
-(api.macros/defendpoint :get "/:id/config"
-  :- [:map
-      [:status  [:= 200]]
-      [:headers [:map-of :string :string]]
-      [:body    :string]]
-  "Download the workspace's developer-instance config as a YAML file. 409 if any
-  of the workspace's databases is not `:provisioned`."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check :model/Workspace id)
-  (let [config (api/check-404 (ws.config/build-workspace-config id))]
-    {:status  200
-     :headers {"Content-Type"        "application/x-yaml"
-               "Content-Disposition" "attachment; filename=\"config.yml\""}
-     :body    (ws.config/config->yaml config)}))
-
-;;; ----------------------------------------- Metadata export --------------------------------------------------
-
-(defn- workspace-metadata-filters
-  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
-  [{:keys [databases]}]
-  {:database-ids (mapv :database_id databases)
-   :schema-ids   (into {}
-                       (map (fn [{:keys [database_id input_schemas]}]
-                              [database_id (vec input_schemas)]))
-                       databases)})
-
-(api.macros/defendpoint :get "/:id/metadata/export"
-  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
-  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
-  scoped to each database's `:input` namespaces. Same flag semantics as
-  `/api/ee/serialization/metadata/export` — sections must be opted into via the
-  `with-databases` / `with-tables` / `with-fields` query parameters."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   query-params
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (api/read-check :model/Workspace id)
-  (let [workspace (api/check-404 (ws/get-workspace id))
-        opts      (merge query-params
-                         (workspace-metadata-filters workspace)
-                         {:user-info {:user-id       api/*current-user-id*
-                                      :is-superuser? api/*is-superuser?*}})]
-    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/export-metadata! os opts))))
-
 ;;; ------------------------------------------- Instance pool CRUD ---------------------------------------------
 ;;;
-;;; The pool registry of pre-booted dev (child) instances. Superuser-gated.
-;;; `workspace_id` is set only by the `:deployment` endpoints, never here.
+;;; The pool registry of pre-booted dev (child) instances. Gated by the
+;;; `:model/WorkspaceInstance` permission predicates (Data Analyst to read; Data Analyst
+;;; + `:perms/workspaces` to create/write). `workspace_id` is set only by the automatic
+;;; deployment on workspace creation, never here.
 
 (api.macros/defendpoint :get "/instance" :- [:sequential InstanceResponse]
   "List all registered dev instances in the pool."
   []
-  (api/check-superuser)
-  (mapv present-instance (t2/select :model/WorkspaceInstance {:order-by [[:id :asc]]})))
+  ;; Top-level gate + per-row `mi/can-read?`, mirroring the workspace list endpoint.
+  (api/check-data-analyst)
+  (into [] (comp (filter mi/can-read?)
+                 (map present-instance))
+        (t2/select :model/WorkspaceInstance {:order-by [[:id :asc]]})))
 
 (api.macros/defendpoint :get "/instance/:id" :- InstanceResponse
   "Get a single pool instance by id."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (present-instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))))
+  (present-instance (api/read-check :model/WorkspaceInstance id)))
 
 (def ^:private instance-writable-keys [:url :api_key :name])
 
@@ -243,7 +195,7 @@
   "Register a new dev instance in the pool. Starts free (unbound). The instance must be
    reachable with the provided `api_key` (verified via its `GET /api/user/current`)."
   [_route-params _query-params params :- CreateInstanceParams]
-  (api/check-superuser)
+  (api/create-check :model/WorkspaceInstance params)
   (reject-workspace-id! params)
   (deployment/verify-instance-reachable! params)
   (let [row (select-keys params instance-writable-keys)]
@@ -253,13 +205,12 @@
 
 (api.macros/defendpoint :put "/instance/:id" :- InstanceResponse
   "Rename a pool instance. Only `name` is editable; `url`/`api_key` are immutable and
-   `workspace_id` is set only by the `:deployment` endpoint."
+   `workspace_id` is set only by the automatic deployment on workspace creation."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    params :- UpdateInstanceParams]
-  (api/check-superuser)
+  (api/write-check :model/WorkspaceInstance id)
   (reject-workspace-id! params)
-  (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))
   (let [row (select-keys params [:name])]
     (when (seq row)
       (t2/update! :model/WorkspaceInstance :id id row)))
@@ -267,53 +218,9 @@
 
 (api.macros/defendpoint :delete "/instance/:id"
   :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Remove a pool instance. 409 if it is currently provisioned — deprovision first."
+  "Remove a pool instance. 400 if it is currently provisioned — deprovision first."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [{:keys [workspace_id]} (api/check-404 (t2/select-one :model/WorkspaceInstance :id id))]
-    (when workspace_id
-      (throw (ex-info "Cannot delete a provisioned instance; deprovision it first."
-                      {:status-code 409 :workspace_id workspace_id})))
+  (let [instance (api/write-check :model/WorkspaceInstance id)]
+    (deployment/check-instance-deletable! instance)
     (t2/delete! :model/WorkspaceInstance :id id)
     {:id id :deleted true}))
-
-;;; --------------------------------------- Deployment (provision / deprovision) ------------------------------
-;;;
-;;; Bind a workspace to a free pool instance (and back). `:id` here is the *workspace* id.
-
-(def ^:private RemoteSyncParams
-  [:map {:closed true}
-   [:url    ms/NonBlankString]
-   [:token  ms/NonBlankString]
-   [:branch {:optional true} ms/NonBlankString]])
-
-(api.macros/defendpoint :post "/:id/deployment" :- InstanceResponse
-  "Provision workspace `:id` onto a free pool instance. Body
-   `{workspace_instance_id, remote_sync?}`. Takes the instance from the pool, builds the
-   workspace config.yml, binds it on the child over HTTP, and marks the instance
-   provisioned. 409 if the instance is busy or the workspace has un-provisioned databases.
-
-   When `remote_sync` `{url, token, branch?}` is supplied, also configures remote-sync on
-   the child and triggers the initial content import."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [workspace_instance_id remote_sync]}
-   :- [:map
-       [:workspace_instance_id ms/PositiveInt]
-       [:remote_sync {:optional true} RemoteSyncParams]]]
-  (api/check-superuser)
-  (present-instance
-   (deployment/provision! id workspace_instance_id
-                          (when remote_sync
-                            {:url    (:url remote_sync)
-                             :token  (:token remote_sync)
-                             :branch (:branch remote_sync)}))))
-
-(api.macros/defendpoint :delete "/:id/deployment/:workspace-instance-id" :- InstanceResponse
-  "Deprovision workspace `:id`: unbind it from pool instance `:workspace-instance-id` and
-   return that instance to the pool (free). The instance is not destroyed. 409 if the named
-   instance is not the one bound to this workspace."
-  [{:keys [id workspace-instance-id]}
-   :- [:map [:id ms/PositiveInt] [:workspace-instance-id ms/PositiveInt]]]
-  (api/check-superuser)
-  (present-instance (deployment/deprovision! id workspace-instance-id)))

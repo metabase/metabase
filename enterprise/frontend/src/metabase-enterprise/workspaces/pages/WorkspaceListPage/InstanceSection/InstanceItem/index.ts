@@ -1,1 +1,1 @@
-export * from "./WorkspaceInstanceItem";
+export * from "./InstanceItem";

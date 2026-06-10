@@ -44,7 +44,7 @@
                                               {:url "https://child.example.com" :api_key "k"})
             calls    (atom [])]
         (with-captured-child-calls calls
-          (let [result (deployment/provision! ws-id inst-id nil)]
+          (let [result (deployment/provision! ws-id nil)]
             (testing "instance is now bound to the workspace"
               (is (= ws-id (:workspace_id result)))
               (is (= ws-id (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))
@@ -65,7 +65,7 @@
   (testing "provision! with remote-sync config looks up/creates the collection, sets settings, triggers import"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
       (let [{:keys [ws-id]} (provisioned-workspace!)
-            inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+            _       (t2/insert-returning-pk! :model/WorkspaceInstance
                                              {:url "https://child.example.com" :api_key "k"})
             calls   (atom [])]
         ;; GET /api/collection -> [] (no existing Robot DE) so a POST creates one (id 99).
@@ -80,7 +80,7 @@
                                                 (re-find #"/remote-sync/import" (:url req))
                                                 {:task_id "task-1"}
                                                 :else {})})]
-          (deployment/provision! ws-id inst-id {:url "https://repo.example/x.git" :token "tok" :branch "main"}))
+          (deployment/provision! ws-id {:url "https://repo.example/x.git" :token "tok" :branch "main"}))
         (let [steps (map (juxt :method #(re-find #"/api/.*" (:url %))) @calls)]
           (testing "child calls in order: bind, list collections, create collection, settings, import"
             (is (= [[:post "/api/ee/advanced-config/"]
@@ -99,7 +99,7 @@
   (testing "provision! reuses an existing Robot DE collection instead of creating a duplicate"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
       (let [{:keys [ws-id]} (provisioned-workspace!)
-            inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+            _       (t2/insert-returning-pk! :model/WorkspaceInstance
                                              {:url "https://child.example.com" :api_key "k"})
             calls   (atom [])]
         ;; GET /api/collection -> an existing Robot DE (id 42); no POST create should happen.
@@ -112,25 +112,27 @@
                                                 (re-find #"/remote-sync/import" (:url req))
                                                 {:task_id "t"}
                                                 :else {})})]
-          (deployment/provision! ws-id inst-id {:url "https://repo/x.git" :token "tok"}))
+          (deployment/provision! ws-id {:url "https://repo/x.git" :token "tok"}))
         (testing "no POST /api/collection (reused id 42)"
           (is (not-any? #(and (= :post (:method %)) (re-find #"/api/collection$" (:url %))) @calls)))
         (testing "settings pins the reused collection"
           (let [settings-req (first (filter #(re-find #"/remote-sync/settings" (:url %)) @calls))]
             (is (= {42 true} (:collections (:form-params settings-req))))))))))
 
-(deftest provision-rejects-busy-instance-test
-  (testing "provision! 409s when the target instance is already provisioned"
+(deftest provision-requires-free-instance-test
+  (testing "provision! 400s straight away when no free instance exists (busy ones don't count)"
     (mt/with-model-cleanup [:model/WorkspaceInstance :model/WorkspaceDatabase :model/Workspace :model/Database]
       (mt/with-temp [:model/Workspace {other-ws :id} {:name "other"}]
         (let [{:keys [ws-id]} (provisioned-workspace!)
-              inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
+              _       (t2/insert-returning-pk! :model/WorkspaceInstance
                                                {:url "https://busy.example.com" :api_key "k"
                                                 :workspace_id other-ws})
               calls   (atom [])]
           (with-captured-child-calls calls
-            (is (thrown-with-msg? Exception #"already provisioned"
-                                  (deployment/provision! ws-id inst-id nil))))
+            (is (thrown-with-msg? Exception #"No free workspace instance"
+                                  (deployment/provision! ws-id nil)))
+            (is (thrown-with-msg? Exception #"No free workspace instance"
+                                  (deployment/check-free-instance-available!))))
           (testing "no child call was made"
             (is (zero? (count @calls)))))))))
 
@@ -141,7 +143,7 @@
             inst-id (t2/insert-returning-pk! :model/WorkspaceInstance
                                              {:url "https://child.example.com" :api_key "k"})]
         (with-redefs [http/request (fn [_] (throw (ex-info "boom" {})))]
-          (is (thrown? Exception (deployment/provision! ws-id inst-id nil))))
+          (is (thrown? Exception (deployment/provision! ws-id nil))))
         (testing "instance remains free"
           (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))))))
 
@@ -159,7 +161,7 @@
                                        (throw (ex-info "remote-sync boom" {}))
                                        {:status 200 :body {}}))]
           (is (thrown? Exception
-                       (deployment/provision! ws-id inst-id
+                       (deployment/provision! ws-id
                                               {:url "https://repo/x.git" :token "t" :branch "main"}))))
         (testing "instance is rolled back to free"
           (is (nil? (:workspace_id (t2/select-one :model/WorkspaceInstance :id inst-id)))))

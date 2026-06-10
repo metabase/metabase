@@ -17,13 +17,11 @@ import type { WorkspaceInstance } from "metabase-types/api";
 import { DeleteInstanceModal } from "../DeleteInstanceModal";
 import { EditInstanceModal } from "../EditInstanceModal";
 
-type WorkspaceInstanceItemProps = {
+type InstanceItemProps = {
   instance: WorkspaceInstance;
 };
 
-export function WorkspaceInstanceItem({
-  instance,
-}: WorkspaceInstanceItemProps) {
+export function InstanceItem({ instance }: InstanceItemProps) {
   return (
     <Card shadow="none" withBorder>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
@@ -33,19 +31,17 @@ export function WorkspaceInstanceItem({
             {instance.url}
           </Anchor>
         </Stack>
-        <WorkspaceInstanceItemMenu instance={instance} />
+        <InstanceItemMenu instance={instance} />
       </Group>
     </Card>
   );
 }
 
-type WorkspaceInstanceItemMenuProps = {
+type InstanceItemMenuProps = {
   instance: WorkspaceInstance;
 };
 
-function WorkspaceInstanceItemMenu({
-  instance,
-}: WorkspaceInstanceItemMenuProps) {
+function InstanceItemMenu({ instance }: InstanceItemMenuProps) {
   const [
     renameModalOpened,
     { open: openRenameModal, close: closeRenameModal },
