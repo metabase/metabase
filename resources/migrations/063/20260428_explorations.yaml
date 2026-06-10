@@ -1428,6 +1428,18 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v63.expqgroupidx
+      author: johnswanson
+      comment: Index exploration_query.group_id for read-side grouping
+      changes:
+        - createIndex:
+            tableName: exploration_query
+            indexName: idx_exploration_query_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
       id: v63.expqgroupfk
       author: johnswanson
       comment: FK exploration_query.group_id -> exploration_thread_group.id
@@ -1439,18 +1451,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_exploration_query_group_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: v63.expqgroupidx
-      author: johnswanson
-      comment: Index exploration_query.group_id for read-side grouping
-      changes:
-        - createIndex:
-            tableName: exploration_query
-            indexName: idx_exploration_query_group_id
-            columns:
-              - column:
-                  name: group_id
 
   - changeSet:
       id: v63.expqgroupnotnull
