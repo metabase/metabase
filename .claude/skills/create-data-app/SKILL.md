@@ -60,7 +60,7 @@ be **private**.
 Once the template is on disk:
 
 1. Edit `package.json` `name` to match the project folder.
-2. Pin `@metabase/embedding-sdk-react` to the target Metabase version (e.g. `"^63.0.0"`) — the template ships with `*`. v63 is the floor; earlier versions don't ship the data-app contract surface.
+2. Pin `@metabase/embedding-sdk-react` (the template ships with `*`). The version is always `0.<metabase-major>.<patch>` — the leading `0.` is permanent and the minor matches your Metabase major. So Metabase 63 → `"^0.63.0"`, Metabase 52 → `"^0.52.0"`. **Not** `63.0.0`, `1.52.0`, or any `1.x`/`63.x` — those don't exist. If unsure, use `"latest"`. Floor is `0.63.0` (earlier versions lack the data-app contract surface).
 3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
 4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
 5. **Strip the lockfile-ignoring block from `.gitignore`.** The template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb` plus the leading comment block (the chunk between `# Lockfiles —` and `bun.lockb`). The block has to go so the downstream project commits its lockfile for reproducible installs. **Verify with `git status`** — the lockfile your package manager just generated must now appear as a new untracked file. If it doesn't, the block is still in `.gitignore`; remove it and re-check. Do **not** skip this step or defer it to "later"; agents have repeatedly forgotten and shipped projects with no committed lockfile.
