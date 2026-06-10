@@ -76,7 +76,10 @@
   [results]
   (->> results
        (reduce (fn [[seen acc] r]
-                 (let [k ((juxt :model :id) (:entity r))]
+                 ;; normalize the model so "card" and "question" (aliases for the same Card) dedupe
+                 ;; together — both hydrate to one record, so distinct keys would return it twice.
+                 (let [{:keys [model id]} (:entity r)
+                       k                   [(tools.search/ref-model->entity-type model) id]]
                    (if (seen k) [seen acc] [(conj seen k) (conj acc r)])))
                [#{} []])
        second))

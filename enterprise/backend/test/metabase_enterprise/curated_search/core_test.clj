@@ -103,9 +103,12 @@
             p-verif   "revenue by region (verified)"
             p-plain   "revenue by region (plain)"
             q         "monthly revenue per region"
-            search!   #(get-in (tools.curated-search/curated-search-tool
-                                {:user_search_prompt q})
-                               [:structured-output :data])]
+            ;; bind a user: the tool's hydration permission-filters via mi/can-read?, which needs
+            ;; *current-user-id* (a superuser can read the test tables).
+            search!   #(mt/with-test-user :crowberto
+                         (get-in (tools.curated-search/curated-search-tool
+                                  {:user_search_prompt q})
+                                 [:structured-output :data]))]
         (mt/with-premium-features #{:semantic-search}
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]

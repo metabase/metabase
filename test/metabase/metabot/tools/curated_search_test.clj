@@ -68,7 +68,12 @@
     (testing "collapses to distinct entities, keeping the first (best-scoring) occurrence"
       (let [out (dedupe results)]
         (is (= 2 (count out)))
-        (is (= [0.95 0.70] (mapv (comp :total_score :score) out)))))))
+        (is (= [0.95 0.70] (mapv (comp :total_score :score) out)))))
+    (testing "\"card\" and \"question\" are aliases for the same Card, so they collapse to one entity"
+      (let [out (dedupe [{:entity {:model "card" :id 5} :score {:total_score 0.9}}
+                         {:entity {:model "question" :id 5} :score {:total_score 0.8}}])]
+        (is (= 1 (count out)))
+        (is (= 0.9 (-> out first :score :total_score)))))))
 
 (deftest format-output-test
   (let [format-output (var-get #'curated-search/format-output)

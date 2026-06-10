@@ -104,6 +104,7 @@
      collections
      config
      content-verification
+     curated-search
      custom-viz-plugin
      dashboards
      documents
@@ -136,7 +137,6 @@
      sample-data
      search
      secrets
-     curated-search
      server
      session
      settings
