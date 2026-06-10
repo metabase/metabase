@@ -29,7 +29,9 @@
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
   lower-case, replace commas with spaces, collapse whitespace runs to one space, trim.
   `db-type` picks the regexp_replace dialect -- Postgres needs the 'g' flag; H2 replaces all by default and
-  rejects 'g'."
+  rejects 'g'.
+  Only :postgres and :h2 can reach this: the appdb engine is gated to those (see
+  [[metabase.search.appdb.core/supported-db?]]) and semantic search passes :postgres explicitly."
   ([expr] (normalize-text-expr (mdb/db-type) expr))
   ([db-type expr]
    ;; Replace commas with a space, not nothing, so `a,b` doesn't collapse into `ab`.

@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver.connection :as driver.conn]
    [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -140,6 +141,38 @@
             (testing "but a subsequent refresh run will refresh the table"
               (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
               (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
+
+(deftest task-establishes-no-write-connection-context-test
+  (testing "The persist-refresh task layer leaves *connection-type* at :default; refresh! and unpersist!
+            implementations are responsible for declaring write themselves (so a read sub-step like query
+            compilation is not forced into a write context)."
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-temp [:model/Database     db {:settings {:persist-models-enabled true}}
+                     :model/Card         model {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo _refreshable {:card_id (u/the-id model) :database_id (u/the-id db)}
+                     :model/Card         model2 {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo deletable {:card_id         (u/the-id model2)
+                                                     :database_id     (u/the-id db)
+                                                     :state           "deletable"
+                                                     ;; old enough to be prunable
+                                                     :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+        (testing "refresh! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card]
+                              (reset! seen @#'driver.conn/*connection-type*)
+                              {:state :success})
+                            (unpersist! [_ _database _persisted-info]))]
+            (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher)
+            (is (= :default @seen))))
+        (testing "unpersist! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card] {:state :success})
+                            (unpersist! [_ _database _persisted-info]
+                              (reset! seen @#'driver.conn/*connection-type*)))]
+            (#'task.persist-refresh/prune-deletables! refresher [deletable])
+            (is (= :default @seen))))))))
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [:model/TaskHistory]
