@@ -10,7 +10,7 @@
    [metabase.util :as u])
   (:import (java.io File)
            (org.apache.commons.io FileUtils)
-           (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.api Git TransportCommand)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport UsernamePasswordCredentialsProvider)))
 
@@ -48,7 +48,6 @@
         full-path (io/file work-tree path)]
     (io/make-parents full-path)
     (spit full-path content)
-
     (-> (.add git)
         (.addFilepattern path)
         (.call))))
@@ -60,7 +59,6 @@
     (git-working-checkout! source branch true)
     (git-working-add! source (str "file-in-" branch ".txt") (str "File in " branch))
     (git-working-commit! source (str "Init branch " branch))
-
     (git-working-checkout! source initial-branch false)))
 
 (defn- init-remote!
@@ -73,12 +71,9 @@
         remote {:git git}]
     (doseq [[path content] files]
       (git-working-add! remote path content))
-
     (git-working-commit! remote "Initial commit")
-
     (doseq [branch branches]
       (git-working-create-branch! remote branch))
-
     remote))
 
 (defn- ->source!
@@ -98,9 +93,38 @@
   (let [remote-repo (apply init-remote! dir config)]
     [(->source! branch remote-repo) remote-repo]))
 
+(defn- command-timeout
+  "Reads the protected `timeout` field (in seconds) that JGit applies to a TransportCommand's
+   network operations. 0 means no timeout (JGit's default), i.e. the operation can hang forever."
+  [^TransportCommand cmd]
+  (let [f (.getDeclaredField TransportCommand "timeout")]
+    (.setAccessible f true)
+    (.getInt f cmd)))
+
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
   (is (= "refs/heads/main" (#'git/qualify-branch "refs/heads/main"))))
+
+(deftest call-remote-command-applies-network-timeout-test
+  (testing "Remote git operations get a positive network timeout so a stalled connection can't hang
+            the sync thread forever (GHY-3727: pull/push gets stuck at progress 0 and 0.3)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (#'git/call-remote-command cmd source)
+        (is (pos? (command-timeout cmd))
+            "TransportCommand should have a positive (non-zero) timeout configured before .call")))))
+
+(deftest call-remote-command-respects-timeout-setting-test
+  (testing "The network timeout applied to remote git operations is driven by remote-sync-git-timeout-seconds"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"master.txt" "File in master"})
+            ^Git git (:git source)
+            cmd (.lsRemote git)]
+        (mt/with-temporary-setting-values [remote-sync-git-timeout-seconds 17]
+          (#'git/call-remote-command cmd source)
+          (is (= 17 (command-timeout cmd))))))))
 
 (deftest log
   (mt/with-temp-dir [remote-dir nil]
@@ -152,7 +176,6 @@
         (is (= "File in master" (source.p/read-file master-snap "master.txt")))
         (is (= "File in subdir" (source.p/read-file master-snap "subdir/path.txt")))
         (is (nil? (source.p/read-file master-snap "file-in-branch-1.txt"))))
-
       (testing "Reading branch-1"
         (is (= "File in master" (source.p/read-file branch-1 "master.txt")))
         (is (= "File in branch-1" (source.p/read-file branch-1 "file-in-branch-1.txt")))
@@ -186,12 +209,10 @@
                     "master.txt"
                     "master2.txt"]
                    (source.p/list-files master-snap)))
-
             (is (= "Updated master content" (source.p/read-file master-snap "master.txt")))
             (is (= "File 2 in master" (source.p/read-file master-snap "master2.txt")))
             (is (= "Updated subdir content" (source.p/read-file master-snap (str subdir-path "path.txt"))))
             (is (= "Updated subdir content 3" (source.p/read-file master-snap (str subdir-path "path3.txt")))))
-
           (testing "Check remote repo directly"
             (is (= "Updated master content" (git/read-file (assoc remote :version "master") "master.txt")))
             (is (= [(str subdir-path "path.txt")
@@ -202,7 +223,6 @@
                     "master2.txt"]
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
-
         (testing "Writing only to collections/ removes all other collection files"
           (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
           (is (= [(str thirddir-path "path.txt")
@@ -224,50 +244,38 @@
                                                 "subdir/path.txt" "File in subdir"}
                                         :branches ["branch-1" "branch-2"])
           new-branch (->source! "new-branch" remote)]
-
       (testing "Initial clone is the same"
         (is (= ["Initial commit"] (map :message (git/log master))))
         (is (= ["Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
-
         ;; Add an extra commit to remote
         (git-working-add! remote "additional-file.txt" "Additional file content")
         (git-working-commit! remote "Added additional file")
-
         (testing "Source is behind remote"
           (is (= ["Initial commit"] (map :message (git/log master))))
           (is (= ["Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master"))))))
-
         (testing "After fetch, source is up to date"
           (git/fetch! master)
           (is (= ["Added additional file" "Initial commit"] (map :message (git/log master)))))
-
         (testing "Writing a file to source and pushing back to remote when there is new content on remote"
           ;; Make source be behind again
           (git-working-add! remote "only-on-remote.txt" "Initially on remote")
           (git-working-commit! remote "Only on remote")
-
           (source.p/write-files! (source.p/snapshot master) "Added to source" [{:path "initially-source.txt" :content "Initially on source"}])
-
           (testing "Remote has the new commit with just the files committed, but only version is in history"
             (is (= ["Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))
             (is (= ["additional-file.txt" "initially-source.txt" "master.txt" "only-on-remote.txt" "subdir/path.txt"] (git/list-files (assoc remote :version "master"))))
             (is (= "Initially on source" (git/read-file (assoc remote :version "master") "initially-source.txt"))))
-
           (testing "Source has the same history"
             (is (= (map :message (git/log (assoc remote :branch "master"))) (map :message (git/log master))))))
-
         (testing "Writing to a branch local has not seen (but remote has) adds it to the history on remote"
           (git-working-checkout! remote "new-branch" true)
           (git-working-add! remote "new-branch-file.txt" "Initially on remote")
           (git-working-add! remote "new-branch-remote.txt" "Initially on remote")
           (git-working-commit! remote "New-branch on remote")
-
           (is (= ["New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch")))))
           (is (nil? (git/log new-branch)))
-
           (source.p/write-files! (source.p/snapshot new-branch) "New-branch on source" [{:path "new-branch-source.txt" :content "Initially on source"}
                                                                                         {:path "new-branch-file.txt" :content "Updated on source"}])
-
           (is (= ["New-branch on source" "New-branch on remote" "Added to source" "Only on remote" "Added additional file" "Initial commit"] (map :message (git/log (assoc remote :branch "new-branch"))))))))))
 
 (deftest git-source-using-commit-ref
@@ -276,7 +284,6 @@
                                          :files {"master.txt" "File in master"
                                                  "subdir/path.txt" "File in subdir"})
           old-master (source.p/snapshot master)]
-
       (source.p/write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated file in master"}
                                                                        {:path "new-file.txt" :content "New file in master"}])
       (is (= "File in master" (source.p/read-file old-master "master.txt")))
@@ -293,7 +300,6 @@
         (is (= 40 (count initial-version)) "version should be a full SHA-1 hash (40 characters)")
         (is (= (git/commit-sha master "master") initial-version)
             "version should match the commit id for the branch")
-
         (testing "version changes after writing files"
           (source.p/write-files! (source.p/snapshot master) "Update file" [{:path "master.txt" :content "Updated content"}])
           (let [new-version (source.p/version (source.p/snapshot master))]
@@ -301,12 +307,10 @@
             (is (= 40 (count new-version)) "new version should also be a full SHA-1 hash")
             (is (= (git/commit-sha master "master") new-version)
                 "new version should match the new commit id")))
-
         (testing "version is consistent across multiple calls"
           (let [version-1 (source.p/version (source.p/snapshot master))
                 version-2 (source.p/version (source.p/snapshot master))]
             (is (= version-1 version-2) "version should be consistent without changes")))
-
         (testing "version differs for different branches"
           (git-working-create-branch! remote "branch-1")
           (let [branch-1 (->source! "branch-1" remote)
@@ -314,7 +318,6 @@
                 branch-version (source.p/version (source.p/snapshot branch-1))]
             (is (not= master-version branch-version)
                 "different branches should have different versions")))
-
         (testing "version matches specific commit ref"
           (let [commit-ref (git/commit-sha master "master")
                 source-with-ref (->source! commit-ref remote)]
@@ -355,7 +358,6 @@
             (is (contains? files (str old-col-path "cards/card1.yaml")) "Written collection files should remain")
             (is (contains? files "snippets/old_snippet.yaml") "Written snippet file should remain")
             (is (contains? files "unmanaged/keep_me.txt") "Unmanaged files should be untouched")))
-
         (testing "Entity moved between collections removes files from old collection"
           (source.p/write-files! (source.p/snapshot master) "Move card to new collection"
                                  [{:path (str new-col-path "cards/card1.yaml") :content "Card moved to new col"}
@@ -449,6 +451,27 @@
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
 
+(deftest get-jgit-reclones-after-local-repo-deleted-test
+  (testing "GHY-3815: if the cached local clone dir is deleted out from under us, the next
+            operation re-clones instead of returning a stale cached Git instance (which fails
+            permanently with 'origin: not found' until an instance restart)"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])
+            remote-url (:remote-url source)
+            ^File local-path (#'git/repo-path {:remote-url remote-url})
+            ^Git cached-git (:git source)]
+        (is (.exists local-path) "Precondition: local clone dir exists after the initial clone")
+        (is (= ["branch-1" "master"] (source.p/branches source))
+            "Precondition: branches works before the dir is deleted")
+        (FileUtils/deleteDirectory local-path)
+        (is (not (.exists local-path)) "Local clone dir is gone")
+        (let [fresh-source (->source! "master" remote)]
+          (is (.exists local-path) "Local clone dir was re-created (re-cloned)")
+          (is (not (identical? cached-git (:git fresh-source)))
+              "A fresh Git instance is returned, not the stale cached one")
+          (is (= ["branch-1" "master"] (source.p/branches fresh-source))
+              "branches works again after the dir was deleted, without an instance restart"))))))
+
 (deftest ^:parallel credentials-provider-test
   (testing "GitHub URL uses x-access-token"
     (let [provider (git/credentials-provider "https://github.com/org/repo.git" "my-token")]
@@ -456,3 +479,54 @@
   (testing "Bitbucket URL uses x-token-auth"
     (let [provider (#'git/credentials-provider "https://bitbucket.org/org/repo" "my-token")]
       (is (instance? UsernamePasswordCredentialsProvider provider)))))
+
+;; ---------------------------------------------------------------------------
+;; Missing remote branch tests (issue #72778)
+;; ---------------------------------------------------------------------------
+
+(defn- delete-remote-branch!
+  "Deletes a branch on the 'remote' repo used by a test."
+  [{:keys [^Git git]} ^String branch]
+  (-> (.branchDelete git)
+      (.setBranchNames ^"[Ljava.lang.String;" (into-array String [branch]))
+      (.setForce true)
+      (.call)))
+
+(deftest fetch!-prunes-deleted-remote-branches-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[source remote] (init-source! "master" remote-dir :branches ["branch-1"])]
+      (is (some? (git/commit-sha source "branch-1"))
+          "Precondition: branch-1 is resolvable locally after initial clone")
+      (delete-remote-branch! remote "branch-1")
+      (git/fetch! source)
+      (is (nil? (git/commit-sha source "branch-1"))
+          "branch-1 ref is pruned locally after the remote branch is deleted")
+      (is (some? (git/commit-sha source "master"))
+          "other refs are unaffected"))))
+
+(deftest snapshot-throws-missing-branch-ex-data-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "x"})
+          bad-source (->source! "does-not-exist" remote)]
+      (try
+        (source.p/snapshot bad-source)
+        (is false "snapshot should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= "Invalid branch: does-not-exist" (ex-message e)))
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "does-not-exist" (:branch (ex-data e)))))))))
+
+(deftest snapshot-throws-missing-branch-after-remote-delete-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[_master remote] (init-source! "master" remote-dir :branches ["branch-1"])
+          source-on-branch-1 (->source! "branch-1" remote)]
+      (is (some? (source.p/snapshot source-on-branch-1))
+          "Precondition: snapshot works before the branch is deleted")
+      (delete-remote-branch! remote "branch-1")
+      (try
+        (source.p/snapshot source-on-branch-1)
+        (is false "snapshot should have thrown after the remote branch was deleted")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= :missing-branch (:error-type (ex-data e))))
+          (is (= "branch-1" (:branch (ex-data e)))))))))

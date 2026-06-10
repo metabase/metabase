@@ -21,14 +21,13 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
-import { CheckBox } from "metabase/common/components/CheckBox";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import type { IconProps } from "metabase/ui";
-import { Ellipsified } from "metabase/ui";
+import { Checkbox, Ellipsified } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -86,7 +85,14 @@ const EntityIconCheckBox = ({
               size={iconSize}
             />
           }
-          swappedElement={<CheckBox checked={selected} size={iconSize} />}
+          swappedElement={
+            <Checkbox
+              checked={selected}
+              size={iconSize === 12 ? "xs" : "sm"}
+              // Visual-only; clicks are handled by the wrapping button.
+              style={{ pointerEvents: "none" }}
+            />
+          }
           isSwapped={selected || showCheckbox}
         />
       ) : (

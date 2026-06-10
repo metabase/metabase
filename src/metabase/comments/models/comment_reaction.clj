@@ -77,7 +77,6 @@
                           (if (= (:id user) current-user-id)
                             (into [user] acc)
                             (conj (or acc []) user)))]
-
       (reduce (fn [acc reaction]
                 (let [user (format-user (:user reaction))]
                   (update-in acc [(:comment_id reaction) (:emoji reaction)] first-or-last user)))

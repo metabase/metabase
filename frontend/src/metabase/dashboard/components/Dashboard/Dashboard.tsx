@@ -9,7 +9,6 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader } from "metabase/ui";
@@ -26,6 +25,7 @@ import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
 import { DashboardTabs } from "../DashboardTabs";
 import { DashboardTitle } from "../DashboardTitle";
+import { FilterApplyToast } from "../FilterApplyToast";
 import { RefreshWidget } from "../RefreshWidget";
 
 import S from "./Dashboard.module.css";

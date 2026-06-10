@@ -44,7 +44,6 @@
                   {:database audit/audit-db-id
                    :type     :query
                    :query    {:source-table (str "card__" (u/the-id audit-card))}})))))
-
         (testing "A non-native query can be run on views in the audit DB"
           (let [audit-view (t2/select-one :model/Table
                                           :db_id audit/audit-db-id
@@ -70,7 +69,6 @@
                 {:database audit/audit-db-id
                  :type     :native
                  :native   {:query "SELECT * FROM v_audit_log;"}}))))
-
         (testing "Non-native queries are not allowed to run on tables in the audit DB that are not views"
           ;; Nothing should be synced directly from the audit DB, just loaded via serialization, so only the views
           ;; should have metadata present in the app DB in the first place. But in case this changes, we want to
@@ -84,7 +82,6 @@
                   {:database audit/audit-db-id
                    :type     :query
                    :query   {:source-table (u/the-id table)}})))))
-
         (testing "Users without access to the audit collection cannot run any queries on the audit DB, even if they
                    have data perms for the audit DB"
           (mt/with-full-data-perms-for-all-users!
@@ -116,11 +113,14 @@
           (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :read))
           (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
           (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))
-        (testing "Unable to update instance analytics to writable"
-          (is (thrown-with-msg?
-               Exception
-               #"Unable to make audit collections writable."
-               (update-graph! (assoc-in (graph :clear-revisions? true) [:groups group-id (:id collection)] :write)))))))))
+        (testing "Setting audit collection to :write downgrades to :read instead of throwing (#71300)"
+          (update-graph! (assoc-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
+                                   [:groups group-id (:id collection)] :write))
+          (is (= :read (get-in (graph :clear-revisions? true :collections [collection] :groups [group-id])
+                               [:groups group-id (:id collection)]))
+              "Audit collection permission should be stored as :read, not :write")
+          (is (= :unrestricted (data-perms/table-permission-for-groups #{group-id} :perms/view-data database-id (:id view-table))))
+          (is (= :query-builder (data-perms/table-permission-for-groups #{group-id} :perms/create-queries database-id (:id view-table)))))))))
 
 ;; TODO: re-enable these tests once they're no longer flaky
 (defn install-audit-db-if-needed!

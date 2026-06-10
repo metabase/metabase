@@ -304,7 +304,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 describe("scenarios > question > native > mongo", { tags: "@mongo" }, () => {
   const MONGO_DB_NAME = "QA Mongo";
   const MONGO_DB_ID = 2;
-  before(() => {
+  beforeEach(() => {
     cy.intercept("POST", "/api/card").as("createQuestion");
     cy.intercept("POST", "/api/dataset").as("dataset");
 

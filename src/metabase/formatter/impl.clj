@@ -133,12 +133,10 @@
                                   (get column-settings {::mb.viz/column-name col-id-or-name}))
                               (qualify-keys col-settings))
         global-settings      (streaming.common/viz-settings-for-col col viz-settings)
-        currency?            (boolean (or (= (::mb.viz/number-style column-settings) "currency")
-                                          (= (::mb.viz/number-style viz-settings) "currency")
-                                          (and (nil? (::mb.viz/number-style column-settings))
-                                               (or
-                                                (::mb.viz/currency-style column-settings)
-                                                (::mb.viz/currency column-settings)))))
+        ;; Shared with the XLSX export path so both agree on what counts as currency (GDGT-2398). The extra
+        ;; viz-settings check covers a number-style set at the global/viz level rather than on the column itself.
+        currency?            (or (streaming.common/currency-settings? column-settings)
+                                 (= (::mb.viz/number-style viz-settings) "currency"))
 
         {::mb.viz/keys [number-separators decimals scale number-style
                         prefix suffix currency-style currency]} global-settings

@@ -61,6 +61,7 @@ import {
   PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
+  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -74,7 +75,7 @@ import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { getTasksRoutes } from "./tools/routes";
+import { getNotificationsRoutes, getTasksRoutes } from "./tools/routes";
 import { UpsellTenants } from "./upsells/UpsellTenants";
 import {
   RedirectToAllowedSettings,
@@ -87,10 +88,8 @@ export const getRoutes = (
   CanAccessSettings: RouteComponent,
   IsAdmin: RouteComponent,
 ) => {
-  const hasSimpleEmbedding = getTokenFeature(
-    store.getState(),
-    "embedding_simple",
-  );
+  const state = store.getState();
+  const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
 
   return (
     <Route path="/admin" component={CanAccessSettings}>
@@ -103,6 +102,7 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
+          {PLUGIN_WORKSPACES.getAdminConnectionInfoRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
@@ -326,6 +326,7 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
+            <Route path="notifications">{getNotificationsRoutes()}</Route>
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

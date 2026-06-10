@@ -2,8 +2,13 @@ import { useEffect, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/redux";
+import type { Dispatch, State } from "metabase/redux/store";
+import {
+  fetchTableForeignKeys,
+  fetchTableMetadata,
+} from "metabase/redux/tables";
+import { getMetadata } from "metabase/selectors/metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Description, EmptyDescription } from "../MetadataInfo";
@@ -24,27 +29,24 @@ export type TableInfoProps = {
 };
 
 const mapStateToProps = (
-  state: any,
+  state: State,
   props: TableInfoProps,
 ): { table?: Table } => {
   return {
-    table: Tables.selectors.getObject(state, {
-      entityId: props.tableId,
-    }) as Table,
+    table: getMetadata(state).table(props.tableId) ?? undefined,
   };
 };
 
-const mapDispatchToProps: {
-  fetchForeignKeys: (args: { id: Table["id"] }) => Promise<any>;
-  fetchMetadata: (args: { id: Table["id"] }) => Promise<any>;
-} = {
-  fetchForeignKeys: Tables.actions.fetchForeignKeys,
-  fetchMetadata: Tables.actions.fetchMetadata,
-};
+const mapDispatchToProps = (dispatch: Dispatch) => ({
+  fetchForeignKeys: (args: { id: Table["id"] }) =>
+    dispatch(fetchTableForeignKeys(args)),
+  fetchMetadata: (args: { id: Table["id"] }) =>
+    dispatch(fetchTableMetadata(args)),
+});
 
 type AllProps = TableInfoProps &
   ReturnType<typeof mapStateToProps> &
-  typeof mapDispatchToProps;
+  ReturnType<typeof mapDispatchToProps>;
 
 function useDependentTableMetadata({
   tableId,

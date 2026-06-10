@@ -20,6 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -177,7 +178,7 @@
   (doseq [table-metadata new-table-metadatas]
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
-  (doseq [table-metadata new-table-metadatas]
+  (doseq [table-metadata (sort-by (juxt :schema :name) new-table-metadatas)]
     (create-or-reactivate-table! database table-metadata)))
 
 (mu/defn- retire-tables!
@@ -326,7 +327,6 @@
         archived (atom 0)]
     (doseq [table tables-to-archive
             :let [new-name (str (:name table) suffix)]]
-
       (if (> (count new-name) 256)
         (log/warnf "Cannot archive table %s, name too long" (:name table))
         (do
@@ -364,6 +364,13 @@
    ;; determine what's changed between what info we have and what's in the DB
    (let [driver                (driver.u/database->driver database)
          db-table-metadatas    (table-set db-metadata)
+         ;; DEV-1898: workspace-isolated tables (`ws_*`) live on the warehouse but must not
+         ;; become :model/Table rows. They back canonical Tables via remap, not their own identity.
+         db-table-metadatas    (ws.table-remapping/filter-workspace-side-tables db-table-metadatas (:id database))
+         ;; Inject synthetic canonical-side tuples for any remap whose to-side is materialized.
+         ;; Without this, the diff retires canonical Table rows whose physical backing only
+         ;; exists at the workspace location (not at the canonical name on the warehouse).
+         db-table-metadatas    (ws.table-remapping/inject-workspace-canonical-tuples db-table-metadatas (:id database))
          name+schema           #(select-keys % [:name :schema])
          name+schema->db-table (m/index-by name+schema db-table-metadatas)
          our-metadata          (db->our-metadata database)
@@ -384,7 +391,6 @@
      (sync-util/with-error-handling (format "Error updating table schemas for %s"
                                             (sync-util/name-for-logging database))
        (adjust-table-schemas! database schemas-to-update))
-
      ;; update database metadata from database
      (when (some? (:version db-metadata))
        (sync-util/with-error-handling (format "Error creating/reactivating tables for %s"
@@ -400,14 +406,11 @@
      (when (seq old-table-metadatas)
        (sync-util/with-error-handling (format "Error retiring tables for %s" (sync-util/name-for-logging database))
          (retire-tables! database old-table-metadatas)))
-
      (sync-util/with-error-handling (format "Error updating table metadata for %s" (sync-util/name-for-logging database))
        ;; we need to fetch the tables again because we might have retired tables in the previous steps
        (update-tables-metadata-if-needed! db-table-metadatas (db->our-metadata database) database))
-
      (let [archived-tables (sync-util/with-error-handling (format "Error archiving tables for %s"
                                                                   (sync-util/name-for-logging database))
                              (archive-tables! database))]
-
        {:updated-tables (+ (count new-table-metadatas) (count old-table-metadatas) (or archived-tables 0))
         :total-tables   (count our-metadata)}))))

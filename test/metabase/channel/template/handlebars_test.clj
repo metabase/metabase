@@ -43,7 +43,6 @@
       "Hello Ngoc" "Hello {{who.name}}"                             {:who {:name "Ngoc"}}
       "Hello "     "Hello {{#unless hide_name}}{{name}}{{/unless}}" {:name "Ngoc" :hide_name true}
       "" "" {})
-
     (testing "with custom reqistry"
       (is (= "NGOC" (handlebars/render-string custom-hbs "{{uppercase name}}" {:name "Ngoc"}))))))
 
@@ -51,7 +50,6 @@
   (testing "Render a template with a context."
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{name}}"]
       (is (= "Hello Ngoc" (handlebars/render tmpl-name {:name "Ngoc"})))))
-
   (testing "with custom req"
     (with-temp-template! [tmpl-name "tmpl.hbs" "Hello {{uppercase name}}"]
       (is (= "Hello NGOC" (handlebars/render custom-hbs tmpl-name {:name "Ngoc"}))))))
@@ -61,10 +59,8 @@
     (is (true? (handlebars/valid-template-path? "metabase/channel/email/password_reset.hbs")))
     (is (true? (handlebars/valid-template-path? "metabase/channel/email/notification_card.hbs")))
     (is (true? (handlebars/valid-template-path? "notification/channel_template/hello_world.hbs"))))
-
   (is (false? (handlebars/valid-template-path? "foo/bar/baz.hbs")))
   (is (false? (handlebars/valid-template-path? "/metabase/channel/email/foo.hbs")))
-
   (testing "render rejects invalid paths"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid template path"
                           (handlebars/render "foo/bar.hbs" {})))

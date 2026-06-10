@@ -26,6 +26,7 @@
  [render.card
   detect-pulse-chart-type
   defaulted-timezone
+  error-rendered-part
   render-pulse-card
   render-pulse-card-for-display
   render-pulse-section

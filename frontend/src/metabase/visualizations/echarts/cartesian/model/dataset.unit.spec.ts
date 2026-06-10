@@ -42,6 +42,7 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
+import { getBarSeriesDataLabelKey } from "./util";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -344,7 +345,13 @@ describe("dataset transform functions", () => {
     it("should populate dataset with min numeric values for positive and negative stack totals", () => {
       const result = applyVisualizationSettingsDataTransformations(
         originalDataset,
-        [],
+        [
+          {
+            seriesKeys: seriesModels.map((seriesModel) => seriesModel.dataKey),
+            display: "bar",
+            axis: "left",
+          },
+        ],
         xAxisModel,
         seriesModels,
         [],
@@ -374,6 +381,57 @@ describe("dataset transform functions", () => {
           series1: 300,
           series2: 400,
           unusedSeries: 100,
+        },
+      ]);
+    });
+
+    it("should not use line series to create stacked bar total labels (UXW-3433)", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
+        },
+      ];
+      const barSeriesModel = createMockSeriesModel({ dataKey: "barSeries" });
+      const lineSeriesModel = createMockSeriesModel({ dataKey: "lineSeries" });
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [{ seriesKeys: ["barSeries"], display: "bar", axis: "left" }],
+        xAxisModel,
+        [barSeriesModel, lineSeriesModel],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          "stackable.stack_type": "stacked",
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          dimensionKey: "A",
+          barSeries: null,
+          lineSeries: 100,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [POSITIVE_STACK_TOTAL_DATA_KEY]: Number.MIN_VALUE,
+          dimensionKey: "B",
+          barSeries: 200,
+          lineSeries: 300,
         },
       ]);
     });
@@ -452,6 +510,90 @@ describe("dataset transform functions", () => {
           dimensionKey: "A",
           series1: 0,
           series2: 200,
+        },
+      ]);
+    });
+
+    it("should replace bar series zero values with nulls when the series has non-zero values", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 10,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: null,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 10,
+        },
+      ]);
+    });
+
+    it("should preserve bar series zero values when the whole series is zero", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 0,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
         },
       ]);
     });

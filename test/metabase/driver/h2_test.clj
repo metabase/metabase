@@ -47,6 +47,11 @@
                       ;; NB: because of test parallelism, this *will* affect other non-h2
                       ;; tests, but the check above in the test-driver function will
                       ;; prevent it from actually doing anything different in those tests.
+                      ;; The kondo ignore is the exemption: this `with-redefs` is
+                      ;; parallel-safe by construction (the redef target is a no-op
+                      ;; identity for h2, and the inner conditional in `test-driver`
+                      ;; prevents it from affecting non-h2 tests).
+                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
                       (with-redefs [mtd/-test-driver test-driver]
                         (f))))
 
@@ -273,7 +278,6 @@
       "insert into venues (name) values ('bill')"
       "create table venues"
       "alter table venues add column address varchar(255)")
-
     (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
@@ -281,9 +285,7 @@
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
-
     (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
-
     (is (= nil (#'h2/check-action-commands-allowed
                 {:database (mt/id)
                  :engine :h2
@@ -343,6 +345,42 @@
       (str/join "\n" ["DROP TRIGGER IF EXISTS MY_SPECIAL_TRIG;"
                       "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                       "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
+
+(deftest ^:parallel unsupported-functions-detection-test
+  (let [hits #'h2/unsupported-functions-in-query]
+    (testing "unsupported built-in functions are detected regardless of statement type, casing, or comments"
+      (are [expected query] (= expected (hits query))
+        #{"FILE_READ"}   "SELECT FILE_READ('a','UTF-8')"
+        #{"CSVREAD"}     "CALL CSVREAD('a')"
+        #{"FILE_WRITE"}  "WITH w AS (SELECT FILE_WRITE(STRINGTOUTF8('x'),'y') AS b) SELECT b FROM w"
+        #{"CSVWRITE"}    "CALL CSVWRITE('a','SELECT 1')"
+        #{"LINK_SCHEMA"} "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')"
+        #{"MEMORY_USED"} "select memory_used()"
+        ;; a comment between the function name and its arg list is still detected
+        #{"FILE_READ"}   "SELECT FiLe_ReAd/* c */ ('x')"
+        #{"FILE_READ"}   "SELECT 1 AS \"a'\", FILE_READ('/cat_pics.gif','UTF-8')"
+        #{"FILE_READ"}   "SELECT 'FILE_READ' AS col" ;; the name only appears inside a string literal but we disallow it anyway
+        ))
+    (testing "ordinary queries are not flagged"
+      (are [query] (nil? (hits query))
+        "SELECT * FROM orders"
+        ;; identifier merely containing an unsupported name as a substring
+        "SELECT my_file_read_col FROM t"
+        nil))))
+
+(deftest ^:parallel check-read-only-rejects-unsupported-functions-test
+  (testing "unsupported built-in functions are rejected even inside an allowed SELECT/CALL"
+    (are [query] (thrown-with-msg?
+                  clojure.lang.ExceptionInfo
+                  #"not supported in native queries"
+                  (mt/with-metadata-provider (mt/id)
+                    (#'h2/check-read-only-statements
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
+      "SELECT FILE_READ('a','UTF-8')"
+      "CALL CSVREAD('a')"
+      "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
 (deftest disallowed-commands-in-action-test
   (mt/test-driver :h2

@@ -1,6 +1,6 @@
 import { IndexRoute, Route } from "react-router";
 
-import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 
 import { MetricAboutPage } from "./pages/MetricAboutPage";
 import { MetricDependenciesPage } from "./pages/MetricDependenciesPage";
@@ -22,12 +22,6 @@ export function getMetricRoutes() {
         </Route>
       )}
       <Route path=":cardId/history" component={MetricHistoryPage} />
-      {PLUGIN_CACHING.isGranularCachingEnabled() && (
-        <Route
-          path=":cardId/caching"
-          component={PLUGIN_CACHING.MetricCachingPage}
-        />
-      )}
     </Route>
   );
 }

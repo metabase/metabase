@@ -1,47 +1,14 @@
 import cx from "classnames";
-import type { KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { LimitInput } from "metabase/querying/components/LimitInput";
+import { Box } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
-
-interface CustomRowLimitProps {
-  limit: number | null;
-  onChangeLimit: (limit: number | null) => void;
-  onClose: () => void;
-}
-
-const CustomRowLimit = ({
-  limit,
-  onChangeLimit,
-  onClose,
-}: CustomRowLimitProps) => {
-  return (
-    <LimitInput
-      small
-      defaultValue={limit ?? undefined}
-      className={cx({ [cx(CS.textBrand, CS.borderBrand)]: limit != null })}
-      placeholder={t`Pick a limit`}
-      onKeyPress={(e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.nativeEvent.isComposing) {
-          return;
-        }
-        if (e.key === "Enter") {
-          const value = parseInt(e.currentTarget.value, 10);
-          if (value > 0) {
-            onChangeLimit(value);
-          } else {
-            onChangeLimit(null);
-          }
-          onClose();
-        }
-      }}
-    />
-  );
-};
 
 interface LimitPopoverProps {
   limit: number | null;
@@ -55,31 +22,86 @@ export const LimitPopover = ({
   onChangeLimit,
   onClose,
   className,
-}: LimitPopoverProps) => (
-  <div className={cx(className, CS.textBold, CS.textMedium)}>
-    <Radio
-      vertical
-      value={limit == null ? "maximum" : "custom"}
-      options={[
-        {
-          name: t`Show maximum (first ${formatNumber(HARD_ROW_LIMIT)})`,
-          value: "maximum",
-        },
-        {
-          name: (
-            <CustomRowLimit
-              key={limit == null ? "a" : "b"}
-              limit={limit}
-              onChangeLimit={onChangeLimit}
-              onClose={onClose}
-            />
-          ),
-          value: "custom",
-        },
-      ]}
-      onChange={(value: string) =>
-        value === "maximum" ? onChangeLimit(null) : onChangeLimit(2000)
+}: LimitPopoverProps) => {
+  const [isCustom, setIsCustom] = useState(limit != null);
+  const [value, setValue] = useState(
+    limit != null ? String(limit) : String(HARD_ROW_LIMIT),
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Set when the popover is dismissed with Escape so the pending value is
+  // discarded instead of applied on unmount
+  const cancelRef = useRef(false);
+
+  const parsedValue = parseInt(value, 10);
+  const selectedLimit = isCustom && parsedValue > 0 ? parsedValue : null;
+
+  const selectedLimitRef = useLatest(selectedLimit);
+  const limitRef = useLatest(limit);
+  const onChangeLimitRef = useLatest(onChangeLimit);
+
+  useEffect(() => {
+    const applyPendingLimit = () => {
+      if (cancelRef.current) {
+        return;
       }
-    />
-  </div>
-);
+      if (selectedLimitRef.current !== limitRef.current) {
+        onChangeLimitRef.current(selectedLimitRef.current);
+      }
+    };
+    return () => applyPendingLimit();
+  }, [selectedLimitRef, limitRef, onChangeLimitRef]);
+
+  return (
+    <Box
+      className={cx(className, CS.textBold, CS.textMedium)}
+      onKeyDownCapture={(e) => {
+        if (e.key === "Escape") {
+          cancelRef.current = true;
+        }
+      }}
+    >
+      <Radio
+        vertical
+        value={isCustom ? "custom" : "maximum"}
+        options={[
+          {
+            name: t`Show maximum (first ${formatNumber(HARD_ROW_LIMIT)})`,
+            value: "maximum",
+          },
+          {
+            name: t`Set custom limit`,
+            value: "custom",
+          },
+        ]}
+        onChange={(selected: string) => {
+          if (selected === "maximum") {
+            setIsCustom(false);
+          } else {
+            setIsCustom(true);
+            inputRef.current?.focus();
+            inputRef.current?.select();
+          }
+        }}
+      />
+      <Box mt="sm" ml="1.25rem">
+        <LimitInput
+          ref={inputRef}
+          small
+          value={value}
+          className={cx({ [cx(CS.textBrand, CS.borderBrand)]: isCustom })}
+          placeholder={t`Pick a limit`}
+          onFocus={() => setIsCustom(true)}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
+            if (e.key === "Enter") {
+              onClose();
+            }
+          }}
+        />
+      </Box>
+    </Box>
+  );
+};

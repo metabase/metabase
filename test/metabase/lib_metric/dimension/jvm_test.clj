@@ -27,7 +27,6 @@
               (str "column " (:name col) " should have :has-field-values"))
           (is (#{:list :search :none} (:has-field-values col))
               (str "column " (:name col) " should have a valid :has-field-values value"))))))
-
   (testing "returns empty collection unchanged"
     (is (= [] (dimension.jvm/enrich-columns-with-has-field-values [])))))
 

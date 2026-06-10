@@ -22,7 +22,6 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
   PLUGIN_REMOTE_SYNC,
-  PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import {
@@ -48,6 +47,7 @@ import {
 import S from "./TableSection.module.css";
 import { MeasureList } from "./components/MeasureList";
 import { SegmentList } from "./components/SegmentList";
+import { TableActionsMenu } from "./components/TableActionsMenu";
 import { TableAttributesEditSingle } from "./components/TableAttributesEditSingle";
 import { TableCollection } from "./components/TableCollection";
 import { TableMetadata } from "./components/TableMetadata";
@@ -59,11 +59,10 @@ interface Props {
   activeTab: DataStudioTableMetadataTab;
   canPublish: boolean;
   hasLibrary: boolean;
-  onSyncOptionsClick: () => void;
   onUpdate: () => void;
 }
 
-type TableModalType = "library" | "publish" | "unpublish" | "replace";
+type TableModalType = "library" | "publish" | "unpublish";
 
 const TableSectionBase = ({
   table,
@@ -71,7 +70,6 @@ const TableSectionBase = ({
   activeTab,
   canPublish,
   hasLibrary,
-  onSyncOptionsClick,
   onUpdate,
 }: Props) => {
   const [updateTable] = useUpdateTableMutation();
@@ -236,22 +234,10 @@ const TableSectionBase = ({
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List mb="md">
-            <Tabs.Tab
-              value="details"
-              leftSection={<Icon name="info" />}
-            >{t`Details`}</Tabs.Tab>
-            <Tabs.Tab
-              value="field"
-              leftSection={<Icon name="list" />}
-            >{t`Fields`}</Tabs.Tab>
-            <Tabs.Tab
-              value="segments"
-              leftSection={<Icon name="segment" />}
-            >{t`Segments`}</Tabs.Tab>
-            <Tabs.Tab
-              value="measures"
-              leftSection={<Icon name="ruler" />}
-            >{t`Measures`}</Tabs.Tab>
+            <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+            <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
+            <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
+            <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="details">
@@ -273,7 +259,8 @@ const TableSectionBase = ({
                 {canPublish && isLibraryEnabled && !remoteSyncReadOnly && (
                   <Button
                     flex="1"
-                    p="sm"
+                    size="md"
+                    variant={table.is_published ? "default" : "filled"}
                     leftSection={
                       <Icon
                         name={table.is_published ? "unpublish" : "publish"}
@@ -284,30 +271,7 @@ const TableSectionBase = ({
                     {table.is_published ? t`Unpublish` : t`Publish`}
                   </Button>
                 )}
-                {!table.db?.is_attached_dwh && (
-                  <Button
-                    flex="1"
-                    leftSection={<Icon name="settings" />}
-                    onClick={onSyncOptionsClick}
-                  >
-                    {t`Sync settings`}
-                  </Button>
-                )}
-                <PLUGIN_REPLACEMENT.SourceReplacementButton>
-                  {({ tooltip, isDisabled }) => (
-                    <Tooltip label={tooltip ?? t`Find and replace`}>
-                      <Button
-                        p="sm"
-                        w="2.5rem"
-                        flex="0 1 auto"
-                        leftSection={<Icon name="find_replace" />}
-                        aria-label={t`Find and replace`}
-                        disabled={isDisabled}
-                        onClick={() => setModalType("replace")}
-                      />
-                    </Tooltip>
-                  )}
-                </PLUGIN_REPLACEMENT.SourceReplacementButton>
+
                 {isDependencyGraphEnabled && (
                   <Tooltip label={t`Dependency graph`}>
                     <Button
@@ -329,6 +293,7 @@ const TableSectionBase = ({
                 <Box style={{ flexGrow: 0, width: 40 }}>
                   <TableLink table={table} />
                 </Box>
+                <TableActionsMenu table={table} />
               </Group>
 
               <TableAttributesEditSingle table={table} onUpdate={onUpdate} />
@@ -439,11 +404,6 @@ const TableSectionBase = ({
         isOpened={modalType === "unpublish"}
         tableIds={[table.id]}
         onUnpublish={handleSuccessCloseModal}
-        onClose={handleCloseModal}
-      />
-      <PLUGIN_REPLACEMENT.SourceReplacementModal
-        opened={modalType === "replace"}
-        initialSource={{ id: Number(table.id), type: "table" }}
         onClose={handleCloseModal}
       />
     </Stack>

@@ -58,7 +58,6 @@
                                   (tu/slack-request-options body)
                                   body)]
           (is (= "3eZbrw1aBm2rZgRNFdxV2595E9CY3gmdALWMmHkvFXO7tYXAYM8P" response))))
-
       (testing "handles 'unknown' events with ack message"
         (let [body {:type "event_callback"
                     :event {:type "team_rename"
@@ -67,7 +66,6 @@
                                   (tu/slack-request-options body)
                                   body)]
           (is (= "ok" response))))
-
       (testing "handles message.im events"
         (let [body     (-> tu/base-dm-event
                            (assoc-in [:event :channel] "D123")
@@ -76,7 +74,6 @@
                                   (tu/slack-request-options body)
                                   body)]
           (is (= "ok" response))))
-
       (testing "rejects requests without valid signature"
         (is (= "Slack request signature is not valid."
                (mt/client :post 401 "metabot/slack/events"
@@ -182,7 +179,8 @@
   (testing "POST /events with app_mention uses visible channel reply (not streaming)"
     (tu/with-slackbot-setup
       (let [mock-ai-text "Here is your answer"
-            event-body   tu/base-mention-event]
+            channel-id   "C-MENTION-TEST"
+            event-body   (assoc-in tu/base-mention-event [:event :channel] channel-id)]
         (tu/with-slackbot-mocks
           {:ai-text mock-ai-text}
           (fn [{:keys [post-calls stream-calls stop-stream-calls]}]
@@ -190,8 +188,12 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-              (u/poll {:thunk      #(>= (count @post-calls) 1)
-                       :done?      true?
+              ;; Poll on the slack_msg_id backfill rather than the post call. The backfill runs after
+              ;; post-thread-reply returns, so waiting on post-calls alone races the DB update in CI.
+              (u/poll {:thunk      #(t2/select-one :model/MetabotMessage
+                                                   :channel_id channel-id :role "assistant"
+                                                   :slack_msg_id [:not= nil])
+                       :done?      some?
                        :timeout-ms 5000})
               (testing "a single threaded reply is posted with the answer"
                 (is (= 1 (count @post-calls)))
@@ -201,7 +203,7 @@
                 (is (empty? @stream-calls))
                 (is (empty? @stop-stream-calls)))
               (testing "assistant message in DB has slack_msg_id backfilled"
-                (let [msg (t2/select-one :model/MetabotMessage :channel_id "C123" :role "assistant")]
+                (let [msg (t2/select-one :model/MetabotMessage :channel_id channel-id :role "assistant")]
                   (is (some? (:slack_msg_id msg))))))))))))
 
 (deftest stream-start-failure-test
@@ -342,29 +344,24 @@
                                       (tu/slack-request-options event-body)
                                       event-body)]
               (is (= "ok" response))
-
               (u/poll {:thunk #(and (>= (count @stop-stream-calls) 1)
                                     (>= (count @image-calls) 2))
                        :done? true?
                        :timeout-ms 5000})
-
               (testing "streaming message flow works"
                 (is (= 1 (count @stream-calls)))
                 (is (= "C456" (:channel (first @stream-calls))))
                 (is (some #(= mock-ai-text %) @append-text-calls))
                 (is (= 1 (count @stop-stream-calls))))
-
               (testing "output generation called for each static_viz"
                 (is (= 2 (count @generate-card-output-calls)))
                 (is (= #{101 202} (set (map :card-id @generate-card-output-calls)))))
-
               (testing "rendered PNGs are uploaded to Slack"
                 (is (= 2 (count @image-calls)))
                 (is (= #{"card_101.png" "card_202.png"}
                        (set (map :filename @image-calls))))
                 (is (every? #(= (vec fake-png-bytes) (vec (:image-bytes %)))
                             @image-calls)))
-
               (testing "stop-stream includes both image blocks and feedback controls"
                 (let [blocks (:blocks (first @stop-stream-calls))]
                   (is (= ["section" "image" "section" "image" "context_actions"]
@@ -440,7 +437,6 @@
                                                   :metadata    {:signing_secret_version 0}}]
               (is (= active-slack-user-id
                      (#'slackbot/slack-id->user-id slack-id)))))
-
           (testing "returns user ID for active user with sso_source 'google'"
             (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
                                                   :provider    "slack-connect"
@@ -448,20 +444,17 @@
                                                   :metadata    {:signing_secret_version 0}}]
               (is (= active-google-user-id
                      (#'slackbot/slack-id->user-id slack-id)))))
-
           (testing "returns nil for inactive user with sso_source 'slack'"
             (mt/with-temp [:model/AuthIdentity _ {:user_id     inactive-slack-user-id
                                                   :provider    "slack-connect"
                                                   :provider_id slack-id
                                                   :metadata    {:signing_secret_version 0}}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
-
           (testing "returns nil for active user with different provider"
             (mt/with-temp [:model/AuthIdentity _ {:user_id     active-google-user-id
                                                   :provider    "google"
                                                   :provider_id slack-id}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id)))))
-
           (testing "returns nil when no AuthIdentity exists"
             (is (nil? (#'slackbot/slack-id->user-id slack-id)))))))))
 
@@ -477,7 +470,6 @@
                                                   :provider_id slack-id
                                                   :metadata    {:signing_secret_version 1}}]
               (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
-
         (testing "identity with old version is rejected after rotation"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 2]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
@@ -485,14 +477,12 @@
                                                   :provider_id slack-id
                                                   :metadata    {:signing_secret_version 1}}]
               (is (nil? (#'slackbot/slack-id->user-id slack-id))))))
-
         (testing "legacy identity with no version is accepted before any rotation"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 0]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
                                                   :provider    "slack-connect"
                                                   :provider_id slack-id}]
               (is (= user-id (#'slackbot/slack-id->user-id slack-id))))))
-
         (testing "legacy identity with no version is rejected after rotation"
           (mt/with-temporary-setting-values [server.settings/slack-connect-signing-secret-version 1]
             (mt/with-temp [:model/AuthIdentity _ {:user_id     user-id
@@ -577,10 +567,8 @@
   (testing "authorize-delete-request"
     (testing "returns :ignored when channel-id is nil"
       (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" nil "ts123")))))
-
     (testing "returns :ignored when message-ts is nil"
       (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" nil)))))
-
     (testing "returns :ignored for unknown Slack user"
       (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly nil)]
         (is (= {:status        :ignored
@@ -589,17 +577,14 @@
                 :channel-id    "C123"
                 :message-ts    "ts123"}
                (#'slackbot/authorize-delete-request "U-UNKNOWN" "C123" "ts123")))))
-
     (testing "returns :ignored when response is not tracked in the DB"
       (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
                                   slackbot.persistence/response-owner-user-id (constantly nil)]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
-
     (testing "returns :ignored when the requester is not the response owner"
       (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
                                   slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
-
     (testing "returns :authorized when the requester owns the response"
       (let [user-id (mt/user->id :rasta)]
         (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly user-id)
@@ -642,8 +627,9 @@
                   (is (= 1 (count @update-calls)))
                   (is (= channel-id (:channel (first @update-calls))))
                   (is (= message-ts (:ts (first @update-calls))))
-                  (is (str/includes? (:text (first @update-calls)) "removed"))))))))))
+                  (is (str/includes? (:text (first @update-calls)) "removed")))))))))))
 
+(deftest handle-delete-reaction-test-2
   (testing "reaction_added with a non-delete emoji is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -661,8 +647,9 @@
                        (tu/slack-request-options event-body)
                        event-body)
             (Thread/sleep 200)
-            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update"))))))
+            (is (= 0 (count @update-calls)) "non-delete emoji should produce no update")))))))
 
+(deftest handle-delete-reaction-test-3
   (testing "reaction_added with delete emoji from non-owner is ignored"
     (tu/with-slackbot-setup
       (let [event-body {:type  "event_callback"
@@ -697,21 +684,18 @@
                                                slack-connect-client-secret nil
                                                metabot-slack-signing-secret nil]
           (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "metabot/slack/settings" creds))))))
-
     (testing "clear all credentials"
       (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true]
         (mt/with-temporary-raw-setting-values [slack-connect-client-id "x"
                                                slack-connect-client-secret "x"
                                                metabot-slack-signing-secret "x"]
           (is (= {:ok true} (mt/user-http-request :crowberto :put 200 "metabot/slack/settings" clear))))))
-
     (testing "partial credentials returns 400"
       (doseq [partial [(assoc creds :slack-connect-client-id nil)
                        (assoc creds :slack-connect-client-secret nil)
                        (assoc creds :metabot-slack-signing-secret nil)]]
         (is (= "Must provide client id, client secret and signing secret together."
                (mt/user-http-request :crowberto :put 400 "metabot/slack/settings" partial)))))
-
     (testing "non-admin returns 403"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 "metabot/slack/settings" creds))))))
@@ -730,7 +714,6 @@
                                       :metabot-slack-signing-secret "same-signing-secret"})))
         (is (= 7
                (server.settings/slack-connect-signing-secret-version))))))
-
   (testing "changing the signing secret increments the version"
     (mt/with-temporary-setting-values [sso-settings/slack-connect-enabled true
                                        server.settings/slack-connect-signing-secret-version 7]
@@ -751,7 +734,6 @@
       (is (= "metabot_feedback_modal" (:callback_id view)))
       (is (= 1 (count (:blocks view))))
       (is (= "freeform_feedback" (:block_id (first (:blocks view)))))))
-
   (testing "negative feedback modal has issue type dropdown and freeform input"
     (let [view (#'slackbot/feedback-modal-view false {:conversation_id "c1"})]
       (is (= 2 (count (:blocks view))))
@@ -886,7 +868,6 @@
                 (is (= "not-factual" (:issue_type row)))
                 (is (= "The answer was wrong" (:freeform_feedback row))))))
           (finally (tear-down-slackbot-feedback! conv-id)))))
-
     (testing "positive feedback with only freeform text submits"
       (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
         (try
@@ -899,7 +880,6 @@
             @result
             (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id))))
           (finally (tear-down-slackbot-feedback! conv-id)))))
-
     (testing "positive feedback with nil freeform is stored as nil locally"
       (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
         (try
@@ -914,7 +894,6 @@
               (is (some? row))
               (is (nil? (:freeform_feedback row)))))
           (finally (tear-down-slackbot-feedback! conv-id)))))
-
     (testing "negative feedback with only issue type submits"
       (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)]
         (try

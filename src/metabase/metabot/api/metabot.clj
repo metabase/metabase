@@ -57,24 +57,40 @@
       (when (not= old-vals metabot-updates)
         (t2/update! :model/Metabot id metabot-updates)
         (when-not (metabot.usage/managed-free-limit-reached?)
-          (metabot.suggested-prompts/delete-all-metabot-prompts id)
-          (metabot.suggested-prompts/generate-sample-prompts id)))
+          ;; Delete + regenerate atomically so a raced managed-AI lock (the 402 swallowed below) or
+          ;; any other failure rolls back the delete instead of leaving the Metabot with zero
+          ;; prompts. The 402 still triggers the rollback because it escapes the transaction body
+          ;; before we catch it. Swallowing it keeps a settings-only PUT from failing on a race.
+          (try
+            (t2/with-transaction [_conn]
+              (metabot.suggested-prompts/delete-all-metabot-prompts id)
+              (metabot.suggested-prompts/generate-sample-prompts id))
+            (catch clojure.lang.ExceptionInfo e
+              (when-not (= "metabase_ai_managed_locked" (:error-code (ex-data e)))
+                (throw e))))))
       (t2/select-one :model/Metabot :id id))))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/prompt-suggestions/regenerate"
-  "Remove any existing prompt suggestions for the Metabot instance with `id` and generate new ones."
+  :- [:multi {:dispatch :status}
+      [:generated              [:map {:closed true}
+                                [:status       [:= :generated]]
+                                ;; `:generated` is only returned when total > 0 — see
+                                ;; [[metabot.suggested-prompts/generate-sample-prompts]].
+                                [:prompt_count pos-int?]]]
+      [:no-library-content     [:map {:closed true} [:status [:= :no-library-content]]]]
+      [:ai-produced-no-prompts [:map {:closed true} [:status [:= :ai-produced-no-prompts]]]]]
+  "Remove any existing prompt suggestions for the Metabot with `id` and generate new ones.
+   The response `:status` is `:generated` (with a `:prompt_count`) when prompts were created,
+   `:no-library-content` when the Metabot has no models or metrics to summarize, or
+   `:ai-produced-no-prompts` when generation produced nothing.
+   Returns a 402 if the instance has reached its managed-AI usage limit."
   [{:keys [id]} :- [:map [:id pos-int?]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
     (api/check-404 (t2/exists? :model/Metabot :id id))
     (metabot.usage/check-metabase-managed-free-limit!)
     (metabot.suggested-prompts/delete-all-metabot-prompts id)
-    (metabot.suggested-prompts/generate-sample-prompts id))
-  api/generic-204-no-content)
+    (metabot.suggested-prompts/generate-sample-prompts id)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API

@@ -22,11 +22,9 @@
            clojure.lang.ExceptionInfo
            #"Invalid Google Sign-In Client ID: must end with \".apps.googleusercontent.com\""
            (sso.settings/google-auth-client-id! "invalid-client-id"))))
-
     (testing "Trailing whitespace in client ID is stripped upon save"
       (sso.settings/google-auth-client-id! "test-client-id.apps.googleusercontent.com     ")
       (is (= "test-client-id.apps.googleusercontent.com" (sso.settings/google-auth-client-id))))
-
     (testing "Saving an empty string will clear the client ID setting"
       (sso.settings/google-auth-client-id! "")
       (is (= nil (sso.settings/google-auth-client-id))))))
@@ -65,7 +63,6 @@
                (#'google/google-auth-token-info {:status 400} "")
                (catch Exception e
                  [(-> e ex-data :status-code) (.getMessage e)])))))
-
     (testing "for invalid data."
       (is (= [400 "Google Sign-In token appears to be incorrect. Double check that it matches in Google and Metabase."]
              (try
@@ -94,7 +91,6 @@
                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
                (catch Exception e
                  [(-> e ex-data :status-code) (.getMessage e)]))))))
-
   (testing "Supports multiple :aud token data fields"
     (let [token-1 "GOOGLE-CLIENT-ID-1"
           token-2 "GOOGLE-CLIENT-ID-2"]

@@ -39,7 +39,7 @@
                                            [:and
                                             [:= :type "model"]
                                             [:= :archived false]
-                                             ;; action permission keyed off of model permission
+                                            ;; action permission keyed off of model permission
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 

@@ -13,7 +13,7 @@
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
-   (java.nio.file Files FileVisitOption Path Paths)))
+   (java.nio.file Files FileSystems FileVisitOption Path Paths)))
 
 (set! *warn-on-reflection* true)
 
@@ -71,8 +71,32 @@
 (defn- add-to-classpath! [^Path jar-path]
   (classloader/add-url-to-classpath! (-> jar-path .toUri .toURL)))
 
+(defn- slurp-plugin-manifest-from-archive
+  "Find and read `metabase-plugin.yaml` from a JAR archive. Prefers `metabase/<driver>/metabase-plugin.yaml`
+  over a legacy root-level manifest. Logs a warning if multiple manifests are found."
+  ^String [^Path jar-path]
+  (with-open [fs (FileSystems/newFileSystem jar-path (ClassLoader/getSystemClassLoader))]
+    (let [all-matcher (.getPathMatcher fs "glob:**/metabase-plugin.yaml")
+          root        (.getPath fs "/" (make-array String 0))]
+      (with-open [stream (Files/walk root 3 (make-array FileVisitOption 0))]
+        (let [all-manifests (-> stream
+                                (.filter (reify java.util.function.Predicate
+                                           (test [_ p] (.matches all-matcher ^Path p))))
+                                (.collect (java.util.stream.Collectors/toList)))
+              nested-matcher (.getPathMatcher fs "glob:/metabase/*/metabase-plugin.yaml")
+              ^Path manifest (or (first (filter #(.matches nested-matcher ^Path %) all-manifests))
+                                 (first all-manifests))]
+          (when (> (count all-manifests) 1)
+            (log/warnf "Found %d metabase-plugin.yaml files in %s: %s — using %s"
+                       (count all-manifests)
+                       (.getFileName jar-path)
+                       (str/join ", " (map str all-manifests))
+                       (str manifest)))
+          (when manifest
+            (String. (Files/readAllBytes manifest))))))))
+
 (defn- plugin-info [^Path jar-path]
-  (some-> (u.files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
+  (some-> (slurp-plugin-manifest-from-archive jar-path)
           yaml/parse-string))
 
 (defn- init-plugin-with-info!
@@ -140,7 +164,7 @@
     (load-plugin-manifest! manifest-path)))
 
 (defn- has-manifest? ^Boolean [^Path path]
-  (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
+  (boolean (slurp-plugin-manifest-from-archive path)))
 
 (defn- init-plugins! [paths]
   ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC

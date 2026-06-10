@@ -1,15 +1,14 @@
 import type { LocationDescriptor } from "history";
 import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetCollectionQuery,
   useListBookmarksQuery,
   useListCollectionsTreeQuery,
+  useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import { logout } from "metabase/auth/actions";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import type { CollectionTreeItem } from "metabase/collections/utils";
@@ -20,9 +19,9 @@ import {
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import { Modal } from "metabase/common/components/Modal";
-import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
+import { logout } from "metabase/redux/auth";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -31,7 +30,6 @@ import {
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
 import * as Urls from "metabase/urls";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type { Collection, User } from "metabase-types/api";
 
 import { NavbarErrorView } from "../NavbarErrorView";
@@ -42,10 +40,9 @@ import { MainNavbarView } from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(_state: State, { databases = [] }: DatabaseProps) {
+function mapStateToProps(state: State) {
   return {
-    currentUser: getUser(_state),
-    hasDataAccess: databases.length > 0,
+    currentUser: getUser(state),
   };
 }
 
@@ -54,25 +51,16 @@ const mapDispatchToProps = {
 };
 
 interface Props extends MainNavbarProps {
-  currentUser: User;
-  databases: Database[];
+  currentUser: User | null;
   selectedItems: SelectedItem[];
-  hasDataAccess: boolean;
-  allError: boolean;
-  allFetched: boolean;
   logout: () => void;
   onChangeLocation: (location: LocationDescriptor) => void;
-}
-
-interface DatabaseProps {
-  databases?: Database[];
 }
 
 function MainNavbarContainer({
   selectedItems,
   isOpen,
   currentUser,
-  hasDataAccess,
   location,
   params,
   openNavbar,
@@ -81,6 +69,12 @@ function MainNavbarContainer({
   onChangeLocation,
   ...props
 }: Props) {
+  const {
+    data: databasesResponse,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
+  const hasDataAccess = (databasesResponse?.data.length ?? 0) > 0;
   const [modal, setModal] = useState<NavbarModal>(null);
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
@@ -121,7 +115,7 @@ function MainNavbarContainer({
     const preparedCollections = [];
     const userPersonalCollections = currentUserPersonalCollections(
       collections,
-      currentUser.id,
+      currentUser!.id,
     );
     const displayableCollections = collections.filter((collection) =>
       nonPersonalOrArchivedCollection(collection),
@@ -202,13 +196,11 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  const allError = props.allError || !!error;
-  if (allError) {
+  if (error || databasesError) {
     return <NavbarErrorView />;
   }
 
-  const allFetched = props.allFetched && !isLoading;
-  if (!allFetched) {
+  if (isLoading || isLoadingDatabases) {
     return <NavbarLoadingView />;
   }
 
@@ -237,9 +229,7 @@ function MainNavbarContainer({
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(memo(MainNavbarContainer));

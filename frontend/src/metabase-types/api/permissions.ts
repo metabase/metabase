@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";
+import type { ParameterTarget } from "./parameters";
 import type { UserAttributeKey } from "./user";
 
 export enum DataPermission {
@@ -15,6 +16,7 @@ export enum DataPermission {
   DATA_MODEL = "data-model",
   DETAILS = "details",
   TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -85,6 +87,10 @@ export type TransformsPermission =
   | DataPermissionValue.NO
   | DataPermissionValue.YES;
 
+export type WorkspacesPermission =
+  | DataPermissionValue.NO
+  | DataPermissionValue.YES;
+
 export type DatabasePermissions = {
   [DataPermission.VIEW_DATA]: SchemasPermissions;
   [DataPermission.CREATE_QUERIES]?: NativePermissions;
@@ -92,6 +98,7 @@ export type DatabasePermissions = {
   [DataPermission.DOWNLOAD]?: DownloadAccessPermission;
   [DataPermission.DETAILS]?: DetailsPermissions;
   [DataPermission.TRANSFORMS]?: TransformsPermission;
+  [DataPermission.WORKSPACES]?: WorkspacesPermission;
 };
 
 export type DataModelPermissions = {
@@ -148,16 +155,13 @@ export type CollectionPermissions = {
 
 export type CollectionPermission = "write" | "read" | "none";
 
-// FIXME: is there a more suitable type for this?
-export type DimensionRef = ["dimension", any[]];
-
 export type GroupTableAccessPolicy = {
   id: number;
   group_id: number;
   table_id: number;
   card_id: number | null;
   attribute_remappings: {
-    [key: UserAttributeKey]: DimensionRef;
+    [key: UserAttributeKey]: ParameterTarget;
   };
   permission_id: number | null;
 };

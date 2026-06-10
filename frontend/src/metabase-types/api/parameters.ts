@@ -73,6 +73,7 @@ export interface ValuesSourceConfig {
   values?: string[] | ParameterValue[];
   card_id?: CardId;
   value_field?: FieldReference;
+  label_field?: FieldReference;
 }
 
 export type VariableTarget = ["template-tag", string];

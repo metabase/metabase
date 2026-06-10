@@ -189,6 +189,7 @@ describe("scenarios > question > saved", () => {
 
   it("should revert a saved question to a previous version", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
+    cy.intercept("POST", "/api/revision/revert").as("revertRevision");
 
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.questionInfoButton().click();
@@ -204,11 +205,30 @@ describe("scenarios > question > saved", () => {
       cy.findByText(/added a description/i);
 
       cy.findByTestId("question-revert-button").click();
+      // The revert mutation invalidates the revision list. On fetch
+      // (microtask resolution) clicking the History tab before that
+      // invalidation lands shows the pre-revert entries — the new
+      // "reverted to an earlier version" row is then never found within
+      // Cypress's default 4s. Wait for the revert request before
+      // re-entering History.
+      cy.wait("@revertRevision");
 
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/reverted to an earlier version/i);
       cy.findByText(/This is a question/i).should("not.exist");
+
+      // Simulate a backend failure on revert and confirm we surface
+      // the error message as a toast (UXW-310).
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing card" },
+      }).as("failedRevert");
+
+      cy.findAllByTestId("question-revert-button").first().click();
+      cy.wait("@failedRevert");
     });
+
+    H.undoToast().should("contain.text", "Cannot revert: missing card");
   });
 
   it("should show collection breadcrumbs for a saved question in the root collection", () => {

@@ -1,13 +1,14 @@
+import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCopyDashboardMutation } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
-import type { CopyDashboardFormProperties } from "metabase/dashboard/containers/CopyDashboardForm";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import type { CopyDashboardFormProperties } from "metabase/common/components/CopyDashboardForm";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import { useDispatch, useSelector } from "metabase/redux";
 import * as Urls from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
@@ -16,7 +17,9 @@ import { getDashboardComplete } from "../selectors";
 
 type DashboardCopyModalProps = {
   onClose: () => void;
-} & WithRouterProps;
+  params: { slug?: string };
+  location: Location;
+};
 
 const getTitle = (
   dashboard: Dashboard | null,
@@ -59,7 +62,7 @@ const DashboardCopyModal = ({
   };
 
   return (
-    <EntityCopyModal
+    <CopyModal
       entityType="dashboards"
       entityObject={{
         ...dashboard,

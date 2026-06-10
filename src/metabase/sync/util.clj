@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
@@ -35,17 +36,11 @@
   "Prefix used for temporary tables created during transforms."
   "mb_transform_temp_table")
 
-(defn- transforms-enabled?
-  "Whether any transforms are enabled."
-  []
-  (or (not (premium-features/is-hosted?))
-      (premium-features/has-feature? :transforms-basic)))
-
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when (and (transforms-enabled?) (:name table))
+   (when (and (premium-features/any-transforms-enabled?) (:name table))
      (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
 (derive ::event :metabase/event)
@@ -90,6 +85,19 @@
 ;; TODO - as @salsakran mentioned it would be nice to do this via the DB so we could better support multi-instance
 ;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
+
+;; In-JVM only, same scope as `operation->db-ids`.
+(defonce ^:private external-busy-predicates (atom []))
+
+(defn register-busy-predicate!
+  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
+  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
+  (logged at WARN by the caller)."
+  [pred]
+  (swap! external-busy-predicates conj pred))
+
+(defn- external-busy []
+  (some (fn [p] (p)) @external-busy-predicates))
 
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
@@ -259,13 +267,17 @@
    :analyze           :fingerprint
    :refingerprint     :fingerprint})
 
-(mu/defn do-sync-operation
-  "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
+(mu/defn- do-sync-operation*
+  "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
+  wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
+  Performs no eligibility gating itself — the public wrappers decide whether to call it."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  (when (database/should-sync? database)
+  (if-let [busy (external-busy)]
+    (log/warnf "Skipping %s for database %d: %s"
+               (name operation) (u/the-id database) (:reason busy))
     (let [run-type (operation->run-type operation)]
       (task-history/with-task-run (when run-type
                                     {:run_type    run-type
@@ -285,13 +297,45 @@
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
 
+(mu/defn do-sync-operation
+  "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs
+  only when the database is eligible for *automatic* sync (see
+  [[metabase.warehouses.models.database/should-auto-sync?]]) — i.e. it is suppressed when the
+  `disable-auto-sync` setting is on."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-auto-sync? database)
+    (do-sync-operation* operation database message f)))
+
+(mu/defn do-explicit-sync-operation
+  "Internal implementation of [[explicit-sync-operation]]; use that instead of calling this directly.
+  For explicit, user-requested syncs (e.g. the Sync-now button): runs whenever the database is
+  syncable at all (see [[metabase.warehouses.models.database/should-sync?]]), ignoring the
+  `disable-auto-sync` setting, which suppresses only automatically-triggered syncs."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-sync? database)
+    (do-sync-operation* operation database message f)))
+
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
   like error handling, logging, duplicate operation prevention, and event publishing. Intended for use with the
-  various top-level sync operations, such as `sync-metadata` or `analyze`."
+  various top-level sync operations, such as `sync-metadata` or `analyze`. Suppressed when
+  `disable-auto-sync` is on; for explicit user-requested syncs use [[explicit-sync-operation]]."
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
+
+(defmacro explicit-sync-operation
+  "Like [[sync-operation]], but for explicit, user-requested syncs: the work runs even when the
+  `disable-auto-sync` setting is enabled (that setting suppresses only automatically-triggered syncs)."
+  {:style/indent 3}
+  [operation database message & body]
+  `(do-explicit-sync-operation ~operation ~database ~message (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -415,15 +459,23 @@
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 
-(defn reducible-sync-tables
-  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
-  [database-or-id & {:keys [schema-names table-names]}]
+(mu/defn reducible-sync-tables
+  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
+
+  Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
+  [database-or-id                       :- [:or
+                                            ::lib.schema.id/database
+                                            [:map
+                                             [:id ::lib.schema.id/database]]]
+   & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
                                  :db_id (u/the-id database-or-id)
                                  {:where [:and sync-tables-clause
                                           (when (seq schema-names) [:in :schema schema-names])
-                                          (when (seq table-names) [:in :name table-names])]})))
+                                          (when (seq table-names) [:in :name table-names])]
+                                  :order-by [[:schema :asc]
+                                             [:name :asc]]})))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."
@@ -679,8 +731,8 @@
    (or (isa? base-type :type/Temporal)
        (isa? base-type :type/Collection)
        (isa? base-type :type/Float)
-        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
-        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
+       ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
+       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
        (isa? semantic-type :type/PK)
        (isa? semantic-type :type/FK))))
 

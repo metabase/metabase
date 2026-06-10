@@ -4,6 +4,7 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver.connection :as driver.conn]
    [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -141,6 +142,38 @@
               (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
               (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
 
+(deftest task-establishes-no-write-connection-context-test
+  (testing "The persist-refresh task layer leaves *connection-type* at :default; refresh! and unpersist!
+            implementations are responsible for declaring write themselves (so a read sub-step like query
+            compilation is not forced into a write context)."
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-temp [:model/Database     db {:settings {:persist-models-enabled true}}
+                     :model/Card         model {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo _refreshable {:card_id (u/the-id model) :database_id (u/the-id db)}
+                     :model/Card         model2 {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo deletable {:card_id         (u/the-id model2)
+                                                     :database_id     (u/the-id db)
+                                                     :state           "deletable"
+                                                     ;; old enough to be prunable
+                                                     :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+        (testing "refresh! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card]
+                              (reset! seen @#'driver.conn/*connection-type*)
+                              {:state :success})
+                            (unpersist! [_ _database _persisted-info]))]
+            (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher)
+            (is (= :default @seen))))
+        (testing "unpersist! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card] {:state :success})
+                            (unpersist! [_ _database _persisted-info]
+                              (reset! seen @#'driver.conn/*connection-type*)))]
+            (#'task.persist-refresh/prune-deletables! refresher [deletable])
+            (is (= :default @seen))))))))
+
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [:model/TaskHistory]
     (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}
@@ -195,7 +228,7 @@
                      :model/PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
                      :model/PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
                                                      :state "deletable"
-                                              ;; need an "old enough" state change
+                                                     ;; need an "old enough" state change
                                                      :state_change_at (t/minus (t/local-date-time) (t/hours 2))}
                      ;; Record not in "deletable" state, but with nil card_id
                      :model/PersistedInfo deletable2 {:card_id nil :database_id (u/the-id db)}]
@@ -209,7 +242,7 @@
             (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
-            ;; we manually pass in the deleteable ones to not catch others in a running instance
+          ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           (testing "We delete persisted_info records for all of the pruned"
             (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
@@ -222,7 +255,7 @@
                                  :id)
                                 persisted-records)]
               (is (= [] existing))))
-            ;; don't assert equality if there are any deletable in the app db
+          ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"
