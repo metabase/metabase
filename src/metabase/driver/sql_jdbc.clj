@@ -4,7 +4,6 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]

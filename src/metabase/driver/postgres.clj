@@ -1247,7 +1247,7 @@
 
   It returns nil if no such expression has been defined for the pair of types. In this case, the caller should
   generate the ALTER COLUMN statement without a USING."
-  [driver column old-type new-type]
+  [column old-type new-type]
   (case [old-type new-type]
     [[:boolean] [:bigint]]
     [:case
@@ -1271,7 +1271,7 @@
                                           (if (string? column-type)
                                             [[:raw column-type]]
                                             column-type))]
-                          (if-some [using (alter-column-using-hsql-expr driver column old-type column-type)]
+                          (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
                             (vec (concat base [:using using]))
                             (vec base))))}
        (sql.qp/format-honeysql driver)
