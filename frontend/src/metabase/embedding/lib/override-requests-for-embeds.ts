@@ -1,5 +1,6 @@
 import { sessionPropertiesPath } from "metabase/api";
-import type { RequestMethod } from "metabase/api/client";
+import { type RequestMethod, api } from "metabase/api/client";
+import { isEmbedPreview } from "metabase/embedding/config";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
@@ -224,12 +225,42 @@ const setupRemappingUrls = (embedType: EmbedType) => {
     `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
 };
 
+const EMBED_API_BASE_PATTERN = /^\/api\/embed/;
+const EMBED_PREVIEW_API_BASE = "/api/preview_embed";
+
+/**
+ * In an embed preview (Metabase iframed in itself) the embed endpoints live
+ * under `/api/preview_embed` instead of `/api/embed`. Rewriting the base here
+ * lets call sites hardcode `/api/embed` and stay preview-agnostic. The pattern
+ * is anchored at the start so only the base path is replaced.
+ */
+export const rewriteEmbedPreviewUrl = async ({
+  url,
+}: OnBeforeRequestHandlerConfig) => {
+  if (isEmbedPreview() && EMBED_API_BASE_PATTERN.test(url)) {
+    return { url: url.replace(EMBED_API_BASE_PATTERN, EMBED_PREVIEW_API_BASE) };
+  }
+};
+
+/**
+ * Registers the embed-preview rewrite on the shared client. It runs after the
+ * embed override handlers, so it covers both the override-produced
+ * `/api/embed/...` urls and the embed endpoints called directly (e.g.
+ * `EmbedApi`, `embedApi`).
+ */
+const setupEmbedPreviewRewrite = () => {
+  if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
+    api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
+  }
+};
+
 /**
  * Registers a request interceptor that transforms standard API requests
  * into guest embeds API requests.
  */
 export const overrideRequestsForGuestEmbeds = () => {
   setupRemappingUrls("guest");
+  setupEmbedPreviewRewrite();
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
     (data) =>
@@ -247,6 +278,7 @@ export const overrideRequestsForPublicOrStaticEmbeds = (
   embedType: "static" | "public",
 ) => {
   setupRemappingUrls(embedType);
+  setupEmbedPreviewRewrite();
 
   PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds = (data) =>
     overrideRequests({
