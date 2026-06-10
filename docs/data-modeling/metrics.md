@@ -162,14 +162,14 @@ Prefer using the [Library](../data-studio/library.md#metrics) to let people know
 
 {% include plans-blockquote.html feature="Caching results of individual metrics" %}
 
-You can cache results of a metric to improve performance. See [Query caching](../configuring-metabase/caching.md).
-
-To cache the metric's results:
+You can cache results of a metric to improve performance:
 
 1. Visit the metric.
 2. Click **three dots** in the top right corner.
 3. Click **Caching**.
 4. Select the [caching policy](../configuring-metabase/caching.md#cache-invalidation-policies).
+
+See [Query caching](../configuring-metabase/caching.md).
 
 ## Limitations
 
