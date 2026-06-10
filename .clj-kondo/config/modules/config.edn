@@ -682,6 +682,18 @@
    :api  #{}
    :uses :any}
 
+  curated-search
+  {:team "Metabot"
+   :api  #{metabase.curated-search.api
+           metabase.curated-search.core}
+   :uses #{api
+           models
+           premium-features
+           request
+           util}
+   :model-exports #{:model/CuratedSearchEntry}
+   :model-imports #{:model/Card}}
+
   dashboards
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
@@ -1263,6 +1275,7 @@
               channel
               collections
               config
+              curated-search
               documents
               driver
               interestingness
@@ -1280,7 +1293,6 @@
               query-processor
               request
               search
-              semantic-layer-search
               server
               settings
               slackbot
@@ -1977,18 +1989,6 @@
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/User}}
-
-  semantic-layer-search
-  {:team "Metabot"
-   :api  #{metabase.semantic-layer-search.api
-           metabase.semantic-layer-search.core}
-   :uses #{api
-           models
-           premium-features
-           request
-           util}
-   :model-exports #{:model/SemanticLayerIndex}
-   :model-imports #{:model/Card}}
 
   server
   {:team "UX West"
@@ -2964,6 +2964,15 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/curated-search
+  {:team "Metabot"
+   :api  #{metabase-enterprise.curated-search.init}
+   :uses #{premium-features
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/CuratedSearchEntry}}
+
   enterprise/custom-viz-plugin
   {:team "Gadget"
    :api  #{metabase-enterprise.custom-viz-plugin.api
@@ -3402,15 +3411,6 @@
            util}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
-
-  enterprise/semantic-layer-search
-  {:team "Metabot"
-   :api  #{metabase-enterprise.semantic-layer-search.init}
-   :uses #{premium-features
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/SemanticLayerIndex}}
 
   enterprise/semantic-search
   {:team "Metabot"

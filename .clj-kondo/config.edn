@@ -445,7 +445,7 @@
   metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
   metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.serialization.metadata-file-import.wire-format-test/with-tiny-fixture! clojure.core/fn
-  metabase-enterprise.semantic-layer-search.reconcile-test/with-isolated-mirror         clojure.core/fn
+  metabase-enterprise.curated-search.reconcile-test/with-isolated-mirror         clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
   metabase-enterprise.workspaces.test-util/with-resources!                              clojure.core/let
@@ -486,7 +486,7 @@
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
-  metabase.semantic-layer-search.api-test/with-test-entry                               clojure.core/let
+  metabase.curated-search.api-test/with-test-entry                               clojure.core/let
   metabase.settings.core/define-multi-setting                                           clojure.core/def
   metabase.api-scope.core/defscope                                                      clj-kondo.lint-as/def-catch-all
   metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all

@@ -1,14 +1,14 @@
-(ns metabase-enterprise.semantic-layer-search.core-test
+(ns metabase-enterprise.curated-search.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-layer-search.core :as semantic-layer-search.core]
-   [metabase-enterprise.semantic-layer-search.index-table :as index-table]
-   [metabase-enterprise.semantic-layer-search.reconcile :as reconcile]
+   [metabase-enterprise.curated-search.core :as curated-search.core]
+   [metabase-enterprise.curated-search.index-table :as index-table]
+   [metabase-enterprise.curated-search.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.metabot.tools.semantic-layer-search :as tools.semantic-layer-search]
-   [metabase.semantic-layer-search.mirror :as mirror]
+   [metabase.curated-search.mirror :as mirror]
+   [metabase.metabot.tools.curated-search :as tools.curated-search]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [next.jdbc :as jdbc]))
@@ -18,7 +18,7 @@
 (defn- approx [target] #(< (abs (- (double %) (double target))) 1e-9))
 
 (deftest score-shape-matches-regular-search-test
-  (let [score (var-get #'semantic-layer-search.core/score)]
+  (let [score (var-get #'curated-search.core/score)]
     (testing "weighted-scorer breakdown: per-factor {name score weight contribution} + total_score"
       (is (=? {:scores [{:name :similarity :score (approx 0.8) :weight 1.0 :contribution (approx 0.8)}
                         {:name :verified   :score 0.0          :weight 0.1 :contribution 0.0}]
@@ -48,7 +48,7 @@
         (let [triggered (atom [])]
           (mt/with-dynamic-fn-redefs [task/trigger-now! (fn [job-key] (swap! triggered conj job-key))]
             (mirror/request-sync!)
-            (is (= [semantic-layer-search.core/sync-job-key] @triggered))))))))
+            (is (= [curated-search.core/sync-job-key] @triggered))))))))
 
 (deftest ^:sequential verified-boost-applies-before-limit-test
   (testing "the SQL LIMIT ranks by blended score: a verified row slightly farther by raw distance still wins top-1"
@@ -61,16 +61,16 @@
         (mt/with-premium-features #{:semantic-search}
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "semantic_layer_index_vectors_test_" suffix)
-                      index-table/*meta-table*    (str "semantic_layer_index_meta_test_" suffix)]
+            (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix)
+                      index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix)]
               ;; plain ties the query exactly (distance 0); verified sits at distance ~0.006, within its
               ;; 0.1 boost. A raw-distance LIMIT 1 would keep only the plain row.
               (semantic.tu/with-mock-embeddings {q       [1.0 0.0 0.0 0.0]
                                                  p-plain [1.0 0.0 0.0 0.0]
                                                  p-verif [0.9 0.1 0.0 0.0]}
-                (mt/with-temp [:model/SemanticLayerIndex _
+                (mt/with-temp [:model/CuratedSearchEntry _
                                {:search_prompt p-plain :entity {:model "table" :id 1}}
-                               :model/SemanticLayerIndex _
+                               :model/CuratedSearchEntry _
                                {:search_prompt p-verif :verified true :entity {:model "table" :id 2}}]
                   (try
                     (reconcile/reconcile! ds semantic.tu/mock-embedding-model)
@@ -83,11 +83,11 @@
 (defn- create-entry!
   "POST an entry through the CRUD API; returns the created row's id."
   [search-prompt entity verified]
-  (:id (mt/user-http-request :crowberto :post 200 "semantic-layer-search/"
+  (:id (mt/user-http-request :crowberto :post 200 "curated-search/"
                              {:search_prompt search-prompt :entity entity :verified verified})))
 
 (deftest ^:sequential crud-api-to-tool-end-to-end-test
-  (testing "CRUD API write -> reconcile -> pgvector -> semantic_layer_search tool, end to end"
+  (testing "CRUD API write -> reconcile -> pgvector -> search_curated tool, end to end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this; locally with the
     ;; dev pgvector running it exercises the whole pipeline. Uses the mock embedding model (4-dim,
     ;; deterministic, no network) against isolated temp tables, with the reconciler run directly in
@@ -103,14 +103,14 @@
             p-verif   "revenue by region (verified)"
             p-plain   "revenue by region (plain)"
             q         "monthly revenue per region"
-            search!   #(get-in (tools.semantic-layer-search/semantic-layer-search-tool
+            search!   #(get-in (tools.curated-search/curated-search-tool
                                 {:user_search_prompt q})
                                [:structured-output :data])]
         (mt/with-premium-features #{:semantic-search}
           (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
                                       (constantly semantic.tu/mock-embedding-model)]
-            (binding [index-table/*vectors-table* (str "semantic_layer_index_vectors_test_" suffix)
-                      index-table/*meta-table*    (str "semantic_layer_index_meta_test_" suffix)]
+            (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix)
+                      index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix)]
               (semantic.tu/with-mock-embeddings {p-verif vec1 p-plain vec1 q vec1}
                 (try
                   (let [id-verif (create-entry! p-verif ent-1 true)
@@ -126,11 +126,11 @@
                                 :score {:total_score (approx 1.0)}}]
                               results)))
                     (testing "deleting via the CRUD API + reconcile removes the row from search results"
-                      (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id-verif))
+                      (mt/user-http-request :crowberto :delete 204 (str "curated-search/" id-verif))
                       (is (=? {:deleted 1} (reconcile/reconcile! ds semantic.tu/mock-embedding-model)))
                       (is (= [p-plain] (mapv :saved_search_prompt (search!)))))
                     ;; clean up the appdb rows we created
-                    (mt/user-http-request :crowberto :delete 204 (str "semantic-layer-search/" id-plain)))
+                    (mt/user-http-request :crowberto :delete 204 (str "curated-search/" id-plain)))
                   (finally
                     (jdbc/execute! ds [(str "DROP TABLE IF EXISTS "
                                             index-table/*vectors-table* ", "

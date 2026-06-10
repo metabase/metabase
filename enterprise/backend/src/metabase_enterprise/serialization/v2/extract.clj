@@ -44,8 +44,8 @@
     (not (:no-custom-viz-plugins opts))
     (conj "CustomVizPlugin")
 
-    (not (:no-semantic-layer-index opts))
-    (conj "SemanticLayerIndex")))
+    (not (:no-curated-search opts))
+    (conj "CuratedSearchEntry")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"

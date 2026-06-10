@@ -1,8 +1,8 @@
-(ns metabase-enterprise.semantic-layer-search.reconcile-test
+(ns metabase-enterprise.curated-search.reconcile-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-layer-search.index-table :as index-table]
-   [metabase-enterprise.semantic-layer-search.reconcile :as reconcile]
+   [metabase-enterprise.curated-search.index-table :as index-table]
+   [metabase-enterprise.curated-search.reconcile :as reconcile]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.test :as mt]
@@ -42,8 +42,8 @@
   `(when semantic.db.datasource/db-url
      (let [suffix# (System/nanoTime)
            ~ds-sym (semantic.db.datasource/ensure-initialized-data-source!)]
-       (binding [index-table/*vectors-table* (str "semantic_layer_index_vectors_test_" suffix#)
-                 index-table/*meta-table*    (str "semantic_layer_index_meta_test_" suffix#)]
+       (binding [index-table/*vectors-table* (str "curated_search_index_test_" suffix#)
+                 index-table/*meta-table*    (str "curated_search_index_meta_test_" suffix#)]
          (try
            ~@body
            (finally
@@ -60,13 +60,13 @@
 (deftest ^:sequential reconcile-lifecycle-test
   (with-isolated-mirror [ds]
     (let [model semantic.tu/mock-embedding-model]
-      (mt/with-temp [:model/SemanticLayerIndex {id-1 :id}
+      (mt/with-temp [:model/CuratedSearchEntry {id-1 :id}
                      {:search_prompt "monthly revenue"
                       :entity {:model "table" :id 1}}
-                     :model/SemanticLayerIndex {id-2 :id}
+                     :model/CuratedSearchEntry {id-2 :id}
                      {:search_prompt "orders and customers" :verified true
                       :entity {:model "table" :id 2}}]
-        (let [appdb-total (t2/count :model/SemanticLayerIndex)]
+        (let [appdb-total (t2/count :model/CuratedSearchEntry)]
           (testing "first run mirrors every appdb row"
             (is (=? {:upserted appdb-total :deleted 0 :unchanged 0}
                     (reconcile/reconcile! ds model)))
@@ -78,7 +78,7 @@
             (is (=? {:upserted 0 :deleted 0 :unchanged appdb-total}
                     (reconcile/reconcile! ds model))))
           (testing "an updated row is re-embedded; the rest stay unchanged"
-            (t2/update! :model/SemanticLayerIndex id-1 {:verified true})
+            (t2/update! :model/CuratedSearchEntry id-1 {:verified true})
             (is (=? {:upserted 1 :deleted 0 :unchanged (dec appdb-total)}
                     (reconcile/reconcile! ds model)))
             (is (=? {:verified true}
@@ -97,10 +97,10 @@
 (deftest ^:sequential rebuild-on-model-change-test
   (with-isolated-mirror [ds]
     (let [model semantic.tu/mock-embedding-model]
-      (mt/with-temp [:model/SemanticLayerIndex _
+      (mt/with-temp [:model/CuratedSearchEntry _
                      {:search_prompt "monthly revenue"
                       :entity {:model "table" :id 1}}]
-        (let [appdb-total (t2/count :model/SemanticLayerIndex)]
+        (let [appdb-total (t2/count :model/CuratedSearchEntry)]
           (testing "populate the mirror under the original model"
             (is (=? {:upserted appdb-total} (reconcile/reconcile! ds model))))
           (testing "a model-identity change drops the vectors table and the next run re-embeds everything"

@@ -136,7 +136,7 @@
      sample-data
      search
      secrets
-     semantic-layer-search
+     curated-search
      server
      session
      settings

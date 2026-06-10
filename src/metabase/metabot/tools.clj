@@ -15,12 +15,12 @@
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.create-dashboard-subscription :as tools.create-dashboard-subscription]
+   [metabase.metabot.tools.curated-search :as tools.curated-search]
    [metabase.metabot.tools.document :as tools.document]
    [metabase.metabot.tools.metadata :as tools.metadata]
    [metabase.metabot.tools.navigation :as tools.navigation]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.search :as tools.search]
-   [metabase.metabot.tools.semantic-layer-search :as tools.semantic-layer-search]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.metabot.tools.slackbot-query :as tools.slackbot-query]
@@ -42,8 +42,8 @@
   sql-search-tool
   nlq-search-tool
   transform-search-tool]
- [tools.semantic-layer-search
-  semantic-layer-search-tool]
+ [tools.curated-search
+  curated-search-tool]
  [tools.construct
   construct-notebook-query-tool]
  [tools.document

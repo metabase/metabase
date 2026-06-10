@@ -139,7 +139,7 @@
     :model/MetabotSourceFeedback
     :model/MetabotUsedTable
     :model/MetabotPrompt
-    :model/SemanticLayerIndex]
+    :model/CuratedSearchEntry]
    (when config/ee-available?
      [:model/MetabotPermissions
       :model/MetabotGroupLimit

@@ -1,8 +1,8 @@
-(ns metabase.metabot.tools.semantic-layer-search-test
+(ns metabase.metabot.tools.curated-search-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.metabot.tools.semantic-layer-search :as semantic-layer-search]
+   [metabase.metabot.tools.curated-search :as curated-search]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -17,17 +17,17 @@
                                    :data        []
                                    :total_count 0
                                    :weak_match  false}}
-              (semantic-layer-search/semantic-layer-search-tool
+              (curated-search/curated-search-tool
                {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test
-  (let [similarity (var-get #'semantic-layer-search/similarity)]
+  (let [similarity (var-get #'curated-search/similarity)]
     (testing "similarity is pulled from the :similarity score factor"
       (is (= 0.8 (similarity {:scores [{:name :similarity :score 0.8} {:name :verified :score 1.0}]})))
       (is (= 0.0 (similarity {:scores [{:name :verified :score 1.0}]}))))))
 
 (deftest dedupe-by-entity-test
-  (let [dedupe (var-get #'semantic-layer-search/dedupe-by-entity)
+  (let [dedupe (var-get #'curated-search/dedupe-by-entity)
         results [{:entity {:model "metric" :id 9} :score {:total_score 0.95}}   ; entity 9, best
                  {:entity {:model "metric" :id 9} :score {:total_score 0.80}}   ; entity 9 again (sibling prompt)
                  {:entity {:model "table" :id 1} :score {:total_score 0.70}}]]
@@ -37,7 +37,7 @@
         (is (= [0.95 0.70] (mapv (comp :total_score :score) out)))))))
 
 (deftest format-output-test
-  (let [format-output (var-get #'semantic-layer-search/format-output)
+  (let [format-output (var-get #'curated-search/format-output)
         ;; matches as produced by build-matches: :entity is already a full search-result record.
         matches [{:saved_search_prompt "monthly revenue by region"
                   :usage_instructions  "Use the Revenue metric; group by month."
@@ -66,7 +66,7 @@
       (is (not (str/starts-with? out "<note>"))))))
 
 (deftest xml-escaping-test
-  (let [format-output (var-get #'semantic-layer-search/format-output)
+  (let [format-output (var-get #'curated-search/format-output)
         matches [{:saved_search_prompt "P&L by quarter <2026>"
                   :usage_instructions  "Profit & loss; values < 0 are losses."
                   :similarity 0.7 :weak? false
@@ -78,7 +78,7 @@
       (is (str/includes? out "<usage_instructions>Profit &amp; loss; values &lt; 0 are losses.</usage_instructions>")))))
 
 (deftest weak-match-note-test
-  (let [format-output (var-get #'semantic-layer-search/format-output)
+  (let [format-output (var-get #'curated-search/format-output)
         matches [{:saved_search_prompt "something only loosely related"
                   :usage_instructions "" :similarity 0.20 :weak? true
                   :score {:total_score 0.20}
@@ -90,7 +90,7 @@
       (is (str/includes? out "confidence=\"weak\"")))))
 
 (deftest flatten-data-test
-  (let [flatten-data (var-get #'semantic-layer-search/flatten-data)
+  (let [flatten-data (var-get #'curated-search/flatten-data)
         matches [{:saved_search_prompt "p1" :usage_instructions "u1"
                   :score {:total_score 0.9} :similarity 0.7 :weak? false
                   :entity {:type "metric" :id 9 :name "Revenue"}}

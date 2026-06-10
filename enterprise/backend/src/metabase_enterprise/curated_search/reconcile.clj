@@ -1,5 +1,5 @@
-(ns metabase-enterprise.semantic-layer-search.reconcile
-  "Reconciles the pgvector mirror with the authoritative appdb `semantic_layer_index` table.
+(ns metabase-enterprise.curated-search.reconcile
+  "Reconciles the pgvector mirror with the authoritative appdb `curated_search_entries` table.
 
   Rather than streaming individual writes (the table is curated and small — hundreds to low thousands of
   rows), [[reconcile!]] diffs the whole table against the mirror by content hash on every run: rows whose
@@ -8,13 +8,13 @@
   Because each run re-derives the mirror from the appdb, any missed write — pgvector downtime, a crashed
   node, an import that bypassed the model hooks — is repaired on the next run with no operator action.
 
-  Runs from the [[metabase-enterprise.semantic-layer-search.task.sync]] Quartz job; callers supply the
+  Runs from the [[metabase-enterprise.curated-search.task.sync]] Quartz job; callers supply the
   datasource and embedding model so this namespace reads no settings itself."
   (:require
    [buddy.core.hash :as buddy-hash]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-layer-search.index-table :as index-table]
+   [metabase-enterprise.curated-search.index-table :as index-table]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -89,7 +89,7 @@
   Returns {:upserted n :deleted n :unchanged n}."
   [pgvector embedding-model]
   (index-table/ensure-tables! pgvector embedding-model)
-  (let [appdb-rows (t2/select [:model/SemanticLayerIndex :id :search_prompt :usage_instructions
+  (let [appdb-rows (t2/select [:model/CuratedSearchEntry :id :search_prompt :usage_instructions
                                :entity :verified])
         mirrored   (mirror-hashes pgvector)
         stale      (remove #(= (content-hash %) (get mirrored (:id %))) appdb-rows)
@@ -101,7 +101,7 @@
                        (+ n (try
                               (upsert-batch! pgvector embedding-model batch)
                               (catch Exception e
-                                (log/error e "semantic layer mirror: failed to upsert batch of"
+                                (log/error e "curated search mirror: failed to upsert batch of"
                                            (count batch) "rows; will retry next run")
                                 0)))))
                     0

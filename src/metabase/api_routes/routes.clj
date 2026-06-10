@@ -21,6 +21,7 @@
    [metabase.collections-rest.api]
    [metabase.comments.api]
    [metabase.config.core :as config]
+   [metabase.curated-search.api]
    [metabase.dashboards-rest.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
@@ -54,7 +55,6 @@
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.api]
-   [metabase.semantic-layer-search.api]
    [metabase.session.api]
    [metabase.settings-rest.api]
    [metabase.setup-rest.api]
@@ -112,7 +112,7 @@
          metabase.query-processor.api/keep-me
          metabase.revisions.api/keep-me
          metabase.segments.api/keep-me
-         metabase.semantic-layer-search.api/keep-me
+         metabase.curated-search.api/keep-me
          metabase.settings-rest.api/keep-me
          metabase.setup-rest.api/keep-me
          metabase.task-history.api/keep-me
@@ -223,7 +223,7 @@
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)
    "/segment"              (+auth 'metabase.segments.api)
-   "/semantic-layer-search" (+auth 'metabase.semantic-layer-search.api)
+   "/curated-search" (+auth 'metabase.curated-search.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api

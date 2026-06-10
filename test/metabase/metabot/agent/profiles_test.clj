@@ -63,7 +63,9 @@
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
         (is (= 10 (:max-iterations profile)))
         (is (= 0.3 (:temperature profile)))
-        (is (contains? (tool-names profile) "semantic_layer_search"))
+        ;; nlq offers both the general search and the curated search tool (the latter feature-gated)
+        (is (contains? (tool-names profile) "search"))
+        (is (contains? (tool-names profile) "search_curated"))
         (is (contains? (tool-names profile) "construct_notebook_query"))))
     (testing "retrieves slackbot profile"
       (let [profile (profiles/get-profile :slackbot)]
@@ -155,11 +157,11 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "embedding_next and nlq profiles have identical tool sets, except nlq's data selection is the curated semantic layer"
+  (testing "nlq has the same tools as embedding_next plus the (feature-gated) curated search tool"
     (let [tool-names  (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding   (profiles/get-profile :embedding_next)
           nlq         (profiles/get-profile :nlq)]
-      (is (= (-> (tool-names nlq) (disj "semantic_layer_search") (conj "search"))
+      (is (= (disj (tool-names nlq) "search_curated")
              (tool-names embedding)))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "navigate_user is excluded without the capability"

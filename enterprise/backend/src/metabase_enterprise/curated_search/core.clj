@@ -1,14 +1,14 @@
-(ns metabase-enterprise.semantic-layer-search.core
-  "Enterprise implementation of the semantic layer mirror: pgvector-backed similarity search over the
-  curated `semantic_layer_index` table, and the write-path nudge that keeps the mirror fresh.
+(ns metabase-enterprise.curated-search.core
+  "Enterprise implementation of the curated search mirror: pgvector-backed similarity search over the
+  curated `curated_search_entries` table, and the write-path nudge that keeps the mirror fresh.
 
-  OSS shims live in [[metabase.semantic-layer-search.mirror]]; the background sync they nudge is the
-  [[metabase-enterprise.semantic-layer-search.task.sync]] Quartz job."
+  OSS shims live in [[metabase.curated-search.mirror]]; the background sync they nudge is the
+  [[metabase-enterprise.curated-search.task.sync]] Quartz job."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
-   [metabase-enterprise.semantic-layer-search.index-table :as index-table]
+   [metabase-enterprise.curated-search.index-table :as index-table]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -24,11 +24,11 @@
 
 (def sync-job-key
   "Quartz job key of the background sync; [[request-sync!]] triggers it and
-  [[metabase-enterprise.semantic-layer-search.task.sync]] schedules it."
-  (jobs/key "metabase-enterprise.semantic-layer-search.sync.job"))
+  [[metabase-enterprise.curated-search.task.sync]] schedules it."
+  (jobs/key "metabase-enterprise.curated-search.sync.job"))
 
 (defn available?
-  "Whether the semantic layer mirror can run on this instance: a pgvector store is configured and the
+  "Whether the curated search mirror can run on this instance: a pgvector store is configured and the
   license includes semantic search."
   []
   (and (string? (not-empty semantic.db.datasource/db-url))
@@ -43,9 +43,8 @@
   (when (available?)
     (task/trigger-now! sync-job-key)))
 
-;; Weighted scorers, mirroring the regular search scoring shape (see metabase.search.scoring):
-;; each factor contributes weight * score, and :total_score is their sum. Similarity (1 - cosine
-;; distance) is the primary signal; verified is a flat 0/1 indicator boost.
+;; Weighted scoring shaped like regular search (metabase.search.scoring): each factor contributes
+;; weight * score; similarity (1 - cosine distance) is primary, verified a flat 0/1 boost.
 (def ^:private similarity-weight 1.0)
 (def ^:private verified-weight 0.1)
 (def ^:private default-limit 10)
@@ -85,11 +84,9 @@
           embedding (embedding/get-embedding model user-search-prompt
                                              {:type :query :record-tokens? true})
           lit       (index-table/format-embedding embedding)
-          ;; the LIMIT must apply to the blended ranking, not raw distance, or a verified row whose
-          ;; boost would lift it into the top N gets cut before scoring. Minimizing
-          ;; distance - verified-boost is equivalent to maximizing the blended score below.
-          ;; An HNSW index couldn't accelerate this expression anyway, so the table has none and this is
-          ;; an exact scan — intentional, and microseconds at curated-table scale.
+          ;; Order by the blended score, not raw distance, so a verified row whose boost lifts it into
+          ;; the top N survives the LIMIT. No HNSW index could accelerate this expression — see
+          ;; index-table for why the table has none.
           ranking   (format "(embedding <=> %s) - (CASE WHEN verified THEN %s ELSE 0.0 END)"
                             lit verified-weight)
           rows      (try

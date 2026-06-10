@@ -1,5 +1,5 @@
-(ns metabase.semantic-layer-search.api
-  "Admin REST API for managing semantic layer entries: curated search prompts mapped to the entities
+(ns metabase.curated-search.api
+  "Admin REST API for managing curated search entries: curated search prompts mapped to the entities
   that answer them."
   (:require
    [metabase.api.common :as api]
@@ -41,31 +41,31 @@
       [:total  :int]
       [:limit  :int]
       [:offset :int]]
-  "Get all semantic layer entries, paginated."
+  "Get all curated search entries, paginated."
   [_route-params
    _query-params]
   (api/check-superuser)
   (let [limit  (or (request/limit) default-limit)
         offset (or (request/offset) default-offset)]
-    {:data   (t2/select :model/SemanticLayerIndex
+    {:data   (t2/select :model/CuratedSearchEntry
                         {:order-by [[:id :asc]]
                          :limit    limit
                          :offset   offset})
-     :total  (t2/count :model/SemanticLayerIndex)
+     :total  (t2/count :model/CuratedSearchEntry)
      :limit  limit
      :offset offset}))
 
 (api.macros/defendpoint :get "/:id"
   :- Entry
-  "Get a semantic layer entry by ID."
+  "Get a curated search entry by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/SemanticLayerIndex :id id)))
+  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id)))
 
 (api.macros/defendpoint :post "/"
   :- Entry
-  "Create a new semantic layer entry."
+  "Create a new curated search entry."
   [_route-params
    _query-params
    {:keys [search_prompt usage_instructions entity verified]}
@@ -75,7 +75,7 @@
        [:entity             EntityRef]
        [:verified           {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (t2/insert-returning-instance! :model/SemanticLayerIndex
+  (t2/insert-returning-instance! :model/CuratedSearchEntry
                                  {:search_prompt      search_prompt
                                   :usage_instructions usage_instructions
                                   :entity             entity
@@ -83,7 +83,7 @@
 
 (api.macros/defendpoint :put "/:id"
   :- Entry
-  "Update a semantic layer entry by ID. Only the provided fields are changed; sending a null
+  "Update a curated search entry by ID. Only the provided fields are changed; sending a null
   usage_instructions clears it."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
@@ -96,22 +96,22 @@
        [:entity             {:optional true} EntityRef]
        [:verified           {:optional true} :boolean]]]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/SemanticLayerIndex :id id))
+  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id))
   (let [changes (cond-> {}
                   (contains? body :search_prompt)      (assoc :search_prompt search_prompt)
                   (contains? body :usage_instructions) (assoc :usage_instructions usage_instructions)
                   (contains? body :entity)             (assoc :entity entity)
                   (contains? body :verified)           (assoc :verified verified))]
     (when (seq changes)
-      (t2/update! :model/SemanticLayerIndex id changes)))
-  (t2/select-one :model/SemanticLayerIndex :id id))
+      (t2/update! :model/CuratedSearchEntry id changes)))
+  (t2/select-one :model/CuratedSearchEntry :id id))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
-  "Delete a semantic layer entry by ID."
+  "Delete a curated search entry by ID."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (api/check-superuser)
-  (api/check-404 (t2/select-one :model/SemanticLayerIndex :id id))
-  (t2/delete! :model/SemanticLayerIndex :id id)
+  (api/check-404 (t2/select-one :model/CuratedSearchEntry :id id))
+  (t2/delete! :model/CuratedSearchEntry :id id)
   api/generic-204-no-content)

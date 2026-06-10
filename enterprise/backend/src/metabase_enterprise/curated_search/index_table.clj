@@ -1,9 +1,9 @@
-(ns metabase-enterprise.semantic-layer-search.index-table
-  "Lifecycle of the pgvector tables backing the semantic layer mirror.
+(ns metabase-enterprise.curated-search.index-table
+  "Lifecycle of the pgvector tables backing the curated search mirror.
 
   Two tables live in the pgvector store:
 
-  - the vectors table: one row per appdb `semantic_layer_index` row, carrying the embedding, a copy of
+  - the vectors table: one row per appdb `curated_search_entries` row, carrying the embedding, a copy of
     the searchable fields, and a `content_hash` used by the reconciler to detect stale rows;
   - a single-row meta table recording the embedding model identity and schema version the vectors table
     was built for.
@@ -30,11 +30,11 @@
 
 (def ^:dynamic *vectors-table*
   "Vectors table name. Dynamic so tests can rebind it to an isolated table."
-  "semantic_layer_index_vectors")
+  "curated_search_index")
 
 (def ^:dynamic *meta-table*
   "Meta table name. Dynamic so tests can rebind it to an isolated table."
-  "semantic_layer_index_meta")
+  "curated_search_index_meta")
 
 (def schema-version
   "Version of the vectors table schema.

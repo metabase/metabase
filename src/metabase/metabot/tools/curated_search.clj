@@ -1,5 +1,5 @@
-(ns metabase.metabot.tools.semantic-layer-search
-  "Metabot `semantic_layer_search` tool, backed by the curated semantic layer.
+(ns metabase.metabot.tools.curated-search
+  "Metabot `search_curated` tool, backed by the curated search index.
 
   Instead of ranking the whole instance, it matches the user's request by vector similarity against a
   hand-curated library of saved search prompts, each mapped to the single entity that answers it.
@@ -11,16 +11,16 @@
   tool returns (`portable_entity_id`, fully-qualified names, database names, metric base tables), so the
   agent can build a query inline without an extra `read_resource` round-trip.
 
-  Because profiles may use this tool without a general-search fallback, the tool also surfaces the raw
-  cosine `similarity` of each match and flags low-confidence results, so a miss reads as a miss rather
-  than a confident-but-wrong curated hit.
-  The similarity search runs in the enterprise pgvector store via [[metabase.semantic-layer-search.core]]."
+  Even where a general search is also offered, the tool surfaces the raw cosine `similarity` of each
+  match and flags low-confidence results, so a curated miss reads as a miss rather than a
+  confident-but-wrong curated hit.
+  The similarity search runs in the enterprise pgvector store via [[metabase.curated-search.core]]."
   (:require
    [clojure.string :as str]
+   [metabase.curated-search.core :as curated-search]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.semantic-layer-search.core :as semantic-layer-search]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -51,7 +51,7 @@
 (def ^:private limit-desc
   (str "Maximum number of distinct curated matches (default " default-limit ", max " max-limit ")."))
 
-(def ^:private semantic-layer-search-schema
+(def ^:private curated-search-schema
   [:map {:closed true}
    [:user_search_prompt [:string {:description user-search-prompt-desc}]]
    [:limit {:optional true} [:maybe [:int {:min 1 :max max-limit :description limit-desc}]]]])
@@ -63,7 +63,7 @@
        "use (already hydrated with the ids, names and portable references you need). similarity is the "
        "raw cosine match strength; a match flagged confidence=\"weak\" (or a leading note element) means "
        "nothing in the curated layer clearly matches — don't build on it blindly; prefer asking the user "
-       "to clarify or narrow the request."))
+       "to clarify or narrow the request, or use the general search tool for uncurated results."))
 
 (defn- similarity
   "Raw cosine similarity (1 - distance) for a match, from its score breakdown."
@@ -86,7 +86,7 @@
   record.
   Each match: `{:saved_search_prompt :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
-  (let [raw     (semantic-layer-search/search
+  (let [raw     (curated-search/search
                  user-search-prompt (min over-fetch-cap (* over-fetch-factor n)))
         top     (take n (dedupe-by-entity raw))
         by-key  (into {} (map (juxt (juxt :type :id) identity))
@@ -137,19 +137,25 @@
                  :confidence          (if weak? "weak" "strong")))
         matches))
 
-(mu/defn ^{:tool-name "semantic_layer_search"
-           :scope     scope/agent-search}
-  semantic-layer-search-tool
-  "Find the best data to answer the user's request from the curated semantic layer — a vetted library of
+(mu/defn ^{:tool-name    "search_curated"
+           :scope        scope/agent-search
+           ;; only offered to users whose license includes semantic search (the mirror's backing store);
+           ;; :feature-semantic-search is derived in profiles/feature-capabilities.
+           :capabilities #{:feature-semantic-search}}
+  curated-search-tool
+  "Find the best data to answer the user's request from the curated search index — a vetted library of
   saved prompts, each mapped to the entity that answers it. Phrase `user_search_prompt` as a full
   natural-language description of the data wanted (it is matched on meaning, not keywords).
+
+  Prefer this over the general `search` tool: try it first, and fall back to `search` only when no
+  curated match is strong, or to complement a curated match with broader (uncurated) results.
 
   Returns a handful of distinct curated matches, best-first. Each match has `saved_search_prompt`, curator
   `usage_instructions`, a raw `similarity`, and the `entity` — a full search record (name, type, database,
   `portable_entity_id`, fully-qualified name) you can use directly. If the top match is flagged
   low-confidence (a leading <note> / confidence=\"weak\"), nothing in the curated layer clearly matches —
-  prefer asking the user to clarify rather than building on it."
-  [{:keys [user_search_prompt limit]} :- semantic-layer-search-schema]
+  prefer asking the user to clarify, or fall back to the general `search` tool for uncurated results."
+  [{:keys [user_search_prompt limit]} :- curated-search-schema]
   (try
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
@@ -159,5 +165,5 @@
                            :total_count (count matches)
                            :weak_match  (boolean (:weak? (first matches)))}})
     (catch Exception e
-      (log/error e "Error in semantic layer search")
-      {:output (str "semantic_layer_search failed: " (or (ex-message e) "Unknown error"))})))
+      (log/error e "Error in curated search")
+      {:output (str "search_curated failed: " (or (ex-message e) "Unknown error"))})))

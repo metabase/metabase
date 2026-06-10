@@ -38,7 +38,7 @@
            "FieldValues"
            "Metabot"
            "PythonLibrary"
-           "SemanticLayerIndex"
+           "CuratedSearchEntry"
            "Setting"
            "Transform"
            "TransformJob"
