@@ -1,13 +1,15 @@
-import type { ReactNode } from "react";
-import { Component, createRef } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
+import { useCallback, useState } from "react";
+import { Link } from "react-router";
 
-import { EntityMenuItem } from "metabase/common/components/EntityMenuItem";
 import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import type { EntityMenuIconButtonProps } from "metabase/common/components/EntityMenuTrigger/EntityMenuTrigger.styled";
-import CS from "metabase/css/core/index.css";
-import { Divider, Popover } from "metabase/ui";
+import { Icon, Menu, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
 import type { IconName } from "metabase-types/api";
+
+import S from "./EntityMenu.module.css";
 
 interface EntityMenuBaseItem {
   key?: string;
@@ -39,7 +41,7 @@ interface EntityMenuComponentItem extends EntityMenuBaseItem {
 }
 
 interface EntityMenuActionItem extends EntityMenuStyledItem {
-  action?: (...args: any[]) => void;
+  action?: (...args: never[]) => void;
   link?: string;
   externalLink?: boolean;
   event?: string;
@@ -61,7 +63,7 @@ interface EntityMenuProps {
   triggerProps?: EntityMenuIconButtonProps;
   minWidth?: number;
   tooltip?: string;
-  trigger?: React.ReactElement;
+  trigger?: ReactElement;
   renderTrigger?: (props: { open: boolean; onClick: () => void }) => ReactNode;
   triggerAriaLabel?: string;
   tooltipPlacement?: "top" | "bottom";
@@ -69,177 +71,252 @@ interface EntityMenuProps {
   className?: string;
 }
 
-interface EntityMenuState {
-  open: boolean;
-  freezeMenu: boolean;
-  menuItemContent: ReactNode;
+type EntityMenuItemStyle = CSSProperties & {
+  "--entity-menu-item-color"?: string;
+  "--entity-menu-item-hover-color"?: string;
+  "--entity-menu-item-hover-bg-color"?: string;
+};
+
+function getItemStyle(
+  item: EntityMenuStyledItem,
+): EntityMenuItemStyle | undefined {
+  const style: EntityMenuItemStyle = {};
+
+  if (item.color) {
+    style["--entity-menu-item-color"] = color(item.color);
+  }
+
+  if (item.hoverColor) {
+    style["--entity-menu-item-hover-color"] = color(item.hoverColor);
+  }
+
+  if (item.hoverBgColor) {
+    style["--entity-menu-item-hover-bg-color"] = color(item.hoverBgColor);
+  }
+
+  return Object.keys(style).length > 0 ? style : undefined;
+}
+
+function getLeftSection(icon: string | undefined) {
+  if (!icon) {
+    return undefined;
+  }
+
+  return <Icon name={icon as IconName} size={16} aria-hidden />;
+}
+
+interface MenuItemTooltipProps {
+  tooltip?: ReactNode;
+  children: ReactElement;
+}
+
+function MenuItemTooltip({ tooltip, children }: MenuItemTooltipProps) {
+  return (
+    <Tooltip label={tooltip} disabled={tooltip == null} position="right">
+      {children}
+    </Tooltip>
+  );
 }
 
 /**
  * @deprecated: use Menu from "metabase/ui"
  */
-export class EntityMenu extends Component<EntityMenuProps, EntityMenuState> {
-  state: EntityMenuState = {
-    open: false,
-    freezeMenu: false,
-    menuItemContent: null,
-  };
+export function EntityMenu({
+  items,
+  triggerIcon = "ellipsis",
+  triggerProps,
+  minWidth,
+  tooltip,
+  trigger,
+  renderTrigger,
+  triggerAriaLabel,
+  tooltipPlacement,
+  transitionDuration = 150,
+  className,
+}: EntityMenuProps) {
+  const [opened, setOpened] = useState(false);
+  const [freezeMenu, setFreezeMenu] = useState(false);
+  const [menuItemContent, setMenuItemContent] = useState<ReactNode>(null);
 
-  rootRef = createRef<HTMLDivElement>();
+  const closeMenu = useCallback(() => {
+    setOpened(false);
+    setMenuItemContent(null);
+  }, []);
 
-  toggleMenu = () => {
-    if (this.state.freezeMenu) {
+  const toggleMenu = useCallback(() => {
+    if (freezeMenu) {
       return;
     }
 
-    const open = !this.state.open;
-    this.setState({ open, menuItemContent: null });
-  };
+    setOpened((opened) => {
+      const nextOpened = !opened;
+      setMenuItemContent(null);
+      return nextOpened;
+    });
+  }, [freezeMenu]);
 
-  setFreezeMenu = (freezeMenu: boolean) => {
-    this.setState({ freezeMenu });
-  };
+  const handleOpenedChange = useCallback(
+    (nextOpened: boolean) => {
+      if (freezeMenu) {
+        return;
+      }
 
-  replaceMenuWithItemContent = (menuItemContent: ReactNode) => {
-    this.setState({ menuItemContent });
-  };
+      setOpened(nextOpened);
+      setMenuItemContent(null);
+    },
+    [freezeMenu],
+  );
 
-  render() {
-    const {
-      items,
-      triggerIcon = "ellipsis",
-      triggerProps,
-      minWidth,
-      tooltip,
-      trigger,
-      renderTrigger,
-      triggerAriaLabel,
-      tooltipPlacement,
-      transitionDuration = 150,
-      className,
-    } = this.props;
-    const { open, menuItemContent } = this.state;
+  const replaceMenuWithItemContent = useCallback((content: ReactNode) => {
+    setMenuItemContent(content);
+  }, []);
 
-    return (
-      <Popover
-        opened={open}
-        transitionProps={{ duration: transitionDuration }}
-        onChange={() => this.toggleMenu()}
-        position="bottom-end"
-      >
-        <Popover.Target>
-          <div className={className}>
-            {renderTrigger ? (
-              renderTrigger({ open, onClick: this.toggleMenu })
-            ) : (
-              <EntityMenuTrigger
-                ariaLabel={triggerAriaLabel}
-                trigger={trigger}
-                icon={triggerIcon}
-                onClick={this.toggleMenu}
-                open={open}
-                tooltip={tooltip}
-                tooltipPlacement={tooltipPlacement}
-                triggerProps={triggerProps}
-              />
-            )}
-          </div>
-        </Popover.Target>
-        <Popover.Dropdown>
-          {menuItemContent || (
-            <ol className={CS.p1} style={{ minWidth: minWidth ?? 184 }}>
-              {items.map((item) => {
-                if (!item) {
-                  return null;
-                }
+  const target = (
+    <div className={className}>
+      {renderTrigger ? (
+        renderTrigger({ open: opened, onClick: toggleMenu })
+      ) : (
+        <EntityMenuTrigger
+          ariaLabel={triggerAriaLabel}
+          trigger={trigger}
+          icon={triggerIcon}
+          onClick={toggleMenu}
+          open={opened}
+          tooltip={tooltip}
+          tooltipPlacement={tooltipPlacement}
+          triggerProps={triggerProps}
+        />
+      )}
+    </div>
+  );
 
-                const key =
-                  item.key ?? ("title" in item ? item.title : undefined);
-                const itemId = key
-                  ? `entity-menu-item-${encodeURIComponent(key)}`
-                  : undefined;
+  return (
+    <Menu
+      opened={opened}
+      onChange={handleOpenedChange}
+      position="bottom-end"
+      transitionProps={{ duration: transitionDuration }}
+      closeOnItemClick={false}
+    >
+      <Menu.Target>{target}</Menu.Target>
+      <Menu.Dropdown miw={minWidth ?? 184}>
+        {menuItemContent ||
+          items.map((item, index) => {
+            if (!item) {
+              return null;
+            }
 
-                if ("separator" in item && item.separator) {
-                  return (
-                    <li key={key}>
-                      <Divider m="sm" />
-                    </li>
-                  );
-                }
+            const key = item.key ?? ("title" in item ? item.title : index);
 
-                if ("content" in item && item.content) {
-                  return (
-                    <li
-                      key={key}
-                      data-testid={item.testId}
-                      aria-labelledby={itemId}
+            if ("separator" in item && item.separator) {
+              return <Menu.Divider key={key} />;
+            }
+
+            if ("content" in item && item.content) {
+              return (
+                <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                  <Menu.Item
+                    className={S.item}
+                    data-testid={item.testId}
+                    disabled={false}
+                    leftSection={getLeftSection(item.icon)}
+                    style={getItemStyle(item)}
+                    onClick={() =>
+                      replaceMenuWithItemContent(
+                        item.content(toggleMenu, setFreezeMenu),
+                      )
+                    }
+                  >
+                    {item.title}
+                  </Menu.Item>
+                </MenuItemTooltip>
+              );
+            }
+
+            if ("component" in item && item.component) {
+              return (
+                <div key={key} data-testid={item.testId}>
+                  {item.component}
+                </div>
+              );
+            }
+
+            if (
+              "action" in item &&
+              "link" in item &&
+              item.action &&
+              item.link
+            ) {
+              return null;
+            }
+
+            if ("link" in item && item.link) {
+              const handleClick = () => {
+                closeMenu();
+                item.onClose?.();
+              };
+
+              if (item.externalLink) {
+                return (
+                  <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                    <Menu.Item
+                      className={S.item}
+                      component="a"
+                      data-testid={item.testId ?? "entity-menu-link"}
+                      disabled={item.disabled}
+                      href={item.link}
+                      leftSection={getLeftSection(item.icon)}
+                      style={getItemStyle(item)}
+                      target="_blank"
+                      onClick={handleClick}
                     >
-                      <EntityMenuItem
-                        htmlId={itemId}
-                        icon={item.icon as IconName}
-                        title={item.title}
-                        action={() =>
-                          this.replaceMenuWithItemContent(
-                            item.content(this.toggleMenu, this.setFreezeMenu),
-                          )
-                        }
-                        tooltip={item.tooltip}
-                        color={item.color}
-                        hoverColor={item.hoverColor}
-                        hoverBgColor={item.hoverBgColor}
-                      />
-                    </li>
-                  );
-                }
+                      {item.title}
+                    </Menu.Item>
+                  </MenuItemTooltip>
+                );
+              }
 
-                if ("component" in item && item.component) {
-                  return (
-                    <li key={key} data-testid={item.testId}>
-                      {item.component}
-                    </li>
-                  );
-                }
+              return (
+                <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                  <Menu.Item
+                    className={S.item}
+                    component={Link}
+                    data-testid={item.testId ?? "entity-menu-link"}
+                    disabled={item.disabled}
+                    leftSection={getLeftSection(item.icon)}
+                    style={getItemStyle(item)}
+                    to={item.link}
+                    onClick={handleClick}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                </MenuItemTooltip>
+              );
+            }
 
-                if ("action" in item || "link" in item) {
-                  return (
-                    <li
-                      key={key}
-                      data-testid={item.testId}
-                      aria-labelledby={itemId}
-                    >
-                      <EntityMenuItem
-                        htmlId={itemId}
-                        icon={item.icon as IconName}
-                        title={item.title}
-                        externalLink={item.externalLink}
-                        action={
-                          item.action &&
-                          ((e) => {
-                            item.action?.(e);
-                            this.toggleMenu();
-                          })
-                        }
-                        link={item.link}
-                        tooltip={item.tooltip}
-                        disabled={item.disabled}
-                        onClose={() => {
-                          this.toggleMenu();
-                          item.onClose?.();
-                        }}
-                        color={item.color}
-                        hoverColor={item.hoverColor}
-                        hoverBgColor={item.hoverBgColor}
-                      />
-                    </li>
-                  );
-                }
+            if ("action" in item && item.action) {
+              return (
+                <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                  <Menu.Item
+                    className={S.item}
+                    data-testid={item.testId}
+                    disabled={item.disabled}
+                    leftSection={getLeftSection(item.icon)}
+                    style={getItemStyle(item)}
+                    onClick={() => {
+                      item.action?.();
+                      closeMenu();
+                    }}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                </MenuItemTooltip>
+              );
+            }
 
-                return null;
-              })}
-            </ol>
-          )}
-        </Popover.Dropdown>
-      </Popover>
-    );
-  }
+            return null;
+          })}
+      </Menu.Dropdown>
+    </Menu>
+  );
 }
