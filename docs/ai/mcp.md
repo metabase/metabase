@@ -9,7 +9,7 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server (using Streamable HTTP transport) that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
-# Enable MCP server
+## Enable MCP server
 
 _Admin > AI > MCP_
 
@@ -23,7 +23,7 @@ Under **Supported MCP clients**, switch on any clients you want to allow:
 
 - **Claude** (Claude Desktop and Claude on the web)
 - **Cursor and VS Code**
-- **ChatGPT**
+- **ChatGPT**, including **Codex**
 
 Toggling on a client automatically adds that client's sandbox domains to Metabase's CORS allowlist, which is what lets browser-based MCP clients make cross-origin requests to your Metabase.
 
@@ -39,7 +39,7 @@ https://mcp.internal.example.com https://*.staging.example.com
 
 The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
 
-## Connect an MCP client
+## Connect to an MCP client
 
 If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/metabase-mcp`. For example:
 
@@ -47,15 +47,17 @@ If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), al
 https://{your-metabase.example.com}/api/metabase-mcp
 ```
 
-In the terminal, for example, you can run the following command.
+You can find your instance's MCP URL in **Admin > AI > MCP**.
+
+For Claude Code, for example, you can run the following command.
 
 ```
 claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
 ```
 
-Replacing {your-metabase-url} with your Metabase address. Once added, Claude Code will handle the OAuth flow for you:
+replacing {your-metabase-url} with your Metabase address.
 
-For Claude Desktop, you can create a [custom connector](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) by just giving it that URL to your Metabase's mcp endpoint.
+Once you add the MCP server, your client will direct you to authentication page for your Metabase instance.
 
 ## Authentication
 
@@ -92,23 +94,38 @@ For example, if you ask your AI client to use your Metabase's MCP server "what's
 
 You don't need to have an [AI provider](settings.md#choose-ai-provider) configured in Metabase to use your Metabase's MCP server. If you _do_ have an AI provider configured in Metabase to power Metabot, that provider will _not_ be used for MCP server requests. MCP calls by your local client have no effect on token usage for your Metabase's AI connection.
 
+## Using the MCP server
+
+Metabase MCP server works best for ephemeral, in-the-moment questions like "hey what was our Q3 revenue?". Metabase's MCP server is also useful when combined with other MCP servers. For example, you can ask a question about your customers that combines data from Metabase, your CRM, and your support ticket platform.
+
+When you ask a question that can handled by Metabase MCP, the MCP server will return the result as either text or an inline chart, depending on the question you asked.
+
+If you want the MCP server to return an inline chart, ask it to "show" or "visualize" the data:
+
+![Show me the stuff](./images/mcp-chart.png)
+
+Currently, Metabase MCP server supports inline bar and line charts. On inline charts, you can drill-through, change time granularity, or explore them in Metabase.
+
+See [Available tools](#available-tools) for the list of functionality supported by the MCP server.
+
 ## Available tools
 
 Some clients (like Claude Desktop) will ask you to approve each tool the first time it's used. The MCP server builds on Metabase's [Agent API](./agent-api.md), and exposes the following tools. If you're building a custom integration and need full control, use the [Agent API](./agent-api.md) directly instead.
 
-### Discovery and reading
+#### Find and read content
 
 - **search**: Find tables, metrics, cards, dashboards, and collections using keyword or natural language search.
 - **read_resource**: Read one or more Metabase entities by `metabase://` URI. Covers database / schema / table / collection / card / dashboard / metric / transform navigation in a single tool. Up to 5 URIs per call.
 
-### Query construction and execution
+#### Query and visualize data
 
 - **construct_query**: Construct a query against a table or metric. Returns an opaque query handle that can be passed to `execute_query`.
 - **query**: Query a table or metric and return results.
 - **execute_query**: Execute a previously constructed query and return the results with column metadata, row count, and execution time.
 - **execute_sql**: Execute a raw SQL query against a database. Requires native-query permission on the target database. An admin can disable this tool instance-wide via the `mcp-execute-sql-enabled` setting.
+- **visualize_query**: render a chart inline in your AI client (bar or line chart only).
 
-### Writing
+#### Create content
 
 - **create_question**: Save a query as a named question (card).
 - **update_question**: Update a saved question. Setting `collection_id` moves the card to another collection.
@@ -116,11 +133,11 @@ Some clients (like Claude Desktop) will ask you to approve each tool the first t
 - **update_dashboard**: Update a dashboard's metadata (name, description, collection, archived).
 - **create_collection**: Create a new collection, optionally nested under a parent collection.
 
-## Use the MCP server with file-based development
+## Use the MCP server with agent-driven development
 
 You can use the MCP server to help you create Metabase content as serialized YAML files that you can import into your Metabase. Point your agent at the MCP server to give it access to your Metabase's database metadata (table names, fields, and sample values) so it can write questions and dashboards that point at real columns.
 
-See [File-based development](./file-based-development.md).
+See [Agent-driven development](./file-based-development.md).
 
 ## Further reading
 
