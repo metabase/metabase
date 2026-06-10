@@ -86,7 +86,6 @@ export function showTreemapHoverOverlay(
   chartRef: MutableRefObject<EChartsType | undefined>,
   overlayRef: TreemapHoverOverlayRef,
   nodeId: string,
-  fill: string,
 ): void {
   const chart = chartRef.current;
   if (!chart) {
@@ -101,11 +100,14 @@ export function showTreemapHoverOverlay(
       silent: true,
       z: HOVER_OVERLAY_Z,
       shape: rect,
-      style: { fill },
+      style: { fill: TREEMAP_HOVER_OVERLAY_FILL },
     });
     chart.getZr().add(overlayRef.current);
   } else {
-    overlayRef.current.attr({ shape: rect, style: { fill } });
+    overlayRef.current.attr({
+      shape: rect,
+      style: { fill: TREEMAP_HOVER_OVERLAY_FILL },
+    });
   }
 }
 
@@ -272,12 +274,10 @@ export function getTreemapHoverHandlers({
   chartRef,
   overlayRef,
   isDrilled,
-  overlayFill = TREEMAP_HOVER_OVERLAY_FILL,
 }: {
   chartRef: MutableRefObject<EChartsType | undefined>;
   overlayRef: TreemapHoverOverlayRef;
   isDrilled: boolean;
-  overlayFill?: string;
 }): EChartsEventHandler[] {
   return [
     {
@@ -290,7 +290,7 @@ export function getTreemapHoverHandlers({
         // Overview: wash the whole top-level section. Drilled: the section is
         // the canvas, so wash just the hovered tile.
         const targetId = isDrilled ? id : getTreemapDrillTargetNodeId(id);
-        showTreemapHoverOverlay(chartRef, overlayRef, targetId, overlayFill);
+        showTreemapHoverOverlay(chartRef, overlayRef, targetId);
       },
     },
     {
@@ -312,7 +312,6 @@ export function getTreemapEventHandlers({
   rawSeries,
   settings,
   onVisualizationClick,
-  overlayFill,
 }: {
   chartRef: MutableRefObject<EChartsType | undefined>;
   overlayRef: TreemapHoverOverlayRef;
@@ -324,7 +323,6 @@ export function getTreemapEventHandlers({
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   onVisualizationClick: VisualizationProps["onVisualizationClick"];
-  overlayFill?: string;
 }): EChartsEventHandler[] {
   return [
     getTreemapClickHandler({
@@ -341,7 +339,6 @@ export function getTreemapEventHandlers({
       chartRef,
       overlayRef,
       isDrilled,
-      overlayFill,
     }),
   ];
 }
