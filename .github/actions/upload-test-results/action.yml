@@ -121,8 +121,10 @@ runs:
           if (!pr) return;
           const { owner, repo } = context.repo;
           const sha = pr.head.sha;
-          const PREFIX = "<!-- info-driver-results:";
-          const marker = `${PREFIX}${sha} -->`;
+          // PREFIX matches the current per-commit marker AND the older per-leg one, so legacy
+          // comments from a previous version get cleaned up on the next sync.
+          const PREFIX = "<!-- info-driver-result";
+          const marker = `<!-- info-driver-results:${sha} -->`;
           const header = `${marker}\nℹ️ **Info-level drivers** ran non-blocking on \`${sha.slice(0, 7)}\` — these do not gate:`;
           const lineKey = `${LABEL}:${VARIANT}`;
           const title = VARIANT ? `${LABEL} (${VARIANT})` : LABEL;
