@@ -28,6 +28,19 @@ title: Driver interface changelog
     between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
     implementations for it.
 
+- Added the `:index/post-ctas-create` driver feature flag and two accompanying multimethods,
+  `metabase.driver/supported-index-methods` and `metabase.driver/compile-create-index`, for declaring and applying
+  indexes (and similar physical-layout hints like clustering keys or sort keys) on a transform's target table after
+  the table is created. `supported-index-methods` returns a map of `hint-kind` to a metadata map carrying at least
+  `:lifecycle` (`:post-ctas` for hints applied as a separate statement after the table exists, or `:ctas-inline` for
+  hints inlined into the CTAS); it defaults to `{}`. `compile-create-index` renders a `:post-ctas` hint into the DDL
+  statement(s) that create it (including `CREATE UNIQUE INDEX` for unique hints) and is only implemented by drivers
+  that support `:index/post-ctas-create`. Postgres implements both.
+
+- Added the `metabase.driver/refresh-table-stats!` multimethod, per-driver post-CTAS housekeeping that downstream
+  transforms depend on (e.g. `ANALYZE` on Postgres). It runs synchronously after a transform run and defaults to a
+  no-op.
+
 ## Metabase 0.62.0
 
 - `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and

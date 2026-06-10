@@ -21,6 +21,12 @@
     (is (= {:btree {:lifecycle :post-ctas, :unique? true}}
            (driver/supported-index-methods :postgres nil)))))
 
+(deftest default-impls-test
+  (testing "a driver without :index/post-ctas-create inherits safe defaults"
+    (is (false? (driver/database-supports? :h2 :index/post-ctas-create nil)))
+    (is (= {} (driver/supported-index-methods :h2 nil)))
+    (is (nil? (driver/refresh-table-stats! :h2 nil "public" "t" :table)))))
+
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
 (def ^:private render-cases
@@ -46,10 +52,16 @@
     :schema     nil :table "events"
     :structured {:kind :btree :name "idx_email" :columns [{:name "email"}] :unique true}
     :expected   "CREATE UNIQUE INDEX IF NOT EXISTS \"idx_email\" ON \"events\" USING BTREE (\"email\")"}
-   {:label      "quotes identifiers that need it"
+   {:label      "quotes identifiers that need it, including embedded double-quotes"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "weird idx" :columns [{:name "user id"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"user id\")"}])
+    :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}
+   ;; KNOWN LIMITATION: honey.sql treats `.` as a schema/table qualifier, so a dotted identifier is split. Pinned so
+   ;; the behavior is visible and a future change (API-layer validation, or a different renderer) trips this test.
+   {:label      "known limitation: a dotted column name is split into qualified parts"
+    :schema     nil :table "events"
+    :structured {:kind :btree :name "idx" :columns [{:name "weird.col"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"idx\" ON \"events\" USING BTREE (\"weird\".\"col\")"}])
 
 (deftest ^:parallel compile-create-index-test
   (doseq [{:keys [label schema table structured expected]} render-cases]

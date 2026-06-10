@@ -1428,6 +1428,10 @@
   ;; `:using-<kind>` keeps the access method data-driven: adding gin/gist/brin/hash/spgist needs no change here, only
   ;; advertising them in `supported-index-methods`. `:unique` renders CREATE UNIQUE INDEX. `:if-not-exists` keeps
   ;; re-application on every run idempotent.
+  ;;
+  ;; NOTE: honey.sql treats a `.` in an identifier as a schema/table qualifier, so an index or column name containing
+  ;; a literal dot is split (e.g. "a.b" -> "a"."b"). No user input reaches here in Phase 0; the API layer that
+  ;; eventually accepts user-supplied names must reject/validate dotted identifiers (or we revisit the rendering then).
   (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
         using     (keyword (str "using-" (name kind)))
         index-ref (if unique
