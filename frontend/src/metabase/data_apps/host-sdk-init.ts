@@ -7,7 +7,7 @@ import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 
 let cachedStore: ReturnType<typeof getSdkStore> | null = null;
 
