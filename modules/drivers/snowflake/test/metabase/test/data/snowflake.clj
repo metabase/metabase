@@ -68,7 +68,7 @@
     ;;
     ;; SESSION parameters
     ;;
-    :timezone            "UTC"
+    :timezone            (:timezone dbdef "UTC")
     ;; return times with millisecond precision, if we don't set this then Snowflake will only return them with second
     ;; precision. Important mostly because other DBs use millisecond precision by default and this makes Snowflake test
     ;; results match up with others
@@ -100,21 +100,12 @@
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
 (defn- old-dataset-names
-  "Return a collection of all dataset names that are old
-   -- tracked that haven't been touched in a while or are not tracked and too old"
+  "All dataset names that haven't been accessed in a while"
   []
   (let [days-ago -5
-        ;; tracked UNION ALL untracked
-        ;; NB. currently appears that the second half never shows anything; all
-        ;; datasets currently appear to be tracked.
-        query "(select name from metabase_test_tracking.PUBLIC.datasets
-                where accessed_at < dateadd(day, ?, current_timestamp()))
-               UNION All
-               (select database_name from metabase_test_tracking.information_schema.databases d
-                where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
-                and d.database_name like 'sha_%'
-                and created < dateadd(day, ?, current_timestamp()))"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
+        query "select name from metabase_test_tracking.PUBLIC.datasets
+               where accessed_at < dateadd(day, ?, current_timestamp())"]
+    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago]))))
 
 (defn- orphan-isolation-schemas
   "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
