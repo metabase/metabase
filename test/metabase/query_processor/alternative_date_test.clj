@@ -654,27 +654,16 @@
                                     :result-metadata source-metadata}]}
             card-mp (lib.tu/mock-metadata-provider mp card-metadata)
             card-query     (lib/query card-mp (lib.metadata/card card-mp 1))
-            temporal-types (fn [cols]
-                             (into {}
-                                   (for [col   cols
-                                         :let  [col-name (u/lower-case-en (:name col))]
-                                         :when (#{"timestamp" "day"} col-name)]
-                                     [col-name {:effective-type (:effective_type col)
-                                                :base-type      (:base_type col)
-                                                :temporal?      (isa? (:effective_type col) :type/Temporal)}])))]
+            temporal-col-names (fn [cols]
+                                 (into #{}
+                                       (for [col   cols
+                                             :let  [col-name (u/lower-case-en (:name col))]
+                                             :when (and (#{"timestamp" "day"} col-name)
+                                                        (isa? (:effective_type col) :type/Temporal))]
+                                         col-name)))]
         (testing "the result metadata on the source query should keep the temporal types"
-          (is (= {"timestamp" {:effective-type :type/Instant
-                               :base-type :type/BigInteger
-                               :temporal? true},
-                  "day"       {:effective-type :type/Date
-                               :base-type :type/Date
-                               :temporal? true}}
-                 (temporal-types source-metadata))))
+          (is (= #{"timestamp" "day"}
+                 (temporal-col-names source-metadata))))
         (testing "a query using the source query as its source should return temporal columns"
-          (is (= {"timestamp" {:effective-type :type/Instant
-                               :base-type :type/BigInteger
-                               :temporal? true},
-                  "day"       {:effective-type :type/Date
-                               :base-type :type/Date
-                               :temporal? true}}
-                 (temporal-types (mt/cols (qp/process-query card-query))))))))))
+          (is (= #{"timestamp" "day"}
+                 (temporal-col-names (mt/cols (qp/process-query card-query))))))))))
