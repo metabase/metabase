@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -57,7 +57,7 @@ const ArchiveDashboardModal = ({
 };
 
 export const ArchiveDashboardModalConnectedInner = (
-  props: OwnProps & WithRouterProps,
+  props: OwnProps & { params: { slug?: string } },
 ) => {
   const id = Urls.extractCollectionId(props.params?.slug);
   const { currentData: dashboard, error } = useGetDashboardQuery(

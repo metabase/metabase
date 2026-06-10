@@ -36,7 +36,7 @@ type SidesheetTab = "open" | "resolved";
 
 interface Props {
   params?: {
-    childTargetId: string;
+    childTargetId?: string;
   };
   onClose: () => void;
 }

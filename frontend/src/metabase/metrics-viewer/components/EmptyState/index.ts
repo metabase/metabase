@@ -1,4 +1,4 @@
 export {
   MetricsViewerEmptyState,
-  MetricsViewerNoTabsEmptyState,
+  MetricsViewerNoDimensionBreakoutEmptyState,
 } from "./MetricViewerEmptyState";

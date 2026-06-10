@@ -54,7 +54,7 @@
 (mu/defn execute-write-query!
   "Execute an writeback query (which currently has to be an MBQL 4 native query) from an action."
   [query :- ::lib.schema/native-only-query]
-  (qp.setup/with-qp-setup [query query]
+  (qp.setup/with-qp-setup [query (assoc query :impersonation/allow-write? true)]
     (let [query (qp.preprocess/preprocess query)]
       ;; make sure this is a native query.
       (when-not (lib/native-only-query? query)

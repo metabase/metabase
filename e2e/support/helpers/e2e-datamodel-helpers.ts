@@ -59,6 +59,7 @@ export const DataModel = {
     getSortDoneButton: getTableSortDoneButton,
     getSortOrderInput: getTableSortOrderInput,
     getSyncOptionsButton: getTableSyncOptionsButton,
+    getActionsMenuButton: getTableActionsMenuButton,
     getField: getTableSectionField,
     getFieldNameInput: getTableSectionFieldNameInput,
     getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
@@ -379,6 +380,10 @@ function getTableSortOrderInput() {
 
 function getTableSyncOptionsButton() {
   return getTableSection().findByRole("button", { name: /Sync/ });
+}
+
+function getTableActionsMenuButton() {
+  return getTableSection().findByRole("button", { name: "More actions" });
 }
 
 function getTableSectionField(name: string) {
@@ -895,5 +900,5 @@ function getSourceReplacementDependentsTab(count: number) {
 }
 
 function getSourceReplacementFindAndReplaceButton() {
-  return cy.findByRole("button", { name: "Find and replace" });
+  return cy.findByRole("menuitem", { name: /Find and replace/ });
 }

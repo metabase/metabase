@@ -1,5 +1,9 @@
 .inputWrapper {
   cursor: text;
+  min-height: 3rem;
+  padding: 0.5rem;
+  background: var(--mb-color-background-secondary);
+  border-radius: 1rem;
 }
 
 .inputField {
