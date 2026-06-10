@@ -232,8 +232,8 @@
 
   Input: `{\"provider/model\" {:promptTokens N :completionTokens N}}`.
 
-  Output: `{:usage {:input_tokens N :output_tokens N :total_tokens N}
-            :usage_by_model {\"provider/model\" {…}}}`
+  Output: `{:usage {:inputTokens N :outputTokens N :totalTokens N}
+            :usageByModel {\"provider/model\" {…}}}`
 
   Returns nil if no usage was observed. Reasoning/cached token counts are
   omitted — our provider adapters don't surface them yet."
@@ -242,14 +242,14 @@
     (let [by-model (update-vals usage-by-model
                                 (fn [{:keys [promptTokens completionTokens]
                                       :or   {promptTokens 0 completionTokens 0}}]
-                                  {:input_tokens  promptTokens
-                                   :output_tokens completionTokens
-                                   :total_tokens  (+ promptTokens completionTokens)}))
+                                  {:inputTokens  promptTokens
+                                   :outputTokens completionTokens
+                                   :totalTokens  (+ promptTokens completionTokens)}))
           totals   (reduce (partial merge-with +)
-                           {:input_tokens 0 :output_tokens 0 :total_tokens 0}
+                           {:inputTokens 0 :outputTokens 0 :totalTokens 0}
                            (vals by-model))]
-      {:usage          totals
-       :usage_by_model by-model})))
+      {:usage        totals
+       :usageByModel by-model})))
 
 (defn- tool-output->wire-output
   "The `tool-output-available` event's `:output` value: the LLM-facing output
@@ -288,7 +288,7 @@
     :tool-output      -> tool-output-available | tool-output-error
     :data             -> data-<data-type>
     :error            -> [data-error_details]? error
-    :usage            -> (accumulated; emitted as finish.message_metadata)
+    :usage            -> (accumulated; emitted as finish.messageMetadata)
     :finish           -> (ignored — the completion arity emits the finish)
     completion        -> [text-end]? finish-step + finish + [DONE]"
   ([] (parts->aisdk-sse-xf nil))
@@ -312,10 +312,10 @@
               close-text-block
               (cond-> @started? (rf (format-sse-event {:type "finish-step"})))
               (rf (format-sse-event
-                   (cond-> {:type          "finish"
-                            :finish_reason (if @error? "error" "stop")}
+                   (cond-> {:type         "finish"
+                            :finishReason (if @error? "error" "stop")}
                      (seq @usage-by-model)
-                     (assoc :message_metadata (->message-metadata @usage-by-model)))))
+                     (assoc :messageMetadata (->message-metadata @usage-by-model)))))
               (rf "data: [DONE]\n")
               (rf)))
          ([result part]
@@ -334,8 +334,8 @@
                 (do
                   (vreset! started? true)
                   (-> result
-                      (rf (format-sse-event {:type       "start"
-                                             :message_id (or message-id (:id part) (mkid))}))
+                      (rf (format-sse-event {:type      "start"
+                                             :messageId (or message-id (:id part) (mkid))}))
                       (rf (format-sse-event {:type "start-step"})))))
 
               :text
@@ -349,26 +349,26 @@
                         (rf (format-sse-event {:type "text-delta" :id id :delta (:text part)}))))))
 
               :tool-input-start
-              (rf result (format-sse-event {:type         "tool-input-start"
-                                            :tool_call_id (:id part)
-                                            :tool_name    (:function part)}))
+              (rf result (format-sse-event {:type       "tool-input-start"
+                                            :toolCallId (:id part)
+                                            :toolName   (:function part)}))
 
               :tool-input
-              (rf result (format-sse-event {:type         "tool-input-available"
-                                            :tool_call_id (:id part)
-                                            :tool_name    (:function part)
-                                            :input        (:arguments part)}))
+              (rf result (format-sse-event {:type       "tool-input-available"
+                                            :toolCallId (:id part)
+                                            :toolName   (:function part)
+                                            :input      (:arguments part)}))
 
               :tool-output
               (rf result
                   (format-sse-event
                    (if-let [error (:error part)]
-                     {:type         "tool-output-error"
-                      :tool_call_id (:id part)
-                      :error_text   (or (:message error) (str error))}
-                     {:type         "tool-output-available"
-                      :tool_call_id (:id part)
-                      :output       (tool-output->wire-output (:result part))})))
+                     {:type       "tool-output-error"
+                      :toolCallId (:id part)
+                      :errorText  (or (:message error) (str error))}
+                     {:type       "tool-output-available"
+                      :toolCallId (:id part)
+                      :output     (tool-output->wire-output (:result part))})))
 
               :data
               (rf result (format-sse-event {:type (str "data-" (or (:data-type part) "data"))
@@ -387,7 +387,7 @@
                   error-code (rf (format-sse-event {:type "data-error_details"
                                                     :id   (mkid)
                                                     :data {:message msg :error_code error-code}}))
-                  true       (rf (format-sse-event {:type "error" :error_text msg}))))
+                  true       (rf (format-sse-event {:type "error" :errorText msg}))))
 
               :finish
               result

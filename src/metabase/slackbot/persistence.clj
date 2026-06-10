@@ -20,14 +20,14 @@
              (not= "input-available" (:state part)))
     (let [input       (:input part)
           tool-call   {:role       :assistant
-                       :tool_calls [{:id        (:tool_call_id part)
+                       :tool_calls [{:id        (:toolCallId part)
                                      :name      (subs (:type part) 5)
                                      :arguments (if (string? input) input (json/encode input))}]}
           tool-result (when (#{"output-available" "output-error"} (:state part))
                         {:role         :tool
-                         :tool_call_id (:tool_call_id part)
+                         :tool_call_id (:toolCallId part)
                          :content      (or (get-in part [:output :output])
-                                           (:error_text part)
+                                           (:errorText part)
                                            "Tool execution failed")})]
       (cond-> [tool-call]
         tool-result (conj tool-result)))))

@@ -71,7 +71,7 @@
                     (let [text-deltas (filter #(= "text-delta" (:type %)) events)]
                       (is (= "Hello from native agent!"
                              (apply str (map :delta text-deltas)))))
-                    (is (=? {:message_metadata {:usage {:input_tokens 10 :output_tokens 5 :total_tokens 15}}}
+                    (is (=? {:messageMetadata {:usage {:inputTokens 10 :outputTokens 5 :totalTokens 15}}}
                             (last events))
                         "finish event carries accumulated usage"))
                   (is (=? {:user_id (mt/user->id :rasta)}
@@ -837,7 +837,7 @@
 (deftest parts->storable-content-tool-output-trimming-test
   (testing "drops transient result keys and structured-output fields outside the persisted subset"
     (is (= [{:type         "tool-search"
-             :tool_call_id "call-1"
+             :toolCallId "call-1"
              :state        "output-available"
              :input        {:q "x"}
              :output       {:output "<result>XML</result>"}}]
@@ -854,7 +854,7 @@
   (testing "keeps the query-related subset of structured output, canonicalized to :structured_output"
     (let [query-map {:database 1 :type :native :native {:query "SELECT 1"}}]
       (is (= [{:type         "tool-create_sql_query"
-               :tool_call_id "call-sql"
+               :toolCallId "call-sql"
                :state        "output-available"
                :input        {}
                :output       {:output            "<result>...</result>"
@@ -878,7 +878,7 @@
 (deftest parts->storable-content-snake-alias-test
   (testing "reads the snake-case :structured_output alias when present"
     (is (= [{:type         "tool-search"
-             :tool_call_id "call-snake"
+             :toolCallId "call-snake"
              :state        "output-available"
              :input        {}
              :output       {:output            "<result>...</result>"
@@ -895,7 +895,7 @@
 (deftest parts->storable-content-empty-result-test
   (testing "result with no :output key and no query-related structured output stores an empty map"
     (is (= [{:type         "tool-search"
-             :tool_call_id "call-2"
+             :toolCallId "call-2"
              :state        "output-available"
              :input        {}
              :output       {}}]
