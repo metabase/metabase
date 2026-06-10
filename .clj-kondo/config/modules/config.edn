@@ -92,6 +92,7 @@
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
+           metabase.actions.models
            metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
@@ -786,12 +787,10 @@
   data-apps
   {:team "Gadget"
    :api  #{metabase.data-apps.api
-           metabase.data-apps.init
-           metabase.data-apps.models.data-app}
+           metabase.data-apps.init}
    :uses #{api
            models
-           util}
-   :model-exports #{:model/DataApp}}
+           util}}
 
   data-studio
   {:team "Gadget"
@@ -1313,7 +1312,9 @@
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
-              metabase.metabot.settings}
+              metabase.metabot.settings
+              metabase.metabot.tools.entity-details
+              metabase.metabot.tools.util}
    :friends #{agent-api
               enterprise/metabot
               enterprise/metabot-analytics
@@ -2514,6 +2515,24 @@
                     :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
+
+  typed-schemas
+  {:team "Gadget"
+   :api  #{metabase.typed-schemas.api}
+   :uses #{actions
+           api
+           collections
+           lib
+           lib-be
+           metabot
+           metrics
+           models
+           system
+           util}
+   :model-imports #{:model/Card
+                    :model/Database
+                    :model/Measure
+                    :model/Table}}
 
   types
   {:team "Querying Platform"
