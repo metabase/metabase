@@ -36,9 +36,10 @@
   `MB_SAMPLE_DATABASE_ENGINE=h2` so the sample database is the H2 one the suite was written against,
   deferring the test migration to SQLite without changing what we ship."
   []
-  (or *sample-database-engine-override*
-      (#{:h2 :sqlite} (keyword (System/getenv "MB_SAMPLE_DATABASE_ENGINE")))
-      :sqlite))
+  (cond
+    *sample-database-engine-override*                  *sample-database-engine-override*
+    (= "h2" (System/getenv "MB_SAMPLE_DATABASE_ENGINE")) :h2
+    :else                                              :sqlite))
 
 (defn- sample-database-filename
   []
