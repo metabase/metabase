@@ -411,9 +411,7 @@
             (is (not (contains? error-response :via))
                 "Response should not contain :via key")
             (is (= "test-value" (get-in error-response [:data :custom-data]))
-                "Response should include custom data from ex-info")
-            (is (contains? error-response :_status)
-                "Response should include :_status")))))))
+                "Response should include custom data from ex-info")))))))
 
 (deftest write-error-nested-exception-with-stacktraces-disabled-test
   (testing "write-error! includes nested exception details when hide-stacktraces is false"

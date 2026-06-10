@@ -40,13 +40,8 @@
   ([^OutputStream os ^bytes ba ^Integer offset ^Integer len]
    (.write os ba offset len)))
 
-(defn- ex-status-code [e]
-  (or (some #((some-fn :status-code :status) (ex-data %))
-            (take-while some? (iterate ex-cause e)))
-      500))
-
 (defn- format-exception [e]
-  (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
+  (cond-> (Throwable->map e)
     (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 (def ^:dynamic *response*
