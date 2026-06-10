@@ -1,3 +1,4 @@
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 import { POST } from "metabase/api/legacy-client";
 
@@ -19,13 +20,15 @@ export type ExecuteActionParams = {
 export type ExecuteActionResult = Record<string, unknown>;
 
 /**
- * Triggers a pre-existing Metabase action. The curried `() => fn` shape
- * mirrors `queryQuestion` / `queryMetric` so the package hook can read
- * `executeAction(reduxStore)({...})` off `window.METABASE_EMBEDDING_SDK_BUNDLE`.
- * The store isn't actually used today — the call is a same-origin POST.
+ * Triggers a pre-existing Metabase action. The curried `(store) => fn`
+ * shape mirrors `createDashboard` / `queryQuestion` / `queryMetric` so the
+ * package hook can read `executeAction(reduxStore)({...})` off
+ * `window.METABASE_EMBEDDING_SDK_BUNDLE`. The store isn't actually used
+ * today — the call is a same-origin POST — but the signature is preserved
+ * for parity with the other bundle utilities.
  */
 export const executeAction =
-  () =>
+  (_reduxStore: SdkStore) =>
   async ({
     actionId,
     parameters = {},

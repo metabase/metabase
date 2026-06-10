@@ -143,6 +143,40 @@ describe("toActionExecuteError", () => {
 
       expect(result.status).toBeUndefined();
     });
+
+    it("marks AbortError-shaped errors as cancelled", () => {
+      const abort = Object.assign(new Error("Aborted"), {
+        name: "AbortError" as const,
+      });
+
+      const result = toActionExecuteError(abort);
+
+      expect(result.isCancelled).toBe(true);
+      expect(result.data.message).toBe("Aborted");
+    });
+
+    it("marks a DOMException AbortError as cancelled", () => {
+      const result = toActionExecuteError(
+        new DOMException("Aborted", "AbortError"),
+      );
+
+      expect(result.isCancelled).toBe(true);
+    });
+  });
+
+  describe("plain-string body", () => {
+    it("uses the body string as the message when data is a string", () => {
+      const result = toActionExecuteError({
+        status: 404,
+        data: "Not found.",
+      });
+
+      expect(result).toEqual({
+        status: 404,
+        data: { message: "Not found." },
+        isCancelled: false,
+      });
+    });
   });
 
   it("never leaks the original reference — output is always a fresh object", () => {

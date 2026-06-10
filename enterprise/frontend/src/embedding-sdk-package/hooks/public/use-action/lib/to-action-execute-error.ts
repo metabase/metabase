@@ -9,9 +9,16 @@ import type { ActionExecuteError } from "../types";
  *
  * `status` is omitted when no HTTP response was received (transport-layer
  * failure, native `Error`, or anything that doesn't carry a numeric
- * `status` field).
+ * `status` field). `isCancelled` is `true` for `AbortError`/`DOMException`
+ * aborts so consumers can ignore user-cancelled actions without inspecting
+ * the message.
  */
 export const toActionExecuteError = (error: unknown): ActionExecuteError => {
+  const isAbort =
+    error != null &&
+    typeof error === "object" &&
+    (error as { name?: unknown }).name === "AbortError";
+
   if (
     error != null &&
     typeof error === "object" &&
@@ -20,21 +27,28 @@ export const toActionExecuteError = (error: unknown): ActionExecuteError => {
   ) {
     const { status, data, isCancelled } = error as {
       status: number;
-      data?: { message?: unknown };
+      data?: unknown;
       isCancelled?: unknown;
     };
+    // Most JSON error bodies are `{ message: "..." }`, but some endpoints
+    // (e.g. Metabase's "Not found.") return a plain string body — fall back
+    // to that so consumers always have a human-readable diagnostic.
     const message =
-      typeof data?.message === "string" ? data.message : undefined;
+      typeof data === "string"
+        ? data
+        : typeof (data as { message?: unknown })?.message === "string"
+          ? (data as { message: string }).message
+          : undefined;
 
     return {
       status,
       data: { message },
-      isCancelled: Boolean(isCancelled),
+      isCancelled: isAbort || Boolean(isCancelled),
     };
   }
 
   return {
     data: { message: error instanceof Error ? error.message : String(error) },
-    isCancelled: false,
+    isCancelled: isAbort,
   };
 };
