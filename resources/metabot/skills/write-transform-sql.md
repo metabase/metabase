@@ -1,3 +1,10 @@
+---
+id: write-transform-sql
+title: Writing SQL transforms
+description: Creating or editing a SQL transform with write_transform_sql — load for the edit/replace modes, required fields when creating a transform, and the SQL safety rules.
+tools: [write_transform_sql]
+priority: 50
+---
 Write new SQL queries or edit existing queries using exact string matching with safety checks for ambiguous edits.
 
 It is useful for modifying or fixing SQL queries, adding or changing clauses, or restructuring queries
