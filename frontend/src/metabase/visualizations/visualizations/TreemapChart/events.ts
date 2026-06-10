@@ -205,25 +205,17 @@ export function getTreemapClickData({
 }
 
 /**
- * Treemap event handlers:
- * - `click` either drills down (zoom) or drills through, depending on state.
- *   With sub-grouping, clicking at the overview drills *down* into the clicked
- *   element's grouping (ECharts can't natively show two levels initially and
- *   drill on click — see option.ts `leafDepth`/`nodeClick` — so native click is
- *   disabled and we report the new view root, navigated via
- *   `dispatchTreemapViewRoot` in TreemapChart). Once drilled into a group,
- *   clicking a leaf tile fires Metabase *drill-through* via `onVisualizationClick`.
- *   A 1-level treemap (no sub-grouping) has no zoom, so clicking a node always
- *   drills through.
- * - `mouseover` washes the hovered tile with a 10% black overlay; `globalout`
- *   clears it when the cursor leaves the chart. At the overview the wash covers
- *   the hovered element's whole top-level section (its tiles, gaps, and group
- *   header); while drilled, where a section fills the canvas, it covers just the
- *   hovered leaf tile.
+ * The `click` handler either drills down (zoom) or drills through, depending on
+ * state. With sub-grouping, clicking at the overview drills *down* into the
+ * clicked element's grouping (ECharts can't natively show two levels initially
+ * and drill on click — see option.ts `leafDepth`/`nodeClick` — so native click
+ * is disabled and we report the new view root, navigated via
+ * `dispatchTreemapViewRoot` in TreemapChart). Once drilled into a group,
+ * clicking a leaf tile fires Metabase *drill-through* via `onVisualizationClick`.
+ * A 1-level treemap (no sub-grouping) has no zoom, so clicking a node always
+ * drills through.
  */
-export function getTreemapEventHandlers({
-  chartRef,
-  overlayRef,
+export function getTreemapClickHandler({
   hasChildren,
   isDrilled,
   onDrillToGroup,
@@ -232,10 +224,7 @@ export function getTreemapEventHandlers({
   rawSeries,
   settings,
   onVisualizationClick,
-  overlayFill = TREEMAP_HOVER_OVERLAY_FILL,
 }: {
-  chartRef: MutableRefObject<EChartsType | undefined>;
-  overlayRef: TreemapHoverOverlayRef;
   hasChildren: boolean;
   isDrilled: boolean;
   onDrillToGroup: (viewRootId: string) => void;
@@ -244,11 +233,8 @@ export function getTreemapEventHandlers({
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   onVisualizationClick: VisualizationProps["onVisualizationClick"];
-  overlayFill?: string;
-}): EChartsEventHandler[] {
-  const handlers: EChartsEventHandler[] = [];
-
-  handlers.push({
+}): EChartsEventHandler {
+  return {
     eventName: "click",
     handler: (event: TreemapSeriesMouseEvent) => {
       const id = event?.data?.id;
@@ -277,9 +263,28 @@ export function getTreemapEventHandlers({
         onVisualizationClick?.(clickData);
       }
     },
-  });
+  };
+}
 
-  handlers.push(
+/**
+ * The `mouseover` handler washes the hovered tile with a 10% black overlay;
+ * `globalout` clears it when the cursor leaves the chart. At the overview the
+ * wash covers the hovered element's whole top-level section (its tiles, gaps,
+ * and group header); while drilled, where a section fills the canvas, it covers
+ * just the hovered leaf tile.
+ */
+export function getTreemapHoverHandlers({
+  chartRef,
+  overlayRef,
+  isDrilled,
+  overlayFill = TREEMAP_HOVER_OVERLAY_FILL,
+}: {
+  chartRef: MutableRefObject<EChartsType | undefined>;
+  overlayRef: TreemapHoverOverlayRef;
+  isDrilled: boolean;
+  overlayFill?: string;
+}): EChartsEventHandler[] {
+  return [
     {
       eventName: "mouseover",
       handler: (event: TreemapSeriesMouseEvent) => {
@@ -297,9 +302,53 @@ export function getTreemapEventHandlers({
       eventName: "globalout",
       handler: () => hideTreemapHoverOverlay(chartRef, overlayRef),
     },
-  );
+  ];
+}
 
-  return handlers;
+/** All treemap event handlers: click (drill-down / drill-through) + hover wash. */
+export function getTreemapEventHandlers({
+  chartRef,
+  overlayRef,
+  hasChildren,
+  isDrilled,
+  onDrillToGroup,
+  tree,
+  treemapColumns,
+  rawSeries,
+  settings,
+  onVisualizationClick,
+  overlayFill,
+}: {
+  chartRef: MutableRefObject<EChartsType | undefined>;
+  overlayRef: TreemapHoverOverlayRef;
+  hasChildren: boolean;
+  isDrilled: boolean;
+  onDrillToGroup: (viewRootId: string) => void;
+  tree: TreemapTree;
+  treemapColumns: TreemapChartColumns | null;
+  rawSeries: RawSeries;
+  settings: ComputedVisualizationSettings;
+  onVisualizationClick: VisualizationProps["onVisualizationClick"];
+  overlayFill?: string;
+}): EChartsEventHandler[] {
+  return [
+    getTreemapClickHandler({
+      hasChildren,
+      isDrilled,
+      onDrillToGroup,
+      tree,
+      treemapColumns,
+      rawSeries,
+      settings,
+      onVisualizationClick,
+    }),
+    ...getTreemapHoverHandlers({
+      chartRef,
+      overlayRef,
+      isDrilled,
+      overlayFill,
+    }),
+  ];
 }
 
 export function useChartEvents({
