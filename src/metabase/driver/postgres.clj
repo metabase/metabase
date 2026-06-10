@@ -1413,25 +1413,17 @@
 
 (defmethod driver/supported-index-methods :postgres
   [_driver _database]
-  ;; Phase 0: btree only (Postgres' default and most common method), which supports unique indexes (`:unique?`).
-  ;; Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
+  ;; Phase 0: btree only. Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
   {:btree {:lifecycle :post-ctas, :unique? true}})
 
 (defn- index-column
-  "HoneySQL token for one indexed column. This is the seam for per-column options (sort direction,
-  operator class, ...) that Phase 0 doesn't render yet."
   [{column-name :name}]
   (keyword column-name))
 
 (defmethod driver/compile-create-index :postgres
   [_driver schema table {index-name :name, :keys [kind columns unique]}]
-  ;; `:using-<kind>` keeps the access method data-driven: adding gin/gist/brin/hash/spgist needs no change here, only
-  ;; advertising them in `supported-index-methods`. `:unique` renders CREATE UNIQUE INDEX. `:if-not-exists` keeps
-  ;; re-application on every run idempotent.
-  ;;
-  ;; NOTE: honey.sql treats a `.` in an identifier as a schema/table qualifier, so an index or column name containing
-  ;; a literal dot is split (e.g. "a.b" -> "a"."b"). No user input reaches here in Phase 0; the API layer that
-  ;; eventually accepts user-supplied names must reject/validate dotted identifiers (or we revisit the rendering then).
+  ;; honey.sql splits a `.` in an identifier into qualified parts ("a.b" -> "a"."b"); user-supplied names must be
+  ;; validated upstream before they reach here.
   (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
         using     (keyword (str "using-" (name kind)))
         index-ref (if unique
@@ -1442,8 +1434,6 @@
 
 (defmethod driver/refresh-table-stats! :postgres
   [driver database schema table _transform-type]
-  ;; ANALYZE isn't a HoneySQL clause, so quote the table for the raw statement with `quote-name` (variadic over
-  ;; schema/table components).
   (let [qtable (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))]
     (driver/execute-raw-queries! driver
                                  (driver/connection-spec driver database)

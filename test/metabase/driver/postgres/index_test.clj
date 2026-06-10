@@ -56,9 +56,7 @@
     :schema     nil :table "events"
     :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}]}
     :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}
-   ;; KNOWN LIMITATION: honey.sql treats `.` as a schema/table qualifier, so a dotted identifier is split. Pinned so
-   ;; the behavior is visible and a future change (API-layer validation, or a different renderer) trips this test.
-   {:label      "known limitation: a dotted column name is split into qualified parts"
+   {:label      "known limitation: honey.sql splits a dotted column name into qualified parts"
     :schema     nil :table "events"
     :structured {:kind :btree :name "idx" :columns [{:name "weird.col"}]}
     :expected   "CREATE INDEX IF NOT EXISTS \"idx\" ON \"events\" USING BTREE (\"weird\".\"col\")"}])
@@ -98,7 +96,7 @@
     :structured {:kind :btree :name "idx_exec_unique_email" :columns [{:name "email"}] :unique true}
     :expected   {:access-method "btree", :unique? true}}])
 
-(deftest post-materialization-path-test
+(deftest post-ctas-path-test
   (testing "the post-CTAS path runs the rendered DDL and then ANALYZE against a real table"
     (mt/test-driver :postgres
       (mt/with-empty-db
@@ -114,7 +112,7 @@
                 (jdbc/execute! admin-spec [(format "CREATE TABLE %s (%s)" qtable columns)])
                 (try
                   (is (nil? (index-info admin-spec index-name))
-                      "index absent before the post-materialization step")
+                      "index absent before the post-CTAS step")
                   (testing "rendered DDL creates the index with the expected access method and uniqueness"
                     (driver/execute-raw-queries! :postgres conn-spec
                                                  (driver/compile-create-index :postgres schema table structured))

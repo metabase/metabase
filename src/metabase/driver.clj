@@ -1552,27 +1552,13 @@
 ;;; |                                          Indexes (Index Manager)                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; A note on the word "index". We use it as the umbrella term for every kind of physical-layout hint a transform's
-;; target table can carry, because it's the familiar concept, even though for some warehouses it isn't literally an
-;; index: Postgres/MySQL use real indexes, Snowflake/BigQuery use clustering keys, Redshift uses sort/dist keys. A
-;; hint's `:kind` plus the driver decide which it actually is, and whether it's applied as a separate statement after
-;; the CTAS (`:post-ctas`, e.g. CREATE INDEX) or inlined into the CTAS itself (`:ctas-inline`, e.g. Redshift SORTKEY).
-;;
-;; This milestone defines only the post-CTAS create + stats primitives. Drop and introspection (`fetch-indexes`) come
-;; in later milestones. The inline-on-CTAS path is a sibling feature applied via `compile-transform`, not here; note
-;; that its feature flag is `:index/inline-on-ctas`, which is deliberately spelled differently from the `:ctas-inline`
-;; lifecycle tag above (feature vs. tag — don't "fix" one to match the other).
+;; "Index" is the umbrella term for every physical-layout hint a transform's target table can carry. It isn't always
+;; literally an index: Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
 
 (defmulti supported-index-methods
-  "Return the index methods this driver supports for transform target tables, as a map of
-  `hint-kind` -> metadata map. Each metadata map carries at least `:lifecycle`, one of `:post-ctas` (applied as a
-  separate statement after the table exists) or `:ctas-inline` (inlined into the CTAS statement).
-
-  Postgres (single-column btree, for now): `{:btree {:lifecycle :post-ctas, :unique? true}}`.
-
-  Metadata maps are open: advertise only the capabilities you support, and callers must treat any missing flag (e.g.
-  `:unique?`) as false. Note `:unique?` here is the advertised *capability*; the corresponding field on a hint passed
-  to [[compile-create-index]] is `:unique`.
+  "Return the index methods this driver supports for transform target tables, as a map of `hint-kind` -> metadata map.
+  Each metadata map carries at least `:lifecycle`, one of `:post-ctas` (applied as a separate statement after the
+  table exists) or `:ctas-inline` (inlined into the CTAS statement), e.g. `{:btree {:lifecycle :post-ctas}}`.
 
   Defaults to `{}` for drivers with no index support."
   {:added "0.63.0", :arglists '([driver database])}
@@ -1587,13 +1573,9 @@
   "Render a `:post-ctas` index hint into the DDL statement(s) that create it on the existing `table` in `schema`.
   `structured` is the hint description, e.g. `{:kind :btree, :name \"idx_foo_bar\", :columns [{:name \"bar\"}]}`.
 
-  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]]. When more than one
-  statement is returned, callers must run them in the given order.
+  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]].
 
-  Distinct from [[create-index!]] / `create-index-sql`: this only *renders* idempotent (`IF NOT EXISTS`) DDL for the
-  caller to run inside its own transaction, whereas [[create-index!]] executes immediately and throws if the index
-  already exists. There is intentionally no `:default`: a driver without `:index/post-ctas-create` should error here
-  rather than silently no-op."
+  Not implemented by drivers without `:index/post-ctas-create`."
   {:added "0.63.0", :arglists '([driver schema table structured])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
