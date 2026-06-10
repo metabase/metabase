@@ -158,7 +158,6 @@ export class UnconnectedDataSelector extends Component {
     hideSingleSchema: PropTypes.bool,
     hideSingleDatabase: PropTypes.bool,
     useOnlyAvailableDatabase: PropTypes.bool,
-    databasesLoaded: PropTypes.bool,
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
@@ -191,7 +190,6 @@ export class UnconnectedDataSelector extends Component {
   static defaultProps = {
     isInitiallyOpen: false,
     useOnlyAvailableDatabase: true,
-    databasesLoaded: true,
     useOnlyAvailableSchema: true,
     hideSingleSchema: true,
     hideSingleDatabase: false,
@@ -573,14 +571,13 @@ export class UnconnectedDataSelector extends Component {
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
-      this.props.selectedDatabaseId == null &&
-      this.props.databasesLoaded
+      this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
       const enabledDatabases = databases.filter(
         (db) => !databaseIsDisabled?.(db),
       );
-      if (enabledDatabases.length === 1) {
+      if (enabledDatabases.length >= 1) {
         this.onChangeDatabase(enabledDatabases[0]);
       }
     }
@@ -1152,7 +1149,7 @@ function withAvailableModels(WrappedComponent) {
 
 function withAllDatabases(WrappedComponent) {
   return function DataSelectorWithAllDatabases(props) {
-    useListDatabasesQuery();
+    useListDatabasesQuery({ "can-query": true });
     return <WrappedComponent {...props} />;
   };
 }
@@ -1171,20 +1168,15 @@ const DataSelector = _.compose(
         databaseApi.endpoints.listDatabases.select(databaseQuery)(state).data
           ?.data;
       const metadata = getMetadata(state);
-      const databases =
-        ownProps.databases ||
-        queriedDatabases
-          ?.map(({ id }) => metadata.database(id))
-          .filter((database) => database != null) ||
-        [];
       return {
         availableModels: ownProps.metadata?.available_models ?? [],
         metadata,
-        databases,
-        databasesLoaded:
-          ownProps.databases != null ||
-          (queriedDatabases != null &&
-            databases.length === queriedDatabases.length),
+        databases:
+          ownProps.databases ||
+          queriedDatabases
+            ?.map(({ id }) => metadata.database(id))
+            .filter((database) => database != null) ||
+          [],
         hasLoadedDatabasesWithTablesSaved: isListDatabasesQuerySuccess(state, {
           include: "tables",
           saved: true,

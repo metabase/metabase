@@ -2,7 +2,8 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import { snippetApi } from "metabase/api";
+import { databaseApi, snippetApi } from "metabase/api";
+import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
@@ -783,6 +784,71 @@ describe("QB Actions > initializeQB", () => {
         expect.objectContaining({ data: { error_code: "archived" } }),
       );
       expect(dispatch).not.toHaveBeenCalledWith(archiveError);
+    });
+  });
+
+  describe("database list preload", () => {
+    it("loads the database list before dispatching INITIALIZE_QB so the data selector mounts with a complete list (metabase#75173)", async () => {
+      jest.useFakeTimers();
+      const card = createSavedStructuredCard({ id: 1, name: "first" });
+      const state = createMockState({
+        entities: createMockEntitiesState({
+          databases: [createSampleDatabase()],
+        }),
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({ can_create_queries: true }),
+        }),
+      });
+      const dispatch = jest.fn((action) => action);
+
+      jest
+        .spyOn(cardActions, "loadCard")
+        .mockReturnValue(Promise.resolve({ ...card } as Card));
+      fetchMock.get(`path:/api/card/${card.id}`, card);
+
+      let resolveDatabases!: () => void;
+      const databasesPromise = new Promise<void>((resolve) => {
+        resolveDatabases = resolve;
+      });
+
+      const actualRunRtkEndpoint = rtkEndpointUtils.runRtkEndpoint;
+      const runRtkEndpointSpy = jest
+        .spyOn(rtkEndpointUtils, "runRtkEndpoint")
+        .mockImplementation((request, innerDispatch, endpoint, options) =>
+          endpoint === databaseApi.endpoints.listDatabases
+            ? databasesPromise
+            : actualRunRtkEndpoint(request, innerDispatch, endpoint, options),
+        );
+
+      const init = initializeQB(
+        getLocationForCard(card),
+        getQueryParamsForCard(card),
+      )(dispatch, () => state);
+
+      // Flush every init step other than the pending database list request
+      for (let i = 0; i < 10; i++) {
+        await Promise.resolve();
+      }
+
+      // The query args must match DataSelector's `databaseQuery` cache key, so
+      // its own fetch becomes a cache hit instead of a second network request
+      expect(runRtkEndpointSpy).toHaveBeenCalledWith(
+        { "can-query": true },
+        dispatch,
+        databaseApi.endpoints.listDatabases,
+        { forceRefetch: false },
+      );
+      expect(dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "metabase/qb/INITIALIZE_QB" }),
+      );
+
+      resolveDatabases();
+      await init;
+      jest.runAllTimers();
+
+      expect(dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "metabase/qb/INITIALIZE_QB" }),
+      );
     });
   });
 

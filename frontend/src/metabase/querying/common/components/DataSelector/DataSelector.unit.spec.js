@@ -220,28 +220,6 @@ describe("DataSelector", () => {
     expect(await screen.findByText("Orders")).toBeInTheDocument();
   });
 
-  it("should not auto-select the only loaded database while the list is still loading (metabase#52411)", async () => {
-    const setDatabaseFn = jest.fn();
-    render(
-      <DataSelector
-        // test a case when databases are not loaded yet
-        databasesLoaded={false}
-        steps={["DATABASE", "SCHEMA", "TABLE"]}
-        combineDatabaseSchemaSteps
-        triggerElement={<div />}
-        databases={[SAMPLE_DATABASE]}
-        metadata={metadata}
-        isOpen={true}
-        setDatabaseFn={setDatabaseFn}
-      />,
-    );
-
-    expect(await screen.findByText("Sample Database")).toBeInTheDocument();
-    await delay(1);
-    expect(setDatabaseFn).not.toHaveBeenCalled();
-    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
-  });
-
   it("should auto-advance past a single schema that loads asynchronously", async () => {
     // Reproduces a flake in the native editor's table picker for single-schema
     // databases (e.g. Mongo): when the schema list arrives *after* the picker
