@@ -499,12 +499,7 @@
   (lib-be/with-metadata-provider-cache
     (let [starting-nodes [[type id]]
           upstream-graph (readable-graph-dependencies {:include-archived-items :all})
-          ;; cache the downstream graph specifically, because between calculating transitive children and calculating
-          ;; edges, we'll call this multiple times on the same nodes.
           downstream-graph (graph/cached-graph (readable-graph-dependents))
-          ;; edges must include archived *dependent* sides (e.g. an archived card that depends on a table),
-          ;; otherwise edges into archived upstream nodes are dropped, leaving those nodes disconnected.
-          ;; scoped to `nodes`, so this can only reconnect already-included nodes, never add archived ones.
           edge-graph (graph/cached-graph (readable-graph-dependents {:include-archived-items :all}))
           nodes (into (set starting-nodes)
                       (graph/transitive upstream-graph starting-nodes))
