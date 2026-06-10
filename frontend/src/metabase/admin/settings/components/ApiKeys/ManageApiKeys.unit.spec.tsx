@@ -6,6 +6,7 @@ import {
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
 import {
+  mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
@@ -62,6 +63,8 @@ const testApiKeys: ApiKey[] = [
 async function setup(
   { apiKeys }: { apiKeys?: ApiKey[] } = { apiKeys: undefined },
 ) {
+  // TreeTable virtualizes rows, so the container needs a measurable size
+  mockGetBoundingClientRect({ width: 800, height: 600 });
   setupGroupsEndpoint(GROUPS);
   setupApiKeyEndpoints(apiKeys ?? testApiKeys);
   renderWithProviders(<ManageApiKeys />);
@@ -73,6 +76,11 @@ async function setup(
   });
 }
 
+async function openRowMenu(rowName: RegExp) {
+  const row = await screen.findByRole("row", { name: rowName });
+  await userEvent.click(within(row).getByLabelText("API key actions"));
+}
+
 describe("ManageApiKeys", () => {
   it("should render the component", async () => {
     await setup();
@@ -82,13 +90,10 @@ describe("ManageApiKeys", () => {
   it("should render component empty state", async () => {
     await setup({ apiKeys: [] });
     expect(screen.getByText("API keys")).toBeInTheDocument();
-    expect(screen.getByText("No API keys here yet")).toBeInTheDocument();
+    expect(screen.getByText("No API keys yet")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You can create an API key to make API calls programmatically.",
-      ),
+      screen.getByRole("button", { name: "Create an API key" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Create API key")).toHaveLength(2);
   });
 
   it("should load API keys from api", async () => {
@@ -98,16 +103,22 @@ describe("ManageApiKeys", () => {
 
   it("should create a new API key", async () => {
     await setup();
-    await userEvent.click(screen.getByText("Create API key"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create an API key" }),
+    );
     expect(await screen.findByText("Create a new API key")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Key name/), "New key");
-    await userEvent.click(await screen.findByLabelText(/which group/i));
+    await userEvent.click(
+      await screen.findByLabelText(/group this key should belong to/i),
+    );
     await userEvent.click(await screen.findByText("flamingos"));
 
     // Blur the select
     await userEvent.click(await screen.findByText(/We don't version/));
     expect(
-      await screen.findByRole("textbox", { name: /which group/i }),
+      await screen.findByRole("textbox", {
+        name: /group this key should belong to/i,
+      }),
     ).not.toHaveAttribute("data-error");
 
     const createButton = screen.getByRole("button", { name: "Create" });
@@ -115,7 +126,7 @@ describe("ManageApiKeys", () => {
     await userEvent.click(createButton);
 
     expect(
-      await screen.findByText("Copy and save the API key"),
+      await screen.findByText("Copy and save this API key"),
     ).toBeInTheDocument();
     const calls = fetchMock.callHistory.calls("path:/api/api-key", {
       method: "POST",
@@ -140,12 +151,9 @@ describe("ManageApiKeys", () => {
     const REGEN_URL = "path:/api/api-key/1/regenerate";
     fetchMock.put(REGEN_URL, { unmasked_key: "mb_regenerated" });
 
+    await openRowMenu(/development api key/i);
     await userEvent.click(
-      within(
-        await screen.findByRole("row", {
-          name: /development api key/i,
-        }),
-      ).getByRole("img", { name: /pencil/i }),
+      await screen.findByRole("menuitem", { name: /edit/i }),
     );
     await screen.findByText("Edit API key");
     await userEvent.click(
@@ -155,7 +163,7 @@ describe("ManageApiKeys", () => {
       await screen.findByRole("button", { name: "Regenerate" }),
     );
 
-    await screen.findByText("Copy and save the API key");
+    await screen.findByText("Copy and save this API key");
     expect(
       fetchMock.callHistory.called(REGEN_URL, { method: "PUT" }),
     ).toBeTruthy();
@@ -171,20 +179,19 @@ describe("ManageApiKeys", () => {
     const EDIT_URL = "path:/api/api-key/1";
     fetchMock.put(EDIT_URL, 200);
 
+    await openRowMenu(/development api key/i);
     await userEvent.click(
-      within(
-        await screen.findByRole("row", {
-          name: /development api key/i,
-        }),
-      ).getByRole("img", { name: /pencil/i }),
+      await screen.findByRole("menuitem", { name: /edit/i }),
     );
     await screen.findByText("Edit API key");
 
-    const group = await screen.findByLabelText(/which group/i);
+    const group = await screen.findByLabelText(
+      /group this key should belong to/i,
+    );
     await userEvent.click(group);
     await userEvent.click(await screen.findByText("flamingos"));
 
-    const keyName = screen.getByLabelText("Key name");
+    const keyName = screen.getByLabelText(/Key name/);
     await userEvent.clear(keyName);
     await userEvent.type(keyName, "My Key");
 
@@ -203,17 +210,31 @@ describe("ManageApiKeys", () => {
     });
   });
 
+  it("should open the edit modal when a row is clicked", async () => {
+    await setup();
+    await userEvent.click(
+      await screen.findByRole("row", { name: /development api key/i }),
+    );
+    expect(await screen.findByText("Edit API key")).toBeInTheDocument();
+  });
+
+  it("should not open the edit modal when opening the actions menu", async () => {
+    await setup();
+    await openRowMenu(/development api key/i);
+    expect(
+      await screen.findByRole("menuitem", { name: /edit/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Edit API key")).not.toBeInTheDocument();
+  });
+
   it("should delete API key", async () => {
     await setup();
     const DELETE_URL = "path:/api/api-key/1";
     fetchMock.delete(DELETE_URL, 200);
 
+    await openRowMenu(/development api key/i);
     await userEvent.click(
-      within(
-        await screen.findByRole("row", {
-          name: /development api key/i,
-        }),
-      ).getByRole("img", { name: /trash/i }),
+      await screen.findByRole("menuitem", { name: /delete/i }),
     );
     await userEvent.click(
       await screen.findByRole("button", { name: "Delete API key" }),

@@ -419,19 +419,6 @@
                                                  :message (structure-message (::message failure))})
                                               failures)}))))
 
-(defn- notify-job-failure
-  "Notify admins of a catastrophic job failure (not individual transform failures).
-
-  Publishes a single event; the seeded `system-event/transform-job-failed` notification
-  fans out to all admins in one bcc email (see [[metabase.notification.seed/seed-notification!]])."
-  [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)]
-    (events/publish-event! :event/transform-job-failed
-                           {:job_name (:name job)
-                            :job_href (urls/transform-job-url job-id)
-                            :failure_count 1
-                            :failures [{:message (structure-message message)}]})))
-
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
@@ -461,30 +448,20 @@
                                 (log/error e "Error when failing a transform run.")))))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
-                  ;; We should clean up in this case and notify the admin users.
                   (try
                     (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                    (when (= :cron run-method)
-                      (if (::transform-failure (ex-data t))
-                        (notify-transform-failures job-id (::failures (ex-data t)))
-                        (notify-job-failure job-id (.getMessage t))))
+                    (when (and (::transform-failure (ex-data t))
+                               (= :cron run-method)) ;; Catastrophic job failures are included in the digest
+                      (notify-transform-failures job-id (::failures (ex-data t))))
                     (catch Exception e
                       (log/error e "Error when failing a transform job run.")))
                   (throw t)))))
           run-id)))))
 
-(defn- reap-and-notify-orphaned-runs!
-  "Reap job runs whose coordinator process died (stale heartbeat), notify admins for each reaped cron run,
-  and return the reaped rows."
+(defn- reap-orphaned-runs!
+  "Reap job runs whose coordinator process died (stale heartbeat)."
   []
-  (let [reaped (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes)]
-    (doseq [{:keys [job_id run_method message]} reaped
-            :when (= run_method :cron)]
-      (try
-        (notify-job-failure job_id (or message "Timed out: no heartbeat"))
-        (catch Throwable t
-          (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))
-    reaped))
+  (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes))
 
 (defmethod task/init! ::TransformJobRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
@@ -492,4 +469,4 @@
 (defmethod task/init! ::TransformJobRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transforms.jobs.reaper-job"
                         :label   "transform job run"
-                        :reap-fn #'reap-and-notify-orphaned-runs!}))
+                        :reap-fn #'reap-orphaned-runs!}))

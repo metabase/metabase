@@ -3,9 +3,9 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/redux";
+import { forgotPassword } from "metabase/redux/auth";
 import { Button } from "metabase/ui";
 
-import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";
 import { AuthLayout } from "../AuthLayout";
 import { ForgotPasswordForm } from "../ForgotPasswordForm";

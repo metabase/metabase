@@ -107,6 +107,7 @@ export function useFormulaEditor({
   });
 
   const pendingFocusRef = useRef(false);
+  const isCollapsingRef = useRef(false);
   // When set, overrides the default end-of-doc caret position on focus —
   // used when the user triggers "Edit" from a specific expression pill so the
   // caret lands at the end of that expression instead of the full formula.
@@ -139,6 +140,7 @@ export function useFormulaEditor({
     if (isFocused) {
       return;
     }
+
     let changed = false;
     const cleaned = formulaEntities.map((entry) => {
       if (!isExpressionEntry(entry)) {
@@ -165,6 +167,9 @@ export function useFormulaEditor({
   }, [isFocused, editorRef]);
 
   const handleInputFocus = useCallback(() => {
+    if (isCollapsingRef.current) {
+      return;
+    }
     // If an editing session is already active (e.g. focus returning from a
     // dropdown item click via view.focus()), do not reset the text or the
     // committed baseline.
@@ -183,6 +188,7 @@ export function useFormulaEditor({
 
     setTextAtFocus(fullText);
     setIsFocused(true);
+    editTextRef.current = fullText;
     setEditText(fullText);
     setValidationError(null);
     setIsExpressionDirty(false);
@@ -232,6 +238,7 @@ export function useFormulaEditor({
         entities.slice(0, entityIndex + 1),
         metricNamesRef.current,
       );
+      isCollapsingRef.current = false;
       pendingCaretPositionRef.current = text.length;
       pendingFocusRef.current = true;
       setIsFocused(true);
@@ -289,10 +296,14 @@ export function useFormulaEditor({
     }
 
     onFormulaEntitiesChange(reconciledEntities, slotMapping);
+    isCollapsingRef.current = true;
     isEditingSessionActiveRef.current = false;
+    textAtFocusRef.current = newText;
+    setTextAtFocus(newText);
     setIsFocused(false);
     setIsOpen(false);
     setCurrentWord("");
+    editTextRef.current = "";
     setEditText("");
     setValidationError(null);
     setIsExpressionDirty(false);
@@ -343,8 +354,12 @@ export function useFormulaEditor({
 
   const handleChange = useCallback(
     (newText: string) => {
+      editTextRef.current = newText;
       setEditText(newText);
       setValidationError(null);
+      if (isCollapsingRef.current) {
+        return;
+      }
       if (newText !== textAtFocusRef.current) {
         setIsExpressionDirty(true);
       }
@@ -423,9 +438,10 @@ export function useFormulaEditor({
           from: metricFrom,
           to: metricTo,
           sourceId,
-          definition: null,
+          definition: definitionsRef.current[sourceId]?.definition ?? null,
         }),
       });
+      editTextRef.current = view.state.doc.toString();
 
       setIsExpressionDirty(true);
       handleAddMetric(metric);
@@ -435,7 +451,7 @@ export function useFormulaEditor({
 
       setTimeout(() => {
         const view = editorRef.current?.view;
-        if (!view) {
+        if (!view || !isEditingSessionActiveRef.current) {
           return;
         }
         // Return focus to the editor after the dropdown item click stole it
@@ -536,6 +552,7 @@ export function useFormulaEditor({
       ) {
         return;
       }
+      isCollapsingRef.current = false;
       const view = editorRef.current?.view;
       if (view) {
         view.focus();

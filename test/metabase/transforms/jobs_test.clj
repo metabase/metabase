@@ -283,139 +283,27 @@
                       (is (some? @run-id-atom))
                       (is (=? {:status :failed
                                :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom)))
-                      ;; crowberto is a superuser/admin, so they receive the notification
-                      (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                      (is (mt/received-email-body? :crowberto #"Uncaught error")))))))))))))
+                              (t2/select-one :model/TransformJobRun :id @run-id-atom))))))))))))))
 
-(deftest job-run-boom-manual-no-email-test
+(deftest reap-orphaned-runs-test
   (mt/with-premium-features #{:transforms-basic}
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/dataset transforms-dataset/transforms-test
-        (mt/with-model-cleanup [:model/Notification
-                                :model/TransformJobRun]
-          (mt/with-fake-inbox
-            (notification.seed/seed-notification!)
-            (let [mp (mt/metadata-provider)
-                  table (t2/select-one :model/Table (mt/id :transforms_products))
-                  ;; generate sql for different dbs
-                  sql (-> (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))
-                          (lib/with-fields [(lib.metadata/field mp (mt/id :transforms_products :name))])
-                          (lib/limit 10)
-                          qp.compile/compile
-                          :query)]
-              (with-transform-cleanup! [target0 {:type "table"
-                                                 :schema (:schema table)
-                                                 :name "t0"}]
-                (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
-                               :model/TransformJob job {:name "test-job"
-                                                        :schedule "0 0 * * * ? *"}
-                               :model/TransformJobTransformTag _ {:job_id (:id job)
-                                                                  :tag_id (:id tag)
-                                                                  :position 0}
-                               ;; independent transform
-                               :model/Transform t0 {:name "transform0"
-                                                    :source {:type :query
-                                                             :query (lib/native-query mp sql)}
-                                                    :creator_id (mt/user->id :crowberto)
-                                                    :target target0}
-                               :model/TransformTransformTag _tag0 {:transform_id (:id t0)
-                                                                   :tag_id (:id tag)
-                                                                   :position 0}]
-                  (let [run-id-atom (atom nil)]
-                    (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
-                                                                       (reset! run-id-atom run-id)
-                                                                       (throw (ex-info "Uncaught error" {})))]
-                      (try
-                        (jobs/run-job! (:id job) {:run-method :manual})
-                        (catch clojure.lang.ExceptionInfo _))
-                      (is (some? @run-id-atom))
-                      (is (=? {:status :failed
-                               :message string?}
-                              (t2/select-one :model/TransformJobRun :id @run-id-atom)))
-                      (is (zero? (count @mt/inbox))))))))))))))
-
-(deftest reap-orphaned-runs-notifies-admins-for-cron-runs-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-model-cleanup [:model/Notification
-                            :model/TransformJobRun]
-      (mt/with-fake-inbox
-        (mt/fetch-user :crowberto)
-        (notification.seed/seed-notification!)
-        (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
-                                                :schedule "0 0 * * * ? *"}]
-          (let [run (t2/insert-returning-instance! :model/TransformJobRun
-                                                   {:job_id     (:id job)
-                                                    :run_method :cron
-                                                    :status     :started
-                                                    :is_active  true})]
-            ;; push updated_at past the heartbeat-staleness threshold so the reaper fires
-            (t2/update! :model/TransformJobRun
-                        :id (:id run)
-                        {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/reap-and-notify-orphaned-runs!)
-            (is (=? {:status    :timeout
-                     :is_active nil
-                     :message   "Timed out: no heartbeat"}
-                    (t2/select-one :model/TransformJobRun :id (:id run))))
-            ;; crowberto is a superuser and receives the admin notification
-            (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-            (is (mt/received-email-body? :crowberto #"Timed out: no heartbeat"))))))))
-
-(deftest reap-orphaned-runs-notifies-every-admin-test
-  (testing "a job failure notifies all admins (via the admin group) as a single consolidated BCC message"
-    (mt/with-premium-features #{:transforms-basic}
-      (mt/with-model-cleanup [:model/Notification]
-        (mt/with-temp [:model/User _admin1    {:is_superuser true  :email "owl@metabase.test"}
-                       :model/User _admin2    {:is_superuser true  :email "robin@metabase.test"}
-                       :model/User _non-admin {:is_superuser false :email "sparrow@metabase.test"}]
-          (mt/with-fake-inbox
-            (notification.seed/seed-notification!)
-            (mt/with-temp [:model/TransformJob    job  {:name     "stalled-cron-job"
-                                                        :schedule "0 0 * * * ? *"}
-                           :model/TransformJobRun _run {:job_id     (:id job)
-                                                        :run_method :cron
-                                                        :status     :started
-                                                        :is_active  true
-                                                        ;; backdate past the heartbeat-staleness threshold so the reaper fires
-                                                        :updated_at #t "2000-01-01T00:00:00Z"}]
-              (#'jobs/reap-and-notify-orphaned-runs!)
-              (testing "every admin receives the failure email"
-                (is (contains? @mt/inbox "owl@metabase.test"))
-                (is (contains? @mt/inbox "robin@metabase.test")))
-              (testing "non-admins do not"
-                (is (not (contains? @mt/inbox "sparrow@metabase.test"))))
-              (testing "admins are addressed in a single BCC, not a per-admin loop"
-                ;; A per-admin loop would record an email under each admin whose :bcc lists only that
-                ;; admin. Consolidation records the same email object under every admin, with :bcc
-                ;; covering the whole admin group.
-                (let [admin-bcc (-> @mt/inbox (get "owl@metabase.test") first :bcc)]
-                  (is (contains? (set admin-bcc) "owl@metabase.test"))
-                  (is (contains? (set admin-bcc) "robin@metabase.test")))))))))))
-
-(deftest reap-orphaned-runs-does-not-notify-for-manual-runs-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-model-cleanup [:model/Notification
-                            :model/TransformJobRun]
-      (mt/with-fake-inbox
-        (mt/fetch-user :crowberto)
-        (notification.seed/seed-notification!)
-        (mt/with-temp [:model/TransformJob job {:name "stalled-manual-job"
-                                                :schedule "0 0 * * * ? *"}]
-          (let [run (t2/insert-returning-instance! :model/TransformJobRun
-                                                   {:job_id     (:id job)
-                                                    :run_method :manual
-                                                    :status     :started
-                                                    :is_active  true})]
-            (t2/update! :model/TransformJobRun
-                        :id (:id run)
-                        {:updated_at #t "2000-01-01T00:00:00Z"})
-            (#'jobs/reap-and-notify-orphaned-runs!)
-            (is (=? {:status :timeout}
-                    (t2/select-one :model/TransformJobRun :id (:id run)))
-                "run is still reaped")
-            (is (zero? (count @mt/inbox))
-                "manual runs do not trigger admin notifications")))))))
+    (mt/with-model-cleanup [:model/TransformJobRun]
+      (mt/with-temp [:model/TransformJob job {:name "stalled-cron-job"
+                                              :schedule "0 0 * * * ? *"}]
+        (let [run (t2/insert-returning-instance! :model/TransformJobRun
+                                                 {:job_id     (:id job)
+                                                  :run_method :cron
+                                                  :status     :started
+                                                  :is_active  true})]
+          ;; push updated_at past the heartbeat-staleness threshold so the reaper fires
+          (t2/update! :model/TransformJobRun
+                      :id (:id run)
+                      {:updated_at #t "2000-01-01T00:00:00Z"})
+          (#'jobs/reap-orphaned-runs!)
+          (is (=? {:status    :timeout
+                   :is_active nil
+                   :message   "Timed out: no heartbeat"}
+                  (t2/select-one :model/TransformJobRun :id (:id run)))))))))
 
 (deftest job-run-with-tranform-run-failure-test
   (mt/with-premium-features #{:transforms-basic}

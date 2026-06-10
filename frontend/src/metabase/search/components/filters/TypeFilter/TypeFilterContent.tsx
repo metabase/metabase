@@ -12,6 +12,7 @@ const EMPTY_SEARCH_QUERY = {
   models: ["dataset" as const],
   limit: 1,
   calculate_available_models: true as const,
+  context: "type-filter" as const,
 };
 
 export const TypeFilterContent: SearchFilterDropdown<"type">["ContentComponent"] =

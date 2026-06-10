@@ -5,7 +5,6 @@
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:refer-clojure :exclude [mapv empty? get-in])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
    [clojure.java.jdbc :as jdbc]
@@ -20,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
@@ -27,26 +27,11 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv empty? get-in]]
+   [metabase.util.performance :as perf :refer [empty? get-in mapv]]
    [potemkin :as p])
   (:import
-   (java.sql
-    Connection
-    JDBCType
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    SQLFeatureNotSupportedException
-    Statement
-    Types)
-   (java.time
-    Instant
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
@@ -345,7 +330,7 @@
   deprecated [[sql-jdbc.execute.old/connection-with-timezone]] method."
   {:added "0.47.0"}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:or :int :map]
+   db-or-id-or-spec :- [:or ::lib.schema.id/database :map]
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]

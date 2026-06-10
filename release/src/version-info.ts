@@ -2,6 +2,7 @@ import fetch from "node-fetch";
 
 import { getChangelogUrl } from "./release-notes";
 import type {
+  MajorVersionSupport,
   ReleaseProps,
   VersionInfo,
   VersionInfoFile,
@@ -125,6 +126,47 @@ export async function getVersionInfo({
   });
 
   return newVersionJson;
+}
+
+// A major version line is in support — and therefore an eligible backport and
+// auto-release target — if and only if its end-of-life date is today or later.
+// `lts` is display-only and intentionally ignored here. `major_version_support`
+// is append-only, so support is computed from `eol`, never from list membership.
+export const getSupportedMajorVersions = (
+  versionInfo: VersionInfoFile,
+  today: string = new Date().toISOString().slice(0, 10),
+): number[] => {
+  const lines: MajorVersionSupport[] | undefined =
+    versionInfo?.major_version_support;
+
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new Error(
+      "version-info.json has no `major_version_support` — cannot determine supported major versions",
+    );
+  }
+
+  const supported = [
+    ...new Set(lines.filter(line => line.eol >= today).map(line => line.major)),
+  ].sort((a, b) => b - a);
+
+  if (supported.length === 0) {
+    throw new Error(
+      "No in-support major versions found — every `eol` date is in the past?",
+    );
+  }
+
+  return supported;
+};
+
+// Fetches version-info.json and returns the supported major versions, newest
+// first. `major_version_support` is edition-agnostic, so the OSS file suffices.
+export async function getSupportedMajors(
+  today: string = new Date().toISOString().slice(0, 10),
+): Promise<number[]> {
+  const url = getVersionInfoUrl("v0"); // any non-`v1.` string picks the OSS file
+  const versionInfo = (await fetch(url).then(r => r.json())) as VersionInfoFile;
+
+  return getSupportedMajorVersions(versionInfo, today);
 }
 
 // for promoting a released version to `latest` in version-info.json

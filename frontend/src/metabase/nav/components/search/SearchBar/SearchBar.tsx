@@ -230,7 +230,7 @@ function SearchBarView({
               searchText={searchText}
               onSearchItemSelect={onSearchItemSelect}
               goToSearchApp={goToSearchApp}
-              isSearchBar={true}
+              context="search-bar"
             />
           ) : (
             <RecentsList />
