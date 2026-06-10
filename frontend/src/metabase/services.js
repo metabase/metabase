@@ -1,10 +1,4 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
-import { isEmbedPreview } from "metabase/embedding/config";
-
-// use different endpoints for embed previews
-export function getEmbedBase() {
-  return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";
-}
 
 export const ActivityApi = {
   most_recently_viewed_dashboard: GET(
@@ -51,9 +45,11 @@ export const PublicApi = {
   documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
+// `/api/embed` is rewritten to `/api/preview_embed` by the request middleware
+// when running inside an embed preview.
 export const EmbedApi = {
-  card: GET(getEmbedBase() + "/card/:token"),
-  dashboard: GET(getEmbedBase() + "/dashboard/:token"),
+  card: GET("/api/embed/card/:token"),
+  dashboard: GET("/api/embed/dashboard/:token"),
 };
 
 export const AutoApi = {

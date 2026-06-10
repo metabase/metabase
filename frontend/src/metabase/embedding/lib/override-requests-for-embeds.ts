@@ -7,15 +7,14 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
-import { getEmbedBase } from "metabase/services";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 type EmbedType = "guest" | "static" | "public";
 
 const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
   ({
-    guest: getEmbedBase(),
-    static: getEmbedBase(),
+    guest: "/api/embed",
+    static: "/api/embed",
     public: "/api/public",
   })[embedType];
 
