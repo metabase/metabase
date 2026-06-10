@@ -769,9 +769,10 @@
             (recur (rest runs) pend2 out2)))))))
 
 (defn- run-color [style]
-  (cond (:link? style) link-color
-        (:code? style) code-color
-        :else          Color/BLACK))
+  (or (:color style)                     ; an explicit colour overrides (e.g. gray parameter values)
+      (cond (:link? style) link-color
+            (:code? style) code-color
+            :else          Color/BLACK)))
 
 (defn- ->measured-item
   "Turn one Markdown word token into a drawable, pre-measured item (resolving its font and colour),
@@ -1172,10 +1173,10 @@
   "Produce positioned pages for one section (a tab, or the whole untabbed dashboard). `idx` is
   the section's index; only the very first section's first page carries the dashboard title,
   and (when tabbed) every section's first page carries the tab title."
-  [section idx {:keys [unit rows]} tabbed? dash-name param-lines param-rows]
+  [section idx {:keys [unit rows]} tabbed? dash-name param-table param-rows]
   (let [dash-rows (rows-for-pt (header-block-pt dashboard-title-pt) unit)
         tab-rows  (rows-for-pt (header-block-pt tab-title-pt) unit)
-        ;; the parameter bar shows once, on the dashboard's very first page (section 0)
+        ;; the parameter table shows once, on the dashboard's very first page (section 0)
         first-hdr (+ (if (zero? idx) (+ dash-rows param-rows) 0)
                      (if tabbed? tab-rows 0))]
     (map-indexed
@@ -1183,7 +1184,7 @@
        (assoc pg
               :dashboard-title (when (and (zero? idx) (zero? pi)) dash-name)
               :tab-title       (when (and tabbed? (zero? pi)) (:tab-name section))
-              :param-lines     (when (and (zero? idx) (zero? pi)) param-lines)))
+              :param-table     (when (and (zero? idx) (zero? pi)) param-table)))
      (paginate (:cells section) rows first-hdr))))
 
 ;; --------------------------------------------------------------------------------------------
@@ -1259,88 +1260,139 @@
       (min (lines-height lines font-pt) (* (max 0 fit) lh)))))
 
 ;; --------------------------------------------------------------------------------------------
-;; Parameter bar -- the dashboard's active (non-inline) filter values, shown once at the very top
-;; of the dashboard (like the email subscription filter bar). Chips flow and wrap across lines, so
-;; dashboards with many parameters take however many rows they need.
+;; Parameters. The dashboard's active filter values are shown once at the very top, as a two-column
+;; (name | value) table (like the email filter bar). A card's *inline* parameters render on the card
+;; itself, flowing inline as `Name: value`. Both reuse the common text layout/draw pipeline; the only
+;; bespoke piece is sizing the table's name column (see [[min-column-width]]).
 ;; --------------------------------------------------------------------------------------------
 
-(defn- param-chips
-  "Build parameter chips for the given parameters: those carrying a non-blank formatted value
-  (via `value-string`, like the email filter bar). Each chip carries its measured widths for
-  layout. Requires `*fonts*` bound."
+(defn- min-column-width
+  "The narrowest width (<= `max-w`) at which `units` still pack into the *fewest* lines they would take
+  at `max-w`. This is the bottleneck variant of word-wrap (minimise the max line width for a fixed
+  line count); we solve it by binary search using the greedy [[pack-units->lines]] as a monotonic
+  feasibility oracle (a wider column never needs more lines), bottoming out at the widest single unit.
+  Cheap -- a handful of greedy wraps, each measurement cached (see [[*width-cache*]])."
+  [units max-w split-fn]
+  (if (empty? units)
+    0.0
+    (let [lines-at (fn [w] (count (pack-units->lines units w split-fn)))
+          target   (lines-at max-w)
+          lo0      (reduce max 0.0 (map :ww units))]
+      (loop [lo lo0, hi (double max-w)]
+        (if (< (- hi lo) 0.5)
+          hi
+          (let [mid (/ (+ lo hi) 2.0)]
+            (if (<= (lines-at mid) target)
+              (recur lo mid)
+              (recur mid hi))))))))
+
+(defn- param-entries
+  "Name/value strings for each parameter carrying a non-blank formatted value (via `value-string`,
+  like the email filter bar)."
   [params]
-  (let [locale (system/site-locale)
-        sep-w  (text-width (face :regular) param-pt ": ")]
+  (let [locale (system/site-locale)]
     (vec (for [p     params
                :when (some? (:value p))
                :let  [v (some-> (shared.params/value-string p locale) str str/trim)]
-               :when (not (str/blank? v))
-               :let  [nm (str (:name p))]]
-           {:name nm :value v
-            :name-w (text-width (face :bold) param-pt nm)
-            :sep-w  sep-w
-            :width  (+ (text-width (face :bold) param-pt nm) sep-w (text-width (face :regular) param-pt v))}))))
+               :when (not (str/blank? v))]
+           {:name (str (:name p)) :value v}))))
 
-(defn- dashboard-param-chips
-  "Chips for the dashboard-wide filter bar at the very top: only top-level (non-inline)
-  parameters. Inline parameters are rendered on their own card instead."
+(defn- dashboard-param-entries
+  "Entries for the dashboard-wide filter table: only top-level (non-inline) parameters. Inline
+  parameters render on their own card instead."
   [params inline-ids]
-  (param-chips (remove #(contains? inline-ids (:id %)) params)))
+  (param-entries (remove #(contains? inline-ids (:id %)) params)))
 
-(defn- layout-param-chips
-  "Greedily pack chips into lines fitting `content-w`, giving each an `:x` offset within the content
-  area. Returns a vector of lines (each a vector of placed chips)."
-  [chips content-w]
-  (loop [chips chips, line [], line-w 0.0, lines []]
-    (if (empty? chips)
-      (cond-> lines (seq line) (conj line))
-      (let [c   (first chips)
-            gap (if (seq line) param-chip-gap 0.0)
-            adv (+ gap (:width c))]
-        (if (and (seq line) (> (+ line-w adv) content-w))
-          (recur chips [] 0.0 (conj lines line))
-          (recur (rest chips) (conj line (assoc c :x (+ line-w gap))) (+ line-w adv) lines))))))
+(defn- styled-run-lines
+  "Wrap a single styled run (`text` with `style`, e.g. {:bold? true} or {:color ...}) to `max-w` at
+  `param-pt`, returning drawable item-lines via the shared pipeline."
+  [text style max-w]
+  (words->lines (runs->words [(merge {:text (str text)} style)]) param-pt false max-w))
+
+(defn- measured-name-units
+  "Pre-measured units for a parameter name (bold, `param-pt`) -- input to [[min-column-width]]."
+  [name]
+  (let [[units _] (tokenize-units (normalize-ws name) {} false [])
+        sp        (text-width (face :bold) param-pt " ")]
+    (mapv (fn [u] (assoc u :ww (text-width (face :bold) param-pt (:text u)) :sp sp)) units)))
+
+(defn- layout-param-table
+  "Lay out filter `entries` as a two-column (name | value) table within `avail-w` starting at `x`. The
+  names column is sized by [[min-column-width]] (capped at 40% of `avail-w`); the rest goes to values.
+  The columns swap (values left, names right) when the first parameter's name reads right-to-left.
+  Returns nil when there are no valued parameters, else a layout map with the column geometry, the
+  wrapped lines per row, and the total `:height`."
+  [entries avail-w x]
+  (when (seq entries)
+    (let [rtl?     (base-rtl? (:name (first entries)))
+          max-nw   (* 0.4 avail-w)
+          split-fn (fn [u] (if (<= (count (str (:text u))) 1)
+                             [u]
+                             (map #(assoc % :ww (text-width (face :bold) param-pt (:text %)) :sp (:sp u))
+                                  (split-into-chars u))))
+          name-w   (min max-nw (reduce max 0.0 (map #(min-column-width (measured-name-units (:name %)) max-nw split-fn)
+                                                    entries)))
+          value-w  (- avail-w name-w param-chip-gap)
+          name-x   (if rtl? (+ (double x) value-w param-chip-gap) (double x))
+          value-x  (if rtl? (double x) (+ (double x) name-w param-chip-gap))
+          rows     (mapv (fn [e]
+                           (let [nl (styled-run-lines (:name e) {:bold? true} name-w)
+                                 vl (styled-run-lines (:value e) {:color body-color} value-w)]
+                             {:name-lines nl :value-lines vl
+                              :height (max (lines-height nl param-pt) (lines-height vl param-pt))}))
+                         entries)]
+      {:name-x name-x :name-w name-w :value-x value-x :value-w value-w
+       :rows rows :height (reduce + 0.0 (map :height rows))})))
+
+(defn- param-table-rows
+  "Whole grid rows the parameter table consumes (0 when there is none)."
+  [table unit]
+  (if table (rows-for-pt (+ (:height table) header-pad-pt) unit) 0))
+
+(defn- draw-param-table!
+  "Draw the parameter `table` from `top-y` (the columns already hold absolute x positions). Returns
+  the y below it."
+  [^PDPageContentStream cs table top-y]
+  (let [{:keys [name-x name-w value-x value-w rows]} table]
+    (loop [rows rows, y (double top-y)]
+      (if (empty? rows)
+        (- y 4.0)
+        (let [{:keys [name-lines value-lines height]} (first rows)
+              bottom (- y height 1.0)]
+          (draw-item-lines! cs name-lines name-x name-w y bottom param-pt
+                            (base-rtl? (or (:text (ffirst name-lines)) "")) nil name-x nil)
+          (draw-item-lines! cs value-lines value-x value-w y bottom param-pt
+                            (base-rtl? (or (:text (ffirst value-lines)) "")) nil value-x nil)
+          (recur (rest rows) (- y height)))))))
 
 (defn- inline-param-lines
-  "Lay out a card's inline parameter chips, wrapping to `cell-w`. Returns layout lines."
+  "Wrapped item-lines for a card's inline parameters, flowing inline as `Name: value`, `Name2: value2`,
+  ... (bold names, gray values), greedily wrapped to `cell-w` (preserving the previous flow behaviour).
+  Returns nil when there are none."
   [inline-params cell-w]
-  (layout-param-chips (param-chips inline-params) cell-w))
+  (let [entries (param-entries inline-params)]
+    (when (seq entries)
+      (let [runs (vec (mapcat (fn [i e]
+                                (concat (when (pos? i) [{:text "  "}]) ; gap before each param after the first
+                                        [{:text (:name e) :bold? true}
+                                         {:text ": "}
+                                         {:text (:value e) :color body-color}]))
+                              (range) entries))]
+        (words->lines (runs->words runs) param-pt false cell-w)))))
 
 (defn- inline-params-height
   "Vertical points a card's inline parameter lines consume (0 when there are none)."
-  [param-lines]
-  (if (seq param-lines)
-    (+ (* (count param-lines) param-pt line-height-factor) 4.0)
+  [lines]
+  (if (seq lines)
+    (+ (lines-height lines param-pt) 4.0)
     0.0))
 
-(defn- param-lines-rows
-  "Whole grid rows the parameter bar consumes (0 when there are no params)."
-  [param-lines unit]
-  (if (seq param-lines)
-    (rows-for-pt (+ (* (count param-lines) param-pt line-height-factor) header-pad-pt) unit)
-    0))
-
-(defn- draw-param-chip!
-  [^PDPageContentStream cs x baseline {:keys [name value name-w sep-w]}]
-  (draw-line! cs (face :bold) param-pt x baseline name)
-  (draw-line! cs (face :regular) param-pt (+ x name-w) baseline ": ")
-  (.setNonStrokingColor cs ^Color body-color)
-  (draw-line! cs (face :regular) param-pt (+ x name-w sep-w) baseline value)
-  (.setNonStrokingColor cs Color/BLACK))
-
-(defn- draw-param-lines!
-  "Draw parameter chip lines from `top-y` (chips' `:x` offsets are relative to `base-x`, which
-  defaults to the page margin for the top filter bar). Returns the y below the block."
-  ([^PDPageContentStream cs param-lines top-y]
-   (draw-param-lines! cs param-lines top-y margin))
-  ([^PDPageContentStream cs param-lines top-y base-x]
-   (loop [lines param-lines, y (double top-y)]
-     (if (empty? lines)
-       (- y 4.0)
-       (do
-         (doseq [chip (first lines)]
-           (draw-param-chip! cs (+ (double base-x) (:x chip)) (- y param-pt) chip))
-         (recur (rest lines) (- y (* param-pt line-height-factor))))))))
+(defn- draw-inline-params!
+  "Draw inline-parameter `lines` from `top-y` within `[x, x+content-w]`."
+  [^PDPageContentStream cs lines x content-w top-y]
+  (when (seq lines)
+    (draw-item-lines! cs lines x content-w top-y (- (double top-y) (lines-height lines param-pt) 1.0)
+                      param-pt (base-rtl? (or (:text (ffirst lines)) "")) nil x nil)))
 
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
@@ -1369,7 +1421,7 @@
     ;; Native title for every card type.
     (draw-text-block! cs (face :bold) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
     (when (seq ip-lines)
-      (draw-param-lines! cs ip-lines (- (double top-y) th) x))
+      (draw-inline-params! cs ip-lines x cell-w (- (double top-y) th)))
     (when (> body-h 12.0)
       (if-let [png (when fill?
                      (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
@@ -1389,18 +1441,18 @@
     (double x)))
 
 (defn- draw-header!
-  [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-lines]}]
+  [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
   (let [bold (face :bold)
         top  (- (double page-height) margin)
-        ;; order: dashboard title, then the dashboard-wide parameter bar, then the tab title
+        ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold dashboard-title-pt
                                (line-start-x bold dashboard-title-pt margin content-w dashboard-title)
                                (- top dashboard-title-pt) dashboard-title)
                    (- top (header-block-pt dashboard-title-pt)))
                top)
-        y2   (if (seq param-lines)
-               (draw-param-lines! cs param-lines y1)
+        y2   (if param-table
+               (draw-param-table! cs param-table y1)
                y1)]
     (when tab-title
       (draw-line! cs bold tab-title-pt
@@ -1435,7 +1487,7 @@
         iph      (inline-params-height ip-lines)]
     (draw-content! (- (double cell-h) iph))
     (when (seq ip-lines)
-      (draw-param-lines! cs ip-lines (- (double top-y) (- (double cell-h) iph)) x))))
+      (draw-inline-params! cs ip-lines x cell-w (- (double top-y) (- (double cell-h) iph))))))
 
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
@@ -1520,10 +1572,10 @@
                    *width-cache* (atom {})]
            (let [content-w   (* grid-cols (:unit dims))
                  inline-ids  (into #{} (mapcat :inline_parameters) dcs)
-                 param-lines (layout-param-chips (dashboard-param-chips resolved inline-ids) content-w)
-                 param-rows  (param-lines-rows param-lines (:unit dims))]
+                 param-table (layout-param-table (dashboard-param-entries resolved inline-ids) content-w margin)
+                 param-rows  (param-table-rows param-table (:unit dims))]
              (doseq [[idx section] (map-indexed vector sections)
-                     page          (pages-for-section section idx dims tabbed? (:name dash) param-lines param-rows)]
+                     page          (pages-for-section section idx dims tabbed? (:name dash) param-table param-rows)]
                (render-page! doc dims timezone page)))
            (when (zero? (.getNumberOfPages doc))
              (.addPage doc (PDPage. ^PDRectangle (:rect dims))))
