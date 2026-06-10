@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -14,6 +15,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
    [ring.adapter.jetty :as jetty]))
 
 (set! *warn-on-reflection* true)
@@ -399,132 +401,121 @@
       (is (=? {:type :tool-output-available :toolCallId "call-d5"}
               (last result))))))
 
-;;; AI SDK v4 Line Protocol tests
+;;; AI SDK SSE output tests
 
-(deftest format-text-line-test
-  (testing "formats text as JSON-encoded string with 0: prefix"
-    (is (= "0:\"Hello world\"" (self.core/format-text-line {:text "Hello world"})))
-    (is (= "0:\"Line with \\\"quotes\\\"\"" (self.core/format-text-line {:text "Line with \"quotes\""})))))
+(defn- sse-events
+  "Run `parts` through [[self.core/parts->aisdk-sse-xf]] and decode each
+  `data: {json}` line back to a map, asserting every event validates against
+  the wire schema. The `[DONE]` terminator is checked then excluded."
+  ([parts] (sse-events nil parts))
+  ([opts parts]
+   (let [lines (into [] (self.core/parts->aisdk-sse-xf opts) parts)]
+     (is (every? #(str/starts-with? % "data: ") lines))
+     (is (= "data: [DONE]\n" (last lines)))
+     (let [events (mapv #(json/decode+kw (subs (str/trimr %) 6)) (butlast lines))]
+       (doseq [event events]
+         (is (nil? (mr/explain ::schema.v2/ui-message-chunk event))
+             (str "event does not match the wire schema: " (pr-str event))))
+       events))))
 
-(deftest format-data-line-test
-  (testing "formats data with type, version, and value"
-    (is (= "2:{\"type\":\"state\",\"version\":1,\"value\":{\"queries\":{}}}"
-           (self.core/format-data-line {:data-type "state" :data {:queries {}}})))
-    (is (= "2:{\"type\":\"navigate_to\",\"version\":1,\"value\":{\"url\":\"/question/123\"}}"
-           (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
+(deftest parts->aisdk-sse-xf-lifecycle-test
+  (testing "first :start opens the message and a step; later :start is a step boundary; completion closes"
+    (is (= [["start" "msg-1"] ["start-step" nil]
+            ["finish-step" nil] ["start-step" nil]
+            ["finish-step" nil] ["finish" nil]]
+           (mapv (juxt :type :message_id)
+                 (sse-events [{:type :start :id "msg-1"}
+                              {:type :start :id "msg-1"}])))))
+  (testing "a stream that never started still emits finish"
+    (is (= ["finish"] (mapv :type (sse-events [])))))
+  (testing ":message-id overrides the start event's message_id"
+    (is (= "override-id"
+           (-> (sse-events {:message-id "override-id"} [{:type :start :id "provider-id"}])
+               first
+               :message_id)))))
 
-(deftest format-error-line-test
-  (testing "formats plain error message as a JSON string with 3: prefix"
-    (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"}))))
-  (testing "formats structured error with error-code as a JSON object"
-    (let [line   (self.core/format-error-line {:error {:message    "You've used all of your included AI service tokens."
-                                                       :error-code "metabase_ai_managed_locked"}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (str/starts-with? line "3:"))
-      (is (= "You've used all of your included AI service tokens." (:message parsed)))
-      (is (= "metabase_ai_managed_locked" (:error-code parsed)))))
-  (testing "formats ai_usage_limit_reached error-code as a JSON object"
-    (let [line   (self.core/format-error-line {:error {:message    "You have reached your AI usage limit."
-                                                       :error-code "ai_usage_limit_reached"}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (str/starts-with? line "3:"))
-      (is (= "You have reached your AI usage limit." (:message parsed)))
-      (is (= "ai_usage_limit_reached" (:error-code parsed)))))
-  (testing "coerces keyword error-code to string"
-    (let [line   (self.core/format-error-line {:error {:message    "Usage limit reached"
-                                                       :error-code :metabase_ai_managed_locked}})
-          parsed (json/decode+kw (subs line 2))]
-      (is (= "metabase_ai_managed_locked" (:error-code parsed))))))
+(deftest parts->aisdk-sse-xf-text-coalescing-test
+  (testing "consecutive same-id :text parts share one block; an id change closes it"
+    (is (= [["text-start" "t1" nil]
+            ["text-delta" "t1" "Hel"]
+            ["text-delta" "t1" "lo"]
+            ["text-end" "t1" nil]
+            ["text-start" "t2" nil]
+            ["text-delta" "t2" "next"]
+            ["text-end" "t2" nil]
+            ["finish" nil nil]]
+           (mapv (juxt :type :id :delta)
+                 (sse-events [{:type :text :id "t1" :text "Hel"}
+                              {:type :text :id "t1" :text "lo"}
+                              {:type :text :id "t2" :text "next"}])))))
+  (testing "a non-text part closes the open text block before its own events"
+    (is (= ["text-start" "text-delta" "text-end" "data-state" "finish"]
+           (mapv :type
+                 (sse-events [{:type :text :id "t1" :text "hi"}
+                              {:type :data :data-type "state" :data {:queries {}}}]))))))
 
-(deftest format-tool-call-line-test
-  (testing "formats tool call with toolCallId, toolName, and args"
-    (let [line (self.core/format-tool-call-line {:id "call-123"
-                                                 :function "search"
-                                                 :arguments {:query "revenue"}})]
-      (is (str/starts-with? line "9:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-123" (:toolCallId parsed)))
-        (is (= "search" (:toolName parsed)))
-        ;; args should be JSON string, not object
-        (is (string? (:args parsed)))))))
+(deftest parts->aisdk-sse-xf-tool-test
+  (testing "tool input and successful output"
+    (let [[input-event output-event] (sse-events [{:type :tool-input :id "call-1" :function "search"
+                                                   :arguments {:q "test"}}
+                                                  {:type :tool-output :id "call-1" :function "search"
+                                                   :result {:output "rows" :resources [1 2]}
+                                                   :duration-ms 12}])]
+      (is (= {:type "tool-input-available" :tool_call_id "call-1" :tool_name "search" :input {:q "test"}}
+             input-event))
+      (is (= {:type "tool-output-available" :tool_call_id "call-1" :output "rows"}
+             output-event)
+          "only the LLM-facing output string goes on the wire")))
+  (testing "tool error becomes tool-output-error"
+    (is (= {:type "tool-output-error" :tool_call_id "call-2" :error_text "Tool failed"}
+           (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))
+  (testing ":tool-input-start maps to tool-input-start"
+    (is (= {:type "tool-input-start" :tool_call_id "call-3" :tool_name "search"}
+           (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}]))))))
 
-(deftest format-tool-result-line-test
-  (testing "formats tool result with toolCallId and result"
-    (let [line (self.core/format-tool-result-line {:id "call-123"
-                                                   :result {:data [{:id 1}]}})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-123" (:toolCallId parsed)))
-        ;; result should be JSON string
-        (is (string? (:result parsed))))))
-  (testing "formats tool error"
-    (let [line (self.core/format-tool-result-line {:id "call-456"
-                                                   :error {:message "Tool failed"}})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-456" (:toolCallId parsed)))
-        (is (string? (:error parsed))))))
-  (testing ":duration-ms is ignored"
-    (let [line (self.core/format-tool-result-line {:id "call-789"
-                                                   :result {:data [{:id 1}]}
-                                                   :duration-ms 1234})]
-      (is (str/starts-with? line "a:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "call-789" (:toolCallId parsed)))
-        (is (not (contains? parsed :duration-ms)))))))
+(deftest parts->aisdk-sse-xf-data-test
+  (testing "data parts become typed data events with a generated id"
+    (let [[event] (sse-events [{:type :data :data-type "navigate_to" :data {:url "/question/123"}}])]
+      (is (= "data-navigate_to" (:type event)))
+      (is (string? (:id event)))
+      (is (= {:url "/question/123"} (:data event)))))
+  (testing "unknown part types pass through as data events"
+    (is (= "data-mystery"
+           (-> (sse-events [{:type :mystery :id "x"}]) first :type)))))
 
-(deftest format-finish-line-test
-  (testing "formats finish message with usage"
-    (let [line (self.core/format-finish-line false {"claude-sonnet-4-5-20250929" {:prompt 100 :completion 50}})]
-      (is (str/starts-with? line "d:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "stop" (:finishReason parsed)))
-        ;; Keys are keywordized when parsing JSON
-        (is (= 100 (get-in parsed [:usage :claude-sonnet-4-5-20250929 :prompt])))))))
+(deftest parts->aisdk-sse-xf-error-test
+  (testing "plain error emits an error event and flips finish_reason"
+    (let [events (sse-events [{:type :error :error {:message "Something went wrong"}}])]
+      (is (= [{:type "error" :error_text "Something went wrong"}
+              {:type "finish" :finish_reason "error"}]
+             events))))
+  (testing "typed errors emit a data-error_details event before the error event"
+    (let [events (sse-events [{:type :error :error {:message    "You have reached your AI usage limit."
+                                                    :error-code :ai_usage_limit_reached}}])]
+      (is (=? [{:type "data-error_details"
+                :data {:message "You have reached your AI usage limit."
+                       :error_code "ai_usage_limit_reached"}}
+               {:type "error" :error_text "You have reached your AI usage limit."}
+               {:type "finish"}]
+              events)))))
 
-(deftest format-start-line-test
-  (testing "formats start message with messageId"
-    (let [line (self.core/format-start-line {:id "msg-123"})]
-      (is (str/starts-with? line "f:"))
-      (let [parsed (json/decode+kw (subs line 2))]
-        (is (= "msg-123" (:messageId parsed)))))))
-
-(deftest aisdk-line-xf-test
-  (testing "converts internal parts to AI SDK v4 line protocol, skipping usage by default"
-    (let [parts [{:type :start :id "msg-1"}
-                 {:type :text :text "Hello"}
-                 {:type :tool-input :id "call-1" :function "search" :arguments {:q "test"}}
-                 {:type :tool-output :id "call-1" :result {:data []}}
-                 {:type :usage :id "msg-1" :model "claude-sonnet-4-5-20250929" :usage {:promptTokens 10 :completionTokens 5}}
-                 {:type :finish}]
-          lines (into [] (self.core/aisdk-line-xf) parts)]
-      ;; Should have: start, text, tool-call, tool-result, finish (usage skipped)
-      (is (= 5 (count lines)))
-      (is (str/starts-with? (nth lines 0) "f:"))  ;; start
-      (is (str/starts-with? (nth lines 1) "0:"))  ;; text
-      (is (str/starts-with? (nth lines 2) "9:"))  ;; tool-call
-      (is (str/starts-with? (nth lines 3) "a:"))  ;; tool-result
-      (is (str/starts-with? (nth lines 4) "d:")))) ;; finish
-
-  (testing "emits usage as data line when :emit-usage? is true"
-    (let [parts [{:type :start :id "msg-1"}
-                 {:type :text :text "Hello"}
-                 {:type  :usage :id "msg-1" :model "claude-sonnet-4-5-20250929"
-                  :usage {:promptTokens 10 :completionTokens 5}}]
-          lines (into [] (self.core/aisdk-line-xf {:emit-usage? true}) parts)]
-      (is (=? [#"f:.*"
-               #"0:.*"
-               #"d:.*"]
-              lines))
-      (is (=? {:usage {:promptTokens 10 :completionTokens 5}}
-              (-> (last lines) (subs 2) (json/decode+kw))))))
-  (testing ":external-id overrides the messageId on the start line"
-    (let [parts [{:type :start :id "provider-id" :messageId "provider-msg-id"}
-                 {:type :text :text "hi"}]
-          lines (into [] (self.core/aisdk-line-xf {:external-id "override-id"}) parts)]
-      (is (= "override-id"
-             (-> (first lines) (subs 2) (json/decode+kw) :messageId))))))
+(deftest parts->aisdk-sse-xf-usage-test
+  (testing "accumulated usage lands on finish.message_metadata, last snapshot per model"
+    (let [parts  [{:type :start :id "m"}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 5 :completionTokens 1}}
+                  {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 10 :completionTokens 5}}
+                  {:type :usage :model "gpt-5" :usage {:promptTokens 2 :completionTokens 3}}
+                  {:type :finish}]
+          finish (last (sse-events parts))]
+      (is (= {:type "finish"
+              :finish_reason "stop"
+              :message_metadata {:usage          {:input_tokens 12 :output_tokens 8 :total_tokens 20}
+                                 :usage_by_model {:claude-sonnet-4-6 {:input_tokens 10 :output_tokens 5 :total_tokens 15}
+                                                  :gpt-5             {:input_tokens 2 :output_tokens 3 :total_tokens 5}}}}
+             finish))))
+  (testing "finish omits message_metadata when no usage was observed"
+    (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
+                        :message_metadata)))))
 
 ;;; ===================== Retry Logic Tests =====================
 
