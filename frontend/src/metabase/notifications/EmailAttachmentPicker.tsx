@@ -397,42 +397,40 @@ export function EmailAttachmentPicker({
 
   return (
     <div>
-      <Box className={CS.borderTop} pt="1.5rem" pb="1.5rem">
-        <Tooltip label={disabledReason} disabled={!disabledReason}>
-          <Box>
-            <Switch
-              label={
-                <Group gap={0}>
-                  <Text
-                    fw="bold"
-                    c={disabledReason ? "text-secondary" : "text-primary"}
-                  >{t`Attach results as files`}</Text>
-                  <Icon
-                    name="info"
-                    c="text-secondary"
-                    ml="0.5rem"
-                    size={12}
-                    tooltip={
-                      !disabledReason
-                        ? t`Attachments can contain up to 2,000 rows of data.`
-                        : undefined
-                    }
-                  />
-                </Group>
-              }
-              aria-label={t`Attach results`}
-              checked={isEnabled && canAttachFiles}
-              onChange={(e) => toggleAttach(e.target.checked)}
-              disabled={!canAttachFiles}
-              labelPosition="left"
-              classNames={{
-                body: S.AttachmentSwitchBody,
-                input: S.AttachmentSwitchInput,
-              }}
-            />
-          </Box>
-        </Tooltip>
-      </Box>
+      <Tooltip label={disabledReason} disabled={!disabledReason}>
+        <Box>
+          <Switch
+            label={
+              <Group gap={0}>
+                <Text
+                  fw="bold"
+                  c={disabledReason ? "text-secondary" : "text-primary"}
+                >{t`Attach CSV/XLSX with results`}</Text>
+                <Icon
+                  name="info"
+                  c="text-secondary"
+                  ml="0.5rem"
+                  size={12}
+                  tooltip={
+                    !disabledReason
+                      ? t`Attachments can contain up to 2,000 rows of data.`
+                      : undefined
+                  }
+                />
+              </Group>
+            }
+            aria-label={t`Attach results`}
+            checked={isEnabled && canAttachFiles}
+            onChange={(e) => toggleAttach(e.target.checked)}
+            disabled={!canAttachFiles}
+            labelPosition="left"
+            classNames={{
+              body: S.AttachmentSwitchBody,
+              input: S.AttachmentSwitchInput,
+            }}
+          />
+        </Box>
+      </Tooltip>
       {isEnabled && canAttachFiles && (
         <div>
           <Box py="1rem">

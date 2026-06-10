@@ -13,7 +13,7 @@ import { SlackChannelField } from "metabase/notifications/channels/SlackChannelF
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
-import { Group, Icon, Switch, Text, Title } from "metabase/ui";
+import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -156,13 +156,7 @@ export const AddEditSlackSidebar = ({
             parameters={parameters}
           />
         )}
-        <div
-          className={cx(
-            CS.py2,
-
-            CS.borderTop,
-          )}
-        >
+        <Stack gap="md" py="lg" className={CS.borderTop}>
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
@@ -176,7 +170,6 @@ export const AddEditSlackSidebar = ({
           />
 
           <Switch
-            mt="1rem"
             aria-label={t`Send dashboard as PDF`}
             checked={includePdf}
             onChange={(e) => handleToggleIncludePdf(e.target.checked)}
@@ -186,33 +179,15 @@ export const AddEditSlackSidebar = ({
               body: S.SwitchBody,
               input: S.SwitchInput,
             }}
-            label={
-              <Group gap={0}>
-                <Text fw="bold">{t`Send dashboard as PDF`}</Text>
-                <Icon
-                  name="info"
-                  c="text-secondary"
-                  ml="0.5rem"
-                  size={12}
-                  tooltip={
-                    allowDownload
-                      ? t`Shares a server-rendered PDF of the whole dashboard instead of sending individual dashcards.`
-                      : t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
-                  }
-                />
-              </Group>
-            }
+            label={<Text fw="bold">{t`Send dashboard as PDF`}</Text>}
           />
-        </div>
+        </Stack>
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
             handleArchive={handleArchive}
           />
         )}
-        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
-          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
-        </div>
       </div>
     </Sidebar>
   );

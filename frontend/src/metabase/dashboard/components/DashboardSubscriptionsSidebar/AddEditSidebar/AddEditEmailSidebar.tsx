@@ -19,7 +19,7 @@ import { dashboardPulseIsValid } from "metabase/pulse";
 import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
-import { Group, Icon, Switch, Text, Title } from "metabase/ui";
+import { Icon, Stack, Switch, Text, Title } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   type Channel,
@@ -199,7 +199,7 @@ export const AddEditEmailSidebar = ({
             parameters={parameters}
           />
         )}
-        <div className={cx(CS.py3, CS.borderTop)}>
+        <Stack gap="md" py="lg" className={CS.borderTop}>
           <Switch
             checked={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
@@ -212,7 +212,6 @@ export const AddEditEmailSidebar = ({
             }}
           />
           <Switch
-            mt="1rem"
             checked={includePdf}
             onChange={(e) => handleToggleIncludePdf(e.target.checked)}
             disabled={!allowDownload}
@@ -220,40 +219,23 @@ export const AddEditEmailSidebar = ({
               body: S.SwitchBody,
               input: S.SwitchInput,
             }}
-            label={
-              <Group gap={0}>
-                <Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>
-                <Icon
-                  name="info"
-                  c="text-secondary"
-                  ml="0.5rem"
-                  size={12}
-                  tooltip={
-                    allowDownload
-                      ? t`Attaches a server-rendered PDF of the whole dashboard.`
-                      : t`You don't have permission to download results and therefore cannot attach files to subscriptions.`
-                  }
-                />
-              </Group>
-            }
+            label={<Text fw="bold">{t`Attach a PDF of the dashboard`}</Text>}
             labelPosition="left"
           />
-        </div>
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-          allowDownload={allowDownload}
-        />
+          <EmailAttachmentPicker
+            cards={pulse.cards}
+            pulse={pulse}
+            setPulse={setPulse}
+            allowDownload={allowDownload}
+          />
+        </Stack>
+
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
             handleArchive={handleArchive}
           />
         )}
-        <div className={cx(CS.p2, CS.mtAuto, CS.textSmall, CS.textMedium)}>
-          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
-        </div>
       </div>
     </Sidebar>
   );
