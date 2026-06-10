@@ -136,6 +136,7 @@ export function DatasetsList({
         models: ["card", "dataset", "metric"],
         include_dashboard_questions: true,
         include_metadata: true,
+        context: "data-picker",
         ...(visualizationType &&
           isCartesianChart(visualizationType) &&
           search.length === 0 && {

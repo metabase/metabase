@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
 import { createMockEntitiesState } from "__support__/store";
+import { waitFor } from "__support__/ui";
 import { Api } from "metabase/api";
 import { mainReducers } from "metabase/reducers-main";
 import { createMockState } from "metabase/redux/store/mocks";
@@ -362,12 +363,22 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
         signal: new AbortController().signal,
       });
 
+      // Wait for both requests to actually be in flight before aborting:
+      // independent cache keys ⇒ two real requests, not one shared (deduped)
+      // one. Aborting synchronously would short-circuit the cancelled run
+      // before the client ever issues its fetch, so we'd never observe whether
+      // the two queries were deduped.
+      await waitFor(() =>
+        expect(fetchMock.callHistory.calls(path)).toHaveLength(2),
+      );
+
       abortController.abort();
 
       await expect(liveRun).resolves.toHaveLength(1);
       await cancelledRun;
 
-      // Independent cache keys ⇒ two real requests, not one shared (deduped) one.
+      // Aborting the cancelled run must not have disturbed the live run's
+      // separate request.
       expect(fetchMock.callHistory.calls(path)).toHaveLength(2);
     });
 

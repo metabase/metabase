@@ -73,12 +73,18 @@
   `::lib.schema/external-query` — that pulls in `::query`'s `:optional` non-nullable
   `:lib/metadata` (and emits `prefixItems` / `allOf` JSON Schema constructs that strict MCP
   clients reject). This override publishes the same opaque-object `:query` field used by
-  `construct_query`, plus the `:continuation_token` alternative for pagination."
+  `construct_query`, plus the `:query_handle` and `:continuation_token` alternatives. The handle
+  is swapped for the stored base64 `:query` by [[resolve-query-arg]] before dispatch."
   [:map
    [:query              {:optional true
-                         :tool/description (str "Metabase MBQL 5 query. "
-                                                "Omit when paginating via `continuation_token`.")}
+                         :tool/description (str "Metabase MBQL 5 query. Use `query_handle` instead "
+                                                "when you have one. Omit when paginating via "
+                                                "`continuation_token`.")}
     [:maybe external-query-mcp-malli]]
+   [:query_handle       {:optional true
+                         :tool/description (str "Handle returned by construct_query — preferred over "
+                                                "raw `query`.")}
+    [:maybe ms/UUIDString]]
    [:continuation_token {:optional true
                          :tool/description (str "Token returned by a previous `query` response — pass "
                                                 "it back to fetch the next page. Mutually exclusive "
@@ -316,9 +322,12 @@
         new-body)
       body)))
 
-;; Tools that accept :query_handle as an alternative to a raw base64 :query string.
+;; Tools whose :query_handle is resolved by `resolve-query-arg` (it swaps the handle for the stored
+;; base64 :query) before the agent-api dispatch in `call-tool`. `visualize_query` also accepts a
+;; handle, but it's a UI tool that resolves the handle itself (see `metabase.mcp.resources`) and
+;; never reaches this dispatch path, so it's intentionally absent here.
 (def ^:private tools-accepting-query-handle
-  #{"execute_query" "visualize_query" "create_question" "update_question"})
+  #{"execute_query" "query" "create_question" "update_question"})
 
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 

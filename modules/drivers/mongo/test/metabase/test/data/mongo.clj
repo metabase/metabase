@@ -26,7 +26,7 @@
     false))
 
 ;; During tests don't treat Mongo as having FK support
-(defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] (not config/is-test?))
+(defmethod driver/database-supports? [:mongo :metadata/key-constraints] [_driver _feature _db] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."

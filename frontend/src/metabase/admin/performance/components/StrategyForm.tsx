@@ -16,7 +16,7 @@ import {
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, isModelWithClearableCache } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -43,7 +43,6 @@ import { CacheDurationUnit } from "metabase-types/api";
 
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
-import { isModelWithClearableCache } from "../types";
 import {
   getDefaultValueForField,
   getLabelString,

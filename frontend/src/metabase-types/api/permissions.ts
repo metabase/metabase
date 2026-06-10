@@ -176,3 +176,24 @@ export type DataSegregationStrategy =
   | "row-column-level-security"
   | "connection-impersonation"
   | "database-routing";
+
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+export type PermissionEntityId = DatabaseEntityId &
+  Partial<Omit<TableEntityId, "databaseId">>;
+
+export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;

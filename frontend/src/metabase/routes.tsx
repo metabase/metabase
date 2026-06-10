@@ -37,7 +37,6 @@ import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
-import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import { MetricsViewerPage } from "metabase/metrics-viewer";
@@ -49,6 +48,7 @@ import {
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { MetabotQueryBuilder } from "metabase/query_builder/components/MetabotQueryBuilder";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import type { State } from "metabase/redux/store";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -428,6 +428,10 @@ export const getRoutes = (store: AppStore) => {
         from="/collections/permissions"
         to="/admin/permissions/collections"
       />
+
+      {/* Transforms moved from /admin to /data-studio */}
+      <Redirect from="/admin/transforms" to="/data-studio/transforms" />
+      <Redirect from="/admin/transforms/*" to="/data-studio/transforms/*" />
 
       {/* MISC */}
       <Route path="/unsubscribe" component={UnsubscribePage} />

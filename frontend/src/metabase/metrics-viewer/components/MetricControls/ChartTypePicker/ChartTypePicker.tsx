@@ -1,7 +1,7 @@
 import { ActionIcon, Flex, Icon } from "metabase/ui";
 
 import type { MetricsViewerDisplayType } from "../../../types/viewer-state";
-import type { ChartTypeOption } from "../../../utils/tab-config";
+import type { ChartTypeOption } from "../../../utils/dimension-breakout-config";
 
 import S from "./ChartTypePicker.module.css";
 
@@ -17,10 +17,17 @@ export function ChartTypePicker({
   onChange,
 }: ChartTypePickerProps) {
   return (
-    <Flex gap="xs" bg="background-secondary" p="xs" bdrs="md">
+    <Flex
+      className={S.root}
+      gap="xs"
+      bg="background-secondary"
+      p="xs"
+      bdrs="md"
+    >
       {chartTypes.map(({ type, icon }) => (
         <ActionIcon
           w="2rem"
+          h="1.5rem"
           key={type}
           variant={value === type ? "filled" : "subtle"}
           bg={value === type ? "background-primary" : undefined}

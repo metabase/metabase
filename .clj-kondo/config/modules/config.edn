@@ -176,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -2172,6 +2173,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
