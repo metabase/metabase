@@ -160,19 +160,11 @@ export const TreemapChart = ({
     [eventHandlers, handleLabelMeasure],
   );
 
-  // A new dataset re-renders the chart at the absolute root, so reset the
-  // tracked view root to the overview. (The measured label maps reset inside
-  // `useLabelMeasurement` for the same reason.)
   useEffect(() => {
     handleViewRootChange(null);
   }, [chartData, handleViewRootChange]);
 
-  // `setOption` (run by the renderer when `option` changes) always renders at
-  // the absolute root, so after each change re-apply the drill for a drilled-in
-  // view. This effect runs after the renderer's `setOption` effect (child
-  // effects fire before parent effects). No canvas resize is involved, so the
-  // layout stays clean. Also drop any stale hover overlay — its rect belongs to
-  // the pre-change layout; the next `mouseover` re-adds it for the new view.
+  // reapply current zoom level that lives outside of echarts
   useEffect(() => {
     hideTreemapHoverOverlay(chartRef, overlayRef);
     dispatchTreemapViewRoot(chartRef, viewRootId);

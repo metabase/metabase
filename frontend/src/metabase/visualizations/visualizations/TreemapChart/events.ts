@@ -65,14 +65,6 @@ export function dispatchTreemapViewRoot(
   });
 }
 
-/**
- * Wash the tile with the given node id under a 10% black overlay. The overlay is
- * a zrender `Rect` added straight to the chart's zrender layer (NOT via
- * `setOption`, which would re-render the treemap at its absolute root and undo
- * the drill). The same element is repositioned on successive hovers. It's
- * `silent` so mouse events pass through to the tiles beneath (it never steals
- * its own `mouseout`), and sits above the tiles and their labels.
- */
 export function showTreemapHoverOverlay(
   chartRef: MutableRefObject<EChartsType | undefined>,
   overlayRef: TreemapHoverOverlayRef,

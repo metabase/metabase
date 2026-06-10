@@ -1,9 +1,4 @@
 .root {
-  /* Round the 4 outer corners of the treemap by clipping the SVG to a rounded
-     rect. Clipping the SVG (rather than an overflow:hidden wrapper) keeps the
-     clip scoped to the chart canvas; the breadcrumb bar is a separate sibling
-     element stacked above this chart, so it is unaffected. The chart is
-     full-bleed (no ECharts inset), so the clip needs no inset either. */
   & [data-testid="chart-container"] svg {
     clip-path: inset(0 round 1rem);
   }
