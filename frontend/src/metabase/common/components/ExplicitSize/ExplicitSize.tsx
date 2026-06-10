@@ -250,7 +250,21 @@ export function ExplicitSize<T>({
           return;
         }
 
-        if (this.state.width !== width || this.state.height !== height) {
+        const { width: prevWidth, height: prevHeight } = this.state;
+
+        // The two measurement sources report sub-pixel sizes with different
+        // precision: @juggle/resize-observer (used in the SDK) rounds box
+        // sizes to three decimals while getBoundingClientRect() does not.
+        // Ignore sub-pixel deltas so alternating sources don't produce
+        // spurious size updates — each one re-renders charts, and an echarts
+        // resize dismisses any open tooltip.
+        const hasChanged =
+          prevWidth === null ||
+          prevHeight === null ||
+          Math.abs(prevWidth - width) >= 1 ||
+          Math.abs(prevHeight - height) >= 1;
+
+        if (hasChanged) {
           this.setState({ width, height }, () => this.props?.onUpdateSize?.());
         }
       };
