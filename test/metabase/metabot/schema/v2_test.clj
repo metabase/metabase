@@ -7,31 +7,31 @@
 (def ^:private chunk-cases
   "[valid-payload required-key-or-nil] — one row per uiMessageChunkSchema union member."
   [[{:type "text-start" :id "t1"}                                                            :id]
-   [{:type "text-delta" :id "t1" :delta "Hi" :provider_metadata {:openai {:x 1}}}            :delta]
+   [{:type "text-delta" :id "t1" :delta "Hi" :providerMetadata {:openai {:x 1}}}            :delta]
    [{:type "text-end" :id "t1"}                                                              :id]
-   [{:type "error" :error_text "boom"}                                                       :error_text]
-   [{:type "tool-input-start" :tool_call_id "tc1" :tool_name "search" :dynamic false}        :tool_name]
-   [{:type "tool-input-delta" :tool_call_id "tc1" :input_text_delta "{\"q\":"}               :input_text_delta]
-   [{:type "tool-input-available" :tool_call_id "tc1" :tool_name "search" :input {:q "x"}}   :input]
-   [{:type "tool-input-error" :tool_call_id "tc1" :tool_name "search" :input nil
-     :error_text "bad input"}                                                                :error_text]
-   [{:type "tool-approval-request" :approval_id "ap1" :tool_call_id "tc1"}                   :approval_id]
-   [{:type "tool-output-available" :tool_call_id "tc1" :output {:rows []} :preliminary true} :output]
-   [{:type "tool-output-error" :tool_call_id "tc1" :error_text "failed"}                     :error_text]
-   [{:type "tool-output-denied" :tool_call_id "tc1"}                                         :tool_call_id]
+   [{:type "error" :errorText "boom"}                                                       :errorText]
+   [{:type "tool-input-start" :toolCallId "tc1" :toolName "search" :dynamic false}        :toolName]
+   [{:type "tool-input-delta" :toolCallId "tc1" :inputTextDelta "{\"q\":"}               :inputTextDelta]
+   [{:type "tool-input-available" :toolCallId "tc1" :toolName "search" :input {:q "x"}}   :input]
+   [{:type "tool-input-error" :toolCallId "tc1" :toolName "search" :input nil
+     :errorText "bad input"}                                                                :errorText]
+   [{:type "tool-approval-request" :approvalId "ap1" :toolCallId "tc1"}                   :approvalId]
+   [{:type "tool-output-available" :toolCallId "tc1" :output {:rows []} :preliminary true} :output]
+   [{:type "tool-output-error" :toolCallId "tc1" :errorText "failed"}                     :errorText]
+   [{:type "tool-output-denied" :toolCallId "tc1"}                                         :toolCallId]
    [{:type "reasoning-start" :id "r1"}                                                       :id]
    [{:type "reasoning-delta" :id "r1" :delta "thinking"}                                     :delta]
    [{:type "reasoning-end" :id "r1"}                                                         :id]
-   [{:type "source-url" :source_id "s1" :url "https://example.com" :title "Example"}         :url]
-   [{:type "source-document" :source_id "s1" :media_type "application/pdf" :title "Doc"}     :media_type]
-   [{:type "file" :url "data:text/plain;base64,SGk=" :media_type "text/plain"}               :url]
+   [{:type "source-url" :sourceId "s1" :url "https://example.com" :title "Example"}         :url]
+   [{:type "source-document" :sourceId "s1" :mediaType "application/pdf" :title "Doc"}     :mediaType]
+   [{:type "file" :url "data:text/plain;base64,SGk=" :mediaType "text/plain"}               :url]
    [{:type "data-navigate_to" :data "/question/1" :transient true}                           :data]
    [{:type "start-step"}                                                                     nil]
    [{:type "finish-step"}                                                                    nil]
-   [{:type "start" :message_id "m1"}                                                         nil]
-   [{:type "finish" :finish_reason "stop"}                                                   nil]
+   [{:type "start" :messageId "m1"}                                                         nil]
+   [{:type "finish" :finishReason "stop"}                                                   nil]
    [{:type "abort" :reason "user cancelled"}                                                 nil]
-   [{:type "message-metadata" :message_metadata {:model "gpt-4o"}}                           :message_metadata]])
+   [{:type "message-metadata" :messageMetadata {:model "gpt-4o"}}                           :messageMetadata]])
 
 (deftest ^:parallel ui-message-chunk-test
   (doseq [[payload required-key] chunk-cases]
@@ -48,24 +48,24 @@
 (def ^:private ui-message-part-cases
   [[{:type "text" :text "Hello" :state "done"}                                              :text]
    [{:type "reasoning" :text "let me think" :state "streaming"}                             :text]
-   [{:type "source-url" :source_id "s1" :url "https://example.com"}                         :url]
-   [{:type "source-document" :source_id "s1" :media_type "application/pdf" :title "Doc"}    :title]
-   [{:type "file" :media_type "text/plain" :filename "a.txt" :url "https://example.com/a"}  :url]
+   [{:type "source-url" :sourceId "s1" :url "https://example.com"}                         :url]
+   [{:type "source-document" :sourceId "s1" :mediaType "application/pdf" :title "Doc"}    :title]
+   [{:type "file" :mediaType "text/plain" :filename "a.txt" :url "https://example.com/a"}  :url]
    [{:type "step-start"}                                                                    nil]
-   [{:type "tool-search" :tool_call_id "tc1" :state "input-streaming"}                      :tool_call_id]
-   [{:type "tool-search" :tool_call_id "tc1" :state "input-available" :input {:q "x"}}      :input]
-   [{:type "tool-search" :tool_call_id "tc1" :state "approval-requested" :input {:q "x"}
+   [{:type "tool-search" :toolCallId "tc1" :state "input-streaming"}                      :toolCallId]
+   [{:type "tool-search" :toolCallId "tc1" :state "input-available" :input {:q "x"}}      :input]
+   [{:type "tool-search" :toolCallId "tc1" :state "approval-requested" :input {:q "x"}
      :approval {:id "ap1"}}                                                                 :approval]
-   [{:type "tool-search" :tool_call_id "tc1" :state "approval-responded" :input {:q "x"}
+   [{:type "tool-search" :toolCallId "tc1" :state "approval-responded" :input {:q "x"}
      :approval {:id "ap1" :approved true :reason "ok"}}                                     :approval]
-   [{:type "tool-search" :tool_call_id "tc1" :state "output-available" :input {:q "x"}
+   [{:type "tool-search" :toolCallId "tc1" :state "output-available" :input {:q "x"}
      :output {:rows []} :preliminary false}                                                 :output]
-   [{:type "tool-search" :tool_call_id "tc1" :state "output-error" :input {:q "x"}
-     :raw_input "{\"q\"" :error_text "failed"}                                              :error_text]
-   [{:type "tool-search" :tool_call_id "tc1" :state "output-denied" :input {:q "x"}
+   [{:type "tool-search" :toolCallId "tc1" :state "output-error" :input {:q "x"}
+     :rawInput "{\"q\"" :errorText "failed"}                                              :errorText]
+   [{:type "tool-search" :toolCallId "tc1" :state "output-denied" :input {:q "x"}
      :approval {:id "ap1" :approved false}}                                                 :approval]
-   [{:type "dynamic-tool" :tool_name "mcp_tool" :tool_call_id "tc1" :state "output-available"
-     :input {:q "x"} :output "result"}                                                      :tool_name]
+   [{:type "dynamic-tool" :toolName "mcp_tool" :toolCallId "tc1" :state "output-available"
+     :input {:q "x"} :output "result"}                                                      :toolName]
    [{:type "data-navigate_to" :id "d1" :data "/question/1"}                                 :data]])
 
 (deftest ^:parallel ui-message-part-test
@@ -78,22 +78,22 @@
 
 (deftest ^:parallel tool-approval-shape-test
   (testing "approval-requested approvals carry only an id"
-    (let [part {:type "tool-search" :tool_call_id "tc1" :state "approval-requested"
+    (let [part {:type "tool-search" :toolCallId "tc1" :state "approval-requested"
                 :input {:q "x"} :approval {:id "ap1"}}]
       (is (mr/validate ::schema.v2/ui-message-part part))
       (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] true))))))
   (testing "approval-responded approvals require the approved flag"
-    (let [part {:type "tool-search" :tool_call_id "tc1" :state "approval-responded"
+    (let [part {:type "tool-search" :toolCallId "tc1" :state "approval-responded"
                 :input {:q "x"} :approval {:id "ap1" :approved false :reason "no"}}]
       (is (mr/validate ::schema.v2/ui-message-part part))
       (is (not (mr/validate ::schema.v2/ui-message-part (update part :approval dissoc :approved))))))
   (testing "output-available approvals must be approved"
-    (let [part {:type "tool-search" :tool_call_id "tc1" :state "output-available"
+    (let [part {:type "tool-search" :toolCallId "tc1" :state "output-available"
                 :input {:q "x"} :output {:rows []} :approval {:id "ap1" :approved true}}]
       (is (mr/validate ::schema.v2/ui-message-part part))
       (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] false))))))
   (testing "output-denied approvals must be denied"
-    (let [part {:type "dynamic-tool" :tool_name "mcp_tool" :tool_call_id "tc1" :state "output-denied"
+    (let [part {:type "dynamic-tool" :toolName "mcp_tool" :toolCallId "tc1" :state "output-denied"
                 :input {:q "x"} :approval {:id "ap1" :approved false}}]
       (is (mr/validate ::schema.v2/ui-message-part part))
       (is (not (mr/validate ::schema.v2/ui-message-part (assoc-in part [:approval :approved] true)))))))
@@ -102,7 +102,7 @@
   (let [message {:id    "msg1"
                  :role  "assistant"
                  :parts [{:type "text" :text "Hello"}
-                         {:type "tool-search" :tool_call_id "tc1" :state "output-available"
+                         {:type "tool-search" :toolCallId "tc1" :state "output-available"
                           :input {:q "x"} :output {:rows []}}]}]
     (is (mr/validate ::schema.v2/ui-message message))
     (is (not (mr/validate ::schema.v2/ui-message (assoc message :role "tool"))))
