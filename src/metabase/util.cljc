@@ -253,8 +253,8 @@
          proto
          (= "https" proto)
 
-         ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Frontend-End-Https`, which
-         ;; will be set to `on` if the original request was over HTTPS.
+          ;; If none of those headers are present, look for presence of `X-Forwarded-Ssl` or `Front-End-Https`, which
+          ;; will be set to `on` if the original request was over HTTPS.
          ssl
          (= "on" (lower-case-en ssl))
 
