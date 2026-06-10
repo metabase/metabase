@@ -255,13 +255,21 @@
               dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
               dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
           (doseq [[nm render expected]
+                  ;; plain text now flows through the same item pipeline as Markdown, so it draws one
+                  ;; record per word (not per line); the rendered pixels are unchanged -- verified
+                  ;; separately by rasterising every fixture before/after the unification.
                   [["plain wrap (Latin, 2 lines)"
                     (dtb reg 10.0 40.0 700.0 120.0 60.0 "The quick brown fox jumps over")
-                    [{:font :regular :pt 10.0 :x 40.0 :y 690.0 :text "The quick brown fox"}
-                     {:font :regular :pt 10.0 :x 40.0 :y 677.0 :text "jumps over"}]]
-                   ["plain RTL title (right-aligned, whole-line shaped)"
+                    [{:font :regular :pt 10.0 :x 40.0 :y 690.0 :text "The"}
+                     {:font :regular :pt 10.0 :x 60.0 :y 690.0 :text "quick"}
+                     {:font :regular :pt 10.0 :x 87.6 :y 690.0 :text "brown"}
+                     {:font :regular :pt 10.0 :x 120.6 :y 690.0 :text "fox"}
+                     {:font :regular :pt 10.0 :x 40.0 :y 677.0 :text "jumps"}
+                     {:font :regular :pt 10.0 :x 71.6 :y 677.0 :text "over"}]]
+                   ["plain RTL title (right-aligned, per-word reorder)"
                     (dtb bold 13.0 40.0 700.0 200.0 40.0 "مرحبا بكم")
-                    [{:font :bold :pt 13.0 :x 186.6 :y 687.0 :text "مرحبا بكم"}]]
+                    [{:font :bold :pt 13.0 :x 186.6 :y 687.0 :text "بكم"}
+                     {:font :bold :pt 13.0 :x 209.3 :y 687.0 :text "مرحبا"}]]
                    ["markdown inline styles (per-run fonts)"
                     (dmic 40.0 700.0 240.0 80.0 "Hi **bold** *em* `cd` [lk](https://x.com)")
                     [{:font :regular :pt 10.5 :x 40.0 :y 689.5 :text "Hi"}

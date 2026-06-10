@@ -46,7 +46,6 @@
    [metabase.parameters.shared :as shared.params]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
-   [metabase.util :as u]
    [metabase.util.http :as u.http]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -477,7 +476,8 @@
 
 (defn- pack-units->lines
   "Greedily pack pre-measured `units` into lines no wider than `max-w`. This is the shared word-wrap
-  algorithm behind both the plain-text ([[wrap-text]]) and Markdown ([[words->lines]]) paths.
+  algorithm behind [[words->lines]], through which all text -- Markdown cards and plain titles /
+  headings / parameters alike -- is wrapped.
 
   Each unit is a map carrying `:ww` (its drawn width), `:sp` (the width of one leading space), and
   `:space-before?` (whether the source had whitespace before it). A unit may instead be a
@@ -517,21 +517,6 @@
       :else
       (recur (rest units) (conj line (assoc u :space-before? add-space?)) (+ line-w advance) lines))))
 
-(defn- wrap-text
-  "Greedy word-wrap `text` to fit `max-width` points at `font-pt` with `face` (see [[tokenize-units]]
-  for how good break points are found, and [[pack-units->lines]] for the packing). A single token
-  wider than the line is force-broken via [[split-into-chars]]. Returns a vector of line strings."
-  [face font-pt text max-width]
-  (let [[units _pending] (tokenize-units (normalize-ws text) {} false [])
-        sp        (text-width face font-pt " ")
-        measure   (fn [u] (assoc u :ww (text-width face font-pt (:text u)) :sp sp))
-        split-fn  (fn [u] (if (<= (count (str (:text u))) 1)
-                            [u]
-                            (map measure (split-into-chars u))))]
-    (mapv (fn [line]
-            (apply str (map (fn [u] (str (when (:space-before? u) " ") (:text u))) line)))
-          (pack-units->lines (map measure units) max-width split-fn))))
-
 (defn- draw-line!
   "Draw a single line of text with `face` at a baseline, switching physical fonts as needed so mixed-script text
   (e.g. English + Japanese) renders the right glyphs."
@@ -542,34 +527,6 @@
     (.setFont cs ^PDFont (:font phys) (float font-pt))
     (.showText cs chunk))
   (.endText cs))
-
-(defn- draw-text-block!
-  "Draw wrapped text top-aligned within `[x, top-y]` bounded by `max-w`/`max-h`, optionally in `color`.
-
-  Right-to-left text (Arabic/Hebrew) is flush-right within `max-w`; everything else is flush-left.
-
-  Returns the vertical points consumed; and sets `color` back to black."
-  [^PDPageContentStream cs face font-pt ^Color color x top-y max-w max-h text]
-  (let [lh   (* font-pt line-height-factor)
-        rtl? (base-rtl? text)]
-    (when color
-      (.setNonStrokingColor cs color))
-    (u/prog1 (loop [lines (if (str/blank? (str text))
-                            []
-                            (wrap-text face font-pt text max-w))
-                    y     (- (double top-y) font-pt)
-                    used  0.0]
-               (if (or (empty? lines)
-                       (> (+ used lh) max-h))
-                 used
-                 (let [line (first lines)
-                       lx   (if rtl?
-                              (+ (double x) (max 0.0 (- max-w (text-width face font-pt line))))
-                              (double x))]
-                   (draw-line! cs face font-pt lx y line)
-                   (recur (rest lines) (- y lh) (+ used lh)))))
-      (when color
-        (.setNonStrokingColor cs Color/BLACK)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Markdown image fetching. Markdown text cards can reference remote images, which means fetching
@@ -781,9 +738,9 @@
 ;; It seems like it would be much more efficient, and probably easier to read too, if the whole thing were written
 ;; as a reducible pipeline, streaming the results into a final sink.
 
-;; `runs->words` and `wrap-text` now share the same greedy packer ([[pack-units->lines]]); the only difference is
-;; that the Markdown path measures+styles each word into a drawable item first (see [[->measured-item]]), while the
-;; plain path measures bare strings and re-joins each packed line back into a string.
+;; All text -- Markdown cards and plain titles/headings alike -- funnels through `runs->words` ->
+;; `->measured-item` -> `pack-units->lines` -> `draw-item-lines!`. Plain text (see `draw-text-block!`)
+;; is just the degenerate case of a single styled run.
 (defn- runs->words
   "Split runs into a flat seq of word tokens, each `{:text :style :space-before?}` (or `{:break? true}`),
   so that adjacent runs with no whitespace between them don't get a space."
@@ -859,6 +816,13 @@
   [line base-pt]
   (if (some :ruby? line) (* base-pt ruby-scale 1.2) 0.0))
 
+(defn- lines-height
+  "Total vertical points a sequence of wrapped item-lines consumes at `base-pt`, including any
+  furigana bands (see [[line-extra]])."
+  [lines base-pt]
+  (let [lh (* base-pt line-height-factor)]
+    (reduce (fn [acc line] (+ acc lh (line-extra line base-pt))) 0.0 lines)))
+
 (defn- block-height
   "Vertical points a block consumes when laid out at `scale` (mirrors `draw-block!`)."
   [block cell-w scale]
@@ -877,9 +841,8 @@
           marker   (:marker block)
           marker-w (if marker (text-width (face :regular) base-pt marker) 0.0)
           content-w (- cell-w (* (long (or (:indent block) 0)) 14.0) marker-w)
-          lines    (words->lines (runs->words (:runs block)) base-pt heading? content-w)
-          lh       (* base-pt line-height-factor)]
-      (reduce (fn [acc line] (+ acc lh (line-extra line base-pt))) 0.0 lines))))
+          lines    (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
+      (lines-height lines base-pt))))
 
 (defn- markdown-total-height [blocks cell-w scale]
   (reduce (fn [acc b] (+ acc (block-height b cell-w scale) (* 4.0 scale))) 0.0 blocks))
@@ -980,6 +943,53 @@
           (recur (rest items) (+ cx2 (:ww it))))))
     (.setNonStrokingColor cs Color/BLACK)))
 
+(defn- draw-item-lines!
+  "Draw already-wrapped `lines` (each a vector of measured items) top-down from `top-y`, laying each
+  out within `[content-x, content-x+content-w]` and stopping before `bottom`. `rtl?` right-aligns. On
+  the first line, `marker` (if non-nil) is drawn at `marker-x` in `marker-font`. Returns the y just
+  below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
+  [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
+  (let [lh (* base-pt line-height-factor)]
+    (loop [lines lines, y (double top-y), first? true]
+      (if (empty? lines)
+        y
+        ;; lines with furigana need extra space above the base for the reading; lower the baseline
+        ;; into that band and grow the line advance to match.
+        (let [extra    (line-extra (first lines) base-pt)
+              baseline (- y extra base-pt)
+              adv      (+ lh extra)]
+          (if (< (- y adv) bottom)
+            y
+            (do
+              (when (and first? marker)
+                (draw-line! cs marker-font base-pt marker-x baseline marker))
+              (draw-md-line! cs content-x content-w rtl? baseline (first lines))
+              (recur (rest lines) (- y adv) false))))))))
+
+(def ^:private face-id->style
+  "Inverse of [[run-font]]: the run style that selects each face. Lets plain text drawn with an
+  explicit face be expressed as a single styled run and fed through the shared item pipeline."
+  {:regular {} :bold {:bold? true} :italic {:italic? true}
+   :bold-italic {:bold? true :italic? true} :mono {:code? true}})
+
+(defn- draw-text-block!
+  "Draw wrapped plain `text` top-aligned within `[x, top-y]`, bounded by `max-w`/`max-h`. Right-to-left
+  text (Arabic/Hebrew) is flush-right within `max-w`; everything else is flush-left. When `color` is
+  given, every run is forced to it (otherwise the face's natural colour is used). Returns the vertical
+  points consumed.
+
+  This expresses the text as a single styled run and reuses the shared Markdown layout/draw pipeline
+  ([[words->lines]] + [[draw-item-lines!]]) so there is one wrapping/measuring/drawing path for all text."
+  [^PDPageContentStream cs face font-pt ^Color color x top-y max-w max-h text]
+  (if (str/blank? (str text))
+    0.0
+    (let [runs  [(merge {:text (str text)} (get face-id->style (:id face) {}))]
+          lines (cond->> (words->lines (runs->words runs) font-pt false max-w)
+                  color (mapv (fn [line] (mapv #(assoc % :color color) line))))
+          y     (draw-item-lines! cs lines x max-w top-y (- (double top-y) max-h) font-pt
+                                  (base-rtl? text) nil x nil)]
+      (- (double top-y) y))))
+
 (defn- draw-code-block!
   [^PDPageContentStream cs block x top-y _cell-w bottom scale]
   (let [font (face :mono)
@@ -1037,7 +1047,6 @@
     ;; heading / paragraph / list-item
     (let [heading?    (= :heading (:kind block))
           base-pt     (* (if heading? (heading-pt (:level block)) text-card-pt) scale)
-          lh          (* base-pt line-height-factor)
           indent-x    (+ (double x) (* (long (or (:indent block) 0)) 14.0))
           ;; markers ("- ", "1. ") are ASCII; keep their trailing space (sanitize would trim it)
           marker      (:marker block)
@@ -1050,21 +1059,7 @@
           ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
           rtl?        (and (nil? marker) (base-rtl? block-text))
           lines       (words->lines (runs->words (:runs block)) base-pt heading? content-w)]
-      (loop [lines lines, y (double top-y), first? true]
-        (if (empty? lines)
-          y
-          ;; lines with furigana need extra space above the base for the reading; lower the baseline
-          ;; into that band and grow the line advance to match.
-          (let [extra    (line-extra (first lines) base-pt)
-                baseline (- y extra base-pt)
-                adv      (+ lh extra)]
-            (if (< (- y adv) bottom)
-              y
-              (do
-                (when (and first? marker)
-                  (draw-line! cs marker-font base-pt indent-x baseline marker))
-                (draw-md-line! cs content-x content-w rtl? baseline (first lines))
-                (recur (rest lines) (- y adv) false)))))))))
+      (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font))))
 
 (defn- draw-markdown-in-cell!
   "Render markdown `text` top-down within a cell rectangle. Shrinks the font (down to a floor)
@@ -1252,14 +1247,16 @@
         (js.svg/svg-string->bytes c)))))
 
 (defn- text-block-height
-  "Vertical points a wrapped text block would consume (without drawing), bounded by `max-h`."
+  "Vertical points a wrapped text block would consume (without drawing), bounded by `max-h`. Uses the
+  same single-styled-run item pipeline as [[draw-text-block!]]."
   [face font-pt max-w max-h text]
   (if (str/blank? (str text))
     0.0
     (let [lh    (* font-pt line-height-factor)
-          lines (count (wrap-text face font-pt text max-w))
+          runs  [(merge {:text (str text)} (get face-id->style (:id face) {}))]
+          lines (words->lines (runs->words runs) font-pt false max-w)
           fit   (long (Math/floor (/ (double max-h) lh)))]
-      (* (min lines (max 0 fit)) lh))))
+      (min (lines-height lines font-pt) (* (max 0 fit) lh)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Parameter bar -- the dashboard's active (non-inline) filter values, shown once at the very top
