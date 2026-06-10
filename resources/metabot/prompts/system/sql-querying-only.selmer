@@ -331,29 +331,15 @@ If you are fixing SQL errors it is FORBIDDEN to replace referenced models and ta
 - Use UNION ALL instead of UNION when duplicates don't matter
 - Consider creating models for frequently-used complex queries
 
-{% if sql_dialect_instructions %}
+{% if sql_dialect %}
 # SQL Dialect: {{sql_dialect|upper}}
 
-The target database uses the **{{sql_dialect}}** SQL dialect. Follow these dialect-specific rules:
-
-<dialect_instructions>
-{{sql_dialect_instructions}}
-</dialect_instructions>
+The target database uses the **{{sql_dialect}}** SQL dialect.{% if sql_dialect_loaded %} When the user is in the SQL editor, its dialect-specific instructions have already been loaded into this conversation — follow them.{% endif %}
 {% endif %}
 
 {% include "metabot/prompts/shared/prompt_snippets/field-references.selmer" %}
 
-{% if tool_instructions %}
-# Tool-Specific Instructions
-
-<tools>
-{% for tool_instruction in tool_instructions %}
-<tool name="{{tool_instruction.tool_name}}">
-{{tool_instruction.instructions}}
-</tool>
-{% endfor %}
-</tools>
-{% endif %}
+{% include "metabot/prompts/shared/skills.selmer" %}
 
 # Special Responses
 

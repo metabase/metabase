@@ -352,40 +352,65 @@ export const createModelFromTableName = ({
   });
 };
 
+const RESYNC_TRIGGER_INDEX = 10;
+const MAX_RESYNC_ITERATIONS = 40;
 export function waitForSyncToFinish({
   iteration = 0,
   dbId = 2,
   tableName = "",
   tableAlias,
+  tables = [],
+  retrigger = false,
 }) {
   // 40 x 500ms (20s) should be plenty of time for the sync to finish.
-  if (iteration === 40) {
+  if (iteration === MAX_RESYNC_ITERATIONS) {
     throw new Error("The sync is taking too long. Something is wrong.");
+  }
+
+  // `sync_schema` submits to a single-threaded task pool and can be queued
+  // behind a slow task or bump into an already-running sync, so in some scenarios one-shot
+  // schema sync may be silently dropped. If we assume such scenario, we force
+  // schema sync to be retriggered occasionally.
+  // (https://linear.app/metabase/issue/QUE2-663/calls-to-sync-schema-are-occasionally-silently-dropped)
+  if (retrigger && iteration > 0 && iteration % RESYNC_TRIGGER_INDEX === 0) {
+    cy.request("POST", `/api/database/${dbId}/sync_schema`);
   }
 
   cy.wait(SYNC_RETRY_DELAY_MS);
 
+  const rerunSync = () =>
+    waitForSyncToFinish({
+      iteration: iteration + 1,
+      dbId,
+      tableName,
+      tables,
+      tableAlias,
+      retrigger,
+    });
+
   cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
     if (!body.tables.length) {
-      return waitForSyncToFinish({
-        iteration: ++iteration,
-        dbId,
-        tableName,
-        tableAlias,
-      });
-    } else if (tableName) {
+      return rerunSync();
+    }
+
+    if (tables.length) {
+      const completed = new Set(
+        body.tables
+          .filter((table) => table.initial_sync_status === "complete")
+          .map((table) => table.name),
+      );
+
+      return tables.every((name) => completed.has(name)) ? null : rerunSync();
+    }
+
+    if (tableName) {
       const table = body.tables.find(
         (table) =>
           table.name === tableName && table.initial_sync_status === "complete",
       );
 
       if (!table) {
-        return waitForSyncToFinish({
-          iteration: ++iteration,
-          dbId,
-          tableName,
-          tableAlias,
-        });
+        return rerunSync();
       }
 
       if (tableAlias) {
@@ -401,11 +426,20 @@ export function resyncDatabase({
   dbId = 2,
   tableName = "",
   tableAlias = undefined, // TS was complaining that this was a required param
+  tables,
+  retrigger = false,
 }) {
   // must be signed in as admin to sync
   cy.request("POST", `/api/database/${dbId}/sync_schema`);
   cy.request("POST", `/api/database/${dbId}/rescan_values`);
-  waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
+  waitForSyncToFinish({
+    iteration: 0,
+    dbId,
+    tableName,
+    tables,
+    tableAlias,
+    retrigger,
+  });
 }
 
 export function addSqliteDatabase(displayName = "sqlite") {

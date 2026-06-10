@@ -5,7 +5,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { useSelector } from "metabase/redux";
-import { getIsHosted } from "metabase/setup";
+import { getIsHosted } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 
