@@ -340,8 +340,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
