@@ -170,6 +170,15 @@
   CJK has no italic, so italic CJK falls back to the upright CJK face."
   nil)
 
+(def ^:dynamic *width-cache*
+  "Per-render atom of `{[face-id ^String s] <em-width>}` memoizing [[raw-em-width]]. A string's width
+  in a given face is independent of font size, yet we measure the same strings many times -- once
+  per word while wrapping, again to total block heights, again for *each* trial scale in
+  [[fit-scale]] (up to a dozen), and again while drawing -- so we compute the shaping + per-glyph
+  advances once and reuse. Bound in [[render-dashboard-to-pdf]]; unbound (nil) elsewhere, in which
+  case widths are computed directly."
+  nil)
+
 (defn- load-phys
   "Reads a physical font from its `resource-path` within the classpath. Registers the font with the `PDDocument`."
   [^PDDocument doc resource-path]
@@ -184,14 +193,17 @@
   save time, so only the glyphs actually used end up in the output PDF."
   [^PDDocument doc]
   (let [phys  (update-vals physical-font-resources #(load-phys doc %))
-        face* (fn [primary & fallbacks]
-                {:primary   (phys primary)
+        ;; `:id` is a stable keyword identifying the face -- used as a cheap cache key (see
+        ;; [[*width-cache*]]) instead of the heavy `{:primary ... :fallbacks ...}` map.
+        face* (fn [id primary & fallbacks]
+                {:id        id
+                 :primary   (phys primary)
                  :fallbacks (mapv phys fallbacks)})]
-    {:regular     (face* :noto-regular     :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
-     :bold        (face* :noto-bold        :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
-     :italic      (face* :noto-italic      :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
-     :bold-italic (face* :noto-bold-italic :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
-     :mono        (face* :noto-mono        :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)}))
+    {:regular     (face* :regular     :noto-regular     :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
+     :bold        (face* :bold        :noto-bold        :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
+     :italic      (face* :italic      :noto-italic      :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
+     :bold-italic (face* :bold-italic :noto-bold-italic :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
+     :mono        (face* :mono        :noto-mono        :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)}))
 
 (defn- face [k]
   (get *fonts* k))
@@ -347,23 +359,37 @@
 ;; Text helpers
 ;; --------------------------------------------------------------------------------------------
 
-;; FIXME: I think [[text-width]] and [[draw-line!]] are both computing the font-runs. Check that, and avoid the extra
-;; work if practical.
+(defn- raw-em-width
+  "Width of `s` in `face` measured in *ems* (1.0 = the font size), so it can be multiplied by any
+  font size to get points -- this is what makes the measurement font-size-independent and thus
+  cacheable (see [[*width-cache*]]).
+
+  Measures the *shaped* form (see [[visual-order]]) exactly as `draw-line!` draws it, so scripts
+  (e.g. Arabic) where isolated letters are wider than their joined-up presentation forms are
+  measured on the presentation form that will actually be rendered. A naive sum over isolated letter
+  widths would overstate the space needed, leaving big gaps after each word in such scripts."
+  ^double [face ^String s]
+  (let [compute (fn []
+                  (transduce (map (fn [[phys ^String chunk]]
+                                    (/ (.getStringWidth ^PDFont (:font phys) chunk) 1000.0)))
+                             + 0.0
+                             (font-runs face (visual-order (normalize-ws s)))))]
+    (if-let [cache *width-cache*]
+      (let [k [(:id face) s]]
+        (or (get @cache k)
+            (let [v (compute)]
+              (swap! cache assoc k v)
+              v)))
+      (compute))))
+;; FIXME: If [[font-runs]] is only called in a transducing context, it could be rewritten into a reducible for better
+;; memory use and allocation performance. (Note `draw-line!` also calls it once per drawn line; only the *measurement*
+;; side is cached above, since that is what gets repeated.)
 
 (defn- text-width
-  "Width in points of `s` drawn with `face` at `font-pt`, summed across per-glyph font runs.
-
-  Measures the *shaped* form (see [[visual-order]]) exactly as `draw-line!` draws it, so scripts (e.g. Arabic) where
-  isolated individual letters are wider than their joined-up presentation forms are measured based on the presentation
-  form that will actually be rendered, and not on the isolated letters. A naive sum over letter widths would overstate
-  the space needed, leaving big gaps after each word in such scripts."
-  [face font-pt ^String s]
-  (transduce (map (fn [[phys ^String chunk]]
-                    (* font-pt (/ (.getStringWidth ^PDFont (:font phys) chunk) 1000.0))))
-             + 0.0
-             (font-runs face (visual-order (normalize-ws s)))))
-;; FIXME: If [[font-runs]] is only called in a transducing context, it could be rewritten into a reducible for better
-;; memory use and allocation performance.
+  "Width in points of `s` drawn with `face` at `font-pt`. The per-glyph measurement lives in
+  (cached) [[raw-em-width]]; this just scales it by the font size."
+  ^double [face font-pt ^String s]
+  (* (double font-pt) (raw-em-width face s)))
 
 (defn- cjk-char?
   "Codepoints from scripts that don't use spaces between words. Line breaks are allowed between adjacent characters from
@@ -449,45 +475,62 @@
                                            :space-before? (and (zero? i) space-before?))))
                   (.codePoints ^String (:text unit)))))
 
+(defn- pack-units->lines
+  "Greedily pack pre-measured `units` into lines no wider than `max-w`. This is the shared word-wrap
+  algorithm behind both the plain-text ([[wrap-text]]) and Markdown ([[words->lines]]) paths.
+
+  Each unit is a map carrying `:ww` (its drawn width), `:sp` (the width of one leading space), and
+  `:space-before?` (whether the source had whitespace before it). A unit may instead be a
+  `{:break? true}` marker, which forces a line break. A unit that alone exceeds `max-w` is broken
+  via `split-fn` (a unit -> a seq of narrower pre-measured units; it returns the unit unchanged when
+  it can't be split further, e.g. a single glyph).
+
+  Returns a vector of lines, each a vector of (the same, opaque) units, with each unit's
+  `:space-before?` updated to whether *this line* draws a space before it -- false at the start of a
+  line, so callers don't have to special-case the first unit."
+  [units max-w split-fn]
+  (loop [units units, line [], line-w 0.0, lines (transient [])]
+    (b/cond
+      (empty? units)
+      (-> lines (cond-> (seq line) (conj! line)) persistent!)
+
+      :let [u (first units)]
+
+      ;; a hard break flushes the current line (which may be empty -> a blank line)
+      (:break? u)
+      (recur (rest units) [] 0.0 (conj! lines line))
+
+      :let [add-space? (boolean (and (seq line) (:space-before? u)))
+            advance    (+ (if add-space? (:sp u) 0.0) (double (:ww u)))
+            ;; a unit alone on its line and wider than the whole line is a split candidate
+            parts      (when (and (empty? line) (> (double (:ww u)) max-w))
+                         (split-fn u))]
+
+      ;; the candidate actually split into more than one piece: retry with those in front
+      (next parts)
+      (recur (concat parts (rest units)) line line-w lines)
+
+      ;; the line is nonempty and the next unit won't fit: break here and retry the unit
+      (and (seq line) (> (+ line-w advance) max-w))
+      (recur units [] 0.0 (conj! lines line))
+
+      :else
+      (recur (rest units) (conj line (assoc u :space-before? add-space?)) (+ line-w advance) lines))))
+
 (defn- wrap-text
-  "Greedy word-wrap `text` to fit `max-width` points at `font-pt` with `face`. See [[tokenize-units]] for the details of
-  of finding good line breaks.
-
-  If a single token is wider than the line, this will force a break somewhere via [[split-into-chars]].
-
-  Returns a vector of strings that each fit on a line."
+  "Greedy word-wrap `text` to fit `max-width` points at `font-pt` with `face` (see [[tokenize-units]]
+  for how good break points are found, and [[pack-units->lines]] for the packing). A single token
+  wider than the line is force-broken via [[split-into-chars]]. Returns a vector of line strings."
   [face font-pt text max-width]
-  (let [[units _pending] (tokenize-units (normalize-ws text) {} false [])]
-    ;; FIXME: `cur` should be a vector of fragments of text that gets merged when it gets pushed to `lines`.
-    (loop [units     units
-           chunks    []
-           cur-width 0.0
-           lines     (transient [])]
-      (b/cond
-        (empty? units) (cond-> lines
-                         (seq chunks) (conj! (apply str chunks))
-                         :always      persistent!)
-
-        :let [{:keys [space-before? text] :as u} (first units)
-              piece                              (if (and space-before? (seq chunks))
-                                                   (str " " text)
-                                                   text)
-              width                              (text-width face font-pt piece)]
-
-        ;; Single token too wide for the line, on a line by itself: [[split-into-chars]] to force a split.
-        (and (empty? chunks)
-             (> (text-width face font-pt text) max-width)
-             (> (count text) 1))
-        (recur (concat (split-into-chars u) (rest units)) chunks cur-width lines)
-
-        ;; This line is nonempty, and the next token doesn't fit: break the line here.
-        (and (seq chunks)
-             (> (+ cur-width width) max-width))
-        (recur units "" 0.0 (conj! lines (apply str chunks)))
-
-        ;; Otherwise, the next unit fits on this line, so append it - including a space if this unit needs one and it's
-        ;; not at the start of the line.
-        :else (recur (rest units) (conj chunks piece) (+ cur-width width) lines)))))
+  (let [[units _pending] (tokenize-units (normalize-ws text) {} false [])
+        sp        (text-width face font-pt " ")
+        measure   (fn [u] (assoc u :ww (text-width face font-pt (:text u)) :sp sp))
+        split-fn  (fn [u] (if (<= (count (str (:text u))) 1)
+                            [u]
+                            (map measure (split-into-chars u))))]
+    (mapv (fn [line]
+            (apply str (map (fn [u] (str (when (:space-before? u) " ") (:text u))) line)))
+          (pack-units->lines (map measure units) max-width split-fn))))
 
 (defn- draw-line!
   "Draw a single line of text with `face` at a baseline, switching physical fonts as needed so mixed-script text
@@ -525,8 +568,8 @@
                               (double x))]
                    (draw-line! cs face font-pt lx y line)
                    (recur (rest lines) (- y lh) (+ used lh)))))
-             (when color
-               (.setNonStrokingColor cs Color/BLACK)))))
+      (when color
+        (.setNonStrokingColor cs Color/BLACK)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Markdown image fetching. Markdown text cards can reference remote images, which means fetching
@@ -682,8 +725,7 @@
                        (f x)))))))))
 
 (defn- list->blocks [^Node list-node depth ordered?]
-  (into [] (comp cat
-                 (map-indexed
+  (into [] (comp (map-indexed
                   (fn [idx ^Node item]
                     (into [] (comp (mapcat #(block->blocks % (inc depth)))
                                    (on-first #(cond-> %
@@ -692,7 +734,8 @@
                                                                                 :marker (if ordered?
                                                                                           (str (inc idx) ". ")
                                                                                           "- ")))))
-                          (node-children item)))))
+                          (node-children item))))
+                 cat)
         (node-children list-node)))
 
 (defn- block->blocks
@@ -738,8 +781,9 @@
 ;; It seems like it would be much more efficient, and probably easier to read too, if the whole thing were written
 ;; as a reducible pipeline, streaming the results into a final sink.
 
-;; XXX: START HERE: This seems quite familiar, wrt tokenization and so on. Probably this could be unified with the
-;; other logic?
+;; `runs->words` and `wrap-text` now share the same greedy packer ([[pack-units->lines]]); the only difference is
+;; that the Markdown path measures+styles each word into a drawable item first (see [[->measured-item]]), while the
+;; plain path measures bare strings and re-joins each packed line back into a string.
 (defn- runs->words
   "Split runs into a flat seq of word tokens, each `{:text :style :space-before?}` (or `{:break? true}`),
   so that adjacent runs with no whitespace between them don't get a space."
@@ -767,59 +811,48 @@
           (let [[out2 pend2] (tokenize-units (str (:text r "")) {:style style} pending out)]
             (recur (rest runs) pend2 out2)))))))
 
+(defn- run-color [style]
+  (cond (:link? style) link-color
+        (:code? style) code-color
+        :else          Color/BLACK))
+
+(defn- ->measured-item
+  "Turn one Markdown word token into a drawable, pre-measured item (resolving its font and colour),
+  ready for [[pack-units->lines]]. A furigana group becomes an atomic item whose width is the wider
+  of its base and reading; a `{:break? true}` marker passes through unchanged. `:space-before?` is
+  left as the source-level flag here -- `pack-units->lines` finalises it per line."
+  [base-pt heading? w]
+  (let [style (:style w)
+        font  (run-font (cond-> style heading? (assoc :bold? true)))]
+    (cond
+      (:break? w) w
+
+      ;; furigana group: base text with a smaller reading centered above; the item is atomic (the
+      ;; reading must never wrap away from its base), and as wide as the wider of the two.
+      (:ruby? w)
+      (let [ruby-pt (* base-pt ruby-scale)
+            bw      (text-width font base-pt (:base w))
+            rw      (text-width font ruby-pt (:reading w))]
+        {:ruby? true :base (:base w) :reading (:reading w) :font font :pt base-pt :ruby-pt ruby-pt
+         :base-ww bw :reading-ww rw :color (run-color style) :href (:href style)
+         :ww (max bw rw) :sp (text-width font base-pt " ") :space-before? (:space-before? w)})
+
+      :else
+      {:text (:text w) :font font :pt base-pt :color (run-color style) :href (:href style)
+       :ww (text-width font base-pt (:text w)) :sp (text-width font base-pt " ")
+       :space-before? (:space-before? w)})))
+
 (defn- words->lines
-  "Greedily wrap `words` to `max-w`, resolving each word's font/color. Returns a vector of lines;
-  each line is a vector of drawable items `{:text :font :pt :color :ww :sp :space-before?}`."
+  "Greedily wrap `words` to `max-w`, resolving each word's font/colour. Returns a vector of lines,
+  each a vector of drawable items `{:text :font :pt :color :ww :sp :space-before? ...}`."
   [words base-pt heading? max-w]
-  (loop [ws words, line [], line-w 0.0, lines []]
-    (if (empty? ws)
-      (if (seq line) (conj lines line) lines)
-      (let [w (first ws)]
-        (cond
-          (:break? w)
-          (recur (rest ws) [] 0.0 (conj lines line))
-
-          ;; furigana group: base text with a smaller reading centered above; width is the wider of
-          ;; the two, and the item is atomic (the reading must not wrap away from its base).
-          (:ruby? w)
-          (let [style      (:style w)
-                font       (run-font (cond-> style heading? (assoc :bold? true)))
-                ruby-pt    (* base-pt ruby-scale)
-                bw         (text-width font base-pt (:base w))
-                rw         (text-width font ruby-pt (:reading w))
-                ww         (max bw rw)
-                sp         (text-width font base-pt " ")
-                color      (cond (:link? style) link-color (:code? style) code-color :else Color/BLACK)
-                add-space? (boolean (and (seq line) (:space-before? w)))
-                advance    (+ (if add-space? sp 0.0) ww)
-                item       {:ruby? true :base (:base w) :reading (:reading w) :font font
-                            :pt base-pt :ruby-pt ruby-pt :base-ww bw :reading-ww rw :color color
-                            :href (:href style) :ww ww :sp sp :space-before? add-space?}]
-            (if (and (seq line) (> (+ line-w advance) max-w))
-              (recur ws [] 0.0 (conj lines line))
-              (recur (rest ws) (conj line item) (+ line-w advance) lines)))
-
-          :else
-          (let [style      (:style w)
-                font       (run-font (cond-> style heading? (assoc :bold? true)))
-                txt        (:text w)
-                ww         (text-width font base-pt txt)
-                sp         (text-width font base-pt " ")
-                color      (cond (:link? style) link-color (:code? style) code-color :else Color/BLACK)
-                add-space? (boolean (and (seq line) (:space-before? w)))
-                advance    (+ (if add-space? sp 0.0) ww)
-                item       {:text txt :font font :pt base-pt :color color
-                            :href (:href style) :ww ww :sp sp :space-before? add-space?}]
-            (cond
-              ;; a single token wider than the whole line -> hard-break into characters
-              (and (empty? line) (> ww max-w) (> (count txt) 1))
-              (recur (concat (split-into-chars w) (rest ws)) line line-w lines)
-
-              (and (seq line) (> (+ line-w advance) max-w))
-              (recur ws [] 0.0 (conj lines line))
-
-              :else
-              (recur (rest ws) (conj line item) (+ line-w advance) lines))))))))
+  (let [split-fn (fn [item]
+                   ;; only plain multi-glyph text is force-splittable; ruby groups stay atomic
+                   (if (or (:ruby? item) (<= (count (str (:text item))) 1))
+                     [item]
+                     (map #(assoc % :ww (text-width (:font %) (:pt %) (:text %)))
+                          (split-into-chars item))))]
+    (pack-units->lines (map #(->measured-item base-pt heading? %) words) max-w split-fn)))
 
 (defn- line-extra
   "Extra vertical space a line needs above its base text -- the furigana band, if it has any ruby."
@@ -1486,7 +1519,8 @@
                           sections)
            doc      (PDDocument.)]
        (try
-         (binding [*fonts* (load-fonts! doc)]
+         (binding [*fonts*       (load-fonts! doc)
+                   *width-cache* (atom {})]
            (let [content-w   (* grid-cols (:unit dims))
                  inline-ids  (into #{} (mapcat :inline_parameters) dcs)
                  param-lines (layout-param-chips (dashboard-param-chips resolved inline-ids) content-w)
