@@ -27,7 +27,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
 
   return (
     <Card shadow="none" withBorder>
-      <Group justify="space-between" wrap="nowrap">
+      <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Box>
           <Title order={3}>{workspace.name}</Title>
           {databases.length > 0 && (
