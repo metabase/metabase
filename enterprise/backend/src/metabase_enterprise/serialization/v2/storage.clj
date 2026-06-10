@@ -6,8 +6,8 @@
 
 (defn store!
   "Consume the entity `stream` and store each entity via the given `writer`.
-  Returns a report map with `:seen`, a map of model name to the count of stored entities, and an
-  `:errors` vector.
+  Returns a report map with `:seen`, a map of model name to the count of stored entities,
+  and an `:errors` vector.
 
   Uses `run!` to make elements reach the writer as they are produced and
   not materialize the entire upstream before the loop body."
