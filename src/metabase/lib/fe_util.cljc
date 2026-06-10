@@ -193,41 +193,6 @@
     expression-clause :- [:or ::lib.schema.expression/expression ExpressionArg ExpressionParts]]
    (expression-parts-method query stage-index expression-clause)))
 
-(defn- column-metadata?
-  [x]
-  (and (map? x) (= :metadata/column (:lib/type x))))
-
-(defn- expression-parts-map?
-  [x]
-  (and (map? x) (= :mbql/expression-parts (:lib/type x))))
-
-(defn- referenced-columns* [parts]
-  (cond
-    (column-metadata? parts)      [parts]
-    (expression-parts-map? parts) (into [] (mapcat referenced-columns*) (:args parts))
-    :else                         []))
-
-(mu/defn referenced-columns :- [:sequential ::lib.schema.metadata/column]
-  "Returns the column-metadata leaves referenced by `x`, where `x` is a clause (filter, aggregation,
-  expression) or a column-metadata map, resolved relative to the target stage of `query`.
-
-  Columns appear in traversal order; duplicates are NOT removed — callers may `distinct` if
-  dedup semantics are needed.
-
-  Throws if `x` is neither an MBQL clause nor a `:metadata/column` map. Schema validation is
-  off in production, so the runtime check is the gate.
-
-  Lives here because the implementation is built on [[expression-parts]]"
-  ([query x] (referenced-columns query -1 x))
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    x]
-   (when-not (or (column-metadata? x) (lib.util/clause? x))
-     (throw (ex-info "referenced-columns: expected an MBQL clause or :metadata/column"
-                     {:dispatch-value (lib.dispatch/dispatch-value x)
-                      :input          x})))
-   (referenced-columns* (expression-parts query stage-number x))))
-
 (defn- case-or-if-expression?
   [clause]
   (and (vector? clause)

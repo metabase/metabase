@@ -99,6 +99,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -207,6 +208,7 @@
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -1423,7 +1425,6 @@
   dependent-metadata
   expression-clause
   expression-parts
-  referenced-columns
   string-filter-clause
   string-filter-parts
   number-filter-clause
@@ -1553,6 +1554,8 @@
   field-ref-id
   field-ref-name
   ref]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
