@@ -58,3 +58,10 @@ export function getGroupHeaderBgTint(
     .mix(Color(headerTintTarget), 1 - GROUP_HEADER_BG_TINT)
     .string();
 }
+
+const PADDING_REGULAR = 32;
+const PADDING_COMPACT = 24;
+
+export function getChartPadding(isCompact: boolean) {
+  return isCompact ? PADDING_COMPACT : PADDING_REGULAR;
+}

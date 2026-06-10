@@ -33,6 +33,7 @@ import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/tre
 import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import {
   TREEMAP_CHART_STYLE,
+  getChartPadding,
   groupHeader,
   leafBlock,
 } from "metabase/visualizations/echarts/graph/treemap/style";
@@ -296,8 +297,6 @@ export const TreemapChart = ({
 
   useCloseTooltipOnScroll(chartRef);
 
-  // Dashboard cards and document embeds are tighter than the question builder, so
-  // use a smaller, uniform padding there.
   const isCompact = isDashboard || isDocument;
 
   const colorsCss = useInjectSeriesColorsClasses(
@@ -320,8 +319,7 @@ export const TreemapChart = ({
       )}
       <Box
         className={S.root}
-        py={isCompact ? 24 : 32}
-        px={isCompact ? 24 : 32}
+        p={getChartPadding(isCompact)}
         w="100%"
         style={{ flex: 1, minHeight: 0 }}
       >
