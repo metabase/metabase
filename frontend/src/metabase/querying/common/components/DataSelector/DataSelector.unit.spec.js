@@ -224,23 +224,22 @@ describe("DataSelector", () => {
     const setDatabaseFn = jest.fn();
     render(
       <DataSelector
+        // test a case when databases are not loaded yet
+        databasesLoaded={false}
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[SAMPLE_DATABASE]}
-        // The list hasn't finished hydrating, so the single database we see so
-        // far might not be the only one — don't auto-select it yet.
-        databasesLoaded={false}
         metadata={metadata}
         isOpen={true}
         setDatabaseFn={setDatabaseFn}
-        setSourceTableFn={jest.fn()}
       />,
     );
 
     expect(await screen.findByText("Sample Database")).toBeInTheDocument();
     await delay(1);
     expect(setDatabaseFn).not.toHaveBeenCalled();
+    expect(screen.queryByText("Orders")).not.toBeInTheDocument();
   });
 
   it("should auto-advance past a single schema that loads asynchronously", async () => {

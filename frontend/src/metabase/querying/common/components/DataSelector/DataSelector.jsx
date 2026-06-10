@@ -1181,9 +1181,6 @@ const DataSelector = _.compose(
         availableModels: ownProps.metadata?.available_models ?? [],
         metadata,
         databases,
-        // The database list is fully loaded once every queried database has
-        // been hydrated into metadata (or the caller passed `databases`
-        // directly). Used to avoid auto-selecting a transient single database.
         databasesLoaded:
           ownProps.databases != null ||
           (queriedDatabases != null &&
