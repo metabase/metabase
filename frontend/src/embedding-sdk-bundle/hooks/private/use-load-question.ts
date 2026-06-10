@@ -108,6 +108,37 @@ export function useLoadQuestion({
     controllerRef.current?.abort();
   });
 
+  // When a run returns an expired (stale) cached result, re-run it in the background
+  // bypassing the cache and merge in the fresh data. This is fire-and-forget so the stale
+  // result stays visible meanwhile. Unlike the dashboard/QB this isn't driven by a render
+  // effect, so there's no re-entrancy storm; it runs at most once per completed run, and the
+  // `!stale` guard prevents a loop if the refreshed result were itself flagged stale.
+  function refreshStaleResults(state: SdkQuestionState) {
+    if (!state.question || !state.queryResults?.[0]?.stale) {
+      return;
+    }
+    void runQuestionQuerySdk({
+      question: state.question,
+      isGuestEmbed,
+      token: tokenRef.current,
+      originalQuestion: state.originalQuestion,
+      parameterValues: state.parameterValues,
+      signal: nextSignal(),
+      dispatch,
+      ignoreCache: true,
+    })
+      .then((fresh) => {
+        if (!fresh.queryResults?.[0]?.stale) {
+          mergeQuestionState(fresh);
+        }
+      })
+      .catch((err) => {
+        if (!isAbortError(err)) {
+          console.error("SDK background stale refresh failed:", err);
+        }
+      });
+  }
+
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
@@ -142,11 +173,13 @@ export function useLoadQuestion({
         parameterValues: questionState.parameterValues,
         signal: nextSignal(),
         dispatch,
+        allowStale: true,
       });
 
       mergeQuestionState(results);
 
       setIsQuestionLoading(false);
+      refreshStaleResults({ ...questionState, ...results });
       return { ...results, originalQuestion };
     } catch (err) {
       // Ignore cancelled requests (e.g. when the component unmounts, or when a
@@ -200,9 +233,11 @@ export function useLoadQuestion({
       parameterValues,
       signal: nextSignal(),
       dispatch,
+      allowStale: true,
     });
 
     mergeQuestionState(state);
+    refreshStaleResults({ originalQuestion, parameterValues, ...state });
 
     return state.question;
   }, [

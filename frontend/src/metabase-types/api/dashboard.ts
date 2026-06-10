@@ -347,6 +347,7 @@ export type DashboardCardQueryRequest = {
   cardId: CardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
+  allow_stale?: boolean;
   parameters?: unknown[];
   // Sent in the request body (in addition to the path params above) when
   // querying a saved dashcard, for query provenance/telemetry.

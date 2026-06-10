@@ -194,6 +194,7 @@
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge
                            {:ignore-cache false
+                            :allow-stale  false
                             :constraints  (qp.constraints/default-query-constraints)
                             :context      :dashboard}
                            options

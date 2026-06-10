@@ -501,6 +501,7 @@ export type CardQueryRequest = {
   dashboardId?: DashboardId;
   collection_preview?: boolean;
   ignore_cache?: boolean;
+  allow_stale?: boolean;
   parameters?: unknown[];
 };
 

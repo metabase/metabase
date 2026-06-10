@@ -899,9 +899,10 @@
   [{:keys [card-id]} :- [:map
                          [:card-id [:or ms/PositiveInt ms/NanoIdString]]]
    _query-params
-   {:keys [parameters ignore_cache dashboard_id collection_preview]}
+   {:keys [parameters ignore_cache allow_stale dashboard_id collection_preview]}
    :- [:map
        [:ignore_cache       {:default false} :boolean]
+       [:allow_stale        {:default false} :boolean]
        [:collection_preview {:optional true} [:maybe :boolean]]
        [:dashboard_id       {:optional true} [:maybe ms/PositiveInt]]]]
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
@@ -914,6 +915,7 @@
      resolved-card-id :api
      :parameters parameters
      :ignore-cache ignore_cache
+     :allow-stale allow_stale
      :dashboard-id dashboard_id
      :context (if collection_preview :collection :question)
      :middleware   {:process-viz-settings? false})))

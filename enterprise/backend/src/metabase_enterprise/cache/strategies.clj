@@ -77,12 +77,12 @@
     (let [duration (t/duration (:duration strategy) (keyword (:unit strategy)))
           cutoff   (cond-> (t/minus (t/offset-date-time) duration)
                      (:invalidated-at strategy) (t/max (:invalidated-at strategy)))]
-      (backend.db/select-cache-for-cutoff query-hash cutoff))))
+      (backend.db/select-cache query-hash cutoff (:allow-stale? strategy)))))
 
 (defmethod fetch-cache-stmt-ee* :schedule [{:keys [invalidated-at] :as strategy} query-hash]
   (if-not invalidated-at
     (log/debugf "Caching strategy %s has not run yet" (pr-str strategy))
-    (backend.db/select-cache-for-cutoff query-hash invalidated-at)))
+    (backend.db/select-cache query-hash invalidated-at (:allow-stale? strategy))))
 
 (defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
   nil)

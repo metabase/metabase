@@ -209,7 +209,11 @@
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
   ;; after normalization, instead of before. This is necessary to make caching work properly with sandboxed users, see
   ;; #14388.
-  (let [query-hash      (qp.util/query-hash query)
+  ;; `:allow-stale-results?` is an opt-in: callers that can refresh stale data themselves (e.g. the
+  ;; interactive frontend) get the most recent entry flagged `:stale?` instead of a cache miss. By
+  ;; default the strategy treats an expired/invalidated entry as a miss and re-runs the query.
+  (let [cache-strategy  (assoc cache-strategy :allow-stale? (boolean (:allow-stale-results? middleware)))
+        query-hash      (qp.util/query-hash query)
         [status result] (maybe-reduce-cached-results (:ignore-cached-results? middleware) query-hash cache-strategy rff)]
     (case status
       ::ok

@@ -43,6 +43,7 @@ import type {
   Card,
   DashCardId,
   DashboardCard,
+  Dataset,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -208,17 +209,27 @@ function DashCardInner({
 
   // When the displayed result is stale, kick off a background refresh without
   // clearing the card — the user keeps seeing data while the fresh query runs.
+  //
+  // We dispatch at most one refresh per stale dataset. fetchCardData({reload}) does
+  // NOT clear the card (so the stale data stays visible), which means isLoading never
+  // flips and isStale stays true for the whole in-flight window. Without this guard the
+  // effect would re-dispatch on every re-render (mainCard/dashcard get new object
+  // identities), cancelling and restarting the same uncached query repeatedly. Keying
+  // off the dataset object identity lets the next genuinely-new stale result refresh
+  // again while blocking re-render churn for the current one.
+  const refreshedDatasetRef = useRef<Dataset | undefined>(undefined);
   useEffect(() => {
-    if (!isStale) {
+    if (!isStale || refreshedDatasetRef.current === mainDataset) {
       return;
     }
+    refreshedDatasetRef.current = mainDataset;
     dispatch(
       fetchCardData(mainCard as Card, dashcard, {
         reload: true,
         ignoreCache: true,
       }),
     );
-  }, [isStale, dispatch, mainCard, dashcard]);
+  }, [isStale, mainDataset, dispatch, mainCard, dashcard]);
 
   const isAction = isActionCard(mainCard);
 

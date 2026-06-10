@@ -114,8 +114,10 @@ export const runDirtyQuestionQuery =
 
 // AbortController for any in-progress background stale refresh. Aborted when
 // the user triggers a new explicit run so the stale refresh doesn't clobber
-// the running state.
-let _staleRefreshAbortController: AbortController | null = null;
+// the running state. Keyed by `getState` (stable per Redux store) so multiple
+// concurrent QB instances — e.g. embedding/SDK with several questions — don't
+// abort each other's refresh. Entries are GC'd with their store.
+const staleRefreshControllers = new WeakMap<GetState, AbortController>();
 
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
@@ -132,9 +134,10 @@ export const runQuestionQuery = ({
 } = {}) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     // Cancel any silent background stale refresh before showing the running overlay.
-    if (_staleRefreshAbortController) {
-      _staleRefreshAbortController.abort();
-      _staleRefreshAbortController = null;
+    const inFlightStaleRefresh = staleRefreshControllers.get(getState);
+    if (inFlightStaleRefresh) {
+      inFlightStaleRefresh.abort();
+      staleRefreshControllers.delete(getState);
     }
     dispatch(loadStartUIControls());
 
@@ -174,6 +177,9 @@ export const runQuestionQuery = ({
       dispatch,
       signal: cancelQueryController.signal,
       ignoreCache: ignoreCache,
+      // Opt in to stale cached results: queryCompleted kicks off a background
+      // refresh when the served result is stale (see refreshStaleQueryResult).
+      allowStale: true,
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
@@ -266,10 +272,10 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
 // screen. The footer's QuestionLastUpdated component shows "Refreshing…" via
 // result.stale while the fresh query is in flight.
 const refreshStaleQueryResult =
-  (question: Question) => async (dispatch: Dispatch) => {
-    _staleRefreshAbortController?.abort();
+  (question: Question) => async (dispatch: Dispatch, getState: GetState) => {
+    staleRefreshControllers.get(getState)?.abort();
     const controller = new AbortController();
-    _staleRefreshAbortController = controller;
+    staleRefreshControllers.set(getState, controller);
 
     try {
       const freshResults = await apiRunQuestionQuery(question, {
@@ -278,8 +284,8 @@ const refreshStaleQueryResult =
         ignoreCache: true,
         isDirty: false,
       });
-      if (_staleRefreshAbortController === controller) {
-        _staleRefreshAbortController = null;
+      if (staleRefreshControllers.get(getState) === controller) {
+        staleRefreshControllers.delete(getState);
       }
       // Guard against infinite loop if the server still returns stale data.
       if (!freshResults[0]?.stale) {

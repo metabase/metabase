@@ -117,6 +117,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
+        allow_stale: false,
         parameters: [],
       });
     });
@@ -136,6 +137,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
+        allow_stale: false,
         parameters: [],
       });
     });
@@ -153,6 +155,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
+        allow_stale: false,
         parameters: [],
       });
     });
@@ -174,6 +177,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(await call?.request?.json()).toEqual({
         collection_preview: false,
         ignore_cache: false,
+        allow_stale: false,
         parameters: [],
       });
     });

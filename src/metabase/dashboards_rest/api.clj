@@ -1394,10 +1394,11 @@
                                                   [:dashcard-id  ms/PositiveInt]
                                                   [:card-id      ms/PositiveInt]]
    _query-params
-   {:keys [dashboard_load_id ignore_cache], :as body} :- [:map
-                                                          [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
-                                                          [:ignore_cache      {:optional true} [:maybe :boolean]]
-                                                          [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
+   {:keys [dashboard_load_id ignore_cache allow_stale], :as body} :- [:map
+                                                                      [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
+                                                                      [:ignore_cache      {:optional true} [:maybe :boolean]]
+                                                                      [:allow_stale       {:optional true} [:maybe :boolean]]
+                                                                      [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]]]
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
@@ -1405,7 +1406,8 @@
                {:dashboard-id dashboard-id
                 :card-id      card-id
                 :dashcard-id  dashcard-id
-                :ignore-cache (boolean ignore_cache)}))))
+                :ignore-cache (boolean ignore_cache)
+                :allow-stale  (boolean allow_stale)}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

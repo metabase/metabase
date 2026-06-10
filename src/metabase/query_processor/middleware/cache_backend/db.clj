@@ -35,23 +35,29 @@
   [{:keys [results]}]
   results)
 
-(defn select-cache
-  "Select the most recent cache entry for the query hash, regardless of age.
-  Returns a map with `:bytes` (the result bytes) and `:updated_at` (the timestamp when it was stored),
-  or nil if no entry exists."
-  [query-hash]
-  (when-let [row (t2/select-one :model/QueryCache
-                                {:select [:results :updated_at]
-                                 :where  [:= :query_hash query-hash]
-                                 :order-by [[:updated_at :desc]]})]
-    {:bytes      (results-as-bytes row)
-     :updated_at (:updated_at row)}))
+;; NOTE: the result bytes MUST be materialized inside the query (via `select-one-fn`), not after the
+;; row is returned. On H2 app-dbs `:results` comes back as a lazy `JdbcBlob` tied to the open
+;; connection; reading it once the connection has closed throws "object is already closed", which the
+;; cache middleware swallows as a cache miss - silently disabling caching on H2.
 
-(defn select-cache-for-cutoff
-  "Return the most recent cache entry for `query-hash` annotated with `:stale?` = true when the
-  entry is older than `cutoff`, or nil if no entry exists."
-  [query-hash cutoff]
-  (when-let [{:keys [bytes updated_at]} (select-cache query-hash)]
+(defn select-cache
+  "Return a cache entry for `query-hash` relative to `cutoff` as a map with `:bytes` and `:stale?`, or
+  nil if no usable entry exists.
+
+  By default (`allow-stale?` falsey) only a fresh entry (newer than `cutoff`) is returned and an
+  expired one is treated as a miss so the caller re-runs the query - so the SQL filters by age and
+  `:stale?` is always false. When `allow-stale?` is true the most recent entry is returned even when
+  expired, flagged `:stale?` accordingly; opting-in callers MUST refresh stale results themselves."
+  [query-hash cutoff allow-stale?]
+  (when-let [{:keys [bytes updated_at]}
+             (t2/select-one-fn (fn [row]
+                                 {:bytes      (results-as-bytes row)
+                                  :updated_at (:updated_at row)})
+                               :model/QueryCache
+                               {:select   [:results :updated_at]
+                                :where    (cond-> [:and [:= :query_hash query-hash]]
+                                            (not allow-stale?) (conj [:>= :updated_at cutoff]))
+                                :order-by [[:updated_at :desc]]})]
     {:bytes  bytes
      :stale? (t/before? updated_at cutoff)}))
 
@@ -65,7 +71,7 @@
                         (:avg-execution-ms strategy))
           cutoff     (cond-> (ms-ago max-age-ms)
                        (:invalidated-at strategy) (t/max (:invalidated-at strategy)))]
-      (select-cache-for-cutoff query-hash cutoff))))
+      (select-cache query-hash cutoff (:allow-stale? strategy)))))
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
