@@ -183,6 +183,7 @@ export interface CreateExplorationViaApiOptions {
   metricCardIds?: number[];
   dimensionIds?: string[];
   timelineIds?: number[];
+  collectionId?: number | null;
 }
 
 export function createExplorationViaApi({
@@ -190,7 +191,15 @@ export function createExplorationViaApi({
   metricCardIds,
   dimensionIds,
   timelineIds = [],
+  collectionId,
 }: CreateExplorationViaApiOptions = {}): Cypress.Chainable<number> {
+  let resolvedCollectionId: number | null = collectionId ?? null;
+  if (collectionId === undefined) {
+    cy.request("GET", "/api/user/current").then(({ body }) => {
+      resolvedCollectionId = body.personal_collection_id ?? null;
+    });
+  }
+
   return cy
     .request("GET", "/api/exploration/dimensions")
     .then(({ body }: { body: ExplorationDimensionsResponse }) => {
@@ -249,6 +258,7 @@ export function createExplorationViaApi({
       return cy.request("POST", "/api/exploration", {
         name,
         prompt: null,
+        collection_id: resolvedCollectionId,
         groups,
         timeline_ids: timelineIds,
       });

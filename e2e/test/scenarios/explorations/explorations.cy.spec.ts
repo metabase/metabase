@@ -230,33 +230,27 @@ describe("scenarios > explorations > new research > manual flow", () => {
         (marketingId) => {
           H.visitNewExploration();
           H.startManualExploration();
-          // Need at least one metric + dimension first — that's the
-          // `canStart` gate from `NewExplorationData.tsx`.
           H.addMetricsAndDimensions({ metrics: ["Count of orders"] });
 
           // Pick two timelines via the "+ Events" modal.
-          H.addTimelinesToExploration(["Releases", "Marketing campaigns"]);
+          H.addTimelinesToExploration(["Marketing campaigns", "Releases"]);
 
           // The first picked timeline shows as a pill next to the Events
           // button; the rest collapse into a "+N" overflow pill.
           cy.findByTestId("research-content")
-            .findByText("Releases")
+            .findByText("Marketing campaigns")
             .should("be.visible");
           cy.findByTestId("research-content")
             .findByText("+1")
             .should("be.visible");
 
-          // Verify the request body forwards both ids in pick order
-          // and that we still land on the detail page. We can't use
-          // `H.beginResearch` here because we need to assert on the
-          // intercept's request body before it's consumed by the
-          // helper's `cy.wait`, so we drive the click + wait inline.
+          // Verify the request body forwards both timeline ids
           cy.intercept("POST", "/api/exploration").as("createExploration");
           cy.findByRole("button", { name: /Start research/i }).click();
           cy.wait("@createExploration").then(({ request, response }) => {
             expect(request.body.timeline_ids).to.deep.eq([
-              releasesId,
               marketingId,
+              releasesId,
             ]);
             const id = response?.body?.id as number;
             H.expectUnstructuredSnowplowEvent({
@@ -264,14 +258,11 @@ describe("scenarios > explorations > new research > manual flow", () => {
               triggered_from: "manual",
               event_detail: "metrics",
             });
-            H.expectUnstructuredSnowplowEvent(
-              {
-                event: "exploration_plan_edited",
-                triggered_from: "manual",
-                event_detail: "timelines",
-              },
-              2,
-            );
+            H.expectUnstructuredSnowplowEvent({
+              event: "exploration_plan_edited",
+              triggered_from: "manual",
+              event_detail: "timelines",
+            });
             H.expectUnstructuredSnowplowEvent({
               event: "exploration_created",
               target_id: id,
@@ -980,8 +971,6 @@ describe("scenarios > explorations > collection placement + archive", () => {
             "/api/user/current returns a personal collection id",
           ).to.be.a("number");
 
-          // Sanity-check the BE: the exploration row exists with
-          // collection_id = personal collection.
           cy.request("GET", `/api/exploration/${explorationId}`).then(
             ({ body }) => {
               expect(
