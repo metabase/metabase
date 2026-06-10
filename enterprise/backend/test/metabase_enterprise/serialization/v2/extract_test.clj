@@ -1650,6 +1650,38 @@
           (is (seq (filter #(= "Database" (-> % :serdes/meta last :model)) extracted))
               "Databases should be exported even when cards reference personal collections"))))))
 
+(deftest escape-continue-on-error-test
+  (testing "continue-on-error lets the export proceed past escape analysis instead of aborting (#74622)"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database      {db-id :id}            {:engine :postgres}
+                         :model/Collection    {coll-id  :id
+                                               coll-eid :entity_id}  {:name "Target Collection"}
+                         :model/Card          {clean-eid :entity_id} {:name          "Clean Card"
+                                                                      :collection_id coll-id
+                                                                      :database_id   db-id}
+                         :model/Dashboard     {dash-id  :id
+                                               dash-eid :entity_id}  {:name "A Dashboard" :collection_id coll-id}
+                         ;; this card lives outside the target collection, so it "escapes"
+                         :model/Card          {escaped-eid :entity_id
+                                               escaped-id  :id}      {:name "Escaped Card" :database_id db-id}
+                         :model/DashboardCard _                      {:card_id escaped-id :dashboard_id dash-id}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true}]
+          (testing "without the flag, escape analysis aborts the whole export"
+            (is (empty? (into [] (extract/extract opts)))))
+          (testing "with continue-on-error, everything in the target collection is exported and the escaped card is left out"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
+                (is (= #{coll-eid} (ids-by-model "Collection" extracted)))
+                (is (= #{dash-eid} (ids-by-model "Dashboard" extracted)))
+                (is (contains? (ids-by-model "Card" extracted) clean-eid)
+                    "the clean card inside the target collection is exported")
+                (is (not (contains? (ids-by-model "Card" extracted) escaped-eid))
+                    "the escaped card outside the target collection is not exported")
+                (is (some #(str/starts-with? % "Failed to export Dashboard")
+                          (map :message (messages)))
+                    "the escape report is still logged as a warning")))))))))
+
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db!
     (mt/with-temp [:model/Collection {parent-id  :id

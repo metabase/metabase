@@ -276,4 +276,21 @@ describe("NotificationCard", () => {
     expect(onUnsubscribe).not.toHaveBeenCalled();
     expect(onArchive).toHaveBeenCalledWith(alert);
   });
+
+  it("should not crash when the payload is null (metabase#73073)", () => {
+    const alert = getQuestionAlertItem({ payload: null });
+    const user = createMockUser();
+
+    renderWithTheme(
+      <NotificationCard
+        isEditable
+        listItem={alert}
+        user={user}
+        onArchive={jest.fn()}
+        onUnsubscribe={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("notification-alert-item")).toBeInTheDocument();
+  });
 });

@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.metadata-file-import :as metadata-file-import]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
@@ -430,6 +431,40 @@
                    "success"         true
                    "error_message"   nil}
                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))))
+
+(deftest export-eager-error-honors-full-stacktrace-test
+  (testing "a server-side failure during eager extraction setup (before streaming) honors full_stacktrace (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (mt/with-dynamic-fn-redefs [v2.extract/extract (fn [& _] (throw (ex-info "deliberate eager failure" {})))]
+          (testing "stripped one-liner by default"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false)
+              (let [errs (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                                 (messages))]
+                (is (seq errs) "the eager failure is logged")
+                (is (every? (comp nil? :e) errs)
+                    "no throwable attached when full_stacktrace is off"))))
+          (testing "full trace when full_stacktrace=true"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+              (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                    :collection coll-id :data_model false :settings false
+                                    :full_stacktrace true)
+              (is (some :e (messages))
+                  "the throwable is attached when full_stacktrace is on"))))))))
+
+(deftest export-eager-input-error-is-not-logged-test
+  (testing "a bad collection id fails eager extraction with a clean 4xx and is not logged as a server error (GDGT-2491)"
+    (mt/with-premium-features #{:serialization}
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.serialization :error]]
+        ;; well-formed (21-char) but non-existent entity id: passes endpoint validation, then
+        ;; parse-target throws an ex-info carrying a :status-code, so it surfaces as a 4xx
+        (mt/user-http-request :crowberto :post 400 "ee/serialization/export"
+                              :collection "0123456789abcdef01234" :data_model false :settings false)
+        (is (empty? (filter #(str/starts-with? (str (:message %)) "Error during serialization export")
+                            (messages)))
+            "client input errors are not logged as server errors")))))
 
 (deftest serialization-permissions-test
   (testing "Only admins can export/import"

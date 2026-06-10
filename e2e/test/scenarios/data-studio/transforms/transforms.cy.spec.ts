@@ -50,9 +50,6 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
-      "checkTransformDependencies",
-    );
   });
 
   afterEach(() => {
@@ -362,10 +359,10 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
       const EXPECTED_QUERY = `SELECT
-  "Schema Q"."Animals"."name" AS "name",
-  "Schema Q"."Animals"."score" AS "score"
+  "Schema A"."Animals"."name" AS "name",
+  "Schema A"."Animals"."score" AS "score"
 FROM
-  "Schema Q"."Animals"
+  "Schema A"."Animals"
 LIMIT
   5`;
 
@@ -3800,7 +3797,7 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.findByRole("heading", {
-      name: "To use transforms, you need a writable database connection",
+      name: "No compatible database connection",
     }).should("exist");
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { TemporalBucketPicker } from "metabase/metrics/components/TemporalBucketPicker";
 import type { DimensionWithDefinition } from "metabase/metrics/types";
-import { Button, Icon, Popover } from "metabase/ui";
+import { Button, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type {
   DimensionMetadata,
@@ -12,6 +12,8 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
+
+import S from "../MetricControls.module.css";
 
 type BucketButtonProps = {
   definition: MetricDefinition;
@@ -54,14 +56,15 @@ export function BucketButton({
     <Popover opened={isOpen} onChange={setIsOpen}>
       <Popover.Target>
         <Button
-          w={184}
+          className={S.controlButton}
           justify="space-between"
-          fw="bold"
-          py="xs"
-          px="sm"
+          h="2rem"
+          fw={400}
+          py={0}
+          px="md"
+          bdrs="md"
           variant="subtle"
           color="text-primary"
-          rightSection={<Icon name="chevrondown" size={12} />}
           onClick={() => setIsOpen(!isOpen)}
         >
           {currentUnit

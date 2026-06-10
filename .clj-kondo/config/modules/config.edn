@@ -176,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -249,7 +250,6 @@
   {:team "Graphy"
    :api  #{metabase.analyze.core}
    :uses #{config
-           driver
            lib
            models
            query-processor
@@ -1014,6 +1014,17 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1668,6 +1679,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -2161,6 +2173,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
@@ -2331,6 +2344,7 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform
                     :model/TransformRun}

@@ -56,7 +56,7 @@ export const MoveCollectionModal = ({
   onClose,
 }: {
   collectionId?: CollectionId;
-  params?: { slug: string };
+  params?: { slug?: string };
   onClose: () => void;
 }) => {
   const setCollection = useSetCollection();
