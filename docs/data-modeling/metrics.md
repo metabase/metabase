@@ -158,6 +158,19 @@ On [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.meta
 
 Prefer using the [Library](../data-studio/library.md#metrics) to let people know which metrics they should use.
 
+## Caching a metric
+
+{% include plans-blockquote.html feature="Caching results of individual metrics" %}
+
+You can cache results of a metric to improve performance. See [Query caching](../configuring-metabase/caching.md).
+
+To cache the metric's results:
+
+1. Visit the metric.
+2. Click **three dots** in the top right corner.
+3. Click **Caching**.
+4. Select the [caching policy](../configuring-metabase/caching.md#cache-invalidation-policies).
+
 ## Limitations
 
 - For now, metrics are associated with a specific data source, and can't be used on any other data source, including on data sources derived from metric's original data source.
