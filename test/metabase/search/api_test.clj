@@ -929,6 +929,7 @@
      :model               "table"
      :database_id         true
      :database_name       "test-data (h2)"
+     :data_authority      "unconfigured"
      :pk_ref              nil
      :initial_sync_status "complete"})))
 

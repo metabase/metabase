@@ -69,6 +69,12 @@
   "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
+(def curated-search-models
+  "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
+  keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why
+  curated content stays visible where the older verified-only filter dropped it (BOT-1536)."
+  #{"card" "dataset" "metric" "dashboard" "table"})
+
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
