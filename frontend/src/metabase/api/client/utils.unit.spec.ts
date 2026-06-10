@@ -1,3 +1,4 @@
+import { StreamInterruptedError } from "./errors";
 import { handleResponse, substituteUrlTags } from "./utils";
 
 type MockResponseOptions = {
@@ -78,8 +79,10 @@ describe("handleResponse", () => {
 
   // The dropped 202 special-casing: a streamed success whose body fails to read
   // (the server aborted the connection mid-stream) must reject, not resolve — that
-  // rejection is how the truncated download surfaces as an error.
-  it("rejects when a successful JSON body fails to read mid-stream", async () => {
+  // rejection is how the truncated response surfaces as an error. A mid-stream
+  // abort rejects the read with a TypeError, which becomes a typed
+  // StreamInterruptedError so the UI doesn't misread it as a connectivity failure.
+  it("rejects with a StreamInterruptedError when a body fails to read mid-stream", async () => {
     await expect(
       handleResponse(
         mockResponse({
@@ -87,7 +90,16 @@ describe("handleResponse", () => {
           json: () => Promise.reject(new TypeError("network error")),
         }),
       ),
-    ).rejects.toThrow("network error");
+    ).rejects.toBeInstanceOf(StreamInterruptedError);
+  });
+
+  // A complete-but-malformed JSON body is a parse problem, not a stream abort —
+  // it must NOT be reclassified as a StreamInterruptedError.
+  it("lets a SyntaxError from a malformed JSON body propagate unchanged", async () => {
+    const syntaxError = new SyntaxError("Unexpected token");
+    await expect(
+      handleResponse(mockResponse({ json: () => Promise.reject(syntaxError) })),
+    ).rejects.toBe(syntaxError);
   });
 
   describe("rawResponse", () => {

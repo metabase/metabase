@@ -1,3 +1,5 @@
+import { StreamInterruptedError } from "./errors";
+
 type ResponseResult = {
   ok: boolean;
   status: number;
@@ -80,12 +82,30 @@ async function parseJsonOrNull(response: Response): Promise<unknown> {
  * parseable, so a parse failure throws; a failed response's body is error data,
  * so an empty or garbage body is swallowed to `null` rather than masking the
  * status with a `SyntaxError`.
+ *
+ * The response is already committed by the time we read it, so a read that
+ * rejects with a `TypeError` is the body stream breaking mid-flight — a streamed
+ * query/export that errored after committing aborts the connection without a
+ * clean terminator. Surface that as a typed `StreamInterruptedError` so the UI
+ * can distinguish it from a genuine connectivity failure (where no response
+ * arrives at all) instead of showing a misleading "server issues" message. A
+ * `SyntaxError` from a complete-but-malformed body is a real parse problem and
+ * propagates unchanged.
  */
-function readBody(response: Response): Promise<unknown> {
-  if (!isJson(response)) {
-    return response.text();
+async function readBody(response: Response): Promise<unknown> {
+  try {
+    if (!isJson(response)) {
+      return await response.text();
+    }
+    return response.ok
+      ? await response.json()
+      : await parseJsonOrNull(response);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new StreamInterruptedError(error.message);
+    }
+    throw error;
   }
-  return response.ok ? response.json() : parseJsonOrNull(response);
 }
 
 /**
