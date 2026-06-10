@@ -1,7 +1,12 @@
+import { CreateQuestion } from "@metabase/embedding-sdk-react";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, updateSetting } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountStaticQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  mountSdkContent,
+  mountStaticQuestion,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
@@ -17,9 +22,9 @@ type SdkEventData = {
   component: string | null;
   properties: Record<string, unknown> | null;
   global: {
-    auth_method: string | null;
+    auth_method: string;
     sdk_version: string | null;
-    locale_used: boolean | null;
+    locale_used: boolean;
   };
 };
 
@@ -99,6 +104,36 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const beacon = events.find((event) => event.component === null);
       expect(beacon, "global init beacon (component: null)").to.exist;
+    });
+  });
+
+  it("CreateQuestion delegates to InteractiveQuestion — fires id_new event, not CreateQuestion", () => {
+    updateSetting("anon-tracking-enabled", true);
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    const capturedEvents = interceptAnalyticsProxy();
+
+    mountSdkContent(<CreateQuestion />);
+
+    cy.wait("@analyticsProxy");
+
+    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
+      const interactiveQuestionEvent = events.find(
+        (event) => event.component === "InteractiveQuestion",
+      );
+      expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to.exist;
+      expect(
+        interactiveQuestionEvent?.properties?.["id_new"],
+        "id_new property",
+      ).to.eq("true");
+    });
+
+    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
+      const createQuestionEvent = events.find(
+        (event) => event.component === "CreateQuestion",
+      );
+      expect(createQuestionEvent, "no CreateQuestion event").to.be.undefined;
     });
   });
 

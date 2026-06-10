@@ -10,16 +10,6 @@ jest.mock("@snowplow/browser-tracker", () => ({
   trackSelfDescribingEvent: mockTrackSelfDescribingEvent,
 }));
 
-// Prevent the full SDK Redux store (and its ClojureScript transitive deps) from
-// loading in the Jest environment. The snowplow transport tests never need a
-// real store; externalStore is always passed in for the tests that exercise the
-// context plugin.
-jest.mock("embedding-sdk-bundle/store", () => ({
-  getSdkStore: jest.fn(() => ({
-    getState: () => ({ settings: { values: {} } }),
-  })),
-}));
-
 // Re-import the module under test so its module-scoped init guard resets per test.
 const loadModule = () => import("./snowplow");
 
@@ -48,7 +38,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
 
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
@@ -71,13 +61,13 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
       initSdkTracker({
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
 
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
@@ -90,25 +80,52 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
       const secondResult = initSdkTracker({
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
 
       expect(firstResult).toBe(true);
       expect(secondResult).toBe(false);
     });
+
+    it("attaches the instance context with analytics-uuid to every event", async () => {
+      const { initSdkTracker } = await loadModule();
+
+      initSdkTracker({
+        metabaseInstanceUrl: "https://metabase.example.com",
+        authMethod: "sso",
+        localeUsed: false,
+        store: makeStore({
+          "analytics-uuid": "test-uuid-123",
+          version: { tag: "v0.50.0" },
+          "instance-creation": "2024-01-01",
+          "token-features": {},
+        }),
+      });
+
+      // The plugin is passed as plugins[0] in the newTracker call.
+      const plugin = mockNewTracker.mock.calls[0][2].plugins[0];
+      const contexts = plugin.contexts();
+
+      expect(contexts).toContainEqual(
+        expect.objectContaining({
+          schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
+          data: expect.objectContaining({ id: "test-uuid-123" }),
+        }),
+      );
+    });
   });
 
   describe("getSdkAuthMethod", () => {
-    it("returns null before initSdkTracker is called", async () => {
+    it("returns empty string before initSdkTracker is called", async () => {
       const { getSdkAuthMethod } = await loadModule();
 
-      expect(getSdkAuthMethod()).toBeNull();
+      expect(getSdkAuthMethod()).toBe("");
     });
 
     it("returns the auth method passed to initSdkTracker", async () => {
@@ -118,7 +135,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "api_key",
         localeUsed: false,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
 
       expect(getSdkAuthMethod()).toBe("api_key");
@@ -126,10 +143,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   });
 
   describe("getSdkLocaleUsed", () => {
-    it("returns null before initSdkTracker is called", async () => {
+    it("returns false before initSdkTracker is called", async () => {
       const { getSdkLocaleUsed } = await loadModule();
 
-      expect(getSdkLocaleUsed()).toBeNull();
+      expect(getSdkLocaleUsed()).toBe(false);
     });
 
     it("returns the locale_used flag passed to initSdkTracker", async () => {
@@ -139,7 +156,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         metabaseInstanceUrl: "https://metabase.example.com",
         authMethod: "sso",
         localeUsed: true,
-        externalStore: makeStore(),
+        store: makeStore(),
       });
 
       expect(getSdkLocaleUsed()).toBe(true);

@@ -35,7 +35,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
     useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
 
   const {
-    withDownloads,
+    withDownloads = false,
     withTitle = true,
     withSubscriptions = false,
     autoRefreshInterval,

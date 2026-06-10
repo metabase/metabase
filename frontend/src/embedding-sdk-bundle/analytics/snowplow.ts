@@ -4,7 +4,6 @@ import {
   trackSelfDescribingEvent,
 } from "@snowplow/browser-tracker";
 
-import { getSdkStore } from "embedding-sdk-bundle/store";
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 
 // The SDK runs inside the customer's app. A direct POST to the Snowplow
@@ -18,31 +17,28 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 const SDK_TRACKER_NAME = "sdk";
 
 let trackerInitialized = false;
-let sdkAuthMethod: string | null = null;
-let sdkLocaleUsed: boolean | null = null;
+let sdkAuthMethod: string = "";
+let sdkLocaleUsed: boolean = false;
 
-// Initialize the SDK's Snowplow tracker, pointed at the instance proxy. Returns
-// true when the tracker is freshly initialized, false when already initialized
-// (idempotent — safe under React 18 StrictMode double-mount and nested providers).
-export const initSdkTracker = ({
+// Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
+export function initSdkTracker({
   metabaseInstanceUrl,
-  authMethod = null,
-  localeUsed = null,
-  externalStore,
+  authMethod = "",
+  localeUsed = false,
+  store,
 }: {
   metabaseInstanceUrl: string;
-  authMethod?: string | null;
-  localeUsed?: boolean | null;
-  externalStore?: { getState: () => SdkStoreState };
-}): boolean => {
-  if (trackerInitialized) {
-    return false;
+  authMethod?: string;
+  localeUsed?: boolean;
+  store: { getState: () => SdkStoreState };
+}): boolean {
+  const wasJustInitialized = !trackerInitialized;
+  if (!wasJustInitialized) {
+    return wasJustInitialized;
   }
   trackerInitialized = true;
   sdkAuthMethod = authMethod;
   sdkLocaleUsed = localeUsed;
-
-  const store = externalStore ?? getSdkStore();
 
   newTracker(SDK_TRACKER_NAME, metabaseInstanceUrl, {
     appId: "metabase",
@@ -64,46 +60,46 @@ export const initSdkTracker = ({
     withCredentials: false,
     plugins: [createSdkInstanceContextPlugin(store)],
   });
-  return true;
-};
+  return wasJustInitialized;
+}
 
-// Returns the auth method captured during tracker initialization, or null if
-// the tracker has not been initialized yet.
-export const getSdkAuthMethod = (): string | null => sdkAuthMethod;
+export function getSdkAuthMethod(): string {
+  return sdkAuthMethod;
+}
 
-// Returns whether the consumer set an explicit locale, captured during tracker
-// initialization, or null if the tracker has not been initialized yet.
-export const getSdkLocaleUsed = (): boolean | null => sdkLocaleUsed;
+export function getSdkLocaleUsed(): boolean {
+  return sdkLocaleUsed;
+}
 
-const createSdkInstanceContextPlugin = (store: {
+function createSdkInstanceContextPlugin(store: {
   getState: () => SdkStoreState;
-}) => ({
-  contexts: (): SelfDescribingJson[] => {
-    const settings = store.getState().settings?.values;
-    if (!settings) {
-      return [];
-    }
+}) {
+  return {
+    contexts(): SelfDescribingJson[] {
+      // Settings are guaranteed present: initSdkTracker is only called after
+      // isTrackingEnabled, which requires anon-tracking-enabled to be loaded.
+      const settings = store.getState().settings?.values;
+      const version = settings?.["version"] ?? {};
 
-    const version = settings["version"] ?? {};
-
-    return [
-      {
-        schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
-        data: {
-          id: settings["analytics-uuid"],
-          version: {
-            tag: (version as { tag?: string }).tag,
+      return [
+        {
+          schema: "iglu:com.metabase/instance/jsonschema/1-1-0",
+          data: {
+            id: settings?.["analytics-uuid"],
+            version: {
+              tag: (version as { tag?: string }).tag,
+            },
+            created_at: settings?.["instance-creation"],
+            token_features: settings?.["token-features"],
           },
-          created_at: settings["instance-creation"],
-          token_features: settings["token-features"],
         },
-      },
-    ];
-  },
-});
+      ];
+    },
+  };
+}
 
 // Send a self-describing event through the SDK tracker. Schema-agnostic: the caller
 // supplies the Iglu schema + data, so the transport stays decoupled from the event shape.
-export const trackSdkEvent = (event: SelfDescribingJson): void => {
+export function trackSdkEvent(event: SelfDescribingJson): void {
   trackSelfDescribingEvent({ event }, [SDK_TRACKER_NAME]);
-};
+}

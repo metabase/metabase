@@ -2,33 +2,24 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
-import { EMBEDDING_SDK_SCHEMA } from "embedding-sdk-bundle/analytics/events";
-import {
-  getSdkAuthMethod,
-  getSdkLocaleUsed,
-  initSdkTracker,
-  trackSdkEvent,
-} from "embedding-sdk-bundle/analytics/snowplow";
+import { useSdkTrackerInit } from "embedding-sdk-bundle/analytics/tracker-init";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useArePluginsReady } from "embedding-sdk-bundle/hooks/private/use-are-plugins-ready";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
 import { useSdkCustomLoader } from "embedding-sdk-bundle/hooks/private/use-sdk-custom-loader";
-import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
+import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
   setErrorComponent,
   setEventHandlers,
   setIsGuestEmbed,
   setPlugins,
   setPluginsReady,
-  setSdkTrackerReady,
 } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
@@ -49,71 +40,7 @@ export type ComponentProviderInternalProps = ComponentProviderProps & {
   isLocalHost?: boolean;
 };
 
-function deriveAuthMethod(authConfig: MetabaseAuthConfig): string {
-  if (authConfig.isGuest) {
-    return "guest";
-  }
-  if ("apiKey" in authConfig && authConfig.apiKey) {
-    return "api_key";
-  }
-  return "sso";
-}
-
 let hasInitializedPlugins = false;
-
-// Initialize the SDK Snowplow tracker and fire the provider-init adoption beacon.
-// Waits for anon-tracking-enabled to be loaded from the instance settings so the
-// opt-out gate is respected. Fires once per JS load; idempotent under re-renders.
-function useSdkTrackerInit(
-  authConfig: MetabaseAuthConfig,
-  reduxStore: SdkStore,
-  localeUsed: boolean,
-) {
-  const isTrackingEnabled = useSdkSelector((state) =>
-    Boolean(state.settings?.values?.["anon-tracking-enabled"]),
-  );
-
-  useEffect(() => {
-    if (!isTrackingEnabled) {
-      return;
-    }
-
-    const authMethod = deriveAuthMethod(authConfig);
-    const wasJustInitialized = initSdkTracker({
-      metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
-      authMethod,
-      localeUsed,
-      externalStore: reduxStore,
-    });
-
-    // setSdkTrackerReady unblocks per-mount hooks in child components. Set it
-    // even when wasJustInitialized=false (e.g. multiple providers) so children
-    // in a nested provider context can also fire.
-    reduxStore.dispatch(setSdkTrackerReady(true));
-
-    if (wasJustInitialized) {
-      const sdkVersion =
-        getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
-        null;
-
-      trackSdkEvent({
-        schema: EMBEDDING_SDK_SCHEMA,
-        data: {
-          component: null,
-          properties: null,
-          global: {
-            auth_method: getSdkAuthMethod(),
-            sdk_version: sdkVersion,
-            locale_used: getSdkLocaleUsed(),
-          },
-        },
-      });
-    }
-    // isTrackingEnabled is the only dep: fire once when the opt-out gate becomes
-    // known. authConfig and reduxStore are stable across the provider lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTrackingEnabled]);
-}
 
 /**
  * Initializes EE plugins synchronously during render

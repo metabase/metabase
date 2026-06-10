@@ -31,6 +31,14 @@ const mockUseSdkSelector = jest.mocked(useSdkSelector);
 let nextId = 1;
 const uniqueId = () => nextId++;
 
+const STUB_DASHBOARD_PROPS = {
+  with_title: false,
+  with_downloads: false,
+  with_subscriptions: false,
+  auto_refresh: false,
+  enable_entity_navigation: false,
+};
+
 describe("useTrackSdkComponentMount", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -45,6 +53,7 @@ describe("useTrackSdkComponentMount", () => {
 
     renderHook(() =>
       useTrackSdkComponentMount("StaticDashboard", entityId, {
+        ...STUB_DASHBOARD_PROPS,
         with_title: true,
       }),
     );
@@ -55,7 +64,7 @@ describe("useTrackSdkComponentMount", () => {
         schema: "iglu:com.metabase/embedding_sdk/jsonschema/1-0-0",
         data: expect.objectContaining({
           component: "StaticDashboard",
-          properties: { with_title: true },
+          properties: expect.objectContaining({ with_title: "true" }),
           global: {
             auth_method: "sso",
             sdk_version: "1.2.3",
@@ -70,7 +79,11 @@ describe("useTrackSdkComponentMount", () => {
     mockUseSdkSelector.mockReturnValue(false);
 
     renderHook(() =>
-      useTrackSdkComponentMount("StaticDashboard", uniqueId(), {}),
+      useTrackSdkComponentMount(
+        "StaticDashboard",
+        uniqueId(),
+        STUB_DASHBOARD_PROPS,
+      ),
     );
 
     expect(mockTrackSdkEvent).not.toHaveBeenCalled();
@@ -82,7 +95,11 @@ describe("useTrackSdkComponentMount", () => {
       .mockReturnValueOnce(false); // isTrackerReady
 
     renderHook(() =>
-      useTrackSdkComponentMount("StaticDashboard", uniqueId(), {}),
+      useTrackSdkComponentMount(
+        "StaticDashboard",
+        uniqueId(),
+        STUB_DASHBOARD_PROPS,
+      ),
     );
 
     expect(mockTrackSdkEvent).not.toHaveBeenCalled();
@@ -93,7 +110,11 @@ describe("useTrackSdkComponentMount", () => {
     const entityId = uniqueId();
 
     const { rerender } = renderHook(() =>
-      useTrackSdkComponentMount("InteractiveDashboard", entityId, {}),
+      useTrackSdkComponentMount(
+        "InteractiveDashboard",
+        entityId,
+        STUB_DASHBOARD_PROPS,
+      ),
     );
     rerender();
     rerender();
@@ -121,8 +142,12 @@ describe("useTrackSdkComponentMount", () => {
     const idA = uniqueId();
     const idB = uniqueId();
 
-    renderHook(() => useTrackSdkComponentMount("StaticDashboard", idA, {}));
-    renderHook(() => useTrackSdkComponentMount("StaticDashboard", idB, {}));
+    renderHook(() =>
+      useTrackSdkComponentMount("StaticDashboard", idA, STUB_DASHBOARD_PROPS),
+    );
+    renderHook(() =>
+      useTrackSdkComponentMount("StaticDashboard", idB, STUB_DASHBOARD_PROPS),
+    );
 
     expect(mockTrackSdkEvent).toHaveBeenCalledTimes(2);
   });
@@ -137,6 +162,23 @@ describe("useTrackSdkComponentMount", () => {
     expect(mockTrackSdkEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ component: "MetabotQuestion" }),
+      }),
+    );
+  });
+
+  it("fires a presence event for CreateDashboardModal", () => {
+    enableTracking();
+
+    renderHook(() =>
+      useTrackSdkComponentMount("CreateDashboardModal", null, { used: true }),
+    );
+
+    expect(mockTrackSdkEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          component: "CreateDashboardModal",
+          properties: { used: "true" },
+        }),
       }),
     );
   });
