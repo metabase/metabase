@@ -144,9 +144,28 @@ Measures must come from tables in the metric's `mappedTableIds`.
 
 ## Interactive Metabase Views
 
-Use `useMetabaseQueryObject` when the app should hand a semantic query to Metabase's own embedded visualization instead of rendering custom React charts or tables.
+Use Metabase's SDK `InteractiveQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a table-backed semantic query with `useMetabaseQueryObject`, then pass the query object to `InteractiveQuestion`.
 
-Use this for table-backed questions, exploratory tables, and places where built-in Metabase chart behavior is more useful than a custom visualization. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data.
+Current prototype constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. For metric-backed custom cards, use `useMetabaseQuery` and render the returned rows yourself.
+
+Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
+
+Prefer `InteractiveQuestion` for:
+
+- standard charts, tables, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
+- trends, category comparisons, grouped summaries, geographic views, scatter plots, funnels, gauges, progress, waterfall, boxplot, and sankey-shaped queries
+- cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
+
+Use custom React visualizations only when the user's requested presentation does not fit Metabase display types or visualization settings.
+
+Good custom visualization reasons:
+
+- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards
+- combining multiple Metabase queries into one visual unit
+- custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
+- unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
+
+For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data.
 
 Chart only, without the toolbar:
 
@@ -242,6 +261,8 @@ const { data } = useMetabaseQuery<DailyRevenue>({
 
 - Prefer keyed `data.rows`.
 - Inspect `data.columns` before mapping low-level `rawRows`.
+- Runtime row objects are keyed by returned Metabase column names, usually `column.name` such as `net_revenue` or `avg_rating`. Do not assume generated schema keys like `netRevenue` or `avgRating` are runtime row keys.
+- Treat row values as nullable. Guard before calling number/string methods such as `toFixed`, `toLocaleString`, or string transforms.
 - Use `rawRows` only for known positional shapes, such as multiple aggregation series.
 - Metric-plus-measure queries commonly return `[breakout, metric aggregation, measure aggregation]`.
 - Aggregation columns may be named `count`, `sum`, or `avg`; match metadata when needed.
