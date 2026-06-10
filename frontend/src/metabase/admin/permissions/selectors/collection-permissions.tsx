@@ -30,6 +30,7 @@ import type {
   CollectionNamespace,
   CollectionPermissions,
   Group as GroupType,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
@@ -39,7 +40,6 @@ import {
   DataPermissionType,
   type DataPermissionValue,
   type PermissionEditorType,
-  type SpecialGroupType,
 } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";

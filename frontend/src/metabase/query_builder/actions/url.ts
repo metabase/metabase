@@ -3,7 +3,7 @@ import { parse as parseUrl } from "url";
 import type { LocationDescriptor } from "history";
 import { push, replace } from "react-router-redux";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { isEqualCard } from "metabase/common/utils/card";
 import { createThunkAction } from "metabase/redux";
 import * as Lib from "metabase-lib";
