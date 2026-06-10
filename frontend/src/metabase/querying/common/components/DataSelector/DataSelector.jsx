@@ -1147,8 +1147,8 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
-function withAllDatabases(WrappedComponent) {
-  return function DataSelectorWithAllDatabases(props) {
+function withDatabaseList(WrappedComponent) {
+  return function DataSelectorWithDatabaseList(props) {
     useListDatabasesQuery({ "can-query": true });
     return <WrappedComponent {...props} />;
   };
@@ -1158,7 +1158,7 @@ const isListDatabasesQuerySuccess = (state, query) =>
   databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
 
 const DataSelector = _.compose(
-  withAllDatabases,
+  withDatabaseList,
   withAvailableModels,
   withSchemaFetchers,
   connect(
