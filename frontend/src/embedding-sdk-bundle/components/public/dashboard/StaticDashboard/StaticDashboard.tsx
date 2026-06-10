@@ -34,12 +34,8 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   const normalizedProps =
     useNormalizeGuestEmbedQuestionOrDashboardComponentProps(props);
 
-  const {
-    withDownloads = false,
-    withTitle = true,
-    withSubscriptions = false,
-    autoRefreshInterval,
-  } = normalizedProps;
+  const { withDownloads, withTitle, withSubscriptions, autoRefreshInterval } =
+    normalizedProps;
 
   const dashboardId = "dashboardId" in props ? props.dashboardId : undefined;
 
