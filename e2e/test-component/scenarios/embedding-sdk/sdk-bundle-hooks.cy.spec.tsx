@@ -27,7 +27,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-
 import type { SdkActionId } from "embedding-sdk-bundle/types/action";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -87,7 +86,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            test
+          </MetabaseProvider>
         </>,
       );
 
@@ -156,7 +157,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            test
+          </MetabaseProvider>
         </>,
       );
 
@@ -204,7 +207,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            test
+          </MetabaseProvider>
         </>,
       );
 
@@ -254,7 +259,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            test
+          </MetabaseProvider>
         </>,
       );
 
@@ -411,7 +418,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
           <>
             <ComponentWithHook actionId={actionId} />
 
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
+            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+              test
+            </MetabaseProvider>
           </>,
         );
 
@@ -567,10 +576,9 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
         <>
           <ComponentWithHook />
 
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            children={null}
-          />
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            test
+          </MetabaseProvider>
         </>,
       );
 
