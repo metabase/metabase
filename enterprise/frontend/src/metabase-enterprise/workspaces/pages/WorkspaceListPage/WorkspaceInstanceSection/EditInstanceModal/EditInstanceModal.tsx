@@ -28,7 +28,7 @@ export function EditInstanceModal({
 }: EditInstanceModalProps) {
   return (
     <Modal
-      title={t`Rename development instance`}
+      title={t`Rename developer instance`}
       opened={opened}
       padding="xl"
       onClose={onClose}

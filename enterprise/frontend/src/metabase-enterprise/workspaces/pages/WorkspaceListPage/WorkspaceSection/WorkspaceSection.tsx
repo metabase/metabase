@@ -5,6 +5,7 @@ import { Button, Group, Icon, Stack, Title } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
 
 import { CreateWorkspaceModal } from "./CreateWorkspaceModal";
+import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceItem } from "./WorkspaceItem";
 
 type WorkspaceSectionProps = {
@@ -17,19 +18,27 @@ export function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
     { open: openCreateModal, close: closeCreateModal },
   ] = useDisclosure(false);
 
+  const isEmpty = workspaces.length === 0;
+
   return (
     <Stack>
       <Group justify="space-between">
         <Title order={4}>{t`Active workspaces`}</Title>
-        <Button leftSection={<Icon name="add" />} onClick={openCreateModal}>
-          {t`Create`}
-        </Button>
+        {!isEmpty && (
+          <Button leftSection={<Icon name="add" />} onClick={openCreateModal}>
+            {t`Create`}
+          </Button>
+        )}
       </Group>
-      <Stack>
-        {workspaces.map((workspace) => (
-          <WorkspaceItem key={workspace.id} workspace={workspace} />
-        ))}
-      </Stack>
+      {isEmpty ? (
+        <WorkspaceEmptyState onCreate={openCreateModal} />
+      ) : (
+        <Stack>
+          {workspaces.map((workspace) => (
+            <WorkspaceItem key={workspace.id} workspace={workspace} />
+          ))}
+        </Stack>
+      )}
       <CreateWorkspaceModal
         opened={createModalOpened}
         onClose={closeCreateModal}

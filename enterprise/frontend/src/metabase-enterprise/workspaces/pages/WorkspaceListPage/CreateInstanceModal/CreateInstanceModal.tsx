@@ -8,7 +8,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Group, Modal, Stack } from "metabase/ui";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useCreateWorkspaceInstanceMutation } from "metabase-enterprise/api";
 import type { WorkspaceInstance } from "metabase-types/api";
@@ -60,6 +62,7 @@ type CreateInstanceFormProps = {
 };
 
 function CreateInstanceForm({ onCreate, onClose }: CreateInstanceFormProps) {
+  const applicationName = useSelector(getApplicationName);
   const [createWorkspaceInstance] = useCreateWorkspaceInstanceMutation();
 
   const handleSubmit = async (values: CreateInstanceFormValues) => {
@@ -75,22 +78,32 @@ function CreateInstanceForm({ onCreate, onClose }: CreateInstanceFormProps) {
     >
       <Form>
         <Stack gap="lg">
+          <Text c="text-secondary">
+            {t`This should be a development instance of ${applicationName} that you already have running somewhere.`}
+          </Text>
           <FormTextInput
             name="name"
-            label={t`Name`}
+            label={t`Give this instance a name`}
             placeholder={t`My development instance`}
             data-autofocus
           />
           <FormTextInput
             name="url"
             label={t`Instance URL`}
-            placeholder="https://metabase.example.com"
+            placeholder="https://dev-instance.example.com"
           />
-          <FormTextInput name="api_key" label={t`API key`} type="password" />
+          <FormTextInput
+            name="api_key"
+            label={t`Instance API key`}
+            type="password"
+          />
           <FormErrorMessage />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Add`} variant="filled" />
+            <FormSubmitButton
+              label={t`Add developer instance`}
+              variant="filled"
+            />
           </Group>
         </Stack>
       </Form>

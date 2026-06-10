@@ -63,7 +63,7 @@ function DeleteInstanceForm({
       <Form>
         <Stack gap="lg">
           <Text>
-            {t`This will remove the development instance from this workspace manager. This can't be undone.`}
+            {t`This will remove the developer instance. This can't be undone.`}
           </Text>
           <FormErrorMessage />
           <Group justify="flex-end">

@@ -4,12 +4,13 @@ import { t } from "ttag";
 
 import {
   ActionIcon,
-  Badge,
+  Anchor,
   Box,
   Card,
   Group,
   Icon,
   Menu,
+  Stack,
   Title,
 } from "metabase/ui";
 import type { Workspace } from "metabase-types/api";
@@ -28,25 +29,23 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
   return (
     <Card shadow="none" withBorder>
       <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Box>
+        <Stack gap="sm">
           <Title order={3}>{workspace.name}</Title>
           {databases.length > 0 && (
-            <Box c="text-secondary" mt="sm">
+            <Box c="text-secondary">
               {databases.map((database) => database.name).join(", ")}
             </Box>
           )}
           {workspace.instance != null && (
-            <Badge
-              component={Link}
-              to={workspace.instance.url}
+            <Anchor
+              href={workspace.instance.url}
               target="_blank"
               rel="noopener noreferrer"
-              mt="md"
             >
               {workspace.instance.url}
-            </Badge>
+            </Anchor>
           )}
-        </Box>
+        </Stack>
         <WorkspaceItemMenu workspace={workspace} />
       </Group>
     </Card>

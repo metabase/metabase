@@ -2,7 +2,7 @@ import type {
   Workspace,
   WorkspaceDatabase,
   WorkspaceInstance,
-} from "../workspace";
+} from "../workspace-manager";
 
 import { createMockDatabase } from "./database";
 
