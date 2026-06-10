@@ -10,8 +10,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import { createRawSeries } from "metabase/query_builder/utils";
-import { defer } from "metabase/utils/promise";
+import { createRawSeries } from "metabase/visualizations/lib/series";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 export type QueryQuestionParams = {
@@ -54,7 +53,7 @@ export const queryQuestion =
       token: undefined,
       originalQuestion: questionState.originalQuestion,
       parameterValues: questionState.parameterValues,
-      cancelDeferred: defer(),
+      signal: new AbortController().signal,
       dispatch,
     });
 
