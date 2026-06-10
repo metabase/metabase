@@ -2498,8 +2498,8 @@
 ;;; Top-level entry point
 ;;; ============================================================
 
-(defn- normalize-shape*
-  "Pure-shape passes that don't require a metadata provider."
+(defn- normalize-shape-step*
+  "One application of the pure-shape passes that don't require a metadata provider."
   [parsed]
   (-> parsed
       ;; Run before Pass 1 (`ensure-clause-options*`): a values-list like
@@ -2520,6 +2520,21 @@
       normalise-fields-shape*
       normalize-expressions-shape*
       ensure-lib-types*))
+
+(defn- normalize-shape*
+  "Run the pure-shape passes to a fixpoint. This is what upholds [[repair]]'s idempotency
+  guarantee."
+  [parsed]
+  ;; One application is not enough: a later pass can expose fresh work for an earlier one.
+  ;; E.g. [[unwrap-boolean-wrappers*]] collapses ["true" {} x] to a bare x, and the enclosing
+  ;; vector then looks like an options-less clause to [[ensure-clause-options*]], which has
+  ;; already run. The iteration cap guards against a future non-converging pass; fuzzing
+  ;; converges within 2 extra iterations today.
+  (loop [parsed parsed, i 0]
+    (let [stepped (normalize-shape-step* parsed)]
+      (if (or (= parsed stepped) (>= i 10))
+        stepped
+        (recur stepped (inc i))))))
 
 (defn- stamp-top-level-database*
   "Idempotent wrapper around [[infer-top-level-database*]] that takes `[query mp]` in the

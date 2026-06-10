@@ -1293,6 +1293,13 @@
     (= (repair/repair trivial-mp tree)
        (repair/repair trivial-mp (repair/repair trivial-mp tree)))))
 
+(deftest ^:parallel boolean-unwrap-exposed-clause-idempotent-test
+  ;; Shrunk counterexample from [[idempotency-property-test]].
+  (testing "repair is idempotent when a boolean unwrap exposes a clause-shaped vector"
+    (let [parsed [[{"" [["true" {} " "]]}]]
+          once   (repair/repair trivial-mp parsed)]
+      (is (= once (repair/repair trivial-mp once))))))
+
 ;;; ----------------------------------------------------------------
 ;;; Realistic-shape fuzz: generate query-shaped maps (top-level `stages` vector with
 ;;; aggregation / breakout / filter / order-by / joins / multi-stage) so we stress the
