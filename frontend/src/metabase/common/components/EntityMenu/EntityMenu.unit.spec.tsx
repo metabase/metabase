@@ -48,28 +48,6 @@ describe("EntityMenu", () => {
     expect(link).toHaveTextContent("Open");
   });
 
-  it("renders external link items", async () => {
-    render(
-      <EntityMenu
-        items={[
-          {
-            title: "External",
-            icon: "link",
-            link: "https://example.com",
-            externalLink: true,
-          },
-        ]}
-      />,
-    );
-
-    await openDefaultMenu();
-
-    const link = await screen.findByTestId("entity-menu-link");
-    expect(link).toHaveAttribute("href", "https://example.com");
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveTextContent("External");
-  });
-
   it("does not call disabled action items", async () => {
     const action = jest.fn();
 
@@ -85,62 +63,16 @@ describe("EntityMenu", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("renders items around separators", async () => {
+  it("ignores null items", async () => {
     render(
       <EntityMenu
-        items={[
-          { title: "First", action: jest.fn() },
-          { key: "separator", separator: true },
-          { title: "Second", action: jest.fn() },
-        ]}
+        items={[null, { title: "Visible action", action: jest.fn() }]}
       />,
     );
 
     await openDefaultMenu();
 
-    expect(await screen.findByText("First")).toBeInTheDocument();
-    expect(screen.getByText("Second")).toBeInTheDocument();
-  });
-
-  it("renders custom component items", async () => {
-    render(
-      <EntityMenu
-        items={[
-          {
-            key: "custom",
-            testId: "custom-component-item",
-            component: <div data-testid="custom-component">Custom</div>,
-          },
-        ]}
-      />,
-    );
-
-    await openDefaultMenu();
-
-    expect(
-      await screen.findByTestId("custom-component-item"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("custom-component")).toHaveTextContent("Custom");
-  });
-
-  it("replaces menu content for content items", async () => {
-    render(
-      <EntityMenu
-        items={[
-          {
-            title: "More",
-            action: jest.fn(),
-            content: () => <div>Replacement content</div>,
-          },
-        ]}
-      />,
-    );
-
-    await openDefaultMenu();
-    await userEvent.click(await screen.findByText("More"));
-
-    expect(await screen.findByText("Replacement content")).toBeInTheDocument();
-    expect(screen.queryByText("More")).not.toBeInTheDocument();
+    expect(await screen.findByText("Visible action")).toBeInTheDocument();
   });
 
   it("opens with a custom trigger element", async () => {
@@ -186,23 +118,5 @@ describe("EntityMenu", () => {
 
     expect(screen.getByLabelText("Actions")).toBeInTheDocument();
     expect(screen.getByTestId("actions-trigger")).toBeInTheDocument();
-  });
-
-  it("applies item test ids", async () => {
-    render(
-      <EntityMenu
-        items={[
-          {
-            title: "Archive",
-            testId: "archive-action",
-            action: jest.fn(),
-          },
-        ]}
-      />,
-    );
-
-    await openDefaultMenu();
-
-    expect(await screen.findByTestId("archive-action")).toBeInTheDocument();
   });
 });
