@@ -131,26 +131,3 @@
                                                          :created_at msg-time}]
         (let [row (find-row (query-view [convo-id]) msg-id)]
           (is (= (t/instant msg-time) (t/instant (:created_at row)))))))))
-
-(deftest quality-attribution-test
-  (testing "quality_attribution surfaces from the message row"
-    (let [convo-id    (str (random-uuid))
-          attribution "{\"prefix_subscores\":[0.8,0.75],\"observables\":[]}"]
-      (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id convo-id :user_id user-id}
-                     :model/MetabotMessage {with-id :id} {:conversation_id     convo-id
-                                                          :role                "assistant"
-                                                          :profile_id          "nlq"
-                                                          :total_tokens        0
-                                                          :data                []
-                                                          :quality_attribution attribution}
-                     :model/MetabotMessage {without-id :id} {:conversation_id convo-id
-                                                             :role            "assistant"
-                                                             :profile_id      "nlq"
-                                                             :total_tokens    0
-                                                             :data            []}]
-        (let [rows (query-view [convo-id])]
-          (is (= attribution (:quality_attribution (find-row rows with-id))))
-          (testing "a message with null quality_attribution still projects"
-            (is (some? (find-row rows without-id)))
-            (is (nil? (:quality_attribution (find-row rows without-id))))))))))

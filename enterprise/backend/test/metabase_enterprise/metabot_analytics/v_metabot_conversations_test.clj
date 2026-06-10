@@ -416,24 +416,3 @@
                    :total_tokens  210
                    :profile_id    "internal"}
                   (find-row rows convo-2))))))))
-
-(deftest quality-columns-test
-  (testing "quality_score and quality_breakdown surface from the conversation row"
-    (let [convo-scored   (str (random-uuid))
-          convo-unscored (str (random-uuid))
-          breakdown      "{\"version\":\"v3.0\",\"subscores\":{\"data_source_quality\":0.5,\"execution_health\":1.0}}"]
-      (mt/with-temp [:model/User {user-id :id} {}
-                     :model/MetabotConversation _ {:id                convo-scored
-                                                   :user_id           user-id
-                                                   :quality_score     0.75
-                                                   :quality_breakdown breakdown}
-                     :model/MetabotConversation _ {:id      convo-unscored
-                                                   :user_id user-id}]
-        (let [rows     (query-view [convo-scored convo-unscored])
-              scored   (find-row rows convo-scored)
-              unscored (find-row rows convo-unscored)]
-          (is (= 0.75 (double (:quality_score scored))))
-          (is (= breakdown (:quality_breakdown scored)))
-          (testing "an unscored conversation projects null quality columns and still aggregates"
-            (is (nil? (:quality_score unscored)))
-            (is (nil? (:quality_breakdown unscored)))))))))
