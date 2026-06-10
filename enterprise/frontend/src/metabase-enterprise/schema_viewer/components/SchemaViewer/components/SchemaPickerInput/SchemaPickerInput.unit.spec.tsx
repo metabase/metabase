@@ -143,7 +143,7 @@ describe("SchemaPickerInput", () => {
       // With no database selected the picker opens automatically.
       await userEvent.click(await screen.findByText("QA Maria"));
 
-      // The lone nameless schema is auto-selected; navigation preserves the
+      // Single nameless schema is auto-selected; navigation preserves the
       // empty schema (`schema=`) rather than dropping it.
       await waitFor(() => {
         expect(onSchemaChange).toHaveBeenCalled();
@@ -158,8 +158,7 @@ describe("SchemaPickerInput", () => {
         expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
       });
 
-      // Reopening lands on the database list, not stuck inside the schema-less
-      // DB (which would re-trigger the auto-select and slam the picker shut).
+      // Reopening shows the database list.
       await userEvent.click(screen.getByTestId("schema-picker-button"));
       expect(await screen.findByText("QA Postgres")).toBeInTheDocument();
       expect(screen.getByText("QA Maria")).toBeInTheDocument();
