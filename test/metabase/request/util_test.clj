@@ -40,7 +40,14 @@
                               {"front-end-https" "on"}         true
                               {"front-end-https" "off"}        false
                               {"origin" "https://mysite.com"}  true
-                              {"origin" "http://mysite.com"}   false}]
+                              {"origin" "http://mysite.com"}   false
+                              ;; a blank proto header must fall through to the boolean HTTPS indicators (BOT-1617)
+                              {"x-forwarded-proto" "" "x-forwarded-ssl" "on"}          true
+                              {"x-forwarded-proto" "" "front-end-https" "on"}          true
+                              {"x-forwarded-proto" "  " "origin" "https://mysite.com"} true
+                              ;; the first hop of a comma-separated chain wins
+                              {"x-forwarded-proto" "https, http"} true
+                              {"x-forwarded-proto" "HTTPS"}       true}]
     (testing (pr-str (list 'https? {:headers headers}))
       (is (= expected
              (req.util/https? {:headers headers}))))))
