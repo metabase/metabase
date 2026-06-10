@@ -1,18 +1,25 @@
 (ns metabase.metabot.schema.v4
   "Schemas for the v4 at-rest `metabot_message.data` formats. A `data` value is a vector in one
-  of three self-describing shapes: stream-part entries (persisted AI SDK v4 data-stream parts,
-  tagged by uppercase `:_type`), part entries (message parts keyed by lowercase `:type`), or a
-  user message. Validates post-select values: JSON keys are keywordized, all values are strings.
+  of three self-describing shapes: data-stream parts (persisted AI SDK v4 `DataStreamPart`s,
+  tagged by uppercase `:_type`), parts (message parts keyed by lowercase `:type`), or a
+  user message. Validates post-select values, i.e. JSON decoded with keywordized keys.
 
-  Upstream protocol: https://github.com/vercel/ai (ai@4, packages/ui-utils/src/stream-parts.ts)"
+  Upstream protocol: https://github.com/vercel/ai (ai@4, packages/ui-utils/src/data-stream-parts.ts)"
   (:require
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::stream-part-entry
-  "The at-rest form of an AI SDK v4 data-stream part. The `:_type` tags are the v4 protocol's
-  stream-part names, uppercased."
+(mr/def ::data-stream-part
+  "The at-rest form of AI SDK v4 `DataStreamPart`s. The `:_type` tags are the upstream part
+  names, uppercased. Two divergences from upstream:
+
+  - field names are renamed at the persistence boundary: `tool_call`'s `{toolCallId, toolName,
+    args}` is stored as `:tool_calls [{:id :name :arguments}]`, `tool_result`'s
+    `{toolCallId, result}` as `:tool_call_id`/`:content`, and `finish_message`'s `finishReason`
+    as `:finish_reason`
+  - only the persisted subset of the upstream union appears here; the other part types
+    (`start_step`, `reasoning`, `tool_call_delta`, …) never reach the column"
   [:multi {:dispatch :_type}
    ["TEXT"           [:map {:closed true}
                       [:role :string]
@@ -45,7 +52,7 @@
                       [:finish_reason :string]
                       [:usage :map]]]])
 
-(mr/def ::part-entry
+(mr/def ::part
   "A message part, keyed by lowercase `:type`."
   [:multi {:dispatch :type}
    ["text"        [:map {:closed true}
@@ -76,7 +83,7 @@
                    [:type [:= "error"]]
                    [:error [:or :map :string]]]]])
 
-(mr/def ::user-message-entry
+(mr/def ::user-message
   "A user message."
   [:map {:closed true}
    [:role [:= "user"]]
@@ -87,15 +94,15 @@
   assistant placeholder rows are `[]`."
   [:or
    [:sequential {:max 0} :any]
-   [:sequential {:min 1} ::user-message-entry]
-   [:sequential {:min 1} ::stream-part-entry]
-   [:sequential {:min 1} ::part-entry]])
+   [:sequential {:min 1} ::user-message]
+   [:sequential {:min 1} ::data-stream-part]
+   [:sequential {:min 1} ::part]])
 
 (defn normalize-entry
   "Maps the non-compliant entry shapes found in production data onto their
   [[::message-data]]-compliant equivalents; compliant entries pass through unchanged:
 
-  - `tool-output` [[::part-entry]]s carrying full tool results (`:instructions`, `:resources`,
+  - `tool-output` [[::part]]s carrying full tool results (`:instructions`, `:resources`,
     `:data-parts`, …) are trimmed to the persisted subset
   - `{:type \"error\" :errorText ...}` entries are rewritten to `{:type \"error\" :error ...}`"
   [entry]
