@@ -35,7 +35,6 @@ import {
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
-  SdkQuestionId,
 } from "embedding-sdk-bundle/types/question";
 import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
@@ -104,17 +103,15 @@ export type InteractiveQuestionComponents = {
 };
 
 function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
-  const { query, ...rest } = props;
-
-  // InteractiveQuestionInternalProps is an intersection with a discriminated
-  // union — TypeScript can't narrow .questionId directly, so we read it via a
-  // typed cast. The value is only used for analytics; no control flow depends on it.
-  const questionId = (props as { questionId?: SdkQuestionId | null })
-    .questionId;
-  const title = (props as { title?: unknown }).title;
-  const withDownloads = (props as { withDownloads?: boolean }).withDownloads;
-  const isSaveEnabled = (props as { isSaveEnabled?: boolean }).isSaveEnabled;
-  const withAlerts = (props as { withAlerts?: boolean }).withAlerts;
+  const {
+    query,
+    questionId,
+    title,
+    withDownloads,
+    isSaveEnabled,
+    withAlerts,
+    ...rest
+  } = props;
 
   const isNewQuestion = questionId === "new" || questionId === "new-native";
   const trackingEntityId = questionId != null ? questionId : null;
