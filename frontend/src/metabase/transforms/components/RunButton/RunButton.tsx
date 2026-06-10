@@ -115,14 +115,6 @@ function getRunButtonInfo({
   isLoading,
   isDisabled,
 }: RunButtonOpts): RunButtonInfo {
-  if (isLoading && run?.status !== "started" && run?.status !== "canceling") {
-    return {
-      label: t`Run now`,
-      leftSection: <Loader size="sm" />,
-      isDisabled: true,
-    };
-  }
-
   if (run?.status === "started") {
     return {
       label: t`Running now…`,
@@ -136,6 +128,14 @@ function getRunButtonInfo({
       label: t`Canceling…`,
       leftSection: <Loader size="sm" />,
       color: "text-secondary",
+      isDisabled: true,
+    };
+  }
+
+  if (isLoading) {
+    return {
+      label: t`Run now`,
+      leftSection: <Loader size="sm" />,
       isDisabled: true,
     };
   }

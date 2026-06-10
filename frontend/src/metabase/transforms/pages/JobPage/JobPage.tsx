@@ -53,7 +53,6 @@ export function JobPage({ params }: JobPageProps) {
     useTransformPermissions();
   const { data: transforms, isLoading: isLoadingTransforms } =
     useListTransformJobTransformsQuery(jobId || skipToken);
-  const isCheckingPermissions = isLoadingTransforms;
   const readOnly = useMemo(() => {
     if (!transformsDatabases || !transforms) {
       return true;
@@ -79,7 +78,7 @@ export function JobPage({ params }: JobPageProps) {
     <JobPageBody
       job={job}
       readOnly={readOnly}
-      isCheckingPermissions={isCheckingPermissions}
+      isCheckingPermissions={isLoadingTransforms}
     />
   );
 }
