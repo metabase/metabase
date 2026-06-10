@@ -121,10 +121,6 @@ function DatabaseEditAppInner({
                     database={database}
                   />
 
-                  <PLUGIN_WORKSPACES.AdminConnectionInfoSection
-                    database={database}
-                  />
-
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
@@ -142,6 +138,10 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
+                    database={database}
+                  />
+
+                  <PLUGIN_WORKSPACES.WorkspaceDatabaseSection
                     database={database}
                   />
 

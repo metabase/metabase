@@ -6,7 +6,7 @@ import type { Database } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
-export type AdminConnectionInfoSectionProps = {
+export type WorkspaceDatabaseSectionProps = {
   database: Database;
 };
 
@@ -15,8 +15,7 @@ const getDefaultWorkspaces = () => ({
   canManageWorkspaceInstance: (_state: State): boolean => false,
   getDataStudioRoutes: (): ReactNode => null,
   getAdminConnectionInfoRoutes: (_IsAdmin: RouteComponent): ReactNode => null,
-  AdminConnectionInfoSection:
-    PluginPlaceholder<AdminConnectionInfoSectionProps>,
+  WorkspaceDatabaseSection: PluginPlaceholder<WorkspaceDatabaseSectionProps>,
 });
 
 export const PLUGIN_WORKSPACES = getDefaultWorkspaces();
