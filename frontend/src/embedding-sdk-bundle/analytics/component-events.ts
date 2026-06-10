@@ -70,9 +70,10 @@ export type SdkComponentProperties = {
   CreateDashboardModal: EmptyProperties;
 };
 
-// Centralized defaults — mirrors modular embedding's DEFAULT_VALUES pattern.
-// Components pass raw prop values; the hook fills gaps via spread merge.
-// id_new and id_new_native are excluded: they are always set explicitly.
+// Centralized defaults. Components pass raw prop values (undefined when the
+// user omits an optional prop); the hook fills gaps by merging these defaults
+// over only the defined values. id_new and id_new_native are excluded because
+// they are always set explicitly by the component.
 const SDK_COMPONENT_DEFAULT_PROPERTIES: {
   [C in SdkComponentName]: Partial<SdkComponentProperties[C]>;
 } = {
@@ -97,7 +98,7 @@ const SDK_COMPONENT_DEFAULT_PROPERTIES: {
     enable_entity_navigation: false,
   },
   StaticQuestion: {
-    with_title: true,
+    with_title: false,
     with_downloads: false,
     with_alerts: false,
   },
@@ -156,9 +157,14 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     const sdkVersion =
       getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
 
+    const definedProperties = Object.fromEntries(
+      Object.entries(properties as Record<string, unknown>).filter(
+        ([, value]) => value !== undefined,
+      ),
+    );
     const mergedProperties = {
       ...SDK_COMPONENT_DEFAULT_PROPERTIES[componentName],
-      ...properties,
+      ...definedProperties,
     } as SdkComponentProperties[C];
 
     const serializedProperties = Object.fromEntries(
