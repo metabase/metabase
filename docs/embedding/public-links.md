@@ -45,6 +45,37 @@ To share a document via a public link, admins can click on the **Sharing** butto
 
 Public documents are read-only: viewers cannot edit the content or add comments. For charts embedded in the document, viewers can download the results in CSV, XLSX, or JSON format using the **Download results** option in the chart menu.
 
+## Password-protect a public link
+
+{% include plans-blockquote.html feature="Password-protected public links" is_plural=true %}
+
+You can add a password to a public link so that people need to enter it before they can view the question or dashboard.
+
+### Set a password on a public link
+
+1. Click on **Sharing** for a question or dashboard.
+2. If you haven't already, create a public link.
+3. Toggle **Require a password**.
+4. Enter a password (minimum 6 characters) and click **Save**.
+
+All users who can view the question or dashboard can see the password. Only admins can set, change, or remove it.
+
+### How password-protected links work for viewers
+
+When someone visits a password-protected public link, they'll see a form asking for the password. After entering the correct password, Metabase stores an encrypted cookie in their browser so they don't need to re-enter the password for 7 days.
+
+### Change or remove the password
+
+To change the password, click the pencil icon next to the masked password in the sharing popover. To remove password protection entirely, toggle off **Require a password**.
+
+Changing or removing the password immediately invalidates existing unlock cookies, so viewers will need to re-enter the new password on their next visit.
+
+### Limitation: third-party cookie blocking
+
+Password-protected public links rely on a browser cookie to remember the unlock. If you embed a password-protected link as an iframe on a different domain, browsers with strict tracking protection (like Safari or Firefox with Enhanced Tracking Protection) may block the cookie since it's a third-party cookie. In that case, viewers would need to enter the password on every page load.
+
+Password-protected public links work best as standalone URLs or in same-domain embeds.
+
 ## Exporting raw, unformatted question results
 
 To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL Metabase generates. For example, if you create a public link for a CSV download, the URL would look like:
