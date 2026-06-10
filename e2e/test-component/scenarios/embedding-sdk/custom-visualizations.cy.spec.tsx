@@ -136,6 +136,97 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
   });
 
+  describe("initialVisualization", () => {
+    it("applies a custom visualization as the initial visualization when enabled", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization={CUSTOM_VIZ_DISPLAY}
+          />,
+          {
+            sdkProviderProps: {
+              enableCustomVisualizations: true,
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The custom viz renders instead of the saved table display");
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText(/Value: \d+/).should("be.visible");
+
+        cy.log("The chart type dropdown shows the custom viz as selected");
+        cy.findByTestId("chart-type-selector-button").should(
+          "contain.text",
+          CUSTOM_VIZ_IDENTIFIER,
+        );
+        cy.findByTestId("chart-type-selector-button").click();
+        cy.findByRole("listbox")
+          .findByRole("option", { name: CUSTOM_VIZ_IDENTIFIER })
+          .should("have.attr", "data-combobox-selected", "true");
+      });
+    });
+
+    it("applies a regular visualization as the initial visualization", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization="scalar"
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The Number viz renders instead of the saved table display");
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        cy.findByTestId("chart-type-selector-button").should(
+          "contain.text",
+          "Number",
+        );
+      });
+    });
+
+    it("falls back to the saved visualization when the custom viz is not enabled", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization={CUSTOM_VIZ_DISPLAY}
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+
+    it("falls back to the saved visualization when the custom viz doesn't exist", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization="custom:does-not-exist"
+          />,
+          {
+            sdkProviderProps: {
+              enableCustomVisualizations: true,
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+  });
+
   describe("allowlist via string[]", () => {
     it("renders the custom visualization when the identifier is in the allowlist", () => {
       mountQuestion([CUSTOM_VIZ_IDENTIFIER]);

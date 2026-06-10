@@ -21,7 +21,12 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
+import type {
+  Card,
+  CardDisplayType,
+  DashboardId,
+  QueryVisualizationDisplayType,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -146,6 +151,18 @@ type SdkQuestionConfig = {
    * @param display the new display type
    */
   onVisualizationChange?: (display: CardDisplayType) => void;
+
+  /**
+   * The visualization type to select when the question loads, overriding the
+   * question's saved visualization. Accepts chart types such as `"bar"` or
+   * `"table"`, and custom visualization displays (`"custom:<identifier>"`,
+   * requires the plugin to be installed and enabled via
+   * `enableCustomVisualizations`).
+   * <br/>
+   * Falls back to the question's saved visualization when the requested one
+   * doesn't exist or isn't allowed.
+   **/
+  initialVisualization?: QueryVisualizationDisplayType;
 };
 
 export type QuestionMockLocationParameters = {
