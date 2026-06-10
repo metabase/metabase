@@ -82,6 +82,7 @@
                               :expressions/integer            true
                               :expressions/text               true
                               :identifiers-with-spaces        true
+                              :index/post-ctas-create         true
                               :metadata/table-existence-check true
                               :now                            true
                               :persist-models                 true
@@ -1405,6 +1406,44 @@
   (when-not (str/blank? schema)
     (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS %s;" (quote-schema schema))]]]
       (driver/execute-raw-queries! driver conn-spec sql))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :postgres
+  [_driver _database]
+  ;; Phase 0: btree only (Postgres' default and most common method), which supports unique indexes (`:unique?`).
+  ;; Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
+  {:btree {:lifecycle :post-ctas, :unique? true}})
+
+(defn- index-column
+  "HoneySQL token for one indexed column. This is the seam for per-column options (sort direction,
+  operator class, ...) that Phase 0 doesn't render yet."
+  [{column-name :name}]
+  (keyword column-name))
+
+(defmethod driver/compile-create-index :postgres
+  [_driver schema table {index-name :name, :keys [kind columns unique]}]
+  ;; `:using-<kind>` keeps the access method data-driven: adding gin/gist/brin/hash/spgist needs no change here, only
+  ;; advertising them in `supported-index-methods`. `:unique` renders CREATE UNIQUE INDEX. `:if-not-exists` keeps
+  ;; re-application on every run idempotent.
+  (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
+        using     (keyword (str "using-" (name kind)))
+        index-ref (if unique
+                    [:unique (keyword index-name) :if-not-exists]
+                    [(keyword index-name) :if-not-exists])]
+    [(sql/format {:create-index [index-ref (into [table-ref using] (map index-column) columns)]}
+                 {:dialect (sql.qp/quote-style :postgres) :quoted true})]))
+
+(defmethod driver/refresh-table-stats! :postgres
+  [driver database schema table _transform-type]
+  ;; ANALYZE isn't a HoneySQL clause, so quote the table for the raw statement with `quote-name` (variadic over
+  ;; schema/table components).
+  (let [qtable (apply sql.u/quote-name driver :table (if (not-empty schema) [schema table] [table]))]
+    (driver/execute-raw-queries! driver
+                                 (driver/connection-spec driver database)
+                                 [[(format "ANALYZE %s" qtable)]])))
 
 (defmethod driver/extra-info :postgres
   [_driver]

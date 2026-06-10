@@ -844,6 +844,11 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support creating a performance hint (index/clustering) as a separate statement after the
+    ;; transform target table already exists? Drivers with this feature implement [[supported-index-methods]] and
+    ;; [[compile-create-index]]. Contrast with inline-on-CTAS drivers (e.g. Redshift sortkeys).
+    :index/post-ctas-create
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
@@ -1542,6 +1547,57 @@
   {:added "0.58.0", :arglists '([driver database-id schema table-name index-name column-names & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; A note on the word "index". We use it as the umbrella term for every kind of physical-layout hint a transform's
+;; target table can carry, because it's the familiar concept, even though for some warehouses it isn't literally an
+;; index: Postgres/MySQL use real indexes, Snowflake/BigQuery use clustering keys, Redshift uses sort/dist keys. A
+;; hint's `:kind` plus the driver decide which it actually is, and whether it's applied as a separate statement after
+;; the CTAS (`:post-ctas`, e.g. CREATE INDEX) or inlined into the CTAS itself (`:ctas-inline`, e.g. Redshift SORTKEY).
+
+(defmulti supported-index-methods
+  "Return the index methods this driver supports for transform target tables, as a map of
+  `hint-kind` -> metadata map. Each metadata map carries at least `:lifecycle`, one of `:post-ctas` (applied as a
+  separate statement after the table exists) or `:ctas-inline` (inlined into the CTAS statement).
+
+  Postgres (single-column btree, for now): `{:btree {:lifecycle :post-ctas}}`.
+
+  Defaults to `{}` for drivers with no hint support."
+  {:added "0.62.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod supported-index-methods :default
+  [_driver _database]
+  {})
+
+(defmulti compile-create-index
+  "Render a `:post-ctas` performance hint into the DDL statement(s) that create it on the existing `table` in `schema`.
+  `structured` is the hint description, e.g. `{:kind :btree, :name \"idx_foo_bar\", :columns [{:name \"bar\"}]}`.
+
+  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]].
+
+  Not implemented by drivers without `:index/post-ctas-create`."
+  {:added "0.62.0", :arglists '([driver schema table structured])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti refresh-table-stats!
+  "Per-driver post-CTAS housekeeping that downstream transforms depend on: `ANALYZE` on Postgres/Redshift/MySQL,
+  `UPDATE STATISTICS ... WITH FULLSCAN` on SQL Server, no-op on the rest.
+
+  Synchronous: in Phase 1 this runs in `complete-execution!` after sync and before publishing
+  `:event/transform-run-complete`, because downstream transforms can't safely start until stats exist."
+  {:added "0.62.0", :arglists '([driver database schema table transform-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod refresh-table-stats! :default
+  [_driver _database _schema _table _transform-type]
+  nil)
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified
