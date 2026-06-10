@@ -1,6 +1,6 @@
+import { actionApi } from "metabase/api";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { ActionsApi } from "metabase/services";
 import type {
   ActionFormSubmitResult,
   ParametersForActionExecution,
@@ -18,10 +18,12 @@ export const executeAction =
   ({ action, parameters }: ExecuteActionOpts) =>
   async (dispatch: Dispatch): Promise<ActionFormSubmitResult> => {
     try {
-      const result = await ActionsApi.execute({
-        id: action.id,
-        parameters,
-      });
+      const result = await dispatch(
+        actionApi.endpoints.executeAction.initiate({
+          id: action.id,
+          parameters,
+        }),
+      ).unwrap();
 
       const message = getActionExecutionMessage(action, result);
       dispatch(addUndo({ message, toastColor: "success" }));

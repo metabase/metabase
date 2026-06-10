@@ -2,9 +2,9 @@ import type { FunctionComponent } from "react";
 import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
+import { useExecuteActionMutation } from "metabase/api";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { ActionsApi } from "metabase/services";
 import { Button } from "metabase/ui";
 import type { WritebackActionId } from "metabase-types/api";
 
@@ -24,15 +24,20 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   onSuccess,
 }) => {
   const [sendToast] = useToast();
+  const [executeAction] = useExecuteActionMutation();
 
   const handleSubmit = async () => {
+    if (actionId == null) {
+      return;
+    }
+
     try {
-      await ActionsApi.execute({
+      await executeAction({
         id: actionId,
         parameters: {
           id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
         },
-      });
+      }).unwrap();
 
       const message = t`Successfully deleted`;
       sendToast({ message, toastColor: "success" });
