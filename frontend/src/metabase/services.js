@@ -1,7 +1,6 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 import { isEmbedPreview } from "metabase/embedding/config";
 
-export const internalBase = "/api";
 // use different endpoints for embed previews
 export function getEmbedBase() {
   return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";

@@ -6,7 +6,7 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
-import { getEmbedBase, internalBase } from "metabase/services";
+import { getEmbedBase } from "metabase/services";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 type EmbedType = "guest" | "static" | "public";
@@ -31,14 +31,14 @@ const getIgnoreOverridePatterns = () => [
  * These patterns are needed only for endpoints that have different parameter names/path/structure for `/embed`
  */
 const URL_PATTERNS = {
-  CARD_QUERY: `${internalBase}/card/:cardId/query`,
-  CARD_PIVOT_QUERY: `${internalBase}/card/pivot/:cardId/query`,
-  CARD_PARAMETER_VALUES: `${internalBase}/card/:cardId/params/:paramId/values`,
-  CARD_PARAMETER_SEARCH: `${internalBase}/card/:cardId/params/:paramId/search/:query`,
-  CARD_PARAMETER_REMAPPING: `${internalBase}/card/:cardId/params/:paramId/remapping`,
-  DASHBOARD_PARAMETER_VALUES: `${internalBase}/dashboard/:dashId/params/:paramId/values`,
-  DASHBOARD_PARAMETER_SEARCH: `${internalBase}/dashboard/:dashId/params/:paramId/search/:query`,
-  DASHBOARD_PARAMETER_REMAPPING: `${internalBase}/dashboard/:dashId/params/:paramId/remapping`,
+  CARD_QUERY: `/api/card/:cardId/query`,
+  CARD_PIVOT_QUERY: `/api/card/pivot/:cardId/query`,
+  CARD_PARAMETER_VALUES: `/api/card/:cardId/params/:paramId/values`,
+  CARD_PARAMETER_SEARCH: `/api/card/:cardId/params/:paramId/search/:query`,
+  CARD_PARAMETER_REMAPPING: `/api/card/:cardId/params/:paramId/remapping`,
+  DASHBOARD_PARAMETER_VALUES: `/api/dashboard/:dashId/params/:paramId/values`,
+  DASHBOARD_PARAMETER_SEARCH: `/api/dashboard/:dashId/params/:paramId/search/:query`,
+  DASHBOARD_PARAMETER_REMAPPING: `/api/dashboard/:dashId/params/:paramId/remapping`,
 } as const;
 
 /**
@@ -173,8 +173,8 @@ function replaceWithEmbedBase({
 }): string {
   const baseUrl = getBaseUrlByEmbedType(embedType);
 
-  if (url.includes(internalBase) && !url.includes(baseUrl)) {
-    return url.replace(internalBase, baseUrl);
+  if (url.includes("/api") && !url.includes(baseUrl)) {
+    return url.replace("/api", baseUrl);
   }
 
   return url;
