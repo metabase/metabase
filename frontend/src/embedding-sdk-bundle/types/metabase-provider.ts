@@ -75,4 +75,20 @@ export interface MetabaseProviderProps {
    * Defaults to false (uses the optimized bootstrap loader).
    **/
   useLegacyMonolithicBundle?: boolean;
+
+  /**
+   * Opt-in support for EE custom visualization plugins inside the SDK.
+   * When enabled, the SDK loads custom-viz bundles into an `about:blank`
+   * sandbox (no hosted-sandbox endpoint required).
+   *
+   * - `false` (default): no custom-viz plugins are loaded
+   * - `true`: every installed plugin is loaded
+   * - `string[]`: allowlist of plugin identifiers (e.g.
+   *   `["SdkTestSimple", "SdkTestReact18"]`); only these plugins are loaded
+   *
+   * Requires the `custom-viz` premium feature.
+   *
+   * @defaultValue false
+   **/
+  enableCustomVisualizations?: boolean | string[];
 }

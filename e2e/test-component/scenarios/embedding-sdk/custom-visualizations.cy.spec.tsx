@@ -1,0 +1,166 @@
+import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  CUSTOM_VIZ_DISPLAY,
+  CUSTOM_VIZ_FIXTURE_TGZ,
+  CUSTOM_VIZ_IDENTIFIER,
+  addCustomVizPlugin,
+  createQuestion,
+} from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
+const setup = () => {
+  signInAsAdminAndEnableEmbeddingSdk();
+
+  cy.log("Turn on the prereqs for custom visualizations");
+  cy.request("PUT", "/api/setting", {
+    "csp-img-enabled": true, // csp-img is required to enable custom-viz
+    "custom-viz-enabled": true,
+  });
+
+  cy.log("Upload the demo-viz custom visualization plugin");
+  addCustomVizPlugin(CUSTOM_VIZ_FIXTURE_TGZ);
+
+  cy.log("Create a question that targets the demo-viz custom display");
+  // demo-viz expects exactly one row with one numeric column.
+  createQuestion({
+    name: "Custom Viz SDK Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: CUSTOM_VIZ_DISPLAY,
+  }).then(({ body: question }) => {
+    cy.wrap(question.id).as("questionId");
+  });
+
+  cy.log("Create a question with a regular display, for dropdown selection");
+  createQuestion({
+    name: "Default Display SDK Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: "table",
+  }).then(({ body: question }) => {
+    cy.wrap(question.id).as("defaultDisplayQuestionId");
+  });
+
+  cy.signOut();
+  mockAuthProviderAndJwtSignIn();
+};
+
+const mountQuestion = (
+  enableCustomVisualizations: boolean | string[] | undefined,
+) => {
+  cy.get<number>("@questionId").then((questionId) => {
+    mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+      sdkProviderProps: {
+        enableCustomVisualizations,
+      },
+    });
+  });
+};
+
+describe("scenarios > embedding-sdk > custom visualizations", () => {
+  beforeEach(() => {
+    setup();
+  });
+
+  it("renders the custom visualization when enableCustomVisualizations is true", () => {
+    mountQuestion(true);
+
+    getSdkRoot().within(() => {
+      cy.findByText("Custom viz rendered successfully").should("be.visible");
+      cy.findByText(/Value: \d+/).should("be.visible");
+    });
+  });
+
+  it("allows selecting the custom visualization from the chart type dropdown", () => {
+    cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        sdkProviderProps: {
+          enableCustomVisualizations: true,
+        },
+      });
+    });
+
+    getSdkRoot().within(() => {
+      cy.log("The default visualization renders first");
+      cy.findByText("18,760").should("be.visible");
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+
+      cy.log("The custom viz is listed in the chart type dropdown");
+      cy.findByTestId("chart-type-selector-button").click();
+      cy.findByRole("listbox").within(() => {
+        cy.findByText(CUSTOM_VIZ_IDENTIFIER).click();
+      });
+
+      cy.log("Selecting it renders the custom visualization");
+      cy.findByText("Custom viz rendered successfully").should("be.visible");
+      cy.findByText(/Value: \d+/).should("be.visible");
+    });
+  });
+
+  it("falls back to the default visualization when the prop is omitted", () => {
+    mountQuestion(undefined);
+
+    getSdkRoot().within(() => {
+      // Custom viz text shouldn't render — the SDK falls back to whatever
+      // visualization is sensible for the data shape (Number for a single
+      // Count aggregation, Table otherwise). We just need to prove the
+      // custom plugin's output is gone and the underlying data value
+      // (18,760 = Count(Orders) on the sample dataset) still renders.
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  it("falls back to the default visualization when enableCustomVisualizations is false", () => {
+    mountQuestion(false);
+
+    getSdkRoot().within(() => {
+      // Custom viz text shouldn't render — the SDK falls back to whatever
+      // visualization is sensible for the data shape (Number for a single
+      // Count aggregation, Table otherwise). We just need to prove the
+      // custom plugin's output is gone and the underlying data value
+      // (18,760 = Count(Orders) on the sample dataset) still renders.
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  describe("allowlist via string[]", () => {
+    it("renders the custom visualization when the identifier is in the allowlist", () => {
+      mountQuestion([CUSTOM_VIZ_IDENTIFIER]);
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
+      });
+    });
+
+    it("falls back to the default visualization when the identifier is not in the allowlist", () => {
+      mountQuestion(["some-other-plugin"]);
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+
+    it("falls back to the default visualization when the allowlist is empty", () => {
+      mountQuestion([]);
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+  });
+});

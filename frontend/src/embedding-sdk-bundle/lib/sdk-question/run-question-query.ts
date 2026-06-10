@@ -1,5 +1,6 @@
 import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -50,6 +51,15 @@ export async function runQuestionQuerySdk(
       parameterValues,
     );
 
+    // Load the plugin backing a `custom:*` display in parallel with the
+    // query, so the display is registered in the visualizations map before
+    // `maybeResetDisplay` runs below.
+    const display = question.display();
+    const customVizPromise =
+      display && PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(display)
+        ? PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(dispatch, display)
+        : Promise.resolve(null);
+
     queryResults = await runQuestionQuery(question, {
       dispatch,
       signal,
@@ -63,6 +73,8 @@ export async function runQuestionQuerySdk(
       }),
     });
 
+    const loadedCustomVizDisplay = await customVizPromise;
+
     // Default values for rows/cols are needed because the `data` is missing in the case of Guest Embed
     const [{ data = isGuestEmbed ? { rows: [], cols: [] } : undefined }] =
       queryResults;
@@ -70,7 +82,16 @@ export async function runQuestionQuerySdk(
     // `data` may be a partial (guest embed) or absent (error result); the
     // viz helpers tolerate it, matching the prior untyped behavior.
     const datasetData = data as DatasetData;
+
     const sensibleDisplays = getSensibleDisplays(datasetData);
+    // Custom viz plugins don't implement `isSensible`, so even a loaded one
+    // would be reset away by `maybeResetDisplay` — treat it as sensible.
+    if (
+      loadedCustomVizDisplay &&
+      !sensibleDisplays.includes(loadedCustomVizDisplay)
+    ) {
+      sensibleDisplays.push(loadedCustomVizDisplay);
+    }
     question = question.maybeResetDisplay(
       datasetData,
       sensibleDisplays,
