@@ -109,22 +109,28 @@
                                  [])))))
 
 ;; --------------------------------------------------------------------------------------------
-;; Parameter bar layout (flow + wrap)
+;; Parameter name-column sizing (min-column-width)
 ;; --------------------------------------------------------------------------------------------
 
-(deftest ^:parallel layout-param-chips-test
-  (let [chips [{:width 100.0} {:width 100.0} {:width 100.0}]] ; param-chip-gap is 16
-    (testing "chips that fit stay on one line, with cumulative x offsets (0, 100+gap, 200+2gap)"
-      (let [lines (#'pdf/layout-param-chips chips 1000.0)]
-        (is (= 1 (count lines)))
-        (is (= [0.0 116.0 232.0] (mapv :x (first lines))))))
-    (testing "chips wrap onto new lines when they exceed the content width"
-      (let [lines (#'pdf/layout-param-chips chips 250.0)]
-        (is (= [2 1] (mapv count lines)))
-        (is (= [0.0 116.0] (mapv :x (first lines))))
-        (is (= [0.0] (mapv :x (second lines))))))
-    (testing "no chips -> no lines"
-      (is (= [] (#'pdf/layout-param-chips [] 1000.0))))))
+(deftest ^:parallel min-column-width-test
+  ;; synthetic pre-measured units (no fonts needed): three units of width 30/40/50, each with a
+  ;; 5pt leading space; an identity split-fn (nothing is splittable).
+  (let [u    (fn [ww sb?] {:ww ww :sp 5.0 :space-before? sb?})
+        noop (fn [x] [x])
+        us   [(u 30.0 false) (u 40.0 true) (u 50.0 true)]
+        n-at (fn [w] (count (#'pdf/pack-units->lines us w noop)))]
+    (testing "returns the narrowest width that preserves the fewest-lines count"
+      (let [w1 (#'pdf/min-column-width us 1000.0 noop)]    ; everything fits on one line when wide
+        (is (= 1 (n-at 1000.0)))
+        (is (= 1 (n-at w1)))                                ; still one line at the computed width
+        (is (= 2 (n-at (- w1 1.0))))                        ; ... two lines just below it
+        (is (<= 129.0 w1 131.0)))                           ; == total advance 30 + (5+40) + (5+50)
+      (let [w2 (#'pdf/min-column-width us 80.0 noop)]       ; only two units fit per line at 80
+        (is (= 2 (n-at 80.0)))
+        (is (= 2 (n-at w2)))
+        (is (<= 74.0 w2 76.0))))                            ; == width to fit [30,40]: 30 + 5 + 40
+    (testing "empty units -> zero width"
+      (is (= 0.0 (#'pdf/min-column-width [] 100.0 noop))))))
 
 (deftest ^:parallel resolve-inline-params-test
   (let [params [{:id "a" :name "Max Discount" :value [100]}
