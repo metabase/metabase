@@ -27,7 +27,6 @@
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
-   [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
@@ -1334,8 +1333,7 @@
 (defn- remove-sqlite-sample-database-on-downgrade!
   "Delete the SQLite sample database and the content it leaves dangling. Deleting the database
   cascades to its tables/fields, its Cards, and those cards' dashcards; Dashboards left with no
-  cards as a result are then deleted too. Returns the deleted database's id, or nil if there was no
-  SQLite sample database."
+  cards as a result are then deleted too. No H2 sample database is restored."
   []
   (when-let [sample-db-id (:id (t2/query-one {:select [:id]
                                               :from   [:metabase_database]
@@ -1353,30 +1351,18 @@
                              (into #{} (map :dashboard_id)))
               empty-ids (remove non-empty affected-dashboard-ids)]
           (when (seq empty-ids)
-            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]})))))
-    sample-db-id))
-
-(defn- restore-h2-sample-database-on-downgrade!
-  "After the incompatible SQLite sample database has been removed, restore an H2 sample database so
-  the downgraded (H2) version boots with a working sample database, matching what a fresh install of
-  that version would have. The sample-data extraction/sync/seeding code (and the H2 driver) is loaded
-  dynamically so the migration's load path stays free of that dependency tree; it only runs on the
-  rare downgrade-across-the-engine-boundary path."
-  []
-  (classloader/require 'metabase.driver.init 'metabase.sample-data.impl)
-  ((resolve 'metabase.sample-data.impl/recreate-sample-database!) :h2))
+            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]})))))))
 
 ;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
 ;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample
-;; database (it has the wrong engine/details) and would leave it broken, and it never recreates a
-;; missing sample database on existing installs. So on downgrade we remove the SQLite sample database
-;; (and the content it leaves empty) and restore an H2 one in its place. There is no forward
-;; migration: the upgrade (H2 -> SQLite) replacement is handled at startup in
-;; metabase.sample-data.impl/replace-sample-database!, not here.
+;; database (it has the wrong engine/details) and would leave it broken. On downgrade we therefore
+;; remove the SQLite sample database and the content left dangling by it, and we do NOT restore an
+;; H2 sample database. This mirrors the upgrade behavior in
+;; metabase.sample-data.impl/replace-sample-database!. There is no forward migration: the upgrade
+;; (H2 -> SQLite) replacement is handled at startup, not here.
 (define-reversible-migration MigrateAwayFromSqliteSampleDatabaseOnDowngrade
   (log/info "No forward migration for MigrateAwayFromSqliteSampleDatabaseOnDowngrade")
-  (when (remove-sqlite-sample-database-on-downgrade!)
-    (restore-h2-sample-database-on-downgrade!)))
+  (remove-sqlite-sample-database-on-downgrade!))
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
