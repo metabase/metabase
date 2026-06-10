@@ -188,7 +188,7 @@
                            :direction       "export"
                            :source          "api"
                            :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                           :count           (count (:seen report))
+                           :count           (reduce + 0 (vals (:seen report)))
                            :error_count     (count (:errors report))
                            :collection      (str/join "," (map str collection))
                            :all_collections (and (empty? collection)

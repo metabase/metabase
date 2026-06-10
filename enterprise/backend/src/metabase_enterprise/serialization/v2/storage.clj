@@ -6,13 +6,14 @@
 
 (defn store!
   "Consume the entity `stream` and store each entity via the given `writer`.
-  Returns a report map with `:seen` and `:errors` vectors.
+  Returns a report map with `:seen`, a map of model name to the count of stored entities, and an
+  `:errors` vector.
 
   Uses `run!` to make elements reach the writer as they are produced and
   not materialize the entire upstream before the loop body."
   [stream writer]
   (let [settings (atom [])
-        report   (atom {:seen [] :errors []})]
+        report   (atom {:seen {} :errors []})]
     (run! (fn [entity]
             (cond
               (instance? Exception entity)
@@ -22,9 +23,10 @@
               (swap! settings conj entity)
 
               :else
-              (swap! report update :seen conj (protocols/store-entity! writer entity))))
+              (let [path (protocols/store-entity! writer entity)]
+                (swap! report update-in [:seen (-> path last :model)] (fnil inc 0)))))
           stream)
     (when (seq @settings)
       (protocols/store-settings! writer @settings)
-      (swap! report update :seen conj [{:model "Setting"}]))
+      (swap! report update-in [:seen "Setting"] (fnil inc 0)))
     @report))
