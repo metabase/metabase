@@ -248,7 +248,7 @@ export const downloadQueryResults = createAsyncThunk(
  * instead of a raw network error like "Failed to fetch", so the user knows the
  * file did not download completely.
  */
-const readDownloadBlob = async (response: Response): Promise<Blob> => {
+export const readDownloadBlob = async (response: Response): Promise<Blob> => {
   try {
     return await response.blob();
   } catch {
