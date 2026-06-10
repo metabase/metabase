@@ -2,8 +2,10 @@ import createCache from "@emotion/cache";
 // eslint-disable-next-line no-restricted-imports
 import { CacheProvider } from "@emotion/react";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { color } from "metabase/ui/colors";
 import { getCspNonce } from "metabase/utils/csp";
 
 import { DataAppProvider } from "./components/DataAppProvider";
@@ -77,11 +79,15 @@ function BundleHost({ name, cache }: BundleHostProps) {
   }, [name]);
 
   if (error) {
-    return <div style={{ padding: 16, color: "#b00" }}>Error: {error}</div>;
+    return (
+      <div style={{ padding: 16, color: color("error") }}>
+        {t`Error:`} {error}
+      </div>
+    );
   }
 
   if (!loaded) {
-    return <div style={{ padding: 16 }}>Loading…</div>;
+    return <div style={{ padding: 16 }}>{t`Loading…`}</div>;
   }
 
   const { component: AppComponent, theme } = loaded;
@@ -110,8 +116,8 @@ export const DataAppIframeApp = () => {
 
   if (!name) {
     return (
-      <div style={{ padding: 16, color: "#b00" }}>
-        Missing data-app name in URL
+      <div style={{ padding: 16, color: color("error") }}>
+        {t`Missing data-app name in URL`}
       </div>
     );
   }

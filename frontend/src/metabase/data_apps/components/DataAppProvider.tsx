@@ -1,9 +1,12 @@
+// eslint-disable-next-line no-restricted-imports -- emotion <Global> is the only way to inject SCOPED_CSS_RESET
+import { Global } from "@emotion/react";
 import type { ReactNode } from "react";
 
+import { SCOPED_CSS_RESET } from "embedding-sdk-bundle/components/private/PublicComponentStylesWrapper";
 import { PortalContainer } from "embedding-sdk-bundle/components/private/SdkPortalContainer";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
-import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { getHostBackedSdkStore } from "metabase/data_apps/host-sdk-init";
+import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/redux";
 
 // Note: Mantine + SDK CSS is loaded into the iframe via the `data-app-vendors`
@@ -33,7 +36,10 @@ export const DataAppProvider = ({ theme, children }: DataAppProviderProps) => {
   return (
     <MetabaseReduxProvider store={sdkStore}>
       <SdkThemeProvider theme={theme}>
+        <Global styles={SCOPED_CSS_RESET} />
+
         {children}
+
         <PortalContainer />
       </SdkThemeProvider>
     </MetabaseReduxProvider>
