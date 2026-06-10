@@ -24,7 +24,9 @@
                      (nil? (:_type %)))
                data)))
 
-(defn- error->text [error]
+(defn error->text
+  "Render a v1 tool-output `:error` value (string, map, or anything else) as text."
+  [error]
   (cond
     (string? error) error
     (map? error)    (or (:message error) (pr-str error))
@@ -39,7 +41,7 @@
                      :tool_call_id id
                      :state        (if output "output-available" "input-available")
                      :input        input}
-              output (assoc :output (:content output)))))
+              output (assoc :output {:output (:content output)}))))
         tool_calls))
 
 (defn migrate-v1-external-ai-service->v2
@@ -97,7 +99,7 @@
                                                                :else          "input-available")
                                                :input        (:arguments entry)}
                                         (and (some? output) (nil? error))
-                                        (assoc :output (:output (:result output)))
+                                        (assoc :output (:result output))
 
                                         (some? error)
                                         (assoc :error_text (error->text error)))])
