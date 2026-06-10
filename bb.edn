@@ -395,6 +395,11 @@
         "  ci:run-DRIVER             Force-run a specific driver, e.g. ci:run-mysql-mariadb (overrides quarantine)\n"
         "  ci:all-cloud-drivers      Run all cloud drivers (athena, bigquery, databricks, redshift, snowflake)\n"
         "  break-quarantine-DRIVER   Un-quarantine a specific driver, e.g. break-quarantine-mysql\n"
+        "\n## Driver Status (from ci-test-config.json `drivers`)\n\n"
+        "Each driver also gets a status, emitted as DRIVER-status=... for the result job:\n\n"
+        "  skip       Listed with status \"skip\": not run at all (quarantined; break-quarantine-DRIVER overrides)\n"
+        "  info       Listed with status \"info\": runs normally but its result must NOT gate (data collection)\n"
+        "  required   Not listed in `drivers`: runs and gates as usual (the default)\n"
         "\n## All Drivers\n\n"
         (str/join ", " (map name (sort mage.modules/all-drivers)))
         "\n")))

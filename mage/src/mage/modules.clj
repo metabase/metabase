@@ -311,7 +311,7 @@
                       (get driver-directory->drivers dir-name))))
           updated-files)))
 
-;;; driver quarantine
+;;; driver quarantine / status
 
 (def ^:private ci-test-config-url
   "https://raw.githubusercontent.com/metabase/ci-test-config/refs/heads/master/ci-test-config.json")
@@ -319,12 +319,39 @@
 (defn- read-ci-test-config []
   (json/parse-string (slurp ci-test-config-url) keyword))
 
-(defn- quarantined-drivers []
-  (-> (read-ci-test-config)
-      (get-in [:ignored :drivers] [])
-      (->> (mapcat #(or (get driver-directory->drivers %)
-                        [(keyword %)])))
-      (set)))
+(defn- config-id->drivers
+  "Translate a ci-test-config driver `id` (e.g. \"drivers-tests-snowflake-ee\") into the
+   internal driver keyword(s) it targets. Strips the job-name affixes and then expands the
+   bare name via [[driver-directory->drivers]] (so e.g. \"mongo\" fans out to all three mongo
+   jobs); anything not in that map is taken as a single driver keyword."
+  [id]
+  (let [base (-> (name id)
+                 (str/replace #"^(?:drivers|be)-tests-" "")
+                 (str/replace #"-ee$" ""))]
+    (or (seq (get driver-directory->drivers base))
+        [(keyword base)])))
+
+(defn- driver-statuses
+  "Map of driver keyword -> status keyword (`:skip` or `:info`) sourced from the top-level
+   `drivers` array in ci-test-config.json. Drivers absent from the config are implicitly
+   `:required` and do not appear in this map.
+
+     :skip  -- do not run the driver at all (subject to the break-quarantine-<driver> label)
+     :info  -- run the driver, but its result must not gate (data collection only)"
+  []
+  (into {}
+        (comp (keep (fn [{:keys [id status]}]
+                      (when-let [status-kw (#{:skip :info} (keyword status))]
+                        [id status-kw])))
+              (mapcat (fn [[id status-kw]]
+                        (map (fn [driver] [driver status-kw])
+                             (config-id->drivers id)))))
+        (get (read-ci-test-config) :drivers [])))
+
+(defn- skip-drivers
+  "Set of driver keywords with status `:skip` in `statuses` (these are quarantined: not run)."
+  [statuses]
+  (into #{} (keep (fn [[driver status]] (when (= status :skip) driver))) statuses))
 
 (defn- parse-bool
   "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
@@ -463,7 +490,9 @@
              :skip (parse-bool (:skip options))
              :particular-driver-changed? particular-driver-changed?
              :verbose? (not github-output-only?)}
-        quarantined (quarantined-drivers)
+        statuses (driver-statuses)
+        ;; `:skip` drivers are quarantined (not run); `:info`/`:required` drivers run normally.
+        quarantined (skip-drivers statuses)
         updated-files (u/updated-files git-ref)
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-deps-affected? updated)
@@ -472,7 +501,8 @@
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
                           (assoc (driver-decision driver ctx effective-driver-affected? quarantined updated)
-                                 :driver driver))
+                                 :driver driver
+                                 :status (get statuses driver :required)))
                         all-drivers)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
         quarantined-with-changes (into #{}
@@ -485,8 +515,9 @@
     (if github-output-only?
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
-        (doseq [{:keys [driver should-run]} decisions]
-          (println (str (name driver) "-should-run=" should-run)))
+        (doseq [{:keys [driver should-run status]} decisions]
+          (println (str (name driver) "-should-run=" should-run))
+          (println (str (name driver) "-status=" (name status))))
         (doseq [driver quarantined-with-changes]
           (println (str (name driver) "-quarantine-conflict=true"))))
       (do
@@ -500,10 +531,14 @@
         (println "")
         ;; Print human-readable decision summary
         (println "=== Driver Decisions ===")
-        (doseq [{:keys [driver should-run reason]} decisions]
-          (println (format "%-25s %s - %s"
+        (doseq [{:keys [driver should-run status reason]} decisions]
+          (println (format "%-25s %s %s - %s"
                            (name driver)
                            (if should-run (c/green "RUN ") (c/yellow "SKIP"))
+                           (case status
+                             :info (c/blue "[info]    ")
+                             :skip (c/yellow "[skip]    ")
+                             "[required]")
                            reason)))
         (println "")
         ;; Print GITHUB_OUTPUT preview with colors
