@@ -146,6 +146,11 @@
       (let [^HttpChannel channel (.getHttpChannel ^Request *request*)]
         (.abort channel (EofException. "Aborting streaming response after a mid-stream error")))
       (catch Throwable e
+        ;; The abort failed, so it won't tear the connection down. Revert the flag we
+        ;; optimistically set so the worker thread's `finally` in `do-f-async` can still
+        ;; `.complete` the async context, instead of leaving the request to hang until
+        ;; Jetty's async timeout fires.
+        (.set ^AtomicBoolean *completed?* false)
         (log/error e "Error aborting streaming connection after mid-stream error")))))
 
 (defn- write-error-to-stream!
