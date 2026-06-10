@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: v61.c3f8a2
+      id: v63.c3f8a2
       author: johnswanson
       comment: Create source_segment_composite_daily for whole-:and filter baskets
       changes:
@@ -62,7 +62,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v61.e71b4d
+      id: v63.e71b4d
       author: johnswanson
       comment: Add source_segment_composite_daily bucket/source index
       changes:
