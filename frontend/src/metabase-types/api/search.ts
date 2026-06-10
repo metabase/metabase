@@ -131,6 +131,7 @@ export type SearchContext =
   | "entity-picker"
   | "data-picker"
   | "type-filter"
+  | "basic-actions"
   | "browse"
   | "embedding-setup"
   | "document"
