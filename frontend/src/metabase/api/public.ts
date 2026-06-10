@@ -1,4 +1,3 @@
-import { publicBase } from "metabase/services";
 import type { CardId, DashCardId, Dataset } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -19,14 +18,14 @@ export type PublicDashcardQueryRequest = {
   ignore_cache?: boolean;
 };
 
-const PIVOT_PREFIX = `${publicBase}/pivot`;
+const PIVOT_PREFIX = `/api/public/pivot`;
 
 export const publicApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getPublicCardQuery: builder.query<Dataset, PublicCardQueryRequest>({
       query: ({ uuid, ...params }) => ({
         method: "GET",
-        url: `${publicBase}/card/${uuid}/query`,
+        url: `/api/public/card/${uuid}/query`,
         params,
       }),
       keepUnusedDataFor: 0,
@@ -42,7 +41,7 @@ export const publicApi = Api.injectEndpoints({
     getPublicDashcardQuery: builder.query<Dataset, PublicDashcardQueryRequest>({
       query: ({ uuid, dashcardId, cardId, ...params }) => ({
         method: "GET",
-        url: `${publicBase}/dashboard/${uuid}/dashcard/${dashcardId}/card/${cardId}`,
+        url: `/api/public/dashboard/${uuid}/dashcard/${dashcardId}/card/${cardId}`,
         params,
       }),
       keepUnusedDataFor: 0,
