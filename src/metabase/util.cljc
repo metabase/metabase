@@ -258,7 +258,7 @@
          ssl
          (= "on" (lower-case-en ssl))
 
-         ;; If none of the above are present, we are most not likely being accessed over a reverse proxy. Still, there's a
+          ;; If none of the above are present, we are most likely not being accessed over a reverse proxy. Still, there's a
          ;; good chance `Origin` will be present because it should be sent with `POST` requests, and most auth requests are
          ;; `POST`. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Origin
          origin
