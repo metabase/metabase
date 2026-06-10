@@ -1411,8 +1411,9 @@ describe("admin > custom visualizations", () => {
     const devUrl = `http://localhost:${CUSTOM_VIZ_DEV_PORT}`;
     const pluginSrcPath = `${projectDir}/src/index.tsx`;
     const QUESTION_NAME = "Custom Viz Dev Mode Question Test";
+    const ORIGINAL_LABEL = "Above threshold";
+    const HOT_RELOAD_LABEL = "Way above!";
     let devServerPid: number | null = null;
-    let originalPluginSrc: string | null = null;
 
     beforeEach(() => {
       H.restore("postgres-writable");
@@ -1421,14 +1422,18 @@ describe("admin > custom visualizations", () => {
       H.updateSetting("csp-img-enabled", true);
       H.updateSetting("custom-viz-enabled", true);
 
-      // The test mutates the scaffolded plugin source and stops the dev server
+      // The test edits the scaffolded plugin source and stops the dev server
       // as part of its assertions. Retries and burn-in iterations re-run the
-      // test without re-running the `before` scaffolding, so restore the
-      // source and (re)start the dev server here to keep every attempt
-      // self-contained. The start task kills any previous server instance.
-      cy.then(() => {
-        if (originalPluginSrc != null) {
-          cy.writeFile(pluginSrcPath, originalPluginSrc);
+      // test without re-running the `before` scaffolding, so undo both side
+      // effects here to keep every attempt self-contained. The start task
+      // kills any previous server instance.
+      cy.readFile(pluginSrcPath).then((src) => {
+        const reverted = src.replace(
+          `"${HOT_RELOAD_LABEL}"`,
+          `"${ORIGINAL_LABEL}"`,
+        );
+        if (reverted !== src) {
+          cy.writeFile(pluginSrcPath, reverted);
         }
       });
       cy.task<{ pid: number }>("startCustomVizDevServer", {
@@ -1495,12 +1500,6 @@ describe("admin > custom visualizations", () => {
 
       // Install dependencies in the tmp plugin folder.
       cy.exec(`cd "${projectDir}" && npm i`, { timeout: TIMEOUT });
-
-      // Keep a pristine copy of the plugin source — the test edits it to
-      // exercise hot reload, and `beforeEach` restores it before each attempt.
-      cy.readFile(pluginSrcPath).then((src) => {
-        originalPluginSrc = src;
-      });
     });
 
     after(() => {
@@ -1554,15 +1553,18 @@ describe("admin > custom visualizations", () => {
       // The plugin bundle is fetched from the local dev server, which can be
       // slow on a loaded/throttled CI runner — give it more than the default.
       H.main()
-        .findByRole("img", { name: "Above threshold", timeout: 15000 })
+        .findByRole("img", { name: ORIGINAL_LABEL, timeout: 15000 })
         .should("be.visible");
 
       cy.log("Modifying plugin source to change the rendered label");
       cy.readFile(pluginSrcPath).then((src) => {
-        const updated = src.replace('"Above threshold"', '"Way above!"');
+        const updated = src.replace(
+          `"${ORIGINAL_LABEL}"`,
+          `"${HOT_RELOAD_LABEL}"`,
+        );
         if (updated === src) {
           throw new Error(
-            `Expected to replace "Above threshold" in ${pluginSrcPath}`,
+            `Expected to replace "${ORIGINAL_LABEL}" in ${pluginSrcPath}`,
           );
         }
         cy.writeFile(pluginSrcPath, updated);
@@ -1573,7 +1575,7 @@ describe("admin > custom visualizations", () => {
       // bundle re-fetch (with retries) — under CI load this routinely takes
       // longer than the default 4s command timeout.
       H.main()
-        .findByRole("img", { name: "Way above!", timeout: 30000 })
+        .findByRole("img", { name: HOT_RELOAD_LABEL, timeout: 30000 })
         .should("be.visible");
 
       cy.log("Verify plugin settings affect rendering.");

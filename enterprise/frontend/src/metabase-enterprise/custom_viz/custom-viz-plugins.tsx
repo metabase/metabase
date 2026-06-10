@@ -15,6 +15,7 @@ import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { exponentialBackoff, retry } from "metabase/utils/retry";
 import visualizations, { registerVisualization } from "metabase/visualizations";
 import {
   getCustomPluginIdentifier,
@@ -254,25 +255,6 @@ export type LoadCustomVizPluginOptions = {
   sandboxMode?: SandboxMode;
 };
 
-async function fetchBundle(url: string, attempts: number): Promise<Response> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    if (attempt > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
-    }
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) {
-        return res;
-      }
-      lastError = new Error(`HTTP ${res.status}`);
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError;
-}
-
 /**
  * Dynamically load a custom viz plugin bundle, call its factory,
  * decompose the returned definition, and register it as a Metabase
@@ -306,9 +288,23 @@ export async function loadCustomVizPlugin(
     } else if (currentHash) {
       bundleUrl.searchParams.set("v", currentHash);
     }
-    const res = await fetchBundle(
-      bundleUrl.href,
-      plugin.dev_bundle_url ? 3 : 1,
+    // Dev-server bundles are rebuilt on every source change, and a fetch
+    // landing mid-rebuild can get a transient 404/500. A failed load leaves
+    // the plugin in the fallback state until the next rebuild, so retry a
+    // couple of times before giving up.
+    const res = await retry(
+      async () => {
+        const res = await fetch(bundleUrl.href, { cache: "no-store" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res;
+      },
+      {
+        maxRetries: plugin.dev_bundle_url ? 2 : 0,
+        shouldRetry: () => true,
+        delayMs: exponentialBackoff(500),
+      },
     );
 
     const text = await res.text();
