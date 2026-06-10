@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -2209,29 +2211,33 @@
         (perms/set-table-permission! (perms/all-users-group) (mt/id :people) :perms/create-queries :no)
         (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
         (mt/with-test-user :rasta
-          (testing "Sanity check: user can query venues normally"
-            (is (=? {:status :completed}
-                    (qp/process-query (mt/mbql-query venues {:limit 1})))))
-          (testing "Sanity check: user cannot query people normally"
-            (is (thrown-with-msg?
-                 ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (qp/process-query (mt/mbql-query people {:limit 1})))))
-          (testing "persisted-info/native in the query map is ignored in favor of the source-table"
-            (let [people-sql (str "SELECT id AS ID, address AS NAME, 0 AS CATEGORY_ID,"
-                                  " 0.0 AS LATITUDE, 0.0 AS LONGITUDE, 0 AS PRICE FROM PEOPLE")
-                  result     (qp/process-query
-                              {:database (mt/id)
-                               :type     :query
-                               :query    {:source-query {:persisted-info/native people-sql
-                                                         :source-table          (mt/id :venues)}
-                                          :limit        1}})
-                  expected   (qp/process-query
-                              (mt/mbql-query venues {:limit 1}))]
-              (is (=? {:status :completed} result))
-              (testing "Results come from the source-table, not the inline native query"
-                (is (= (mt/rows expected)
-                       (mt/rows result)))))))))))
+          (let [mp           (mt/metadata-provider)
+                venues-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/limit 1))]
+            (testing "Sanity check: user can query venues normally"
+              (is (=? {:status :completed}
+                      (qp/process-query venues-query))))
+            (testing "Sanity check: user cannot query people normally"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                         (lib/limit 1))))))
+            (testing "persisted-info/native in the query map is ignored in favor of the source-table"
+              (let [people-sql (str "SELECT id AS ID, address AS NAME, 0 AS CATEGORY_ID,"
+                                    " 0.0 AS LATITUDE, 0.0 AS LONGITUDE, 0 AS PRICE FROM PEOPLE")
+                    ;; Inject the internally-managed :persisted-info/native key into the source stage
+                    ;; to confirm it is ignored in favor of the real source-table.
+                    result     (qp/process-query
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    lib/append-stage
+                                    (lib/limit 1)
+                                    (assoc-in [:stages 0 :persisted-info/native] people-sql)))
+                    expected   (qp/process-query venues-query)]
+                (is (=? {:status :completed} result))
+                (testing "Results come from the source-table, not the inline native query"
+                  (is (= (mt/rows expected)
+                         (mt/rows result))))))))))))
 
 (deftest e2e-card-creation-perms-key-test
   (testing "a :query-permissions/perms value in the dataset_query does not affect card-creation permission checks"

@@ -196,9 +196,9 @@
             (let [inline-sql "SELECT 'INLINE' AS marker"
                   query     {:database (mt/id)
                              :type     :query
-                             :query    {:source-table       (str "card__" (:id model))
+                             :query    {:source-table          (str "card__" (:id model))
                                         :persisted-info/native inline-sql
-                                        :limit              1}}
+                                        :limit                 1}}
                   results   (qp/process-query query)
                   native-sql (-> results :data :native_form :query)
                   persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
