@@ -35,9 +35,7 @@ export const dataAppApi = Api.injectEndpoints({
         return {
           method: "POST",
           url: "/api/data-app",
-          body: { formData },
-          formData: true,
-          fetch: true,
+          body: formData,
         };
       },
       invalidatesTags: (_, error) =>
@@ -55,9 +53,7 @@ export const dataAppApi = Api.injectEndpoints({
         return {
           method: "PUT",
           url: `/api/data-app/${encodeURIComponent(name)}`,
-          body: { formData },
-          formData: true,
-          fetch: true,
+          body: formData,
         };
       },
       invalidatesTags: (_, error, { name }) =>
