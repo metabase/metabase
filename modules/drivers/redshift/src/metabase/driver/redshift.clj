@@ -52,6 +52,10 @@
                               :describe-is-nullable             false
                               :expression-literals              true
                               :identifiers-with-spaces          false
+                              ;; Redshift has no secondary indexes; physical-layout hints (sortkeys) are inlined into
+                              ;; the CTAS, not created post-hoc. Override the `:postgres`-inherited post-ctas support.
+                              :index/inline-on-ctas             true
+                              :index/post-ctas-create           false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
@@ -222,6 +226,34 @@
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :redshift
+  [_driver _database]
+  ;; Redshift inlines sortkeys into the CTAS; distkeys come in a later milestone.
+  {:sortkey {:lifecycle :ctas-inline}})
+
+(defn- sortkey-clause
+  "Render a sortkey hint, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`."
+  [driver {:keys [style columns]}]
+  (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
+        cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+    (format "%s SORTKEY (%s)" style-sql cols)))
+
+(defmethod driver/compile-transform :redshift
+  [driver {:keys [query output-table indexes] :as transform-details}]
+  (if-let [sortkey (first (filter #(= :sortkey (:kind %)) indexes))]
+    (let [{sql-query :query sql-params :params} query
+          k      (keyword output-table)
+          target (if (namespace k)
+                   (sql.u/quote-name driver :table (namespace k) (name k))
+                   (sql.u/quote-name driver :table (name k)))]
+      [(format "CREATE TABLE %s %s AS %s" target (sortkey-clause driver sortkey) sql-query)
+       sql-params])
+    ((get-method driver/compile-transform :sql) driver transform-details)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

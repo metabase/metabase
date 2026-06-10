@@ -850,6 +850,11 @@
     ;; drivers that inline indexes into the table-creation statement itself (e.g. Redshift sortkeys).
     :index/standalone-create
     ;;
+    ;; Does this driver inline an index hint into the CTAS statement itself (e.g. Redshift SORTKEY, BigQuery
+    ;; CLUSTER BY) rather than creating it afterwards? Drivers with this feature implement [[supported-index-methods]]
+    ;; and render the hint in [[compile-transform]].
+    :index/inline-on-ctas
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
