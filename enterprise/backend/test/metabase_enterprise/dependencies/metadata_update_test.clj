@@ -133,7 +133,7 @@
                                      [:model/Card :id :result_metadata :card_schema]
                                      :id [:in [parent-id child-id grandchild-id]])))
             (t2/update! :model/Card parent-id {:dataset_query (lib/query mp orders)})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query (lib/query mp orders))
                                       :previous-object parent-card
@@ -158,7 +158,7 @@
                                               :to_entity_type :card
                                               :to_entity_id parent-id}]
             (t2/update! :model/Card child-id {:result_metadata nil})
-            (with-redefs [async/submit! (fn [f] (f))]
+            (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
               (events/publish-event! :event/card-update
                                      {:object (assoc parent-card :dataset_query native-query)
                                       :previous-object parent-card
@@ -194,7 +194,7 @@
                                                 [0 :display_name]
                                                 "new-name")]
               (t2/update! :model/Card parent-id {:result_metadata new-result-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-result-metadata)
                                         :previous-object parent-card
@@ -237,7 +237,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata new-grandchild-metadata})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -279,7 +279,7 @@
               (t2/update! :model/Card parent-id {:result_metadata new-parent-metadata})
               (t2/update! :model/Card child-id {:result_metadata new-child-metadata})
               (t2/update! :model/Card grandchild-id {:result_metadata nil})
-              (with-redefs [async/submit! (fn [f] (f))]
+              (mt/with-dynamic-fn-redefs [async/submit! (fn [f] (f))]
                 (events/publish-event! :event/card-update
                                        {:object (assoc parent-card :result_metadata new-parent-metadata)
                                         :previous-object parent-card
@@ -391,14 +391,14 @@
                                                       :analyzed_entity_type :card
                                                       :analyzed_entity_id card-id)
               db-deps-checked       (atom [])
-              original-deps-check   @#'deps.events/synced-db->direct-dependents-of-changed-tables
+              original-deps-check   (mt/original-fn #'deps.events/synced-db->direct-dependents-of-changed-tables)
               table-before          (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before   (into {} (t2/select-one :model/Field :id filter-field-id))]
           ;; Re-sync the database, having made no changes to it.
-          (with-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
-                        (fn [db-id]
-                          (u/prog1 (original-deps-check db-id)
-                            (swap! db-deps-checked conj [db-id <>])))]
+          (mt/with-dynamic-fn-redefs [deps.events/synced-db->direct-dependents-of-changed-tables
+                                      (fn [db-id]
+                                        (u/prog1 (original-deps-check db-id)
+                                          (swap! db-deps-checked conj [db-id <>])))]
             (sync/sync-database! (mt/db)))
           (testing "sync doesn't update tables or fields that haven't changed"
             (let [table-after        (into {} (t2/select-one :model/Table :id table-id))

@@ -51,6 +51,9 @@
    [:bad_transforms {:optional true} [:sequential ::transforms.schema/transform]]])
 
 (mu/defn- broken-cards-response :- ::broken-cards-response
+  "Build the `check-*` response from a breakage map.
+
+  `bad_cards` and `bad_transforms` are sorted to ensure the stable response order."
   [{:keys [card transform]}]
   (let [broken-card-ids (keys card)
         ;; Order by :id so the response is deterministic regardless of the DB's `WHERE id IN (...)`
@@ -63,17 +66,24 @@
                             (t2/select :model/Transform :id [:in broken-transform-ids] {:order-by [[:id :asc]]}))]
     {:success (and (empty? broken-card-ids)
                    (empty? broken-transform-ids))
-     :bad_cards (into [] (comp (filter mi/can-read?)
-                               (map (fn [card]
-                                      (-> card
-                                          collection.root/hydrate-root-collection
-                                          (update :dashboard #(some-> % (select-keys [:id :name])))
-                                          (update :document #(some-> % (select-keys [:id :name])))))))
-                      broken-cards)
-     :bad_transforms (into [] (filter mi/can-read?) broken-transforms)}))
+     :bad_cards (->> broken-cards
+                     (filter mi/can-read?)
+                     (map (fn [card]
+                            (-> card
+                                collection.root/hydrate-root-collection
+                                (update :dashboard #(some-> % (select-keys [:id :name])))
+                                (update :document #(some-> % (select-keys [:id :name]))))))
+                     (sort-by (juxt :created_at :id))
+                     vec)
+     :bad_transforms (->> broken-transforms
+                          (filter mi/can-read?)
+                          (sort-by (juxt :created_at :id))
+                          vec)}))
 
 (api.macros/defendpoint :post "/check-card" :- ::broken-cards-response
-  "Check a proposed edit to a card, and return the card IDs for those cards this edit will break."
+  "Check a proposed edit to a card, and return the cards/transforms this edit will break.
+
+  `broken-cards-response` ensures the stable response order."
   [_route-params
    _query-params
    body :- ::card-body]

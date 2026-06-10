@@ -240,6 +240,7 @@ export type IconName =
   | "sidebar_open"
   | "slack"
   | "slack_colorized"
+  | "sliders"
   | "smartscalar"
   | "snail"
   | "snippet"

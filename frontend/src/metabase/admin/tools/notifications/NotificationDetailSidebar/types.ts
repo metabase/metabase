@@ -49,7 +49,7 @@ export type NotificationRunSummaryLogProps = {
   title: string;
   runs: (NotificationRunSummary | NotificationTickSendEntry)[] | undefined;
   isLoading: boolean;
-  cardId: CardId;
+  cardId?: CardId;
   onViewAllClick: () => void;
 };
 

@@ -63,15 +63,15 @@ import {
   PLUGIN_TENANTS,
   PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
+  PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getTokenFeature } from "metabase/setup";
+import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
-import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
@@ -90,7 +90,6 @@ export const getRoutes = (
 ) => {
   const state = store.getState();
   const hasSimpleEmbedding = getTokenFeature(state, "embedding_simple");
-  const hasAuditApp = getTokenFeature(state, "audit_app");
 
   return (
     <Route path="/admin" component={CanAccessSettings}>
@@ -327,9 +326,7 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
-            {hasAuditApp && (
-              <Route path="notifications">{getNotificationsRoutes()}</Route>
-            )}
+            <Route path="notifications">{getNotificationsRoutes()}</Route>
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

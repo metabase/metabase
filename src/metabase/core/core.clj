@@ -204,12 +204,15 @@
     ;; initialize Metabase from an `config.yml` file if present (Enterprise Edition™ only)
     (config-from-file/init-from-file-if-code-available!)
     (init-status/set-progress! 0.6)
-    (when new-install?
-      (log/info "Looks like this is a new installation ... preparing setup wizard")
-      ;; create setup token
-      (create-setup-token-and-log-setup-url!)
-      ;; publish install event
-      (events/publish-event! :event/install {}))
+    (if new-install?
+      (do
+        (log/info "Looks like this is a new installation ... preparing setup wizard")
+        ;; create setup token
+        (create-setup-token-and-log-setup-url!)
+        ;; publish install event
+        (events/publish-event! :event/install {}))
+      ;; The instance is already set up. Clear out any stale setup token.
+      (setup/clear-token!))
     (init-status/set-progress! 0.7)
     ;; deal with our sample database as needed
     (when (config/load-sample-content?)
