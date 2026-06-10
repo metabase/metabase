@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
-import { PivotTableView } from "./PivotTable";
+import { PivotTableView } from "./PivotTableInner";
 
 const cols = [
   {
