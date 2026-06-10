@@ -16,8 +16,6 @@ import type {
   TableRemapping,
 } from "metabase-types/api";
 
-import { HelpMenu } from "../../components/HelpMenu";
-
 import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
@@ -82,7 +80,6 @@ function CurrentWorkspacePageBody({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={<HelpMenu />}
         py={0}
       />
       <Stack gap="3.5rem">
