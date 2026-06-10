@@ -199,7 +199,7 @@
                             f)))
 
 (defonce ^:private transient-exception-hierarchy
-  (atom (make-hierarchy)))
+  (make-hierarchy))
 
 (defn register-transient-exception
   "Register exception `klass` as a transient connection/environment-level failure — one that is expected to clear on a
@@ -207,7 +207,7 @@
   the whole run later rather than treating the failure as permanent. Drivers may register driver-specific connection
   exceptions this way."
   [klass]
-  (swap! transient-exception-hierarchy derive klass ::transient-exception))
+  (alter-var-root #'transient-exception-hierarchy derive klass ::transient-exception))
 
 (doseq [klass [java.net.ConnectException
                java.net.NoRouteToHostException
@@ -227,7 +227,7 @@
   synced. Such failures are expected to clear on a later sync and should not be treated as a permanent failure of the
   entity being synced. Register additional classes with [[register-transient-exception]]."
   [e]
-  (or (isa? @transient-exception-hierarchy (class e) ::transient-exception)
+  (or (isa? transient-exception-hierarchy (class e) ::transient-exception)
       (some-> (ex-cause e) recur)))
 
 (defn do-with-error-handling
