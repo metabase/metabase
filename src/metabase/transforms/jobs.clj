@@ -24,10 +24,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-heartbeat-interval-ms
-  "How often the coordinator stamps its run's heartbeat while polling for completions."
-  (* 60 1000))
-
 (def ^:private transform-job-heartbeat-stale-minutes
   "A job run whose coordinator hasn't heartbeat in this many minutes is presumed dead and reaped."
   5)
@@ -259,42 +255,41 @@
           {fut :future} (vals workers)]
     (future-cancel fut)))
 
-(defn- heartbeat!
-  "Stamp the job run's heartbeat. Returns `:ok`, `:gone` (the run was terminated externally, e.g.
-  reaped — abort), or `:error` (the stamp failed, e.g. transient app-db trouble — keep going)."
-  [run-id]
-  (try
-    (if (pos? (transforms.job-run/heartbeat-runs! [run-id])) :ok :gone)
-    (catch Throwable e
-      (log/warnf e "Failed to heartbeat transform job run %s" (pr-str run-id))
-      :error)))
+(defonce ^:private active-runs
+  ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped)
+  (atom {}))
+
+(defn- heartbeat-and-reconcile-runs!
+  "Stamp a heartbeat on every job run this process is coordinating, then flag any that another path
+  (reaper, force-fail) has already moved to a terminal state, so its coordinator aborts."
+  []
+  (when-let [ids (seq (keys @active-runs))]
+    (transforms.job-run/heartbeat-runs! ids)
+    (let [active (t2/select-fn-set :id :model/TransformJobRun
+                                   {:where [:and [:in :id ids] [:= :is_active true]]})]
+      (doseq [[run-id gone] @active-runs
+              :when (not (contains? active run-id))]
+        (deliver gone true)))))
 
 (defn- run-coordinator-loop!
-  "Dispatch ready transforms; then each round sweep the in-flight workers, refill freed slots, and
-  heartbeat the job run about every `job-heartbeat-interval-ms` — until nothing is in flight. Returns
-  the final state, with `:aborted?` set if a heartbeat found the run terminated externally (in-flight
-  workers are then interrupted)."
-  [init-state {:keys [run-id timeout-ms] :as ctx}]
-  ;; the initial beat catches a run reaped during (slow) planning, before we dispatch anything
-  (if (= :gone (heartbeat! run-id))
-    (assoc init-state :aborted? true)
-    (loop [st (dispatch-ready! init-state ctx)
-           hb (u/start-timer)]
-      (let [beat? (>= (u/since-ms hb) job-heartbeat-interval-ms)]
-        (cond
-          (not (busy? st))
-          st
+  "Dispatch ready transforms; then each round sweep the in-flight workers and refill freed slots —
+  until nothing is in flight."
+  [init-state {:keys [run-gone? timeout-ms] :as ctx}]
+  (loop [st (dispatch-ready! init-state ctx)]
+    (cond
+      (not (busy? st))
+      st
 
-          (and beat? (= :gone (heartbeat! run-id)))
-          (do (interrupt-in-flight! st)
-              (assoc st :aborted? true))
+      (run-gone?)
+      (do (interrupt-in-flight! st)
+          (assoc st :aborted? true))
 
-          :else
-          (let [st (-> st
-                       (sweep-workers! timeout-ms)
-                       (dispatch-ready! ctx))]
-            (Thread/sleep 250)
-            (recur st (if beat? (u/start-timer) hb))))))))
+      :else
+      (let [st (-> st
+                   (sweep-workers! timeout-ms)
+                   (dispatch-ready! ctx))]
+        (Thread/sleep 250)
+        (recur st)))))
 
 (defn run-transforms!
   "Run `transform-ids-to-run` and their dependencies, honoring the DAG.
@@ -307,30 +302,37 @@
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
   when the job run was terminated externally (e.g. reaped) while this coordinator was still running."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
-  (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        init-state {:succeeded         #{}
-                    :failed            #{}
-                    :failures          []
-                    ;; per lane: transform-id -> {:future :result :timer :tkey :transform :draining}
-                    :in-flight         {:sql {} :py {}}
-                    ;; target tables currently being written by an in-flight transform
-                    :in-flight-targets #{}}
-        ctx        {:plan       plan
-                    :deps       deps
-                    :run-id     run-id
-                    :run-method run-method
-                    :user-id    user-id
-                    ;; lane -> max concurrent workers
-                    :lanes      {:sql (max 1 (transforms.settings/transform-run-job-sql-concurrency))
-                                 :py  1}
-                    :timeout-ms (+ (u/minutes->ms (transforms.settings/transform-timeout))
-                                   transform-worker-grace-ms)}]
-    (when start-promise (deliver start-promise :started))
-    (let [final-state (run-coordinator-loop! init-state ctx)]
-      (cond
-        (:aborted? final-state)       {::status :aborted}
-        (seq (:failures final-state)) {::status :failed ::failures (:failures final-state)}
-        :else                         {::status :succeeded}))))
+  (let [gone (promise)
+        _    (swap! active-runs assoc run-id gone)
+        final-state
+        (try
+          (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
+                init-state {:succeeded         #{}
+                            :failed            #{}
+                            :failures          []
+                            ;; per lane: transform-id -> {:future :result :timer :tkey :transform :draining}
+                            :in-flight         {:sql {} :py {}}
+                            ;; target tables currently being written by an in-flight transform
+                            :in-flight-targets #{}}
+                ctx        {:plan       plan
+                            :deps       deps
+                            :run-id     run-id
+                            :run-gone?  #(realized? gone)
+                            :run-method run-method
+                            :user-id    user-id
+                            ;; lane -> max concurrent workers
+                            :lanes      {:sql (max 1 (transforms.settings/transform-run-job-sql-concurrency))
+                                         :py  1}
+                            :timeout-ms (+ (u/minutes->ms (transforms.settings/transform-timeout))
+                                           transform-worker-grace-ms)}]
+            (when start-promise (deliver start-promise :started))
+            (run-coordinator-loop! init-state ctx))
+          (finally
+            (swap! active-runs dissoc run-id)))]
+    (cond
+      (:aborted? final-state)       {::status :aborted}
+      (seq (:failures final-state)) {::status :failed ::failures (:failures final-state)}
+      :else                         {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
   (let [tag-ids (t2/select-fn-set :tag_id :model/TransformJobTransformTag :job_id job-id)]
@@ -484,8 +486,9 @@
           (log/error t "Error notifying of reaped transform job run" (pr-str job_id)))))
     reaped))
 
-;; No heartbeat task here: the coordinator heartbeats its own run from inside `run-transforms!` so
-;; that liveness tracks actual progress, not a background timer.
+(defmethod task/init! ::TransformJobRunHeartbeat [_]
+  (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
+
 (defmethod task/init! ::TransformJobRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transforms.jobs.reaper-job"
                         :label   "transform job run"
