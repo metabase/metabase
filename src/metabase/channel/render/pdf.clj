@@ -572,9 +572,10 @@
 
   Returns nil if the chart doesn't produce an SVG."
   ^bytes [card dashcard data w-px h-px]
-  (binding [js.svg/*chart-size* {:width  w-px
-                                 :height h-px
-                                 :scale  common/chart-supersample}]
+  (binding [js.svg/*chart-size* {:width       w-px
+                                 :height      h-px
+                                 :scale       common/chart-supersample
+                                 :fit-within? true}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]

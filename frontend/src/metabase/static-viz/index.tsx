@@ -51,11 +51,12 @@ export type RenderChartOptions = {
   applicationColors: ColorPalette;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
-  // Explicit pixel dimensions for the chart. When provided, isomorphic (ECharts) charts
-  // render into exactly this box instead of their default size, so backend output can match
-  // the frontend's responsive cell sizing (e.g. for grid-based PDF rendering).
+  // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
+  // chart legends
   width?: number;
   height?: number;
+  // When true, width/height are treated as the exact output box
+  fitWithinBounds?: boolean;
 };
 
 type RenderChartDashcardSettings = DashCardVisualizationSettings & {
@@ -215,6 +216,7 @@ export function RenderChart(
       hasDevWatermark={hasDevWatermark}
       width={options.width}
       height={options.height}
+      fitWithinBounds={options.fitWithinBounds}
     />,
   );
 }

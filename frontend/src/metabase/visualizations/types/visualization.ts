@@ -138,6 +138,7 @@ export interface StaticVisualizationProps {
   hasDevWatermark?: boolean;
   width?: number;
   height?: number;
+  fitWithinBounds?: boolean;
 }
 
 export interface VisualizationProps {

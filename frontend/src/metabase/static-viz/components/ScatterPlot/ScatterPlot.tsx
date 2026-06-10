@@ -27,9 +27,8 @@ export function ScatterPlot({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) {
-  const chart = init(null, null, { renderer: "svg", ssr: true, width, height });
-
   const chartModel = getScatterPlotModel(
     rawSeries,
     settings,
@@ -46,12 +45,23 @@ export function ScatterPlot({
       verticalPadding: LEGEND_PADDING,
     });
 
+  const chartHeight = fitWithinBounds
+    ? Math.max(height - legendHeight, 1)
+    : height;
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
@@ -73,7 +83,7 @@ export function ScatterPlot({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width={width}
-      height={height + legendHeight}
+      height={fitWithinBounds ? height : height + legendHeight}
     >
       <Legend items={legendLayoutItems} />
       <Group top={legendHeight}>
