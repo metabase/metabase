@@ -570,12 +570,12 @@ export const Spinner = styled.div`
 
 ### Pattern 6: color() Function → CSS Variables
 
-| Emotion (JS)            | CSS Module                                                   | Mantine Style Prop          |
-| ----------------------- | ------------------------------------------------------------ | --------------------------- |
-| `color("brand")`        | `var(--mb-color-brand)`                                      | `c="brand"` or `bg="brand"` |
-| `color("text-primary")` | `var(--mb-color-text-primary)`                               | `c="text-primary"`          |
-| `color("border-neutral")` | `var(--mb-color-border-neutral)`                           | N/A (use CSS module)        |
-| `alpha("brand", 0.2)`   | `color-mix(in srgb, var(--mb-color-brand), transparent 80%)` | N/A (use CSS module)        |
+| Emotion (JS)              | CSS Module                                                   | Mantine Style Prop          |
+| ------------------------- | ------------------------------------------------------------ | --------------------------- |
+| `color("brand")`          | `var(--mb-color-brand)`                                      | `c="brand"` or `bg="brand"` |
+| `color("text-primary")`   | `var(--mb-color-text-primary)`                               | `c="text-primary"`          |
+| `color("border-neutral")` | `var(--mb-color-border-neutral)`                             | N/A (use CSS module)        |
+| `alpha("brand", 0.2)`     | `color-mix(in srgb, var(--mb-color-brand), transparent 80%)` | N/A (use CSS module)        |
 
 ### Pattern 7: Responsive Spacing/Sizing → Responsive Style Props (NOT CSS Media Queries)
 
