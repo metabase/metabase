@@ -226,6 +226,8 @@
   [_]
   nil)
 
+;; TODO (Cam 2026-06-09) is this SQL-specific? If so, it belongs in [[metabase.driver.sql]]. If not, the name of this
+;; method is misleading. Move it or fix the name.
 (defmulti llm-sql-dialect-resource
   "Returns the resource path for dialect-specific LLM prompt instructions,
    or nil if no dialect-specific instructions exist for this driver."
@@ -930,8 +932,9 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(defmethod database-supports? :default
+  [_driver _feature _]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true

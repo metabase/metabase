@@ -511,3 +511,12 @@
     (is (not= (get-method driver/add-columns! driver/*driver*)
               (get-method driver/add-columns! :default))
         "Drivers with the :uploads feature must implement driver/add-columns!")))
+
+(deftest ^:parallel stop-adding-sql-specific-methods-here-test
+  (doseq [[symb] (ns-publics 'metabase.driver)
+          ;; this is an existing usage and prompted me to write this test in the first place, so we'll allow it for
+          ;; now.
+          :when  (not= symb 'llm-sql-dialect-resource)]
+    (testing symb
+      (is (not (str/includes? symb "sql"))
+          "SQL-specific driver methods do not belong in metabase.driver; put them in metabase.driver.sql.* or metabase.driver.sql-jdbc.*"))))
