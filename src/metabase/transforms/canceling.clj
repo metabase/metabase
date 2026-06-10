@@ -73,7 +73,7 @@
   (reconcile-local-runs!))
 
 (defn chan-start-timeout-vthread!
-  "Start a vthread that times the run out after `timeout-minutes`."
+  "Starts a vthread that will signal a timeout after a given number of minutes."
   [run-id timeout-minutes]
   (u.jvm/in-virtual-thread*
    (try
