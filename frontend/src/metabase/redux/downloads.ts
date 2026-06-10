@@ -240,6 +240,24 @@ export const downloadQueryResults = createAsyncThunk(
   },
 );
 
+/**
+ * Read a download response body as a Blob. When a query fails *after* the
+ * download has started streaming, the server has already committed the HTTP
+ * status, so it signals the failure by aborting the connection. That truncates
+ * the response and makes `blob()` reject — surface a clean, localized error
+ * instead of a raw network error like "Failed to fetch", so the user knows the
+ * file did not download completely.
+ */
+const readDownloadBlob = async (response: Response): Promise<Blob> => {
+  try {
+    return await response.blob();
+  } catch {
+    throw new Error(
+      t`The download was interrupted and the file may be incomplete. Please try again.`,
+    );
+  }
+};
+
 export const downloadDataset = createAsyncThunk(
   "metabase/downloads/downloadDataset",
   async (
@@ -257,7 +275,7 @@ export const downloadDataset = createAsyncThunk(
     try {
       const response = await promise.unwrap();
       const fileName = getDatasetFileName(response.headers, opts.type);
-      const fileContent = await response.blob();
+      const fileContent = await readDownloadBlob(response);
       openSaveDialog(fileName, fileContent);
 
       return { id, fileName };
