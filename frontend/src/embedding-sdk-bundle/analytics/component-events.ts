@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
 
@@ -140,6 +141,9 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
   const isTrackerReady = useSdkSelector((state) => state.sdk.sdkTrackerReady);
 
   useEffect(() => {
+    if (!isEmbeddingSdk() || isEmbeddingEajs()) {
+      return;
+    }
     if (!isTrackingEnabled || !isTrackerReady) {
       return;
     }
