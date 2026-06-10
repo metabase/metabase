@@ -7,8 +7,9 @@ import { useAnalyzeChartMutation } from "metabase/api";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSetting } from "metabase/common/hooks";
-import { getIsLoadingComplete } from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/redux";
+import { AIAnalysisContent } from "metabase/metabot/components/AIAnalysisContent/AIAnalysisContent";
+import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { Box } from "metabase/ui";
 import {
   getChartImagePngDataUri,
@@ -17,30 +18,28 @@ import {
 import type Question from "metabase-lib/v1/Question";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import { AIAnalysisContent } from "../AIAnalysisContent/AIAnalysisContent";
-import { AIProviderConfigurationModal } from "../AIProviderConfigurationModal";
-import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
-
 import { getTimelineEventsForAnalysis } from "./utils";
 
 // This is a hack to ensure visualizations have rendered after data loading, as they can render asynchronously.
 const RENDER_DELAY_MS = 100;
 
-export interface AIQuestionAnalysisSidebarProps {
+export interface AIAnalysisSidebarProps {
   question: Question;
+  isLoadingComplete: boolean;
   className?: string;
   onClose?: () => void;
   timelines?: Timeline[];
   visibleTimelineEvents?: TimelineEvent[];
 }
 
-export function AIQuestionAnalysisSidebar({
+export function AIAnalysisSidebar({
   question,
+  isLoadingComplete,
   timelines,
   visibleTimelineEvents,
   className,
   onClose,
-}: AIQuestionAnalysisSidebarProps) {
+}: AIAnalysisSidebarProps) {
   const previousQuestion = usePrevious(question);
   const [
     isAiProviderConfigurationModalOpen,
@@ -51,7 +50,6 @@ export function AIQuestionAnalysisSidebar({
   ] = useDisclosure(false);
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const [analyzeChart, { data: analysisData }] = useAnalyzeChartMutation();
-  const isLoadingComplete = useSelector(getIsLoadingComplete);
   const pendingAnalysisRef = useRef(false);
   const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

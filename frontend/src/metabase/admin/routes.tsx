@@ -63,6 +63,7 @@ import {
   PLUGIN_TENANTS,
   PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
+  PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
@@ -71,7 +72,6 @@ import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
-import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";

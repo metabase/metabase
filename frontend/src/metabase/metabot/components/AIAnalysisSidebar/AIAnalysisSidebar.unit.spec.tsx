@@ -5,7 +5,6 @@ import _ from "underscore";
 import { setupAnalyzeChartEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import { createMockQueryBuilderState } from "metabase/redux/store/mocks";
 import Question from "metabase-lib/v1/Question";
 import type { AIEntityAnalysisResponse } from "metabase-types/api";
 import {
@@ -15,14 +14,14 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import { AIQuestionAnalysisSidebar } from "./AIQuestionAnalysisSidebar";
+import { AIAnalysisSidebar } from "./AIAnalysisSidebar";
 
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
   getChartImagePngDataUri: () => Promise.resolve("test-base64"),
   getChartSelector: () => "#chart",
 }));
 
-describe("AIQuestionAnalysisSidebar", () => {
+describe("AIAnalysisSidebar", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -36,13 +35,14 @@ describe("AIQuestionAnalysisSidebar", () => {
     setupAnalyzeChartEndpoint(mockResponse);
 
     renderWithProviders(
-      <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
+      <AIAnalysisSidebar
+        question={question}
+        isLoadingComplete
+        onClose={jest.fn()}
+      />,
       {
         storeInitialState: {
           settings: mockSettings({ "llm-metabot-configured?": true }),
-          qb: createMockQueryBuilderState({
-            queryStatus: "complete",
-          }),
         },
       },
     );
@@ -118,8 +118,9 @@ describe("AIQuestionAnalysisSidebar", () => {
     setupAnalyzeChartEndpoint(mockResponse);
 
     renderWithProviders(
-      <AIQuestionAnalysisSidebar
+      <AIAnalysisSidebar
         question={question}
+        isLoadingComplete
         visibleTimelineEvents={visibleTimelineEvents}
         onClose={jest.fn()}
         timelines={timelines}
@@ -127,9 +128,6 @@ describe("AIQuestionAnalysisSidebar", () => {
       {
         storeInitialState: {
           settings: mockSettings({ "llm-metabot-configured?": true }),
-          qb: createMockQueryBuilderState({
-            queryStatus: "complete",
-          }),
         },
       },
     );
@@ -160,14 +158,15 @@ describe("AIQuestionAnalysisSidebar", () => {
     const question = new Question(createMockCard());
 
     renderWithProviders(
-      <AIQuestionAnalysisSidebar question={question} onClose={jest.fn()} />,
+      <AIAnalysisSidebar
+        question={question}
+        isLoadingComplete
+        onClose={jest.fn()}
+      />,
       {
         storeInitialState: {
           currentUser: createMockUser({ is_superuser: true }),
           settings: mockSettings({ "llm-metabot-configured?": false }),
-          qb: createMockQueryBuilderState({
-            queryStatus: "complete",
-          }),
         },
       },
     );

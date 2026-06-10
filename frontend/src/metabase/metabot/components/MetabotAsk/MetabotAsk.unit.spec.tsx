@@ -1,4 +1,3 @@
-import type { ComponentType } from "react";
 import { Route } from "react-router";
 
 import { setupBookmarksEndpoints } from "__support__/server-mocks";
@@ -11,7 +10,7 @@ import {
 } from "metabase/metabot/hooks";
 import { createMockState } from "metabase/redux/store/mocks";
 
-import { MetabotQueryBuilder } from "./MetabotQueryBuilder";
+import { MetabotAsk } from "./MetabotAsk";
 
 jest.mock("metabase/api", () => ({
   ...jest.requireActual("metabase/api"),
@@ -23,10 +22,6 @@ jest.mock("metabase/metabot/hooks", () => ({
   useMetabotAgent: jest.fn(),
   useUserMetabotPermissions: jest.fn(),
 }));
-
-// Hide the QueryBuilder prop type the wrapper inherits — it's irrelevant
-// since the canUseNlq path renders the inner component with no props.
-const TestSubject = MetabotQueryBuilder as ComponentType;
 
 type SetupOptions = {
   showIllustrations?: boolean;
@@ -65,13 +60,13 @@ function setup({
     "metabot-show-illustrations": showIllustrations,
   });
 
-  return renderWithProviders(<Route path="/" component={TestSubject} />, {
+  return renderWithProviders(<Route path="/" component={MetabotAsk} />, {
     withRouter: true,
     storeInitialState: createMockState({ settings }),
   });
 }
 
-describe("MetabotQueryBuilder", () => {
+describe("MetabotAsk", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

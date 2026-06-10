@@ -11,11 +11,14 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useSetting } from "metabase/common/hooks";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
+import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { useDispatch, useSelector } from "metabase/redux";
+import {
+  useMetabotAgent,
+  useUserMetabotPermissions,
+} from "metabase/metabot/hooks";
+import { useDispatch } from "metabase/redux";
 import { useRouter } from "metabase/router";
-import { getSettingsLoading } from "metabase/selectors/settings";
 import {
   ActionIcon,
   Box,
@@ -27,10 +30,7 @@ import {
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
-import { useMetabotAgent, useUserMetabotPermissions } from "../../hooks";
-import { AIProviderConfigurationNotice } from "../AIProviderConfigurationNotice";
-
-import S from "./MetabotQueryBuilder.module.css";
+import S from "./MetabotAsk.module.css";
 
 const defaultSuggestionModels = [
   "dataset",
@@ -59,7 +59,7 @@ const responseHasNavigateTo = (action: SubmitInputResult) =>
     isMatching({ type: "navigate_to" }),
   );
 
-const MetabotQueryBuilderInner = () => {
+export const MetabotAsk = () => {
   const { canUseNlq } = useUserMetabotPermissions();
   const [
     isAiProviderConfigurationModalOpen,
@@ -274,21 +274,4 @@ const MetabotQueryBuilderInner = () => {
       />
     </Box>
   );
-};
-
-export const MetabotQueryBuilder = (
-  props: React.ComponentProps<typeof QueryBuilder>,
-) => {
-  const { hasNlqAccess, isLoading } = useUserMetabotPermissions();
-  const areSettingsLoading = useSelector(getSettingsLoading);
-  // Wait until settings and metabot permissions are both resolved before
-  // deciding which view to render. Otherwise QueryBuilder may mount briefly
-  // and rewrite the URL away from /question/ask, racing the metabot view.
-  if (areSettingsLoading || isLoading) {
-    return null;
-  }
-  if (!hasNlqAccess) {
-    return <QueryBuilder {...props} />;
-  }
-  return <MetabotQueryBuilderInner />;
 };

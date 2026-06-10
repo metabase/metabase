@@ -217,6 +217,7 @@ config:
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
     metabot-enabled: true
+    metabot-recent-views-enabled: true
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000

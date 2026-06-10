@@ -310,6 +310,7 @@
    :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
    :data-picker         ; picking a data source (table/model/metric) while building a query
    :type-filter         ; the search type-filter dropdown's available-models lookup
+   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
    :browse              ; the Browse models / Browse metrics pages
    :embedding-setup     ; embedding/SDK setup and preview resource selection
    :document            ; entity references embedded in documents
@@ -335,8 +336,7 @@
 (def context->normalized-context
   "Collapses search `context` values that should rank and filter alike onto a shared normalized context.
   Only genuine remappings appear here; an unlisted context normalizes to itself and inherits `:default`.
-  The full-page search app, command palette, and type-filter lookup share `:global`, as opposed to the
-  scoped `:data-picker` / `:entity-picker` contexts."
+  Add an entry to make a surface share another's ranking/filter profile; omit it to keep the surface's own."
   ;; TODO (Chris 2026-06-08) -- the nav search bar is deliberately left off `:global` for now so it keeps
   ;; the default filters/weights; decide whether any of its behaviour should be DRYed up with the other
   ;; broad-search surfaces.
