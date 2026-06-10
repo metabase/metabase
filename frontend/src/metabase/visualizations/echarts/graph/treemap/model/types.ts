@@ -32,8 +32,7 @@ export interface TreemapRect {
 }
 
 export interface TreemapLayoutNode {
-  /** ("0", "0-1"). */
-  id: string;
+  id: string /* encodes path: ("0", "0-1") */;
   rect: { width: number; height: number };
   isLeaf: boolean;
 }

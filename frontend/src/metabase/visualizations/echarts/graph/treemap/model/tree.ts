@@ -1,4 +1,6 @@
 import type { EChartsType } from "echarts/core";
+import type SeriesData from "echarts/types/src/data/SeriesData";
+import type { TreeNode } from "echarts/types/src/data/Tree";
 
 import type {
   NodeId,
@@ -7,29 +9,21 @@ import type {
   TreemapTree,
 } from "./types";
 
-// Minimal shape of ECharts' internal treemap tree node. ECharts' public types
-// don't surface the laid-out tree, so we narrow to the fields we read.
-interface EChartsTreeNode {
-  getId(): string;
-  children?: EChartsTreeNode[];
-  getLayout():
-    | { x?: number; y?: number; width?: number; height?: number }
-    | undefined;
-  eachNode(cb: (node: EChartsTreeNode) => void): void;
-}
+// `TreeNode.getLayout()` is typed `any` by ECharts; narrow to the fields we read.
+type TreeNodeLayout =
+  | { x?: number; y?: number; width?: number; height?: number }
+  | undefined;
 
 /**
  * The treemap's laid-out tree (with per-node pixel layout) lives on the raw
  * series data (`.tree.root`), which ECharts' public types don't expose — hence
  * the narrow cast. Returns `undefined` before the first layout.
  */
-function getTreemapRoot(chart: EChartsType): EChartsTreeNode | undefined {
+function getTreemapRoot(chart: EChartsType): TreeNode | undefined {
   return (
     chart as unknown as {
       getModel(): {
-        getSeriesByIndex(i: number): {
-          getRawData(): { tree?: { root?: EChartsTreeNode } };
-        } | null;
+        getSeriesByIndex(i: number): { getRawData(): SeriesData } | null;
       };
     }
   )
@@ -58,7 +52,7 @@ export function getTreemapNodeRectById(
     if (rect != null || node.getId() !== id) {
       return;
     }
-    const layout = node.getLayout();
+    const layout: TreeNodeLayout = node.getLayout();
     if (
       layout?.width == null ||
       layout?.height == null ||
@@ -96,7 +90,7 @@ export function getTreemapLayoutNodes(chart: EChartsType): TreemapLayoutNode[] {
 
   const nodes: TreemapLayoutNode[] = [];
   root.eachNode((node) => {
-    const layout = node.getLayout();
+    const layout: TreeNodeLayout = node.getLayout();
     if (!layout?.width || !layout?.height) {
       return;
     }
