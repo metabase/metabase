@@ -73,7 +73,7 @@ const CreateDashboardModalInner = ({
     id: collectionIdSlug,
   });
 
-  useTrackSdkComponentMount("CreateDashboardModal", null, { used: true });
+  useTrackSdkComponentMount("CreateDashboardModal", null, {});
 
   if (isLocaleLoading || isCollectionQueryLoading) {
     return null;

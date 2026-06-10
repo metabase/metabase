@@ -24,7 +24,7 @@ export const METABOT_SDK_EE_PLUGIN: {
 
 export const MetabotQuestion = (props: MetabotQuestionProps) => {
   useTrackSdkComponentMount("MetabotQuestion", null, {
-    layout: props.layout ?? "auto",
+    layout: props.layout,
   });
 
   return <METABOT_SDK_EE_PLUGIN.MetabotQuestion {...props} />;

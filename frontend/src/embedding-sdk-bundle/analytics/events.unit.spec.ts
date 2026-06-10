@@ -126,13 +126,9 @@ describe("useTrackSdkComponentMount", () => {
     enableTracking();
 
     // First mount fires.
-    renderHook(() =>
-      useTrackSdkComponentMount("CollectionBrowser", null, { used: true }),
-    );
+    renderHook(() => useTrackSdkComponentMount("CollectionBrowser", null, {}));
     // Second mount — same dedup key (CollectionBrowser:presence), already fired.
-    renderHook(() =>
-      useTrackSdkComponentMount("CollectionBrowser", null, { used: true }),
-    );
+    renderHook(() => useTrackSdkComponentMount("CollectionBrowser", null, {}));
 
     expect(mockTrackSdkEvent).toHaveBeenCalledTimes(1);
   });
@@ -170,7 +166,7 @@ describe("useTrackSdkComponentMount", () => {
     enableTracking();
 
     renderHook(() =>
-      useTrackSdkComponentMount("CreateDashboardModal", null, { used: true }),
+      useTrackSdkComponentMount("CreateDashboardModal", null, {}),
     );
 
     expect(mockTrackSdkEvent).toHaveBeenCalledWith(

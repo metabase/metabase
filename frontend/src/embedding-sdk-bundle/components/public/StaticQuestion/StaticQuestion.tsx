@@ -143,13 +143,13 @@ const StaticQuestionInner = (
           id_new: questionId === "new",
           id_new_native: questionId === "new-native",
           with_title: title !== false,
-          with_downloads: withDownloads ?? false,
-          with_alerts: withAlerts ?? false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
         }
       : {
           with_title: title !== false,
-          with_downloads: withDownloads ?? false,
-          with_alerts: withAlerts ?? false,
+          with_downloads: withDownloads,
+          with_alerts: withAlerts,
         },
   );
 

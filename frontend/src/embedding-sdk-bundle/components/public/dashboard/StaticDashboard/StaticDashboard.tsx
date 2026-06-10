@@ -51,7 +51,6 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
       with_downloads: withDownloads,
       with_subscriptions: withSubscriptions,
       auto_refresh: autoRefreshInterval != null,
-      enable_entity_navigation: false,
     },
   );
 

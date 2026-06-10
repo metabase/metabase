@@ -107,7 +107,7 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
-  useTrackSdkComponentMount("CollectionBrowser", null, { used: true });
+  useTrackSdkComponentMount("CollectionBrowser", null, {});
 
   const {
     baseCollectionId,
