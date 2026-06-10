@@ -187,7 +187,7 @@
   size, without relaying the chart out smaller."
   nil)
 
-(def ^:dynamic ^:private *svg-background-color*
+(def ^:dynamic *svg-background-color*
   "Background color for rendered PNG images. Set to nil for transparent background.
   Defaults to white to ensure charts are readable in dark mode email clients."
   java.awt.Color/WHITE)

@@ -124,6 +124,14 @@
 (def ^:private link-color (Color. 0x1B 0x6F 0xC2))
 (def ^:private code-color (Color. 0x3B 0x3B 0x3B))
 
+(def ^:dynamic *debug-boxes*
+  "When true, fill the *allocated* box (the full space available, not the content's actual extent)
+  behind each chart (red) and each card title / heading card (light blue), so one can see how much
+  of its cell the content -- especially a static-viz chart -- really fills. Off in normal output."
+  false)
+(def ^:private debug-chart-color (Color. 0xFF 0xBB 0xBB))
+(def ^:private debug-heading-color (Color. 0xCC 0xCC 0xFF))
+
 (def ^:private rectangular-displays
   "Display types whose static-viz (ECharts/visx) renderer honors an explicit width AND height, so we can render them
   to exactly fit their grid cell (like the frontend).
@@ -1394,6 +1402,15 @@
     (draw-item-lines! cs lines x content-w top-y (- (double top-y) (lines-height lines param-pt) 1.0)
                       param-pt (base-rtl? (or (:text (ffirst lines)) "")) nil x nil)))
 
+(defn- fill-rect!
+  "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
+  Used for the [[*debug-boxes*]] overlays drawn behind content."
+  [^PDPageContentStream cs ^Color color x top-y w h]
+  (.setNonStrokingColor cs color)
+  (.addRect cs (float x) (float (- (double top-y) (double h))) (float w) (float h))
+  (.fill cs)
+  (.setNonStrokingColor cs Color/BLACK))
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
   (crisp text) and the space it consumes is reserved before the body is rendered. (Card
@@ -1418,19 +1435,27 @@
         ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
         fill?      (or (contains? rectangular-displays display)
                        (and (= :pie display) (>= cell-w body-h)))]
+    ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
+    ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
+    (when *debug-boxes*
+      (when (pos? th) (fill-rect! cs debug-heading-color x top-y cell-w th))
+      (when (> body-h 12.0) (fill-rect! cs debug-chart-color x body-top cell-w body-h)))
     ;; Native title for every card type.
     (draw-text-block! cs (face :bold) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
     (when (seq ip-lines)
       (draw-inline-params! cs ip-lines x cell-w (- (double top-y) th)))
     (when (> body-h 12.0)
-      (if-let [png (when fill?
-                     (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
-        ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
-        (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                    (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
-        ;; fallback: title-less body PNG, fit preserving aspect into the body area
-        (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
-          (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h))))))
+      ;; in debug mode render charts transparently, so the red box behind them shows through the
+      ;; whitespace ECharts/visx leave inside the image.
+      (binding [js.svg/*svg-background-color* (if *debug-boxes* nil js.svg/*svg-background-color*)]
+        (if-let [png (when fill?
+                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
+          ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
+          (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
+                      (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
+          ;; fallback: title-less body PNG, fit preserving aspect into the body area
+          (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
+            (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h)))))))
 
 (defn- line-start-x
   "Start x for drawing a single line of `text` (measured with `face`/`font-pt`) within the box
@@ -1512,6 +1537,9 @@
                 cell-h (min (- (* (:size_y cell) unit) (if text? half gutter-pt))
                             (- top-y margin))]
             (try
+              ;; debug overlay: the full heading-card cell (blue), drawn behind its text
+              (when (and *debug-boxes* (= :heading (:kind cell)))
+                (fill-rect! cs debug-heading-color x top-y cell-w cell-h))
               (case (:kind cell)
                 :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
                 :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
