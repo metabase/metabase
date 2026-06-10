@@ -75,8 +75,24 @@ async function parseJsonOrNull(response: Response): Promise<unknown> {
 }
 
 /**
- * Interpret a fetched `Response` into a `{ ok, status, body }` result, without
- * emitting or throwing — the caller decides what to do with a non-ok status.
+ * Read a response body by its `Content-Type`: JSON natively (never materializing
+ * an intermediate string), otherwise text. A successful JSON body must be
+ * parseable, so a parse failure throws; a failed response's body is error data,
+ * so an empty or garbage body is swallowed to `null` rather than masking the
+ * status with a `SyntaxError`.
+ */
+function readBody(response: Response): Promise<unknown> {
+  if (!isJson(response)) {
+    return response.text();
+  }
+  return response.ok ? response.json() : parseJsonOrNull(response);
+}
+
+/**
+ * Interpret a fetched `Response` into a `{ ok, status, body }` result. It does
+ * not throw on a non-ok status — the caller decides what to do with it — but a
+ * body that fails to read (e.g. a streamed response aborted mid-flight) still
+ * rejects, which is how a mid-stream failure surfaces.
  *
  * The body is only read when it'll actually be used — as the result of a normal
  * request, or as error data. A `rawResponse` caller whose request succeeded gets
@@ -87,61 +103,23 @@ export async function handleResponse(
   response: Response,
   rawResponse?: boolean,
 ): Promise<ResponseResult> {
-  // Hand back the raw Response only when the caller asked for it and the request
-  // succeeded. A failure falls through below so its body can be read as error data.
+  // The status is authoritative, so skip reading the body and return the untouched
+  // Response — this keeps a binary paylod like a map tile or a streamed export
+  // from being decoded as text. A streamed export that fails mid-flight aborts the
+  // connection, so a body that reads to completion is a genuine success; there is
+  // no error blob to recover from the body here. A failed rawResponse request
+  // falls through so its body can be read as error data.
   if (rawResponse && response.ok) {
-    // The status is authoritative, so skip reading the body and return the
-    // untouched Response — this keeps a binary payload like a map tile or a
-    // streamed export from being decoded as text. A streamed export that fails
-    // mid-flight aborts the connection, so a body that reads to completion is a
-    // genuine success; there is no error blob to recover from the body here.
     return { ok: true, status: response.status, body: response };
   }
 
-  // Either the caller doesn't want the raw Response (the parsed body IS the
-  // result) or the request failed (the body is the error payload). Read it and
-  // let the caller inspect `ok`.
-  return await readBody(response);
-}
-
-/**
- * Read the body by its `Content-Type`: JSON natively (never materializing an
- * intermediate string), otherwise text. A successful JSON body must be
- * parseable, so a parse failure throws; on a failed response the body is error
- * data, so an empty or garbage body is swallowed to `null` rather than masking
- * the status with a `SyntaxError`.
- */
-async function readResponseBody(
-  response: Response,
-  ok: boolean,
-): Promise<unknown> {
-  if (!isJson(response)) {
-    return response.text();
-  }
-  return ok ? response.json() : parseJsonOrNull(response);
-}
-
-/**
- * Read and interpret a response into `{ ok, status, body }`, routed by status:
- *
- * - 204: no content.
- * - otherwise: the status line is authoritative; see `readResponseBody`.
- *
- * A streamed query/download commits its status (200/202) before its work can
- * fail, so a mid-stream failure can't be signalled through the status. The server
- * aborts the connection in that case, which makes the body read reject — surfaced
- * to the caller as a rejected promise rather than a misleading success.
- *
- * Does not throw on a non-2xx status — the caller inspects `ok`.
- */
-async function readBody(response: Response): Promise<ResponseResult> {
   if (response.status === 204) {
+    // Empty response: body is null
     return { ok: true, status: 204, body: null };
   }
 
-  const { status, ok } = response;
-  const body = await readResponseBody(response, ok);
-  return { ok, status, body };
+  const { ok, status } = response;
+  return { ok, status, body: await readBody(response) };
 }
 
 // `:tag` placeholders are URL-encoded (slashes become %2F).
