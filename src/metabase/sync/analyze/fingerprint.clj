@@ -215,6 +215,8 @@
                 (fingerprint-fields! table fields))]
           (if-let [throwable (:throwable stats)]
             (do
+              ;; `do-not-retry-exception?` flags transient connection/environment errors, which abort this run and
+              ;; retry on the next sync; for any other (permanent) error, give up so we don't re-attempt every sync.
               (when-not (sync-util/do-not-retry-exception? throwable)
                 (mark-fingerprinting-failed! fields))
               (merge (empty-stats-map 0) stats))
