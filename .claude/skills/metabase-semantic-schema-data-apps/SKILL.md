@@ -49,6 +49,7 @@ import {
   breakout,
   filter,
   useMetabaseQuery,
+  useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react";
 import schema from "../metabase.data";
 
@@ -140,6 +141,50 @@ const { data } = useMetabaseQuery({
 ```
 
 Measures must come from tables in the metric's `mappedTableIds`.
+
+## Interactive Metabase Views
+
+Use `useMetabaseQueryObject` when the app should hand a semantic query to Metabase's own embedded visualization instead of rendering custom React charts or tables.
+
+Use this for table-backed questions, exploratory tables, and places where built-in Metabase chart behavior is more useful than a custom visualization. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data.
+
+Chart only, without the toolbar:
+
+```tsx
+import {
+  InteractiveQuestion,
+  breakout,
+  useMetabaseQueryObject,
+} from "@metabase/embedding-sdk-react";
+
+const dailyRevenue = schema.tables.dailyStoreRevenue;
+
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return (
+  <InteractiveQuestion query={revenueQuery}>
+    <InteractiveQuestion.QuestionVisualization />
+  </InteractiveQuestion>
+);
+```
+
+Full interactive question, with the query toolbar:
+
+```tsx
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return <InteractiveQuestion query={revenueQuery} />;
+```
+
+Do not wrap `InteractiveQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
 
 ## Filters And Breakouts
 
