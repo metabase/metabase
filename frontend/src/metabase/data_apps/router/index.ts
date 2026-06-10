@@ -1,3 +1,3 @@
-export { DataAppRouter } from "./DataAppRouter";
-export { DataAppLink } from "./DataAppLink";
+export { DataAppRouter, getBasename } from "./DataAppRouter";
+export { DataAppLink, type DataAppLinkProps } from "./DataAppLink";
 export { useDataAppLocation } from "./useDataAppLocation";
