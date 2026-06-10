@@ -1249,7 +1249,7 @@
   square/wide pies (which then place their legend to the side). Returns nil if the chart doesn't
   produce an SVG."
   ^bytes [card dashcard data w-px h-px]
-  (binding [js.svg/*chart-size* {:width w-px :height h-px :scale chart-supersample}]
+  (binding [js.svg/*chart-size* {:width w-px :height h-px :scale chart-supersample :fit-within? true}]
     (let [viz (or (:visualization_settings dashcard) (:visualization_settings card))
           {t :type c :content} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
       (when (= :svg t)

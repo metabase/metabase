@@ -34,14 +34,8 @@ export const ComboChart = ({
   height = HEIGHT,
   isStorybook = false,
   hasDevWatermark = false,
+  fitWithinBounds = false,
 }: StaticChartProps) => {
-  const chart = init(null, null, {
-    renderer: "svg",
-    ssr: true,
-    width,
-    height,
-  });
-
   const chartModel = getCartesianChartModel(
     rawSeries,
     settings,
@@ -60,12 +54,23 @@ export const ComboChart = ({
       isReversed,
     });
 
+  const chartHeight = fitWithinBounds
+    ? Math.max(height - legendHeight, 1)
+    : height;
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
   const chartLayout = getChartLayout(
     chartModel,
     settings,
     false,
     width,
-    height,
+    chartHeight,
     renderingContext,
   );
 
@@ -88,7 +93,7 @@ export const ComboChart = ({
     settings,
   );
 
-  const totalHeight = height + legendHeight;
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
 
   return (
     <>

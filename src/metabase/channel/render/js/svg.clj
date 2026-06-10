@@ -179,7 +179,12 @@
   An optional `:scale` (default 1) multiplies *only the raster* dimensions: the chart is still
   laid out at `:width`x`:height` (so fonts, labels, and spacing are unchanged), but the SVG is
   rasterized to `scale`x more pixels -- i.e. supersampling for a crisper image at the same on-page
-  size, without relaying the chart out smaller."
+  size, without relaying the chart out smaller.
+
+  An optional `:fit-within?` (default false) tells legended charts to treat `:width`x`:height` as
+  the exact output box -- fitting the legend *inside* it rather than stacking it on top (which
+  returns an SVG taller than requested and makes it shrink to fit). Used by the PDF renderer so a
+  chart fills its grid cell's full width."
   nil)
 
 (def ^:dynamic *svg-background-color*
@@ -241,7 +246,8 @@
                                                                                :tokenFeatures (premium-features/token-features)}
                                                                         *chart-size*
                                                                         (assoc :width (:width *chart-size*)
-                                                                               :height (:height *chart-size*)))))))]
+                                                                               :height (:height *chart-size*)
+                                                                               :fitWithinBounds (boolean (:fit-within? *chart-size*))))))))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
