@@ -15,8 +15,8 @@
             [{:role "assistant" :_type "TEXT" :content "hello"}]))))
   (testing "batched TOOL_CALL entries split into one part per call, merged with TOOL_RESULTs in position"
     (is (= [{:type "text" :text "before"}
-            {:type "tool-search" :tool_call_id "a" :state "output-available" :input {:q "x"} :output {:output "r1"}}
-            {:type "tool-browse" :tool_call_id "b" :state "output-available" :input {} :output {:output "r2"}}
+            {:type "tool-search" :toolCallId "a" :state "output-available" :input {:q "x"} :output {:output "r1"}}
+            {:type "tool-browse" :toolCallId "b" :state "output-available" :input {} :output {:output "r2"}}
             {:type "text" :text "after"}]
            (migrate/migrate-v1-external-ai-service->v2
             [{:role "assistant" :_type "TEXT" :content "before"}
@@ -65,7 +65,7 @@
 (deftest ^:parallel migrate-v1-native->v2-test
   (let [tool-input {:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}]
     (testing "tool-input merged with tool-output becomes output-available carrying the result map"
-      (is (= [{:type "tool-search" :tool_call_id "tc1" :state "output-available" :input {:q "x"} :output {:output "rows"}}]
+      (is (= [{:type "tool-search" :toolCallId "tc1" :state "output-available" :input {:q "x"} :output {:output "rows"}}]
              (migrate/migrate-v1-native->v2
               [tool-input
                {:type "tool-output" :id "tc1" :result {:output "rows"} :error nil :duration-ms 3}]))))
@@ -75,27 +75,27 @@
         (is (= "output-available" (:state part)))
         (is (contains? part :output))
         (is (= {} (:output part)))))
-    (testing "tool-output with a string :error becomes output-error with :error_text and no :output"
+    (testing "tool-output with a string :error becomes output-error with :errorText and no :output"
       (let [[part] (migrate/migrate-v1-native->v2
                     [tool-input {:type "tool-output" :id "tc1" :result {} :error "boom"}])]
         (is (= "output-error" (:state part)))
-        (is (= "boom" (:error_text part)))
+        (is (= "boom" (:errorText part)))
         (is (not (contains? part :output)))))
     (testing "map-shaped :error extracts :message"
       (is (= "bad"
              (-> (migrate/migrate-v1-native->v2
                   [tool-input {:type "tool-output" :id "tc1" :error {:message "bad"}}])
-                 first :error_text))))
+                 first :errorText))))
     (testing "map-shaped :error without :message falls back to pr-str"
       (is (= "{:code 500}"
              (-> (migrate/migrate-v1-native->v2
                   [tool-input {:type "tool-output" :id "tc1" :error {:code 500}}])
-                 first :error_text))))
+                 first :errorText))))
     (testing "tool-input without a matching output stays input-available"
       (let [[part] (migrate/migrate-v1-native->v2 [tool-input])]
         (is (= "input-available" (:state part)))
         (is (not (contains? part :output)))
-        (is (not (contains? part :error_text))))))
+        (is (not (contains? part :errorText))))))
   (testing "text passes through with :id stripped"
     (is (= [{:type "text" :text "Found it"}]
            (migrate/migrate-v1-native->v2

@@ -37,10 +37,10 @@
           (let [output (get outputs id)
                 input  (try (json/decode+kw arguments)
                             (catch Throwable _ arguments))]
-            (cond-> {:type         (str "tool-" name)
-                     :tool_call_id id
-                     :state        (if output "output-available" "input-available")
-                     :input        input}
+            (cond-> {:type       (str "tool-" name)
+                     :toolCallId id
+                     :state      (if output "output-available" "input-available")
+                     :input      input}
               output (assoc :output {:output (:content output)}))))
         tool_calls))
 
@@ -91,18 +91,18 @@
                      "text"        [{:type "text" :text (:text entry)}]
                      "tool-input"  (let [output (get outputs (:id entry))
                                          error  (:error output)]
-                                     [(cond-> {:type         (str "tool-" (:function entry))
-                                               :tool_call_id (:id entry)
-                                               :state        (cond
-                                                               (some? error)  "output-error"
-                                                               (some? output) "output-available"
-                                                               :else          "input-available")
-                                               :input        (:arguments entry)}
+                                     [(cond-> {:type       (str "tool-" (:function entry))
+                                               :toolCallId (:id entry)
+                                               :state      (cond
+                                                             (some? error)  "output-error"
+                                                             (some? output) "output-available"
+                                                             :else          "input-available")
+                                               :input      (:arguments entry)}
                                         (and (some? output) (nil? error))
                                         (assoc :output (:result output))
 
                                         (some? error)
-                                        (assoc :error_text (error->text error)))])
+                                        (assoc :errorText (error->text error)))])
                      "tool-output" []
                      "data"        [{:type (str "data-" (:data-type entry))
                                      :data (:data entry)}]
