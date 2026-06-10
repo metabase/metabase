@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { SearchFilterDateDisplay } from "metabase/search/components/SearchFilterDateDisplay";
-import { SearchFilterDatePicker } from "metabase/search/components/SearchFilterDatePicker";
+import { SearchFilterDateDisplay } from "metabase/querying/filters/components/SearchFilterDateDisplay";
+import { SearchFilterDatePicker } from "metabase/querying/filters/components/SearchFilterDatePicker";
 import { Box } from "metabase/ui";
 import type { SearchFilterDropdown } from "metabase/utils/search/types";
 
