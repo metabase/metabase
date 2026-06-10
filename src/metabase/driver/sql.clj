@@ -216,7 +216,7 @@
       (throw e))))
 
 ;; Follows similar logic to `transfer-file-to-db :table`
-(defmethod driver/run-transform! [:sql :table]
+(mu/defmethod driver/run-transform! [:sql :table] :- ::driver/run-transform-result
   [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
   (let [table-exists? (driver/table-exists? driver database
                                             {:schema (namespace output-table)
@@ -238,7 +238,7 @@
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
-(defmethod driver/run-transform! [:sql :table-incremental]
+(mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
   (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
                                                            :name (name output-table)})
