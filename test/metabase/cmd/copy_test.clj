@@ -34,6 +34,7 @@
     :model/CloudMigration
     :model/ContentTranslation
     :model/DashboardFavorite
+    :model/DataApp
     :model/DataComplexityScore
     :model/DatabaseRouter
     :model/Dependency
