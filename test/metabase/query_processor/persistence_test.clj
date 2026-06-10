@@ -10,6 +10,9 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
@@ -181,3 +184,39 @@
               (is (= {"Doohickey" 3976, "Gadget" 4939,
                       "Gizmo"     4784, "Widget" 5061}
                      (->> results :data :rows (into {})))))))))))
+
+(deftest persisted-models-repeated-column-names-test
+  (testing "Persisted models with repeated column names from joins query successfully (#25014)"
+    ;; Joining orders with people surfaces all columns from both tables, producing duplicate `id` and `created_at`
+    ;; in the model's result metadata (deduplicated as `id_2`/`created_at_2`). Pre-fix, the QP generated SQL like
+    ;; `select id, ..., id_2, ..., created_at_2 from cache_schema.model_N_slug`, but the cached table's actual
+    ;; columns used join-qualified names (e.g. `People - User__id`), so the database rejected the query with
+    ;; `column "id_2" does not exist`. The fix selects `*` from the cached table — see #28902.
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (let [mp           (mt/metadata-provider)
+                orders-table (lib.metadata/table mp (mt/id :orders))
+                people-table (lib.metadata/table mp (mt/id :people))
+                orders-user  (lib.metadata/field mp (mt/id :orders :user_id))
+                people-id    (lib.metadata/field mp (mt/id :people :id))
+                model-query  (-> (lib/query mp orders-table)
+                                 (lib/join (-> (lib/join-clause
+                                                people-table
+                                                [(lib/= orders-user
+                                                        (lib/with-join-alias people-id "People - User"))])
+                                               (lib/with-join-alias "People - User"))))]
+            (mt/with-temp [:model/Card model {:type          :model
+                                              :database_id   (mt/id)
+                                              :query_type    :query
+                                              :dataset_query model-query}]
+              (persist-models!)
+              (let [card-mp          (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                    outer-query      (-> (lib/query card-mp (lib.metadata/card card-mp (:id model)))
+                                         (lib/aggregate (lib/count)))
+                    results          (qp/process-query outer-query)
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                (testing "Query against the persisted table was substituted in"
+                  (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
+                (testing "Query against the persisted table succeeds and returns the expected row count"
+                  (is (= [[18760]] (mt/rows results))))))))))))
