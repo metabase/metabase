@@ -150,6 +150,22 @@ describe("ActionMenu", () => {
   });
 
   describe("moving and archiving", () => {
+    it("should duplicate an item", async () => {
+      const item = createMockCollectionItem({
+        id: 1,
+        name: "Dashboard",
+        model: "dashboard",
+        can_write: true,
+      });
+
+      const { onCopy } = setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Duplicate"));
+
+      expect(onCopy).toHaveBeenCalledWith([item]);
+    });
+
     it("should allow to move and archive regular collections", async () => {
       const item = createMockCollectionItem({
         id: 1,

@@ -1,8 +1,10 @@
 import cx from "classnames";
+import { useCallback, useState } from "react";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Flex, Icon, Text } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
@@ -10,7 +12,7 @@ import type { ObjectId } from "./types";
 export interface ObjectDetailHeaderProps {
   actionItems: {
     title: string;
-    icon: string;
+    icon: IconName;
     action: () => void;
   }[];
   canZoom: boolean;
@@ -36,6 +38,16 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
+  const [menuOpened, setMenuOpened] = useState(false);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpened(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpened((opened) => !opened);
+  }, []);
+
   return (
     <Box className={cx(CS.Grid, S.headerWrapper)}>
       <div className={CS.GridCell}>
@@ -74,13 +86,41 @@ export function ObjectDetailHeader({
           )}
 
           {actionItems.length > 0 && (
-            <EntityMenu
-              items={actionItems}
-              triggerIcon="ellipsis"
-              triggerProps={{
-                "data-testid": "actions-menu",
-              }}
-            />
+            <Menu
+              opened={menuOpened}
+              onChange={setMenuOpened}
+              position="bottom-end"
+              closeOnItemClick={false}
+            >
+              <Menu.Target>
+                <div>
+                  <EntityMenuTrigger
+                    icon="ellipsis"
+                    onClick={toggleMenu}
+                    open={menuOpened}
+                    triggerProps={{
+                      "data-testid": "actions-menu",
+                    }}
+                  />
+                </div>
+              </Menu.Target>
+              <Menu.Dropdown miw={184}>
+                {actionItems.map((item, index) => (
+                  <Menu.Item
+                    key={item.title ?? index}
+                    leftSection={
+                      <Icon name={item.icon} size={16} aria-hidden />
+                    }
+                    onClick={() => {
+                      item.action();
+                      closeMenu();
+                    }}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
           )}
 
           <Flex ml="md" pl="md" className={S.closeButton}>

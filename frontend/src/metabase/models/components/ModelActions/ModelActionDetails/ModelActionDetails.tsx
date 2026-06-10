@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,11 +8,12 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon } from "metabase/ui";
+import { Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -95,8 +96,18 @@ function ModelActionDetails({ model }: Props) {
     });
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
+  const [menuOpened, setMenuOpened] = useState(false);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpened(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpened((opened) => !opened);
+  }, []);
+
   const menuItems = useMemo(() => {
-    const items = [];
+    const items: { title: string; icon: "bolt"; action: () => void }[] = [];
     const hasImplicitActions = implicitActions.length > 0;
 
     if (hasImplicitActions) {
@@ -149,11 +160,41 @@ function ModelActionDetails({ model }: Props) {
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
-            <ActionMenu
-              triggerIcon="ellipsis"
-              items={menuItems}
-              triggerProps={{ "aria-label": t`Actions menu` }}
-            />
+            <ActionMenu>
+              <Menu
+                opened={menuOpened}
+                onChange={setMenuOpened}
+                position="bottom-end"
+                closeOnItemClick={false}
+              >
+                <Menu.Target>
+                  <div>
+                    <EntityMenuTrigger
+                      ariaLabel={t`Actions menu`}
+                      icon="ellipsis"
+                      onClick={toggleMenu}
+                      open={menuOpened}
+                    />
+                  </div>
+                </Menu.Target>
+                <Menu.Dropdown miw={184}>
+                  {menuItems.map((item) => (
+                    <Menu.Item
+                      key={item.title}
+                      leftSection={
+                        <Icon name={item.icon} size={16} aria-hidden />
+                      }
+                      onClick={() => {
+                        item.action();
+                        closeMenu();
+                      }}
+                    >
+                      {item.title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
+            </ActionMenu>
           )}
         </ActionsHeader>
       )}

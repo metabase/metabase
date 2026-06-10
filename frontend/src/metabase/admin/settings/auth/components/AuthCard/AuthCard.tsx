@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Anchor, Button, Text } from "metabase/ui";
-import { isNotNull } from "metabase/utils/types";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
+import { Anchor, Button, Icon, Menu, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
@@ -160,22 +160,62 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const menuItems = useMemo(
-    () =>
-      [
-        {
-          title: isEnabled ? t`Pause` : t`Resume`,
-          icon: isEnabled ? "pause" : "play",
-          action: () => onChange(!isEnabled),
-        },
-        onDeactivate && {
-          title: `Deactivate`,
-          icon: "close",
-          action: onDeactivate,
-        },
-      ].filter(isNotNull),
-    [isEnabled, onChange, onDeactivate],
-  );
+  const [opened, setOpened] = useState(false);
 
-  return <CardMenu triggerIcon="ellipsis" items={menuItems} />;
+  const closeMenu = useCallback(() => {
+    setOpened(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setOpened((opened) => !opened);
+  }, []);
+
+  const handleChange = useCallback(() => {
+    onChange(!isEnabled);
+    closeMenu();
+  }, [closeMenu, isEnabled, onChange]);
+
+  const handleDeactivate = useCallback(() => {
+    onDeactivate?.();
+    closeMenu();
+  }, [closeMenu, onDeactivate]);
+
+  return (
+    <CardMenu>
+      <Menu
+        opened={opened}
+        onChange={setOpened}
+        position="bottom-end"
+        closeOnItemClick={false}
+      >
+        <Menu.Target>
+          <div>
+            <EntityMenuTrigger
+              icon="ellipsis"
+              onClick={toggleMenu}
+              open={opened}
+            />
+          </div>
+        </Menu.Target>
+        <Menu.Dropdown miw={184}>
+          <Menu.Item
+            leftSection={
+              <Icon name={isEnabled ? "pause" : "play"} size={16} aria-hidden />
+            }
+            onClick={handleChange}
+          >
+            {isEnabled ? t`Pause` : t`Resume`}
+          </Menu.Item>
+          {onDeactivate && (
+            <Menu.Item
+              leftSection={<Icon name="close" size={16} aria-hidden />}
+              onClick={handleDeactivate}
+            >
+              {t`Deactivate`}
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    </CardMenu>
+  );
 };

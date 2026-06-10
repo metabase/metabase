@@ -1,15 +1,20 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Icon } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
+import type {
+  IconName,
+  WritebackAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import {
   ActionCardContainer,
@@ -21,7 +26,6 @@ import {
   ActionTitle,
   CodeBlock,
   ImplicitActionCardContentRoot,
-  MenuIcon,
 } from "./ModelActionListItem.styled";
 
 interface Props {
@@ -32,6 +36,13 @@ interface Props {
   canArchive: boolean;
   onArchive: (action: WritebackAction) => void;
 }
+
+type ModelActionMenuItem = {
+  title: string;
+  icon: IconName;
+  link?: string;
+  action?: () => void;
+};
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
   const question = Question.create({ dataset_query: action.dataset_query });
@@ -80,7 +91,17 @@ function ModelActionListItem({
     });
   }, [action, askConfirmation, onArchive]);
 
-  const menuItems = useMemo(
+  const [menuOpened, setMenuOpened] = useState(false);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpened(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpened((opened) => !opened);
+  }, []);
+
+  const menuItems = useMemo<(ModelActionMenuItem | null)[]>(
     () => [
       {
         title: canEdit ? t`Edit` : t`View`,
@@ -117,7 +138,59 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
+        <Menu
+          opened={menuOpened}
+          onChange={setMenuOpened}
+          position="bottom-end"
+          closeOnItemClick={false}
+        >
+          <Menu.Target>
+            <div>
+              <EntityMenuTrigger
+                icon="ellipsis"
+                onClick={toggleMenu}
+                open={menuOpened}
+              />
+            </div>
+          </Menu.Target>
+          <Menu.Dropdown miw={184}>
+            {menuItems.map((item, index) => {
+              if (!item) {
+                return null;
+              }
+
+              if (item.link) {
+                return (
+                  <Menu.Item
+                    key={item.title ?? index}
+                    component={RouterLink}
+                    data-testid="entity-menu-link"
+                    leftSection={
+                      <Icon name={item.icon} size={16} aria-hidden />
+                    }
+                    to={item.link}
+                    onClick={closeMenu}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                );
+              }
+
+              return (
+                <Menu.Item
+                  key={item.title ?? index}
+                  leftSection={<Icon name={item.icon} size={16} aria-hidden />}
+                  onClick={() => {
+                    item.action?.();
+                    closeMenu();
+                  }}
+                >
+                  {item.title}
+                </Menu.Item>
+              );
+            })}
+          </Menu.Dropdown>
+        </Menu>
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (

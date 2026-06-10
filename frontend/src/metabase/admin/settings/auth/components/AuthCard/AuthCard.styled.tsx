@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { color } from "metabase/ui/utils/colors";
 
 export const CardRoot = styled.div`
@@ -45,6 +44,6 @@ export const CardBadge = styled.div<CardBadgeProps>`
   font-weight: bold;
 `;
 
-export const CardMenu = styled(EntityMenu)`
+export const CardMenu = styled.div`
   margin-left: auto;
 `;

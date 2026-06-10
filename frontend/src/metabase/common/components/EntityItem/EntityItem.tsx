@@ -1,6 +1,7 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import { useMemo } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -22,15 +23,18 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import type { IconProps } from "metabase/ui";
-import { Checkbox, Ellipsified } from "metabase/ui";
+import { Checkbox, Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
+import S from "./EntityItem.module.css";
 import {
   EntityIconWrapper,
   EntityItemActions,
@@ -122,6 +126,62 @@ function EntityItemName({
   );
 }
 
+type EntityItemMenuAction = {
+  title: string;
+  icon: IconName;
+  action?: () => void;
+  link?: string;
+  tooltip?: ReactNode;
+  disabled?: boolean;
+  color?: ColorName;
+  hoverColor?: ColorName;
+  hoverBgColor?: ColorName;
+};
+
+type EntityItemMenuItemStyle = CSSProperties & {
+  "--entity-item-menu-item-color"?: string;
+  "--entity-item-menu-item-hover-color"?: string;
+  "--entity-item-menu-item-hover-bg-color"?: string;
+};
+
+function getItemStyle(
+  item: EntityItemMenuAction,
+): EntityItemMenuItemStyle | undefined {
+  const style: EntityItemMenuItemStyle = {};
+
+  if (item.color) {
+    style["--entity-item-menu-item-color"] = color(item.color);
+  }
+
+  if (item.hoverColor) {
+    style["--entity-item-menu-item-hover-color"] = color(item.hoverColor);
+  }
+
+  if (item.hoverBgColor) {
+    style["--entity-item-menu-item-hover-bg-color"] = color(item.hoverBgColor);
+  }
+
+  return Object.keys(style).length > 0 ? style : undefined;
+}
+
+function getLeftSection(icon: IconName) {
+  return <Icon name={icon} size={16} aria-hidden />;
+}
+
+function MenuItemTooltip({
+  tooltip,
+  children,
+}: {
+  tooltip?: ReactNode;
+  children: ReactElement;
+}) {
+  return (
+    <Tooltip label={tooltip} disabled={tooltip == null} position="right">
+      {children}
+    </Tooltip>
+  );
+}
+
 function EntityItemMenu({
   item,
   isBookmarked,
@@ -155,8 +215,18 @@ function EntityItemMenu({
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
 
+  const [opened, setOpened] = useState(false);
+
+  const closeMenu = useCallback(() => {
+    setOpened(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    setOpened((opened) => !opened);
+  }, []);
+
   const actions = useMemo(() => {
-    const result = [];
+    const result: EntityItemMenuAction[] = [];
 
     if (onPin) {
       result.push({
@@ -200,7 +270,7 @@ function EntityItemMenu({
       result.push({
         title: c("Verb").t`Duplicate`,
         icon: "clone",
-        action: onCopy,
+        action: () => onCopy([item]),
       });
     }
 
@@ -208,7 +278,7 @@ function EntityItemMenu({
       result.push({
         title: t`Move`,
         icon: "move",
-        action: onMove,
+        action: () => onMove([item]),
       });
     }
 
@@ -247,8 +317,7 @@ function EntityItemMenu({
 
     return result;
   }, [
-    item.id,
-    item.model,
+    item,
     isPinned,
     isXrayShown,
     isPreviewed,
@@ -268,12 +337,64 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer style={{ textAlign: "center" }}>
-      <EntityMenu
-        triggerAriaLabel={t`Actions`}
-        triggerIcon="ellipsis"
-        items={actions}
-        className={className}
-      />
+      <Menu
+        opened={opened}
+        onChange={setOpened}
+        position="bottom-end"
+        closeOnItemClick={false}
+      >
+        <Menu.Target>
+          <div className={className}>
+            <EntityMenuTrigger
+              ariaLabel={t`Actions`}
+              icon="ellipsis"
+              onClick={toggleMenu}
+              open={opened}
+            />
+          </div>
+        </Menu.Target>
+        <Menu.Dropdown miw={184}>
+          {actions.map((item, index) => {
+            const key = item.title ?? index;
+            const menuItemProps = {
+              className: S.menuItem,
+              disabled: item.disabled,
+              leftSection: getLeftSection(item.icon),
+              style: getItemStyle(item),
+            };
+
+            if (item.link) {
+              return (
+                <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                  <Menu.Item
+                    {...menuItemProps}
+                    component={Link}
+                    data-testid="entity-menu-link"
+                    to={item.link}
+                    onClick={closeMenu}
+                  >
+                    {item.title}
+                  </Menu.Item>
+                </MenuItemTooltip>
+              );
+            }
+
+            return (
+              <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                <Menu.Item
+                  {...menuItemProps}
+                  onClick={() => {
+                    item.action?.();
+                    closeMenu();
+                  }}
+                >
+                  {item.title}
+                </Menu.Item>
+              </MenuItemTooltip>
+            );
+          })}
+        </Menu.Dropdown>
+      </Menu>
     </EntityMenuContainer>
   );
 }

@@ -10,7 +10,6 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
@@ -31,6 +30,7 @@ import {
   Divider,
   Group,
   Icon,
+  Menu,
   Stack,
   Tooltip,
   rem,
@@ -131,6 +131,16 @@ export function DetailViewSidesheet({
     onDelete: (action) => setDeleteActionId(action.id),
     onUpdate: (action) => setActionId(action.id),
   });
+
+  const [actionsMenuOpened, setActionsMenuOpened] = useState(false);
+
+  const closeActionsMenu = useCallback(() => {
+    setActionsMenuOpened(false);
+  }, []);
+
+  const toggleActionsMenu = useCallback(() => {
+    setActionsMenuOpened((opened) => !opened);
+  }, []);
 
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
@@ -274,24 +284,46 @@ export function DetailViewSidesheet({
             )}
 
             {actionItems.length > 0 && (
-              <EntityMenu
-                items={actionItems}
-                renderTrigger={({ onClick }: { onClick: () => void }) => (
-                  <Tooltip label={t`Actions`}>
-                    <Button
-                      aria-label={t`Actions`}
-                      c="text-primary"
-                      data-testid="actions-menu"
-                      h={20}
-                      leftSection={<Icon name="ellipsis" />}
-                      p={0}
-                      variant="subtle"
-                      w={20}
-                      onClick={onClick}
-                    />
-                  </Tooltip>
-                )}
-              />
+              <Menu
+                opened={actionsMenuOpened}
+                onChange={setActionsMenuOpened}
+                position="bottom-end"
+                closeOnItemClick={false}
+              >
+                <Menu.Target>
+                  <div>
+                    <Tooltip label={t`Actions`}>
+                      <Button
+                        aria-label={t`Actions`}
+                        c="text-primary"
+                        data-testid="actions-menu"
+                        h={20}
+                        leftSection={<Icon name="ellipsis" />}
+                        p={0}
+                        variant="subtle"
+                        w={20}
+                        onClick={toggleActionsMenu}
+                      />
+                    </Tooltip>
+                  </div>
+                </Menu.Target>
+                <Menu.Dropdown miw={184}>
+                  {actionItems.map((item, index) => (
+                    <Menu.Item
+                      key={item.title ?? index}
+                      leftSection={
+                        <Icon name={item.icon} size={16} aria-hidden />
+                      }
+                      onClick={() => {
+                        item.action();
+                        closeActionsMenu();
+                      }}
+                    >
+                      {item.title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
             )}
 
             {url && (
