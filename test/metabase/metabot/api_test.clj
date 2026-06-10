@@ -182,16 +182,21 @@
                     (mt/with-model-cleanup [:model/MetabotMessage
                                             [:model/MetabotConversation :created_at]]
                       (let [conversation-id (str (random-uuid))
-                            body (mt/user-real-request :rasta :post 202 "metabot/agent-streaming"
-                                                       {:request-options {:as              :stream
-                                                                          :decompress-body false}}
-                                                       {:message         "Test closure"
-                                                        :context         {}
-                                                        :conversation_id conversation-id
-                                                        :history         []
-                                                        :state           {}})]
-                        (.read ^java.io.InputStream body) ;; start the handler
-                        (.close ^java.io.Closeable body)
+                            response (mt/user-real-request-full-response
+                                      :rasta :post 202 "metabot/agent-streaming"
+                                      {:request-options {:as              :stream
+                                                         :decompress-body false}}
+                                      {:message         "Test closure"
+                                       :context         {}
+                                       :conversation_id conversation-id
+                                       :history         []
+                                       :state           {}})]
+                        (.read ^java.io.InputStream (:body response)) ;; start the handler
+                        ;; Close the underlying client, not the body stream: closing the body would
+                        ;; make clj-http drain the (now chunked) response to completion, which looks
+                        ;; like a normal finish rather than a disconnect. Closing the client aborts
+                        ;; the connection, which is what the server's cancel loop detects.
+                        (.close ^java.io.Closeable (:http-client response))
                         (u/poll {:thunk       #(deref stored-parts)
                                  :done?       some?
                                  :interval-ms 10
