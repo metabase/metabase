@@ -327,6 +327,41 @@
               "a create whose path already holds the same entity stays incremental")
           (is (entity-exported? mock a-eid) "card A is still exported"))))))
 
+;;; ------------------------------------ Disabled content cleanup (GHY-3725) ------------------------------------
+;;; When a content type is disabled (transforms is off in `with-exported-collection!`), stale files left
+;;; behind in its repo dir must be removed — but that shouldn't drop us off the incremental fast-path.
+;;; They're appended to the incremental delete-paths instead of forcing a full re-serialize.
+
+(deftest disabled-content-cleaned-up-incrementally-test
+  (with-exported-collection!
+    (fn [{:keys [mock card-a]}]
+      ;; A stale file in a now-disabled content dir, alongside an ordinary card edit. The edit stays on
+      ;; the incremental path AND the stale transforms file is deleted in the same commit.
+      (swap! (:files-atom mock) assoc-in ["main" "transforms/old/old.yaml"] "stale transform")
+      (t2/update! :model/Card card-a {:description "edit A"})
+      (set-status! "Card" card-a "update")
+      (let [a-eid (t2/select-one-fn :entity_id :model/Card :id card-a)
+            task  (new-task!)]
+        (impl/export! (source.p/snapshot mock) task "edit with stale transform")
+        (is (= "apply-changes-version" (written-version task))
+            "disabled content no longer forces a full export")
+        (is (nil? (get (files mock) "transforms/old/old.yaml"))
+            "the stale file in the disabled dir is deleted incrementally")
+        (is (entity-exported? mock a-eid) "the edited card is still exported")))))
+
+(deftest disabled-content-cleaned-up-with-no-dirty-rows-test
+  (with-exported-collection!
+    (fn [{:keys [mock]}]
+      ;; A stale file in a disabled dir with nothing else dirty: a delete-only incremental commit removes
+      ;; it (rather than a no-op that would leave it behind, or a full re-serialize).
+      (swap! (:files-atom mock) assoc-in ["main" "transforms/old/old.yaml"] "stale transform")
+      (let [task   (new-task!)
+            result (impl/export! (source.p/snapshot mock) task "remove stale transform")]
+        (is (= :success (:status result)))
+        (is (= "apply-changes-version" (written-version task))
+            "a delete-only incremental commit removes the stale file")
+        (is (nil? (get (files mock) "transforms/old/old.yaml")))))))
+
 ;;; ---------------------------------- Required-closure regression (GHY-3725) ------------------------------------
 ;;; A full export pulls a card's source cards via `serdes/descendants` (transitively, through
 ;;; `resolve-targets`), even when the source card lives outside the synced collection. The incremental

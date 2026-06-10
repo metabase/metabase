@@ -542,28 +542,27 @@
     (try
       (analytics/inc! :metabase-remote-sync/exports)
       (serdes/with-cache
-        (let [disabled-content? (->> (source.p/list-files snapshot)
-                                     (map path-top-level-dir)
-                                     (some (disabled-content-dirs))
-                                     boolean)
-              dirty-rows (seq (remote-sync.object/dirty-rows))
-              plan (delay (incremental-plan snapshot dirty-rows))]
+        (let [disabled-files (filterv (comp (disabled-content-dirs) path-top-level-dir)
+                                      (source.p/list-files snapshot))
+              dirty-rows     (seq (remote-sync.object/dirty-rows))
+              plan           (when dirty-rows (incremental-plan snapshot dirty-rows))]
           (cond
-            disabled-content?
-            (full-export! snapshot task-id message sync-timestamp)
-
-            (empty? dirty-rows)
+            ;; nothing to do: no pending changes and no stale files in now-disabled content dirs
+            (and (empty? dirty-rows) (empty? disabled-files))
             (do
               (log/info "Remote sync export: no changes to export")
               {:status :success})
 
-            (= @plan :remote-sync/unsyncable-batch)
+            ;; a dirty row can't be applied incrementally → full re-serialize
+            (= plan :remote-sync/unsyncable-batch)
             (full-export! snapshot task-id message sync-timestamp)
 
-            ;; Incremental fast-path: write only the changed entities and delete only the removed
-            ;; ones, preserving every other file. Avoids re-serializing the entire synced set.
+            ;; Incremental fast-path: write only the changed entities, and delete their old paths plus
+            ;; any files left behind in now-disabled content dirs — preserving every other file. Avoids
+            ;; re-serializing the entire synced set.
             :else
-            (let [{:keys [upserts delete-paths synced removed-ids]} @plan]
+            (let [{:keys [upserts delete-paths synced removed-ids]} plan
+                  delete-paths (into (vec delete-paths) disabled-files)]
               (remote-sync.task/update-progress! task-id 0.3)
               (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                 (remote-sync.task/set-version! task-id written-version))
