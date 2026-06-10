@@ -403,6 +403,11 @@
     (with-redefs [mage.modules/read-ci-test-config (constantly example-config)]
       (is (nil? (get (#'mage.modules/driver-statuses) :mysql))))))
 
+(deftest driver-statuses-never-throws
+  (testing "a failure to read/parse the config yields {} (all drivers required) instead of breaking CI"
+    (with-redefs [mage.modules/read-ci-test-config (fn [] (throw (ex-info "boom" {})))]
+      (is (= {} (#'mage.modules/driver-statuses))))))
+
 (deftest skip-drivers-selects-only-skip-status
   (testing "only :skip drivers are quarantined; :info drivers still run"
     (is (= #{:databricks}

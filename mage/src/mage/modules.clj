@@ -337,16 +337,27 @@
    `:required` and do not appear in this map.
 
      :skip  -- do not run the driver at all (subject to the break-quarantine-<driver> label)
-     :info  -- run the driver, but its result must not gate (data collection only)"
+     :info  -- run the driver, but its result must not gate (data collection only)
+
+   This MUST NOT break CI: any failure to read or parse the config (network error,
+   malformed JSON, etc.) is swallowed and yields an empty map, so every driver falls back
+   to `:required` (runs and gates) -- the safe default."
   []
-  (into {}
-        (comp (keep (fn [{:keys [id status]}]
-                      (when-let [status-kw (#{:skip :info} (keyword status))]
-                        [id status-kw])))
-              (mapcat (fn [[id status-kw]]
-                        (map (fn [driver] [driver status-kw])
-                             (config-id->drivers id)))))
-        (get (read-ci-test-config) :drivers [])))
+  (try
+    (into {}
+          (comp (keep (fn [{:keys [id status]}]
+                        (when-let [status-kw (#{:skip :info} (keyword status))]
+                          [id status-kw])))
+                (mapcat (fn [[id status-kw]]
+                          (map (fn [driver] [driver status-kw])
+                               (config-id->drivers id)))))
+          (get (read-ci-test-config) :drivers []))
+    (catch Throwable e
+      ;; stderr, not stdout: in --github-output-only mode stdout is redirected into $GITHUB_OUTPUT.
+      (binding [*out* *err*]
+        (println (c/yellow (str "WARNING: could not read driver statuses from ci-test-config ("
+                                (.getMessage e) "); treating all drivers as required."))))
+      {})))
 
 (defn- skip-drivers
   "Set of driver keywords with status `:skip` in `statuses` (these are quarantined: not run)."
