@@ -39,7 +39,7 @@ https://mcp.internal.example.com https://*.staging.example.com
 
 The field accepts wildcards (`*`) for subdomains. Changes take effect in about a minute. Might be a good time to get up and pour yourself a glass of water.
 
-## Connect to an MCP client
+## Connect a client to your Metabase MCP server
 
 If your admin has turned on [your Metabase's MCP server](#enable-mcp-server), all you need to do is point your MCP client at Metabase's MCP endpoint, `/api/metabase-mcp`. For example:
 
