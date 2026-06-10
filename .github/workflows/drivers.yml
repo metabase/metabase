@@ -77,6 +77,28 @@ jobs:
       sqlserver-quarantine-conflict: ${{ steps.driver-decisions.outputs.sqlserver-quarantine-conflict }}
       vertica-quarantine-conflict: ${{ steps.driver-decisions.outputs.vertica-quarantine-conflict }}
     steps:
+      # Up front (before any driver job), drop info-driver comments from older commits so a
+      # superseded comment disappears immediately rather than waiting for this run's drivers.
+      # Keeps this commit's comment (if any) so a re-run doesn't flicker.
+      - name: Remove stale info-driver comments
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v9
+        continue-on-error: true
+        with:
+          script: | # js
+            const pr = context.payload.pull_request;
+            if (!pr) return;
+            const { owner, repo } = context.repo;
+            const PREFIX = "<!-- info-driver-result";
+            const keep = `<!-- info-driver-results:${pr.head.sha} -->`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: pr.number, per_page: 100,
+            });
+            for (const c of comments) {
+              if (c.body.includes(PREFIX) && !c.body.includes(keep)) {
+                await github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {});
+              }
+            }
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Fetch base branch
