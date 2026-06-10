@@ -8,7 +8,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.channel.render.pdf :as pdf])
+   [metabase.channel.render.pdf :as pdf]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
   (:import
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
@@ -214,3 +215,123 @@
     (is (= :line (#'pdf/effective-display
                   {:display "line"}
                   {:visualization_settings {:visualization {:settings {}}}})))))
+
+;; --------------------------------------------------------------------------------------------
+;; Text-layout characterization (golden) test.
+;;
+;; Captures the exact sequence of `draw-line!` calls -- {font, size, x, y, text} -- that each text
+;; path produces, for a battery of fixtures covering plain wrapping, RTL titles, inline-styled
+;; Markdown, headings/lists, CJK wrapping, Arabic/Hebrew reordering, and furigana. The numbers come
+;; from PDFBox font metrics + ICU shaping (pure integer math, no rasterization), so they are
+;; deterministic across platforms. This pins current layout behaviour so the planned wrap/measure
+;; unification can be refactored without silently changing what gets drawn or where. If a change is
+;; intentional, regenerate the expected values.
+;; --------------------------------------------------------------------------------------------
+
+(defn- round1 [v]
+  (/ (Math/round (* (double v) 10.0)) 10.0))
+
+(defn- capture-line-draws!
+  "Run `render!` with `draw-line!` intercepted, returning each drawn line as
+  {:font <face-id> :pt :x :y :text} with coordinates rounded to 0.1pt."
+  [render!]
+  (let [calls (atom [])]
+    (dynamic-redefs/with-dynamic-fn-redefs [pdf/draw-line! (fn [_cs face font-pt x y text]
+                                                             (swap! calls conj {:font (:id face) :pt (round1 font-pt)
+                                                                                :x (round1 x) :y (round1 y) :text text}))]
+      (render!))
+    @calls))
+
+(deftest text-layout-characterization-test
+  (with-open [doc (PDDocument.)]
+    (let [page (PDPage. PDRectangle/A4)
+          _    (.addPage doc page)
+          cs   (PDPageContentStream. doc page)]
+      (binding [pdf/*fonts*      (#'pdf/load-fonts! doc)
+                pdf/*link-rects* (atom [])]
+        (let [reg  (#'pdf/face :regular)
+              bold (#'pdf/face :bold)
+              ;; draw-text-block! (plain text path) and draw-markdown-in-cell! (markdown path)
+              dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
+              dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
+          (doseq [[nm render expected]
+                  [["plain wrap (Latin, 2 lines)"
+                    (dtb reg 10.0 40.0 700.0 120.0 60.0 "The quick brown fox jumps over")
+                    [{:font :regular :pt 10.0 :x 40.0 :y 690.0 :text "The quick brown fox"}
+                     {:font :regular :pt 10.0 :x 40.0 :y 677.0 :text "jumps over"}]]
+                   ["plain RTL title (right-aligned, whole-line shaped)"
+                    (dtb bold 13.0 40.0 700.0 200.0 40.0 "مرحبا بكم")
+                    [{:font :bold :pt 13.0 :x 186.6 :y 687.0 :text "مرحبا بكم"}]]
+                   ["markdown inline styles (per-run fonts)"
+                    (dmic 40.0 700.0 240.0 80.0 "Hi **bold** *em* `cd` [lk](https://x.com)")
+                    [{:font :regular :pt 10.5 :x 40.0 :y 689.5 :text "Hi"}
+                     {:font :bold :pt 10.5 :x 53.2 :y 689.5 :text "bold"}
+                     {:font :italic :pt 10.5 :x 78.9 :y 689.5 :text "em"}
+                     {:font :mono :pt 10.5 :x 99.7 :y 689.5 :text "cd"}
+                     {:font :regular :pt 10.5 :x 115.0 :y 689.5 :text "lk"}]]
+                   ["markdown heading + bullet list (markers)"
+                    (dmic 40.0 700.0 240.0 120.0 "## Head\n\n- one\n- two")
+                    [{:font :bold :pt 13.5 :x 40.0 :y 686.5 :text "Head"}
+                     {:font :regular :pt 10.5 :x 40.0 :y 668.0 :text "- "}
+                     {:font :regular :pt 10.5 :x 46.1 :y 668.0 :text "one"}
+                     {:font :regular :pt 10.5 :x 40.0 :y 650.3 :text "- "}
+                     {:font :regular :pt 10.5 :x 46.1 :y 650.3 :text "two"}]]
+                   ["CJK wrap (per-character break units + kinsoku)"
+                    (dmic 40.0 700.0 80.0 80.0 "これはテストです、日本語")
+                    [{:font :regular :pt 10.5 :x 40.0 :y 689.5 :text "こ"}
+                     {:font :regular :pt 10.5 :x 50.5 :y 689.5 :text "れ"}
+                     {:font :regular :pt 10.5 :x 61.0 :y 689.5 :text "は"}
+                     {:font :regular :pt 10.5 :x 71.5 :y 689.5 :text "テ"}
+                     {:font :regular :pt 10.5 :x 82.0 :y 689.5 :text "ス"}
+                     {:font :regular :pt 10.5 :x 92.5 :y 689.5 :text "ト"}
+                     {:font :regular :pt 10.5 :x 103.0 :y 689.5 :text "で"}
+                     {:font :regular :pt 10.5 :x 40.0 :y 675.9 :text "す、"}
+                     {:font :regular :pt 10.5 :x 61.0 :y 675.9 :text "日"}
+                     {:font :regular :pt 10.5 :x 71.5 :y 675.9 :text "本"}
+                     {:font :regular :pt 10.5 :x 82.0 :y 675.9 :text "語"}]]
+                   ["Arabic markdown (word reorder + right align)"
+                    (dmic 40.0 700.0 240.0 80.0 "مرحبا بكم في ميتابيس")
+                    [{:font :regular :pt 10.5 :x 186.4 :y 689.5 :text "ميتابيس"}
+                     {:font :regular :pt 10.5 :x 225.5 :y 689.5 :text "في"}
+                     {:font :regular :pt 10.5 :x 240.7 :y 689.5 :text "بكم"}
+                     {:font :regular :pt 10.5 :x 257.5 :y 689.5 :text "مرحبا"}]]
+                   ["Hebrew markdown (word reorder + right align)"
+                    (dmic 40.0 700.0 240.0 80.0 "שלום עולם מטאבייס")
+                    [{:font :regular :pt 10.5 :x 192.9 :y 689.5 :text "מטאבייס"}
+                     {:font :regular :pt 10.5 :x 233.6 :y 689.5 :text "עולם"}
+                     {:font :regular :pt 10.5 :x 257.7 :y 689.5 :text "שלום"}]]
+                   ["furigana (ruby reading drawn above base)"
+                    (dmic 40.0 700.0 240.0 80.0 "{漢字|かんじ}です")
+                    [{:font :regular :pt 10.5 :x 40.0 :y 682.6 :text "漢字"}
+                     {:font :regular :pt 5.8 :x 41.8 :y 694.1 :text "かんじ"}
+                     {:font :regular :pt 10.5 :x 61.0 :y 682.6 :text "で"}
+                     {:font :regular :pt 10.5 :x 71.5 :y 682.6 :text "す"}]]
+                   ["markdown hard line break (two trailing spaces)"
+                    (dmic 40.0 700.0 240.0 80.0 "one two  \nthree")
+                    [{:font :regular :pt 10.5 :x 40.0 :y 689.5 :text "one"}
+                     {:font :regular :pt 10.5 :x 61.5 :y 689.5 :text "two"}
+                     {:font :regular :pt 10.5 :x 40.0 :y 675.9 :text "three"}]]]]
+            (is (= expected (capture-line-draws! render)) nm))
+          (.close cs))))))
+
+(deftest width-cache-test
+  (with-open [doc (PDDocument.)]
+    (binding [pdf/*fonts* (#'pdf/load-fonts! doc)]
+      (let [reg   (#'pdf/face :regular)
+            strs  ["Hello world" "مرحبا بكم" "これはテスト" "" "שלום עולם"]
+            width (fn [s pt] (#'pdf/text-width reg pt s))]
+        (testing "text-width is identical whether or not the per-render width cache is bound"
+          (let [uncached (mapv #(width % 11.0) strs)
+                cached   (binding [pdf/*width-cache* (atom {})] (mapv #(width % 11.0) strs))]
+            (is (= uncached cached))))
+        (testing "a string's em-width is cached once and reused across font sizes (the fit-scale win)"
+          (let [cache (atom {})]
+            (binding [pdf/*width-cache* cache]
+              (width "Hello world" 10.0)
+              (width "Hello world" 20.0)    ; same face+string, different size -> no new entry
+              (width "Goodbye now" 10.0))
+            (is (= 2 (count @cache)))
+            ;; and the scaled widths are exactly proportional to font size
+            (binding [pdf/*width-cache* cache]
+              (is (= (* 2.0 (width "Hello world" 10.0))
+                     (width "Hello world" 20.0))))))))))
