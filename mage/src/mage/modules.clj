@@ -319,22 +319,19 @@
 (defn- read-ci-test-config []
   (json/parse-string (slurp ci-test-config-url) keyword))
 
-(defn- config-id->drivers
-  "Translate a ci-test-config driver `id` (e.g. \"drivers-tests-snowflake-ee\") into the
-   internal driver keyword(s) it targets. Strips the job-name affixes and then expands the
-   bare name via [[driver-directory->drivers]] (so e.g. \"mongo\" fans out to all three mongo
-   jobs); anything not in that map is taken as a single driver keyword."
-  [id]
-  (let [base (-> (name id)
-                 (str/replace #"^(?:drivers|be)-tests-" "")
-                 (str/replace #"-ee$" ""))]
-    (or (seq (get driver-directory->drivers base))
-        [(keyword base)])))
+(defn- config-name->drivers
+  "Translate a ci-test-config driver `name` (e.g. \"snowflake\") into the internal driver
+   keyword(s) it targets. Most names map straight to a single keyword; a few (e.g. \"mongo\")
+   fan out to several jobs via [[driver-directory->drivers]]."
+  [driver-name]
+  (or (seq (get driver-directory->drivers driver-name))
+      [(keyword driver-name)]))
 
 (defn- driver-statuses
   "Map of driver keyword -> status keyword (`:skip` or `:info`) sourced from the top-level
-   `drivers` array in ci-test-config.json. Drivers absent from the config are implicitly
-   `:required` and do not appear in this map.
+   `drivers` array in ci-test-config.json. Each entry identifies a driver by its short `name`
+   (e.g. \"snowflake\"). Drivers absent from the config are implicitly `:required` and do not
+   appear in this map.
 
      :skip  -- do not run the driver at all (subject to the break-quarantine-<driver> label)
      :info  -- run the driver, but its result must not gate (data collection only)
@@ -345,12 +342,12 @@
   []
   (try
     (into {}
-          (comp (keep (fn [{:keys [id status]}]
+          (comp (keep (fn [{driver-name :name, status :status}]
                         (when-let [status-kw (#{:skip :info} (keyword status))]
-                          [id status-kw])))
-                (mapcat (fn [[id status-kw]]
+                          [driver-name status-kw])))
+                (mapcat (fn [[driver-name status-kw]]
                           (map (fn [driver] [driver status-kw])
-                               (config-id->drivers id)))))
+                               (config-name->drivers driver-name)))))
           (get (read-ci-test-config) :drivers []))
     (catch Throwable e
       ;; stderr, not stdout: in --github-output-only mode stdout is redirected into $GITHUB_OUTPUT.

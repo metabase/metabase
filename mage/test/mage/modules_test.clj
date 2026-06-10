@@ -375,24 +375,22 @@
 ;;; ci-test-config `drivers` parsing (skip / info / required status)
 ;;; =============================================================================
 
-(deftest config-id->drivers-strips-job-affixes
-  (testing "drivers-tests-<driver>-ee id resolves to the internal driver keyword"
-    (is (= [:snowflake] (#'mage.modules/config-id->drivers "drivers-tests-snowflake-ee")))
-    (is (= [:bigquery] (#'mage.modules/config-id->drivers "drivers-tests-bigquery-ee")))
-    (is (= [:databricks] (#'mage.modules/config-id->drivers "drivers-tests-databricks-ee"))))
-  (testing "legacy be-tests-<dir>-ee names and directory names still resolve"
-    (is (= [:bigquery] (#'mage.modules/config-id->drivers "be-tests-bigquery-cloud-sdk-ee"))))
-  (testing "directory names that fan out to several jobs are expanded"
+(deftest config-name->drivers-resolves-driver-names
+  (testing "a driver name resolves to its internal driver keyword"
+    (is (= [:snowflake] (#'mage.modules/config-name->drivers "snowflake")))
+    (is (= [:bigquery] (#'mage.modules/config-name->drivers "bigquery")))
+    (is (= [:databricks] (#'mage.modules/config-name->drivers "databricks"))))
+  (testing "a name that fans out to several jobs is expanded"
     (is (= [:mongo :mongo-ssl :mongo-sharded-cluster]
-           (#'mage.modules/config-id->drivers "drivers-tests-mongo-ee")))))
+           (#'mage.modules/config-name->drivers "mongo")))))
 
 (def ^:private example-config
   "The new ci-test-config `drivers` shape from DEV-2149."
-  {:drivers [{:id "drivers-tests-databricks-ee" :status "skip"}
-             {:id "drivers-tests-snowflake-ee" :status "info"}
-             {:id "drivers-tests-bigquery-ee" :status "info"}]})
+  {:drivers [{:name "databricks" :status "skip"}
+             {:name "snowflake" :status "info"}
+             {:name "bigquery" :status "info"}]})
 
-(deftest driver-statuses-maps-ids-to-status
+(deftest driver-statuses-maps-names-to-status
   (testing "drivers array is translated to a driver-keyword -> status map"
     (with-redefs [mage.modules/read-ci-test-config (constantly example-config)]
       (is (= {:databricks :skip
