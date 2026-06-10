@@ -146,26 +146,30 @@ Measures must come from tables in the metric's `mappedTableIds`.
 
 Use Metabase's SDK `InteractiveQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a table-backed semantic query with `useMetabaseQueryObject`, then pass the query object to `InteractiveQuestion`.
 
-Current prototype constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. For metric-backed custom cards, use `useMetabaseQuery` and render the returned rows yourself.
+Current prototype constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. If the desired view is metric-backed but can be expressed from a generated table plus measures, filters, and breakouts, prefer that table-backed `InteractiveQuestion` query. Use `useMetabaseQuery` and custom rendering for metrics only when there is no table-backed equivalent or the UI needs direct row data.
 
 Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
 
 Prefer `InteractiveQuestion` for:
 
-- standard charts, tables, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
+- standard charts, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
 - trends, category comparisons, grouped summaries, geographic views, scatter plots, funnels, gauges, progress, waterfall, boxplot, and sankey-shaped queries
+- bar, line, area, row, and trend charts whenever a semantic query with measures and breakouts can produce the needed result
+- tables where users benefit from Metabase interactions such as sorting, column inspection, drill-through, downloading, or changing visualization settings
 - cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
+
+Generated dashboards should use Metabase charts as much as possible. Do not replace a normal bar, line, area, row, trend, pivot, map, or sortable table with a custom SVG/React visualization just to make it look more bespoke.
 
 Use custom React visualizations only when the user's requested presentation does not fit Metabase display types or visualization settings.
 
 Good custom visualization reasons:
 
-- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards
+- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards that cannot be represented as a normal Metabase chart/table
 - combining multiple Metabase queries into one visual unit
 - custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
 - unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
 
-For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data.
+For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data, but first consider whether an SDK scalar/smartscalar/gauge/progress view would be good enough.
 
 Chart only, without the toolbar:
 
@@ -270,7 +274,9 @@ const { data } = useMetabaseQuery<DailyRevenue>({
 - Time-series charts need multiple ordered buckets. Do not fake sparklines for scalar or one-point results.
 - Multi-series charts with different units or magnitudes need separate axes or normalization.
 - Format user-facing values: currency to at most 2 decimals, counts as whole numbers, dates as readable labels.
-- Do not assume a field with a name like `margin`, `rate`, `score`, or `percent` is already a 0-1 ratio. Check the returned values and column metadata before multiplying by 100 or adding `%`. If the source value is an amount, format it as an amount; if a ratio is needed, derive it explicitly from returned numerator and denominator fields.
+- Do not render ambiguous derived business metrics unless the semantic layer description or inspected sample values make the meaning and units obvious. This includes fields named like `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`.
+- Do not multiply by 100, add `%`, bucket into health/risk labels, or invent interpretation for ambiguous fields without evidence. Prefer omitting the field over guessing.
+- If a ratio is needed, derive it explicitly from returned numerator and denominator fields with clear labels. If the source value is an amount, format it as an amount.
 - Empty results are distinct from loading. After `isLoading` is false, render a clear empty state instead of leaving a skeleton or blank KPI.
 
 ## Important: TypeScript Checks
@@ -307,13 +313,13 @@ Common patterns:
 
 ## Presentation Guidance
 
-The React app may group, sort, format, and derive display-only values from `data.rows`.
+Prefer Metabase-rendered panels for chart-shaped and table-shaped data. The React app may group, sort, format, and derive display-only values from `data.rows` when a custom panel is justified, but do not make custom panels the default.
 
 Good transforms:
 
 - Group rows for summaries.
-- Sort and slice rows for ranked lists.
-- Pick chart types from actual data shape.
+- Sort and slice rows for ranked lists only when a custom list is clearly better than a Metabase row/bar/table visualization.
+- Pick chart types from actual data shape, and prefer Metabase `bar`, `line`, `area`, `row`, `combo`, `pivot`, and `table` displays before writing custom chart code.
 - Show loading, error, and empty states.
 - Bound dense result displays. Tables, alert lists, logs, and ranked lists should use a top-N slice, grouping, pagination, or a fixed/max-height scroll area so a large result set cannot stretch the entire page.
 
@@ -323,6 +329,7 @@ When a page feels like a raw table browser, look for schema-backed ways to enric
 - Use measures for curated aggregations instead of recalculating everything ad hoc in React.
 - Use filters to focus the query on the UI's intent.
 - Use breakouts to create trends, category comparisons, and grouped summaries.
+- If the enriched result is still a sortable/drillable table, render it with `InteractiveQuestion` instead of rebuilding table behavior in React.
 
 Avoid manual classification when the semantic layer already has the concept. Prefer curated segments, fields, metrics, or measures over string matching, threshold heuristics, or category reconstruction in React.
 
