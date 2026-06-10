@@ -11,6 +11,7 @@ import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
+import { RouterProvider } from "metabase/router";
 import { registerVisualization } from "metabase/visualizations";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
 import { PieChart } from "metabase/visualizations/visualizations/PieChart";
@@ -47,10 +48,12 @@ const store = getStore(
   storeMiddleware,
 ) as unknown as Store<State>;
 
-const ReduxDecorator = (Story: StoryFn) => {
+const StoryDecorator = (Story: StoryFn) => {
   return (
     <MetabaseReduxProvider store={store}>
-      <Story />
+      <RouterProvider>
+        <Story />
+      </RouterProvider>
     </MetabaseReduxProvider>
   );
 };
@@ -60,7 +63,7 @@ const DefaultTemplate = (args: EditorProps) => <Editor {...args} />;
 export default {
   title: "Components/Documents",
   component: Editor,
-  decorators: [ReduxDecorator],
+  decorators: [StoryDecorator],
   layout: "fullscreen",
   parameters: {
     msw: {
