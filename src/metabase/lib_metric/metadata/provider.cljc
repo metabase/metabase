@@ -16,7 +16,10 @@
   "Protocol extension for metric-specific operations on a MetadataProvider."
   (database-provider-for-table [this table-id]
     "Get the database-specific MetadataProvider for a given table-id.
-     Returns nil if the table cannot be found."))
+     Returns nil if the table cannot be found.")
+  (database-provider-for-database [this db-id]
+    "Get the database-specific MetadataProvider for a given database-id.
+     Returns nil if the database cannot be found."))
 
 (defn- route-table-metadata
   "Route table metadata request to the appropriate database provider."
@@ -135,6 +138,9 @@
   (database-provider-for-table [_this table-id]
     (when-let [db-id (table->db-fn table-id)]
       (db-provider-fn db-id)))
+
+  (database-provider-for-database [_this db-id]
+    (db-provider-fn db-id))
 
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
