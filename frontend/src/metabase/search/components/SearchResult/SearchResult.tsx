@@ -5,9 +5,9 @@ import { push } from "react-router-redux";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { trackSearchClick } from "metabase/search/analytics";
 import { Group, Icon, Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
+import { trackSearchClick } from "metabase/utils/search/analytics";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import type { SearchContext, SearchResult } from "metabase-types/api";
 

@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
-import type {
-  SearchFilterComponent,
-  TypeFilterProps,
-} from "metabase/search/types";
 import {
   filterEnabledSearchTypes,
   isEnabledSearchModelType,
-} from "metabase/search/utils/enabled-search-type";
+} from "metabase/utils/search/enabled-search-type";
+import type {
+  SearchFilterComponent,
+  TypeFilterProps,
+} from "metabase/utils/search/types";
 
 import { TypeFilterContent } from "./TypeFilterContent";
 import { TypeFilterDisplay } from "./TypeFilterDisplay";

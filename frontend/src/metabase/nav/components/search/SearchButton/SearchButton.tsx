@@ -4,10 +4,10 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import type { SearchAwareLocation } from "metabase/search/types";
-import { getSearchTextFromLocation } from "metabase/search/utils";
 import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
+import { getSearchTextFromLocation } from "metabase/utils/search";
+import type { SearchAwareLocation } from "metabase/utils/search/types";
 
 import S from "./SearchButton.module.css";
 

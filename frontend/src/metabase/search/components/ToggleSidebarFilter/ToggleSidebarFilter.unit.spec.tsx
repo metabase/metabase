@@ -4,7 +4,7 @@ import { useState } from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { ToggleSidebarFilterProps } from "metabase/search/components/ToggleSidebarFilter";
 import { ToggleSidebarFilter } from "metabase/search/components/ToggleSidebarFilter";
-import type { SearchFilterComponent } from "metabase/search/types";
+import type { SearchFilterComponent } from "metabase/utils/search/types";
 
 const mockFilter: SearchFilterComponent = {
   label: () => "Mock Filter",

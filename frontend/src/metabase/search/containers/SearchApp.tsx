@@ -13,10 +13,6 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { SearchSidebar } from "metabase/search/components/SearchSidebar";
 import {
-  SearchContextTypes,
-  SearchFilterKeys,
-} from "metabase/search/constants";
-import {
   SearchBody,
   SearchControls,
   SearchMain,
@@ -24,15 +20,22 @@ import {
 } from "metabase/search/containers/SearchApp.styled";
 import { SearchResultSection } from "metabase/search/containers/SearchResultSection";
 import { PAGE_SIZE } from "metabase/search/containers/constants";
+import { Box, Group, Paper, Text } from "metabase/ui";
 import {
   filterEnabledSearchTypes,
   getFiltersFromLocation,
   getSearchTextFromLocation,
-} from "metabase/search/utils";
-import { Box, Group, Paper, Text } from "metabase/ui";
+} from "metabase/utils/search";
+import {
+  SearchContextTypes,
+  SearchFilterKeys,
+} from "metabase/utils/search/constants";
 import type { SearchRequest } from "metabase-types/api";
 
-import type { SearchAwareLocation, URLSearchFilterQueryParams } from "../types";
+import type {
+  SearchAwareLocation,
+  URLSearchFilterQueryParams,
+} from "metabase/utils/search/types";
 
 const getPageFromLocation = (location: SearchAwareLocation) => {
   const maybePage = location.query?.page

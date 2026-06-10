@@ -1,6 +1,7 @@
 import { trackSchemaEvent } from "metabase/analytics";
-import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
 import type { SearchContext, SearchRequest } from "metabase-types/api";
+
+import { hashSearchTerm, shouldReportSearchTerm } from "./term";
 
 // The search `context` values we publish Snowplow analytics events for.
 // The other contexts (data pickers, browse, etc.) also issue searches; we don't publish those because it

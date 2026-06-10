@@ -4,7 +4,7 @@ import { useState } from "react";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { SearchUserPicker } from "metabase/search/components/SearchUserPicker";
-import type { CreatedByFilterProps } from "metabase/search/types";
+import type { CreatedByFilterProps } from "metabase/utils/search/types";
 import type { User, UserId } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 

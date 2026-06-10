@@ -7,7 +7,6 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
-import { trackSearchClick } from "metabase/search/analytics";
 import {
   Flex,
   Group,
@@ -19,6 +18,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import { trackSearchClick } from "metabase/utils/search/analytics";
 import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { SearchFilterToggle } from "metabase/search/types";
+import type { SearchFilterToggle } from "metabase/utils/search/types";
 
 export const SearchTrashedItemsFilter: SearchFilterToggle = {
   label: () => t`Search items in trash`,

@@ -13,14 +13,14 @@ import { NativeQueryFilter } from "metabase/search/components/filters/NativeQuer
 import { PersonalCollectionsFilter } from "metabase/search/components/filters/PersonalCollectionsFilter";
 import { SearchTrashedItemsFilter } from "metabase/search/components/filters/SearchTrashedItemsFilter";
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import { SearchFilterKeys } from "metabase/search/constants";
+import { Stack } from "metabase/ui";
+import { SearchFilterKeys } from "metabase/utils/search/constants";
 import type {
   FilterTypeKeys,
   SearchFilterComponent,
   SearchQueryParamValue,
   URLSearchFilterQueryParams,
-} from "metabase/search/types";
-import { Stack } from "metabase/ui";
+} from "metabase/utils/search/types";
 
 type SearchSidebarProps = {
   value: URLSearchFilterQueryParams;

@@ -5,14 +5,14 @@ import { isEmpty } from "underscore";
 import { useCaptureEvent } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSelector } from "metabase/redux";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
 import type {
   FilterTypeKeys,
   SearchFilterComponentProps,
   SearchFilterDropdown,
   SearchFilterPropTypes,
-} from "metabase/search/types";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
+} from "metabase/utils/search/types";
 import { isNotNull } from "metabase/utils/types";
 import type { IconName } from "metabase-types/api";
 

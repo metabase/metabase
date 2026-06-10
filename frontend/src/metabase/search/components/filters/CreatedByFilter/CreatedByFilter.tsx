@@ -5,11 +5,11 @@ import {
   SearchUserPickerContainer,
 } from "metabase/search/components/SearchUserPicker";
 import { UserNameDisplay } from "metabase/search/components/UserNameDisplay";
-import type { SearchFilterDropdown } from "metabase/search/types";
+import type { SearchFilterDropdown } from "metabase/utils/search/types";
 import {
   parseUserIdArray,
   stringifyUserIdArray,
-} from "metabase/search/utils/user-search-params";
+} from "metabase/utils/search/user-search-params";
 
 export const CreatedByFilter: SearchFilterDropdown<"created_by"> = {
   iconName: "person",

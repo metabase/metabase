@@ -1,5 +1,5 @@
 import { render, screen } from "__support__/ui";
-import type { TypeFilterProps } from "metabase/search/types";
+import type { TypeFilterProps } from "metabase/utils/search/types";
 import type { EnabledSearchModel } from "metabase-types/api";
 
 import { TypeFilterDisplay } from "./TypeFilterDisplay";

@@ -1,7 +1,7 @@
 import { trackSchemaEvent } from "metabase/analytics";
-import { isTrackedSearchContext } from "metabase/search/analytics";
 import { openSaveDialog } from "metabase/utils/dom";
 import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
+import { isTrackedSearchContext } from "metabase/utils/search/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { Api } from "./api";

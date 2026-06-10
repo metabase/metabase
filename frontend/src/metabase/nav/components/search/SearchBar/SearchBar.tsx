@@ -17,17 +17,17 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { RecentsList } from "metabase/nav/components/search/RecentsList";
 import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { SearchAwareLocation } from "metabase/search/types";
-import {
-  getFiltersFromLocation,
-  getSearchTextFromLocation,
-  isSearchPageLocation,
-} from "metabase/search/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import { isWithinIframe } from "metabase/utils/iframe";
+import {
+  getFiltersFromLocation,
+  getSearchTextFromLocation,
+  isSearchPageLocation,
+} from "metabase/utils/search";
+import type { SearchAwareLocation } from "metabase/utils/search/types";
 import type { SearchResult } from "metabase-types/api";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";

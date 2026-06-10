@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { SearchFilterComponent } from "metabase/search/types";
+import type { SearchFilterComponent } from "metabase/utils/search/types";
 
 export const VerifiedFilter: SearchFilterComponent<"verified"> = {
   label: () => t`Verified items only`,
