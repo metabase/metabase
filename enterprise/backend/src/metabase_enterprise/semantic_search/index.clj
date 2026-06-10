@@ -869,6 +869,13 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
+            ;; Warm the pool concurrently with the embedding round-trip: the pool holds zero idle
+            ;; connections by default (see semantic-search.db.datasource), so the first search after an
+            ;; idle period would otherwise pay the connection handshake serially on top of the embedding
+            ;; latency. Fire-and-forget; failures surface on the real query below.
+            _ (future (try
+                        (with-open [_conn (.getConnection ^javax.sql.DataSource db)])
+                        (catch Throwable _)))
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}

@@ -1,11 +1,12 @@
 (ns metabase-enterprise.semantic-search.db.datasource
   (:require
    [environ.core :refer [env]]
+   [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc])
   (:import
-   (com.mchange.v2.c3p0 DataSources)))
+   (com.mchange.v2.c3p0 DataSources PooledDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -17,17 +18,46 @@
   "The database URL used to connect to pgvector"
   (env :mb-pgvector-db-url))
 
-;; See metabase.app-db.connection-pool-setup for more details on these properties
-;; TODO: not sure if we need the MetabaseConnectionCustomizer like in the app DB connection pool setup
-(def ^:private semantic-search-connection-pool-props
-  "Connection pool properties for semantic search database using c3p0."
-  {"idleConnectionTestPeriod"     60
-   "maxIdleTimeExcessConnections" (* 10 60)  ; 5 minutes
-   "maxConnectionAge"             (* 30 60)  ; 30 minutes
-   "maxPoolSize"                  5          ; Small pool to start
-   "minPoolSize"                  1
-   "initialPoolSize"              1
-   "dataSourceName"               "metabase-semantic-search-db"})
+;; See metabase.app-db.connection-pool-setup and metabase.driver.sql-jdbc.connection for the analogous
+;; app-db and data-warehouse pools.
+;;
+;; These knobs exist so operators can cap resource usage when many Metabase instances share one pgvector
+;; RDS instance. They are env-var driven (read once at pool construction) so a deployment can set them
+;; uniformly across the fleet. TODO: not sure if we need the MetabaseConnectionCustomizer like the app DB.
+(defn- connection-pool-props
+  "Connection pool properties for the semantic search database using c3p0."
+  []
+  (let [min-pool-size (or (config/config-int :mb-pgvector-db-min-pool-size) 0)]
+    {"idleConnectionTestPeriod"     60
+     "maxIdleTimeExcessConnections" (* 10 60)  ; cull excess idle connections after 10 minutes
+     "maxConnectionAge"             (* 30 60)  ; recycle any connection after 30 minutes
+     ;; minPoolSize/initialPoolSize 0: idle instances hold zero server-side connections, which is what
+     ;; makes a shared RDS viable. Cold start costs one TCP+TLS+auth handshake on the first search after
+     ;; 10+ idle minutes, and the query path warms the pool concurrently with the embedding round-trip
+     ;; (see semantic-search.index/query-index), so user searches don't pay it serially. Set
+     ;; MB_PGVECTOR_DB_MIN_POOL_SIZE=1 to pin a warm connection on a dedicated/hot instance.
+     "minPoolSize"                  min-pool-size
+     "initialPoolSize"              min-pool-size
+     ;; acquireIncrement 1: c3p0 defaults to acquiring 3 connections per pool miss, which triples the
+     ;; cold-start burst and idle tail on the shared RDS for no benefit at this pool size.
+     "acquireIncrement"             1
+     "maxPoolSize"                  (or (config/config-int :mb-pgvector-db-max-connection-pool-size) 5)
+     ;; checkoutTimeout: fail fast when the pool is exhausted instead of blocking forever (c3p0 default 0).
+     ;; Safe to fail fast: the semantic engine falls back to appdb search on any error
+     ;; (see semantic-search.core/results).
+     "checkoutTimeout"              (or (config/config-int :mb-pgvector-db-checkout-timeout-ms) 10000)
+     ;; unreturnedConnectionTimeout: c3p0's leak detector, off (0) by default. It destroys connections by
+     ;; checkout *duration*, so any value low enough to catch leaks also kills legitimately slow work
+     ;; (reindex DDL, bulk upserts, repair scans). Leaks are already bounded: checkoutTimeout + the appdb
+     ;; fallback degrade search rather than block it. Enable together with the stack-traces knob on a
+     ;; canary to hunt a suspected leak.
+     "unreturnedConnectionTimeout" (or (config/config-int :mb-pgvector-db-unreturned-connection-timeout-seconds) 0)
+     "debugUnreturnedConnectionStackTraces"
+     (boolean (config/config-bool :mb-pgvector-db-debug-unreturned-connection-stack-traces))
+     ;; testConnectionOnCheckout: off by default (idleConnectionTestPeriod covers idle conns); flip on if a
+     ;; shared RDS drops connections out from under the pool. Matches the app-db default.
+     "testConnectionOnCheckout"    (boolean (config/config-bool :mb-pgvector-db-test-connection-on-checkout))
+     "dataSourceName"              "metabase-semantic-search-db"}))
 
 (defn- build-db-config
   "Build database configuration from environment variables"
@@ -36,6 +66,22 @@
     {:jdbcUrl db-url}
     (throw (ex-info "MB_PGVECTOR_DB_URL environment variable is required for semantic search" {}))))
 
+(defn shutdown-db!
+  "Close the pooled data source (if any) and clear it, releasing all server-side connections.
+  Safe to call when the pool was never initialized; a later [[init-db!]] builds a fresh pool."
+  []
+  (locking data-source
+    (when-let [ds @data-source]
+      (reset! data-source nil)
+      (log/info "Closing semantic search connection pool")
+      (.close ^PooledDataSource ds))))
+
+;; Tests redef [[data-source]] and close their pools themselves; this hook only sees the root binding,
+;; so it closes at most the production pool.
+(defonce ^:private shutdown-hook
+  (delay (.addShutdownHook (Runtime/getRuntime)
+                           (Thread. ^Runnable shutdown-db! "semantic-search-pool-shutdown"))))
+
 (defn init-db!
   "Initialize c3p0 connection pool for semantic search database.
    Requires MB_PGVECTOR_DB_URL environment variable."
@@ -43,11 +89,13 @@
   (locking data-source
     (or @data-source
         (let [db-config   (build-db-config)
+              pool-props  (connection-pool-props)
               unpooled-ds (jdbc/get-datasource db-config)
               pooled-ds   (DataSources/pooledDataSource
                            ^javax.sql.DataSource unpooled-ds
-                           (connection-pool/map->properties semantic-search-connection-pool-props))]
-          (log/info "Initializing semantic search connection pool with properties:" semantic-search-connection-pool-props)
+                           (connection-pool/map->properties pool-props))]
+          (log/info "Initializing semantic search connection pool with properties:" pool-props)
+          (force shutdown-hook)
           (reset! data-source pooled-ds)))))
 
 (defn test-connection!
