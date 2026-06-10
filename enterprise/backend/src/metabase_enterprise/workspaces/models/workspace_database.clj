@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
    [metabase.api.common :as api]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -41,6 +42,44 @@
   [_model {:keys [database_id]}]
   (and (api/is-data-analyst?)
        (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
+
+;;; ------------------------------------------ Database discovery ------------------------------------------
+
+(defn eligible-databases
+  "Return every Database that can participate in a workspace: the driver supports the
+   `:workspace` feature and the database-local `database-enable-workspaces` setting is
+   enabled for that database."
+  []
+  (into []
+        (filter (fn [db]
+                  (and (get-in db [:settings :database-enable-workspaces])
+                       (driver.u/supports? (:engine db) :workspace db))))
+        (t2/select :model/Database {:order-by [[:id :asc]]})))
+
+(defn- database-input-schemas
+  "Derive the input schemas for an auto-discovered workspace database: every distinct
+   schema of its active synced tables. Databases without schema support get `[]`."
+  [db]
+  (if (driver.u/supports? (:engine db) :schemas db)
+    (->> (t2/select-fn-set :schema :model/Table
+                           :db_id (:id db)
+                           :active true
+                           {:where [:not= :schema nil]})
+         sort
+         vec)
+    []))
+
+(defn create-workspace-database!
+  "Insert the WorkspaceDatabase row attaching `database` to `workspace-id`, with
+   server-managed defaults and input schemas derived from the database's synced
+   tables. Returns the new row's id; the row starts `:unprovisioned`."
+  [workspace-id database]
+  (t2/insert-returning-pk! :model/WorkspaceDatabase
+                           {:workspace_id     workspace-id
+                            :database_id      (:id database)
+                            :input_schemas    (database-input-schemas database)
+                            :database_details {}
+                            :output_namespace ""}))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

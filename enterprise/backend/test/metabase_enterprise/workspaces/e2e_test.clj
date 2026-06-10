@@ -30,6 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -83,8 +84,23 @@
   [driver]
   (boolean (some #{:db} (driver/qualified-name-components driver))))
 
+(defn- add-workspace-database!
+  "Test stand-in for the removed `ws/add-database!`: attach a database to the
+   workspace with explicit input schemas and provision it synchronously
+   (blocking). Production code discovers databases automatically inside
+   `ws/create-workspace!`; these e2e tests need a hand-picked database and
+   input schema, so they manage the WorkspaceDatabase row directly."
+  [ws-id db-id input-schemas]
+  (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
+                                        {:workspace_id     ws-id
+                                         :database_id      db-id
+                                         :input_schemas    input-schemas
+                                         :database_details {}
+                                         :output_namespace ""})]
+    (provisioning/provision-single! wsd-id)))
+
 (defn- workspace-input-schema
-  "Canonical input schema string for `add-database!`. For 2-slot drivers (and
+  "Canonical input schema string for `add-workspace-database!`. For 2-slot drivers (and
    ClickHouse) it's the schema name. For MySQL — which has no schema layer —
    the same string is interpreted as the database name. For 3-slot drivers
    (SQL Server, BigQuery) the catalog is read from `Database.details`
@@ -343,8 +359,8 @@
                         ;; multimethods, but through `provisioning/provision-single!`, which writes
                         ;; the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
-                        (ws/add-database! ws-id (:id ws-db)
-                                          [(workspace-input-schema admin-driver admin-details main-schema)])
+                        (add-workspace-database! ws-id (:id ws-db)
+                                                 [(workspace-input-schema admin-driver admin-details main-schema)])
                         ;; Sanity check: provisioning must have populated :output_namespace and flipped
                         ;; status to :provisioned. If empty, the workspace driver impl is broken.
                         (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
@@ -714,8 +730,8 @@
               (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
                                                        :creator_id (mt/user->id :crowberto)})]
                 (try
-                  (ws/add-database! ws-id (:id ws-db)
-                                    [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (add-workspace-database! ws-id (:id ws-db)
+                                           [(workspace-input-schema admin-driver admin-details main-schema)])
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]

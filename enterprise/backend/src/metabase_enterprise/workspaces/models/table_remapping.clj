@@ -50,3 +50,14 @@
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
 (t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
+
+(defn list-remappings
+  "Return all TableRemapping rows, ordered by id."
+  []
+  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+
+(defn clear-all-remappings!
+  "Delete every TableRemapping row across all databases."
+  []
+  (t2/delete! :model/TableRemapping)
+  nil)

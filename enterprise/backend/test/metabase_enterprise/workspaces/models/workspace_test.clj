@@ -18,9 +18,20 @@
           overrides)))
 
 (defn- create-ws!
-  "Test helper: supply a default :creator_id so call sites stay terse."
-  [params]
-  (workspace/create-workspace! (merge {:creator_id (mt/user->id :crowberto)} params)))
+  "Test helper: create a workspace (with a default :creator_id) and attach the given
+   `:databases` rows directly — `create-workspace!` itself no longer takes databases;
+   production code attaches them via auto-discovery in
+   `metabase-enterprise.workspaces.core/create-workspace!`."
+  [{:keys [databases] :as params}]
+  (let [ws (workspace/create-workspace! (merge {:creator_id (mt/user->id :crowberto)}
+                                               (dissoc params :databases)))]
+    (when (seq databases)
+      (t2/insert! :model/WorkspaceDatabase
+                  (map #(merge {:database_details {} :output_namespace ""}
+                               %
+                               {:workspace_id (:id ws)})
+                       databases)))
+    (workspace/get-workspace (:id ws))))
 
 (deftest create-workspace-minimal-test
   (testing "create-workspace! creates a Workspace with no databases"
@@ -32,7 +43,7 @@
         (is (t2/exists? :model/Workspace :id (:id created)))))))
 
 (deftest create-workspace-with-databases-test
-  (testing "create-workspace! stores nested workspace_database rows"
+  (testing "nested workspace_database rows round-trip and hydrate"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
         (let [created (create-ws!

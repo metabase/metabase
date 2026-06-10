@@ -3,8 +3,11 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2])
@@ -30,7 +33,7 @@
 ;;; ----------------------------------------------- CRUD -------------------------------------------------------
 
 (deftest create-workspace-test
-  (testing "create with name only (no databases)"
+  (testing "create with no eligible databases attaches nothing"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name       "Test WS"
                                       :creator_id (mt/user->id :crowberto)})]
@@ -53,96 +56,78 @@
       (ws/create-workspace! {:name "B" :creator_id (mt/user->id :crowberto)})
       (is (>= (count (ws/list-workspaces)) 2)))))
 
-;;; ----------------------------------------- Add/Remove Database ----------------------------------------------
+;;; ----------------------------------------- Database auto-discovery ------------------------------------------
 
-(deftest add-database-test
-  (testing "add database provisions immediately"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws  (ws/create-workspace! {:name "Add DB" :creator_id (mt/user->id :crowberto)})
-            ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                  (ws/add-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"]))]
-        (is (= 1 (count (:databases ws'))))
-        (is (= ["PUBLIC" "ANALYTICS"]
-               (:input_schemas (first (:databases ws')))))
-        (is (= :provisioned (:status (first (:databases ws'))))))))
-  (testing "input required on add"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "No Schema Add" :creator_id (mt/user->id :crowberto)})]
-        (is (thrown-with-msg?
-             ExceptionInfo #"input_schemas is required"
-             (ws/add-database! (:id ws) (mt/id) []))))))
-  (testing "input not required when database does not support :schemas (e.g. MySQL)"
-    (when (workspaces.tu/driver-loadable? :mysql)
-      (mt/with-temp [:model/Database {db-id :id} {:engine :mysql}]
+(deftest eligible-databases-test
+  (testing "eligible iff the driver supports :workspace AND database-enable-workspaces is on"
+    (letfn [(eligible? [] (boolean (some #(= (mt/id) (:id %)) (workspace-database/eligible-databases))))]
+      (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
+        (testing "setting on, driver unsupported (H2) — not eligible"
+          (is (false? (eligible?))))
+        (testing "setting on, driver supported — eligible"
+          (with-redefs [driver/database-supports? (constantly true)]
+            (is (true? (eligible?))))))
+      (testing "driver supported, setting off — not eligible"
+        (with-redefs [driver/database-supports? (constantly true)]
+          (is (false? (eligible?))))))))
+
+(deftest create-workspace-discovers-and-provisions-test
+  (testing "create-workspace! attaches every eligible database, derives its input schemas
+            from the synced tables, and provisions it"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
+      (with-redefs [driver/database-supports?            (constantly true)
+                    provisioning/dispatching-provisioner (stub-provisioner)]
         (mt/with-model-cleanup [:model/Workspace]
-          (let [ws  (ws/create-workspace! {:name "MySQL Add" :creator_id (mt/user->id :crowberto)})
-                ws' (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-                      (ws/add-database! (:id ws) db-id []))]
-            (is (= 1 (count (:databases ws'))))
-            (is (= [] (:input_schemas (first (:databases ws'))))))))))
-  (testing "duplicate database throws 409"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Dup DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
-        (is (thrown-with-msg?
-             ExceptionInfo #"Database already in workspace"
-             (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))))
-  (testing "provisioning failure rolls the row back so the caller can retry cleanly"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Roll Back" :creator_id (mt/user->id :crowberto)})
-            failing-provisioner (reify provisioning/Provisioner
+          (let [ws (ws/create-workspace! {:name "Auto" :creator_id (mt/user->id :crowberto)})]
+            (is (= [(mt/id)] (map :database_id (:databases ws))))
+            (is (= ["PUBLIC"] (:input_schemas (first (:databases ws)))))
+            (is (= :provisioned (:status (first (:databases ws)))))))))))
+
+(deftest create-workspace-schemaless-driver-test
+  (testing "a database without :schemas support gets an empty input_schemas"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
+      (with-redefs [driver.u/supports?                   (fn [_driver feature _db] (= feature :workspace))
+                    provisioning/dispatching-provisioner (stub-provisioner)]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws (ws/create-workspace! {:name "Schemaless" :creator_id (mt/user->id :crowberto)})]
+            (is (= [(mt/id)] (map :database_id (:databases ws))))
+            (is (= [] (:input_schemas (first (:databases ws)))))))))))
+
+(deftest create-workspace-provisioning-failure-test
+  (testing "a provisioning failure leaves that row :unprovisioned but the workspace is still created"
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
+      (let [failing-provisioner (reify provisioning/Provisioner
                                   (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
                                   (grant!   [_ _ _ _ _] nil)
                                   (destroy! [_ _ _ _]   nil))]
-        (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
-          (is (thrown-with-msg? ExceptionInfo #"boom"
-                                (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))))
-        (is (empty? (:databases (ws/get-workspace (:id ws))))
-            "the failed add must not leave a workspace_database row behind")))))
-
-(deftest remove-database-test
-  (testing "remove deprovisions and deletes"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Remove DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
-          (let [ws' (ws/remove-database! (:id ws) (mt/id))]
-            (is (empty? (:databases ws'))))))))
-  (testing "remove from non-existent workspace throws 404"
-    (is (thrown-with-msg?
-         ExceptionInfo #"Workspace not found"
-         (ws/remove-database! 999999 (mt/id))))))
-
-;;; ----------------------------------------- Update Database --------------------------------------------------
-
-(deftest update-database-test
-  (testing "update deprovisions old config and reprovisions with new input"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Update DB" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"])
-          (let [ws' (ws/update-database! (:id ws) (mt/id) ["PUBLIC" "ANALYTICS"])]
-            (is (= ["PUBLIC" "ANALYTICS"]
-                   (:input_schemas (first (:databases ws')))))
-            (is (= :provisioned (:status (first (:databases ws')))))))))))
+        (with-redefs [driver/database-supports?            (constantly true)
+                      provisioning/dispatching-provisioner failing-provisioner]
+          (mt/with-model-cleanup [:model/Workspace]
+            (let [ws (ws/create-workspace! {:name "Boom" :creator_id (mt/user->id :crowberto)})]
+              (is (= [(mt/id)] (map :database_id (:databases ws))))
+              (is (= :unprovisioned (:status (first (:databases ws))))))))))))
 
 ;;; ----------------------------------------- Delete Workspace ------------------------------------------------
 
 (deftest delete-workspace-test
   (testing "delete deprovisions all databases first"
-    (mt/with-model-cleanup [:model/Workspace]
-      (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/add-database! (:id ws) (mt/id) ["PUBLIC"]))
-        (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-          (ws/delete-workspace! (:id ws)))
-        (is (nil? (ws/get-workspace (:id ws)))))))
+    (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-workspaces true}}
+      (with-redefs [driver/database-supports?            (constantly true)
+                    provisioning/dispatching-provisioner (stub-provisioner)]
+        (mt/with-model-cleanup [:model/Workspace]
+          (let [ws (ws/create-workspace! {:name "Delete WS" :creator_id (mt/user->id :crowberto)})]
+            (is (= :provisioned (:status (first (:databases ws)))))
+            (ws/delete-workspace! (:id ws))
+            (is (nil? (ws/get-workspace (:id ws)))))))))
   (testing "delete workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
       (let [ws (ws/create-workspace! {:name "Empty WS" :creator_id (mt/user->id :crowberto)})]
         (ws/delete-workspace! (:id ws))
-        (is (nil? (ws/get-workspace (:id ws))))))))
+        (is (nil? (ws/get-workspace (:id ws)))))))
+  (testing "delete non-existent workspace throws 404"
+    (is (thrown-with-msg?
+         ExceptionInfo #"Workspace not found"
+         (ws/delete-workspace! 999999)))))
 
 ;;; -------------------------------------------- Remappings ----------------------------------------------------
 

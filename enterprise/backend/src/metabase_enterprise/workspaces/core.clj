@@ -5,9 +5,12 @@
 
    - **Manager-side state.** Workspaces and their per-database configs live in the
      `:model/Workspace` and `:model/WorkspaceDatabase` rows. Mutations go through
-     [[create-workspace!]], [[add-database!]], [[update-database!]],
-     [[remove-database!]], [[delete-workspace!]]. Provisioning operations are
-     synchronous — the caller waits until the warehouse work completes.
+     [[create-workspace!]] and [[delete-workspace!]]. Databases are not managed
+     individually — [[create-workspace!]] discovers every eligible database (driver
+     supports the `:workspace` feature and the database-local
+     `database-enable-workspaces` setting is on) and provisions them all.
+     Provisioning operations are synchronous — the caller waits until the
+     warehouse work completes.
 
    - **Instance-side state.** When a Metabase boots in workspace mode, the
      `:workspace` section loader (`metabase-enterprise.advanced-config.file.workspace`)
@@ -32,11 +35,12 @@
          │                                                ▼
          └──────────────────────────────────────── provisioned"
   (:require
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
+   [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
@@ -130,8 +134,7 @@
 (defn clear-all-remappings!
   "Delete every `:model/TableRemapping` row across all databases."
   []
-  (t2/delete! :model/TableRemapping)
-  nil)
+  (table-remapping/clear-all-remappings!))
 
 (defn instance-workspace
   "Return the workspace loaded on this instance, or nil if none."
@@ -166,7 +169,7 @@
 (defn list-remappings
   "Return all TableRemapping rows, ordered by id."
   []
-  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+  (table-remapping/list-remappings))
 
 ;;; ------------------------------------- Manager-side helpers ------------------------------------------------
 
@@ -174,23 +177,6 @@
   (or (workspace/get-workspace workspace-id)
       (throw (ex-info "Workspace not found"
                       {:status-code 404 :workspace_id workspace-id}))))
-
-(defn- assert-input-schemas-when-supported!
-  "Throw 400 if the database supports the `:schemas` feature and `input-schemas` is empty.
-   Databases without schemas (e.g. MySQL) accept an empty `input-schemas`."
-  [database-id input-schemas]
-  (when-let [db (t2/select-one :model/Database :id database-id)]
-    (when (and (driver.u/supports? (:engine db) :schemas db)
-               (empty? input-schemas))
-      (throw (ex-info "input_schemas is required: at least one source schema must be specified"
-                      {:status-code 400 :database_id database-id})))))
-
-(defn- find-wsd
-  "Find the WorkspaceDatabase for a given workspace + database, or throw 404."
-  [ws database-id]
-  (or (some #(when (= database-id (:database_id %)) %) (:databases ws))
-      (throw (ex-info "Database not in workspace"
-                      {:status-code 404 :workspace_id (:id ws) :database_id database-id}))))
 
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
@@ -208,58 +194,18 @@
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
 (defn create-workspace!
-  "Create a new Workspace (name only, no databases). Returns the created workspace, hydrated."
+  "Create a new Workspace. Discovers every eligible database (see
+   [[workspace-database/eligible-databases]]), attaches it to the workspace, and
+   provisions it — all in a single transaction (blocking). Provisioning failures are
+   logged per database and leave that row `:unprovisioned`. Returns the created
+   workspace, hydrated."
   [params]
-  (workspace/create-workspace! (select-keys params [:name :creator_id])))
-
-(defn add-database!
-  "Add a database to a workspace and provision it immediately (blocking).
-   `input-schemas` is a vector of driver-opaque schema name strings.
-   Returns the updated workspace, hydrated."
-  [workspace-id database-id input-schemas]
-  (let [ws (assert-workspace-exists workspace-id)]
-    (assert-input-schemas-when-supported! database-id input-schemas)
-    (when (some #(= database-id (:database_id %)) (:databases ws))
-      (throw (ex-info "Database already in workspace"
-                      {:status-code 409 :workspace_id workspace-id :database_id database-id})))
-    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
-                                          {:workspace_id     workspace-id
-                                           :database_id      database-id
-                                           :input_schemas    input-schemas
-                                           :database_details {}
-                                           :output_namespace ""})]
-      (try
-        (provisioning/provision-single! wsd-id)
-        (catch Throwable t
-          (t2/delete! :model/WorkspaceDatabase :id wsd-id)
-          (throw t)))
-      (workspace/get-workspace workspace-id))))
-
-(defn update-database!
-  "Update a database's config in a workspace: deprovision the existing one (if provisioned),
-   update `input-schemas`, then reprovision (blocking). `input-schemas` is a vector of
-   driver-opaque schema name strings. Returns the updated workspace, hydrated."
-  [workspace-id database-id input-schemas]
-  (let [ws  (assert-workspace-exists workspace-id)
-        wsd (find-wsd ws database-id)]
-    (assert-input-schemas-when-supported! database-id input-schemas)
-    (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! (:id wsd)))
-    (t2/update! :model/WorkspaceDatabase {:id (:id wsd)}
-                {:input_schemas input-schemas})
-    (provisioning/provision-single! (:id wsd))
-    (workspace/get-workspace workspace-id)))
-
-(defn remove-database!
-  "Deprovision a database (if provisioned) and remove it from the workspace (blocking).
-   Returns the updated workspace, hydrated."
-  [workspace-id database-id]
-  (let [ws  (assert-workspace-exists workspace-id)
-        wsd (find-wsd ws database-id)]
-    (when (= :provisioned (:status wsd))
-      (provisioning/deprovision-single! (:id wsd)))
-    (t2/delete! :model/WorkspaceDatabase :id (:id wsd))
-    (workspace/get-workspace workspace-id)))
+  (t2/with-transaction [_conn]
+    (let [ws (workspace/create-workspace! (select-keys params [:name :creator_id]))]
+      (doseq [db (workspace-database/eligible-databases)]
+        (workspace-database/create-workspace-database! (:id ws) db))
+      (provisioning/provision-workspace! (:id ws))
+      (workspace/get-workspace (:id ws)))))
 
 (defn delete-workspace!
   "Deprovision all databases (blocking), then delete the workspace."

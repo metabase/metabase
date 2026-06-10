@@ -98,18 +98,12 @@
          {:workspace_id workspace-id}))
 
 (defn create-workspace!
-  "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
-  The param map must supply `:creator_id`. Returns the created Workspace with
-  `:databases` and `:creator` hydrated."
-  [{:keys [name creator_id databases]}]
-  (t2/with-transaction [_conn]
-    (let [workspace-id (t2/insert-returning-pk! :model/Workspace
-                                                {:name       name
-                                                 :creator_id creator_id})]
-      (when (seq databases)
-        (t2/insert! :model/WorkspaceDatabase
-                    (map #(with-workspace-database-defaults % workspace-id) databases)))
-      (get-workspace workspace-id))))
+  "Create a Workspace. The param map must supply `:creator_id`. Returns the created
+  Workspace with `:databases` and `:creator` hydrated."
+  [{:keys [name creator_id]}]
+  (get-workspace (t2/insert-returning-pk! :model/Workspace
+                                          {:name       name
+                                           :creator_id creator_id})))
 
 (defn- reject-active-modification!
   "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
