@@ -12,7 +12,7 @@
    [metabase.explorations.settings]
    [metabase.explorations.task.runner]))
 
-;; Install the exploration data-access gate into the documents module's read/write chokepoint, so
-;; the AI Summary doc's content is hidden from collaborators whose lens differs from the creator's.
-(documents/register-exploration-doc-visibility-fn!
+;; Install the content-visibility gate into the documents module's read/write path, so the AI
+;; Summary doc's content is hidden from collaborators whose lens differs from the creator's.
+(documents/register-doc-content-visibility-fn!
  document-perms/doc-content-visible-to-current-user?)

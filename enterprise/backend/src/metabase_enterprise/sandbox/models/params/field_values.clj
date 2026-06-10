@@ -90,11 +90,11 @@
   the same enforcement guard (`field-is-sandboxed?`) and attribute-extraction as the FieldValues
   cache, so superusers and users with full access via another group correctly get no token (and
   thus see any creator's snapshot), and two genuinely-sandboxed users \"share a sandbox\" iff
-  they'd see the same rows. The card's `:updated_at` (element 1) is stringified so the token is
-  EDN-safe for storage on `stored_result.data_access_token`."
+  they'd see the same rows. The card's `:updated_at` is stringified so the token is EDN-safe for
+  storage on `stored_result.data_access_token`."
   :feature :none
   [table-id]
   (let [field {:table_id table-id}]
     (when (field-is-sandboxed? field)
-      (some-> (field->sandbox-attributes-for-current-user field)
-              (update 1 str)))))
+      (when-let [[card-id updated-at attributes] (field->sandbox-attributes-for-current-user field)]
+        [card-id (str updated-at) attributes]))))

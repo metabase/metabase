@@ -149,11 +149,11 @@
   "Gets existing `Documents`."
   [_route-params
    _query-params]
-  {:items (-> (t2/select :model/Document {:where [:and
-                                                  (collection/visible-collection-filter-clause)
-                                                  [:= :archived false]]})
-              (->> (filter mi/can-read?))
-              (t2/hydrate :creator :can_write :is_remote_synced))})
+  {:items (as-> (t2/select :model/Document {:where [:and
+                                                    (collection/visible-collection-filter-clause)
+                                                    [:= :archived false]]}) docs
+            (filter mi/can-read? docs)
+            (t2/hydrate docs :creator :can_write :is_remote_synced))})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

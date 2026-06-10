@@ -16,7 +16,7 @@
  [metabase.documents.api.document
   get-document]
  [metabase.documents.models.document
-  register-exploration-doc-visibility-fn!]
+  register-doc-content-visibility-fn!]
  [metabase.documents.prose-mirror
   prose-mirror-content-type]
  [metabase.documents.validate

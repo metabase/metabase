@@ -1485,7 +1485,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v63.storedresultdataaccesstoken
-      author: nvoxland
+      author: johnswanson
       comment: Add stored_result.data_access_token for per-lens cached-read gating
       changes:
         - addColumn:
@@ -1500,7 +1500,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v63.storedresultdataaccesstokenbf
-      author: nvoxland
+      author: johnswanson
       comment: Backfill data_access_token to the empty-map EDN sentinel '{}' for pre-token stored_result rows so legacy snapshots stay viewable by anyone with sufficient data perms (the nil-token read gate is creator+admin-only).
       changes:
         - update:

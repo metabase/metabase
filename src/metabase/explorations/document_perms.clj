@@ -24,13 +24,15 @@
       (t2/select :model/StoredResult :id [:in sr-ids]))))
 
 (defn doc-content-visible-to-current-user?
-  "True when the current user may see the derived content of exploration-attached `doc`: their
-  data-access lens must be compatible with EVERY query result the doc's thread synthesizes (the AI
+  "True when the current user may see the derived content of `doc`. Documents not attached to an
+  exploration thread are always visible; for exploration-attached documents, the viewer's
+  data-access lens must be compatible with EVERY query result the thread synthesizes (the AI
   summary mixes values across all of them). The exploration's creator always sees their own
   summary. Takes the whole `doc` so the policy can later be narrowed to specific document kinds."
   [doc]
-  (let [stored-results (thread-stored-results (:exploration_thread_id doc))]
-    (every? (fn [sr]
-              (or (= api/*current-user-id* (:creator_id sr))
-                  (queries/viewer-can-view-cached-result? sr)))
-            stored-results)))
+  (or (nil? (:exploration_thread_id doc))
+      (let [stored-results (thread-stored-results (:exploration_thread_id doc))]
+        (every? (fn [sr]
+                  (or (= api/*current-user-id* (:creator_id sr))
+                      (queries/viewer-can-view-cached-result? sr)))
+                stored-results))))
