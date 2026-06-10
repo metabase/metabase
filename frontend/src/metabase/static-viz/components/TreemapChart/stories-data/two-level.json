@@ -1,0 +1,62 @@
+[
+  {
+    "card": {
+      "id": 1,
+      "name": "Sales by category and product",
+      "display": "treemap",
+      "visualization_settings": {
+        "treemap.grouping": "CATEGORY",
+        "treemap.sub_grouping": "PRODUCT",
+        "treemap.value": "sum"
+      }
+    },
+    "data": {
+      "rows": [
+        ["Phones", "iPhone", 7089142.4],
+        ["Phones", "Latest Motorola Products", 3139411.2],
+        ["Phones", "Xiaomi", 667935.2],
+        ["Phones", "Samsung Galaxy A57 and A37", 476931.2],
+        ["Phones", "Nokia", 250000],
+        ["Phones", "Fairphone", 120000],
+        ["Smartwatches", "Garmin", 5349411.1],
+        ["Smartwatches", "Apple Watch", 1500000],
+        ["Smartwatches", "Fitbit", 800000],
+        ["Smartwatches", "Polar", 300000],
+        ["Smartwatches", "Suunto", 150000],
+        ["Computers and Laptops", "Printers and Scanners", 401917.6],
+        ["Computers and Laptops", "Laptops", 350000],
+        ["Computers and Laptops", "Desktops", 250000],
+        ["Gaming and Entertainment", "Console and PC Games", 786234.2],
+        ["Gaming and Entertainment", "Accessories", 200000],
+        ["Pet Supplies", "For Dogs", 150000],
+        ["Pet Supplies", "For Cats", 52580]
+      ],
+      "cols": [
+        {
+          "name": "CATEGORY",
+          "display_name": "Category",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Category",
+          "source": "breakout"
+        },
+        {
+          "name": "PRODUCT",
+          "display_name": "Product",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": "type/Category",
+          "source": "breakout"
+        },
+        {
+          "name": "sum",
+          "display_name": "Sum of Price",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "source": "aggregation"
+        }
+      ]
+    }
+  }
+]
