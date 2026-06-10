@@ -224,7 +224,7 @@ const setupRemappingUrls = (embedType: EmbedType) => {
     `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
 };
 
-const EMBED_API_BASE_PATTERN = /^\/api\/embed/;
+const EMBED_API_BASE_PATTERN = /^\/api\/embed(?=\/|$)/;
 const EMBED_PREVIEW_API_BASE = "/api/preview_embed";
 
 /**
