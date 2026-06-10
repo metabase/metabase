@@ -187,7 +187,8 @@
           formatter (add-operators (SqlFormatter/of ^Dialect dialect))]
       (.format formatter ^String sql))))
 
-(defn format-sql-and-fix-params
+(mu/defn format-sql-and-fix-params :- [:maybe :string]
   "[[format-sql]] and [[fix-sql-params]] afterwards. For details see those functions."
-  [driver-or-dialect-kw sql]
+  [driver-or-dialect-kw :- :keyword
+   sql                  :- [:maybe :string]]
   (-> (format-sql driver-or-dialect-kw sql) fix-sql-params))

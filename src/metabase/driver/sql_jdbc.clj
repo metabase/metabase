@@ -13,7 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier quote-table]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -143,16 +143,17 @@
 
 (defn- create-table!-sql
   [driver table-name column-definitions & {:keys [primary-key]}]
-  (sql.qp/format-honeysql
-   driver
-   {:create-table (quote-table table-name)
-    :with-columns (cond-> (mapv (fn [[col-name type-spec]]
-                                  (vec (cons (quote-identifier col-name)
-                                             (if (string? type-spec)
-                                               [[:raw type-spec]]
-                                               type-spec))))
-                                column-definitions)
-                    primary-key (conj [(into [:primary-key] primary-key)]))}))
+  (first
+   (sql.qp/format-honeysql
+    driver
+    {:create-table (keyword table-name)
+     :with-columns (cond-> (mapv (fn [[col-name type-spec]]
+                                   (vec (cons (quote-identifier driver col-name)
+                                              (if (string? type-spec)
+                                                [[:raw type-spec]]
+                                                type-spec))))
+                                 column-definitions)
+                     primary-key (conj [[:primary-key (apply h2x/identifier :field primary-key)]]))})))
 
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
@@ -221,12 +222,12 @@
         ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
         ;; across all drivers. With that in mind, 100 seems like a safe compromise.
         ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
-        chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
-        sqls       (binding [driver/*compile-with-inline-parameters* inline?]
-                     (mapv #(sql.qp/format-honeysql driver {:insert-into (keyword table-name)
-                                                            :columns     (quote-columns driver column-names)
-                                                            :values      %})
-                           chunks))]
+        chunks (partition-all (or driver/*insert-chunk-rows* 100) values)
+        sqls   (binding [driver/*compile-with-inline-parameters* inline?]
+                 (mapv #(sql.qp/format-honeysql driver {:insert-into (keyword table-name)
+                                                        :columns     (quote-columns driver column-names)
+                                                        :values      %})
+                       chunks))]
     sqls))
 
 (defmethod driver/insert-into! :sql-jdbc
@@ -240,7 +241,7 @@
   (driver/insert-into! driver db-id table-name (mapv :name columns) data))
 
 (mu/defmethod driver/add-columns! :sql-jdbc
-  [driver                  :- :any
+  [driver                  :- :keyword
    db-id                   :- ::lib.schema.id/database
    table-name              :- :string
    column-definitions      :- ::driver/column-definitions
@@ -251,7 +252,7 @@
                                    driver
                                    {:alter-table (keyword table-name)
                                     :add-column  (map (fn [[column-name type-and-constraints]]
-                                                        (cond-> (vec (cons (quote-identifier column-name)
+                                                        (cond-> (vec (cons (quote-identifier driver column-name)
                                                                            (if (string? type-and-constraints)
                                                                              [[:raw type-and-constraints]]
                                                                              type-and-constraints)))

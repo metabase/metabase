@@ -2097,7 +2097,8 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
-    ;; this is one of the officially supported functions you're asked to use instead
+    ;; this is one of the officially supported functions you're asked to use instead of using [[sql/format]] directly,
+    ;; so ignore the discouraged var warning
     #_{:clj-kondo/ignore [:discouraged-var]}
     (sql/format honeysql-form {:dialect      dialect
                                :quoted       true

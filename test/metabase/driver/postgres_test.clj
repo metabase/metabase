@@ -2545,3 +2545,20 @@
                                         [(format "DROP USER IF EXISTS %s" qiso)])
                          (catch Throwable t
                            (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
+
+(deftest ^:parallel alter-table-columns-sql-test
+  (testing "should generate properly quoted SQL for ALTER TABLE statements; don't interpret :%keywords as function calls"
+    (is (= ["ALTER TABLE"
+            "  \"%table\""
+            "ALTER COLUMN"
+            "  \"%count\" TYPE FLOAT USING CASE"
+            "    WHEN \"%count\" THEN 1.0"
+            "    ELSE 0.0"
+            "  END"]
+           (->> (sql-jdbc.sync/alter-table-columns-sql
+                 :postgres
+                 "%table"
+                 {:%count [:float]}
+                 {:old-types {:%count [:boolean]}})
+                (driver/prettify-native-form :sql-jdbc)
+                str/split-lines)))))

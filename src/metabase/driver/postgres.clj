@@ -1248,17 +1248,16 @@
 
   It returns nil if no such expression has been defined for the pair of types. In this case, the caller should
   generate the ALTER COLUMN statement without a USING."
-  [column old-type new-type]
+  [driver column old-type new-type]
   (case [old-type new-type]
-
     [[:boolean] [:bigint]]
     [:case
-     (quote-identifier column) 1
+     (quote-identifier driver column) 1
      :else 0]
 
     [[:boolean] [:float]]
     [:case
-     (quote-identifier column) 1.0
+     (quote-identifier driver column) 1.0
      :else 0.0]
 
     nil))
@@ -1268,12 +1267,12 @@
   (->> {:alter-table  (keyword table-name)
         :alter-column (for [[column column-type] column-definitions
                             :let [old-type (get old-types column)]]
-                        (let [base (list* (quote-identifier column)
+                        (let [base (list* (quote-identifier driver column)
                                           :type
                                           (if (string? column-type)
                                             [[:raw column-type]]
                                             column-type))]
-                          (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
+                          (if-some [using (alter-column-using-hsql-expr driver column old-type column-type)]
                             (vec (concat base [:using using]))
                             (vec base))))}
        (sql.qp/format-honeysql driver)
@@ -1386,7 +1385,7 @@
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
         needs-quote?          (re-find special-chars-pattern role)
         quoted-role           (cond->> role
-                                needs-quote? (memoized-quote-identifier driver conn))]
+                                needs-quote? (memoized-quote-identifier driver driver conn))]
     (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres

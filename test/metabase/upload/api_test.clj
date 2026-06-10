@@ -31,5 +31,5 @@
         (let [{:keys [status body]} (upload-example-csv-via-api!)]
           (is (= 200
                  status))
-          (is (= body
-                 (t2/select-one-pk :model/Card :database_id (mt/id)))))))))
+          (is (= (t2/select-one-pk :model/Card :database_id (mt/id))
+                 body)))))))

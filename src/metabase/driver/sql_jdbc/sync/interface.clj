@@ -154,7 +154,7 @@
           driver
           {:alter-table  (keyword table-name)
            :alter-column (map (fn [[column-name type-and-constraints]]
-                                (vec (cons (quote-identifier column-name)
+                                (vec (cons (quote-identifier driver column-name)
                                            (if (string? type-and-constraints)
                                              [[:raw type-and-constraints]]
                                              type-and-constraints))))
