@@ -296,32 +296,42 @@
      (catch Exception e
        (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
-(mu/defn claude-raw
-  "Perform a streaming request to Claude API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
-    :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
+(defn claude-request-body
+  "Build the Claude `/v1/messages` request body from canonical LLM opts.
+
+  Pure (no auth, no I/O); shared by [[claude-raw]] and the bedrock-mantle adapter,
+  whose Anthropic surface speaks the same Messages wire format. Callers supply the
+  fully-resolved `:model`."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]}]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
         all-tools (if (and all-tools (not schema))
                     (add-tools-cache-breakpoint all-tools)
-                    all-tools)
-        req       (cond-> {:model         model
-                           :max_tokens    (or max-tokens 4096)
-                           :stream        true
-                           :cache_control {:type "ephemeral"}
-                           :messages      messages}
-                    system            (assoc :system (system->cached-content-blocks system))
-                    all-tools         (assoc :tools all-tools)
-                    (and all-tools
-                         tool_choice) (assoc :tool_choice (case (name tool_choice)
-                                                            "auto"     {:type "auto"}
-                                                            "required" {:type "any"}))
-                    temperature       (assoc :temperature temperature)
-                    schema            (assoc :tool_choice {:type "tool"
-                                                           :name "structured_output"}
-                                             :tools [{:name         "structured_output"
-                                                      :description  "Output structured data"
-                                                      :input_schema schema}]))]
+                    all-tools)]
+    (cond-> {:model         model
+             :max_tokens    (or max-tokens 4096)
+             :stream        true
+             :cache_control {:type "ephemeral"}
+             :messages      messages}
+      system            (assoc :system (system->cached-content-blocks system))
+      all-tools         (assoc :tools all-tools)
+      (and all-tools
+           tool_choice) (assoc :tool_choice (case (name tool_choice)
+                                              "auto"     {:type "auto"}
+                                              "required" {:type "any"}))
+      temperature       (assoc :temperature temperature)
+      schema            (assoc :tool_choice {:type "tool"
+                                             :name "structured_output"}
+                               :tools [{:name         "structured_output"
+                                        :description  "Output structured data"
+                                        :input_schema schema}]))))
+
+(mu/defn claude-raw
+  "Perform a streaming request to Claude API."
+  [{:keys [model input tools ai-proxy?]
+    :or   {model "claude-haiku-4-5"}
+    :as   opts} :- core/LLMRequestOpts]
+  (let [req (claude-request-body (assoc opts :model model))]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)

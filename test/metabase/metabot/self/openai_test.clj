@@ -203,6 +203,13 @@
     (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
                    "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
       (is (false? (#'openai/model-supports-temperature? model))
+          model)))
+  (testing "the same holds for bedrock-mantle's openai.* prefixed ids"
+    (doseq [model ["openai.gpt-5.5" "openai.gpt-5.4" "openai.gpt-5.4-2026-03-05"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))
+    (doseq [model ["openai.gpt-oss-120b" "openai.gpt-oss-20b"]]
+      (is (true? (#'openai/model-supports-temperature? model))
           model))))
 
 (deftest temperature-omitted-for-reasoning-models-test

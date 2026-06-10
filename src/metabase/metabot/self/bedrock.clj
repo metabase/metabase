@@ -1,17 +1,31 @@
 (ns metabase.metabot.self.bedrock
+  "AWS Bedrock adapter targeting the bedrock-mantle endpoint.
+
+  bedrock-mantle exposes native OpenAI- and Anthropic-compatible API surfaces, so
+  this adapter dispatches on the model-id prefix and reuses the wire-format
+  builders and stream translators from the dedicated provider namespaces:
+
+    anthropic.*  -> POST /anthropic/v1/messages  (Anthropic Messages API, claude.clj)
+    openai.*     -> POST /openai/v1/responses     (OpenAI Responses API, openai.clj)
+
+  Requests are authenticated with plain AWS SigV4 (service \"bedrock\"); the
+  bedrock-mantle endpoint accepts SigV4 directly, so no bearer token is required.
+
+  The legacy ConverseStream implementation lives in
+  [[metabase.metabot.self.bedrock-runtime]] for reference."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
-   [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
+   [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
-   [metabase.metabot.self.schema :as schema]
+   [metabase.metabot.self.openai :as openai]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io ByteArrayInputStream DataInputStream InputStream)
    (java.security MessageDigest)
    (java.time ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)
@@ -50,20 +64,22 @@
   (.format (ZonedDateTime/now ZoneOffset/UTC)
            (DateTimeFormatter/ofPattern "yyyyMMdd'T'HHmmss'Z'")))
 
-(defn- sigv4-headers
+(defn sigv4-headers
   "Compute the SigV4 Authorization and x-amz-date headers for an AWS request.
 
-  Returns a map of header-name → header-value to merge into the HTTP request headers.
-  The caller must also send content-type and host (they're included in the signed headers)."
+  Returns a map of header-name -> header-value to merge into the HTTP request
+  headers. The caller must also send content-type and host (they're part of the
+  signed headers); any header not in the signed set (e.g. anthropic-version) can
+  be added freely without invalidating the signature."
   [{:keys [access-key-id secret-access-key region session-token
            service method host path body-bytes datetime]}]
-  (let [date      (subs datetime 0 8)
-        b-hash    (hex-encode (sha256 (or body-bytes (byte-array 0))))
-        hdr-map   (cond-> {"host"         host
-                           "content-type" "application/json"
-                           "x-amz-date"   datetime}
-                    session-token (assoc "x-amz-security-token" session-token))
-        signed    (sort (keys hdr-map))
+  (let [date       (subs datetime 0 8)
+        b-hash     (hex-encode (sha256 (or body-bytes (byte-array 0))))
+        hdr-map    (cond-> {"host"         host
+                            "content-type" "application/json"
+                            "x-amz-date"   datetime}
+                     session-token (assoc "x-amz-security-token" session-token))
+        signed     (sort (keys hdr-map))
         canon-hdrs (str (str/join "\n" (map #(str % ":" (get hdr-map %)) signed)) "\n")
         signed-str (str/join ";" signed)
         canon-req  (str/join "\n" [(u/upper-case-en method)
@@ -91,225 +107,10 @@
              "authorization" auth}
       session-token (assoc "x-amz-security-token" session-token))))
 
-;;; ---- AWS event stream parser ----
+;;; ---- Credentials + HTTP ----
 
-(defn- read-bytes! ^bytes [^DataInputStream dis n]
-  (let [buf (byte-array n)]
-    (.readFully dis buf)
-    buf))
-
-(defn- parse-header-block
-  "Parse the packed headers section into a {name value} map."
-  [^bytes header-bytes]
-  (let [bis (ByteArrayInputStream. header-bytes)
-        dis (DataInputStream. bis)
-        out (java.util.HashMap.)]
-    (while (pos? (.available bis))
-      (let [nlen  (.readUnsignedByte dis)
-            name  (String. ^bytes (read-bytes! dis nlen) "UTF-8")
-            _type (.readUnsignedByte dis)
-            vlen  (.readUnsignedShort dis)
-            value (String. ^bytes (read-bytes! dis vlen) "UTF-8")]
-        (.put out name value)))
-    (into {} out)))
-
-(defn- read-frame
-  "Read one AWS event stream frame from dis.
-  Returns {:headers {string→string} :payload parsed-json-or-nil}."
-  [^DataInputStream dis]
-  (let [total-len   (.readInt dis)
-        headers-len (.readInt dis)
-        _           (.readInt dis)                         ; prelude CRC — skip validation
-        headers     (parse-header-block (read-bytes! dis headers-len))
-        payload-len (- total-len 16 headers-len)          ; 12-byte prelude + 4-byte message CRC
-        payload     (when (pos? payload-len)
-                      (json/decode+kw (String. ^bytes (read-bytes! dis payload-len) "UTF-8")))
-        _           (.readInt dis)]                        ; message CRC — skip validation
-    {:headers headers :payload payload}))
-
-(defn- event-stream-reducible
-  "Return a reducible that produces parsed AWS event stream frames from `input`."
-  [^InputStream input]
-  (reify
-    clojure.lang.IReduceInit
-    (reduce [_ rf init]
-      (with-open [dis (DataInputStream. input)]
-        (loop [acc init]
-          (if (reduced? acc)
-            @acc
-            (let [frame (try
-                          (read-frame dis)
-                          (catch java.io.EOFException _
-                            ::done))]
-              (if (= ::done frame)
-                acc
-                (recur (rf acc frame))))))))
-    java.io.Closeable
-    (close [_] (.close input))))
-
-;;; ---- Message format: AISDK parts → Bedrock messages ----
-
-(defn- merge-consecutive
-  "Merge consecutive messages with the same role into one, combining content arrays."
-  [messages]
-  (into [] (comp (partition-by :role)
-                 (map (fn [group]
-                        {:role    (:role (first group))
-                         :content (into [] (mapcat :content) group)})))
-        messages))
-
-(defn- tool-output->text
-  [part]
-  (or (get-in part [:result :output])
-      (when-let [err (:error part)] (str "Error: " (:message err)))
-      (pr-str (:result part))))
-
-(defn parts->bedrock-messages
-  "Convert AISDK parts to Bedrock Converse messages array."
-  [parts]
-  (->> parts
-       (mapv (fn [part]
-               (case (:type part)
-                 :text        {:role    "assistant"
-                               :content [{:text (:text part)}]}
-                 :tool-input  {:role    "assistant"
-                               :content [{:toolUse {:toolUseId (:id part)
-                                                    :name      (:function part)
-                                                    :input     (or (:arguments part) {})}}]}
-                 :tool-output {:role    "user"
-                               :content [{:toolResult {:toolUseId (:id part)
-                                                       :content   [{:text (tool-output->text part)}]
-                                                       :status    (if (:error part) "error" "success")}}]}
-                 {:role    (name (or (:role part) "user"))
-                  :content [{:text (or (:content part) "")}]})))
-       merge-consecutive
-       vec))
-
-;;; ---- Tool definition format ----
-
-(defn- tool->bedrock
-  [{:keys [tool-name doc schema]}]
-  (let [[_:=> [_:cat params] _out] schema
-        params (schema/filter-schema-by-features params)
-        doc    (if (str/starts-with? (or doc "") "Inputs: ")
-                 (second (str/split doc #"\n\n  " 2))
-                 doc)]
-    {:toolSpec {:name        (or tool-name "unknown")
-                :description doc
-                :inputSchema {:json (mjs/transform params {:additionalProperties false})}}}))
-
-;;; ---- AISDK chunks transducer ----
-
-(defn bedrock->aisdk-chunks-xf
-  "Translates Bedrock ConverseStream event frames into AI SDK v5 protocol chunks."
-  []
-  (fn [rf]
-    (let [current-type (volatile! nil)
-          current-id   (volatile! nil)
-          payload      (volatile! {})
-          close!       (fn [result]
-                         (u/prog1 (rf result (merge {:type (case @current-type
-                                                             :text     :text-end
-                                                             :tool_use :tool-input-available)}
-                                                    @payload))
-                           (vreset! current-type nil)
-                           (vreset! current-id nil)
-                           (vreset! payload {})))]
-      (fn
-        ([result]
-         (cond-> result
-           @current-type (close!)
-           true          rf))
-        ([result {headers :headers, data :payload}]
-         (let [event-type (get headers ":event-type")]
-           (case event-type
-             "messageStart"
-             (rf result {:type :start :messageId (core/mkid)})
-
-             "contentBlockStart"
-             (let [start      (:start data)
-                   block-type (cond (:toolUse start) :tool_use
-                                    :else            :text)
-                   chunk-id   (or (get-in start [:toolUse :toolUseId]) (core/mkid))]
-               (vreset! current-type block-type)
-               (vreset! current-id chunk-id)
-               (vreset! payload (case block-type
-                                  :text     {:id chunk-id}
-                                  :tool_use {:toolCallId chunk-id
-                                             :toolName   (get-in start [:toolUse :name])}))
-               (rf result (merge (case block-type
-                                   :text     {:type :text-start}
-                                   :tool_use {:type :tool-input-start})
-                                 @payload)))
-
-             "contentBlockDelta"
-             (let [delta (:delta data)]
-               (cond
-                 (:text delta)
-                 (rf result {:type  :text-delta
-                             :id    (:id @payload)
-                             :delta (:text delta)})
-
-                 (get-in delta [:toolUse :input])
-                 (rf result {:type           :tool-input-delta
-                             :toolCallId     (:toolCallId @payload)
-                             :inputTextDelta (get-in delta [:toolUse :input])})
-
-                 :else result))
-
-             "contentBlockStop"
-             (if @current-type (close! result) result)
-
-             "metadata"
-             (let [usage (:usage data)]
-               (rf result {:type  :usage
-                           :usage {:promptTokens     (:inputTokens usage 0)
-                                   :completionTokens (:outputTokens usage 0)}}))
-
-             ;; messageStop and unknown events — no-op
-             result)))))))
-
-;;; ---- HTTP + error handling ----
-
-(defn- bedrock-error-msg [res]
-  (let [status (long (:status res 0))]
-    (case status
-      400 (tru "AWS Bedrock rejected the request (bad request or unsupported model)")
-      401 (tru "AWS Bedrock credentials are invalid")
-      403 (tru "AWS Bedrock access denied — check IAM permissions and region")
-      404 (tru "AWS Bedrock model not found")
-      429 (tru "AWS Bedrock has rate limited us")
-      500 (tru "AWS Bedrock internal error")
-      (tru "AWS Bedrock API error (HTTP {0})" status))))
-
-(defn- bedrock-host [region service]
-  (str service "." region ".amazonaws.com"))
-
-(defn- bedrock-request
-  "Sign and execute an HTTP request against AWS Bedrock.
-  `creds` map: :access-key-id, :secret-access-key, :region, :session-token.
-  `method` is :get or :post. `path` is the URL path. `body-bytes` is nil for GET."
-  [{:keys [access-key-id secret-access-key region session-token]} service method path body-bytes]
-  (let [host     (bedrock-host region service)
-        datetime (now-datetime)
-        sig-hdrs (sigv4-headers {:access-key-id     access-key-id
-                                 :secret-access-key secret-access-key
-                                 :region            region
-                                 :session-token     session-token
-                                 :service           "bedrock"
-                                 :method            (u/upper-case-en (name method))
-                                 :host              host
-                                 :path              path
-                                 :body-bytes        body-bytes
-                                 :datetime          datetime})
-        req      (cond-> {:method  method
-                          :url     (str "https://" host path)
-                          :headers (merge {"content-type" "application/json"} sig-hdrs)}
-                   body-bytes (assoc :as :stream :body body-bytes)
-                   (nil? body-bytes) (assoc :as :json))]
-    (http/request req)))
-
-;;; ---- Public API ----
+(defn- bedrock-mantle-host [region]
+  (str "bedrock-mantle." region ".api.aws"))
 
 (defn- resolve-bedrock-creds
   "Resolve Bedrock credentials from `opts`, falling back to configured settings.
@@ -330,104 +131,142 @@
      :region            region
      :session-token     session}))
 
-(defn list-foundation-models
-  "List Bedrock foundation models that support streaming on-demand inference.
-  No-arg uses configured settings. Opts map supports :api-key (access key id),
-  :access-key-id, :secret-access-key, :region, :session-token."
-  ([] (list-foundation-models {}))
+(defn- bedrock-error-msg [res]
+  (let [status (long (:status res 0))]
+    (case status
+      400 (tru "AWS Bedrock rejected the request (bad request or unsupported model)")
+      401 (tru "AWS Bedrock credentials are invalid")
+      403 (tru "AWS Bedrock access denied — check IAM permissions and region")
+      404 (tru "AWS Bedrock model not found")
+      429 (tru "AWS Bedrock has rate limited us")
+      500 (tru "AWS Bedrock internal error")
+      (tru "AWS Bedrock API error (HTTP {0})" status))))
+
+(defn- bedrock-request
+  "SigV4-sign (service \"bedrock\") and execute an HTTP request against the
+  bedrock-mantle endpoint resolved from `creds`.
+
+  `method` is :get or :post. `path` is the request path. Options:
+    :body          - a Clojure value to JSON-encode (nil for GET)
+    :extra-headers - additional, unsigned request headers (e.g. anthropic-version)
+    :as            - clj-http response coercion (:json or :stream)
+
+  Lets clj-http throw on non-2xx so [[core/rethrow-api-error!]] can translate it."
+  [{:keys [region] :as creds} method path {:keys [body extra-headers as]}]
+  (let [host       (bedrock-mantle-host region)
+        body-bytes (when body (.getBytes ^String (json/encode body) "UTF-8"))
+        datetime   (now-datetime)
+        sig-hdrs   (sigv4-headers {:access-key-id     (:access-key-id creds)
+                                   :secret-access-key (:secret-access-key creds)
+                                   :region            region
+                                   :session-token     (:session-token creds)
+                                   :service           "bedrock"
+                                   :method            (u/upper-case-en (name method))
+                                   :host              host
+                                   :path              path
+                                   :body-bytes        body-bytes
+                                   :datetime          datetime})]
+    (http/request (cond-> {:method  method
+                           :url     (str "https://" host path)
+                           :headers (merge {"content-type" "application/json"} sig-hdrs extra-headers)
+                           :as      as}
+                    body-bytes (assoc :body body-bytes)))))
+
+;;; ---- Model listing ----
+
+(defn list-all-models
+  "List every model in the bedrock-mantle catalog (GET /v1/models), regardless of
+  whether this adapter can drive it. No-arg uses configured settings; opts are as
+  for [[resolve-bedrock-creds]]."
+  ([] (list-all-models {}))
   ([opts]
    (let [creds (resolve-bedrock-creds opts)]
      (try
-       (let [response (bedrock-request creds "bedrock" :get "/foundation-models" nil)]
-         {:models (->> (get-in response [:body :modelSummaries])
-                       (filter :responseStreamingSupported)
-                       (filter #(contains? (set (:inferenceTypesSupported %)) "ON_DEMAND"))
-                       (mapv (fn [m] {:id (:modelId m) :display_name (:modelName m)})))})
+       (let [response (bedrock-request creds :get "/v1/models" {:as :json})]
+         {:models (->> (get-in response [:body :data])
+                       (mapv (fn [m] {:id (:id m) :display_name (:id m)})))})
        (catch Exception e
          (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
 
-(defn list-inference-profiles
-  "List Bedrock system-defined (cross-region) inference profiles that are ACTIVE.
-  These are the only way to invoke current-gen models (e.g. Claude 4.x, gpt-oss)
-  that don't support direct on-demand foundation-model invocation.
-  No-arg uses configured settings; opts are as for [[list-foundation-models]]."
-  ([] (list-inference-profiles {}))
-  ([opts]
-   (let [creds (resolve-bedrock-creds opts)]
-     (try
-       (let [response (bedrock-request creds "bedrock" :get "/inference-profiles" nil)]
-         {:models (->> (get-in response [:body :inferenceProfileSummaries])
-                       (filter #(= "SYSTEM_DEFINED" (:type %)))
-                       (filter #(= "ACTIVE" (:status %)))
-                       (mapv (fn [p] {:id           (:inferenceProfileId p)
-                                      :display_name (:inferenceProfileName p)})))})
-       (catch Exception e
-         (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+(def ^:private supported-model-prefixes
+  "bedrock-mantle model-id prefixes whose API surface this adapter implements."
+  ["anthropic." "openai."])
+
+(defn- supported-model-id?
+  [id]
+  (boolean (some #(str/starts-with? id %) supported-model-prefixes)))
 
 (defn list-models
-  "List available Bedrock models for the model picker: legacy on-demand foundation
-  models (invoked by bare model id) plus cross-region inference profiles (which
-  expose current-gen models that are profile-only). No-arg uses configured
-  settings; opts are as for [[list-foundation-models]]."
+  "List the bedrock-mantle models this adapter can drive: the anthropic.* (Messages
+  API) and openai.* (Responses API) families, filtered out of the full catalog.
+  No-arg uses configured settings; opts are as for [[resolve-bedrock-creds]]."
   ([] (list-models {}))
   ([opts]
-   {:models (into (:models (list-foundation-models opts))
-                  (:models (list-inference-profiles opts)))}))
+   (update (list-all-models opts) :models #(filterv (comp supported-model-id? :id) %))))
+
+;;; ---- Streaming inference ----
+
+(defn- anthropic-model? [model] (str/starts-with? (or model "") "anthropic."))
+(defn- openai-model?    [model] (str/starts-with? (or model "") "openai."))
+
+(defn- ->mantle-anthropic-body
+  "Adapt the shared Claude request body for bedrock-mantle's Anthropic surface,
+  which is stricter than api.anthropic.com and rejects the non-standard top-level
+  `:cache_control` field. Per-block `cache_control` (on system/tools) is kept."
+  [body]
+  (dissoc body :cache_control))
 
 (mu/defn bedrock-raw
-  "Perform a streaming request to AWS Bedrock Converse API.
-  Returns a reducible of raw event stream frame maps."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens]
-    :or   {model "global.anthropic.claude-haiku-4-5-20251001-v1:0"}} :- core/LLMRequestOpts]
-  (let [key-id  (not-empty (llm/llm-bedrock-access-key-id))
-        secret  (not-empty (llm/llm-bedrock-secret-access-key))
-        region  (or (not-empty (llm/llm-bedrock-region)) "us-east-1")
-        session (not-empty (llm/llm-bedrock-session-token))
-        creds   {:access-key-id     key-id
-                 :secret-access-key secret
-                 :region            region
-                 :session-token     session}
-        _       (when-not key-id (throw (core/missing-api-key-ex "AWS Bedrock")))
-        _       (when-not secret
-                  (throw (ex-info (tru "AWS Bedrock Secret Access Key is not configured")
-                                  {:api-error true :error-code :api-key-missing :status 401})))
-        messages  (parts->bedrock-messages input)
-        all-tools (or (when schema
-                        [{:toolSpec {:name        "structured_output"
-                                     :description "Output structured data"
-                                     :inputSchema {:json schema}}}])
-                      (when (seq tools) (mapv tool->bedrock tools)))
-        req       (cond-> {:messages messages}
-                    system     (assoc :system [{:text system}])
-                    all-tools  (assoc :toolConfig
-                                      (cond-> {:tools all-tools}
-                                        schema
-                                        (assoc :toolChoice {:tool {:name "structured_output"}})
-                                        (and (not schema) tool_choice)
-                                        (assoc :toolChoice (case (name tool_choice)
-                                                             "required" {:any {}}
-                                                             {:auto {}}))))
-                    (or temperature max-tokens)
-                    (assoc :inferenceConfig
-                           (cond-> {}
-                             temperature (assoc :temperature temperature)
-                             max-tokens  (assoc :maxTokens max-tokens))))
-        body-bytes (.getBytes (json/encode req) "UTF-8")
-        path       (str "/model/" model "/converse-stream")]
-    (try
-      (let [response (bedrock-request creds "bedrock-runtime" :post path body-bytes)]
-        (event-stream-reducible (:body response)))
-      (catch Exception e
-        (core/rethrow-api-error! "bedrock" bedrock-error-msg e)))))
+  "Perform a streaming request to bedrock-mantle and return a reducible of parsed
+  SSE events. Dispatches on the model-id prefix: anthropic.* speaks the Anthropic
+  Messages wire format, openai.* the OpenAI Responses wire format."
+  [{:keys [model input tools]
+    :or   {model "anthropic.claude-haiku-4-5"}
+    :as   opts} :- core/LLMRequestOpts]
+  (let [creds (resolve-bedrock-creds opts)
+        [path req extra-headers]
+        (cond
+          (anthropic-model? model)
+          ["/anthropic/v1/messages"
+           (->mantle-anthropic-body (claude/claude-request-body (assoc opts :model model)))
+           {"anthropic-version" (llm/llm-anthropic-api-version)}]
+
+          (openai-model? model)
+          ["/openai/v1/responses"
+           (openai/openai-request-body (assoc opts :model model))
+           nil]
+
+          :else
+          (throw (ex-info (tru "Unsupported Bedrock model: {0}" model)
+                          {:api-error true :error-code :unsupported-model :status 400})))]
+    (with-span :info {:name       :metabot.bedrock/request
+                      :model      model
+                      :msg-count  (count input)
+                      :tool-count (count tools)}
+      (try
+        (let [response (bedrock-request creds :post path {:body req :extra-headers extra-headers :as :stream})]
+          (core/sse-reducible (:body response)))
+        (catch Exception e
+          (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+
+(defn bedrock
+  "Call AWS Bedrock via the mantle endpoint and return an AISDK chunk stream.
+  Selects the stream translator that matches the model's API family."
+  [{:keys [model] :as opts}]
+  (let [xf (if (openai-model? model)
+             (openai/openai->aisdk-chunks-xf)
+             (claude/claude->aisdk-chunks-xf))]
+    (eduction xf (bedrock-raw opts))))
 
 (comment
   (list-models)
+  (list-all-models)
 
-  (into [] (metabase.metabot.self.bedrock/bedrock
-            {:model "openai.gpt-oss-20b-1:0"
-             :input [{:role :user :content "hello"}]})))
+  ;; anthropic (us-east-1)
+  (into [] (bedrock {:model "anthropic.claude-haiku-4-5"
+                     :input [{:role :user :content "hello"}]}))
 
-(defn bedrock
-  "Call AWS Bedrock Converse API, return AISDK stream."
-  [& args]
-  (eduction (bedrock->aisdk-chunks-xf) (apply bedrock-raw args)))
+  ;; openai (us-east-2)
+  (into [] (bedrock {:model  "openai.gpt-5.5"
+                     :region "us-east-2"
+                     :input  [{:role :user :content "hello"}]})))

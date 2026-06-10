@@ -212,36 +212,49 @@
   "Whether `model` accepts an explicit `temperature` parameter.
 
   The GPT-5 family and the o-series reasoning models only support the default temperature and return a 400
-  (\"Unsupported parameter: 'temperature' is not supported with this model.\") when one is sent, so we omit it for them."
+  (\"Unsupported parameter: 'temperature' is not supported with this model.\") when one is sent, so we omit it for them.
+
+  Handles both bare ids (`gpt-5.5`, `o3-mini`) and bedrock-mantle's `openai.`-prefixed
+  ids (`openai.gpt-5.5`), which reach this builder when the bedrock adapter reuses it."
   [model]
-  (let [model (str model)]
+  (let [model (str/replace (str model) #"^openai\." "")]
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 
-(mu/defn openai-raw
-  "Perform a streaming request to OpenAI Responses API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
-    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+(defn openai-request-body
+  "Build the OpenAI `/v1/responses` request body from canonical LLM opts.
+
+  Pure (no auth, no I/O); shared by [[openai-raw]] and the bedrock-mantle adapter,
+  whose OpenAI surface speaks the same Responses wire format. Callers supply the
+  fully-resolved `:model`."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]}]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
                         [{:type        "function"
                           :name        "structured_output"
                           :description "Output structured data"
                           :parameters  schema}])
-                      (when (seq tools) (mapv tool->openai tools)))
-        req       (cond-> {:model        model
-                           :stream       true
-                           :store        false
-                           :instructions system
-                           :input        (parts->openai-input input)}
-                    all-tools   (assoc :tool_choice (cond
-                                                      schema      "required"
-                                                      tool_choice tool_choice
-                                                      :else       "auto")
-                                       :tools       all-tools)
-                    (and temperature
-                         (model-supports-temperature? model)) (assoc :temperature temperature)
-                    max-tokens  (assoc :max_output_tokens max-tokens))]
+                      (when (seq tools) (mapv tool->openai tools)))]
+    (cond-> {:model        model
+             :stream       true
+             :store        false
+             :instructions system
+             :input        (parts->openai-input input)}
+      all-tools   (assoc :tool_choice (cond
+                                        schema      "required"
+                                        tool_choice tool_choice
+                                        :else       "auto")
+                         :tools       all-tools)
+      (and temperature
+           (model-supports-temperature? model)) (assoc :temperature temperature)
+      max-tokens  (assoc :max_output_tokens max-tokens))))
+
+(mu/defn openai-raw
+  "Perform a streaming request to OpenAI Responses API."
+  [{:keys [model ai-proxy?]
+    :or   {model "gpt-4.1-mini"}
+    :as   opts} :- core/LLMRequestOpts]
+  (let [req (openai-request-body (assoc opts :model model))]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
             auth     (core/resolve-auth "openai" "OpenAI"
