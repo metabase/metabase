@@ -144,7 +144,7 @@ Don't try to drive list state from `result` directly. The response body is for c
 
 The hook normalizes whatever the underlying network client throws into a clean, public-facing shape and types `error` accordingly — no casting required to read its fields:
 
-{% include_file "{{ dirname }}/api/snippets/ActionExecuteError.md" %}
+{% include_file "{{ dirname }}/api/snippets/ActionExecuteError.md" snippet="properties" %}
 
 `error.status` is **optional**: present for HTTP-level failures (4xx / 5xx), absent for transport-layer failures (offline, aborted) where no HTTP response was received. The actionable diagnostic for end users lives at `error.data.message`.
 
