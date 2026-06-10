@@ -1363,8 +1363,8 @@
   dynamically so the migration's load path stays free of that dependency tree; it only runs on the
   rare downgrade-across-the-engine-boundary path."
   []
-  (classloader/require 'metabase.driver.init 'metabase.sample-data.impl)
-  ((resolve 'metabase.sample-data.impl/recreate-sample-database!) :h2))
+  (classloader/require 'metabase.driver.init 'metabase.sample-data.core)
+  ((resolve 'metabase.sample-data.core/recreate-sample-database!) :h2))
 
 ;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
 ;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample

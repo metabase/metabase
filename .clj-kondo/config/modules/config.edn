@@ -336,6 +336,8 @@
            classloader
            config
            connection-pool
+           driver
+           sample-data
            task
            util}
    :model-imports #{:model/Database
