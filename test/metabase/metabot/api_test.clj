@@ -319,6 +319,21 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
+(deftest settings-get-sorts-openai-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-valid"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [api-key]}]
+                                                           (is (= "sk-valid" api-key))
+                                                           {:models [{:id "o3-mini" :display_name "o3-mini"}
+                                                                     {:id "gpt-5.1" :display_name "gpt-5.1"}
+                                                                     {:id "Llama-3.3-70B-Instruct" :display_name "Llama-3.3-70B-Instruct"}
+                                                                     {:id "gpt-4.1" :display_name "gpt-4.1"}]})]
+      (is (= ["gpt-4.1" "gpt-5.1" "Llama-3.3-70B-Instruct" "o3-mini"]
+             (->> (mt/user-http-request :crowberto :get 200 "metabot/settings"
+                                        :provider "openai")
+                  :models
+                  (map :id)))
+          "openai models are sorted case-insensitively by id"))))
+
 (deftest settings-get-returns-metabase-models-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
@@ -562,6 +577,108 @@
         (is (= "Anthropic API key has insufficient permissions" (:message response)))
         (is (= "anthropic/claude-haiku-4-5"
                (metabot.settings/llm-metabot-provider)))))))
+
+(deftest settings-put-saves-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key      nil
+                                mb-llm-openai-api-base-url nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-openai-api-key       nil
+                                       llm.settings/llm-openai-api-base-url  nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key base-url]}]
+                                                             (is (= "openai" provider))
+                                                             (is (= "azure-key" api-key))
+                                                             (is (= "https://res.services.ai.azure.com/openai" base-url)
+                                                                 "verification should use the candidate base URL")
+                                                             (is (nil? (llm.settings/llm-openai-api-key))
+                                                                 "verification should happen before saving anything")
+                                                             {:models [{:id "gpt-4.1-mini" :display_name "GPT-4.1 mini"}]})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider "openai"
+                               :api-key  "azure-key"
+                               :base-url "https://res.services.ai.azure.com/openai/"})
+        (is (= "https://res.services.ai.azure.com/openai"
+               (llm.settings/llm-openai-api-base-url))
+            "the base URL should be saved as entered, minus the trailing slash")
+        (is (= "azure-key" (llm.settings/llm-openai-api-key))
+            "non-sk- keys should be accepted alongside a custom base URL")
+        (is (= "openai/gpt-5.1" (metabot.settings/llm-metabot-provider))
+            "switching providers without an explicit model should use the openai default")))))
+
+(deftest settings-put-clears-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key      nil
+                                mb-llm-openai-api-base-url nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-4.1-mini"
+                                       llm.settings/llm-openai-api-base-url  "https://res.services.ai.azure.com/openai"
+                                       llm.settings/llm-openai-api-key       "sk-valid"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [api-key base-url]}]
+                                                             (is (= "openai" provider))
+                                                             (is (= "sk-valid" api-key))
+                                                             (is (= "https://api.openai.com" base-url)
+                                                                 "clearing the base URL should verify against the provider default")
+                                                             {:models [{:id "gpt-4.1-mini" :display_name "GPT-4.1 mini"}]})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider "openai"
+                               :base-url nil})
+        (is (= "https://api.openai.com" (llm.settings/llm-openai-api-base-url)))))))
+
+(deftest settings-put-base-url-only-does-not-clear-api-key-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key      nil
+                                mb-llm-openai-api-base-url nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "openai/gpt-4.1-mini"
+                                       llm.settings/llm-openai-api-base-url  nil
+                                       llm.settings/llm-openai-api-key       "sk-valid"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             {:models [{:id "gpt-4.1-mini" :display_name "GPT-4.1 mini"}]})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider "openai"
+                               :base-url "https://res.openai.azure.com/openai"})
+        (is (= "sk-valid" (llm.settings/llm-openai-api-key))
+            "a base-url-only update should leave the saved API key untouched")
+        (is (= "https://res.openai.azure.com/openai" (llm.settings/llm-openai-api-base-url)))))))
+
+(deftest settings-put-rejects-env-shadowed-api-key-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key "env-key"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying"))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider "openai"
+                                            :api-key  "sk-new"})]
+        (is (re-find #"MB_LLM_OPENAI_API_KEY" (:message response)))))))
+
+(deftest settings-put-rejects-env-shadowed-base-url-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-base-url "https://env.example.com"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying"))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider "openai"
+                                            :base-url "https://other.example.com"})]
+        (is (re-find #"MB_LLM_OPENAI_API_BASE_URL" (:message response)))))))
+
+(deftest settings-put-rejects-base-url-for-unsupported-provider-test
+  (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                         (is false "should reject before verifying"))]
+    (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                         {:provider "openrouter"
+                                          :base-url "https://other.example.com"})]
+      (is (re-find #"does not support a custom base URL" (:message response))))))
+
+(deftest settings-put-translates-provider-4xx-into-client-error-test
+  (mt/with-temp-env-var-value! [mb-llm-openai-api-key      nil
+                                mb-llm-openai-api-base-url nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key      "sk-valid"
+                                       llm.settings/llm-openai-api-base-url nil]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                             ;; e.g. a base URL that points at the wrong Azure surface:
+                                                             ;; rethrow-api-error! tags these with :status, not :status-code
+                                                             (throw (ex-info "OpenAI API error (HTTP 400) — Missing required query parameter: api-version"
+                                                                             {:api-error true
+                                                                              :status    400})))]
+        (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                             {:provider "openai"
+                                              :base-url "https://res.example.com/wrong"})]
+          (is (re-find #"api-version" (:message response)))
+          (is (= "https://api.openai.com" (llm.settings/llm-openai-api-base-url))
+              "failed verification should not save the base URL"))))))
 
 (deftest settings-get-surfaces-invalid-api-key-error-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]

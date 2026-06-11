@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.llm.settings :as llm.settings]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
@@ -35,6 +36,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -307,7 +309,8 @@
   [:map
    [:provider metabot-provider-schema]
    [:model {:optional true} [:maybe :string]]
-   [:api-key {:optional true} [:maybe :string]]])
+   [:api-key {:optional true} [:maybe :string]]
+   [:base-url {:optional true} [:maybe :string]]])
 
 (defn- provider-api-key-setting-key
   [provider]
@@ -315,6 +318,28 @@
     "anthropic"  :llm-anthropic-api-key
     "openai"     :llm-openai-api-key
     "openrouter" :llm-openrouter-api-key))
+
+(defn- provider-base-url-config
+  "Base-URL setting info for providers whose API endpoint can be overridden (e.g. pointed at
+  Azure). Returns nil for providers without an overridable endpoint."
+  [provider]
+  (case provider
+    "anthropic" {:setting-key :llm-anthropic-api-base-url
+                 :default-url llm.settings/default-anthropic-api-base-url}
+    "openai"    {:setting-key :llm-openai-api-base-url
+                 :default-url llm.settings/default-openai-api-base-url}
+    nil))
+
+(defn- check-not-env-shadowed!
+  "Throw a 400 when `setting-key` is controlled by an env var. Writes to env-shadowed settings
+  persist to the app DB but the env var wins on every read, so they silently do nothing — reject
+  them instead."
+  [setting-key]
+  (when (some? (setting/env-var-value setting-key))
+    (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
+                         (setting/env-var-name setting-key))
+                    {:status-code 400
+                     :setting     setting-key}))))
 
 (defn- non-blank-string
   [value]
@@ -390,31 +415,42 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "openrouter"} provider)
+    (cond
+      (contains? #{"anthropic" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
              sort
              (mapcat #(get grouped-models %))
              vec))
+
+      ;; OpenAI's /v1/models comes back newest-first by :created, which is a meaningless order
+      ;; for Azure's regional catalog — sort for a usable dropdown
+      (= provider "openai")
+      (vec (sort-by (comp u/lower-case-en str :id) decorated-models))
+
+      :else
       (vec decorated-models))))
 
 (defn- provider-models-response
+  "List a provider's models, optionally overriding the configured `:api-key` and/or `:base-url`
+  (used by `PUT /settings` to validate candidate credentials before persisting them)."
   ([provider]
    (provider-models-response provider nil))
-  ([provider api-key-override]
+  ([provider {:keys [api-key base-url]}]
    (if (= provider provider-util/metabase-provider-prefix)
      {:models (decorate-provider-models
                provider
                (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
-     (let [effective-api-key (or (non-blank-string api-key-override)
+     (let [effective-api-key (or (non-blank-string api-key)
                                  (non-blank-string
                                   (metabot.settings/configured-provider-api-key provider)))]
        (if (and provider effective-api-key)
          (try
            {:models (decorate-provider-models
                      provider
-                     (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+                     (:models (metabot.self/list-models provider (cond-> {:api-key effective-api-key}
+                                                                   base-url (assoc :base-url base-url)))))}
            (catch clojure.lang.ExceptionInfo e
              (if (invalid-api-key-error? e)
                {:models []
@@ -425,10 +461,10 @@
 (defn- settings-response
   ([provider]
    (settings-response provider nil))
-  ([provider api-key-override]
+  ([provider overrides]
    (merge
     {:value (metabot.settings/llm-metabot-provider)}
-    (provider-models-response provider api-key-override))))
+    (provider-models-response provider overrides))))
 
 (defn- current-provider
   []
@@ -455,33 +491,74 @@
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))
 
+(defn- validated-settings-response
+  "Like [[settings-response]] + [[throw-api-key-error!]], but translates provider-side 4xx
+  errors (e.g. a misconfigured custom base URL) into our own 400s so a bad connect attempt
+  surfaces as a client error with the provider's message instead of a 500. Provider outages
+  (5xx, network failures) still propagate as 500s."
+  [provider overrides]
+  (try
+    (-> (settings-response provider overrides)
+        throw-api-key-error!)
+    (catch clojure.lang.ExceptionInfo e
+      (let [{:keys [api-error status status-code]} (ex-data e)]
+        (if (and api-error
+                 (nil? status-code)
+                 (some? status)
+                 (<= 400 status 499))
+          (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e))
+          (throw e))))))
+
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
-  "Update the Metabot provider API key and/or model setting and return the refreshed settings payload."
+  "Update the Metabot provider API key, base URL, and/or model setting and return the refreshed
+  settings payload. Candidate credentials are validated against the provider (by listing its
+  models) before anything is persisted."
   [_route-params
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider api-key] request-model :model} body
-        current-provider (current-setting-provider)
-        provider-changed? (not= current-provider provider)
-        model (cond
-                (non-blank-string request-model)
-                (effective-provider-model provider request-model)
+  (let [{:keys [provider api-key base-url] request-model :model} body
+        set-api-key?    (contains? body :api-key)
+        set-base-url?   (contains? body :base-url)
+        base-url-config (provider-base-url-config provider)]
+    (when set-base-url?
+      (when-not base-url-config
+        (throw (ex-info (tru "Provider {0} does not support a custom base URL." provider)
+                        {:status-code 400
+                         :provider    provider})))
+      (check-not-env-shadowed! (:setting-key base-url-config)))
+    (when set-api-key?
+      (check-not-env-shadowed! (provider-api-key-setting-key provider)))
+    (let [normalized-base-url (when set-base-url?
+                                (llm.settings/normalize-llm-base-url base-url))
+          ;; when clearing the base URL, validate against the provider default rather than the
+          ;; currently-configured (about-to-be-replaced) value
+          base-url-override   (when set-base-url?
+                                (or normalized-base-url (:default-url base-url-config)))
+          current-provider    (current-setting-provider)
+          provider-changed?   (not= current-provider provider)
+          model (cond
+                  (non-blank-string request-model)
+                  (effective-provider-model provider request-model)
 
-                provider-changed?
-                (or (effective-provider-model provider request-model)
-                    (metabot.settings/default-model-for-provider provider))
+                  provider-changed?
+                  (or (effective-provider-model provider request-model)
+                      (metabot.settings/default-model-for-provider provider))
 
-                :else
-                nil)
-        response (-> (settings-response provider api-key)
-                     throw-api-key-error!)]
-    (when (contains? body :api-key)
-      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
-    (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (assoc response :value (metabot.settings/llm-metabot-provider))))
+                  :else
+                  nil)
+          response (validated-settings-response provider {:api-key  api-key
+                                                          :base-url base-url-override})]
+      ;; persist the base URL before the API key: the key setter's prefix check is waived when a
+      ;; custom base URL is configured, so it has to see the new URL
+      (when set-base-url?
+        (setting/set! (:setting-key base-url-config) normalized-base-url))
+      (when set-api-key?
+        (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
+      (when model
+        (setting/set! :llm-metabot-provider (str provider "/" model)))
+      (assoc response :value (metabot.settings/llm-metabot-provider)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

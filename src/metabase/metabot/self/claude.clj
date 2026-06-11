@@ -276,15 +276,15 @@
 
 (defn list-models
   "List available Anthropic models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:api-key`, `:base-url`, and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
+  ([{:keys [api-key base-url ai-proxy?]}]
    (when (and api-key (str/blank? api-key))
      (throw (core/missing-api-key-ex "Anthropic")))
    (try
      (let [auth   (core/resolve-auth "anthropic" "Anthropic"
                                      (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
-                                       {:url     (llm/llm-anthropic-api-base-url)
+                                       {:url     (or (not-empty base-url) (llm/llm-anthropic-api-base-url))
                                         :headers {"x-api-key" k}})
                                      ai-proxy?)
            res    (core/request auth {:method  :get

@@ -206,6 +206,7 @@ export interface UpdateMetabotSettingsRequest {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  "base-url"?: string | null;
 }
 
 /* Metabot - Suggested Prompts */

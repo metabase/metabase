@@ -99,6 +99,7 @@ type MetabotSettingsApiResponse =
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
+  | "llm-anthropic-api-base-url"
   | "llm-openai-api-key"
   | "llm-openai-api-base-url"
   | "llm-openrouter-api-key";
@@ -108,6 +109,7 @@ type MetabotSettingsUpdateBody = {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  "base-url"?: string | null;
 };
 
 type SetupOptions = {
@@ -121,6 +123,8 @@ type SetupOptions = {
   providerSettingEnvName?: string;
   apiKeySettingIsEnv?: boolean;
   apiKeySettingEnvName?: string;
+  openaiApiKeySettingIsEnv?: boolean;
+  openaiBaseUrlSettingIsEnv?: boolean;
   isAdmin?: boolean;
   anyStoreUserEmailAddress?: string;
   metabasePricePerUnit?: number;
@@ -152,6 +156,8 @@ async function setup({
   providerSettingEnvName = "LLM_METABOT_PROVIDER",
   apiKeySettingIsEnv = false,
   apiKeySettingEnvName = "LLM_ANTHROPIC_API_KEY",
+  openaiApiKeySettingIsEnv = false,
+  openaiBaseUrlSettingIsEnv = false,
   isAdmin = false,
   metabasePricePerUnit = 3.75,
   metabaseBillingPeriodMonths = 1,
@@ -226,13 +232,23 @@ async function setup({
       is_env_setting: apiKeySettingIsEnv,
       env_name: apiKeySettingIsEnv ? apiKeySettingEnvName : undefined,
     }),
+    "llm-anthropic-api-base-url": createMockSettingDefinition({
+      key: "llm-anthropic-api-base-url",
+      value: undefined,
+    }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
       value: mergedApiKeyValues.openai ?? undefined,
+      is_env_setting: openaiApiKeySettingIsEnv,
+      env_name: openaiApiKeySettingIsEnv ? "MB_LLM_OPENAI_API_KEY" : undefined,
     }),
     "llm-openai-api-base-url": createMockSettingDefinition({
       key: "llm-openai-api-base-url",
       value: undefined,
+      is_env_setting: openaiBaseUrlSettingIsEnv,
+      env_name: openaiBaseUrlSettingIsEnv
+        ? "MB_LLM_OPENAI_API_BASE_URL"
+        : undefined,
     }),
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
@@ -327,6 +343,24 @@ async function setup({
         key: apiKeySettingKey,
         value: maskedApiKey,
       });
+    }
+
+    if ("base-url" in body && body.provider === "openai") {
+      settingsDefinitions["llm-openai-api-base-url"] =
+        createMockSettingDefinition({
+          ...settingsDefinitions["llm-openai-api-base-url"],
+          key: "llm-openai-api-base-url",
+          value: body["base-url"] ?? undefined,
+        });
+    }
+
+    if ("base-url" in body && body.provider === "anthropic") {
+      settingsDefinitions["llm-anthropic-api-base-url"] =
+        createMockSettingDefinition({
+          ...settingsDefinitions["llm-anthropic-api-base-url"],
+          key: "llm-anthropic-api-base-url",
+          value: body["base-url"] ?? undefined,
+        });
     }
 
     if ("model" in body) {
@@ -515,7 +549,7 @@ describe("AIProviderSettingsSection", () => {
     expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
   });
 
-  it("does not show the Base URL field for Anthropic", async () => {
+  it("shows the Base URL field when Anthropic is selected", async () => {
     await setup({ savedProviderValue: null, isConfigured: false });
 
     await userEvent.click(screen.getByLabelText("Provider"));
@@ -524,10 +558,10 @@ describe("AIProviderSettingsSection", () => {
     );
 
     expect(await screen.findByLabelText("API key")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
   });
 
-  it("saves base URL and API key on connect for OpenAI", async () => {
+  it("saves base URL and API key in a single metabot settings request on connect", async () => {
     await setup({
       savedProviderValue: null,
       isConfigured: false,
@@ -543,7 +577,6 @@ describe("AIProviderSettingsSection", () => {
       await screen.findByLabelText("API key"),
       "sk-proj-test",
     );
-    await userEvent.clear(screen.getByLabelText("Base URL"));
     await userEvent.type(
       screen.getByLabelText("Base URL"),
       "https://my-azure.openai.azure.com",
@@ -553,20 +586,27 @@ describe("AIProviderSettingsSection", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/setting", { method: "PUT" }),
+        fetchMock.callHistory.called("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
       ).toBe(true);
     });
 
-    const settingRequest = fetchMock.callHistory.calls("path:/api/setting", {
+    const request = fetchMock.callHistory.calls("path:/api/metabot/settings", {
       method: "PUT",
     })[0];
-    expect(settingRequest?.options?.body).toContain("llm-openai-api-base-url");
-    expect(settingRequest?.options?.body).toContain(
-      "https://my-azure.openai.azure.com",
-    );
+    const body = JSON.parse(String(request?.options?.body ?? "{}"));
+    expect(body).toEqual({
+      provider: "openai",
+      "api-key": "sk-proj-test",
+      "base-url": "https://my-azure.openai.azure.com",
+    });
+    expect(
+      fetchMock.callHistory.called("path:/api/setting", { method: "PUT" }),
+    ).toBe(false);
   });
 
-  it("enables Connect when only the base URL changes for a configured OpenAI provider", async () => {
+  it("sends only the base URL when connecting with an unchanged saved API key", async () => {
     await setup({
       savedProviderValue: "openai/gpt-4.1-mini",
       isConfigured: true,
@@ -578,13 +618,79 @@ describe("AIProviderSettingsSection", () => {
       screen.getByRole("button", { name: "Disconnect" }),
     ).toBeInTheDocument();
 
-    await userEvent.clear(screen.getByLabelText("Base URL"));
     await userEvent.type(
       screen.getByLabelText("Base URL"),
       "https://new-endpoint.openai.azure.com",
     );
 
-    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/metabot/settings", {
+          method: "PUT",
+        }),
+      ).toBe(true);
+    });
+
+    const request = fetchMock.callHistory.calls("path:/api/metabot/settings", {
+      method: "PUT",
+    })[0];
+    const body = JSON.parse(String(request?.options?.body ?? "{}"));
+    expect(body).toEqual({
+      provider: "openai",
+      "base-url": "https://new-endpoint.openai.azure.com",
+    });
+  });
+
+  it("replaces the API key input with the env var message when the key is env-set", async () => {
+    await setup({
+      savedProviderValue: "openai/gpt-4.1-mini",
+      isConfigured: true,
+      openaiApiKeySettingIsEnv: true,
+    });
+
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent(
+      "This has been set by the MB_LLM_OPENAI_API_KEY environment variable.",
+    );
+    expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
+  });
+
+  it("replaces the Base URL input with the env var message when the base URL is env-set", async () => {
+    await setup({
+      savedProviderValue: "openai/gpt-4.1-mini",
+      isConfigured: true,
+      apiKeyValues: { openai: "**********54" },
+      openaiBaseUrlSettingIsEnv: true,
+    });
+
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent(
+      "This has been set by the MB_LLM_OPENAI_API_BASE_URL environment variable.",
+    );
+    expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Base URL")).not.toBeInTheDocument();
+  });
+
+  it("hides the Disconnect button when the provider is env-set", async () => {
+    await setup({
+      savedProviderValue: "anthropic/claude-haiku-4-5",
+      isConfigured: true,
+      providerSettingIsEnv: true,
+    });
+
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent(
+      "This has been set by the LLM_METABOT_PROVIDER environment variable.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Disconnect" }),
+    ).not.toBeInTheDocument();
   });
 
   it("BOT-1429: keeps the form interactive while session-properties refetches in the background", async () => {

@@ -6,19 +6,54 @@
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defn- trimmed-string
   [value]
   (when (string? value)
     (not-empty (str/trim value))))
 
+(defn normalize-llm-base-url
+  "Trim whitespace and trailing slashes from a user-supplied LLM API base URL. The URL is
+  otherwise persisted exactly as entered — `PUT /api/metabot/settings` validates it against the
+  provider rather than rewriting it. Returns nil for blank input (clearing the setting)."
+  [value]
+  (when-let [trimmed (trimmed-string value)]
+    (str/replace trimmed #"/+$" "")))
+
+(defn- set-llm-base-url!
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (normalize-llm-base-url new-value)))
+
 (defn- set-prefixed-api-key!
-  [setting-key _prefix _deferred-message new-value]
+  "Setter for provider API-key settings that validates the provider's key prefix.
+
+  `custom-base-url?` is a thunk returning whether the provider's base URL has been overridden
+  (e.g. pointed at Azure). Keys minted by gateways like Azure don't use the provider's prefix,
+  so the format check only applies when talking to the provider's own API."
+  [setting-key prefix deferred-message custom-base-url? new-value]
   (let [trimmed (trimmed-string new-value)]
-    #_(when (and trimmed (not (str/starts-with? trimmed _prefix)))
-        (throw (ex-info (str _deferred-message) {:status-code 400})))
+    (when (and trimmed
+               (not (custom-base-url?))
+               (not (str/starts-with? trimmed prefix)))
+      (throw (ex-info (str deferred-message) {:status-code 400})))
     (setting/set-value-of-type! :string setting-key trimmed)))
 
 ;;; ------------------------------------------------- Anthropic -------------------------------------------------
+
+(def default-anthropic-api-base-url
+  "Default base URL for the Anthropic API."
+  "https://api.anthropic.com")
+
+(defsetting llm-anthropic-api-base-url
+  (deferred-tru "The Anthropic API base URL.")
+  :encryption       :no
+  :visibility       :settings-manager
+  :default          default-anthropic-api-base-url
+  :export?          false
+  :deprecated-name  :ee-anthropic-api-base-url
+  :setter           (partial set-llm-base-url! :llm-anthropic-api-base-url)
+  :doc              false)
 
 (defsetting llm-anthropic-api-key
   (deferred-tru "The Anthropic API Key.")
@@ -29,7 +64,8 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-anthropic-api-key
                              "sk-ant-"
-                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")))
+                             (deferred-tru "Invalid Anthropic API key format. Key must start with ''sk-ant-''.")
+                             #(not= (llm-anthropic-api-base-url) default-anthropic-api-base-url)))
 
 (defsetting llm-anthropic-api-key-configured?
   "Whether an Anthropic API key has been configured."
@@ -47,15 +83,6 @@
   :default "claude-opus-4-5-20251101"
   :export? false
   :doc false)
-
-(defsetting llm-anthropic-api-base-url
-  (deferred-tru "The Anthropic API base URL.")
-  :encryption       :no
-  :visibility       :settings-manager
-  :default          "https://api.anthropic.com"
-  :export?          false
-  :deprecated-name  :ee-anthropic-api-base-url
-  :doc              false)
 
 (defsetting llm-anthropic-api-version
   (deferred-tru "The Anthropic API version.")
@@ -76,13 +103,18 @@
   :deprecated-name  :ee-openai-model
   :doc              false)
 
+(def default-openai-api-base-url
+  "Default base URL for the OpenAI API."
+  "https://api.openai.com")
+
 (defsetting llm-openai-api-base-url
   (deferred-tru "The OpenAI API base URL.")
   :encryption       :no
   :visibility       :settings-manager
-  :default          "https://api.openai.com"
+  :default          default-openai-api-base-url
   :export?          false
   :deprecated-name  :ee-openai-api-base-url
+  :setter           (partial set-llm-base-url! :llm-openai-api-base-url)
   :doc              false)
 
 (defsetting llm-openai-api-key
@@ -94,7 +126,8 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openai-api-key
                              "sk-"
-                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''."))
+                             (deferred-tru "Invalid OpenAI API key format. Key must start with ''sk-''.")
+                             #(not= (llm-openai-api-base-url) default-openai-api-base-url))
   :doc              false)
 
 ;;; ------------------------------------------------- OpenRouter ------------------------------------------------
@@ -117,7 +150,8 @@
   :setter           (partial set-prefixed-api-key!
                              :llm-openrouter-api-key
                              "sk-or-v1-"
-                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
+                             (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''.")
+                             (constantly false))
   :doc              false)
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------

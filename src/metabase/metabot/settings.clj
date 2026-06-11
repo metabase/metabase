@@ -110,6 +110,10 @@
   "Default Anthropic model used for Metabot when no explicit model is selected."
   "claude-sonnet-4-6")
 
+(def ^:private default-openai-llm-metabot-model
+  "Default OpenAI model used for Metabot when no explicit model is selected."
+  "gpt-5.1")
+
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
   (str "anthropic/" default-anthropic-llm-metabot-model))
@@ -120,6 +124,7 @@
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
   {"anthropic"                       default-anthropic-llm-metabot-model
+   "openai"                          default-openai-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider

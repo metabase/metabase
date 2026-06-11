@@ -42,12 +42,17 @@ import type {
   MetabotProvider,
   MetabotSettingsResponse,
   SettingDefinition,
+  UpdateMetabotSettingsRequest,
 } from "metabase-types/api";
 
 import {
   API_KEY_SETTING_BY_PROVIDER,
+  AZURE_BASE_URL_EXAMPLE_BY_PROVIDER,
+  BASE_URL_SETTING_BY_PROVIDER,
+  DEFAULT_BASE_URL_BY_PROVIDER,
   getProviderOptions,
   isAvailableProvider,
+  isBaseUrlProvider,
   parseProviderAndModel,
 } from "./utils";
 
@@ -361,16 +366,19 @@ export function AIProviderConfigurationForm({
             ))
             .with(
               { isCurrentConfigured: true, isConnectButtonEnabled: false },
-              () => (
-                <Button
-                  c="danger"
-                  loading={isMutating}
-                  disabled={isMutating}
-                  onClick={handleDisconnect}
-                >
-                  {t`Disconnect`}
-                </Button>
-              ),
+              () =>
+                // an env-set provider can't be disconnected from the UI: clearing the setting
+                // would write to the app DB but the env var wins on every read
+                isEnvSetting ? null : (
+                  <Button
+                    c="danger"
+                    loading={isMutating}
+                    disabled={isMutating}
+                    onClick={handleDisconnect}
+                  >
+                    {t`Disconnect`}
+                  </Button>
+                ),
             )
             .with(
               { isCurrentConfigured: false },
@@ -425,26 +433,36 @@ const ProviderCredentialsFields = ({
 
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
-  const [updateSettings] = useUpdateSettingsMutation();
+
+  const baseUrlProvider = isBaseUrlProvider(selectedProvider)
+    ? selectedProvider
+    : undefined;
+  const baseUrlSettingKey = baseUrlProvider
+    ? BASE_URL_SETTING_BY_PROVIDER[baseUrlProvider]
+    : undefined;
+
+  const hasDirtyApiKey = apiKeyLocalValue !== null;
+  const hasDirtyBaseUrl = baseUrlLocalValue !== null;
 
   const onConnect = async () => {
-    if (selectedProvider === "openai" && baseUrlLocalValue !== null) {
-      await updateSettings({
-        "llm-openai-api-base-url": baseUrlLocalValue || null,
-      });
+    const request: UpdateMetabotSettingsRequest = {
+      provider: selectedProvider,
+    };
+    // only send fields the admin actually edited: an absent field leaves the saved setting
+    // untouched, while an explicit null clears it
+    if (hasDirtyApiKey) {
+      request["api-key"] = apiKeyLocalValue || null;
+    }
+    if (hasDirtyBaseUrl && baseUrlSettingKey) {
+      request["base-url"] = baseUrlLocalValue || null;
     }
 
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      "api-key": apiKeyLocalValue || null,
-    }).unwrap();
+    await updateMetabotSettings(request).unwrap();
 
     setApiKeyLocalValue(null);
     setBaseUrlLocalValue(null);
   };
 
-  const hasDirtyApiKey = apiKeyLocalValue !== null;
-  const hasDirtyBaseUrl = baseUrlLocalValue !== null;
   const connectHandler =
     !isCurrentConfigured || hasDirtyApiKey || hasDirtyBaseUrl
       ? onConnect
@@ -452,25 +470,29 @@ const ProviderCredentialsFields = ({
 
   const { isMutating } = useAIProviderConfigurationContext(connectHandler);
 
-  const { details: providerApiKeyDetails } = useAdminSettings([
+  const { details: providerSettingDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-anthropic-api-base-url",
     "llm-openai-api-key",
     "llm-openai-api-base-url",
     "llm-openrouter-api-key",
   ] as const);
 
   const selectedApiKeySetting =
-    providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
+    providerSettingDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
   const selectedApiKeyValue = String(selectedApiKeySetting?.value ?? "");
   const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
     ? selectedApiKeySetting.env_name
     : undefined;
   const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
 
-  const savedBaseUrlValue =
-    selectedProvider === "openai"
-      ? String(providerApiKeyDetails["llm-openai-api-base-url"]?.value ?? "")
-      : "";
+  const baseUrlSetting = baseUrlSettingKey
+    ? providerSettingDetails[baseUrlSettingKey]
+    : undefined;
+  const baseUrlEnvSettingName = baseUrlSetting?.is_env_setting
+    ? baseUrlSetting.env_name
+    : undefined;
+  const savedBaseUrlValue = String(baseUrlSetting?.value ?? "");
   const displayBaseUrlValue = baseUrlLocalValue ?? savedBaseUrlValue;
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
@@ -530,44 +552,56 @@ const ProviderCredentialsFields = ({
 
   return (
     <>
-      <TextInput
-        key={selectedProvider}
-        label={t`API key`}
-        type="password"
-        description={
-          <ExternalLink
-            key={selectedProviderDetails.value}
-            href={selectedProviderDetails.apiKey.addKeyUrl}
-          >
-            {c("{0} is the name of an AI provider")
-              .t`Get or manage keys in ${selectedProviderDetails.label}`}
-          </ExternalLink>
-        }
-        placeholder={
-          selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
-        }
-        value={displayApiKeyValue}
-        error={apiKeyError}
-        onChange={handleApiKeyChange}
-        disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
-        w="100%"
-      />
-
       {apiKeyEnvSettingName ? (
-        <SetByEnvVar varName={apiKeyEnvSettingName} />
-      ) : null}
-
-      {selectedProvider === "openai" && (
+        <FieldSetByEnvVar label={t`API key`} varName={apiKeyEnvSettingName} />
+      ) : (
         <TextInput
-          label={t`Base URL`}
-          description={t`Override the default OpenAI API endpoint, e.g. for Azure OpenAI.`}
-          placeholder="https://api.openai.com"
-          value={displayBaseUrlValue}
-          onChange={handleBaseUrlChange}
+          key={selectedProvider}
+          label={t`API key`}
+          type="password"
+          description={
+            <ExternalLink
+              key={selectedProviderDetails.value}
+              href={selectedProviderDetails.apiKey.addKeyUrl}
+            >
+              {c("{0} is the name of an AI provider")
+                .t`Get or manage keys in ${selectedProviderDetails.label}`}
+            </ExternalLink>
+          }
+          placeholder={
+            selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
+          }
+          value={displayApiKeyValue}
+          error={apiKeyError}
+          onChange={handleApiKeyChange}
           disabled={isMutating || isEnvSetting}
           w="100%"
         />
       )}
+
+      {baseUrlSettingKey &&
+        (baseUrlEnvSettingName ? (
+          <FieldSetByEnvVar
+            label={t`Base URL`}
+            varName={baseUrlEnvSettingName}
+          />
+        ) : (
+          <TextInput
+            label={t`Base URL`}
+            description={
+              baseUrlProvider &&
+              c("{0} is the name of an AI provider, {1} is an example URL")
+                .t`Optional. Override the default ${selectedProviderDetails.label} API endpoint. The URL is used exactly as entered — for Azure, use ${AZURE_BASE_URL_EXAMPLE_BY_PROVIDER[baseUrlProvider]}.`
+            }
+            placeholder={
+              baseUrlProvider && DEFAULT_BASE_URL_BY_PROVIDER[baseUrlProvider]
+            }
+            value={displayBaseUrlValue}
+            onChange={handleBaseUrlChange}
+            disabled={isMutating || isEnvSetting}
+            w="100%"
+          />
+        ))}
 
       {!needsApiKey && !apiKeyError && (
         <Select
@@ -599,6 +633,21 @@ const ProviderCredentialsFields = ({
     </>
   );
 };
+
+const FieldSetByEnvVar = ({
+  label,
+  varName,
+}: {
+  label: string;
+  varName: string;
+}) => (
+  <Stack gap={0}>
+    <Text component="label" size="sm" fw="bold">
+      {label}
+    </Text>
+    <SetByEnvVar varName={varName} />
+  </Stack>
+);
 
 const getLlmModelOptions = (models: MetabotSettingsResponse["models"]) => {
   const seen = new Set<string>();

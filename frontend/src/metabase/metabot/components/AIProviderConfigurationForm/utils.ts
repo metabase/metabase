@@ -92,6 +92,37 @@ export const API_KEY_SETTING_BY_PROVIDER: Record<
   openrouter: "llm-openrouter-api-key",
 };
 
+export const BASE_URL_SETTING_BY_PROVIDER = {
+  anthropic: "llm-anthropic-api-base-url",
+  openai: "llm-openai-api-base-url",
+} as const;
+
+export type MetabotBaseUrlProvider = keyof typeof BASE_URL_SETTING_BY_PROVIDER;
+
+export function isBaseUrlProvider(
+  provider: MetabotProvider,
+): provider is MetabotBaseUrlProvider {
+  return provider in BASE_URL_SETTING_BY_PROVIDER;
+}
+
+export const DEFAULT_BASE_URL_BY_PROVIDER: Record<
+  MetabotBaseUrlProvider,
+  string
+> = {
+  anthropic: "https://api.anthropic.com",
+  openai: "https://api.openai.com",
+};
+
+// The URL is used exactly as entered (the adapters append /v1/... to it), so the help text
+// must show the full compatible-surface path Azure admins need.
+export const AZURE_BASE_URL_EXAMPLE_BY_PROVIDER: Record<
+  MetabotBaseUrlProvider,
+  string
+> = {
+  anthropic: "https://<resource>.services.ai.azure.com/anthropic",
+  openai: "https://<resource>.services.ai.azure.com/openai",
+};
+
 export function parseProviderAndModel(value: string | null | undefined) {
   if (!value) {
     return undefined;
