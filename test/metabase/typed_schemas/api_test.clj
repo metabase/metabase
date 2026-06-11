@@ -27,6 +27,7 @@
           :jsType        "string"
           :key           "category"
           :id            "550e8400-e29b-41d4-a716-446655440001"
+          :fieldId       3815
           :tableId       12
           :metricId      247}
          (#'typed-schemas.api/dimension-schema
@@ -136,6 +137,7 @@
                                        :jsType      "number"
                                        :key         "orders"
                                        :id          "550e8400-e29b-41d4-a716-446655440001"
+                                       :fieldId     42
                                        :tableId     10
                                        :metricId    247}}}
            (#'typed-schemas.api/metric-schema
@@ -220,6 +222,8 @@
                                           :key            "revenue"
                                           :id             5
                                           :name           "Revenue"
+                                          :databaseId     1
+                                          :sourceTableId  10
                                           :description    "Total order revenue"
                                           :mappedTableIds [10]
                                           :dimensions     {"createdAt" {:name        "created_at"
@@ -228,6 +232,7 @@
                                                                         :jsType      "Date"
                                                                         :key         "createdAt"
                                                                         :id          "dimension-uuid"
+                                                                        :fieldId     3971
                                                                         :tableId     10
                                                                         :metricId    5}}}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
@@ -238,7 +243,10 @@
     (is (not (str/includes? body "displayName: \"Payment Method\"")))
     (is (not (str/includes? body "baseType: \"type/Text\"")))
     (is (str/includes? body (str "/" "/ Description: Total order revenue")))
+    (is (str/includes? body "databaseId: 1"))
+    (is (str/includes? body "sourceTableId: 10"))
     (is (str/includes? body "createdAt: {\n          id: \"dimension-uuid\""))
+    (is (str/includes? body "fieldId: 3971"))
     (is (str/includes? body "metricId: 5"))))
 
 (deftest json-endpoint-test
