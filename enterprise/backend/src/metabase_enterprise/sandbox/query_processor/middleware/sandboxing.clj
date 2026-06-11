@@ -12,7 +12,6 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
-   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
@@ -248,7 +247,7 @@
         ;; `add-parent-column-metadata` as `parent.child.leaf`, while `table-cols` carry the raw leaf `:name`.
         ;; Index table-cols by their parent-qualified name so name-only matching (native sandboxes, no `:id`)
         ;; still finds nested fields. See #75305.
-        table-by-flat-name (m/index-by #(lib.field.util/parent-qualified-name metadata-providerable %)
+        table-by-flat-name (m/index-by #(lib/parent-qualified-name metadata-providerable %)
                                        table-cols)
         find-table-col     (fn [{col-id :id, col-name :name}]
                              (or (get table-by-id col-id)
