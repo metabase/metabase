@@ -334,8 +334,11 @@
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
+      (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true :name "Test Collection" :location "/"}]
+        ;; A pending create makes the export take the incremental write path, where the error fires.
+        (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                                             :status "create" :status_changed_at (t/offset-date-time)})
+        (let [mock-main (test-helpers/create-mock-source :fail-mode :apply-changes-error)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]

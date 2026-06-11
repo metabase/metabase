@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { setLocaleHeader } from "metabase/api/legacy-client";
+import { setLocaleHeader } from "metabase/api/client";
 import { loadLocalization } from "metabase/api/localization";
 import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";

@@ -5,7 +5,7 @@ import "metabase-dev";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { init } from "metabase/app";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
