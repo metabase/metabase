@@ -14,6 +14,7 @@
   :feature        :workspaces
   :driver-feature :workspace
   :visibility     :public
+  :export?        false
   :database-local :only)
 
 (defsetting instance-workspace
