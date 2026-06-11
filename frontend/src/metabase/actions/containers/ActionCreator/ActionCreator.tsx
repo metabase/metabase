@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { Route } from "react-router";
 import { t } from "ttag";
 
@@ -13,6 +13,7 @@ import {
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -172,12 +173,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
       {isSaveModalShown && (
-        <Modal
-          opened
-          title={t`New Action`}
-          size="640px"
-          onClose={handleCloseNewActionModal}
-        >
+        <NewActionSaveModal onClose={handleCloseNewActionModal}>
           <CreateActionForm
             initialValues={{
               name: action.name,
@@ -187,7 +183,7 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
           />
-        </Modal>
+        </NewActionSaveModal>
       )}
 
       {route && (
@@ -197,6 +193,29 @@ function ActionCreator({ model, onSubmit, onClose, route }: Props) {
         />
       )}
     </>
+  );
+}
+
+function NewActionSaveModal({
+  onClose,
+  children,
+}: {
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  // capture so Escape closes only this dialog, not the creator modal under it
+  useEscapeToCloseModal(onClose, { capture: true });
+
+  return (
+    <Modal
+      opened
+      title={t`New Action`}
+      size="640px"
+      closeOnEscape={false}
+      onClose={onClose}
+    >
+      {children}
+    </Modal>
   );
 }
 

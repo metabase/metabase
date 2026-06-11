@@ -2,12 +2,12 @@ import type { MouseEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { ActionModal } from "metabase/actions/components/ActionModal";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { useListActionsQuery, useSearchQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Modal } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -140,13 +140,7 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal
-          opened
-          size="85%"
-          padding={0}
-          withCloseButton={false}
-          onClose={closeModal}
-        >
+        <ActionModal onClose={closeModal}>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}
@@ -154,7 +148,7 @@ function ModelActionPicker({
             onClose={closeModal}
             onSubmit={handleModalSubmit}
           />
-        </Modal>
+        </ActionModal>
       )}
     </>
   );

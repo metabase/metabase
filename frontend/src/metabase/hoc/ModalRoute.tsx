@@ -3,6 +3,7 @@ import { Component, cloneElement } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { connect } from "metabase/redux";
 import { Modal, type ModalProps } from "metabase/ui";
 import MetabaseSettings from "metabase/utils/settings";
@@ -54,6 +55,34 @@ interface WrappedModalRouteProps {
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
+const RoutedModal = ({
+  onClose,
+  modalProps,
+  children,
+}: {
+  onClose: () => void;
+  modalProps: Partial<ModalProps>;
+  children: React.ReactNode;
+}) => {
+  // manual Esc handling so dialogs stacked on top of a routed modal can
+  // intercept Escape (with capture) before the route is popped
+  useEscapeToCloseModal(onClose);
+
+  return (
+    <Modal
+      opened
+      size="640px"
+      padding={0}
+      withCloseButton={false}
+      closeOnEscape={false}
+      onClose={onClose}
+      {...modalProps}
+    >
+      {children}
+    </Modal>
+  );
+};
+
 const ModalWithRoute = (
   ComposedModal: React.ComponentType<ComposedModalProps>,
   modalProps: Partial<ModalProps> = {},
@@ -77,16 +106,9 @@ const ModalWithRoute = (
       }
 
       return (
-        <Modal
-          opened
-          size="640px"
-          padding={0}
-          withCloseButton={false}
-          onClose={this.onClose}
-          {...modalProps}
-        >
+        <RoutedModal onClose={this.onClose} modalProps={modalProps}>
           <ComposedModal {...this.props} onClose={this.onClose} />
-        </Modal>
+        </RoutedModal>
       );
     }
   }

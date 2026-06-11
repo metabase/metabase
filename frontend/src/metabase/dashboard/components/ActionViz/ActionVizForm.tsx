@@ -1,6 +1,7 @@
 import type { FormikHelpers } from "formik";
 import { useCallback, useState } from "react";
 
+import { ActionModal } from "metabase/actions/components/ActionModal";
 import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
 import ActionParametersInputForm, {
   ActionParametersInputModal,
@@ -11,7 +12,6 @@ import { actionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch } from "metabase/redux";
 import { PublicApi } from "metabase/services";
-import { Modal } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -161,11 +161,8 @@ function ActionVizForm({
           />
         )}
         {showEditModal && (
-          <Modal
-            opened
-            size="85%"
-            padding={0}
-            withCloseButton={false}
+          <ActionModal
+            escapeCapture
             data-testid="action-editor-modal"
             onClose={closeEditModal}
           >
@@ -177,7 +174,7 @@ function ActionVizForm({
               onSubmit={onActionEdit}
               onClose={closeEditModal}
             />
-          </Modal>
+          </ActionModal>
         )}
       </>
     );

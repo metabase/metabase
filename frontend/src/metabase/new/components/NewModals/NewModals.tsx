@@ -4,6 +4,7 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
+import { ActionModal } from "metabase/actions/components/ActionModal";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
@@ -23,7 +24,6 @@ import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
-import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -91,11 +91,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     case "action":
       return (
-        <Modal
-          opened
-          size="85%"
-          padding={0}
-          withCloseButton={false}
+        <ActionModal
           transitionProps={{ duration: 0 }}
           onClose={handleModalClose}
         >
@@ -103,7 +99,7 @@ export const NewModals = withRouter((props: WithRouterProps) => {
             onClose={handleModalClose}
             onSubmit={handleActionCreated}
           />
-        </Modal>
+        </ActionModal>
       );
     case "embed": {
       const props = currentNewModalProps as SdkIframeEmbedSetupModalProps;
