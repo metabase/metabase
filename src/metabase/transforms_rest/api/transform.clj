@@ -11,7 +11,8 @@
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.json :as json]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -311,6 +312,203 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/read-check :model/Transform id)))
+
+;;; ---------------------------------------------------------------------------
+;;; Test-run endpoint helpers
+;;; ---------------------------------------------------------------------------
+
+(def ^:private test-run-error-http-status
+  "Maps `:error-type` keywords from the test-run pipeline to HTTP status codes.
+
+  400 — caller error (bad input): the caller can fix by changing the request.
+  422 — unprocessable: the transform or its environment prevents a test run;
+        the caller may need to change the transform definition.
+  408 — timeout: the transform execution exceeded the statement timeout.
+  500 — internal error: unexpected failure; the caller cannot fix this.
+
+  Any unrecognised `:error-type` is re-thrown (→ 500 from the framework)."
+  {:metabase.transforms.test-run.inputs/missing-fixtures         400
+   :metabase.transforms.test-run.inputs/unknown-fixture-keys     400
+   :metabase.transforms.test-run.inputs/unsupported-transform-type 422
+   :metabase.transforms.test-run.inputs/cannot-determine-inputs  422
+   :metabase.transforms.test-run.inputs/table-not-found          422
+   :metabase.transforms.test-run.inputs/transform-dep-not-supported 422
+   :metabase.transforms.test-run.resolve/cannot-test-run         422
+   :metabase.transforms.test-run.resolve/unsupported-transform-type 422
+   :metabase.transforms.test-run.core/pre-execution-guard-failed 500
+   :metabase.transforms.test-run.core/execution-failed           500})
+
+(defn- parse-input-table-ids
+  "Parse multipart-params map and extract input fixture files.
+
+  Scans all keys for the pattern `input-<N>` where N is a positive integer
+  (the table id). Returns `{table-id File}` or throws 400 for malformed keys.
+
+  Unknown keys (not `expected`, `options`, or matching `input-<int>`) are
+  rejected with a 400 describing the unexpected part name."
+  [multipart-params]
+  (reduce-kv
+   (fn [acc k v]
+     (cond
+       ;; Reserved keys handled separately — skip.
+       (contains? #{"expected" "options"} k)
+       acc
+
+       ;; input-<positive-int> pattern.
+       (re-matches #"input-(\d+)" k)
+       (let [[_ id-str] (re-matches #"input-(\d+)" k)
+             table-id   (parse-long id-str)]
+         (if (and table-id (pos? table-id))
+           (assoc acc table-id (:tempfile v))
+           (throw (ex-info (tru "Malformed multipart part name: ''{0}''. Table id must be a positive integer." k)
+                           {:status-code 400
+                            :part-name   k}))))
+
+       ;; Anything else is unknown.
+       :else
+       (throw (ex-info (tru "Unknown multipart part: ''{0}''. Expected: ''expected'', ''options'', or ''input-<table-id>''." k)
+                       {:status-code 400
+                        :part-name   k}))))
+   {}
+   multipart-params))
+
+(defn- parse-test-run-options
+  "Parse the optional `options` JSON multipart part.
+
+  Returns a map with:
+  - `:ignore-columns` — set of column name strings (default `#{}`).
+
+  Throws 400 on malformed JSON or unknown keys."
+  [options-part]
+  (if (nil? options-part)
+    {}
+    (let [raw  (if (map? options-part) (:tempfile options-part) options-part)
+          text (if (instance? java.io.File raw) (slurp raw) (str raw))
+          opts (try
+                 (json/decode text true)
+                 (catch Exception _
+                   (throw (ex-info (tru "Malformed ''options'' part: not valid JSON.")
+                                   {:status-code 400
+                                    :raw-text    text}))))]
+      (when-let [unknown (seq (remove #{:ignore_columns} (keys opts)))]
+        (throw (ex-info (tru "Unknown option keys: {0}. Supported: ignore_columns." (pr-str unknown))
+                        {:status-code 400
+                         :unknown-keys unknown})))
+      (cond-> {}
+        (:ignore_columns opts)
+        (assoc :ignore-columns (set (:ignore_columns opts)))))))
+
+(defn- run-record->response
+  "Convert a successful run-record (from `run-test!`) to the HTTP response body.
+
+  Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for
+  JSON serialisation. `:test_run_id` is nil (reserved for the async future)."
+  [record]
+  {:status       (name (:status record))
+   :diff         (:diff record)
+   :test_run_id  nil})
+
+(defn- error->response
+  "Convert a typed ex-info from the test-run pipeline to a run-record shaped
+  error response body."
+  [e]
+  (let [data (ex-data e)]
+    {:status      "error"
+     :error       {:type    (pr-str (:error-type data))
+                   :message (ex-message e)}
+     :test_run_id nil}))
+
+(def ^:private TestRunResponse
+  "Malli schema for the test-run HTTP response body.
+
+  Covers three shapes:
+  - passed/failed: {:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}
+  - error:         {:status \"error\",             :error <map>,   :test_run_id nil}"
+  [:map {:closed false}
+   [:status      [:enum "passed" "failed" "error"]]
+   [:test_run_id [:maybe pos-int?]]])
+
+(defn- run-test-run!
+  "Execute a test run for `transform` from parsed multipart params.
+
+  Reads the `expected` file part, parses the `input-<id>` fixture files, parses
+  the `options` JSON part, and delegates to `transforms.core/run-test!`.
+
+  Returns the HTTP response map directly (status + body). Does NOT throw —
+  typed errors are mapped to HTTP statuses from `test-run-error-http-status`;
+  unknown errors become 500."
+  [transform multipart-params]
+  (let [expected-part (get multipart-params "expected")]
+    (when-not expected-part
+      (throw (ex-info (tru "Missing required multipart part: ''expected''.")
+                      {:status-code 400})))
+    (let [expected-file     (:tempfile expected-part)
+          fixtures-by-id    (parse-input-table-ids multipart-params)
+          opts              (parse-test-run-options (get multipart-params "options"))
+          ;; The transform value for run-test! is built from the DB row's :source + :target.
+          transform-value   {:source (:source transform)
+                             :target (:target transform)}]
+      (try
+        (let [record (transforms.core/run-test! transform-value fixtures-by-id expected-file opts)]
+          {:status 200
+           :body   (run-record->response record)})
+        (catch clojure.lang.ExceptionInfo e
+          (let [error-type (:error-type (ex-data e))
+                http-status (get test-run-error-http-status error-type)]
+            (if http-status
+              {:status http-status
+               :body   (error->response e)}
+              ;; Unknown error-type — re-throw so the framework returns 500.
+              (throw e))))))))
+
+(api.macros/defendpoint :post "/:id/test-run" :- [:map
+                                                  [:status pos-int?]
+                                                  [:body TestRunResponse]]
+  "Run a synchronous test run for a transform.
+
+  Accepts a multipart/form-data request with the following parts:
+
+  - `input-<table-id>` (required, one per input table): a CSV file whose header
+    must exactly match the real table's column names. `table-id` must be a
+    positive integer matching the id of a table in the transform's dependency
+    set.
+
+  - `expected` (required): a CSV file containing the expected output rows.
+    Columns are inferred from the actual output schema; the comparison is
+    multiset (order-independent).
+
+  - `options` (optional): a JSON string object with supported keys:
+    - `ignore_columns`: array of column name strings to exclude from the diff.
+
+  Error → HTTP status mapping:
+  - 400: missing `expected` part; unknown `input-*` table id; malformed
+         `options` JSON; unknown multipart part name.
+  - 402: feature flag off (transforms premium feature not enabled).
+  - 422: transform type not supported (e.g. Python); cannot determine input
+         tables; referenced table not synced; `replace-names` rewrite fails;
+         dangling column qualifier (table-qualified-column native SQL).
+  - 500: internal invariant violation (pre-execution DDL guard); QP read-back
+         failure.
+
+  Response shape (all cases):
+  - Passed/failed: `{:status \"passed\"|\"failed\", :diff <report>, :test_run_id nil}`
+  - Error: `{:status \"error\", :error {:type <str>, :message <str>}, :test_run_id nil}`
+
+  `:test_run_id` is `nil` in this synchronous implementation; it is reserved
+  for a future async polling variant that can be added without breaking this
+  response shape."
+  {:multipart true}
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {{:strs [expected options] :as multipart-params} :multipart-params}]
+  (let [transform (api/read-check :model/Transform id)]
+    (transforms.core/check-feature-enabled! transform)
+    (api/check (not (transforms.core/transform-locked? transform))
+               [402 {:message    (deferred-tru "Transforms are temporarily locked because the trial quota has been reached.")
+                     :error-code "metabase_transforms_locked"}])
+    (run-test-run! transform multipart-params)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

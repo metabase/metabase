@@ -10,21 +10,26 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.test :as qp]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms-rest.api.transform]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
+   [metabase.transforms.test-run.resolve :as test-run.resolve]
    [metabase.transforms.test-util :refer [get-test-schema
                                           parse-instant
                                           seconds-from-now-ns
                                           utc-timestamp
                                           with-transform-cleanup!]]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -1919,3 +1924,352 @@
             (mt/user-http-request :crowberto :get 400 "transform/run"
                                   :sort-column "bogus"
                                   :sort-direction "asc")))))))
+
+;;; ============================================================
+;;; POST /:id/test-run — synchronous test-run endpoint
+;;; ============================================================
+
+;; ---------------------------------------------------------------------------
+;; Helpers shared across test-run tests
+;; ---------------------------------------------------------------------------
+
+(defn- write-temp-csv!
+  "Write csv-string to a temporary File and return it."
+  ^File [csv-string]
+  (doto (File/createTempFile "api-test-run-fixture-" ".csv")
+    (spit csv-string)))
+
+(defmacro ^:private with-temp-csv-files
+  "Bind temp CSV Files from [name csv-str ...] pairs; delete all in finally."
+  [bindings & body]
+  (let [pairs   (partition 2 bindings)
+        names   (mapv first pairs)
+        strings (mapv second pairs)]
+    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
+       (try
+         ~@body
+         (finally
+           ~@(map (fn [n] `(.delete ~n)) names))))))
+
+(defn- count-test-scratch-tables
+  "Count mb_transform_temp_table_test_* tables in schema via information_schema."
+  [db-id schema]
+  (let [result (qp.core/process-query
+                {:database db-id
+                 :type     :native
+                 :native   {:query (str "SELECT COUNT(*) FROM information_schema.tables"
+                                        " WHERE table_schema = '" schema "'"
+                                        " AND table_name LIKE 'mb_transform_temp_table_test_%'")}})]
+    (-> result (get-in [:data :rows]) first first int)))
+
+(def ^:private multipart-content-type
+  {:request-options {:headers {"content-type" "multipart/form-data"}}})
+
+;; orders columns in position order (matching real test-data schema):
+;;   id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity
+(def ^:private orders-header
+  "id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity")
+
+(def ^:private orders-3-rows
+  (str orders-header "\n"
+       "1,1,14,37.65,2.07,100.00,,2019-02-11T21:40:27.892Z,2\n"
+       "2,1,16,49.21,2.71,200.00,,2019-02-11T21:40:27.892Z,2\n"
+       "3,2,22,88.86,4.89,150.00,,2019-02-11T21:40:27.892Z,3\n"))
+
+(def ^:private orders-1-row
+  (str orders-header "\n"
+       "1,1,14,37.65,2.07,100.00,,2019-02-11T21:40:27.892Z,2\n"))
+
+(defn- make-native-transform-source
+  "Build a :source map for a native-SQL transform using lib/native-query."
+  [mp sql]
+  {:type :query :query (lib/native-query mp sql)})
+
+(defn- test-run-url [transform-id]
+  (format "transform/%d/test-run" transform-id))
+
+;; ---------------------------------------------------------------------------
+;; Happy path — passed
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-happy-path-passed-test
+  (testing "POST /:id/test-run — native transform, correct expected CSV → 200 :passed"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                schema    "public"
+                mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)
+                before-scratch (count-test-scratch-tables db-id schema)
+                before-runs    (t2/count :model/TransformRun)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp
+                                     "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id")
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-3-rows
+                 expected-f "user_id,order_count\n1,2\n2,1\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f})]
+                  (testing "status is passed"
+                    (is (= "passed" (:status resp))))
+                  (testing "test_run_id is nil (synchronous)"
+                    (is (nil? (:test_run_id resp))))
+                  (testing "diff is present"
+                    (is (map? (:diff resp))))
+                  (testing "no scratch tables remain"
+                    (is (= before-scratch (count-test-scratch-tables db-id schema))))
+                  (testing "no TransformRun row created"
+                    (is (= before-runs (t2/count :model/TransformRun)))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Happy path — failed diff
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-failing-diff-test
+  (testing "POST /:id/test-run — wrong expected values → 200 :failed with diff"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                schema    "public"
+                mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)
+                before-scratch (count-test-scratch-tables db-id schema)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp
+                                     "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id")
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-3-rows
+                 ;; user 1 has 2 orders, but expected says 99 — deliberately wrong.
+                 expected-f "user_id,order_count\n1,99\n2,1\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f})]
+                  (testing "status is failed"
+                    (is (= "failed" (:status resp))))
+                  (testing "diff shows differences"
+                    (is (or (seq (get-in resp [:diff :missing-rows]))
+                            (seq (get-in resp [:diff :extra-rows]))
+                            (seq (get-in resp [:diff :cell-mismatches])))))
+                  (testing "no scratch tables remain"
+                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Error cases — 400
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-missing-expected-part-test
+  (testing "POST /:id/test-run — missing expected part → 400"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id FROM orders")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files [orders-f orders-1-row]
+                ;; Provide input fixture but no expected part.
+                (mt/user-http-request
+                 :crowberto :post 400 (test-run-url (:id transform))
+                 multipart-content-type
+                 {(str "input-" orders-id) orders-f})))))))))
+
+(deftest test-run-unknown-input-table-id-test
+  (testing "POST /:id/test-run — unknown input-<id> (no such table in deps) → 400 from pipeline"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp (mt/metadata-provider)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id FROM orders")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-1-row
+                 expected-f "user_id\n1\n"]
+                ;; input-999999 doesn't match the transform's real dependency (orders-id).
+                (let [resp (mt/user-http-request
+                            :crowberto :post 400 (test-run-url (:id transform))
+                            multipart-content-type
+                            {"input-999999" orders-f
+                             "expected"     expected-f})]
+                  (testing "error status"
+                    (is (= "error" (:status resp)))))))))))))
+
+(deftest test-run-malformed-options-json-test
+  (testing "POST /:id/test-run — malformed options JSON → 400"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id FROM orders")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-1-row
+                 expected-f "user_id\n1\n"]
+                (mt/user-http-request
+                 :crowberto :post 400 (test-run-url (:id transform))
+                 multipart-content-type
+                 {(str "input-" orders-id) orders-f
+                  "expected"               expected-f
+                  ;; Not valid JSON.
+                  "options"                "not-json!"})))))))))
+
+;; ---------------------------------------------------------------------------
+;; Error case — 422 (can't test-run)
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-cant-test-run-422-test
+  (testing "POST /:id/test-run — table-qualified-column SQL → 422 ::cannot-test-run"
+    ;; SELECT orders.id FROM orders leaves `orders.` qualifier dangling after
+    ;; the FROM-only rewrite, triggering guard 3 → ::cannot-test-run (422).
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                schema    "public"
+                mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)
+                before-scratch (count-test-scratch-tables db-id schema)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT orders.id FROM orders")
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-1-row
+                 expected-f "id\n1\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 422 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f})]
+                  (testing "status is error"
+                    (is (= "error" (:status resp))))
+                  (testing "error type is cannot-test-run"
+                    (is (= (pr-str ::test-run.resolve/cannot-test-run)
+                           (get-in resp [:error :type]))))
+                  (testing "no scratch tables remain"
+                    (is (= before-scratch (count-test-scratch-tables db-id schema)))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Permissions — 403 for non-read user
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-permissions-403-test
+  (testing "POST /:id/test-run — user without read access → 403"
+    (mt/with-premium-features #{}
+      ;; :rasta does not have transforms permission (no data-analyst role, no db perm).
+      (mt/with-temp [:model/Transform transform {}]
+        (with-temp-csv-files [expected-f "x\n1\n"]
+          (mt/user-http-request
+           :rasta :post 403 (test-run-url (:id transform))
+           multipart-content-type
+           {"expected" expected-f}))))))
+
+;; ---------------------------------------------------------------------------
+;; Feature flag — 402 when feature disabled
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-feature-flag-402-test
+  (testing "POST /:id/test-run — feature not enabled → 402"
+    ;; `query-transforms-enabled?` short-circuits to true on non-hosted instances,
+    ;; so `mt/with-premium-features #{}` alone cannot trigger the 402 path for
+    ;; native transforms. Instead we mock `transforms.util/check-feature-enabled`
+    ;; directly so the feature check always returns false regardless of host type.
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform transform
+                         {:source (make-native-transform-source
+                                   mp "SELECT 1 AS x")
+                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+            (with-temp-csv-files [expected-f "x\n1\n"]
+              (mt/with-dynamic-fn-redefs
+                [transforms.core/check-feature-enabled!
+                 (fn [_] (throw (ex-info "Premium features required."
+                                         {:status-code 402})))]
+                (mt/user-http-request
+                 :crowberto :post 402 (test-run-url (:id transform))
+                 multipart-content-type
+                 {"expected" expected-f})))))))))
+
+;; ---------------------------------------------------------------------------
+;; No TransformRun row / no leftover scratch tables — suite-wide invariant
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-no-transform-run-row-test
+  (testing "POST /:id/test-run — never creates a TransformRun row"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                schema    "public"
+                mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)
+                before-runs (t2/count :model/TransformRun)
+                before-scratch (count-test-scratch-tables db-id schema)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp
+                                     "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id")
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-3-rows
+                 expected-f "user_id,order_count\n1,2\n2,1\n"]
+                (mt/user-http-request
+                 :crowberto :post 200 (test-run-url (:id transform))
+                 multipart-content-type
+                 {(str "input-" orders-id) orders-f
+                  "expected"               expected-f}))
+              (is (= before-runs (t2/count :model/TransformRun))
+                  "No TransformRun row must be created by test-run")
+              (is (= before-scratch (count-test-scratch-tables db-id schema))
+                  "No scratch tables must remain after test-run"))))))))
+
+;; ---------------------------------------------------------------------------
+;; ignore_columns option — :passed despite a noisy column
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-ignore-columns-option-test
+  (testing "POST /:id/test-run — ignore_columns option passes through"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [db-id     (mt/id)
+                schema    "public"
+                mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp
+                                     (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                          " FROM orders GROUP BY user_id ORDER BY user_id"))
+                            :target {:schema schema :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-3-rows
+                 ;; ts column has a placeholder that won't match NOW(), but we ignore it.
+                 expected-f "user_id,order_count,ts\n1,2,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 200 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f
+                             "options"                "{\"ignore_columns\":[\"ts\"]}"})]
+                  (is (= "passed" (:status resp))
+                      (str "Expected :passed with ts ignored; diff: "
+                           (pr-str (:diff resp)))))))))))))

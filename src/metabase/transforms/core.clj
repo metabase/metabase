@@ -15,6 +15,7 @@
    [metabase.transforms.notification]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
+   [metabase.transforms.test-run.core]
    [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -79,4 +80,6 @@
   update-job-tags!]
  [metabase.transforms.models.transform-tag
   tag-name-exists?
-  tag-name-exists-excluding?])
+  tag-name-exists-excluding?]
+ [metabase.transforms.test-run.core
+  run-test!])
