@@ -1,0 +1,420 @@
+(ns metabase.transforms.test-run.resolve-test
+  "Tests for metabase.transforms.test-run.resolve.
+
+  Test strategy / layering:
+  - The native rewrite (`rewrite-native-sql`) and the three-guard `verify` are
+    pure with respect to the database (they only parse). The Step 0b SQL-shape
+    catalogue (rewrite-correct cases 1-8, must-fail cases 9-15) is therefore
+    tested directly against those two functions — no DB needed.
+  - `resolve-test-transform` end-to-end (compile + rewrite/override + verify)
+    needs a real metadata provider, so those tests run gated under postgres with
+    `mt/dataset test-data` (bare symbol) and proper `lib/native-query` /
+    `lib/query` MBQL 5 values — the shapes `native-query-transform?` recognises."
+  (:require
+   [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.test :as mt]
+   [metabase.transforms.test-run.resolve :as resolve]))
+
+(set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------------------------------------
+;;; Helpers
+;;; ---------------------------------------------------------------------------
+
+(def ^:private orders->scratch
+  "A one-entry scratch mapping: public.orders -> public.scratch_orders (same schema)."
+  {{:schema "public" :table "orders"} {:schema "public" :table "scratch_orders"}})
+
+(def ^:private orders+customers->scratch
+  {{:schema "public" :table "orders"}    {:schema "public" :table "scratch_orders"}
+   {:schema "public" :table "customers"} {:schema "public" :table "scratch_customers"}})
+
+(defn- rewrite
+  "Rewrite native SQL through the pinned backend (sqlglot in this env)."
+  [sql mapping]
+  (resolve/rewrite-native-sql :postgres sql mapping (sql-tools.settings/current-parser-backend)))
+
+(defn- rewrite+verify
+  "Rewrite then verify; returns the verified SQL (throws on guard failure)."
+  [sql mapping]
+  (let [rw (rewrite sql mapping)]
+    (resolve/verify :postgres mapping rw)))
+
+(defn- cannot-test-run?
+  "True when `thunk` throws the typed ::cannot-test-run error; optionally asserts
+  the firing guard."
+  ([thunk] (cannot-test-run? thunk nil))
+  ([thunk expected-guard]
+   (try
+     (thunk)
+     false
+     (catch clojure.lang.ExceptionInfo e
+       (let [{:keys [error-type guard]} (ex-data e)]
+         (and (= ::resolve/cannot-test-run error-type)
+              (or (nil? expected-guard) (= expected-guard guard))))))))
+
+;;; ===========================================================================
+;;; Rewrite-correct catalogue (cases 1-8): assert rewritten shape + verify passes
+;;; ===========================================================================
+
+(deftest case-1-unqualified-table-unqualified-columns-test
+  (testing "case 1: unqualified table ref + unqualified columns"
+    ;; sqlglot qualifies the rewritten ref with the target scratch schema (public).
+    (is (= "SELECT id FROM public.scratch_orders"
+           (rewrite "SELECT id FROM orders" orders->scratch)))
+    (is (string? (rewrite+verify "SELECT id FROM orders" orders->scratch)))))
+
+(deftest case-2-schema-qualified-table-alias-qualified-columns-test
+  (testing "case 2: schema-qualified table ref, alias-qualified columns"
+    (let [rw (rewrite "SELECT o.id, o.total FROM public.orders o" orders->scratch)]
+      (is (= "SELECT o.id, o.total FROM public.scratch_orders AS o" rw))
+      (is (string? (resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-3-self-join-test
+  (testing "case 3: self-join (two aliases, same table)"
+    (let [rw (rewrite "SELECT a.id FROM orders a JOIN orders b ON a.id = b.id" orders->scratch)]
+      (is (re-find #"scratch_orders AS a" rw))
+      (is (re-find #"scratch_orders AS b" rw))
+      (is (string? (resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-4-subquery-test
+  (testing "case 4: subquery (table inside derived table)"
+    (let [rw (rewrite "SELECT * FROM (SELECT * FROM orders) sub" orders->scratch)]
+      (is (re-find #"FROM public.scratch_orders" rw))
+      (is (string? (resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-5-cte-real-ref-non-shadowing-test
+  (testing "case 5: CTE with a real-table ref inside, non-shadowing CTE name"
+    (let [rw (rewrite "WITH recent AS (SELECT * FROM orders WHERE id > 1) SELECT * FROM recent"
+                      orders->scratch)]
+      (is (re-find #"FROM public.scratch_orders" rw))
+      ;; verify: referenced-tables-raw excludes the CTE name `recent`, so only scratch_orders remains
+      (is (string? (resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-6-join-using-both-mapped-test
+  (testing "case 6: JOIN ... USING (both tables mapped)"
+    (let [rw (rewrite "SELECT * FROM orders JOIN customers USING (cust_id)" orders+customers->scratch)]
+      (is (re-find #"scratch_orders" rw))
+      (is (re-find #"scratch_customers" rw))
+      (is (string? (resolve/verify :postgres orders+customers->scratch rw))))))
+
+(deftest case-7-comments-preserved-test
+  (testing "case 7: comments (line) preserved through rewrite"
+    (let [rw (rewrite "SELECT id FROM orders -- a comment\nWHERE id > 1" orders->scratch)]
+      (is (re-find #"scratch_orders" rw))
+      (is (string? (resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-8-quoted-exact-case-identifier-test
+  (testing "case 8: quoted exact-case identifier with exact-case replacement key"
+    ;; A quoted mixed-case table mapped by exact case; output stays quoted.
+    (let [mapping {{:schema "public" :table "Orders"} {:schema "public" :table "scratch_Orders"}}
+          rw      (rewrite "SELECT id FROM \"public\".\"Orders\"" mapping)]
+      (is (re-find #"\"scratch_Orders\"" rw))
+      ;; verify: scratch ref set folds to lowercase; referenced-tables-raw returns the
+      ;; quoted name verbatim (Orders -> scratch_Orders), normalize-ref lowercases both sides.
+      (is (string? (resolve/verify :postgres mapping rw))))))
+
+;;; ===========================================================================
+;;; Must-fail catalogue (cases 9-13)
+;;; ===========================================================================
+
+(deftest case-9-malformed-sql-typed-error-test
+  (testing "case 9: malformed SQL -> typed ::cannot-test-run via the rewrite guard"
+    (is (cannot-test-run?
+         #(rewrite "SELECT * FORM orders WHEREX" orders->scratch)
+         ::resolve/rewrite))))
+
+(deftest case-10-unmapped-table-survives-in-from-test
+  (testing "case 10: a referenced table with NO scratch mapping survives in FROM (guard 2)"
+    ;; orders is mapped, widgets is not -> widgets passes through replace-names untouched
+    ;; and survives in FROM -> guard 2 (refs not subset of scratch) fires.
+    (is (cannot-test-run?
+         #(rewrite+verify "SELECT * FROM orders JOIN widgets ON orders.id = widgets.oid"
+                          orders->scratch)
+         ::resolve/refs-subset-scratch))))
+
+(deftest case-11-dangling-qualifier-caught-by-guard-3-not-guard-2-test
+  (testing "case 11: MBQL-style fully-qualified SQL with a dangling schema.table.column
+            qualifier is caught by guard 3 (token-survival), NOT guard 2 (refs subset)"
+    ;; Construct the broken rewrite directly: FROM points at scratch, but a column
+    ;; qualifier still names the real `orders` table (the FROM-only-rewrite hazard).
+    ;; referenced-tables-raw reports only FROM/JOIN sources -> [scratch_orders] -> guard 2 PASSES;
+    ;; guard 3 must catch the surviving `orders` token.
+    (let [broken "SELECT \"public\".\"orders\".\"user_id\" FROM \"public\".\"scratch_orders\""]
+      ;; sanity: guard 2 alone would pass (the only FROM source is scratch_orders)
+      (is (= [{:schema "public" :table "scratch_orders"}]
+             (vec (metabase.sql-tools.core/referenced-tables-raw :postgres broken))))
+      ;; but verify as a whole fails closed via guard 3
+      (is (cannot-test-run?
+           #(resolve/verify :postgres orders->scratch broken)
+           ::resolve/token-survival)))))
+
+(deftest case-12-cte-shadow-test
+  (testing "case 12: CTE whose name shadows a mapped real table, no real reference.
+            Document observed behavior."
+    ;; `WITH orders AS (...) SELECT * FROM orders` — the only `orders` is the CTE.
+    ;; On sqlglot, replace-names mis-rewrites the final CTE-ref to scratch_orders.
+    ;; referenced-tables-raw correctly excludes CTE names, so guard 1 sees [] -> fails
+    ;; (non-empty-refs guard). The surviving `WITH orders AS` token is ALSO caught by
+    ;; guard 3. Either way it fails closed. We assert it fails with the typed error.
+    (let [rw (rewrite "WITH orders AS (SELECT 1 AS id) SELECT * FROM orders" orders->scratch)]
+      ;; Whatever the precise shape, verify must reject it (it cannot be safely test-run).
+      (is (cannot-test-run? #(resolve/verify :postgres orders->scratch rw))))))
+
+(deftest case-13-empty-refs-vacuous-pass-blocked-test
+  (testing "case 13: empty refs (parse error -> []) must FAIL guard 1, not pass vacuously"
+    ;; referenced-tables-raw returns [] on a parse error. Feed verify a string that
+    ;; parses to zero table refs; guard 1 must fire.
+    (is (cannot-test-run?
+         #(resolve/verify :postgres orders->scratch "SELECT 1")
+         ::resolve/non-empty-refs))
+    ;; A genuinely malformed string also yields [] from referenced-tables-raw -> guard 1.
+    (is (cannot-test-run?
+         #(resolve/verify :postgres orders->scratch "NOT SQL AT ALL ;;;")
+         ::resolve/non-empty-refs))))
+
+;;; ===========================================================================
+;;; Backend-divergence (cases 14-15) — record behavior for the pinned backend (:sqlglot)
+;;; ===========================================================================
+
+(deftest case-14-allow-unused-noop-on-sqlglot-test
+  (testing "case 14: an unused replacement key is a no-op on sqlglot (no throw)"
+    ;; mapping references `customers` but the SQL only uses `orders`; sqlglot ignores
+    ;; the unused `customers` key silently (allow-unused? is moot). The rewrite succeeds;
+    ;; orders is rewritten, the unused customers key causes no error.
+    (is (= "SELECT id FROM public.scratch_orders"
+           (rewrite "SELECT id FROM orders" orders+customers->scratch)))))
+
+(deftest case-15-table-only-key-matches-loosely-on-sqlglot-test
+  (testing "case 15: a bare table key matches a schema-qualified ref on sqlglot (loose match)"
+    ;; On macaw this would throw \"Unknown rename\"; on sqlglot the bare {:table orders}
+    ;; key matches public.orders. We register both keys, so this is covered, but assert
+    ;; the loose-match behavior explicitly with a bare-only mapping.
+    (let [bare-only {{:table "orders"} {:schema "public" :table "scratch_orders"}}]
+      (is (= "SELECT id FROM public.scratch_orders"
+             (rewrite "SELECT id FROM public.orders" bare-only))))))
+
+;;; ===========================================================================
+;;; Token-survival edge: a mapped table whose name is a substring of a surviving
+;;; COLUMN identifier must PASS (orders mapped away, orders_total column remains).
+;;; ===========================================================================
+
+(deftest token-survival-substring-column-passes-test
+  (testing "a legitimate column `orders_total` does not trip guard 3 when `orders` is mapped away"
+    ;; FROM is scratch_orders; orders_total is a column (identifier boundary: the `_`
+    ;; after `orders` means `orders` is NOT a whole-identifier match). Must pass.
+    (let [sql "SELECT orders_total FROM scratch_orders"]
+      (is (string? (resolve/verify :postgres orders->scratch sql))))))
+
+(deftest token-survival-orders-old-does-not-match-orders-test
+  (testing "guard 3 is identifier-boundary-aware: `orders_old` is not `orders`"
+    ;; This is purely about the matching predicate: a DIFFERENT table orders_old must
+    ;; not be flagged as the surviving `orders` token. (It would trip guard 2 as an
+    ;; unmapped table, but here we map orders_old too so only the substring concern is tested.)
+    (let [mapping {{:schema "public" :table "orders"}     {:schema "public" :table "scratch_orders"}
+                   {:schema "public" :table "orders_old"} {:schema "public" :table "scratch_orders_old"}}
+          sql     "SELECT id FROM scratch_orders JOIN scratch_orders_old ON true"]
+      (is (string? (resolve/verify :postgres mapping sql))))))
+
+(deftest token-survival-case-different-quoted-alias-passes-test
+  (testing "a case-different quoted alias of a mapped table must NOT trip guard 3"
+    ;; THE false positive that motivated the two-pronged guard-3 design: the lib
+    ;; derives join aliases from table DISPLAY names, so joining `products` compiles
+    ;; to `... AS "Products"` — a legitimate alias over a scratch table. The original
+    ;; single case-insensitive regex spec flagged that alias as the forbidden token
+    ;; `products`, rejecting every MBQL join. This unit test pins the requirement
+    ;; directly at the `verify` level, independent of the lib's current aliasing
+    ;; behavior (the gated MBQL-join integration test covers it only incidentally).
+    (let [mapping {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders"}
+                   {:schema "public" :table "products"} {:schema "public" :table "scratch_products"}}
+          sql     (str "SELECT \"Products\".\"id\" FROM \"public\".\"scratch_orders\" "
+                       "LEFT JOIN \"public\".\"scratch_products\" AS \"Products\" "
+                       "ON \"Products\".\"id\" = \"public\".\"scratch_orders\".\"product_id\"")]
+      (is (string? (resolve/verify :postgres mapping sql))))))
+
+;;; ===========================================================================
+;;; String-literal fail-closed-by-design (documented)
+;;; ===========================================================================
+
+(deftest string-literal-fails-closed-by-design-test
+  (testing "a string literal containing a real table token fails guard 3 by design"
+    ;; `WHERE src = 'orders'` — the string literal `'orders'` matches the boundary-aware
+    ;; regex; this is an accepted fail-closed false positive, with the surviving token named.
+    (let [sql "SELECT id FROM scratch_orders WHERE src = 'orders'"]
+      (is (cannot-test-run?
+           #(resolve/verify :postgres orders->scratch sql)
+           ::resolve/token-survival)))))
+
+(deftest string-literal-check-is-case-sensitive-by-design-test
+  (testing "the string-literal scan is deliberately CASE-SENSITIVE — pinning both sides"
+    ;; The asymmetry is a design decision, not an oversight: the scan must never
+    ;; collide with case-different quoted identifiers (the lib derives join aliases
+    ;; from display names — `AS "Products"` for table `products` — and a
+    ;; case-insensitive scan would reject every MBQL join; see
+    ;; token-survival-case-different-quoted-alias-passes-test). The cost is that a
+    ;; case-different string LITERAL slips through — harmless, since string literals
+    ;; were never the correctness hazard (dangling qualifiers are, and the
+    ;; parser-based check catches those in any case). If you are about to make this
+    ;; scan case-insensitive: don't.
+    (let [fails  "SELECT id FROM scratch_orders WHERE src = 'orders'"
+          passes "SELECT id FROM scratch_orders WHERE src = 'ORDERS'"]
+      (is (cannot-test-run?
+           #(resolve/verify :postgres orders->scratch fails)
+           ::resolve/token-survival))
+      (is (string? (resolve/verify :postgres orders->scratch passes))))))
+
+;;; ===========================================================================
+;;; Native end-to-end (gated): resolve-test-transform native path
+;;; ===========================================================================
+
+(defn- native-transform
+  "Build a native-SQL transform value from a SQL string (proper MBQL 5 native query)."
+  [mp sql]
+  {:source {:type :query :query (lib/native-query mp sql)}})
+
+(deftest resolve-native-happy-path-test
+  (testing "resolve-test-transform native path: compile + rewrite + verify -> artifact"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              transform (native-transform mp "SELECT id FROM orders")
+              mapping   {{:schema "public" :table "orders"}
+                         {:schema "public" :table "scratch_orders_xyz"}}
+              target    {:schema "public" :table "out_xyz"}
+              art       (resolve/resolve-test-transform transform mapping target {:db (mt/db)})]
+          (is (= :postgres (:driver art)))
+          (is (= :sqlglot (:parser-backend art)))
+          (is (= target (:target art)))
+          ;; :compiled carried intact (qp.compile/compile shape), only :query updated
+          (is (contains? (:compiled art) :query))
+          (is (re-find #"scratch_orders_xyz" (:query (:compiled art))))
+          (is (not (re-find #"\borders\b(?!_)" (:query (:compiled art))))))))))
+
+(deftest resolve-native-table-qualified-column-fails-closed-test
+  (testing "native SQL with table-qualified columns (SELECT orders.id FROM orders) fails
+            closed via guard 3 — the accepted PoC limitation, DOCUMENTED here"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              transform (native-transform mp "SELECT orders.id FROM orders")
+              mapping   {{:schema "public" :table "orders"}
+                         {:schema "public" :table "scratch_orders_xyz"}}
+              target    {:schema "public" :table "out_xyz"}]
+          ;; FROM rewrites to scratch, but `orders.id` qualifier dangles -> guard 3.
+          (is (cannot-test-run?
+               #(resolve/resolve-test-transform transform mapping target {:db (mt/db)})
+               ::resolve/token-survival)))))))
+
+;;; ===========================================================================
+;;; MBQL end-to-end (gated): resolve-test-transform override-compile path
+;;; ===========================================================================
+
+(defn- mbql-transform [q] {:source {:type :query :query q}})
+
+(deftest resolve-mbql-single-table-aggregation-test
+  (testing "MBQL single-table aggregation compiles under the override -> only scratch refs"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              orders    (lib.metadata/table mp (mt/id :orders))
+              q         (-> (lib/query mp orders) (lib/aggregate (lib/count)))
+              transform (mbql-transform q)
+              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
+              mapping   {{:schema "public" :table "orders"}
+                         {:schema "public" :table "scratch_orders_abc"}}
+              target    {:schema "public" :table "out_abc"}
+              art       (resolve/resolve-test-transform transform mapping target
+                                                        {:db (mt/db) :input-tables inputs})
+              sql       (:query (:compiled art))]
+          (is (re-find #"scratch_orders_abc" sql))
+          (is (not (re-find #"\"orders\"" sql)))
+          ;; verify passed (resolve would have thrown otherwise) — assert directly too
+          (is (string? (resolve/verify :postgres mapping sql))))))))
+
+(deftest resolve-mbql-two-table-join-test
+  (testing "MBQL two-table join compiles to scratch refs for both physical tables"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              orders    (lib.metadata/table mp (mt/id :orders))
+              products  (lib.metadata/table mp (mt/id :products))
+              opid      (lib.metadata/field mp (mt/id :orders :product_id))
+              pid       (lib.metadata/field mp (mt/id :products :id))
+              q         (-> (lib/query mp orders)
+                            (lib/join (-> (lib/join-clause products [(lib/= opid pid)]))))
+              transform (mbql-transform q)
+              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}
+                         {:id (mt/id :products) :schema "public" :name "products"}]
+              mapping   {{:schema "public" :table "orders"}   {:schema "public" :table "scratch_orders_j"}
+                         {:schema "public" :table "products"} {:schema "public" :table "scratch_products_j"}}
+              target    {:schema "public" :table "out_j"}
+              art       (resolve/resolve-test-transform transform mapping target
+                                                        {:db (mt/db) :input-tables inputs})
+              sql       (:query (:compiled art))]
+          (is (re-find #"scratch_orders_j" sql))
+          (is (re-find #"scratch_products_j" sql))
+          (is (not (re-find #"\"public\"\.\"orders\"" sql)))
+          (is (not (re-find #"\"public\"\.\"products\"" sql))))))))
+
+(deftest resolve-mbql-order-by-test
+  (testing "MBQL with ORDER BY: every qualifier (incl. ORDER BY) points at scratch"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              orders    (lib.metadata/table mp (mt/id :orders))
+              uid       (lib.metadata/field mp (mt/id :orders :user_id))
+              q         (-> (lib/query mp orders)
+                            (lib/aggregate (lib/count))
+                            (lib/breakout uid)
+                            (lib/order-by uid))
+              transform (mbql-transform q)
+              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
+              mapping   {{:schema "public" :table "orders"}
+                         {:schema "public" :table "scratch_orders_ob"}}
+              target    {:schema "public" :table "out_ob"}
+              art       (resolve/resolve-test-transform transform mapping target
+                                                        {:db (mt/db) :input-tables inputs})
+              sql       (:query (:compiled art))]
+          (is (re-find #"ORDER BY" sql))
+          (is (re-find #"scratch_orders_ob" sql))
+          ;; guard 3 would have caught any dangling `orders` qualifier — assert none survives
+          (is (not (re-find #"\"public\"\.\"orders\"\." sql))))))))
+
+(deftest resolve-mbql-incomplete-mapping-fails-closed-test
+  (testing "MBQL with an incomplete override map (a joined table left unmapped) fails closed
+            via guards 2+3 — proven in Step 0b2"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp        (mt/metadata-provider)
+              orders    (lib.metadata/table mp (mt/id :orders))
+              products  (lib.metadata/table mp (mt/id :products))
+              opid      (lib.metadata/field mp (mt/id :orders :product_id))
+              pid       (lib.metadata/field mp (mt/id :products :id))
+              q         (-> (lib/query mp orders)
+                            (lib/join (-> (lib/join-clause products [(lib/= opid pid)]))))
+              transform (mbql-transform q)
+              ;; only orders is provided in input-tables AND mapping; products is left real
+              inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]
+              mapping   {{:schema "public" :table "orders"}
+                         {:schema "public" :table "scratch_orders_inc"}}
+              target    {:schema "public" :table "out_inc"}]
+          ;; products survives -> guard 2 (not subset) and/or guard 3 (token survives) fires
+          (is (cannot-test-run?
+               #(resolve/resolve-test-transform transform mapping target
+                                                {:db (mt/db) :input-tables inputs}))))))))
+
+;;; ===========================================================================
+;;; Unsupported transform type
+;;; ===========================================================================
+
+(deftest resolve-python-transform-unsupported-test
+  (testing "a non-:query (python) transform throws ::unsupported-transform-type"
+    (let [transform {:source {:type :python}}]
+      (try
+        (resolve/resolve-test-transform transform {} {:schema "public" :table "out"} {:db {:engine "postgres"}})
+        (is false "should have thrown")
+        (catch clojure.lang.ExceptionInfo e
+          (is (= ::resolve/unsupported-transform-type (:error-type (ex-data e)))))))))
