@@ -16,9 +16,7 @@ type TreeNodeLayout =
 
 /**
  * The treemap's laid-out tree (with per-node pixel layout) lives on the raw
- * series data (`.tree.root`). `getModel()` is declared `private` in ECharts'
- * types, so a cast exposes it; everything past it is typed by ECharts.
- * Returns `undefined` before the first layout.
+ * series data (`.tree.root`). `getModel()` is declared `private` in ECharts'.
  */
 function getTreemapRoot(chart: EChartsType): TreeNode | undefined {
   return (chart as unknown as { getModel(): GlobalModel })
