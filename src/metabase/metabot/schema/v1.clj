@@ -95,14 +95,26 @@
    [:role [:= "user"]]
    [:content :string]])
 
+(mr/def ::empty-data
+  "An empty `metabot_message.data` value: assistant placeholder rows and aborted turns."
+  [:sequential {:max 0} :any])
+
+(mr/def ::user-message-data
+  "A `metabot_message.data` value holding a user message."
+  [:sequential {:min 1} ::user-message])
+
+(mr/def ::ai-service-data
+  "A `metabot_message.data` value written by the deprecated external ai-service."
+  [:sequential {:min 1} ::ai-service-entry])
+
+(mr/def ::native-data
+  "A `metabot_message.data` value written by the native clojure agent."
+  [:sequential {:min 1} ::native-entry])
+
 (mr/def ::message-data
   "`metabot_message.data` v1 column format. Entries within a row are homogeneous.
   Assistant placeholder rows are empty `[]`."
-  [:or
-   [:sequential {:max 0} :any]
-   [:sequential {:min 1} ::user-message]
-   [:sequential {:min 1} ::ai-service-entry]
-   [:sequential {:min 1} ::native-entry]])
+  [:or ::empty-data ::user-message-data ::ai-service-data ::native-data])
 
 (comment
   ;; validate a CSV dump of the metabot_message table against the v1 schemas
