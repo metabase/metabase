@@ -203,6 +203,45 @@ protocol, defenterprise) or consciously accepted. But ~14 require-level
 changes for median 1236 → 1032 and blob 94 → 82 is a far smaller experiment
 than 'carve a module behind one `:api`' suggested.
 
+### Baseline comparison: the stack hasn't changed the graph at all
+
+With the SCC tooling we can finally answer "how much did the stack improve
+the graph since branching off master?" precisely. Method: ran the identical
+Tarjan/blast analysis in a worktree at the merge-base
+(`12d2583cfa8`, 2026-04-22) using that tree's own module resolution, then
+compared edge sets and SCC membership against the stack tip, normalizing the
+13 `x-rest → x.rest` renames.
+
+| metric | merge-base | stack tip | Δ |
+|---|---:|---:|---:|
+| module nodes | 179 | 179 | 0 |
+| direct edges | 1813 | 1813 | **0 added, 0 removed** |
+| non-trivial SCCs | 3 (94, 3, 2) | 3 (94, 3, 2) | 0 |
+| largest SCC | 94 | 94 | identical membership |
+| Σ\|C\|² | 8929 | 8929 | 0 |
+| predicted median tests (of total) | 1229 / 1234 | 1236 / 1243 | repo growth only |
+| predicted mean tests | 683 | 688 | repo growth only |
+
+Modulo renames, the require graph is **bit-for-bit identical**: zero edges
+added or removed, the same 94 modules in the giant SCC. The stack so far is
+purely organizational — hierarchy declared in config (13 dotted children,
+`:ns-prefix` mappings, the mechanism and linter itself), one fewer `:friends`
+entry — with no require-level change anywhere.
+
+Two readings, both true:
+
+1. **The improvement numbers in the proposal are banked, not bogus.** Cycles
+   88 → 56, depth −1.5, etc. were measured from snapshot 01 (175-module era)
+   and that work merged to master incrementally, so the April merge-base
+   already contains it. This comparison isolates what's *unique to the
+   stack*, and that is: naming, visibility config, and tooling — no cuts.
+2. **It sharpens the phase-one pitch.** The mechanism phase was never
+   supposed to move the graph, and now there's a measurement proving it
+   didn't (and couldn't). The closure metrics in the earlier sections of
+   this file couldn't even distinguish renames from cuts; the SCC metrics
+   can, and they say the carving phase starts from an untouched 94-module
+   blob with the work list above.
+
 ### Sad no more (conditionally)
 
 The blast-radius problem is no longer 'splitting didn't help' — it's a ranked
