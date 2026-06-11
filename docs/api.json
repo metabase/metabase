@@ -2454,7 +2454,7 @@
       },
       "metabase-enterprise.security-center.schema.semver" : {
         "type" : "string",
-        "pattern" : "^\\d+\\.\\d+\\.\\d+$"
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
       },
       "metabase-enterprise.security-center.schema.severity" : {
         "type" : "string",
@@ -3848,6 +3848,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -3876,7 +3879,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "collection_id", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
       },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
@@ -3935,6 +3938,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -3958,7 +3964,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "display", "collection_id", "description" ]
+        "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
       },
       "metabase.agent-api.api.dashcard-mutation" : {
         "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
@@ -4082,7 +4088,7 @@
         "required" : [ "database_id", "sql" ]
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
+        "description" : "Request body for /v2/query, one of three shapes:\n    - `{:continuation_token <string>}` from a prior response (pagination);\n    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64\n      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run\n      through the representations pipeline;\n    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as\n      /v2/construct-query.\n\n  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a\n  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`\n  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -4092,6 +4098,16 @@
             }
           },
           "required" : [ "continuation_token" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "query" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "query" ],
           "additionalProperties" : false
         }, {
           "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
@@ -4337,6 +4353,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -4362,7 +4381,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "collection_id", "description", "archived", "dashcard_ids" ]
+        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
       },
       "metabase.agent-api.api.update-question-request" : {
         "description" : "Patch shape for `update_question`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer).",
@@ -4440,6 +4459,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -4460,7 +4482,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "display", "collection_id", "description", "archived" ]
+        "required" : [ "id", "name", "display", "collection_id", "collection_path", "description", "archived" ]
       },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "description" : "value must be an array of valid results column metadata maps.",
@@ -5431,6 +5453,25 @@
         "type" : "string",
         "enum" : [ "component-crash", "chart-render-error" ]
       },
+      "metabase.health-inspector.api.result" : {
+        "type" : "object",
+        "properties" : {
+          "check_name" : {
+            "type" : "string"
+          },
+          "health" : {
+            "type" : "number"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "run_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "check_name", "health", "message", "run_at" ]
+      },
       "metabase.legacy-mbql.schema.-" : {
         "description" : "schema for a valid MBQL 4 :- clause",
         "allOf" : [ ]
@@ -5513,7 +5554,7 @@
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.WidgetType"
           }
         },
-        "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+        "required" : [ "type", "name", "display-name", "dimension" ]
       },
       "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
         "type" : "object",
@@ -7791,7 +7832,7 @@
               } ]
             }
           },
-          "required" : [ "base_type", "display_name", "name" ]
+          "required" : [ "display_name", "name" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -8957,7 +8998,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.join.strategy"
             }
           },
-          "required" : [ "lib/type", "stages", "conditions", "alias" ]
+          "required" : [ "stages", "conditions", "alias" ]
         }, {
           "allOf" : [ ]
         }, {
@@ -9773,7 +9814,7 @@
               } ]
             }
           },
-          "required" : [ "lib/type", "name", "base-type" ]
+          "required" : [ "name" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
@@ -10353,7 +10394,7 @@
                 } ]
               }
             },
-            "required" : [ "lib/type", "name", "base-type" ]
+            "required" : [ "name" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
@@ -10396,7 +10437,7 @@
             "const" : "metadata/results"
           }
         },
-        "required" : [ "lib/type", "columns" ]
+        "required" : [ "columns" ]
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -10655,7 +10696,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
             }
           },
-          "required" : [ "lib/type", "stages" ]
+          "required" : [ "stages" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
         }, {
@@ -13644,7 +13685,7 @@
                 "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
               }
             },
-            "required" : [ "lib/type", "lib/metadata", "stages" ]
+            "required" : [ "lib/metadata", "stages" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
           }, {
@@ -14863,7 +14904,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -14970,7 +15011,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15156,7 +15197,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15494,7 +15535,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -16734,7 +16775,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : [ "root" ],
             "type" : "array",
@@ -16775,7 +16816,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -16784,7 +16825,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -17008,7 +17049,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "f",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -17536,7 +17577,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "ignore_cache" ]
+                "required" : [ ]
               }
             }
           }
@@ -17603,7 +17644,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -18491,7 +18532,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18503,7 +18544,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18527,7 +18568,7 @@
         }, {
           "in" : "query",
           "name" : "personal-only",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18656,7 +18697,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18668,7 +18709,7 @@
         }, {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18814,7 +18855,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18826,7 +18867,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18850,7 +18891,7 @@
         }, {
           "in" : "query",
           "name" : "include_library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19011,7 +19052,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19023,7 +19064,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19035,7 +19076,7 @@
         }, {
           "in" : "query",
           "name" : "include-library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19073,7 +19114,7 @@
         }, {
           "in" : "query",
           "name" : "shallow",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19225,7 +19266,7 @@
                     } ]
                   }
                 },
-                "required" : [ "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -19334,7 +19375,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19346,7 +19387,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19405,7 +19446,7 @@
         }, {
           "in" : "query",
           "name" : "show_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -20228,7 +20269,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -20467,7 +20508,7 @@
                     } ]
                   }
                 },
-                "required" : [ "is_deep_copy" ]
+                "required" : [ ]
               }
             }
           }
@@ -21395,7 +21436,7 @@
         }, {
           "in" : "query",
           "name" : "include_analytics",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21407,7 +21448,7 @@
         }, {
           "in" : "query",
           "name" : "saved",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21419,7 +21460,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21431,7 +21472,7 @@
         }, {
           "in" : "query",
           "name" : "exclude_uneditable_details",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21443,7 +21484,7 @@
         }, {
           "in" : "query",
           "name" : "include_only_uploadable",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21593,7 +21634,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "engine", "details", "is_full_sync", "is_on_demand", "connection_source" ]
+                "required" : [ "name", "engine", "details" ]
               }
             }
           }
@@ -22165,7 +22206,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22177,7 +22218,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22189,7 +22230,7 @@
         }, {
           "in" : "query",
           "name" : "remove_inactive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22201,7 +22242,7 @@
         }, {
           "in" : "query",
           "name" : "skip_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22271,7 +22312,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22283,7 +22324,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22365,7 +22406,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22377,7 +22418,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22451,7 +22492,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22463,7 +22504,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22830,7 +22871,7 @@
                     } ]
                   }
                 },
-                "required" : [ "database", "pretty" ]
+                "required" : [ "database" ]
               }
             }
           }
@@ -23130,7 +23171,7 @@
                     "properties" : { }
                   }
                 },
-                "required" : [ "query", "visualization_settings", "format_rows", "pivot_results" ]
+                "required" : [ "query" ]
               }
             }
           }
@@ -23641,7 +23682,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -23984,7 +24025,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -23996,7 +24037,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -26184,7 +26225,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force-recalculation",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30587,7 +30628,7 @@
         }, {
           "in" : "query",
           "name" : "all_collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30595,7 +30636,7 @@
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30603,7 +30644,7 @@
         }, {
           "in" : "query",
           "name" : "data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30611,7 +30652,7 @@
         }, {
           "in" : "query",
           "name" : "field_values",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30619,7 +30660,7 @@
         }, {
           "in" : "query",
           "name" : "database_secrets",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30627,7 +30668,7 @@
         }, {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30635,7 +30676,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30663,7 +30704,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30671,7 +30712,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30679,7 +30720,7 @@
         }, {
           "in" : "query",
           "name" : "reindex",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30737,7 +30778,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30749,7 +30790,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30761,7 +30802,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30906,7 +30947,7 @@
         }, {
           "in" : "query",
           "name" : "is_recursive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30914,7 +30955,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -30923,7 +30964,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -31206,7 +31247,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -33173,7 +33214,7 @@
         }, {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33185,7 +33226,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33197,7 +33238,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33999,7 +34040,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34007,7 +34048,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34139,7 +34180,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34147,7 +34188,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34591,7 +34632,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -35397,6 +35438,36 @@
           }
         },
         "tags" : [ "/api/google" ]
+      }
+    },
+    "/api/health-inspector" : {
+      "get" : {
+        "operationId" : "get-api-health-inspector",
+        "summary" : "GET /api/health-inspector",
+        "description" : "Get a list of recent health check runs.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.health-inspector.api.result"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/health-inspector" ]
       }
     },
     "/api/ldap/settings" : {
@@ -38369,7 +38440,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -38767,7 +38838,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "last_send",
             "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-column"
@@ -38775,7 +38846,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "desc",
             "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-direction"
@@ -39199,7 +39270,7 @@
                     } ]
                   }
                 },
-                "required" : [ "synchronous?" ]
+                "required" : [ ]
               }
             }
           }
@@ -39347,7 +39418,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39359,7 +39430,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39681,7 +39752,7 @@
                     "minimum" : 1
                   }
                 },
-                "required" : [ "group_id", "user_id", "is_group_manager" ]
+                "required" : [ "group_id", "user_id" ]
               }
             }
           }
@@ -41054,7 +41125,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41062,7 +41133,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41259,7 +41330,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41645,7 +41716,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41682,7 +41753,7 @@
         }, {
           "in" : "query",
           "name" : "maxheight",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 800,
             "type" : "integer",
@@ -41691,7 +41762,7 @@
         }, {
           "in" : "query",
           "name" : "maxwidth",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 1024,
             "type" : "integer",
@@ -41988,7 +42059,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42013,7 +42084,7 @@
         }, {
           "in" : "query",
           "name" : "creator_or_recipient",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42111,7 +42182,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42212,7 +42283,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty", "disable_links" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42421,7 +42492,7 @@
                     } ]
                   }
                 },
-                "required" : [ "skip_if_empty", "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -42582,7 +42653,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.\n  It defaults to `api`, the value for programmatic callers.\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filter_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -42599,16 +42670,14 @@
           "name" : "context",
           "required" : false,
           "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
           }
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42744,7 +42813,7 @@
         }, {
           "in" : "query",
           "name" : "model_ancestors",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42828,7 +42897,7 @@
         }, {
           "in" : "query",
           "name" : "include_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42840,7 +42909,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42935,7 +43004,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -42961,7 +43030,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -44715,7 +44784,7 @@
         }, {
           "in" : "query",
           "name" : "include_sensitive_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44727,7 +44796,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44739,7 +44808,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45445,7 +45514,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -45743,7 +45812,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45795,7 +45864,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45843,7 +45912,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "false",
             "type" : "boolean"
@@ -46971,7 +47040,7 @@
                     "enum" : [ "cron/raw", "cron/builder" ]
                   }
                 },
-                "required" : [ "name", "schedule", "ui_display_type" ]
+                "required" : [ "name", "schedule" ]
               }
             }
           }
@@ -49928,7 +49997,7 @@
         }, {
           "in" : "query",
           "name" : "include_deactivated",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {

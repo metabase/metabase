@@ -222,8 +222,10 @@
   (with-open [rdr (io/reader file)]
     (->> (line-seq rdr) (remove str/blank?) count)))
 
-(defn- run-python-transform-impl!
-  "Core Python transform execution. Returns {:status :result :logs :events}.
+(mu/defn- run-python-transform-impl! :- ::driver/run-transform-result
+  "Core Python transform execution. Returns an open map carrying an integer `:rows-affected` (the JSONL row count),
+   plus the HTTP runner response's `:status`/`:body`. Conforms to [[::driver/run-transform-result]] so the Python
+   path is held to the same contract as the SQL `run-transform!` methods. Every non-success path throws.
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"

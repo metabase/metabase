@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { UserOption } from "metabase/admin/tools/notifications/UserPicker";
-import { UserPicker } from "metabase/admin/tools/notifications/UserPicker";
+import {
+  type UserOption,
+  UserPicker,
+} from "metabase/common/components/UserPicker";
 import { Flex, Text } from "metabase/ui";
 import { getUserLabel } from "metabase/utils/user";
 import type {

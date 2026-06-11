@@ -1,6 +1,6 @@
 import { nanoid } from "@reduxjs/toolkit";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import type { JSONValue } from "metabase-types/api";
 
 import { type AIStreamingConfig, processChatResponse } from "./process-stream";
@@ -56,38 +56,26 @@ export async function aiStreamingQuery(
       abortController,
     });
 
-    // The basename is needed to work within the Embedding SDK
-    const response = await fetch(`${api.basename}${req.url}`, {
+    const response = await api.fetch({
       method: "POST",
-      headers: {
-        ...api.getClientHeaders(),
-        Accept: "text/event-stream",
-        "Content-Type": "application/json",
-      },
+      url: req.url,
+      body: req.body,
+      headers: { Accept: "text/event-stream" },
       signal: abortController.signal,
-      body: JSON.stringify(req.body),
     });
 
     if (!response.ok) {
-      let responseBody: unknown;
+      // Mirror the legacy client's error shape (`{ status, data }`) so streaming
+      // and non-streaming callers handle failures the same way. A non-JSON or
+      // empty error body leaves `data` undefined; the status still identifies it.
+      let data: unknown;
       try {
-        responseBody = await response.json();
+        data = await response.json();
       } catch {
         // ignore json parse errors
       }
 
-      if (typeof responseBody === "string") {
-        throw { status: response.status, message: responseBody };
-      }
-
-      if (responseBody && typeof responseBody === "object") {
-        throw {
-          status: response.status,
-          ...(responseBody as Record<string, unknown>),
-        };
-      }
-
-      throw new Error(`Response status: ${response.status}`);
+      throw { status: response.status, data };
     }
 
     if (!response.body) {

@@ -78,13 +78,15 @@
       (driver.conn/with-write-connection
         (is (nil? (driver.conn/effective-details nil)))))))
 
-(deftest write-connection-requested?-test
-  (testing "write-connection-requested? returns false by default"
-    (is (false? (driver.conn/write-connection-requested?))))
-  (testing "write-connection-requested? returns true inside with-write-connection"
-    (mt/with-premium-features #{:writable-connection}
-      (driver.conn/with-write-connection
-        (is (true? (driver.conn/write-connection-requested?)))))))
+(deftest connection-telemetry-info-test
+  (testing "connection-telemetry-info describes the current connection context as prose, for logging only"
+    (is (= "the default connection" (driver.conn/connection-telemetry-info)))
+    (driver.conn/with-write-connection
+      (is (= "the write-data connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-admin-connection
+      (is (= "the admin connection" (driver.conn/connection-telemetry-info))))
+    (driver.conn/with-transform-connection
+      (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
 
 (deftest effective-details-default-with-admin-details-test
   (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
@@ -147,23 +149,7 @@
           (is (=? details
                   (driver.conn/effective-details database))))))))
 
-(deftest admin-connection-requested?-test
-  (testing "admin-connection-requested? returns false by default"
-    (is (false? (driver.conn/admin-connection-requested?))))
-  (testing "admin-connection-requested? returns true inside with-admin-connection"
-    (mt/with-premium-features #{:workspaces}
-      (driver.conn/with-admin-connection
-        (is (true? (driver.conn/admin-connection-requested?))))))
-  (testing "admin-connection-requested? does not leak across to write-connection"
-    (mt/with-premium-features #{:writable-connection}
-      (driver.conn/with-write-connection
-        (is (false? (driver.conn/admin-connection-requested?))))))
-  (testing "write-connection-requested? does not leak across to admin-connection"
-    (mt/with-premium-features #{:workspaces}
-      (driver.conn/with-admin-connection
-        (is (false? (driver.conn/write-connection-requested?)))))))
-
-(deftest effective-connection-type-admin-test
+(deftest connection-pool-type-admin-test
   (mt/when-ee-evailable
    (mt/with-premium-features #{:workspaces}
      (let [details       {:host "read-host"}
@@ -173,12 +159,12 @@
            unconfigured  {:lib/type :metadata/database :id 1 :details details}]
        (testing "returns :admin when both requested and configured"
          (driver.conn/with-admin-connection
-           (is (= :admin (driver.conn/effective-connection-type configured)))))
+           (is (= :admin (driver.conn/connection-pool-type configured)))))
        (testing "returns :default when requested but not configured (avoids duplicate pool)"
          (driver.conn/with-admin-connection
-           (is (= :default (driver.conn/effective-connection-type unconfigured)))))
+           (is (= :default (driver.conn/connection-pool-type unconfigured)))))
        (testing "returns :default when not requested even if configured"
-         (is (= :default (driver.conn/effective-connection-type configured))))))))
+         (is (= :default (driver.conn/connection-pool-type configured))))))))
 
 (deftest effective-details-admin-with-workspace-swap-test
   (mt/when-ee-evailable

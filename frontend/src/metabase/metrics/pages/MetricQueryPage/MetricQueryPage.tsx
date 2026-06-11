@@ -5,22 +5,19 @@ import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
-import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Card, Center } from "metabase/ui";
-import * as Urls from "metabase/urls";
+import { Card } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card as CardApiType } from "metabase-types/api";
 
+import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
 import type { MetricPageProps, MetricUrls } from "../../types";
@@ -39,26 +36,19 @@ export function MetricQueryPage({
   showAppSwitcher,
   showDataStudioLink = true,
 }: MetricQueryPageProps) {
-  const cardId = Urls.extractEntityId(params.cardId);
-  const { card, isLoading, error } = useLoadCardWithMetadata(cardId);
-
-  if (isLoading || error != null || card == null) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
-      </Center>
-    );
-  }
-
   return (
-    <MetricQueryPageBody
-      card={card}
-      route={route}
-      urls={urls}
-      renderBreadcrumbs={renderBreadcrumbs}
-      showAppSwitcher={showAppSwitcher}
-      showDataStudioLink={showDataStudioLink}
-    />
+    <MetricPageCard cardId={params.cardId}>
+      {(card) => (
+        <MetricQueryPageBody
+          card={card}
+          route={route}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
+        />
+      )}
+    </MetricPageCard>
   );
 }
 
@@ -105,37 +95,29 @@ function MetricQueryPageBody({
     return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
   }, [datasetQuery, card.dataset_query]);
 
-  const {
-    checkData,
-    isCheckingDependencies,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-    onSave: async (question) => {
-      const { display, settings } = Lib.defaultDisplay(question.query());
-      const { error } = await updateCard({
-        id: card.id,
-        dataset_query: question.datasetQuery(),
-        display,
-        visualization_settings: settings,
-        result_metadata: resultMetadata,
-      });
-      if (error) {
-        sendErrorToast(t`Failed to update metric query`);
-      } else {
-        sendSuccessToast(t`Metric query updated`);
-      }
-    },
-  });
-
   const handleChangeQuery = (query: Lib.Query) => {
     setDatasetQuery(Lib.toJsQuery(query));
   };
 
-  const handleSave = () => {
-    handleInitialSave(question.setResultsMetadata({ columns: resultMetadata }));
+  const handleSave = async () => {
+    const questionWithMetadata = question.setResultsMetadata({
+      columns: resultMetadata,
+    });
+    const { display, settings } = Lib.defaultDisplay(
+      questionWithMetadata.query(),
+    );
+    const { error } = await updateCard({
+      id: card.id,
+      dataset_query: questionWithMetadata.datasetQuery(),
+      display,
+      visualization_settings: settings,
+      result_metadata: resultMetadata,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update metric query`);
+    } else {
+      sendSuccessToast(t`Metric query updated`);
+    }
   };
 
   const handleCancel = () => {
@@ -165,7 +147,7 @@ function MetricQueryPageBody({
               errorMessage={validationResult.errorMessage}
               isValid={validationResult.isValid}
               isDirty={isDirty}
-              isSaving={isSaving || isCheckingDependencies}
+              isSaving={isSaving}
               onSave={handleSave}
               onCancel={handleCancel}
             />
@@ -181,18 +163,7 @@ function MetricQueryPageBody({
           />
         </Card>
       </PageContainer>
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
-      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
     </>
   );
 }

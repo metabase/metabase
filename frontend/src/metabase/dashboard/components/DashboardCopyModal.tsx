@@ -1,6 +1,7 @@
+import type { Location } from "history";
 import { dissoc } from "icepick";
 import { useState } from "react";
-import { type WithRouterProps, withRouter } from "react-router";
+import { withRouter } from "react-router";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -16,7 +17,9 @@ import { getDashboardComplete } from "../selectors";
 
 type DashboardCopyModalProps = {
   onClose: () => void;
-} & WithRouterProps;
+  params: { slug?: string };
+  location: Location;
+};
 
 const getTitle = (
   dashboard: Dashboard | null,

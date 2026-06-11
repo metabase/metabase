@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
 import type { State } from "metabase/redux/store";
-import type { TokenStatus, Version } from "metabase-types/api";
+import type { TokenFeature, TokenStatus, Version } from "metabase-types/api";
 
 export const getSettings: <S extends State>(state: S) => GetSettings<S> =
   createSelector(
@@ -32,6 +32,15 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "google-auth-enabled") ||
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
+
+export const getIsHosted = (state: State): boolean => {
+  return getSetting(state, "is-hosted?");
+};
+
+export const getTokenFeature = (state: State, feature: TokenFeature) => {
+  const tokenFeatures = getSetting(state, "token-features");
+  return tokenFeatures[feature];
+};
 
 export type StorePaths =
   /** store main page */
