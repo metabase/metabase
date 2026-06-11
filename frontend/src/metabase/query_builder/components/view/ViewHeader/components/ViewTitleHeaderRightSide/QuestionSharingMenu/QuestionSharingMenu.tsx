@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {
@@ -15,7 +16,7 @@ import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, CopyButton, Flex, Icon, Text } from "metabase/ui";
+import { Box, CopyButton, Flex } from "metabase/ui";
 import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
@@ -98,18 +99,7 @@ function NonAdminQuestionSharingMenu({ question }: { question: Question }) {
     <CopyButton value={url} timeout={2000}>
       {({ copied, copy }) => (
         <SharingButton
-          tooltip={
-            copied ? (
-              <Flex gap="sm" align="center">
-                <Icon name="verified_round" size={16} />
-                <Text fz="md" lh="sm" c="inherit">
-                  {t`Link copied to clipboard!`}
-                </Text>
-              </Flex>
-            ) : (
-              t`Copy link`
-            )
-          }
+          tooltip={copied ? <LinkCopiedTooltipLabel /> : t`Copy link`}
           onClick={() => {
             copy();
             trackPublicLinkCopied({ artifact: "question", format: "html" });

@@ -139,9 +139,9 @@ const { H } = cy;
               H.sharingMenuButton().realHover();
               H.tooltip().findByText("Link copied to clipboard!");
             } else {
-              // The menu item flips to "Copied!" in place.
+              // The menu item shows a confirmation tooltip in place.
               H.openSharingMenu("Copy link");
-              H.sharingMenu().findByText("Copied!").should("be.visible");
+              H.tooltip().findByText("Link copied to clipboard!");
             }
 
             cy.get("@copyLink").should("have.been.called");

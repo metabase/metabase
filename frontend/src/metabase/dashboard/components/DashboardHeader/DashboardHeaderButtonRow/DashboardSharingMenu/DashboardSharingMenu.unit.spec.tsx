@@ -151,6 +151,20 @@ describe("DashboardSharingMenu", () => {
         );
       });
 
+      it("shows a 'Link copied to clipboard!' tooltip after clicking 'Copy link'", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy link"));
+
+        expect(
+          await screen.findByText("Link copied to clipboard!"),
+        ).toBeInTheDocument();
+      });
+
       it("should only show the PDF export option when public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,

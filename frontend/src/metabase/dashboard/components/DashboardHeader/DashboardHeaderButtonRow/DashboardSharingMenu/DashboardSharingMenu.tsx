@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { getIsDashCardsRunning } from "metabase/dashboard/selectors";
+import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/ExportPdfMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
@@ -12,7 +13,7 @@ import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, CopyButton, Flex, Icon, Menu } from "metabase/ui";
+import { Box, CopyButton, Flex, Icon, Menu, Tooltip } from "metabase/ui";
 import { publicDashboard as getPublicDashboardUrl } from "metabase/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -87,16 +88,18 @@ function NonAdminDashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           <Menu.Divider />
           <CopyButton value={getPublicDashboardUrl(publicUuid)} timeout={2000}>
             {({ copied, copy }) => (
-              <Menu.Item
-                leftSection={<Icon name="link" aria-hidden />}
-                closeMenuOnClick={false}
-                onClick={() => {
-                  copy();
-                  trackPublicLinkCopied({ artifact: "dashboard" });
-                }}
-              >
-                {copied ? t`Copied!` : t`Copy link`}
-              </Menu.Item>
+              <Tooltip label={<LinkCopiedTooltipLabel />} opened={copied}>
+                <Menu.Item
+                  leftSection={<Icon name="link" aria-hidden />}
+                  closeMenuOnClick={false}
+                  onClick={() => {
+                    copy();
+                    trackPublicLinkCopied({ artifact: "dashboard" });
+                  }}
+                >
+                  {t`Copy link`}
+                </Menu.Item>
+              </Tooltip>
             )}
           </CopyButton>
         </>
