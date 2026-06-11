@@ -47,6 +47,7 @@ Use `libraryCollections` for semantic-layer tables, segments, measures, and metr
 ```ts
 import {
   breakout,
+  count,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -101,13 +102,24 @@ const { data } = useMetabaseQuery<OrdersTable>({
     ordersTable.segments.completedOrders,
     filter(ordersTable.fields.total, ">", 100),
   ],
-  measures: [ordersTable.measures.revenue],
+  aggregations: [ordersTable.measures.revenue],
   breakouts: [breakout(ordersTable.fields.createdAt, { bucket: "month" })],
 });
 ```
 
-Table fields, segments, and measures must come from the queried table.
-When table queries use `fields`, `segments`, `measures`, or `breakouts`, pass the table schema generic (`useMetabaseQuery<OrdersTable>`) so TypeScript can validate the query.
+For grouped counts, use `count()`:
+
+```ts
+useMetabaseQuery({
+  table: ordersTable,
+  filters: [ordersTable.segments.completedOrders],
+  aggregations: [count()],
+  breakouts: [breakout(ordersTable.fields.paymentMethod)],
+});
+```
+
+Table fields, segments, and measure aggregations must come from the queried table.
+When table queries use `fields`, `segments`, `aggregations`, or `breakouts`, pass the table schema generic (`useMetabaseQuery<OrdersTable>`) so TypeScript can validate the query.
 
 ### Metrics
 
@@ -177,6 +189,7 @@ Chart only, without the toolbar:
 import {
   InteractiveQuestion,
   breakout,
+  count,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
@@ -184,7 +197,7 @@ const dailyRevenue = schema.tables.dailyStoreRevenue;
 
 const revenueQuery = useMetabaseQueryObject({
   table: dailyRevenue,
-  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
   breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
 });
 
@@ -200,7 +213,7 @@ Full interactive question, with the query toolbar:
 ```tsx
 const revenueQuery = useMetabaseQueryObject({
   table: dailyRevenue,
-  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
   breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
 });
 
@@ -256,7 +269,7 @@ const { data } = useMetabaseQuery<DailyRevenue>({
     dailyRevenue.segments.ordersFromThisMonth,
     filter(dailyRevenue.fields.netRevenue, ">", 1000),
   ],
-  measures: [dailyRevenue.measures.sumOfNetRevenue],
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
   breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "day" })],
 });
 ```

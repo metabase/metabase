@@ -5,6 +5,7 @@ import type {
 } from "../data-schema";
 
 import type {
+  CountAggregationRuntime,
   DimensionFilterRuntime,
   ID,
   MeasureReferenceRuntime,
@@ -135,6 +136,17 @@ export function isMeasureSchema(
     value != null &&
     "kind" in value &&
     value.kind === "measure"
+  );
+}
+
+export function isCountAggregation(
+  value: unknown,
+): value is CountAggregationRuntime {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "type" in value &&
+    value.type === "count"
   );
 }
 

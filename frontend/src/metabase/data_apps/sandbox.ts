@@ -19,6 +19,7 @@ import { useAction } from "embedding-sdk-package/hooks/public/use-action";
 // eslint-disable-next-line no-restricted-imports
 import {
   breakout,
+  count,
   createMetabaseQuery,
   filter,
   useMetabaseQuery,
@@ -82,6 +83,7 @@ export function createDataAppSandbox(
           useAction,
           // Query helpers
           breakout,
+          count,
           createMetabaseQuery,
           filter,
           useMetabaseQueryObject,

@@ -67,6 +67,22 @@ export type MeasureReference<TTableId extends number = number> = {
   columns?: readonly SchemaColumn[];
 };
 
+export type CountAggregation = {
+  type: "count";
+};
+
+export type CountAggregationSchema = CountAggregation & {
+  columns: readonly [
+    {
+      name: "count";
+      displayName: "Count";
+      jsType: "number";
+    },
+  ];
+};
+
+type CountAggregationColumn = CountAggregationSchema["columns"][number];
+
 type TableId<TTable> = TTable extends { id: infer TId extends number }
   ? TId
   : number;
@@ -363,6 +379,13 @@ export type TableQuery<TTable> = TableReference<TTable> & {
         | MetabaseDimensionFilter<TTable>
       )[]
     : readonly unknown[];
+  aggregations?: TTable extends TableSchema
+    ? readonly (
+        | MeasureReference<TableId<TTable>>
+        | CountAggregation
+        | CountAggregationSchema
+      )[]
+    : readonly (MeasureReference | CountAggregation | CountAggregationSchema)[];
   measures?: TTable extends TableSchema
     ? readonly MeasureReference<TableId<TTable>>[]
     : readonly MeasureReference[];
@@ -446,12 +469,40 @@ type QueryMeasureColumns<TQuery> = TQuery extends {
     : never
   : never;
 
+type QueryAggregationColumns<TQuery> = TQuery extends {
+  aggregations?: infer TAggregations;
+}
+  ? TupleElement<NonNullable<TAggregations>> extends infer TAggregation
+    ? TAggregation extends {
+        columns: infer TColumns;
+      }
+      ? TupleElement<NonNullable<TColumns>>
+      : TAggregation extends CountAggregation
+        ? CountAggregationColumn
+        : never
+    : never
+  : never;
+
+type QueryDefaultAggregationColumns<TQuery> =
+  "aggregations" extends keyof TQuery
+    ? never
+    : "measures" extends keyof TQuery
+      ? never
+      : TQuery extends { breakouts: readonly unknown[] }
+        ? CountAggregationColumn
+        : never;
+
 /** @notExported InferQuerySchema */
 type InferQuerySchema<TEntity, TQuery> = InferSchema<
   TEntity,
   Record<string, unknown>
 > &
-  RowsFromColumns<QueryBreakoutColumns<TQuery> | QueryMeasureColumns<TQuery>>;
+  RowsFromColumns<
+    | QueryBreakoutColumns<TQuery>
+    | QueryMeasureColumns<TQuery>
+    | QueryAggregationColumns<TQuery>
+    | QueryDefaultAggregationColumns<TQuery>
+  >;
 
 type InferQueryEntity<TQuery> = TQuery extends { metric: infer TMetric }
   ? TMetric

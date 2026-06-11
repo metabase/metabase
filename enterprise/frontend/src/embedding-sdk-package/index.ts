@@ -34,6 +34,7 @@ export { useMetricQuery } from "./hooks/public/use-metric-query";
 /** @internal */
 export {
   breakout,
+  count,
   createMetabaseQuery,
   filter,
   useMetabaseQuery,
