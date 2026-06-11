@@ -403,7 +403,8 @@
 
 (deftest settings-put-verifies-and-saves-api-keys-test
   (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
-    (mt/with-temporary-setting-values [llm.settings/llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-haiku-4-5"
+                                       llm.settings/llm-anthropic-api-key nil]
       (let [calls (atom 0)]
         (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
                                                                (swap! calls inc)
@@ -413,7 +414,7 @@
                                                                    "verification should happen before saving the key")
                                                                {:models [{:id "claude-haiku-4-5"
                                                                           :display_name "Claude Haiku 4.5"}]})]
-          (is (= {:value  (metabot.settings/llm-metabot-provider)
+          (is (= {:value  "anthropic/claude-haiku-4-5"
                   :models [{:id "claude-haiku-4-5"
                             :display_name "Claude Haiku 4.5"
                             :group "Haiku"}]}
@@ -577,15 +578,15 @@
         (is (= "anthropic/claude-haiku-4-5"
                (metabot.settings/llm-metabot-provider)))))))
 
-(deftest settings-get-surfaces-invalid-api-key-error-test
+(deftest settings-get-surfaces-credentials-error-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-invalid"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
                                                            (throw (ex-info "OpenAI API key expired or invalid"
                                                                            {:api-error true
                                                                             :status-code 401})))]
-      (is (= {:value         (metabot.settings/llm-metabot-provider)
-              :api-key-error "OpenAI API key expired or invalid"
-              :models        []}
+      (is (= {:value             (metabot.settings/llm-metabot-provider)
+              :credentials-error "OpenAI API key expired or invalid"
+              :models            []}
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openai"))))))
 
