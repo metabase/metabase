@@ -365,10 +365,10 @@
 
 (def ^:private model-family-query-prefixes
   "Query prefixes for embedding-model families trained for asymmetric retrieval.
-  These models expect search queries — but not the indexed documents — to carry a fixed prefix.
-  Patterns must be mutually exclusive: lookup scans entries in unspecified order.
-  Keep patterns narrow: a false positive is unfixable without a code change.
-  The `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it."
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
+  ;; Patterns must be mutually exclusive: lookup scans entries in unspecified order.
+  ;; Keep patterns narrow: a false positive is unfixable without a code change, since the
+  ;; `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it.
   {#"(?i)snowflake-arctic-embed" "query: "})
 
 (defn- default-query-prefix
