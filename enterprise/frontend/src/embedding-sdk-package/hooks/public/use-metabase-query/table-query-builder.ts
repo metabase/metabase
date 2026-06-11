@@ -10,6 +10,7 @@ import {
   getTableId,
   isCountAggregation,
   isDimensionFilter,
+  isFieldAggregation,
   isMeasureSchema,
   isMetricDimensionSchema,
   isSegmentSchema,
@@ -96,6 +97,13 @@ function buildTableAggregationClauses(query: TableQueryRuntime): Aggregation[] {
 function buildAggregationClause(aggregation: unknown): Aggregation | null {
   if (isCountAggregation(aggregation)) {
     return buildCountClause();
+  }
+
+  if (isFieldAggregation(aggregation)) {
+    return [
+      aggregation.type,
+      buildFieldReference(aggregation.dimension),
+    ] as Aggregation;
   }
 
   if (!isMeasureSchema(aggregation)) {

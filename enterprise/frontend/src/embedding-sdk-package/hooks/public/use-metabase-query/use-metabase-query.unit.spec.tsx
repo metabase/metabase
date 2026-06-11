@@ -8,13 +8,25 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
+  avg,
   breakout,
   count,
   createMetabaseQuery,
+  distinct,
   filter,
+  max,
+  median,
+  min,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./use-metabase-query";
+
+type Equals<TLeft, TRight> =
+  (<T>() => T extends TLeft ? 1 : 2) extends <T>() => T extends TRight ? 1 : 2
+    ? true
+    : false;
+type Expect<TValue extends true> = TValue;
 
 const TEST_SCHEMA = {
   tables: {
@@ -238,6 +250,29 @@ const _invalidTableCustomFilterQuery = {
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
+const _validTableAggregationQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  aggregations: [
+    sum(TEST_SCHEMA.tables.orders.fields.amount),
+    avg(TEST_SCHEMA.tables.orders.fields.amount),
+    median(TEST_SCHEMA.tables.orders.fields.amount),
+    min(TEST_SCHEMA.tables.orders.fields.status),
+    max(TEST_SCHEMA.tables.orders.fields.createdAt),
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableAggregationQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  aggregations: [
+    // @ts-expect-error sum only supports numeric dimensions
+    sum(TEST_SCHEMA.tables.orders.fields.status),
+    // @ts-expect-error avg only supports numeric dimensions
+    avg(TEST_SCHEMA.tables.orders.fields.createdAt),
+    // @ts-expect-error median only supports numeric dimensions
+    median(TEST_SCHEMA.tables.orders.fields.status),
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
 const _validMetricScopedQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   filters: [TEST_SCHEMA.tables.orders.segments.completed],
@@ -372,6 +407,27 @@ function useMetricFilterOperatorTypeFixtures() {
 
 void useMetricFilterOperatorTypeFixtures;
 
+function useAggregationResultTypeFixtures() {
+  const _result = useMetabaseQuery({
+    table: TEST_SCHEMA.tables.orders,
+    aggregations: [
+      min(TEST_SCHEMA.tables.orders.fields.status),
+      max(TEST_SCHEMA.tables.orders.fields.createdAt),
+      distinct(TEST_SCHEMA.tables.orders.fields.status),
+    ],
+  });
+
+  type Row = NonNullable<typeof _result.data>["rows"][number];
+  type _ExpectMinResult = Expect<Equals<Row["min"], string | null>>;
+  type _ExpectMaxResult = Expect<Equals<Row["max"], string | Date | null>>;
+  type _ExpectDistinctResult = Expect<Equals<Row["count"], number | null>>;
+  type _ExpectDistinctNameFallsBackToUnknown = Expect<
+    Equals<Row["distinct"], unknown>
+  >;
+}
+
+void useAggregationResultTypeFixtures;
+
 const _invalidMetricSegmentQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   // @ts-expect-error segments must belong to the metric's mapped tables
@@ -455,6 +511,44 @@ describe("useMetabaseQuery", () => {
       ).toMatchObject({
         query: {
           aggregation: [["count"]],
+        },
+      });
+    });
+
+    it("builds field aggregation helpers", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            sum(TEST_SCHEMA.tables.orders.fields.amount),
+            avg(TEST_SCHEMA.tables.orders.fields.amount),
+            distinct(TEST_SCHEMA.tables.orders.fields.status),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [
+            ["sum", ["field", 102, {}]],
+            ["avg", ["field", 102, {}]],
+            ["distinct", ["field", 101, {}]],
+          ],
+          breakout: [["field", 101, {}]],
+        },
+      });
+    });
+
+    it("supports field aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            { type: "max", dimension: TEST_SCHEMA.tables.orders.fields.amount },
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["max", ["field", 102, {}]]],
         },
       });
     });

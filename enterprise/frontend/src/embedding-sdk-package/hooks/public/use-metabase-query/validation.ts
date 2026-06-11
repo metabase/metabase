@@ -1,6 +1,7 @@
 import {
   getMetricMappedTableIds,
   isCountAggregation,
+  isFieldAggregation,
   isMeasureSchema,
   isSegmentSchema,
   isTableDimensionFilter,
@@ -69,6 +70,18 @@ export function validateTableScopedInputs({
         context: `${context} measures`,
       });
     }
+
+    if (
+      isFieldAggregation(measure) &&
+      isTableFieldSchema(measure.dimension) &&
+      typeof measure.dimension.tableId === "number"
+    ) {
+      validateGeneratedTableId({
+        tableId: measure.dimension.tableId,
+        allowedTableIds,
+        context: `${context} aggregations`,
+      });
+    }
   });
 
   breakouts?.forEach((breakout) => {
@@ -108,7 +121,11 @@ function validateGeneratedMeasure({
   measure: unknown;
   context: string;
 }) {
-  if (isMeasureSchema(measure) || isCountAggregation(measure)) {
+  if (
+    isMeasureSchema(measure) ||
+    isCountAggregation(measure) ||
+    isFieldAggregation(measure)
+  ) {
     return;
   }
 

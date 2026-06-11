@@ -74,6 +74,11 @@ export type CountAggregationRuntime = {
   type: "count";
 };
 
+export type FieldAggregationRuntime = {
+  type: "sum" | "avg" | "median" | "distinct" | "min" | "max";
+  dimension: unknown;
+};
+
 export type MetricReferenceRuntime = {
   id: ID;
   mappedTableIds: readonly number[];

@@ -46,9 +46,11 @@ Use `libraryCollections` for semantic-layer tables, segments, measures, and metr
 
 ```ts
 import {
+  avg,
   breakout,
   count,
   filter,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react";
@@ -115,6 +117,16 @@ useMetabaseQuery({
   filters: [ordersTable.segments.completedOrders],
   aggregations: [count()],
   breakouts: [breakout(ordersTable.fields.paymentMethod)],
+});
+```
+
+For basic field aggregations, use helpers such as `sum(field)`, `avg(field)`, `median(field)`, `distinct(field)`, `min(field)`, and `max(field)`:
+
+```ts
+useMetabaseQuery({
+  table: ordersTable,
+  aggregations: [sum(ordersTable.fields.total), avg(ordersTable.fields.total)],
+  breakouts: [breakout(ordersTable.fields.createdAt, { bucket: "month" })],
 });
 ```
 
