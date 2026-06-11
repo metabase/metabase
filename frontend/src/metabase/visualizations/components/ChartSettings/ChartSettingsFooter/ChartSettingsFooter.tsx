@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { Button, Icon } from "metabase/ui";
-
-import { ChartSettingsFooterRoot } from "./ChartSettingsFooter.styled";
+import { Button, Flex, Icon } from "metabase/ui";
 
 export type ChartSettingsFooterProps = {
   onDone: () => void;
@@ -15,7 +13,7 @@ export const ChartSettingsFooter = ({
   onCancel,
   onReset,
 }: ChartSettingsFooterProps) => (
-  <ChartSettingsFooterRoot>
+  <Flex justify="flex-end" gap="md" p="1rem 2rem">
     {onReset && (
       <Button
         variant="subtle"
@@ -26,5 +24,5 @@ export const ChartSettingsFooter = ({
     )}
     <Button onClick={onCancel}>{t`Cancel`}</Button>
     <Button variant="filled" onClick={onDone}>{t`Done`}</Button>
-  </ChartSettingsFooterRoot>
+  </Flex>
 );

@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { Button, Icon } from "metabase/ui";
+
 import {
-  SectionButton,
   SectionContainer,
   SectionDescription,
   SectionHeader,
@@ -31,9 +32,10 @@ export const SetupSection = ({
           <SectionTitle>{title}</SectionTitle>
           <SectionDescription>{description}</SectionDescription>
         </SectionContainer>
-        <SectionButton
-          round
-          icon={isExpanded ? "chevronup" : "chevrondown"}
+        <Button
+          radius="xl"
+          c="brand"
+          leftSection={<Icon name={isExpanded ? "chevronup" : "chevrondown"} />}
           aria-label={t`Setup section`}
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded(!isExpanded)}
