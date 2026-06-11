@@ -223,22 +223,49 @@ export function ExplicitSize<T>({
         );
       }
 
-      __updateSize = () => {
+      __updateSize = (entry?: ResizeObserverEntry) => {
         const element = this._getElement();
-        if (element) {
-          const { width, height } = element.getBoundingClientRect();
+        if (!element) {
+          return;
+        }
 
-          if (!width && !height) {
-            // cypress raises lots of errors in timeline trying to call setState
-            // on the unmounted element, so we're just ignoring
-            return;
-          }
+        let width: number;
+        let height: number;
 
-          if (this.state.width !== width || this.state.height !== height) {
-            this.setState({ width, height }, () =>
-              this.props?.onUpdateSize?.(),
-            );
-          }
+        // ResizeObserver entry's dimensions free to read, prefer it over
+        // getBoundingClientRect() which forces re-layout.
+        if (entry && entry.target === element) {
+          const box = entry.borderBoxSize?.[0];
+          width = box ? box.inlineSize : entry.contentRect.width;
+          height = box ? box.blockSize : entry.contentRect.height;
+        } else {
+          const rect = element.getBoundingClientRect();
+          width = rect.width;
+          height = rect.height;
+        }
+
+        if (!width && !height) {
+          // cypress raises lots of errors in timeline trying to call setState
+          // on the unmounted element, so we're just ignoring
+          return;
+        }
+
+        const { width: prevWidth, height: prevHeight } = this.state;
+
+        // The two measurement sources report sub-pixel sizes with different
+        // precision: @juggle/resize-observer (used in the SDK) rounds box
+        // sizes to three decimals while getBoundingClientRect() does not.
+        // Ignore sub-pixel deltas so alternating sources don't produce
+        // spurious size updates — each one re-renders charts, and an echarts
+        // resize dismisses any open tooltip.
+        const hasChanged =
+          prevWidth === null ||
+          prevHeight === null ||
+          Math.abs(prevWidth - width) >= 1 ||
+          Math.abs(prevHeight - height) >= 1;
+
+        if (hasChanged) {
+          this.setState({ width, height }, () => this.props?.onUpdateSize?.());
         }
       };
       render() {
