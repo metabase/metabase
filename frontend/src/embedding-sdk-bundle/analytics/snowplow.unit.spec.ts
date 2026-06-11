@@ -19,9 +19,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
 
   describe("initSdkTracker", () => {
     // Assert only the flags whose absence fails silently in a customer's prod app:
-    // proxy path (CSP), credentials omit (CORS), server anonymisation (privacy),
-    // and no host-page storage. The rest is cosmetic config, not a safety contract.
-    it("configures the proxy path, omits credentials, anonymises, and touches no storage", async () => {
+    // proxy path (CSP), server anonymisation (privacy), and no host-page storage.
+    // CORS: v3 uses XHR which defaults to withCredentials=false (equivalent to "omit").
+    // The rest is cosmetic config, not a safety contract.
+    it("configures the proxy path, anonymises, and touches no storage", async () => {
       const { initSdkTracker } = await loadModule();
 
       initSdkTracker("https://metabase.example.com");
@@ -33,7 +34,6 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         // Only assert important config keys
         expect.objectContaining({
           postPath: "/api/analytics-proxy",
-          credentials: "omit",
           stateStorageStrategy: "none",
           anonymousTracking: { withServerAnonymisation: true },
         }),
