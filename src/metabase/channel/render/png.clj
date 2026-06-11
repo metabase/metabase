@@ -45,34 +45,51 @@
     .getStyleSheets))
 
 (defn- render-to-png
-  ^java.awt.image.BufferedImage [^String html width]
-  (style/register-fonts-if-needed!)
-  (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
-              doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
-    (let [dimension       (Dimension. width 1)
-          doc             (.parse (DefaultDOMSource. doc-source))
-          da              (dom-analyzer doc doc-source dimension)
-          graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
-                            (setupGraphics [^Graphics2D g]
-                              (doto g
-                                (.setRenderingHint RenderingHints/KEY_RENDERING
-                                                   RenderingHints/VALUE_RENDER_QUALITY)
-                                (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
-                                                   RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
-                                (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
-                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
-                                (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
-                                                   RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
-      (.createLayout graphics-engine dimension)
-      (let [image         (.getImage graphics-engine)
-            viewport      (.getViewport graphics-engine)
-            ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
-            content-width (max (int (.getMinimalWidth viewport))
-                               (int (.getMaximalWidth viewport)))]
-        ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
-        (if (< content-width (.getWidth image))
-          (.getSubimage image 0 0 content-width (.getHeight image))
-          image)))))
+  "Render `html` to a [[BufferedImage]] at `width` logical pixels. `scale` > 1 rasterizes to that many
+  device pixels for crispness (via scaled device graphics, since CSSBox ignores CSS `zoom`/`transform`)."
+  (^java.awt.image.BufferedImage [^String html width]
+   (render-to-png html width 1.0))
+  (^java.awt.image.BufferedImage [^String html width scale]
+   (style/register-fonts-if-needed!)
+   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
+               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]
+     (let [scale           (double scale)
+           dimension       (Dimension. width 1)
+           doc             (.parse (DefaultDOMSource. doc-source))
+           da              (dom-analyzer doc doc-source dimension)
+           graphics-engine (proxy [GraphicsEngine] [(.getRoot da) da (.getURL doc-source)]
+                             (setupGraphics [^Graphics2D g]
+                               (when (not= 1.0 scale)
+                                 (.scale g scale scale))
+                               (doto g
+                                 (.setRenderingHint RenderingHints/KEY_RENDERING
+                                                    RenderingHints/VALUE_RENDER_QUALITY)
+                                 (.setRenderingHint RenderingHints/KEY_ALPHA_INTERPOLATION
+                                                    RenderingHints/VALUE_ALPHA_INTERPOLATION_QUALITY)
+                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING
+                                                    RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                 (.setRenderingHint RenderingHints/KEY_FRACTIONALMETRICS
+                                                    RenderingHints/VALUE_FRACTIONALMETRICS_ON))))]
+       (.createLayout graphics-engine dimension)
+       (let [base          (.getImage graphics-engine)
+             viewport      (.getViewport graphics-engine)
+             ;; CSSBox voodoo -- sometimes maximal width < minimal width, no idea why
+             content-width (max (int (.getMinimalWidth viewport))
+                                (int (.getMaximalWidth viewport)))
+             image         (if (= 1.0 scale)
+                             base
+                             ;; re-render the laid-out boxes into a `scale`x device-pixel image
+                             (let [big (BufferedImage. (int (Math/round (* (.getWidth base) scale)))
+                                                       (int (Math/round (* (.getHeight base) scale)))
+                                                       BufferedImage/TYPE_INT_ARGB)]
+                               (.setImage graphics-engine big)
+                               (.redrawBoxes graphics-engine)
+                               big))
+             crop-width    (int (Math/round (* content-width scale)))]
+         ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
+         (if (< crop-width (.getWidth image))
+           (.getSubimage image 0 0 crop-width (.getHeight image))
+           image))))))
 
 (defn- font-can-fully-render?
   [^Font font s]
@@ -133,6 +150,7 @@
    (try
      (let [padding-x (or (:channel.render/padding-x options) 0)
            padding-y (or (:channel.render/padding-y options) 0)
+           scale     (or (:channel.render/scale options) 1.0)
            padding-css (str padding-y "px " padding-x "px")
            ;; Wrap content in a container div with padding to ensure padding is included in content-width
            ;; calculation (body padding gets cropped off by render-to-png)
@@ -149,7 +167,7 @@
                                         :background-color :white})}
                         (wrap-non-lato-chars padded-content)]])]
        (with-open [os (ByteArrayOutputStream.)]
-         (-> (render-to-png html width)
+         (-> (render-to-png html width scale)
              (write-image! "png" os))
          (.toByteArray os)))
      (catch Throwable e

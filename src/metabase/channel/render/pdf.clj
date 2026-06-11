@@ -37,9 +37,12 @@
    [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.png :as png]
    [metabase.channel.render.util :as render.util]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
@@ -1220,6 +1223,7 @@
     (.drawImage cs img (float x) (float (- (double top-y) dh)) (float dw) (float dh))))
 
 (defn- pt->px [pt] (long (Math/round (* (double pt) (/ dpi 72.0)))))
+(defn- px->pt ^double [px] (* (double px) (/ 72.0 dpi)))
 
 (defn- card-title [card dashcard]
   (or (get-in dashcard [:visualization_settings :card.title]) (:name card)))
@@ -1411,6 +1415,124 @@
   (.fill cs)
   (.setNonStrokingColor cs Color/BLACK))
 
+;; --------------------------------------------------------------------------------------------
+;; Tables. Render the card's HTML table width-filled inside a height-capped wrapper with a row-count
+;; footer, supersampled; the outer frame is stroked natively (see [[draw-table-card!]]).
+;; --------------------------------------------------------------------------------------------
+
+(def ^:private table-supersample
+  "Supersampling factor for table rasters: laid out at logical size but rendered to this many times
+  more device pixels for crisp text at the same on-page size. Mirrors [[chart-supersample]]."
+  2.0)
+
+(def ^:private table-footer-px
+  "Logical-pixel height of the `N rows` footer row at the bottom of a table image."
+  32)
+
+(def ^:private table-border-color
+  "CSS colour for the in-image footer divider (`border-top` above the `N rows` row)."
+  "#F0F0F0")
+
+(def ^:private table-frame-color
+  "Colour of the card's outer frame, stroked natively -- CSSBox's raster is 1px shorter than the
+  bordered box, so an HTML bottom border would be clipped."
+  (Color. 0xF0 0xF0 0xF0))
+
+(defn- th-cell? [x] (and (vector? x) (= :th (first x))))
+
+(defn- header-row?
+  "Whether a `:tr` holds header (`:th`) cells -- which `render-table-head` nests inside a lazy seq."
+  [tr]
+  (some (fn [el] (or (th-cell? el) (and (seq? el) (some th-cell? el)))) tr))
+
+(defn- add-header-dividers
+  "Add a `border-right` to each header cell but the last, matching the body (the renderer leaves
+  header cells border-less). They arrive spliced in a nested seq, so flatten the row first."
+  [tr]
+  (let [items   (vec (mapcat (fn [el] (if (seq? el) el [el])) tr))
+        last-th (->> items (keep-indexed (fn [i el] (when (th-cell? el) i))) last)]
+    (vec (map-indexed
+          (fn [i el]
+            (if (and (th-cell? el) (map? (second el)) (not= i last-th))
+              (update-in el [1 :style] str (format ";border-right:1px solid %s;" table-border-color))
+              el))
+          items))))
+
+(defn- restyle-table
+  "Restyle the inner `<table>` to fit the card frame: fill the width, drop its own border/radius/margin
+  (the native frame and per-cell dividers remain), and add header dividers to match the body."
+  [content]
+  (walk/postwalk
+   (fn [form]
+     (cond
+       (and (vector? form) (= :table (first form)) (map? (second form)))
+       (update-in form [1 :style] str ";width:100%;box-sizing:border-box;border:none;border-radius:0;margin:0;")
+
+       (and (vector? form) (= :tr (first form)) (header-row? form))
+       (add-header-dividers form)
+
+       :else form))
+   content))
+
+(defn- table-body-image
+  "Render a table card body to a [[BufferedImage]] sized to the `px-w` x `px-h` cell (logical pixels):
+  width-filled, height-capped, with a row-count footer, supersampled at [[table-supersample]]x."
+  ^BufferedImage [timezone {:keys [card dashcard result]} px-w px-h n-rows]
+  (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
+        ;; height clip and push the image past the cell. body/render gives the bare table.
+        info     (body/render :table :inline timezone card dashcard (:data result))
+        clip-css (format "max-height:%dpx;overflow:hidden" (max 0 (- (long px-h) table-footer-px 2)))
+        ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
+        wrapped  (assoc info :content
+                        [:div
+                         [:div {:style clip-css} (restyle-table (:content info))]
+                         [:div {:style (format (str "height:%1$dpx;line-height:%1$dpx;box-sizing:border-box;"
+                                                    "font-size:12.5px;text-align:right;padding-right:16px;"
+                                                    "color:#696E7B;border-top:1px solid %2$s")
+                                               table-footer-px table-border-color)}
+                          (format "%,d rows" (long n-rows))]])
+        bytes    (png/render-html-to-png wrapped px-w {:channel.render/scale table-supersample})]
+    (ImageIO/read (ByteArrayInputStream. bytes))))
+
+(defn- stroke-round-rect!
+  "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
+  at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
+  quarter-circle cubic Béziers (control distance = r * kappa)."
+  [^PDPageContentStream cs ^Color color line-w r x top-y w h]
+  (let [l  (double x)
+        t  (double top-y)
+        rt (+ l (double w))
+        b  (- t (double h))
+        r  (min (double r) (/ (double w) 2.0) (/ (double h) 2.0))
+        c  (* r 0.5523)]
+    (.setStrokingColor cs color)
+    (.setLineWidth cs (float line-w))
+    (.moveTo  cs (float (+ l r)) (float t))
+    (.lineTo  cs (float (- rt r)) (float t))                                               ; top edge
+    (.curveTo cs (float (+ (- rt r) c)) (float t) (float rt) (float (- t (- r c))) (float rt) (float (- t r))) ; TR
+    (.lineTo  cs (float rt) (float (+ b r)))                                               ; right edge
+    (.curveTo cs (float rt) (float (- (+ b r) c)) (float (- rt (- r c))) (float b) (float (- rt r)) (float b)) ; BR
+    (.lineTo  cs (float (+ l r)) (float b))                                                ; bottom edge
+    (.curveTo cs (float (- (+ l r) c)) (float b) (float l) (float (- (+ b r) c)) (float l) (float (+ b r)))    ; BL
+    (.lineTo  cs (float l) (float (- t r)))                                                ; left edge
+    (.curveTo cs (float l) (float (- (+ (- t r) c) 0.0)) (float (- (+ l r) c)) (float t) (float (+ l r)) (float t)) ; TL
+    (.stroke cs)
+    (.setStrokingColor cs Color/BLACK)
+    (.setLineWidth cs (float 1.0))))
+
+(defn- draw-table-card!
+  "Draw the table card body fitted to `[x, body-top]` x `cell-w` x `body-h`, with the card's outer
+  frame stroked natively around the image."
+  [^PDDocument doc ^PDPageContentStream cs timezone part x body-top cell-w body-h]
+  (let [n-rows (count (get-in part [:result :data :rows]))
+        img    (table-body-image timezone part (pt->px cell-w) (pt->px body-h) n-rows)
+        ;; image is at table-supersample x logical pixels -> divide back to points
+        dw     (px->pt (/ (.getWidth img) table-supersample))
+        dh     (px->pt (/ (.getHeight img) table-supersample))]
+    (.drawImage cs (LosslessFactory/createFromImage doc img)
+                (float x) (float (- (double body-top) dh)) (float dw) (float dh))
+    (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
   (crisp text) and the space it consumes is reserved before the body is rendered. (Card
@@ -1434,7 +1556,9 @@
         ;; Rectangular charts always fill their box; pies fill (and move their legend to the
         ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
         fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display) (>= cell-w body-h)))]
+                       (and (= :pie display) (>= cell-w body-h)))
+        ;; tables, pivots, and table fallbacks (map/object/unknown) all detect as :table
+        table?     (= :table (render.card/detect-pulse-chart-type card dashcard data))]
     ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
     ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
     (when *debug-boxes*
@@ -1448,12 +1572,18 @@
       ;; in debug mode render charts transparently, so the red box behind them shows through the
       ;; whitespace ECharts/visx leave inside the image.
       (binding [js.svg/*svg-background-color* (if *debug-boxes* nil js.svg/*svg-background-color*)]
-        (if-let [png (when fill?
-                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
-          ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
-          (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                      (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
-          ;; fallback: title-less body PNG, fit preserving aspect into the body area
+        (cond
+          ;; rectangular charts (and wide pies): fill the body area exactly
+          fill?
+          (when-let [png (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h))]
+            (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
+                        (float x) (float (- body-top body-h)) (float cell-w) (float body-h)))
+
+          table?
+          (draw-table-card! doc cs timezone part x body-top cell-w body-h)
+
+          ;; other types: title-less body PNG, fit preserving aspect
+          :else
           (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
             (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h)))))))
 
