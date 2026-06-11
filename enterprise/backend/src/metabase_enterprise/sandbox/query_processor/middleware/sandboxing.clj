@@ -12,6 +12,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
@@ -239,38 +240,50 @@
   We probably should have had this error from day 1 but now there are sandboxes in the wild that do this so I guess we
   just have to work around them going forward."
   [metadata-providerable sandbox-query original-table-id]
-  (let [sandbox-cols (lib/returned-columns sandbox-query)
-        table-cols   (lib.metadata/fields metadata-providerable original-table-id)
-        fixed-cols   (remove (fn [{:keys [table-id], :as sandbox-col}]
-                               (b/cond
-                                 (and table-id
-                                      (not= table-id original-table-id))
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
-                                                    " query included %s from Table %d. This is unsupported and may not"
-                                                    " work in the future.")
-                                               original-table-id
-                                               (pr-str (:name sandbox-col))
-                                               table-id)
-                                   true)
+  (let [sandbox-cols       (lib/returned-columns sandbox-query)
+        table-cols         (lib.metadata/fields metadata-providerable original-table-id)
+        ;; `dissoc nil` guards against the rare case of a table-col without `:id` shadowing the name lookup for
+        ;; sandbox cols (e.g. native) that also have no `:id`.
+        table-by-id        (dissoc (m/index-by :id table-cols) nil)
+        table-by-name      (m/index-by :name table-cols)
+        ;; For nested fields (e.g. Mongo objects), the sandbox col's `:name` comes from
+        ;; `add-parent-column-metadata` as `parent.child.leaf`, while `table-cols` carry the raw leaf `:name`.
+        ;; Index table-cols by their parent-qualified name so name-only matching (native sandboxes, no `:id`)
+        ;; still finds nested fields. See #75305.
+        table-by-flat-name (m/index-by #(lib.field.util/parent-qualified-name metadata-providerable %)
+                                       table-cols)
+        find-table-col     (fn [{col-id :id, col-name :name}]
+                             (or (get table-by-id col-id)
+                                 (get table-by-name col-name)
+                                 (get table-by-flat-name col-name)))
+        fixed-cols         (remove (fn [{:keys [table-id], :as sandbox-col}]
+                                     (b/cond
+                                       (and table-id
+                                            (not= table-id original-table-id))
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table (%d),"
+                                                          " query included %s from Table %d. This is unsupported and may not"
+                                                          " work in the future.")
+                                                     original-table-id
+                                                     (pr-str (:name sandbox-col))
+                                                     table-id)
+                                         true)
 
-                                 :let [matching-table-col (m/find-first #(= (:name %)
-                                                                            (:name sandbox-col))
-                                                                        table-cols)]
-                                 (not matching-table-col)
-                                 (do
-                                   (log/errorf (str "Sandboxes can only include columns from the original Table,"
-                                                    " but query included %s. This is unsupported and may not work in"
-                                                    " the future.")
-                                               (pr-str (:name sandbox-col)))
-                                   true)
+                                       :let [matching-table-col (find-table-col sandbox-col)]
+                                       (not matching-table-col)
+                                       (do
+                                         (log/errorf (str "Sandboxes can only include columns from the original Table,"
+                                                          " but query included %s. This is unsupported and may not work in"
+                                                          " the future.")
+                                                     (pr-str (:name sandbox-col)))
+                                         true)
 
-                                 :else
-                                 (do
-                                   ;; this will throw an exception if types don't match up
-                                   (sandbox/check-column-types-match sandbox-col matching-table-col)
-                                   false)))
-                             sandbox-cols)]
+                                       :else
+                                       (do
+                                         ;; this will throw an exception if types don't match up
+                                         (sandbox/check-column-types-match sandbox-col matching-table-col)
+                                         false)))
+                                   sandbox-cols)]
     (if (= fixed-cols sandbox-cols)
       sandbox-query
       (do

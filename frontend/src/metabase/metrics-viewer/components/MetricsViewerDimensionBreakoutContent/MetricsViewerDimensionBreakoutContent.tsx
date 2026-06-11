@@ -1,6 +1,9 @@
 import { useCallback, useMemo } from "react";
 
-import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
+import {
+  DimensionPillBar,
+  type DimensionPillBarItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
 import { MetricControls } from "metabase/metrics-viewer/components/MetricControls";
 import { MetricsViewerVisualization } from "metabase/metrics-viewer/components/MetricsViewerVisualization";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
@@ -10,6 +13,7 @@ import {
   getProjectionInfo,
   shouldShowStackSeries,
 } from "metabase/metrics-viewer/utils";
+import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys } from "metabase/utils/objects";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
@@ -94,6 +98,11 @@ export function MetricsViewerDimensionBreakoutContent() {
     return filterDimensions;
   }, [dimensionBreakout, modifiedDefinitionsBySlotIndex]);
 
+  const dimensionItemsByEntityIndex = useMemo(
+    () => getDimensionItemsByEntityIndex(dimensionItems, metricSlots),
+    [dimensionItems, metricSlots],
+  );
+
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
       updateActiveDimensionBreakout((prev) => ({
@@ -135,12 +144,21 @@ export function MetricsViewerDimensionBreakoutContent() {
   );
   const hideDimensionPill =
     dimensionBreakoutConfig.minDimensions === 0 && !hasAnyOptions;
+
+  const showPerMapColumnLabels =
+    showColumnLabels &&
+    dimensionBreakout.display === "map" &&
+    rawSeries.length > 1;
+
   return (
     <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
         onBrush={isTimeDimensionBreakout ? handleBrush : undefined}
+        chartColumnLabelsByEntityIndex={
+          showPerMapColumnLabels ? dimensionItemsByEntityIndex : undefined
+        }
       />
-      {!hideDimensionPill && showColumnLabels && (
+      {!hideDimensionPill && showColumnLabels && !showPerMapColumnLabels && (
         <Box mt="sm">
           <DimensionPillBar items={dimensionItems} />
         </Box>
@@ -157,4 +175,25 @@ export function MetricsViewerDimensionBreakoutContent() {
       )}
     </Stack>
   );
+}
+
+function getDimensionItemsByEntityIndex(
+  dimensionItems: DimensionPillBarItem[],
+  metricSlots: MetricSlot[],
+): Map<number, DimensionPillBarItem> {
+  const itemsByEntityIndex = new Map<number, DimensionPillBarItem>();
+
+  for (const item of dimensionItems) {
+    if (item.type === "expression") {
+      itemsByEntityIndex.set(item.entityIndex, item);
+      continue;
+    }
+
+    const slot = metricSlots.find((slot) => slot.slotIndex === item.slotIndex);
+    if (slot) {
+      itemsByEntityIndex.set(slot.entityIndex, item);
+    }
+  }
+
+  return itemsByEntityIndex;
 }

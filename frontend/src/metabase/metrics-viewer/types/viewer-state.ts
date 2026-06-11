@@ -46,7 +46,7 @@ export interface StoredMetricsViewerDimensionBreakout {
 export type ExpressionMetricSubToken = {
   type: "metric";
   sourceId: MetricSourceId;
-  count: number;
+  occurrenceCount: number;
   definition?: MetricDefinition;
   serializedDefinitionInfo?: SerializedDefinitionInfo;
 };

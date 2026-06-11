@@ -5,6 +5,10 @@ import { noop } from "underscore";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import {
+  DimensionPillBar,
+  type DimensionPillBarItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
 import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types/viewer-state";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
@@ -12,6 +16,7 @@ import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
+import type { CardId } from "metabase-types/api";
 
 import { useMetricsViewerContext } from "../../context";
 
@@ -19,10 +24,12 @@ import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
   onBrush?: (range: { start: number; end: number }) => void;
+  chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
 };
 
 export function MetricsViewerVisualization({
   onBrush,
+  chartColumnLabelsByEntityIndex,
 }: MetricsViewerVisualizationProps) {
   const {
     definitions,
@@ -111,7 +118,12 @@ export function MetricsViewerVisualization({
         .supportsMultipleSeries ? (
         <SimpleGrid cols={cols} flex={1} spacing={0}>
           {rawSeries.map((series, i) => (
-            <Stack gap="sm" key={`series-${i}`} data-in-grid>
+            <Stack
+              gap="sm"
+              className={S.gridChart}
+              key={`series-${i}`}
+              data-in-grid
+            >
               <DebouncedFrame className={S.chartWrapper}>
                 <Visualization
                   className={S.chart}
@@ -125,6 +137,11 @@ export function MetricsViewerVisualization({
                   isMetricsViewer
                 />
               </DebouncedFrame>
+              <ChartColumnLabel
+                cardId={series.card.id}
+                cardIdToEntityIndex={cardIdToEntityIndex}
+                chartColumnLabelsByEntityIndex={chartColumnLabelsByEntityIndex}
+              />
             </Stack>
           ))}
         </SimpleGrid>
@@ -142,5 +159,32 @@ export function MetricsViewerVisualization({
         </DebouncedFrame>
       )}
     </Flex>
+  );
+}
+
+function ChartColumnLabel({
+  cardId,
+  cardIdToEntityIndex,
+  chartColumnLabelsByEntityIndex,
+}: {
+  cardId: CardId;
+  cardIdToEntityIndex: Record<CardId, number>;
+  chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
+}) {
+  const entityIndex = cardIdToEntityIndex[cardId];
+  if (entityIndex == null) {
+    return null;
+  }
+
+  const item = chartColumnLabelsByEntityIndex?.get(entityIndex);
+
+  if (!item?.label) {
+    return null;
+  }
+
+  return (
+    <div className={S.gridChartLabel}>
+      <DimensionPillBar items={[item]} textSize="xs" />
+    </div>
   );
 }

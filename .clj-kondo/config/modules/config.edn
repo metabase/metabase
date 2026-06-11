@@ -1792,7 +1792,8 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info}
+              metabase.query-processor.util.add-alias-info
+              metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
            analyze
@@ -2416,6 +2417,23 @@
                     :model/Field
                     :model/Table}}
 
+  usage-metadata
+  {:team "UX West"
+   :api  #{metabase.usage-metadata.init}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Query
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table}
+   :uses #{app-db
+           lib
+           lib-be
+           models
+           settings
+           task
+           util}}
+
   user-key-value
   {:team "UX West"
    :api  #{metabase.user-key-value.api
@@ -3016,8 +3034,7 @@
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
-   :uses #{analyze
-           api
+   :uses #{api
            app-db
            collections
            database-routing
@@ -3028,7 +3045,6 @@
            lib
            lib-be
            models
-           native-query-snippets
            permissions
            premium-features
            queries
