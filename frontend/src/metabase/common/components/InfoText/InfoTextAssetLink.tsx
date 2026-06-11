@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
-import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Box, Icon, Text } from "metabase/ui";
 import {
   browseDatabase,

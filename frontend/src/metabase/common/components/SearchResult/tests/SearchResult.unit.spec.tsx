@@ -7,8 +7,8 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
-import { createWrappedSearchResult } from "metabase/search/components/SearchResult/tests/util";
+import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
+import { createWrappedSearchResult } from "metabase/common/components/SearchResult/tests/util";
 import { modelToUrl } from "metabase/urls";
 import type { SearchResult as ApiSearchResult } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
