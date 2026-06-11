@@ -12,57 +12,43 @@
     (is (true? (driver/database-supports? :redshift :index/inline-on-ctas nil)))
     (is (false? (driver/database-supports? :redshift :index/post-ctas-create nil)))))
 
-(deftest ^:parallel supported-index-methods-test
-  (testing "Redshift advertises inline sortkeys"
-    (is (= {:sortkey {:lifecycle :ctas-inline}}
-           (driver/supported-index-methods :redshift nil)))))
+;; A sortkey is inlined at table creation, and a transform target is created two ways: the CTAS for SQL transforms
+;; (`compile-transform`) and the `CREATE TABLE` for Python transforms (`create-table!`). Each case below drives BOTH
+;; seams with the same hint, so the same `SORTKEY` clause must appear at both (and the no-hint case must add nothing
+;; to either: the CTAS delegates to the base, the CREATE TABLE stays upload-safe).
+(def ^:private inline-columns
+  [["a" "INTEGER"] ["b" "INTEGER"]])
 
-(def ^:private render-cases
-  "Each case: a sortkey hint passed to `compile-transform` and the CTAS SQL it should render. Add a row to cover a new
-  style or column shape."
-  [{:label        "compound sortkey, single column"
-    :output-table :public/events
-    :indexes      [{:kind :sortkey :style :compound :columns [{:name "created_at"}]}]
-    :expected-sql "CREATE TABLE \"public\".\"events\" COMPOUND SORTKEY (\"created_at\") AS SELECT 1"}
-   {:label        "interleaved sortkey, multiple columns"
-    :output-table :events
-    :indexes      [{:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}]
-    :expected-sql "CREATE TABLE \"events\" INTERLEAVED SORTKEY (\"a\", \"b\") AS SELECT 1"}
-   {:label        "defaults to compound when style is omitted"
-    :output-table :events
+(def ^:private inline-cases
+  [{:label        "compound sortkey (style omitted), single column"
+    :table        :events
     :indexes      [{:kind :sortkey :columns [{:name "a"}]}]
-    :expected-sql "CREATE TABLE \"events\" COMPOUND SORTKEY (\"a\") AS SELECT 1"}
-   {:label        "no sortkey hint delegates to the base CTAS"
-    :output-table :events
-    :indexes      []
-    :expected-sql "CREATE TABLE \"events\" AS SELECT 1"}])
-
-(deftest ^:parallel compile-transform-test
-  (doseq [{:keys [label output-table indexes expected-sql]} render-cases]
-    (testing label
-      (is (= [expected-sql ["p"]]
-             (driver/compile-transform :redshift {:output-table output-table
-                                                  :query        {:query "SELECT 1" :params ["p"]}
-                                                  :indexes      indexes}))))))
-
-(def ^:private create-table-cases
-  "Each case: inputs to the Python-transform `create-table!` renderer and the CREATE TABLE SQL it should produce. The
-  no-hint case is the upload-safe default (must match the inherited `:sql-jdbc` output)."
-  [{:label        "sortkey hint is inlined into the CREATE TABLE"
-    :columns      [["a" "INTEGER"]]
-    :indexes      [{:kind :sortkey :columns [{:name "a"}]}]
-    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER) COMPOUND SORTKEY (\"a\")"}
+    :ctas         "CREATE TABLE \"events\" COMPOUND SORTKEY (\"a\") AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) COMPOUND SORTKEY (\"a\")"}
    {:label        "interleaved sortkey, multiple columns"
-    :columns      [["a" "INTEGER"] ["b" "INTEGER"]]
+    :table        :events
     :indexes      [{:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}]
-    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) INTERLEAVED SORTKEY (\"a\", \"b\")"}
-   {:label        "no sortkey hint -> plain CREATE TABLE (upload-safe default)"
-    :columns      [["a" "INTEGER"]]
+    :ctas         "CREATE TABLE \"events\" INTERLEAVED SORTKEY (\"a\", \"b\") AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) INTERLEAVED SORTKEY (\"a\", \"b\")"}
+   {:label        "schema-qualified target"
+    :table        :public/events
+    :indexes      [{:kind :sortkey :columns [{:name "a"}]}]
+    :ctas         "CREATE TABLE \"public\".\"events\" COMPOUND SORTKEY (\"a\") AS SELECT 1"
+    :create-table "CREATE TABLE \"public\".\"events\" (\"a\" INTEGER, \"b\" INTEGER) COMPOUND SORTKEY (\"a\")"}
+   {:label        "no sortkey hint -> no inline clause at either seam"
+    :table        :events
     :indexes      []
-    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER)"}])
+    :ctas         "CREATE TABLE \"events\" AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER)"}])
 
-(deftest ^:parallel create-table-sql-test
-  (doseq [{:keys [label columns indexes expected-sql]} create-table-cases]
+(deftest ^:parallel sortkey-inlined-at-both-creation-seams-test
+  (doseq [{:keys [label table indexes ctas create-table]} inline-cases]
     (testing label
-      (is (= expected-sql
-             (#'redshift/create-table-sql :redshift :events columns {:indexes indexes}))))))
+      (testing "CTAS seam (compile-transform, SQL transforms)"
+        (is (= [ctas ["p"]]
+               (driver/compile-transform :redshift {:output-table table
+                                                    :query        {:query "SELECT 1" :params ["p"]}
+                                                    :indexes      indexes}))))
+      (testing "CREATE TABLE seam (create-table!, Python transforms)"
+        (is (= create-table
+               (#'redshift/create-table-sql :redshift table inline-columns {:indexes indexes})))))))

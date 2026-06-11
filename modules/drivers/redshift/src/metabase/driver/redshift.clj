@@ -263,9 +263,11 @@
   "Render the `CREATE TABLE (...)` for a Python-transform target, inlining a sortkey hint from `:indexes` when present.
   Reuses the `:sql-jdbc` renderer for the column list and appends the inline clause."
   [driver table-name column-definitions {:keys [primary-key indexes]}]
-  (cond-> (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
-    indexes
-    (str " " (sortkey-clause driver indexes))))
+  (let [base   (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        clause (sortkey-clause driver indexes)]
+    ;; gate on the rendered clause, not on `indexes`: an empty `[]` (or a non-sortkey hint) is truthy but renders
+    ;; nil, which would append a stray trailing space to every upload's CREATE TABLE.
+    (cond-> base clause (str " " clause))))
 
 (defmethod driver/create-table! :redshift
   [driver db-id table-name column-definitions & {:as opts}]
