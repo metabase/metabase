@@ -166,17 +166,19 @@ describe("Remote Sync", () => {
 
       H.clickPushOption();
 
-      // Attempt to push changes
-      cy.findByRole("dialog", { name: "Push to Git" })
-        .button(/Push changes/)
-        .click();
-
-      // push local changes to a different branch, because the remote is ahead of us
-      cy.findByRole("dialog", { name: /branch is behind/ }).within(() => {
-        cy.findByRole("radio", { name: /Create a new branch/ }).click();
-        cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
-        cy.button("Push changes").click();
-      });
+      // The remote has advanced, so pushing runs the preflight and opens the conflict modal directly
+      // (no commit-message step first). The local change (moving Orders) and the remote rename touch
+      // different entities, so a clean merge is offered. Push our changes to a new branch instead,
+      // because the remote is ahead of us.
+      cy.findByRole("dialog", { name: /remote branch has new changes/ }).within(
+        () => {
+          cy.findByRole("radio", {
+            name: /Create a new branch and push changes there/,
+          }).click();
+          cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
+          cy.button("Push changes").click();
+        },
+      );
 
       H.waitForTask({ taskName: "export" });
 
