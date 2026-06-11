@@ -2,7 +2,7 @@ import type {
   Workspace,
   WorkspaceDatabase,
   WorkspaceInstance,
-} from "../workspace";
+} from "../workspace-manager";
 
 export function createMockWorkspaceDatabase(
   opts?: Partial<WorkspaceDatabase>,

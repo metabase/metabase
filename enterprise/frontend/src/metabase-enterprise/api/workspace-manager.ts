@@ -20,7 +20,7 @@ import {
   provideWorkspaceListTags,
 } from "./tags";
 
-export const workspaceApi = EnterpriseApi.injectEndpoints({
+export const workspaceManagerApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listWorkspaces: builder.query<Workspace[], void>({
       query: () => ({
@@ -153,4 +153,4 @@ export const {
   useDeleteWorkspaceInstanceMutation,
   useSetupWorkspaceDeploymentMutation,
   useResetWorkspaceDeploymentMutation,
-} = workspaceApi;
+} = workspaceManagerApi;

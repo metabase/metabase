@@ -6,12 +6,14 @@ import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 
-const ELIGIBLE_DATABASE = createMockDatabase({
-  features: ["workspace"],
-  settings: { "database-enable-workspaces": true },
-});
-
-function setup({ databases = [ELIGIBLE_DATABASE] as Database[] } = {}) {
+function setup({
+  databases = [
+    createMockDatabase({
+      features: ["workspace"],
+      settings: { "database-enable-workspaces": true },
+    }),
+  ] as Database[],
+} = {}) {
   renderWithProviders(<NewWorkspaceButton databases={databases} />);
 }
 
