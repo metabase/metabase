@@ -18,6 +18,7 @@
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
@@ -296,11 +297,20 @@
       #{})))
 
 (defn job-transforms
-  "Return the transforms that are executed when running the job with ID `job-id`.
+  "Return the transforms that are executed when running the job with ID `job-id`, in execution order.
 
-  The transforms are returned in the order of their execution."
+  Transforms pulled into the plan only as dependencies are marked with `:dependency true`
+  and `:scheduled` (whether any active job's schedule covers them)."
   [job-id]
-  (:order (get-plan (job-transform-ids job-id))))
+  (let [tagged    (job-transform-ids job-id)
+        plan      (:order (get-plan tagged))
+        dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
+        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+    (map (fn [{:keys [id] :as transform}]
+           (cond-> transform
+             (contains? dep-ids id) (assoc :dependency true
+                                           :scheduled  (contains? scheduled id))))
+         plan)))
 
 (defn- compile-transform-failure-messages [failures]
   (->> failures

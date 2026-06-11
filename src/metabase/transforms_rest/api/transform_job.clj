@@ -80,6 +80,8 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency {:optional true} :boolean]
+   [:scheduled {:optional true} :boolean]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
