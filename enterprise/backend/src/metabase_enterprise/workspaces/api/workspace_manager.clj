@@ -5,14 +5,19 @@
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.serialization.core :as serialization]
+   [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
@@ -63,27 +68,6 @@
    ;; The list endpoint omits it — clients should treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
-;;; ------------------------------------------ Instance schemas ------------------------------------------------
-
-(def ^:private CreateInstanceParams
-  [:map {:closed true}
-   [:name    ms/NonBlankString]
-   [:url     ms/NonBlankString]
-   [:api_key ms/NonBlankString]])
-
-(def ^:private UpdateInstanceParams
-  [:map {:closed true}
-   [:name {:optional true} ms/NonBlankString]])
-
-(def ^:private InstanceResponse
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:name         ms/NonBlankString]
-   [:url          ms/NonBlankString]
-   [:workspace_id [:maybe ms/PositiveInt]]
-   [:created_at   DateTimeWithTimeZone]
-   [:updated_at   DateTimeWithTimeZone]])
-
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
@@ -101,11 +85,6 @@
           (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
-
-(defn- present-instance
-  "Shape a `workspace_instance` row for the API: drop the encrypted `api_key`."
-  [instance]
-  (select-keys instance [:id :url :name :workspace_id :created_at :updated_at]))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -150,88 +129,6 @@
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
-;;; ------------------------------------------- Instance CRUD --------------------------------------------------
-;;;
-;;; The registry of dev (child) instances. Superuser-only via the
-;;; `:model/WorkspaceInstance` permission predicates. `workspace_id` is never set
-;;; through these endpoints.
-
-(api.macros/defendpoint :get "/instance" :- [:sequential InstanceResponse]
-  "List all registered dev instances."
-  []
-  (api/check-superuser)
-  (into [] (comp (filter mi/can-read?)
-                 (map present-instance))
-        (t2/select :model/WorkspaceInstance {:order-by [[:id :asc]]})))
-
-(api.macros/defendpoint :get "/instance/:id" :- InstanceResponse
-  "Get a single dev instance by id."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (present-instance (api/read-check :model/WorkspaceInstance id)))
-
-(api.macros/defendpoint :post "/instance" :- InstanceResponse
-  "Register a new dev instance. Starts free (unbound)."
-  [_route-params _query-params params :- CreateInstanceParams]
-  (api/create-check :model/WorkspaceInstance params)
-  (present-instance
-   (t2/select-one :model/WorkspaceInstance
-                  :id (t2/insert-returning-pk! :model/WorkspaceInstance params))))
-
-(api.macros/defendpoint :put "/instance/:id" :- InstanceResponse
-  "Rename a dev instance. Only `name` is editable; `url`/`api_key` are immutable."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   params :- UpdateInstanceParams]
-  (api/write-check :model/WorkspaceInstance id)
-  (let [row (select-keys params [:name])]
-    (when (seq row)
-      (t2/update! :model/WorkspaceInstance :id id row)))
-  (present-instance (t2/select-one :model/WorkspaceInstance :id id)))
-
-(api.macros/defendpoint :delete "/instance/:id"
-  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Remove a dev instance."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/write-check :model/WorkspaceInstance id)
-  (t2/delete! :model/WorkspaceInstance :id id)
-  {:id id :deleted true})
-
-;;; ------------------------------------------- Deployment -----------------------------------------------------
-;;;
-;;; Binding a workspace to a dev instance. For now this just sets/clears
-;;; `workspace_instance.workspace_id`.
-
-(api.macros/defendpoint :post "/:id/deployment" :- WorkspaceResponse
-  "Provision the workspace onto a free dev instance: binds the instance to the workspace.
-   409 if the instance is already bound or the workspace is already provisioned."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   {:keys [workspace_instance_id]} :- [:map {:closed true}
-                                       [:workspace_instance_id ms/PositiveInt]]]
-  (api/write-check :model/Workspace id)
-  (let [instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id workspace_instance_id))]
-    (when (some? (:workspace_id instance))
-      (throw (ex-info "Instance is already bound to a workspace"
-                      {:status-code 409 :workspace_instance_id workspace_instance_id})))
-    (when (t2/exists? :model/WorkspaceInstance :workspace_id id)
-      (throw (ex-info "Workspace is already provisioned"
-                      {:status-code 409 :workspace_id id})))
-    (t2/update! :model/WorkspaceInstance :id workspace_instance_id {:workspace_id id}))
-  (present-workspace (api/check-404 (ws/get-workspace id))))
-
-(api.macros/defendpoint :delete "/:id/deployment/:instance-id" :- WorkspaceResponse
-  "Unprovision the workspace: frees the bound dev instance."
-  [{:keys [id instance-id]} :- [:map
-                                [:id ms/PositiveInt]
-                                [:instance-id ms/PositiveInt]]]
-  (api/write-check :model/Workspace id)
-  (let [instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id instance-id))]
-    (when-not (= id (:workspace_id instance))
-      (throw (ex-info "Instance is not bound to this workspace"
-                      {:status-code 400 :workspace_id id :workspace_instance_id instance-id})))
-    (t2/update! :model/WorkspaceInstance :id instance-id {:workspace_id nil}))
-  (present-workspace (api/check-404 (ws/get-workspace id))))
-
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
@@ -248,3 +145,36 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
+
+;;; ----------------------------------------- Metadata export --------------------------------------------------
+
+(defn- workspace-metadata-filters
+  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
+   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
+  [{:keys [databases]}]
+  {:database-ids (mapv :database_id databases)
+   :schema-ids   (into {}
+                       (map (fn [{:keys [database_id input_schemas]}]
+                              [database_id (vec input_schemas)]))
+                       databases)})
+
+(api.macros/defendpoint :get "/:id/metadata/export"
+  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
+  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
+  scoped to each database's `:input` namespaces. Same flag semantics as
+  `/api/ee/serialization/metadata/export` — sections must be opted into via the
+  `with-databases` / `with-tables` / `with-fields` query parameters."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   query-params
+   :- [:map
+       [:with-databases {:default false} [:maybe :boolean]]
+       [:with-tables    {:default false} [:maybe :boolean]]
+       [:with-fields    {:default false} [:maybe :boolean]]]]
+  (api/read-check :model/Workspace id)
+  (let [workspace (api/check-404 (ws/get-workspace id))
+        opts      (merge query-params
+                         (workspace-metadata-filters workspace)
+                         {:user-info {:user-id       api/*current-user-id*
+                                      :is-superuser? api/*is-superuser?*}})]
+    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+      (serialization/export-metadata! os opts))))

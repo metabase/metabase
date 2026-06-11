@@ -149,5 +149,4 @@
    "UserParameterValue"
    "ViewLog"
    "Workspace"
-   "WorkspaceDatabase"
-   "WorkspaceInstance"])
+   "WorkspaceDatabase"])

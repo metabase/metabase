@@ -1,1 +1,0 @@
-export { EditInstanceModal } from "./EditInstanceModal";

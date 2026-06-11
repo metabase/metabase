@@ -4,7 +4,6 @@ import {
   setupDatabasesEndpoints,
   setupGetCurrentWorkspaceEndpoint,
   setupListTableRemappingsEndpoint,
-  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -43,7 +42,6 @@ function setup({ isAdmin = true, workspace = null }: SetupOpts = {}) {
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint([]);
   setupListWorkspacesEndpoint([]);
-  setupListWorkspaceInstancesEndpoint([]);
 
   const state = createMockState({
     currentUser: createMockUser({

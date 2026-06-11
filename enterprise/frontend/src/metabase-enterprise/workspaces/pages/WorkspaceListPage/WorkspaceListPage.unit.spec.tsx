@@ -4,7 +4,6 @@ import { Route } from "react-router";
 import {
   setupCreateWorkspaceEndpoint,
   setupDatabasesEndpoints,
-  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -23,7 +22,6 @@ const ELIGIBLE_DATABASE = createMockDatabase({
 
 function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
-  setupListWorkspaceInstancesEndpoint([]);
   setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 

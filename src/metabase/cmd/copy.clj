@@ -148,7 +148,6 @@
       :model/CustomVizPlugin
       :model/Workspace
       :model/WorkspaceDatabase
-      :model/WorkspaceInstance
       :model/TableRemapping])))
 
 (defn- objects->columns+values
