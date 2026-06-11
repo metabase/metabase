@@ -260,7 +260,6 @@
       (is (= {} (get-in response [:body :questions])))
       (is (= {} (get-in response [:body :tables])))
       (is (= {} (get-in response [:body :metrics])))))
-
   (testing "questions=true returns only questions for a numeric database id"
     (let [response (mt/user-http-request-full-response
                     :crowberto

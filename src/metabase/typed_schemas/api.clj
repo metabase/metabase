@@ -121,7 +121,7 @@
 (defn- pascal-case
   [s]
   (when-not (str/blank? s)
-    (str (str/upper-case (subs s 0 1))
+    (str (u/upper-case-en (subs s 0 1))
          (subs s 1))))
 
 (defn- keyed-map
