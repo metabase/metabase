@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { Modal } from "metabase/common/components/Modal";
 import {
   ModalContent,
   ModalContentActionIcon,
 } from "metabase/common/components/ModalContent";
+import { Modal } from "metabase/ui";
 
 import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
 import ActionParametersInputForm from "./ActionParametersInputForm";
@@ -32,7 +32,14 @@ function ActionParametersInputModal({
   ...formProps
 }: ActionParametersInputModalProps) {
   return (
-    <Modal data-testid="action-parameters-input-modal" onClose={onClose}>
+    <Modal
+      opened
+      size="640px"
+      padding={0}
+      withCloseButton={false}
+      data-testid="action-parameters-input-modal"
+      onClose={onClose}
+    >
       <ModalContent
         title={title}
         headerActions={

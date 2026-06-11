@@ -5,11 +5,10 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import { Modal } from "metabase/common/components/Modal";
 import { ModalFooter } from "metabase/common/components/ModalContent";
 import { Radio } from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
+import { Button, Modal } from "metabase/ui";
 
 import {
   ModalHeader,
@@ -64,7 +63,15 @@ const DeleteGroupMappingModal = ({
       : t`What should happen with the group itself in Metabase?`;
 
   return (
-    <Modal>
+    <Modal
+      opened
+      size="640px"
+      padding={0}
+      withCloseButton={false}
+      closeOnClickOutside={false}
+      closeOnEscape={false}
+      onClose={onHide}
+    >
       <div>
         <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
         <ModalSubtitle>{subtitle}</ModalSubtitle>
