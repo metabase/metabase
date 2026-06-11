@@ -284,6 +284,19 @@ Two readings, both true:
    can, and they say the carving phase starts from an untouched 94-module
    blob with the work list above.
 
+### First carve PR
+
+The cheapest cuts are now a draft PR against master:
+[#75719](https://github.com/metabase/metabase/pull/75719) — breaks the
+`util ↔ classloader` 2-cycle on the classloader side (tools.logging swap;
+classloader becomes pure upstream) and severs `util → system` by making
+`util.embed/head` and `util.markdown/process-markdown` take `site-url` as an
+argument (callers do the lookup). The PR description carries the bottom-up
+plan for the rest: `app-db` (`data-source → auth-provider.core`,
+`custom-migrations → task.bootstrap`), then `settings` (5 single requires out
+of `settings.models.setting`), then `util → settings` (`date-2`/`time.impl`
+start-of-week, moving `util.retry` per the existing comment in that ns).
+
 ### Sad no more (conditionally)
 
 The blast-radius problem is no longer 'splitting didn't help' — it's a ranked
