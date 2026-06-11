@@ -34,6 +34,18 @@
   :export? false
   :doc false)
 
+(defsetting ee-embedding-query-prefix
+  (deferred-tru
+   (str "Prefix prepended to search queries (but not indexed documents) before embedding them, as expected by "
+        "asymmetric retrieval models such as the snowflake-arctic-embed family (`query: `). It is prepended "
+        "verbatim, so include any trailing separator. Leave empty to use the default for the model family."))
+  :encryption :no
+  :visibility :settings-manager
+  :default nil
+  :type :string
+  :export? false
+  :doc false)
+
 (defsetting ee-embedding-model-dimensions
   (deferred-tru "Set the dimension size for the selected embedding model")
   :encryption :no

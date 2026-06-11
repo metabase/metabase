@@ -361,6 +361,30 @@
 (defmethod pull-model "openai" [_]
   (log/debug "OpenAI provider does not require pulling a model"))
 
+;;;; Query prefixes for asymmetric retrieval models
+
+(def ^:private model-family-query-prefixes
+  "Query prefixes for embedding-model families trained for asymmetric retrieval.
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
+  [[#"(?i)snowflake-arctic-embed" "query: "]])
+
+(defn- default-query-prefix
+  [model-name]
+  (when model-name
+    (some (fn [[pattern prefix]]
+            (when (re-find pattern model-name)
+              prefix))
+          model-family-query-prefixes)))
+
+(defn prefix-search-query
+  "Prepend the query prefix expected by `embedding-model` to `search-string`.
+  The `ee-embedding-query-prefix` setting overrides the per-model-family default and is prepended verbatim.
+  Returns `search-string` unchanged when neither applies."
+  [embedding-model search-string]
+  (str (or (not-empty (semantic-settings/ee-embedding-query-prefix))
+           (default-query-prefix (:model-name embedding-model)))
+       search-string))
+
 ;;;; Global embedding model
 
 (defn get-configured-model
