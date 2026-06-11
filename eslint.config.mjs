@@ -42,6 +42,14 @@ const baseMetabaseRestrictedConfig = {
     { group: ["metabase-enterprise/*"] },
     { group: ["cljs/metabase.lib*"] },
     { group: ["/embedding-sdk-package"] },
+    {
+      group: [
+        "metabase/common/components/Modal",
+        "metabase/common/components/Modal/*",
+      ],
+      message:
+        'The legacy Modal wrapper is removed — import { Modal } from "metabase/ui" instead.',
+    },
   ],
   paths: [
     {

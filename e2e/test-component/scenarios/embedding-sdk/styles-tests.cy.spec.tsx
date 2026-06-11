@@ -371,8 +371,7 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("modals, popovers and tooltips", () => {
-    it("legacy WindowModal modals should render with our styles", () => {
-      // this test renders a create dashboard modal that, at this time, is using the legacy WindowModal
+    it("create dashboard modal should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
           <CreateDashboardModal />
