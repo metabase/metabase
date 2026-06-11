@@ -37,6 +37,14 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use TIMEFROMPARTS and "
+                "not produce a DATETIME2FROMPARTS result that requires a date component")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["TIMEFROMPARTS(DATEPART(hour, \"test_col\"), 0, 0, 0, 0)"]
+             (sql.qp/format-honeysql :sqlserver (sql.qp/date :sqlserver :hour expr)))))))
+
 (deftest ^:parallel fix-order-bys-test
   (testing "Remove order-by from joins"
     (let [original {:joins [{:alias        "C3"
