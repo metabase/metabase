@@ -343,13 +343,18 @@
 
 (defn- file->namespace-symbol
   "Read `file` and extract its namespace symbol from the `ns` form.
-  Returns `nil` if the file has no recognizable `ns` declaration (e.g.
-  scratch files, data resources)."
+  Returns `nil` if the file has no `ns` declaration at all (e.g. data
+  resources); throws with file context if the file cannot be read or
+  parsed, so malformed sources fail validation instead of silently
+  dropping out of the classpath checks."
   [file]
   (try
     (some-> (ns.file/read-file-ns-decl file)
             ns.parse/name-from-ns-decl)
-    (catch Throwable _ nil)))
+    (catch Throwable e
+      (throw (ex-info (str "Failed to read ns declaration from " file)
+                      {:file (str file)}
+                      e)))))
 
 (def ^:private oss-classpath-roots
   ["src" "test"])

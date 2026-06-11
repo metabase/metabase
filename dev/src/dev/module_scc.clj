@@ -1,9 +1,9 @@
 (ns dev.module-scc
   "Strongly-connected-component analysis of the module dependency graph.
 
-  Closure-based metrics like median tests-invalidated (see sadness.md) are step functions over the giant
-  SCC: they cannot move until the component is actually partitioned, so ten snapshots of refactoring showed
-  a flat median. The fns here measure the component itself — size, membership, condensation — and score
+  Closure-based metrics like median tests-invalidated are step functions over the giant SCC: they cannot
+  move until the component is actually partitioned, so ten snapshots of refactoring showed a flat median.
+  (The full blast-radius analysis lives with the planning docs, outside the repo.) The fns here measure the component itself — size, membership, condensation — and score
   candidate cuts by how much they fragment it, giving carving experiments a continuous metric and a ranked
   target list.
 
@@ -308,7 +308,7 @@
   (take 10 (edge-cut-impacts graph*))
 
   (def m->tests* (module->test-files config* (sort (into (set (keys graph*)) (mapcat val) graph*))))
-  ;; sanity check: on the unmodified graph this should reproduce sadness.md's pegged median (~1190)
+  ;; sanity check: on the unmodified graph the median should be pegged at ~the full test-file count
   (dissoc (predicted-test-blast-radius graph* m->tests*) :per-module)
   ;; predicted payoff of the best carve candidate
   (let [{:keys [module severed-edges]} (first (upstream-cut-impacts graph*))

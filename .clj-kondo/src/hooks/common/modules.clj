@@ -140,22 +140,17 @@
 ;;;; dependency must be declared and the access must respect the target's
 ;;;; `:api`.
 ;;;;
-;;;; The opened-child-naming rule is enforced by a separate test
-;;;; (`uses-references-must-be-namable-test` in modules-test) rather than
-;;;; here at require-lint time, because it's a property of the config
-;;;; declarations, not of individual require forms.
+;;;; The opened-child-naming rule is enforced in two places. For set-valued
+;;;; `:uses` it's a property of the config declarations, checked by
+;;;; `uses-references-must-be-namable-test` in modules-test. Modules with
+;;;; `:uses :any` declare nothing for that test to validate, so for them the
+;;;; same rule is enforced here at require-lint time against the concrete
+;;;; resolved module (see [[namable-from?]] and [[usage-error]]).
 ;;;;
 ;;;; The helpers below (`open-children`, `opens-child?`, `externally-visible?`,
-;;;; `external-face`) are exported in the sense that they're available to
-;;;; that test and to dev tooling, but the kondo hook itself uses none of
-;;;; them at require-lint time. Require linting is now a strict
-;;;; declared-dependency + :api check, nothing more.
+;;;; `external-face`) also back that test and dev tooling; at require-lint
+;;;; time the hook itself uses them only for the `:uses :any` namability check.
 ;;;; -------------------------------------------------------------------------
-
-(defn- declared-modules
-  "Set of module symbols declared in the `:metabase/modules` config."
-  [config]
-  (set (keys (get config :metabase/modules))))
 
 (defn- top-level-oss-module?
   "True if `m` is a top-level OSS module symbol — i.e., no namespace part
@@ -219,6 +214,23 @@
       (if (externally-visible? config m)
         m
         (recur (parent-module declared m))))))
+
+(defn- top-level-ancestor
+  "The top-level module at the root of `m`'s subtree, or `m` itself if it is top-level."
+  [declared-modules m]
+  (or (last (ancestor-chain declared-modules m)) m))
+
+(defn- namable-from?
+  "True if `current-module` may name `required-module` at all under the strict model: the target is
+  externally visible (top-level, or in `:module-exports` of every ancestor up to the root), or the two
+  share a top-level subtree. Mirrors `can-be-named-by?` in `metabase.core.modules-test`, which validates
+  declared `:uses` sets; this require-time version covers modules whose `:uses` is `:any` and therefore
+  declare nothing for that test to check."
+  [config current-module required-module]
+  (let [declared (declared-modules config)]
+    (or (externally-visible? config required-module)
+        (= (top-level-ancestor declared current-module)
+           (top-level-ancestor declared required-module)))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; Namespace → module resolution (prefix-map based)
@@ -470,7 +482,9 @@
   relatives), and the required namespace must be in the required module's
   `:api` — unless current is a descendant of the required module (subtree
   trust) or appears in its `:friends`. See [[allowed-module-namespace?]] for
-  the access-path details.
+  the access-path details. When current's `:uses` is `:any`, the namability
+  rule (see [[namable-from?]]) is additionally enforced here, since the
+  config-level test only covers set-valued `:uses`.
 
   `current-ns` is accepted but currently unused by the check. It's kept in
   the signature because the hook callers already have it handy and future
@@ -485,6 +499,16 @@
                 required-module
                 current-module
                 current-module)
+
+        ;; `:uses :any` skips the declaration-level namability test (it only validates set-valued
+        ;; `:uses`), so enforce the same rule here against the concrete resolved module.
+        (and (= (allowed-modules config current-module) :any)
+             (not (namable-from? config current-module required-module)))
+        (format "Module %s is nested and not exported by its ancestors; %s may not use it. Add it to its parent's :module-exports chain, or move the caller into the %s subtree. [:metabase/modules %s :module-exports]"
+                required-module
+                current-module
+                (top-level-ancestor (declared-modules config) required-module)
+                (parent-module (declared-modules config) required-module))
 
         (not (allowed-module-namespace? config current-module required-namespace))
         (format "Namespace %s is not an allowed external API namespace for the %s module. [:metabase/modules %s :api]"

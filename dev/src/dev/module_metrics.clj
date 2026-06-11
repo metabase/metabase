@@ -34,14 +34,15 @@
           (sorted-map)
           deps))
 
-(defn- canonical-api-namespaces [module]
-  (let [prefix (format (if (= (namespace module) "enterprise")
-                         "metabase-enterprise.%s"
-                         "metabase.%s")
-                       (name module))]
+(defn- canonical-api-namespaces
+  "The default API namespaces for `module`, derived from its effective `:ns-prefix` so that
+  explicit-prefix modules like `actions.rest` (prefix `metabase.actions-rest`) get
+  `metabase.actions-rest.api` rather than a name-derived guess."
+  [config module]
+  (let [prefix (deps-graph/module-ns-prefix config module)]
     (into (sorted-set)
           (map (fn [suffix]
-                 (symbol (format "%s.%s" prefix suffix))))
+                 (symbol (str prefix "." suffix))))
           ['api 'core 'init])))
 
 (defn- declared-api-namespaces [config module]
@@ -138,7 +139,7 @@
                        derived-api-namespaces    (deps-graph/externally-used-namespaces-ignoring-friends deps config module)
                        declared-api              (declared-api-namespaces config module)
                        unexpected-api-namespaces (set/difference derived-api-namespaces
-                                                                 (canonical-api-namespaces module))
+                                                                 (canonical-api-namespaces config module))
                        undeclared-api-namespaces (if (= declared-api :any)
                                                    (sorted-set)
                                                    (set/difference derived-api-namespaces declared-api))
