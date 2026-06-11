@@ -474,7 +474,7 @@
                             :total-tokens    20
                             :data            [{:type "text" :text "Sure, here it is."}
                                               {:type         "tool-create_sql_query"
-                                               :tool_call_id "call-success"
+                                               :toolCallId   "call-success"
                                                :state        "output-available"
                                                :input        {:database_id (mt/id) :sql_query sql}
                                                :output       {:output "<result>...</result>"
@@ -491,7 +491,7 @@
                             :profile-id      "internal"
                             :total-tokens    10
                             :data            [{:type         "tool-create_sql_query"
-                                               :tool_call_id "call-failed"
+                                               :toolCallId   "call-failed"
                                                :state        "output-available"
                                                :input        {:database_id (mt/id) :sql_query "SELEKT bad"}
                                                :output       {:output "<result>SQL query construction failed.</result>"}}]})
@@ -515,7 +515,7 @@
 (defn- search-part
   [call-id]
   {:type         "tool-search"
-   :tool_call_id call-id
+   :toolCallId   call-id
    :state        "output-available"
    :input        {:q "foo"}
    :output       {:output "<result>...</result>"}})
@@ -567,7 +567,7 @@
                             :role            "assistant"
                             :profile-id      "internal"
                             :total-tokens    10
-                            :data            [{:type "tool-analyze_chart" :tool_call_id "call-x"
+                            :data            [{:type "tool-analyze_chart" :toolCallId "call-x"
                                                :state "input-available" :input {}}
                                               (search-part "call-b")]})
           ;; convo-errored: a single search whose call errored — should still count.
@@ -577,10 +577,10 @@
                             :profile-id      "internal"
                             :total-tokens    4
                             :data            [{:type         "tool-search"
-                                               :tool_call_id "call-err"
+                                               :toolCallId   "call-err"
                                                :state        "output-error"
                                                :input        {:q "foo"}
-                                               :error_text   "boom"}]})
+                                               :errorText    "boom"}]})
           (thunk {:test-user-id  test-user-id
                   :convo-none    convo-none
                   :convo-two     convo-two
@@ -614,7 +614,7 @@
 (defn- query-tool-part
   [call-id tool-name]
   {:type         (str "tool-" tool-name)
-   :tool_call_id call-id
+   :toolCallId   call-id
    :state        "output-available"
    :input        {}
    :output       {:output "ok"}})

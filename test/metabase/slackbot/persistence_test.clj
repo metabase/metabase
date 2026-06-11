@@ -31,7 +31,7 @@
                    :profile_id      "test"
                    :total_tokens    10
                    :data            [{:type "text" :text "hi"}
-                                     {:type "tool-search" :tool_call_id "x" :state "output-available"
+                                     {:type "tool-search" :toolCallId "x" :state "output-available"
                                       :input {} :output {:output "y"}}]
                    :data_version    2})
       (testing "only tool parts are included, text is filtered out"
@@ -52,7 +52,7 @@
                        :role               "assistant"
                        :profile_id         "test"
                        :total_tokens       10
-                       :data               [{:type "tool-search" :tool_call_id "y" :state "output-available"
+                       :data               [{:type "tool-search" :toolCallId "y" :state "output-available"
                                              :input {} :output {:output "z"}}]
                        :data_version       2
                        :deleted_at         (java.time.OffsetDateTime/now)
@@ -79,25 +79,25 @@
                      :total_tokens    10
                      :data            [{:type "text" :text "Let me check."}
                                        {:type         "tool-search"
-                                        :tool_call_id search-id
+                                        :toolCallId   search-id
                                         :state        "output-available"
                                         :input        {:query "orders"}
                                         :output       {:output            "<result>orders</result>"
                                                        :structured_output {:query-id "qid-1"}}}
                                        {:type         "tool-construct_notebook_query"
-                                        :tool_call_id query-id
+                                        :toolCallId   query-id
                                         :state        "output-available"
                                         :input        {:data_source_ids ["table-1"]}
                                         :output       {:output "<result>query</result>"}}
                                        {:type         "tool-search"
-                                        :tool_call_id orphan-id
+                                        :toolCallId   orphan-id
                                         :state        "input-available"
                                         :input        {:query "never finished"}}
                                        {:type         "tool-search"
-                                        :tool_call_id failed-id
+                                        :toolCallId   failed-id
                                         :state        "output-error"
                                         :input        {:query "boom"}
-                                        :error_text   "it broke"}]
+                                        :errorText    "it broke"}]
                      :data_version    2})
         (let [result (slackbot.persistence/message-history conv-id #{slack-ts})
               msgs   (get result slack-ts)]

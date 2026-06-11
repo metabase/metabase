@@ -19,7 +19,7 @@
   "A stored v2 tool part in `output-available` state."
   [tool-name call-id input output]
   {:type         (str "tool-" tool-name)
-   :tool_call_id call-id
+   :toolCallId   call-id
    :state        "output-available"
    :input        input
    :output       output})
@@ -158,7 +158,7 @@
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 12
                     :data [{:type         "tool-create_sql_query"
-                            :tool_call_id "orphan"
+                            :toolCallId   "orphan"
                             :state        "input-available"
                             :input        {:database_id 1 :sql_query "SELECT 1"}}]}])]
         (is (= [] rows))))))
@@ -169,10 +169,10 @@
       (let [rows (analytics.queries/messages->generated-queries
                   [{:id 13
                     :data [{:type         "tool-create_sql_query"
-                            :tool_call_id "call-err"
+                            :toolCallId   "call-err"
                             :state        "output-error"
                             :input        {:database_id 1 :sql_query "SELECT 1"}
-                            :error_text   "exploded"}]}])]
+                            :errorText    "exploded"}]}])]
         (is (= [] rows))))))
 
 (deftest tool-part-without-structured-is-filtered-test
@@ -243,9 +243,9 @@
 (deftest count-tool-invocations-test
   (testing "sums matching tool parts across messages, regardless of how the call resolved"
     (is (= 4 (analytics.queries/count-tool-invocations
-              [{:id 1 :data [{:type "tool-search" :tool_call_id "a" :state "output-error"
-                              :input {} :error_text "boom"}              ; errored still counts
-                             {:type "tool-search" :tool_call_id "b" :state "input-available"
+              [{:id 1 :data [{:type "tool-search" :toolCallId "a" :state "output-error"
+                              :input {} :errorText "boom"}              ; errored still counts
+                             {:type "tool-search" :toolCallId "b" :state "input-available"
                               :input {}}]}
                {:id 2 :data [(tool-part "create_sql_query" "c" {} {})    ; ignored tool
                              (tool-part "search" "d" {} {})

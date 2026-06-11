@@ -64,18 +64,18 @@
                          :tool-input
                          (let [output (get outputs (:id part))
                                error  (:error output)]
-                           (cond-> {:type         (str "tool-" (:function part))
-                                    :tool_call_id (:id part)
-                                    :state        (cond
-                                                    (some? error)  "output-error"
-                                                    (some? output) "output-available"
-                                                    :else          "input-available")
-                                    :input        (:arguments part)}
+                           (cond-> {:type       (str "tool-" (:function part))
+                                    :toolCallId (:id part)
+                                    :state      (cond
+                                                  (some? error)  "output-error"
+                                                  (some? output) "output-available"
+                                                  :else          "input-available")
+                                    :input      (:arguments part)}
                              (and (some? output) (nil? error))
                              (assoc :output (tool-result->storable-output (:result output)))
 
                              (some? error)
-                             (assoc :error_text (migrate/error->text error))))
+                             (assoc :errorText (migrate/error->text error))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
@@ -346,7 +346,7 @@
           external-id (assoc :externalId external-id)))
 
       (and (string? part-type) (str/starts-with? part-type "tool-"))
-      (cond-> {:id     (:tool_call_id part)
+      (cond-> {:id     (:toolCallId part)
                :role   "agent"
                :type   "tool_call"
                :name   (subs part-type 5)

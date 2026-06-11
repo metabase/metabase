@@ -423,7 +423,7 @@
     (is (= [["start" "msg-1"] ["start-step" nil]
             ["finish-step" nil] ["start-step" nil]
             ["finish-step" nil] ["finish" nil]]
-           (mapv (juxt :type :message_id)
+           (mapv (juxt :type :messageId)
                  (sse-events [{:type :start :id "msg-1"}
                               {:type :start :id "msg-1"}])))))
   (testing "a stream that never started still emits finish"
@@ -432,7 +432,7 @@
     (is (= "override-id"
            (-> (sse-events {:message-id "override-id"} [{:type :start :id "provider-id"}])
                first
-               :message_id)))))
+               :messageId)))))
 
 (deftest parts->aisdk-sse-xf-text-coalescing-test
   (testing "consecutive same-id :text parts share one block; an id change closes it"
@@ -461,16 +461,16 @@
                                                   {:type :tool-output :id "call-1" :function "search"
                                                    :result {:output "rows" :resources [1 2]}
                                                    :duration-ms 12}])]
-      (is (= {:type "tool-input-available" :tool_call_id "call-1" :tool_name "search" :input {:q "test"}}
+      (is (= {:type "tool-input-available" :toolCallId "call-1" :toolName "search" :input {:q "test"}}
              input-event))
-      (is (= {:type "tool-output-available" :tool_call_id "call-1" :output "rows"}
+      (is (= {:type "tool-output-available" :toolCallId "call-1" :output "rows"}
              output-event)
           "only the LLM-facing output string goes on the wire")))
   (testing "tool error becomes tool-output-error"
-    (is (= {:type "tool-output-error" :tool_call_id "call-2" :error_text "Tool failed"}
+    (is (= {:type "tool-output-error" :toolCallId "call-2" :errorText "Tool failed"}
            (first (sse-events [{:type :tool-output :id "call-2" :error {:message "Tool failed"}}])))))
   (testing ":tool-input-start maps to tool-input-start"
-    (is (= {:type "tool-input-start" :tool_call_id "call-3" :tool_name "search"}
+    (is (= {:type "tool-input-start" :toolCallId "call-3" :toolName "search"}
            (first (sse-events [{:type :tool-input-start :id "call-3" :function "search"}]))))))
 
 (deftest parts->aisdk-sse-xf-data-test
@@ -486,8 +486,8 @@
 (deftest parts->aisdk-sse-xf-error-test
   (testing "plain error emits an error event and flips finish_reason"
     (let [events (sse-events [{:type :error :error {:message "Something went wrong"}}])]
-      (is (= [{:type "error" :error_text "Something went wrong"}
-              {:type "finish" :finish_reason "error"}]
+      (is (= [{:type "error" :errorText "Something went wrong"}
+              {:type "finish" :finishReason "error"}]
              events))))
   (testing "typed errors emit a data-error_details event before the error event"
     (let [events (sse-events [{:type :error :error {:message    "You have reached your AI usage limit."
@@ -495,7 +495,7 @@
       (is (=? [{:type "data-error_details"
                 :data {:message "You have reached your AI usage limit."
                        :error_code "ai_usage_limit_reached"}}
-               {:type "error" :error_text "You have reached your AI usage limit."}
+               {:type "error" :errorText "You have reached your AI usage limit."}
                {:type "finish"}]
               events)))))
 
@@ -508,14 +508,14 @@
                   {:type :finish}]
           finish (last (sse-events parts))]
       (is (= {:type "finish"
-              :finish_reason "stop"
-              :message_metadata {:usage          {:input_tokens 12 :output_tokens 8 :total_tokens 20}
-                                 :usage_by_model {:claude-sonnet-4-6 {:input_tokens 10 :output_tokens 5 :total_tokens 15}
-                                                  :gpt-5             {:input_tokens 2 :output_tokens 3 :total_tokens 5}}}}
+              :finishReason "stop"
+              :messageMetadata {:usage          {:input_tokens 12 :output_tokens 8 :total_tokens 20}
+                                :usage_by_model {:claude-sonnet-4-6 {:input_tokens 10 :output_tokens 5 :total_tokens 15}
+                                                 :gpt-5             {:input_tokens 2 :output_tokens 3 :total_tokens 5}}}}
              finish))))
-  (testing "finish omits message_metadata when no usage was observed"
+  (testing "finish omits messageMetadata when no usage was observed"
     (is (not (contains? (last (sse-events [{:type :text :id "t" :text "x"}]))
-                        :message_metadata)))))
+                        :messageMetadata)))))
 
 ;;; ===================== Retry Logic Tests =====================
 

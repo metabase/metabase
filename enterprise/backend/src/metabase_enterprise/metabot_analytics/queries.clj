@@ -79,7 +79,7 @@
   [{:keys [message-id]} tool-name part structured database-id]
   (let [sql (sql-for-tool-call tool-name (:input part) structured)]
     {:tool        tool-name
-     :call_id     (:tool_call_id part)
+     :call_id     (:toolCallId part)
      :message_id  message-id
      :query_id    (:query-id structured)
      :query_type  "sql"
@@ -93,7 +93,7 @@
   [{:keys [message-id]} tool-name part structured query database-id]
   (let [chart-type (:chart-type structured)]
     {:tool        tool-name
-     :call_id     (:tool_call_id part)
+     :call_id     (:toolCallId part)
      :message_id  message-id
      :query_id    (:query-id structured)
      :query_type  "notebook"
