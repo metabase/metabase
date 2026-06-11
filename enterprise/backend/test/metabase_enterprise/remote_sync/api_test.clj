@@ -244,6 +244,30 @@
               (is (=? {:status "success" :task_id int?} resp))
               (wait-for-task-completion task_id))))))))
 
+(deftest import-creates-audit-log-entry-test
+  (testing "POST /api/ee/remote-sync/import records a remote-sync-import audit log entry (#73335)"
+    ;; :audit-app is needed for events to actually be recorded to the audit log
+    (mt/with-premium-features #{:remote-sync :audit-app}
+      (let [mock-main (test-helpers/create-mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+            (let [before            (t2/count :model/AuditLog :topic "remote-sync-import")
+                  {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:expected_branch "main"})]
+              (wait-for-task-completion task_id)
+              ;; the audit event publishes after the task's ended_at is set, so poll for the row
+              (let [entry (dh/with-retry {:max-retries 10
+                                          :delay-ms 200}
+                            (u/prog1 (t2/select-one :model/AuditLog :topic "remote-sync-import" {:order-by [[:id :desc]]})
+                              (when (<= (t2/count :model/AuditLog :topic "remote-sync-import") before)
+                                (throw (ex-info "Audit log entry not written yet" {})))))]
+                (testing "attributed to the user who triggered it"
+                  (is (= (mt/user->id :crowberto) (:user_id entry))))
+                (testing "branch recorded, no :auto flag for manual imports"
+                  (is (= "main" (get-in entry [:details :branch])))
+                  (is (not (contains? (:details entry) :auto))))))))))))
+
 (deftest import-requires-superuser-test
   (testing "POST /api/ee/remote-sync/import requires superuser permissions"
     (mt/with-temporary-setting-values [remote-sync-enabled true]
