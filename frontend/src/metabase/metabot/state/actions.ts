@@ -80,34 +80,41 @@ const handleResponseError = (
   error: unknown,
   metabotName: string,
 ): HandledResponseError => {
+  // HTTP failures arrive as the legacy client's `{ status, data }` shape, with
+  // the parsed response body under `data`.
   return match(error)
-    .with(
-      { message: P.string.startsWith("Response status: 401") },
-      { status: 401 },
-      () => ({
-        error: { type: "unauthenticated" },
-        display: {
-          type: "alert" as const,
-          message: METABOT_ERR_MSG.unauthenticated(metabotName),
-        },
-      }),
-    )
-    .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
-      error: { type: "metabase_ai_managed_locked" },
-      display: { type: "locked" as const, message: METABOT_ERR_MSG.locked },
-    }))
-    .with({ status: P.number, message: P.string }, ({ message }) => ({
-      error: { type: "http_error", message },
+    .with({ status: 401 }, () => ({
+      error: { type: "unauthenticated" },
       display: {
-        type: "message" as const,
-        message: METABOT_ERR_MSG.format(message),
+        type: "alert" as const,
+        message: METABOT_ERR_MSG.unauthenticated(metabotName),
       },
     }))
     .with(
-      { "error-code": "ai_usage_limit_reached", message: P.string },
-      ({ message }) => ({
+      { status: 402, data: { "error-code": "metabase_ai_managed_locked" } },
+      () => ({
+        error: { type: "metabase_ai_managed_locked" },
+        display: { type: "locked" as const, message: METABOT_ERR_MSG.locked },
+      }),
+    )
+    .with(
+      {
+        status: P.number,
+        data: { "error-code": "ai_usage_limit_reached", message: P.string },
+      },
+      ({ data: { message } }) => ({
         error: { type: "ai_usage_limit_reached", message },
         display: { type: "message" as const, message },
+      }),
+    )
+    .with(
+      { status: P.number, data: { message: P.string } },
+      ({ data: { message } }) => ({
+        error: { type: "http_error", message },
+        display: {
+          type: "message" as const,
+          message: METABOT_ERR_MSG.format(message),
+        },
       }),
     )
     .with(P.string, (err) => ({

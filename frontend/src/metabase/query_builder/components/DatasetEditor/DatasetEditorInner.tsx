@@ -5,7 +5,6 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,19 +24,18 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
+  setTemplateTagConfig,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
-import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
   getIsResultDirty,
   getMetadataDiff,
+  getOriginalQuestion,
   getResultsMetadata,
   getVisualizationSettings,
   isResultsMetadataDirty,
@@ -45,8 +43,10 @@ import {
 import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
+import { getInitialEditorHeight } from "metabase/querying/components/NativeQueryEditor/utils";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
@@ -146,10 +146,11 @@ function mapStateToProps(state: any) {
     resultsMetadata: getResultsMetadata(state),
     isResultDirty: getIsResultDirty(state),
     isShowingListViewConfiguration: getIsListViewConfigurationShown(state),
+    originalQuestion: getOriginalQuestion(state),
   };
 }
 
-const mapDispatchToProps = { setDatasetEditorTab };
+const mapDispatchToProps = { setDatasetEditorTab, setTemplateTagConfig };
 
 function getSidebar(
   props: DatasetEditorInnerProps & { modelIndexes?: unknown },
@@ -484,23 +485,14 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   };
 
   const saveButtonRef = useRef<ActionButtonHandle>(null);
-  const {
-    checkData,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-    onSave: async (question) => {
+  const handleInitialSave = useCallback(
+    async (question: Question) => {
       await onSave(question, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     },
-  });
-
-  useLayoutEffect(() => {
-    saveButtonRef.current?.resetState();
-  }, [isConfirmationShown]);
+    [onSave, setQueryBuilderMode, runQuestionQuery],
+  );
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
@@ -779,15 +771,6 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         onConfirm={handleCancelEdit}
         onClose={closeModal}
       />
-
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
     </>
   );
 };

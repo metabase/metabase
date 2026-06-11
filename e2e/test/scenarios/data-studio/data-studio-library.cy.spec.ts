@@ -424,11 +424,6 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText(
-          "Cleaned, pre-transformed data sources ready for exploring.",
-        )
-        .should("not.exist");
 
       cy.log(
         "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",

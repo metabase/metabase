@@ -690,10 +690,10 @@
                                  :slack-team-id    "T123"
                                  :slack-channel-id "C123"
                                  :slack-thread-ts  "1712785577.123456"})
-          (with-redefs [slackbot.api/conversation-permalink (fn [channel ts]
-                                                              (is (= "C123" channel))
-                                                              (is (= "1712785577.123456" ts))
-                                                              permalink)]
+          (mt/with-dynamic-fn-redefs [slackbot.api/conversation-permalink (fn [channel ts]
+                                                                            (is (= "C123" channel))
+                                                                            (is (= "1712785577.123456" ts))
+                                                                            permalink)]
             (let [response (mt/user-http-request :crowberto :get 200
                                                  (format "ee/metabot-analytics/conversations/%s" conversation-id))]
               (is (= permalink (:slack_permalink response)))))

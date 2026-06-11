@@ -50,6 +50,12 @@ export type Transform = {
 
   last_checkpoint_value?: string | null;
 
+  // set by the job transforms endpoint on transforms pulled into the plan
+  // only as dependencies (not tagged for the job); `scheduled` says whether
+  // any active job's schedule covers them
+  dependency?: boolean;
+  scheduled?: boolean;
+
   // hydrated fields
   collection?: Collection | null;
   tag_ids?: TransformTagId[];
@@ -182,6 +188,7 @@ export const TRANSFORM_RUN_SORT_COLUMNS = [
   "status",
   "run-method",
   "transform-tags",
+  "duration",
 ] as const;
 export type TransformRunSortColumn =
   (typeof TRANSFORM_RUN_SORT_COLUMNS)[number];

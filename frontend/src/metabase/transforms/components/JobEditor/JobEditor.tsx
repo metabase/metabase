@@ -27,6 +27,7 @@ type JobEditorProps = {
   menu?: ReactNode;
   actions?: ReactNode;
   readOnly?: boolean;
+  isCheckingPermissions?: boolean;
   onNameChange: (name: string) => void;
   onScheduleChange: (
     schedule: string,
@@ -40,6 +41,7 @@ export function JobEditor({
   menu,
   actions,
   readOnly,
+  isCheckingPermissions,
   onNameChange,
   onScheduleChange,
   onTagListChange,
@@ -86,6 +88,7 @@ export function JobEditor({
         <ScheduleSection
           job={job}
           readOnly={readOnly}
+          isCheckingPermissions={isCheckingPermissions}
           onScheduleChange={onScheduleChange}
         />
         <TagSection

@@ -160,6 +160,7 @@
               metabase.agent-api.init}
    :uses    #{api
               auth-identity
+              channel
               collections
               dashboards
               events
@@ -175,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -248,7 +250,6 @@
   {:team "Graphy"
    :api  #{metabase.analyze.core}
    :uses #{config
-           driver
            lib
            models
            query-processor
@@ -338,8 +339,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -1013,6 +1013,17 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1396,6 +1407,7 @@
    :uses #{analytics
            analytics-interface
            api
+           app-db
            appearance
            auth-identity
            channel
@@ -1426,6 +1438,7 @@
                     :model/Dashboard
                     :model/DashboardCard
                     :model/DashboardTab
+                    :model/TaskHistory
                     :model/User}}
 
   oauth-server
@@ -1434,6 +1447,7 @@
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -1665,6 +1679,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -2158,6 +2173,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
@@ -2328,6 +2344,7 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
+                    :model/Field
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
@@ -2999,8 +3016,7 @@
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
-   :uses #{analyze
-           api
+   :uses #{api
            app-db
            collections
            database-routing
@@ -3011,7 +3027,6 @@
            lib
            lib-be
            models
-           native-query-snippets
            permissions
            premium-features
            queries
@@ -3172,20 +3187,6 @@
            sql-tools
            util}
    :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
-
-  enterprise/notification-admin
-  {:team "Gadget"
-   :api  #{metabase-enterprise.notification-admin.api}
-   :uses #{api
-           app-db
-           models
-           notification
-           request
-           util}
-   :model-imports #{:model/Notification
-                    :model/NotificationHandler
-                    :model/NotificationRecipient
-                    :model/TaskHistory}}
 
   enterprise/permission-debug
   {:team "UX West"

@@ -44,7 +44,6 @@ export const customVizPluginApi = EnterpriseApi.injectEndpoints({
           method: "POST",
           url: "/api/ee/custom-viz-plugin",
           body: formData,
-          fetch: true,
         };
       },
       invalidatesTags: (_, error) =>
@@ -61,7 +60,6 @@ export const customVizPluginApi = EnterpriseApi.injectEndpoints({
           method: "PUT",
           url: `/api/ee/custom-viz-plugin/${id}/bundle`,
           body: formData,
-          fetch: true,
         };
       },
       invalidatesTags: (_, error, { id }) =>

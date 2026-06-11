@@ -13,6 +13,18 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]))
 
+(mu/defn missing-table-error :- [:ref ::lib.schema.validate/missing-table-error]
+  "Create a missing-table lib validation error. The offending table is carried via the `:source-entity-*`
+  keys, so this error has no `:name`."
+  []
+  {:type :missing-table})
+
+(mu/defn missing-card-error :- [:ref ::lib.schema.validate/missing-card-error]
+  "Create a missing-card lib validation error. The offending card is carried via the `:source-entity-*`
+  keys, so this error has no `:name`."
+  []
+  {:type :missing-card})
+
 (mu/defn missing-column-error :- [:ref ::lib.schema.validate/missing-column-error]
   "Create a missing-column lib validation error"
   [col-name :- :string]
@@ -112,14 +124,51 @@
        nil))
     @bad-fields))
 
-(mu/defn find-bad-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
-  "Like [[find-bad-refs]] but includes source entity information for each error.
-   Returns a set of error maps, each containing:
-   - `:type` - the error type (e.g., `:missing-column`)
-   - `:name` - the column name (for missing-column errors)
-   - `:source-entity-type` - optional, `:table` or `:card` if source could be determined
-   - `:source-entity-id` - optional, the ID of the source entity
-   - `:soft?` - optional, true when the ref could be dropped (eg. from a `:fields` list) without breaking the query"
+(mu/defn- find-bad-source-refs :- [:set ::lib.schema.validate/error-with-source]
+  "Returns errors for any stage (including join stages) whose `:source-table`/`:source-card` references an
+   entity that no longer backs a valid query: a table that is missing or inactive (e.g. dropped from the
+   warehouse and retired during sync), or a source card that has been deleted.
+
+   The field-ref walk in [[find-bad-field-refs-with-source]] can't catch this: a `SELECT *`-style query has
+   no `:field` clauses to inspect, and retiring a table doesn't deactivate its fields. So we resolve each
+   stage source directly, reporting a `:missing-table`/`:missing-card` error carrying the offending entity as
+   the source, so dependency analysis attributes the breakage to it.
+
+   An inactive table is still returned by [[lib.metadata/table]] (it's fetched by id), so we catch it via the
+   `:active` flag; a truly deleted table id makes [[lib.metadata/table]] throw, so we treat a throw as a
+   deleted table and flag it too rather than letting it abort the analysis. A deleted source card resolves to
+   nil via [[lib.metadata/card]] (and a throw is likewise treated as unresolvable); an *archived* card still
+   resolves and can back a query, so it is not flagged."
+  [query :- ::lib.schema/query]
+  (let [mp          (lib.metadata/->metadata-provider query)
+        bad-sources (volatile! #{})
+        flag!       (fn [error entity-type entity-id]
+                      (vswap! bad-sources conj
+                              (assoc error
+                                     :source-entity-type entity-type
+                                     :source-entity-id   entity-id)))]
+    (lib.walk/walk-stages
+     query
+     (fn [_query _path stage]
+       (when-let [table-id (:source-table stage)]
+         (let [table (try
+                       (lib.metadata/table mp table-id)
+                       (catch #?(:clj Throwable :cljs :default) _
+                         nil))]
+           (when (or (nil? table) (not (:active table)))
+             (flag! (missing-table-error) :table table-id))))
+       (when-let [card-id (:source-card stage)]
+         (when (nil? (try
+                       (lib.metadata/card mp card-id)
+                       (catch #?(:clj Throwable :cljs :default) _
+                         nil)))
+           (flag! (missing-card-error) :card card-id)))
+       nil))
+    @bad-sources))
+
+(mu/defn- find-bad-field-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
+  "Returns source-annotated errors for any `:field` ref in the query that can't be resolved to an active
+   column. See [[find-bad-refs-with-source]] for the shape of each error map."
   [query :- ::lib.schema/query]
   (let [bad-fields (volatile! #{})]
     (lib.walk/walk-clauses
@@ -144,6 +193,20 @@
                (vswap! bad-fields conj error)))))
        nil))
     @bad-fields))
+
+(mu/defn find-bad-refs-with-source :- [:set ::lib.schema.validate/error-with-source]
+  "Like [[find-bad-refs]] but includes source entity information for each error.
+   Returns a set of error maps, each containing:
+   - `:type` - the error type (e.g., `:missing-column`)
+   - `:name` - the column name (for missing-column errors)
+   - `:source-entity-type` - optional, `:table` or `:card` if source could be determined
+   - `:source-entity-id` - optional, the ID of the source entity
+   - `:soft?` - optional, true when the ref could be dropped (eg. from a `:fields` list) without breaking the query
+
+   Catches both unresolvable `:field` refs and stages whose `:source-table`/`:source-card` is missing or inactive."
+  [query :- ::lib.schema/query]
+  (into (find-bad-source-refs query)
+        (find-bad-field-refs-with-source query)))
 
 (comment
   (require '[metabase.lib.core :as lib])

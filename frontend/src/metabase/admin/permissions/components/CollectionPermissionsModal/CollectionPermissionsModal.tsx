@@ -31,14 +31,14 @@ import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
 
-const getDefaultTitle = (namespace: CollectionNamespace) =>
+const getDefaultTitle = (namespace?: CollectionNamespace) =>
   namespace === "snippets"
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
 const mapStateToProps = (
   state: State,
-  props: { params: { slug?: string }; namespace: CollectionNamespace },
+  props: { params: { slug?: string }; namespace?: CollectionNamespace },
 ) => {
   const collectionId = Urls.extractCollectionId(props.params.slug);
   if (!collectionId) {
@@ -70,7 +70,7 @@ interface CollectionPermissionsModalProps {
   permissionEditor: PermissionEditorType | null;
   isDirty: boolean;
   onClose: () => void;
-  namespace: CollectionNamespace;
+  namespace?: CollectionNamespace;
   collection?: Collection;
   initialize: (namespace: CollectionNamespace) => void;
   updateCollectionPermission: (
@@ -83,7 +83,7 @@ const CollectionPermissionsModal = ({
   permissionEditor,
   isDirty,
   onClose,
-  namespace,
+  namespace = null,
   collection,
 
   initialize,

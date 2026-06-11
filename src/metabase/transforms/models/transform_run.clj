@@ -219,6 +219,20 @@
                  :transform_id transform-id
                  :is_active true))
 
+(defn last-successful-run-times
+  "Map each id in `transform-ids` with a succeeded run to its most recent run's `end_time`. Ids with
+  no succeeded run are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (into {}
+          (map (juxt :transform_id :last_success))
+          (t2/select :model/TransformRun
+                     {:select   [:transform_id [[:max :end_time] :last_success]]
+                      :where    [:and
+                                 [:in :transform_id transform-ids]
+                                 [:= :status [:inline "succeeded"]]]
+                      :group-by [:transform_id]}))))
+
 (defn- timestamp-constraint
   [field-name date-string]
   (let [{:keys [start end]}
@@ -338,6 +352,13 @@
        :status          [[(translate-status-clause) sort-direction]]
        :run-method      [[(translate-run-method-clause) sort-direction]]
        :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
+       ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
+       ;; directions — null means "no measurable duration yet," not
+       ;; "longest duration."
+       :duration        [[[:is :end_time nil] :asc]
+                         [(h2x/calculate-interval-honeysql-form
+                           (mdb/db-type) :end_time :start_time)
+                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction nulls-sort]])
      [:transform_run.id sort-direction])))

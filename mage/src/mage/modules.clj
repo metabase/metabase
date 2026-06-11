@@ -266,7 +266,6 @@
    :bigquery
    :clickhouse
    :databricks
-   :druid
    :druid-jdbc
    :mongo
    :mongo-ssl
@@ -289,7 +288,6 @@
    "bigquery-cloud-sdk" [:bigquery]
    "clickhouse" [:clickhouse]
    "databricks" [:databricks]
-   "druid" [:druid]
    "druid-jdbc" [:druid-jdbc]
    "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
    "oracle" [:oracle]

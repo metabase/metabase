@@ -9,7 +9,7 @@ import type { MetabaseAccentColorKey, MetabaseColorKey } from "./color-keys";
 export interface MetabaseThemeV2 {
   version: 2;
 
-  colors: Record<MetabaseColorKeyWithoutAccents, string>;
+  colors: Record<MetabaseRequiredThemeColorKey, string>;
   chartColors: ChartColorV2[];
 }
 
@@ -43,11 +43,19 @@ export type ChartColorV2 =
     }
   | null;
 
+/** Filled in by `deriveFullMetabaseTheme`; not required from theme files. */
+export const DERIVED_COLOR_KEYS = [
+  "core-brand",
+  "core-filter",
+  "core-summarize",
+] as const;
+type DerivedColorKey = (typeof DERIVED_COLOR_KEYS)[number];
+
 /**
- * Metabase color keys without accent0 - accent7.
- * Those will be transformed from `chartColors`.
+ * Metabase color keys without colors that are automatically derived.
+ * Accents are transformed from `chartColors`, DerivedColorKey are derived in `deriveFullMetabaseTheme`
  */
-type MetabaseColorKeyWithoutAccents = Exclude<
+type MetabaseRequiredThemeColorKey = Exclude<
   MetabaseColorKey,
-  MetabaseAccentColorKey
+  MetabaseAccentColorKey | DerivedColorKey
 >;

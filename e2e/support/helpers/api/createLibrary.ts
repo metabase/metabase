@@ -11,7 +11,9 @@ const hasLibraryRootCollections = (collections: Collection[]) => {
 
   return Boolean(
     libraryCollection?.children?.some(({ type }) => type === "library-data") &&
-    libraryCollection?.children?.some(({ type }) => type === "library-metrics"),
+      libraryCollection?.children?.some(
+        ({ type }) => type === "library-metrics",
+      ),
   );
 };
 

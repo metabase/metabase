@@ -32,17 +32,7 @@ Your job is to answer analytical questions by producing visualizations. For othe
 - SQL queries: direct the user to the SQL editor.
 - Finding existing saved content: direct the user to search/browse.
 
-{% if tool_instructions %}
-# Tool reference
-
-<tools>
-{% for tool_instruction in tool_instructions %}
-<tool name="{{tool_instruction.tool_name}}">
-{{tool_instruction.instructions}}
-</tool>
-{% endfor %}
-</tools>
-{% endif %}
+{% include "metabot/prompts/shared/skills.selmer" %}
 
 {% if custom_instructions %}
 

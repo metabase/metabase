@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.snowflake-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.snowflake-test]}
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase.driver.snowflake-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.snowflake-test]}}}}}}
   (:require
    [buddy.core.codecs :as codecs]
@@ -189,7 +189,7 @@
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
+    (mt/with-dynamic-fn-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
         (is (= "CREATE DATABASE IF NOT EXISTS \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
@@ -390,11 +390,12 @@
                [["metabase_users"
                  [{:field-name "name" :base-type :type/Text}]
                  [["mb_qnkhuat"]]]])
-    (let [details (:details (mt/db))]
+    (let [{{db-name :db, :as details} :details} (mt/db)]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
-                              (:db details) (:db details) (:db details))])
+                              db-name db-name db-name)])
+      (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
       (thunk))))
 
 (defmacro with-dynamic-table!
@@ -406,7 +407,6 @@
   (testing "Should be able to sync dynamic tables"
     (mt/test-driver :snowflake
       (with-dynamic-table!
-        (sync/sync-database! (t2/select-one :model/Database (mt/id)))
         (testing "both base tables and dynamic tables should be synced"
           (is (= #{"metabase_fan" "metabase_users"}
                  (t2/select-fn-set :name :model/Table :db_id (mt/id))))
@@ -425,8 +425,10 @@
          (mt/db)
          nil
          (fn [conn]
-           (let [dynamic-table (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
-                 normal-table  (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+           (let [dynamic-table (or (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
+                                   (throw (ex-info "Failed to find dynamic table" {:database-id (mt/id)})))
+                 normal-table  (or (t2/select-one :model/Table :name "metabase_users" :db_id (mt/id))
+                                   (throw (ex-info "Failed to find normal table" {:database-id (mt/id)})))
                  db-name       (-> (mt/db) :details :db)]
              (testing "dynamic-table?"
                (testing "returns true for dynamic table"
@@ -440,9 +442,13 @@
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn db-name dynamic-table))))
                (testing "also works if db-name is nil"
                  (is (= [] (sql-jdbc.describe-table/get-table-pks :snowflake conn nil dynamic-table)))))
-             (testing "driver/describe-table-fks returns empty set for dynamic table"
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
+             (testing "driver/describe-fks returns empty set for dynamic table"
+               (is (= #{}
+                      (into #{}
+                            (driver/describe-fks :snowflake
+                                                 (lib.metadata/database (mt/metadata-provider))
+                                                 {:schema-names [(:schema dynamic-table)]
+                                                  :table-names  [(:name dynamic-table)]}))))))))))))
 
 (deftest ^:sequential describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
@@ -681,14 +687,23 @@
               (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
-(deftest ^:sequential describe-table-fks-test
+(deftest ^:sequential describe-fks-test
   (mt/test-driver :snowflake
-    (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
-      (is (= #{{:fk-column-name   "category_id"
-                :dest-table       {:name "categories", :schema "PUBLIC"}
-                :dest-column-name "id"}}
-             #_{:clj-kondo/ignore [:deprecated-var]}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :venues))))))))
+    (testing "make sure describe-fks uses the NAME FROM DETAILS too"
+      (let [table (t2/select-one [:model/Table :schema :name] :id (mt/id :venues))]
+        (is (= [{:fk-table-schema "PUBLIC"
+                 :fk-table-name   "venues"
+                 :fk-column-name  "category_id"
+                 :pk-table-schema "PUBLIC"
+                 :pk-table-name   "categories"
+                 :pk-column-name  "id"}]
+               (into []
+                     (driver/describe-fks
+                      :snowflake
+                      (-> (lib.metadata/database (mt/metadata-provider))
+                          (assoc :name "ABC"))
+                      {:schema-names [(:schema table)]
+                       :table-names  [(:name table)]}))))))))
 
 (deftest can-change-from-password-test
   (mt/test-driver
@@ -1360,6 +1375,10 @@
     :snowflake
     (let [original-set-current-user-timezone! @#'test.data.snowflake/set-current-user-timezone!
           original-dbdef->connection-details (get-method tx/dbdef->connection-details :snowflake)]
+      ;; load dataset as the default user before we switch to the belize-based
+      ;; user who may not have permission to create the dataset
+      (mt/dataset good-datetimes-in-belize
+        (mt/id :GOOD_DATETIMES))
       (with-redefs [test.data.snowflake/set-current-user-timezone!
                     (fn [_timezone]
                       (original-set-current-user-timezone! "America/Belize"))
@@ -1467,7 +1486,7 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
