@@ -41,10 +41,10 @@
         "verbatim, so include any trailing separator. Leave empty to use the default for the model family."))
   :encryption :no
   :visibility :settings-manager
-  :default nil
-  :type :string
-  :export? false
-  :doc false)
+  :default    nil
+  :type       :string
+  :export?    false
+  :doc        false)
 
 (defsetting ee-embedding-model-dimensions
   (deferred-tru "Set the dimension size for the selected embedding model")

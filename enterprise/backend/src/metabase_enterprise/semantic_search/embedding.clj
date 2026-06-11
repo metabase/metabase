@@ -367,9 +367,8 @@
   "Query prefixes for embedding-model families trained for asymmetric retrieval.
   These models expect search queries — but not the indexed documents — to carry a fixed prefix.
   Patterns must be mutually exclusive: lookup scans entries in unspecified order.
-  Keep patterns narrow — there is deliberately no way to suppress a matched prefix via config
-  (the `ee-embedding-query-prefix` setting can only replace it), so a false positive is unfixable
-  without a code change."
+  Keep patterns narrow: a false positive is unfixable without a code change.
+  The `ee-embedding-query-prefix` setting can only replace a matched prefix, never suppress it."
   {#"(?i)snowflake-arctic-embed" "query: "})
 
 (defn- default-query-prefix
