@@ -18,6 +18,9 @@
     answers exactly, and the post-retrieval re-ranking and permission stages lose just as much through it
     (0.4 recall under limit truncation, a 20 -> 12 pool drop) because they run after retrieval.
 
+  Caveat: every number above comes from a very, very small index (300 docs; 2000 for the packed dataset).
+  The mechanisms are the same at scale, but their effects can be far more drastic.
+
   Covers four retrieval variants -- no HNSW index (exact seq scan), naive :hnsw (post-filter), and the two
   iterative-scan strategies -- with :brute-force as the exact SQL reference, and measures three things:
 
