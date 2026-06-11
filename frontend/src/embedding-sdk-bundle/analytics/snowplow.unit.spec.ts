@@ -1,8 +1,10 @@
 import type { SelfDescribingJson } from "@snowplow/browser-tracker";
 
+import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
 import { createMockState } from "metabase/redux/store/mocks/state";
 import type { EnterpriseSettings } from "metabase-types/api";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
@@ -19,6 +21,7 @@ function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
   return {
     getState: () =>
       createMockState({
+        sdk: createMockSdkState(),
         settings: createMockSettingsState({
           "anon-tracking-enabled": true,
           ...overrides,
@@ -111,7 +114,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
           "analytics-uuid": "test-uuid-123",
           version: { tag: "v0.50.0" },
           "instance-creation": "2024-01-01",
-          "token-features": {},
+          "token-features": createMockTokenFeatures(),
         }),
       });
 
