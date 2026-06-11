@@ -372,7 +372,7 @@
                     (constantly mock-default-result))))))))))
 
 (deftest ^:parallel parameter->values-join-aliased-value-field-test
-  (let [mp    (mt/metadata-provider)
+  (let [mp (mt/metadata-provider)
         venue-table (lib.metadata/table mp (mt/id :venues))
         categories-table (lib.metadata/table mp (mt/id :categories))
         venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
