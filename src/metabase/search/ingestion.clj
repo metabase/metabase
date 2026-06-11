@@ -141,11 +141,17 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (json/encode (apply dissoc m search.spec/legacy-input-excluded-keys))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))
-        document (merge fn-results sql-results)]
-    (assoc document :curated (collections.curation/curated? document))))
+        document (merge fn-results sql-results)
+        curated  (collections.curation/curated? document)]
+    ;; Both production engines reconstruct results from legacy_input (appdb rehydrate, semantic
+    ;; legacy-input-with-score), so curated must live there to reach the search response, not just in the
+    ;; search_index column used for filtering. data_layer rides along once it leaves the excluded set.
+    (assoc document
+           :curated curated
+           :legacy_input (json/encode (assoc (apply dissoc m search.spec/legacy-input-excluded-keys)
+                                             :curated curated)))))
 
 (defn- attrs->select-items [attrs]
   (for [[k v] attrs

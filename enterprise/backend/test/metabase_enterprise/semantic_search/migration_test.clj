@@ -379,3 +379,19 @@
                       "6" nil              ; non-library collection, no gate doc
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
+
+(deftest table-curation-by-id-test
+  (testing "table curation is computed from appdb table columns (is_published/data_layer/data_authority) so
+            Migration 5 backfills existing semantic-index table rows correctly without a re-index"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {published :id}     {:db_id db-id :is_published true  :data_layer :final
+                                                     :data_authority :unconfigured}
+                   :model/Table {authoritative :id} {:db_id db-id :is_published false :data_layer :internal
+                                                     :data_authority :authoritative}
+                   :model/Table {plain :id}         {:db_id db-id :is_published false :data_layer :internal
+                                                     :data_authority :unconfigured}]
+      (let [by-id (#'semantic.db.migration.impl/table-curation-by-id)]
+        (is (true?  (get-in by-id [published :curated]))     "published + final layer counts")
+        (is (true?  (get-in by-id [authoritative :curated])) "authoritative counts regardless of publish state")
+        (is (false? (get-in by-id [plain :curated]))         "neither published-final nor authoritative")
+        (is (= "authoritative" (get-in by-id [authoritative :data_authority])))))))

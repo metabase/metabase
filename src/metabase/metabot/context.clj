@@ -13,7 +13,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.search.core :as search]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -255,11 +255,6 @@
                                       [metabot-id :entity-id]
                                       metabot-id))))
 
-(defn- verified-only?
-  [metabot]
-  (and (:use_verified_content metabot)
-       (premium-features/has-feature? :content-verification)))
-
 (defn- batch-verified-ids
   "Of the given `ids`, return the set whose most-recent ModerationReview for `item-type` has status \"verified\"."
   [ids item-type]
@@ -290,14 +285,24 @@
                 true))
             recents)))
 
+(defn- filter-recents-to-curated
+  "Keep only recents the search index marks as curated (verified, official-collection, library/published,
+  or authoritative). Reuses the precomputed `curated` index column so recent-view filtering can't drift
+  from search filtering. Falls back to verified-only filtering when no search index is available (e.g. a
+  semantic-only or not-yet-indexed instance), where tables still pass through unfiltered."
+  [recents]
+  (if-let [curated (search/curated-model-ids (map (juxt (comp name :model) :id) recents))]
+    (filter (fn [{:keys [model id]}] (contains? curated [(name model) (str id)])) recents)
+    (filter-recents-to-verified recents)))
+
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
   Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
   (Excludes collections and documents for now, which aren't searchable by Metabot.)
 
-  When `metabot-id` is provided and the metabot has `use_verified_content` enabled (and the
-  `:content-verification` premium feature is active), filters out unverified cards/datasets/metrics
-  /dashboards before taking the top 5. Tables are not moderatable and always pass through."
+  When `metabot-id` is provided and the metabot has `use_verified_content` enabled, filters recents down
+  to curated content (verified, official-collection, library/published, or authoritative) before taking
+  the top 5, matching how search filters answer sources."
   [context {:keys [metabot-id] :as _opts}]
   (try
     ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
@@ -309,8 +314,8 @@
                                                                 [:views :selections]
                                                                 {:models [:card :dataset :metric :dashboard :table]}))
                    recents (cond->> recents
-                             (verified-only? (get-metabot metabot-id))
-                             filter-recents-to-verified)]
+                             (:use_verified_content (get-metabot metabot-id))
+                             filter-recents-to-curated)]
                (mapv (fn [item]
                        (let [item-type
                              (case (:model item)

@@ -144,33 +144,71 @@
                                [:= :root_collection_type nil]
                                [:in :collection_id (mapv key entries)]]})))))))
 
+(defn- table-curation-by-id
+  "Map `table-id → {:data_authority .. :curated ..}` from the appdb, for backfilling semantic-index rows
+  whose curation depends on table columns the index lacks (`is_published`, `data_authority`). Returns `{}`
+  and logs if the appdb lookup fails (e.g. tests exercising pgvector before the appdb schema is up)."
+  []
+  (try
+    (u/for-map [{:keys [id is_published data_layer data_authority]}
+                (t2/select [:model/Table :id :is_published :data_layer :data_authority])]
+      ;; data_layer/data_authority read back as keywords; curated? normalizes them, but the index column is
+      ;; text so store data_authority as a string for the [:inline ...] backfill below.
+      [id {:data_authority (some-> data_authority name)
+           :curated        (collections.curation/curated?
+                            {:model          "table"
+                             :is_published   is_published
+                             :data_layer     data_layer
+                             :data_authority data_authority})}])
+    (catch Exception e
+      (log/warn e "Skipping semantic table curation backfill — appdb lookup failed")
+      {})))
+
 (defn- add-data-authority-and-curated-columns!
   "Migration 5: add `data_authority` and the precomputed `curated` flag to index tables.
   `curated` backs Metabot's \"verified or curated content\" filter.
-  The backfill reuses [[metabase.collections.curation/curated-honeysql]] so it can't drift from the
-  ingestion predicate; changing the rule needs a new migration to recompute this column."
+  Non-table rows compute `curated` from index columns via [[metabase.collections.curation/curated-honeysql]]
+  (the index has no `is_published`; library metrics/segments ride `root_collection_type`). Table rows also
+  need `is_published` + `data_authority`, which the index lacks, so they are backfilled from the appdb and
+  their `curated` computed there — keeping existing published/authoritative tables correct without a
+  re-index. Changing the rule needs a new migration to recompute this column."
   [tx index-metadata]
-  ;; The index has no is_published column, so resolve that signal to false and lean on
-  ;; root_collection_type to cover library/published tables. Backfilling keeps the filter working
-  ;; before the next reindex.
-  ;;
-  ;; Known limitation: data_authority is added empty here and only populated on the next index update,
-  ;; so a table that is curated *solely* by `data_authority = authoritative` (not verified/official, not
-  ;; in the library) reads as curated=false until it is re-indexed. This self-heals on reindex and the
-  ;; common cases (library/published tables, verified/official cards) are backfilled correctly via the
-  ;; existing columns. Backfilling data_authority would need an appdb sweep by model_id (cf. the
-  ;; root_collection_type backfill in migration 4); deferred until it's worth the migration cost.
-  (let [curated-expr (collections.curation/curated-honeysql
-                      (fn [signal] (if (= signal :is_published) [:inline false] signal)))]
+  (let [;; is_published is a table concept; forcing it false here only affects non-tables, which is correct
+        ;; (they're covered by root_collection_type). Tables are corrected from the appdb below.
+        curated-expr   (collections.curation/curated-honeysql
+                        (fn [signal] (if (= signal :is_published) [:inline false] signal)))
+        table-curation (table-curation-by-id)]
     (alter-index-tables!
      tx index-metadata 5
      (fn [execute! table-name]
        (let [kw-tbl (keyword table-name)]
          (execute! {:alter-table [kw-tbl] :add-column [[:data_authority :text :if-not-exists]]})
          (execute! {:alter-table [kw-tbl] :add-column [[:curated :boolean :if-not-exists]]})
-         (execute! {:update kw-tbl
-                    :set   {:curated curated-expr}
-                    :where [:= :curated nil]}))))))
+         (if (seq table-curation)
+           (do
+             ;; Non-table rows: compute from index columns.
+             (execute! {:update kw-tbl
+                        :set   {:curated curated-expr}
+                        :where [:and [:= :curated nil] [:!= :model [:inline "table"]]]})
+             ;; Table rows: backfill data_authority and curated from the appdb, grouped by value so the
+             ;; statement count stays bounded regardless of how many tables exist.
+             (doseq [[authority entries] (->> table-curation
+                                              (filter (comp some? :data_authority val))
+                                              (group-by (comp :data_authority val)))]
+               (execute! {:update kw-tbl
+                          :set    {:data_authority [:inline authority]}
+                          :where  [:and [:= :model [:inline "table"]]
+                                   [:in :model_id (mapv (comp str key) entries)]]}))
+             (doseq [[curated? entries] (group-by (comp :curated val) table-curation)]
+               (execute! {:update kw-tbl
+                          :set    {:curated curated?}
+                          :where  [:and [:= :model [:inline "table"]]
+                                   [:in :model_id (mapv (comp str key) entries)]]})))
+           ;; appdb unavailable: fall back to the index-column computation for every row. Tables curated
+           ;; solely by is_published/data_authority stay false until the next reindex, which self-heals.
+           (execute! {:update kw-tbl
+                      :set   {:curated curated-expr}
+                      :where [:= :curated nil]})))))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing

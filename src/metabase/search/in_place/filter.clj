@@ -193,11 +193,15 @@
 (defmethod build-optional-filter-query [:curated "table"]
   [_filter model query curated?]
   (assert (true? curated?) "filter for non-curated content is not supported")
-  (if (premium-features/has-feature? :library)
-    (sql.helpers/where query [:and
-                              [:= (search.config/column-with-model-alias model :is_published) true]
-                              [:= (search.config/column-with-model-alias model :data_layer) "final"]])
-    (sql.helpers/where query false-clause)))
+  ;; Mirror collections.curation/curated? for tables: authoritative tables count unconditionally; published
+  ;; tables count only at the `final` layer and only when the :library feature is present.
+  (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
+        published-final (when (premium-features/has-feature? :library)
+                          [:and
+                           [:= (search.config/column-with-model-alias model :is_published) true]
+                           [:= (search.config/column-with-model-alias model :data_layer) "final"]])]
+    (sql.helpers/where query (cond-> [:or authoritative]
+                               published-final (conj published-final)))))
 
 ;; Created at filters
 

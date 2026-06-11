@@ -87,9 +87,13 @@
 (defn- clean-result [result]
   (cond-> (dissoc (u/remove-nils result) :database_id :table_id :last_editor_id :last_edited_at
                   :creator_common_name :creator_id
-                  ;; table search surfaces data_authority, whose default value is DB-specific
-                  ;; (e.g. "unconfigured" on H2/Postgres vs NULL on MySQL/MariaDB) — incidental here
+                  ;; Metabot curation signals now ride in search results: curated on every model, and
+                  ;; table data_authority/data_layer (DB-specific defaults, e.g. data_authority
+                  ;; "unconfigured" on H2/Postgres vs NULL on MySQL; data_layer nil on H2 vs "internal" on
+                  ;; MySQL/MariaDB) — all incidental to these assertions.
+                  :curated
                   :data_authority
+                  :data_layer
                   ;; false for new search segments... not sure why
                   :created_at)
     (false? (:model_id result))

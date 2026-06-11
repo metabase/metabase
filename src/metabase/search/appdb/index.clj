@@ -442,6 +442,23 @@
   (map (juxt :model :name)
        (t2/query (search-query search-term search-ctx [:model :name]))))
 
+(defn curated-model-ids
+  "Of `model+ids` (a seq of `[model-string entity-id]`), return the subset the active index marks as
+  `curated`, as a set of `[model-string model_id-string]`. Returns nil when there is no active index, so
+  callers can distinguish \"index unavailable\" (fall back) from \"nothing curated\" (empty set)."
+  [model+ids]
+  (when-let [index-table (active-table)]
+    (if (empty? model+ids)
+      #{}
+      (into #{}
+            (map (juxt :model :model_id))
+            (t2/query {:select [:model :model_id]
+                       :from   [index-table]
+                       :where  [:and
+                                [:= :curated true]
+                                (into [:or] (for [[model id] model+ids]
+                                              [:and [:= :model model] [:= :model_id (str id)]]))]})))))
+
 (defn reset-index!
   "Ensure we have a blank slate; in case the table schema or stored data format has changed."
   []

@@ -175,3 +175,9 @@
                   :search_index.collection_id)]
       (is (=? [:or any? [:exists any?]]
               clause)))))
+
+(deftest in-place-curated-table-filter-counts-authoritative-test
+  (testing "the in-place curated table filter counts authoritative tables regardless of publish state,
+            mirroring collections.curation/curated? (BOT-1570)"
+    (let [where (:where (#'search.in-place.filter/build-optional-filter-query :curated "table" {} true))]
+      (is (some #{"authoritative"} (tree-seq coll? seq where))))))
