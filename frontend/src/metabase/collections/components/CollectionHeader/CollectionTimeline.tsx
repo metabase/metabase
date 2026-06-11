@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
-import { Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
-import { CollectionHeaderButton } from "./CollectionHeader.styled";
+import S from "./CollectionHeaderButton.module.css";
 
 interface CollectionTimelineProps {
   collection: Collection;
@@ -19,7 +19,13 @@ const CollectionTimeline = ({
   return (
     <Tooltip label={t`Events`} position="bottom">
       <div>
-        <CollectionHeaderButton as={Link} to={url} icon="calendar" />
+        <Button
+          className={S.headerButton}
+          variant="subtle"
+          component={Link}
+          to={url}
+          leftSection={<Icon name="calendar" size={20} />}
+        />
       </div>
     </Tooltip>
   );

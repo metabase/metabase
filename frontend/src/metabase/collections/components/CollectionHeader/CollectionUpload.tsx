@@ -7,9 +7,10 @@ import {
   UploadLabel,
   UploadTooltip,
 } from "metabase/common/components/upload";
+import { Button, Icon } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-import { CollectionHeaderButton } from "./CollectionHeader.styled";
+import S from "./CollectionHeaderButton.module.css";
 import { UploadInfoModal } from "./CollectionUploadInfoModal";
 import { trackCSVFileUploadClicked } from "./analytics";
 
@@ -31,10 +32,11 @@ export function CollectionUpload({
     return (
       <>
         <UploadTooltip collection={collection}>
-          <CollectionHeaderButton
+          <Button
+            className={S.headerButton}
+            variant="subtle"
             aria-label={t`Upload data`}
-            icon="upload"
-            iconSize={20}
+            leftSection={<Icon name="upload" size={20} />}
             onClick={() => setShowInfoModal(true)}
           />
         </UploadTooltip>
@@ -65,11 +67,11 @@ export function CollectionUpload({
   return (
     <UploadTooltip collection={collection}>
       <UploadLabel>
-        <CollectionHeaderButton
-          as="span"
-          to=""
-          icon="upload"
-          iconSize={20}
+        <Button
+          className={S.headerButton}
+          variant="subtle"
+          component="span"
+          leftSection={<Icon name="upload" size={20} />}
           aria-label={t`Upload data`}
         />
       </UploadLabel>

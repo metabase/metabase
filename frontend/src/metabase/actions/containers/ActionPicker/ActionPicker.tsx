@@ -8,16 +8,15 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
+import { Button, Icon } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
   ActionItem,
   ActionsList,
-  EditButton,
   EmptyModelStateContainer,
   EmptyState,
   ModelCollapseSection,
-  NewActionButton,
 } from "./ActionPicker.styled";
 import { sortAndGroupActions } from "./utils";
 
@@ -113,9 +112,11 @@ function ModelActionPicker({
                 data-testid={`action-item-${action.name}`}
               >
                 <span>{action.name}</span>
-                <EditButton
-                  icon="pencil"
-                  onlyIcon
+                <Button
+                  variant="subtle"
+                  size="compact-md"
+                  c="text-tertiary"
+                  leftSection={<Icon name="pencil" />}
                   onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     // we have a click listener on the parent
                     event.stopPropagation();
@@ -126,16 +127,24 @@ function ModelActionPicker({
                 />
               </ActionItem>
             ))}
-            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
+            <Button
+              variant="subtle"
+              m="0.25rem 0.75rem"
+              onClick={toggleIsActionCreatorVisible}
+            >
               {t`Create new action`}
-            </NewActionButton>
+            </Button>
           </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
+            <Button
+              variant="subtle"
+              m="0.25rem 0.75rem"
+              onClick={toggleIsActionCreatorVisible}
+            >
               {t`Create new action`}
-            </NewActionButton>
+            </Button>
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>

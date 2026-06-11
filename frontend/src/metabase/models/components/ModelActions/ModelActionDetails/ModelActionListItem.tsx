@@ -4,9 +4,8 @@ import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
-import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Icon } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -14,7 +13,6 @@ import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 import {
   ActionCardContainer,
   ActionHeader,
-  ActionRunButton,
   ActionRunButtonContainer,
   ActionSubtitle,
   ActionSubtitlePart,
@@ -128,14 +126,16 @@ function ModelActionListItem({
         {canRun && (
           <>
             <ActionRunButtonContainer>
-              <ActionRunButton
-                as={Link}
-                icon="play"
-                onlyIcon
-                tooltip={t`Run`}
-                aria-label={t`Run`}
-                onClick={openExecuteModal}
-              />
+              <Tooltip label={t`Run`}>
+                <Button
+                  variant="subtle"
+                  bg="background-primary"
+                  c="text-primary"
+                  leftSection={<Icon name="play" />}
+                  aria-label={t`Run`}
+                  onClick={openExecuteModal}
+                />
+              </Tooltip>
             </ActionRunButtonContainer>
             <ActionExecuteModal
               opened={executeModalOpened}
