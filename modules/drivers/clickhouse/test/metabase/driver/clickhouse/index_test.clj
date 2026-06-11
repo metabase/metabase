@@ -1,12 +1,19 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse.index-test
   "Tests for the ClickHouse index driver methods (Index Manager). ClickHouse exercises both lifecycles in one driver:
   the inline ORDER BY at both creation seams (the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`)
-  and the post-CTAS data-skipping index (`compile-create-index`, which is multi-statement). Pure rendering/capability
-  checks, no connection."
+  and the post-CTAS data-skipping index (`compile-create-index`, which is multi-statement).
+
+  The rendering/capability checks are pure and need no connection. `order-by-inlined-live-test` and
+  `skip-index-live-test` run the seams against a real ClickHouse and read the result back out of `system.tables`
+  (the sorting key) and `system.data_skipping_indices` (the skip index), so the hints are verified to actually take
+  effect on the physical table, not just to render."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.clickhouse :as clickhouse]))
+   [metabase.driver.clickhouse :as clickhouse]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel feature-flags-test
   (testing "ClickHouse advertises both index lifecycles"
@@ -55,3 +62,88 @@
             ["ALTER TABLE `public`.`events` MATERIALIZE INDEX `idx_ab`"]]
            (driver/compile-create-index :clickhouse "public" "events"
                                         {:name "idx_ab" :columns [{:name "a"} {:name "b"}] :type :set :type-args [100]})))))
+
+;;; --------------------------------------- Live execute path ----------------------------------------
+
+;; All tables here land in the connection's default database (created unqualified), so the catalog lookups filter on
+;; database = "default". Tests are :synchronized, not :parallel: they create and drop tables in that shared database.
+
+(defn- sorting-key
+  "The MergeTree sorting key of `db`.`table` as ClickHouse reports it, e.g. \"a, b\" (or \"\" for an unsorted table)."
+  [conn-spec db table]
+  (-> (jdbc/query conn-spec
+                  ["SELECT sorting_key FROM system.tables WHERE database = ? AND name = ?" db table])
+      first :sorting_key))
+
+(defn- only-skip-index
+  "The single data-skipping index on `db`.`table` as `{:name ..., :type ..., :expr ..., :granularity ...}`, or nil when
+  there is none. Looked up by table (not by name) so the assertion doesn't couple to how the index name is prefixed.
+  Granularity is a UInt64, so coerce it to a long for a clean comparison against the literal we pass in."
+  [conn-spec db table]
+  (when-let [{:keys [name type expr granularity]}
+             (first (jdbc/query conn-spec
+                                [(str "SELECT name, type, expr, granularity FROM system.data_skipping_indices "
+                                      "WHERE database = ? AND table = ?")
+                                 db table]))]
+    {:name name :type type :expr expr :granularity (long granularity)}))
+
+(def ^:private live-order-by-cases
+  "Each case drives one ORDER BY hint through both live seams and asserts the sorting key the physical table reports."
+  [{:label "order-by hint sets the MergeTree sorting key" :slug "hint"
+    :indexes  [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]
+    :expected "a, b"}
+   {:label "no order-by hint -> empty ORDER BY () (unsorted table)" :slug "nohint"
+    :indexes  []
+    :expected ""}])
+
+(deftest ^:synchronized order-by-inlined-live-test
+  (testing "an inlined ORDER BY actually sets the sorting key at both creation seams"
+    (mt/test-driver :clickhouse
+      (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
+          (doseq [{:keys [label slug indexes expected]} live-order-by-cases]
+            (testing label
+              (let [ctas-table (str (gensym (str "mb_ob_ctas_" slug "_")))
+                    crt-table  (str (gensym (str "mb_ob_crt_" slug "_")))
+                    drop!      (fn [t] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" t)]))]
+                (testing "CTAS seam (compile-transform): run the rendered CTAS, read the sorting key back"
+                  (drop! ctas-table)
+                  (try
+                    (let [[sql params] (driver/compile-transform
+                                        :clickhouse
+                                        {:output-table (keyword ctas-table)
+                                         :query        {:query "SELECT 1 AS a, 2 AS b"}
+                                         :indexes      indexes})]
+                      (jdbc/execute! conn-spec (into [sql] params))
+                      (is (= expected (sorting-key conn-spec "default" ctas-table))))
+                    (finally (drop! ctas-table))))
+                (testing "CREATE TABLE seam (create-table!): create the table, read the sorting key back"
+                  (drop! crt-table)
+                  (try
+                    (driver/create-table! :clickhouse (:id db) (keyword crt-table)
+                                          order-by-columns {:indexes indexes})
+                    (is (= expected (sorting-key conn-spec "default" crt-table)))
+                    (finally (drop! crt-table))))))))))))
+
+(deftest ^:synchronized skip-index-live-test
+  (testing "the post-CTAS path runs ADD INDEX + MATERIALIZE INDEX and the data-skipping index actually exists"
+    (mt/test-driver :clickhouse
+      (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
+            table     (str (gensym "mb_skip_"))
+            index     {:name "evt_minmax" :columns [{:name "a"}] :type :minmax :granularity 4}
+            drop!     (fn [] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" table)]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
+          (drop!)
+          (try
+            (driver/create-table! :clickhouse (:id db) (keyword table) order-by-columns {})
+            (is (nil? (only-skip-index conn-spec "default" table))
+                "index absent before the post-CTAS step")
+            (testing "ADD INDEX + MATERIALIZE INDEX create the index with the expected type, columns, and granularity"
+              (driver/execute-raw-queries! :clickhouse conn-spec
+                                           (driver/compile-create-index :clickhouse nil table index))
+              (is (= {:type "minmax" :expr "a" :granularity 4}
+                     (-> (only-skip-index conn-spec "default" table)
+                         (select-keys [:type :expr :granularity])))))
+            (finally (drop!))))))))
