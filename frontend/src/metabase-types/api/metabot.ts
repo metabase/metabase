@@ -202,7 +202,7 @@ export interface BedrockCredentials {
 
 export interface MetabotSettingsResponse {
   value: string | null;
-  "api-key-error"?: string | null;
+  "credentials-error"?: string | null;
   models: {
     id: string;
     display_name: string;

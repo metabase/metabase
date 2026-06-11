@@ -658,7 +658,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -691,7 +691,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -714,7 +714,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
@@ -1534,7 +1534,7 @@ describe("AIProviderSettingsSection", () => {
       responses: {
         anthropic: {
           value: "anthropic/claude-haiku-4-5",
-          "api-key-error": "Anthropic API key expired or invalid",
+          "credentials-error": "Anthropic API key expired or invalid",
           models: [],
         },
       },
