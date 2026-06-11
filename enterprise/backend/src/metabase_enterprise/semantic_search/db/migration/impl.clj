@@ -246,8 +246,10 @@
              (update-model-rows-in-batches! execute! kw-tbl "table" authoritative
                                             {:data_authority [:inline "authoritative"] :curated true})
              (update-model-rows-in-batches! execute! kw-tbl "table" published {:curated true})
-             ;; Dashboards: official_collection is new, so backfill official-only dashboards from the appdb.
-             (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards {:curated true}))))))))
+             ;; Dashboards: official_collection is new on the spec, so backfill both it and curated for
+             ;; official dashboards (curated alone would leave them scoring as non-official until reindex).
+             (update-model-rows-in-batches! execute! kw-tbl "dashboard" @dashboards
+                                            {:curated true :official_collection true}))))))))
 
 (defn migrate-dynamic-schema!
   "Migrate runtime-managed schema, ie. schema of `index_table_...` tables. Migration author is responsible for removing
