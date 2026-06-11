@@ -45,10 +45,23 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       );
       return firstDimension?.name;
     },
+    // The groups list renders directly beneath as its own widget — collapse
+    // the standard inter-widget gap so the two read as one control, like
+    // pie's dimension picker + rows list.
+    getWrapperStyle: (
+      _series: RawSeries,
+      vizSettings: ComputedVisualizationSettings,
+    ) =>
+      vizSettings["treemap.rows"]?.some((row) => !row.hidden)
+        ? { marginBottom: 0 }
+        : undefined,
   }),
   "treemap._groups_widget": {
     getSection: () => t`Data`,
     widget: TreemapGroupsPicker,
+    // The list's own bottom padding and the last row's margin already add up
+    // to roughly the standard 1.5rem inter-widget gap before Sub-grouping.
+    getWrapperStyle: () => ({ marginBottom: 0 }),
     getProps: (
       rawSeries: RawSeries,
       settings: ComputedVisualizationSettings,
