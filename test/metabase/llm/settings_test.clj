@@ -44,17 +44,61 @@
                                        llm-bedrock-secret-access-key nil]
       (is (false? (llm.settings/llm-bedrock-configured?)))))
   (testing "returns false when only the access key id is set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIDEXAMPLE"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                        llm-bedrock-secret-access-key nil]
       (is (false? (llm.settings/llm-bedrock-configured?)))))
   (testing "returns false when only the secret access key is set"
     (mt/with-temporary-setting-values [llm-bedrock-access-key-id nil
                                        llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
       (is (false? (llm.settings/llm-bedrock-configured?)))))
+  (testing "returns false when a credential is blank rather than absent"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "   "
+                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (false? (llm.settings/llm-bedrock-configured?)))))
   (testing "returns true when both credentials are set"
-    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIDEXAMPLE"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                        llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
       (is (true? (llm.settings/llm-bedrock-configured?))))))
+
+;;; ------------------------------------------- llm-bedrock credential Setter Tests -------------------------------------------
+
+(deftest llm-bedrock-access-key-id-setter-accepts-valid-key-test
+  (testing "accepts a valid access key ID and trims whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id nil]
+      (mt/discard-setting-changes [llm-bedrock-access-key-id]
+        (llm.settings/llm-bedrock-access-key-id! "  AKIAIOSFODNN7EXAMPLE  ")
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))))))
+
+(deftest llm-bedrock-access-key-id-setter-clears-on-empty-test
+  (testing "empty/nil clears the setting"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-access-key-id nil]
+      (mt/discard-setting-changes [llm-bedrock-access-key-id]
+        (llm.settings/llm-bedrock-access-key-id! "AKIAIOSFODNN7EXAMPLE")
+        (llm.settings/llm-bedrock-access-key-id! "")
+        (is (nil? (llm.settings/llm-bedrock-access-key-id)))))))
+
+(deftest llm-bedrock-secret-access-key-setter-accepts-valid-key-test
+  (testing "accepts a secret access key and trims surrounding whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-secret-access-key nil]
+      (mt/discard-setting-changes [llm-bedrock-secret-access-key]
+        (llm.settings/llm-bedrock-secret-access-key! "  wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY  ")
+        (is (= "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest llm-bedrock-secret-access-key-setter-clears-on-blank-test
+  (testing "a whitespace-only value clears the setting"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-secret-access-key nil]
+      (mt/discard-setting-changes [llm-bedrock-secret-access-key]
+        (llm.settings/llm-bedrock-secret-access-key! "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY")
+        (llm.settings/llm-bedrock-secret-access-key! "   ")
+        (is (nil? (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest llm-bedrock-session-token-setter-accepts-valid-token-test
+  (testing "accepts a session token and trims surrounding whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-session-token nil]
+      (mt/discard-setting-changes [llm-bedrock-session-token]
+        (llm.settings/llm-bedrock-session-token! "  AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE=  ")
+        (is (= "AQoEXAMPLEH4aoAH0gNCAPyJxz4BlCFFxWNE1OPTgk5TthT+FvwqnKwRcOIfrRh3c/LTo6UDdyJwOOvEVPvLXCrrrUtdnniCEXAMPLE="
+               (llm.settings/llm-bedrock-session-token)))))))
 
 ;;; ------------------------------------------- llm-bedrock-region Setter Tests -------------------------------------------
 

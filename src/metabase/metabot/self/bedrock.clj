@@ -23,6 +23,7 @@
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.openai :as openai]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -99,26 +100,28 @@
     (throw (invalid-region-ex region)))
   region)
 
-(defn- credentials
-  "AWS credentials and region from the `llm-bedrock-*` settings, or nil when not configured."
+(defn- settings-credentials
+  "AWS credentials and region from the `llm-bedrock-*` settings."
   []
-  (let [access-key-id     (not-empty (llm/llm-bedrock-access-key-id))
-        secret-access-key (not-empty (llm/llm-bedrock-secret-access-key))
-        session-token     (not-empty (llm/llm-bedrock-session-token))
-        region            (-> (or (not-empty (llm/llm-bedrock-region))
-                                  "us-east-1")
-                              validate-region)]
-    (when (and access-key-id secret-access-key)
-      {:access-key-id     access-key-id
-       :secret-access-key secret-access-key
-       :session-token     session-token
-       :region            region})))
+  {:access-key-id     (not-empty (llm/llm-bedrock-access-key-id))
+   :secret-access-key (not-empty (llm/llm-bedrock-secret-access-key))
+   :session-token     (not-empty (llm/llm-bedrock-session-token))
+   :region            (not-empty (llm/llm-bedrock-region))})
 
 (defn- missing-credentials-ex []
   (ex-info (tru "AWS Bedrock credentials are not configured")
            {:api-error   true
             :error-code  :api-key-missing
             :status-code 403}))
+
+(defn- ensure-credentials
+  "Validate a Bedrock credentials map, falling back to [[settings-credentials]] when nil.
+  Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
+  [credentials]
+  (let [creds (or credentials (settings-credentials))]
+    (when-not (metabot.settings/provider-credentials-complete? "bedrock" creds)
+      (throw (missing-credentials-ex)))
+    (update creds :region #(validate-region (or (not-empty %) "us-east-1")))))
 
 (defn- bedrock-error-msg
   "Canonical, status-specific Bedrock error message."
@@ -134,9 +137,10 @@
 
 (defn- bedrock-request
   "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
-  `headers` are extra *unsigned* headers (e.g. `anthropic-version`)."
-  [{:keys [method path body as headers]}]
-  (let [{:keys [region] :as creds} (or (credentials) (throw (missing-credentials-ex)))
+  `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is an optional
+  AWS credentials map; when nil, the `llm-bedrock-*` settings are used."
+  [{:keys [method path body as headers credentials]}]
+  (let [{:keys [region] :as creds} (ensure-credentials credentials)
         url          (str "https://bedrock-mantle." region ".api.aws" path)
         content-type (when body "application/json")
         sig-headers  (signed-headers (merge creds {:method       method
@@ -153,30 +157,32 @@
 
 (defn- list-all-models
   "Fetch the full mantle model catalog (`GET /v1/models`), every vendor included."
-  []
+  [credentials]
   (try
-    (let [res (bedrock-request {:method :get :path "/v1/models" :as :json})]
+    (let [res (bedrock-request {:method :get :path "/v1/models" :as :json :credentials credentials})]
       (get-in res [:body :data]))
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
 
 (defn- supported-model?
   "Whether a catalog model is supported by this adapter: Anthropic and OpenAI models only.
+  Excludes `anthropic.*fable*` pending further testing.
   Excludes `openai.gpt-oss*`, which appear in the catalog but are not invokable through the mantle /openai/v1 routes."
   [{:keys [id]}]
   (boolean
    (and id
-        (or (str/starts-with? id "anthropic.")
+        (or (and (str/starts-with? id "anthropic.")
+                 (not (str/includes? id "fable")))
             (and (str/starts-with? id "openai.")
                  (not (str/starts-with? id "openai.gpt-oss")))))))
 
 (defn list-models
   "List the Bedrock models supported by this adapter (see [[supported-model?]]).
-  Accepts an (ignored) opts map for signature parity with the other providers' model listers.  Bedrock auth always
-  comes from the `llm-bedrock-*` settings."
+  No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
+  `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`."
   ([] (list-models {}))
-  ([_opts]
-   {:models (->> (list-all-models)
+  ([{:keys [credentials]}]
+   {:models (->> (list-all-models credentials)
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]

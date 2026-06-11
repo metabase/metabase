@@ -186,14 +186,15 @@
 
 (defn list-models
   "List available OpenAI models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "OpenAI")))
    (try
      (let [auth (core/resolve-auth "openai" "OpenAI"
-                                   (when-let [k (or (not-empty api-key) (not-empty (llm/llm-openai-api-key)))]
+                                   (when-let [k (or (not-empty (:api-key credentials))
+                                                    (not-empty (llm/llm-openai-api-key)))]
                                      {:url     (llm/llm-openai-api-base-url)
                                       :headers {"Authorization" (str "Bearer " k)}})
                                    ai-proxy?)
