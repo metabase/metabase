@@ -4,7 +4,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.lib-be.core :as lib-be]
-   [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.debug :as search.debug]
    [metabase.search.engine :as search.engine]
@@ -183,13 +182,6 @@
                             seq)]
       ;; We need to delay execution to handle deletes, which alert us *before* updating the database.
       (search.ingestion/ingest-maybe-async! updates))))
-
-(defn curated-model-ids
-  "Of `model+ids` (`[model-string entity-id]` pairs), return the subset the search index marks as the
-  precomputed `curated` content, as a set of `[model-string model_id-string]`. Backed by the appdb index;
-  returns nil when no index is available, so callers can fall back to a coarser filter."
-  [model+ids]
-  (search.index/curated-model-ids model+ids))
 
 (defn delete!
   "Given a model and a list of model's ids, remove corresponding search entries."

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.activity-feed.models.recent-views :as recent-views]
+   [metabase.collections.curation :as curation]
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -9,7 +10,6 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.search.core :as search]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -419,9 +419,8 @@
           (is (false? @called-mbql?) "Should NOT use MBQL path for native queries"))))))
 
 (deftest filter-recents-to-curated-test
-  (testing "keeps only recents the search index marks curated, reusing the precomputed curated column so
-            recent-view filtering can't drift from search filtering (BOT-1570)"
+  (testing "keeps only recents that collections.curation marks curated, keyed by [model id] (BOT-1570)"
     (let [recents [{:model :card :id 1} {:model :table :id 2} {:model :dashboard :id 3}]]
-      (mt/with-dynamic-fn-redefs [search/curated-model-ids (constantly #{["card" "1"] ["table" "2"]})]
+      (mt/with-dynamic-fn-redefs [curation/curated-ids (constantly #{["card" 1] ["table" 2]})]
         (is (= [{:model :card :id 1} {:model :table :id 2}]
                (#'context/filter-recents-to-curated recents)))))))

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.curation :as curation]
    [metabase.config.core :as config]
    ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
@@ -13,7 +14,6 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.search.core :as search]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -255,45 +255,13 @@
                                       [metabot-id :entity-id]
                                       metabot-id))))
 
-(defn- batch-verified-ids
-  "Of the given `ids`, return the set whose most-recent ModerationReview for `item-type` has status \"verified\"."
-  [ids item-type]
-  (if (empty? ids)
-    #{}
-    (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                      :moderated_item_id   [:in ids]
-                      :moderated_item_type item-type
-                      :most_recent         true
-                      :status              "verified")))
-
-(defn- filter-recents-to-verified
-  "Drop card/dataset/metric/dashboard recents that aren't verified. Tables (and any other
-  non-moderatable model) pass through unchanged."
-  [recents]
-  (let [card-like-ids       (->> recents
-                                 (filter #(#{:card :dataset :metric} (:model %)))
-                                 (map :id))
-        dashboard-ids       (->> recents
-                                 (filter #(= :dashboard (:model %)))
-                                 (map :id))
-        verified-cards      (batch-verified-ids card-like-ids "card")
-        verified-dashboards (batch-verified-ids dashboard-ids "dashboard")]
-    (filter (fn [{:keys [id model]}]
-              (case model
-                (:card :dataset :metric) (contains? verified-cards id)
-                :dashboard               (contains? verified-dashboards id)
-                true))
-            recents)))
-
 (defn- filter-recents-to-curated
-  "Keep only recents the search index marks as curated (verified, official-collection, library/published,
-  or authoritative). Reuses the precomputed `curated` index column so recent-view filtering can't drift
-  from search filtering. Falls back to verified-only filtering when no search index is available (e.g. a
-  semantic-only or not-yet-indexed instance), where tables still pass through unfiltered."
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
+  Delegates to collections.curation/curated-ids, the source-of-truth check, so recent-view filtering can't
+  drift from search filtering and doesn't depend on the search index."
   [recents]
-  (if-let [curated (search/curated-model-ids (map (juxt (comp name :model) :id) recents))]
-    (filter (fn [{:keys [model id]}] (contains? curated [(name model) (str id)])) recents)
-    (filter-recents-to-verified recents)))
+  (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
+    (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 
 (defn- add-recent-views
   "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
