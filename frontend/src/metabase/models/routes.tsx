@@ -12,18 +12,16 @@ export const getRoutes = () => (
         path="new"
         modal={ActionCreatorModal}
         modalProps={{
-          wide: true,
-          enableTransition: false,
-          closeOnClickOutside: false, // logic in component is reversed, so false is true.
+          size: "85%",
+          transitionProps: { duration: 0 },
         }}
       />
       <ModalRoute
         path=":actionId"
         modal={ActionCreatorModal}
         modalProps={{
-          wide: true,
-          enableTransition: false,
-          closeOnClickOutside: false, // logic in component is reversed, so false is true.
+          size: "85%",
+          transitionProps: { duration: 0 },
         }}
       />
     </Route>

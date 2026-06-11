@@ -331,18 +331,11 @@ export const getRoutes = (
               <ModalRoute
                 path=":jobKey"
                 modal={JobTriggersModal}
-                modalProps={{ wide: true }}
+                modalProps={{ size: "85%" }}
               />
             </Route>
             <Route path="logs" component={Logs}>
-              <ModalRoute
-                path="levels"
-                modal={LogLevelsModal}
-                modalProps={{
-                  // EventSandbox interferes with mouse text selection in CodeMirror editor
-                  disableEventSandbox: true,
-                }}
-              />
+              <ModalRoute path="levels" modal={LogLevelsModal} />
             </Route>
             {PLUGIN_DEPENDENCIES.isEnabled && (
               <Route
