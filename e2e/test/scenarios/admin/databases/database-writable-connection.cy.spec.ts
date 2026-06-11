@@ -34,6 +34,7 @@ describe("scenarios > admin > databases > writable connection", () => {
     H.restore("mysql-writable");
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     createUser(READ_ONLY_USER);
     setupTableData();
   });
