@@ -23,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.performance :refer [mapv empty? some]])
   (:import
    (java.io ByteArrayInputStream)
@@ -214,12 +215,15 @@
       (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
       false)))
 
+;; bounded because the cache key includes `:updated-at`, so entries for stale versions of a database accumulate over
+;; the JVM lifetime
 (def ^:private memoized-supports?*
-  (memoize/memo
+  (u.memo/bounded
    (-> supports?*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver feature database]]
-                    [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
+                    [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))
+   :bounded/threshold 10000))
 
 ;;; this can get called in post-select which doesn't always have ID
 (mu/defn ensure-lib-database :- [:map
@@ -264,12 +268,14 @@
              :when (and (not (skip-internal-features feature)) (supports? driver feature database))]
          feature)))
 
+;; bounded for the same reason as [[memoized-supports?*]]
 (def ^:private memoized-features*
-  (memoize/memo
+  (u.memo/bounded
    (-> features*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver database]]
-                    [driver (mdb/unique-identifier) (:id database) (:updated-at database)])))))
+                    [driver (mdb/unique-identifier) (:id database) (:updated-at database)])))
+   :bounded/threshold 10000))
 
 (mu/defn features
   "Return a set of all features supported by `driver` with respect to `database`."

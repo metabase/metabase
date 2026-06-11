@@ -790,30 +790,36 @@
    :archive-operation-id nil
    :permission-level :read})
 
-(def ^:private ^{:arglists '([user-scope read-or-write])} can-access-root-collection?
-  "Cached function to determine whether the current user can access the root collection"
+(defn- can-access-root-collection?*
+  [{:keys [current-user-id is-superuser?]} read-or-write]
+  (or is-superuser?
+      (t2/exists? :model/Permissions {:select [:p.*]
+                                      :from [[:permissions :p]]
+                                      :join [[:permissions_group :pg] [:= :pg.id :p.group_id]
+                                             [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                      :where [:and
+                                              [:= :pgm.user_id current-user-id]
+                                              [:or
+                                               [:= :p.object "/collection/root/"]
+                                               (when (= :read read-or-write)
+                                                 [:= :p.object "/collection/root/read/"])]]})))
+
+(def ^:private ^{:arglists '([user-scope read-or-write])} cached-can-access-root-collection?
   (memoize/ttl
    ^{::memoize/args-fn (fn [[{:keys [current-user-id]} read-or-write]]
-                         ;; If this is running in the context of a request, cache it for the duration of that request.
-                         ;; Otherwise, don't cache the results at all.)
-                         (if-let [req-id *request-id*]
-                           [req-id current-user-id read-or-write]
-                           [(random-uuid) current-user-id read-or-write]))}
-   (fn can-access-root-collection?*
-     [{:keys [current-user-id is-superuser?]} read-or-write]
-     (or is-superuser?
-         (t2/exists? :model/Permissions {:select [:p.*]
-                                         :from [[:permissions :p]]
-                                         :join [[:permissions_group :pg] [:= :pg.id :p.group_id]
-                                                [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                         :where [:and
-                                                 [:= :pgm.user_id current-user-id]
-                                                 [:or
-                                                  [:= :p.object "/collection/root/"]
-                                                  (when (= :read read-or-write)
-                                                    [:= :p.object "/collection/root/read/"])]]})))
+                         [*request-id* current-user-id read-or-write])}
+   can-access-root-collection?*
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
+
+(defn- can-access-root-collection?
+  "Determine whether the current user can access the root collection. Cached for the duration of the request; outside
+  of a request the result is not cached at all (a per-call cache entry would never be hit again but would linger
+  until the TTL expires)."
+  [user-scope read-or-write]
+  (if *request-id*
+    (cached-can-access-root-collection? user-scope read-or-write)
+    (can-access-root-collection?* user-scope read-or-write)))
 
 (defn should-display-root-collection?
   "Should this user be shown the root collection, given the `visibility-config` passed?"
@@ -974,18 +980,17 @@
                                 (when-not (collection.root/is-root-collection? parent-coll)
                                   [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
-(def ^{:arglists '([visibility-config])} visible-collection-ids*
-  "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
+(defn- visible-collection-ids*
+  [visibility-config]
+  (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
+    (should-display-root-collection? visibility-config)
+    (conj "root")))
+
+(def ^:private ^{:arglists '([visibility-config])} cached-visible-collection-ids
   (memoize/ttl
    ^{::memoize/args-fn (fn [[visibility-config]]
-                         (if-let [req-id *request-id*]
-                           [req-id api/*current-user-id* visibility-config]
-                           [(random-uuid) api/*current-user-id* visibility-config]))}
-   (fn
-     [visibility-config]
-     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
-       (should-display-root-collection? visibility-config)
-       (conj "root")))
+                         [*request-id* api/*current-user-id* visibility-config])}
+   visible-collection-ids*
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
    :ttl/threshold (* 60 60 1000)))
@@ -993,9 +998,14 @@
 (mu/defn visible-collection-ids :- VisibleCollections
   "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
   toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably use `visible-collection-filter-clause` instead."
+  probably use `visible-collection-filter-clause` instead.
+
+  Cached for the lifetime of the request, maximum 60 minutes. Outside of a request the result is not cached at all (a
+  per-call cache entry would never be hit again but would linger until the TTL expires)."
   [visibility-config :- CollectionVisibilityConfig]
-  (visible-collection-ids* visibility-config))
+  (if *request-id*
+    (cached-visible-collection-ids visibility-config)
+    (visible-collection-ids* visibility-config)))
 
 (mi/define-batched-hydration-method effective-location-path*
   :effective_location

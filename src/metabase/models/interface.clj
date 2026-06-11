@@ -8,7 +8,6 @@
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   (:require
    [buddy.core.codecs :as codecs]
-   [clojure.core.memoize :as memoize]
    [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
@@ -29,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -319,8 +319,9 @@
         v))))
 
 ;; cache the decryption/JSON parsing because it's somewhat slow (~500µs vs ~100µs on a *fast* computer)
-;; cache the decrypted JSON for one hour
-(def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
+;; bounded rather than TTL so the entry count (and thus memory: keys are ciphertext blobs, values decrypted maps)
+;; stays capped no matter how many distinct ciphertexts pass through within the cache window
+(def ^:private cached-encrypted-json-out (u.memo/bounded encrypted-json-out :bounded/threshold 2048))
 
 (def transform-encrypted-json
   "Transform for encrypted json."

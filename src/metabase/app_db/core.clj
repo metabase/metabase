@@ -22,6 +22,7 @@
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.config.core :as config]
+   [metabase.util.memoize :as u.memo]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -151,12 +152,22 @@
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
   ignored if the app DB is dynamically rebound. For TTL memoization with [[clojure.core.memoize]], set
   `:clojure.core.memoize/args-fn` instead; see [[metabase.driver.util/database->driver*]] for an example of how to do
-  this."
-  [f]
-  (let [f* (memoize (fn [_application-db-id & args]
-                      (apply f args)))]
-    (fn [& args]
-      (apply f* (unique-identifier) args))))
+  this.
+
+  The no-threshold arity caches without bound, so only use it when the argument space is small (e.g. zero-arg
+  functions). When the arguments are unbounded (e.g. row IDs), pass `:bounded/threshold` to cap the cache size; the
+  entire cache is discarded and rebuilt once it reaches the threshold (see [[metabase.util.memoize/bounded]])."
+  ([f]
+   (let [f* (memoize (fn [_application-db-id & args]
+                       (apply f args)))]
+     (fn [& args]
+       (apply f* (unique-identifier) args))))
+  ([f tkey threshold]
+   (let [f* (u.memo/bounded (fn [_application-db-id & args]
+                              (apply f args))
+                            tkey threshold)]
+     (fn [& args]
+       (apply f* (unique-identifier) args)))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] for the Metabase application DB. This effectively flushes all caches using it as

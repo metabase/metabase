@@ -3,6 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +24,9 @@
                        (compare (getter k1) (getter k2)))))
     (sorted-map)))
 
-(def ^:private serialization-sorted-map (memoize serialization-sorted-map*))
+;; bounded because paths include user-influenced keys (e.g. column refs in viz settings), so the key space is
+;; unbounded
+(def ^:private serialization-sorted-map (u.memo/bounded serialization-sorted-map*))
 
 (defn serialization-deep-sort
   "Provide a deterministic sort for maps before serialization."

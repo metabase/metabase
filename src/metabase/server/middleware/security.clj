@@ -15,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.memoize :as u.memo]
    [ring.util.codec :refer [base64-encode]])
   (:import
    (java.net URI)
@@ -131,9 +132,10 @@
   [hosts-string]
   (into always-allowed-iframe-hosts (parse-hosts-string hosts-string)))
 
+;; bounded because the key is an admin-editable setting value, so distinct values accumulate over the JVM lifetime
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
-  (memoize parse-allowed-iframe-hosts*))
+  (u.memo/bounded parse-allowed-iframe-hosts* :bounded/threshold 64))
 
 (defn- parse-allowed-resource-hosts*
   [hosts-string]
@@ -141,7 +143,7 @@
 
 (def ^{:doc "Parse a string of allowed resource hosts (e.g. for `img-src`), adding wildcard prefixes as needed."}
   parse-allowed-resource-hosts
-  (memoize parse-allowed-resource-hosts*))
+  (u.memo/bounded parse-allowed-resource-hosts* :bounded/threshold 64))
 
 (defn- bracket-ipv6-host
   "`URI#getHost` returns IPv6 literals unbracketed, but CSP origins require the brackets."

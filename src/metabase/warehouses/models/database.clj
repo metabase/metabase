@@ -736,7 +736,8 @@
   (mdb/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
-     (t2/select-one-fn :db_id :model/Table, :id table-id))))
+     (t2/select-one-fn :db_id :model/Table, :id table-id))
+   :bounded/threshold 10000))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

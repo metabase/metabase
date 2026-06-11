@@ -422,7 +422,8 @@
   (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (t2/select-one-fn :table_id :model/Field, :id field-id))))
+     (t2/select-one-fn :table_id :model/Field, :id field-id))
+   :bounded/threshold 10000))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
