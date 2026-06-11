@@ -3,7 +3,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v62.2026-06-03T00:00:00
+      id: v63.2026-06-03T00:00:00
       author: bronsa
       comment: Add last_heartbeat column to transform_run for heartbeat-based orphan detection
       preConditions:
@@ -29,7 +29,7 @@ databaseChangeLog:
             columnName: last_heartbeat
 
   - changeSet:
-      id: v62.2026-06-03T00:00:01
+      id: v63.2026-06-03T00:00:01
       author: bronsa
       comment: Add process_uuid column to transform_run identifying the instance that owns the run
       preConditions:
