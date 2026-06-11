@@ -1,6 +1,6 @@
 (ns metabase.metabot.schema.v1
-  "Schemas for the v1 `metabot_message.data` storage formats, which is two sub-formats:
-  one written by the deprecated external ai service and another for our native clojure
+  "Schemas for the v1 `metabot_message.data` storage formats, which are two sub-formats:
+  one written by the deprecated external AI service and another for our native Clojure
   implementation."
   (:require
    [metabase.util.malli.registry :as mr]))
@@ -18,7 +18,7 @@
   The `:_type` tags are the v4 part names, uppercased, but the shapes diverge from v4's:
 
   - only a subset of the v4 part types were ever used
-  - key names are often use snake case instead of camel
+  - key names often use snake_case instead of camelCase
   - some fields are renamed:
     - `tool_call`'s `{toolCallId, toolName, args}` is stored as `:tool_calls [{:id :name :arguments}]`
     - `tool_result`'s `{toolCallId, result}` as `{tool_call_id, content}`"
