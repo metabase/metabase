@@ -89,12 +89,13 @@
    :text                5
    :mine                1
    ;; An exact (case-insensitive) name match is the strongest single intent signal: :exact (100) overpowers
-   ;; any one curation tier (:official-collection / :verified, and the :data-picker :library boost, 80 each).
+   ;; any one curation tier (the :data-picker boosts: :library 80, :official-collection / :verified 35 each).
    ;; Base text/recency scorers (0–5) only break ties within a tier.
    :exact               100
    :prefix              0
-   :official-collection 80
-   :verified            80
+   ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
+   :official-collection 1
+   :verified            1
    ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
    ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
    :library             0
@@ -122,9 +123,12 @@
     :model/metric   1
     :model/question 0}
    :data-picker
-   ;; Boost curated library items when picking a data source, but keep it a curation-tier signal (80, like
-   ;; :verified/:official) so an exact name match (:exact 100) can overpower it.
-   {:library 80}
+   ;; Boost curated items when picking a data source, but keep them curation-tier signals that an exact
+   ;; name match (:exact 100) can overpower. :library outweighs :official-collection and :verified even
+   ;; combined (70), so library membership trumps those badges here.
+   {:library             80
+    :official-collection 35
+    :verified            35}
    ;; TODO: lift :data-layer up to :default. It's a structural signal (every visible warehouse
    ;; table gets `data_layer "final"`), so the +33 boost flips orderings across every search
    ;; surface and breaks e2e specs that pin specific top results. To make progress:

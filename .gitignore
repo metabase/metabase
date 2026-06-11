@@ -173,6 +173,7 @@ llm-payloads
 /config.yml
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/agent-memory/
 
 .eslintcache
 
