@@ -18,10 +18,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-;; `api_key` is a bare string, so we encrypt it directly rather than via
-;; `transform-encrypted-json` (which JSON-serializes its input and only round-trips
-;; collections — `json-in` passes strings through unquoted, so the JSON `:out` then
-;; fails to parse the decrypted scalar). A no-op when `MB_ENCRYPTION_SECRET_KEY` is unset.
 (def ^:private transform-encrypted-string
   {:in  encryption/maybe-encrypt
    :out encryption/maybe-decrypt})

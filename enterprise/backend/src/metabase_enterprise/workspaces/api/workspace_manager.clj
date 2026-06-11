@@ -66,19 +66,19 @@
 
 (def ^:private CreateInstanceParams
   [:map {:closed true}
+   [:name    ms/NonBlankString]
    [:url     ms/NonBlankString]
-   [:api_key ms/NonBlankString]
-   [:name    {:optional true} [:maybe :string]]])
+   [:api_key ms/NonBlankString]])
 
 (def ^:private UpdateInstanceParams
   [:map {:closed true}
-   [:name {:optional true} [:maybe :string]]])
+   [:name {:optional true} ms/NonBlankString]])
 
 (def ^:private InstanceResponse
   [:map {:closed true}
    [:id           ms/PositiveInt]
+   [:name         ms/NonBlankString]
    [:url          ms/NonBlankString]
-   [:name         [:maybe :string]]
    [:workspace_id [:maybe ms/PositiveInt]]
    [:created_at   DateTimeWithTimeZone]
    [:updated_at   DateTimeWithTimeZone]])

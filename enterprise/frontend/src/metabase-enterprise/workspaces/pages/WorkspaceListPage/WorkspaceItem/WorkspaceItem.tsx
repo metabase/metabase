@@ -55,7 +55,7 @@ export function WorkspaceItem({
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
-          {workspace.databases.map((workspaceDatabase) => (
+          {workspace.databases?.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
               workspaceDatabase={workspaceDatabase}

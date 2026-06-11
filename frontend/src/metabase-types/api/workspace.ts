@@ -24,7 +24,7 @@ export type Workspace = {
   creator_id: UserId;
 
   creator?: UserInfo | null;
-  databases: WorkspaceDatabase[];
+  databases?: WorkspaceDatabase[];
 };
 
 export type CreateWorkspaceRequest = {

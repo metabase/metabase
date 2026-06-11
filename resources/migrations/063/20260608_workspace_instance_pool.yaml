@@ -41,9 +41,9 @@ databaseChangeLog:
               - column:
                   name: name
                   type: varchar(254)
-                  remarks: Optional human label for the instance
+                  remarks: Human label for the instance
                   constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}
