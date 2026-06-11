@@ -106,6 +106,7 @@ const elements = [
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
   createElement({ type: "shared", name: "questions" }),
+  createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
