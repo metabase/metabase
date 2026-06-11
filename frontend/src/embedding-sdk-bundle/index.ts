@@ -100,6 +100,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   queryMetric,
   queryQuestion,
   dataAppRouting,
+  executeAction,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package
