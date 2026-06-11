@@ -36,7 +36,11 @@
               (dh/with-timeout {:interrupt? true
                                 :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
                 (log/info "Auto-importing remote-sync collections")
-                (impl/handle-task-result! (impl/import! snapshot task-id) task-id)))))))))
+                (let [result (impl/import! snapshot task-id)]
+                  (impl/handle-task-result! result task-id)
+                  (when (= :success (:status result))
+                    (impl/publish-sync-event! :event/remote-sync-import task-id
+                                              {:branch branch :auto true} nil)))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))
