@@ -40,7 +40,8 @@
   (mt/rows (qp/process-query query)))
 
 (defn- col-index [result col-name]
-  (.indexOf (mapv :name (get-in result [:data :cols])) col-name))
+  (first (keep-indexed (fn [i col] (when (= (:name col) col-name) i))
+                       (get-in result [:data :cols]))))
 
 ;; Cloyd Beer is the example customer used throughout the docs; 2499 is his ID in the People table.
 (def ^:private cloyd-user-id 2499)
