@@ -704,45 +704,47 @@
         (let [base-version   (remote-sync.task/last-version)
               remote-version (source.p/version snapshot)
               diverged?      (and (some? base-version)
-                                  (not= base-version remote-version))]
+                                  (not= base-version remote-version))
+              ;; Pending-change inputs for the undiverged path; only computed there (incremental-plan can
+              ;; be expensive, and they are unused on the force/merge branches).
+              normal?        (and (not force?) (not diverged?))
+              disabled-files (when normal?
+                               (filterv (comp (disabled-content-dirs) path-top-level-dir)
+                                        (source.p/list-files snapshot)))
+              dirty-rows     (when normal? (seq (remote-sync.object/dirty-rows)))
+              plan           (when dirty-rows (incremental-plan snapshot dirty-rows))]
           (cond
             ;; Forced overwrite — full re-serialize, replacing managed dirs (discards remote divergence).
             force?
             (full-export! snapshot task-id message sync-timestamp)
 
-            ;; Remote hasn't advanced — normal export: incremental fast-path when possible, else full.
+            ;; Remote hasn't advanced and there's nothing to export: no dirty rows and no stale files in
+            ;; now-disabled content dirs.
+            (and (not diverged?) (empty? dirty-rows) (empty? disabled-files))
+            (do
+              (log/info "Remote sync export: no changes to export")
+              {:status :success})
+
+            ;; Remote hasn't advanced but a dirty row can't be applied incrementally → full re-serialize.
+            (and (not diverged?) (= plan :remote-sync/unsyncable-batch))
+            (full-export! snapshot task-id message sync-timestamp)
+
+            ;; Remote hasn't advanced — incremental fast-path: write only the changed entities, deleting
+            ;; their old paths plus files left behind in now-disabled content dirs, preserving every other.
             (not diverged?)
-            (let [disabled-files (filterv (comp (disabled-content-dirs) path-top-level-dir)
-                                          (source.p/list-files snapshot))
-                  dirty-rows     (seq (remote-sync.object/dirty-rows))
-                  plan           (when dirty-rows (incremental-plan snapshot dirty-rows))]
-              (cond
-                ;; nothing to do: no pending changes and no stale files in now-disabled content dirs
-                (and (empty? dirty-rows) (empty? disabled-files))
-                (do
-                  (log/info "Remote sync export: no changes to export")
-                  {:status :success})
-
-                ;; a dirty row can't be applied incrementally → full re-serialize
-                (= plan :remote-sync/unsyncable-batch)
-                (full-export! snapshot task-id message sync-timestamp)
-
-                ;; Incremental fast-path: write only the changed entities, deleting their old paths plus
-                ;; files left behind in now-disabled content dirs — preserving every other file.
-                :else
-                (let [{:keys [upserts delete-paths synced removed-ids]} plan
-                      delete-paths (into (vec delete-paths) disabled-files)]
-                  (remote-sync.task/update-progress! task-id 0.3)
-                  (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
-                    (remote-sync.task/set-version! task-id written-version))
-                  (doseq [{:keys [id file_path]} synced]
-                    (t2/update! :model/RemoteSyncObject :id id
-                                {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
-                  (when (seq removed-ids)
-                    (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
-                  (log/infof "Remote sync incremental export: wrote %d, deleted %d"
-                             (count upserts) (count delete-paths))
-                  {:status :success})))
+            (let [{:keys [upserts delete-paths synced removed-ids]} plan
+                  delete-paths (into (vec delete-paths) disabled-files)]
+              (remote-sync.task/update-progress! task-id 0.3)
+              (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
+                (remote-sync.task/set-version! task-id written-version))
+              (doseq [{:keys [id file_path]} synced]
+                (t2/update! :model/RemoteSyncObject :id id
+                            {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
+              (when (seq removed-ids)
+                (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+              (log/infof "Remote sync incremental export: wrote %d, deleted %d"
+                         (count upserts) (count delete-paths))
+              {:status :success})
 
             ;; Remote advanced and the caller did not ask to merge — refuse. The UI's export preflight
             ;; drives the choice between force, new branch, and merge.
