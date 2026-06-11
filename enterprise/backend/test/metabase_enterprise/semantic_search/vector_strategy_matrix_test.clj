@@ -9,6 +9,8 @@
     ({:raw-count 10 :returned 6} against 20/16 for every other variant).
   - :brute-force -- reliable, but poor asymptotic performance.
     Exact in every cell of the matrix, at the cost of computing distances over the whole filtered table.
+    And because that cost tracks the filtered pool size, latency varies query-to-query with the filters --
+    intermittent slowness that can frustrate more than a uniformly slower engine.
   - :hnsw-iterative-* -- promising, but can still underperform.
     It recovers everything the naive scan loses to filters (recall 1.0 vs 0.0) at index-backed cost.
     Yet approximation shows up at real dimensionality (recall@20 observed at 0.15-0.6 on the 32-d packed
