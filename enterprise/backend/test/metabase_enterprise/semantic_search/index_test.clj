@@ -165,11 +165,11 @@
                                 :metabase-search/semantic-vector-inner-ms)))))))))
 
 (defn- expected-index-defs
-  "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]]: each index it must create,
-  keyed by name, with the indexdef pg_indexes must report for it (access method, column, opclass).
-  The pkey and the (model, model_id) unique-constraint indexes come from the table schema, not CREATE INDEX
-  statements, so they are not part of this contract."
+  "The index-DDL contract of [[semantic.index/create-index-table-if-not-exists!]] for `index`.
+  Maps the name of each index it must create to a pattern its pg_indexes indexdef must match."
   [index]
+  ;; the pkey and (model, model_id) unique-constraint indexes come from the table schema, not CREATE INDEX
+  ;; statements, so they are deliberately absent here; =? tolerates them as extra keys in the actual
   {(semantic.index/hnsw-index-name index)         #"CREATE INDEX .* USING hnsw \(embedding vector_cosine_ops\)"
    (semantic.index/fts-index-name index)          #"CREATE INDEX .* USING gin \(text_search_vector\)"
    (semantic.index/fts-native-index-name index)   #"CREATE INDEX .* USING gin \(text_search_with_native_query_vector\)"
@@ -192,9 +192,13 @@
           (is (=? (dissoc (expected-index-defs index) (semantic.index/hnsw-index-name index))
                   (semantic.tu/table-indexes table-name)))
           (is (not (semantic.tu/table-has-index? table-name (semantic.index/hnsw-index-name index)))))
-        (testing "when configured for the :hnsw strategy, create! also builds the HNSW index, completing the contract"
+        (testing "under the :hnsw strategy, force-reset? rebuilds the full contract (incl. HNSW) and wipes data"
+          ;; seed rows first; rows that survive the reset would mean force-reset? was silently ignored
+          (semantic.tu/upsert-index! (semantic.tu/mock-documents))
+          (is (pos? (semantic.tu/index-count index)))
           (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :hnsw)]
             (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
+          (is (zero? (semantic.tu/index-count index)))
           (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
 
 (deftest create-hnsw-index-if-not-exists!-test
