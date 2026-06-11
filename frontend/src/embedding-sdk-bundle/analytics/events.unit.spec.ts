@@ -173,7 +173,7 @@ describe("useTrackSdkComponentMount", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           component: "CreateDashboardModal",
-          properties: { used: "true" },
+          properties: {},
         }),
       }),
     );

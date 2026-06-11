@@ -141,7 +141,17 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
     [query],
   );
 
-  return <SdkQuestion {...rest} deserializedCard={deserializedCard} />;
+  return (
+    <SdkQuestion
+      {...rest}
+      questionId={questionId}
+      title={title}
+      withDownloads={withDownloads}
+      isSaveEnabled={isSaveEnabled}
+      withAlerts={withAlerts}
+      deserializedCard={deserializedCard}
+    />
+  );
 }
 
 export const _InteractiveQuestion = InteractiveQuestionInner;
