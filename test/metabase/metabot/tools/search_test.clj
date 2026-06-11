@@ -6,6 +6,7 @@
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.search :as search]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search-core]
@@ -160,6 +161,26 @@
               :data_authority "authoritative"
               :data_layer     "final"
               :collection     {:id 3 :name "Official" :authority_level "official"}})))))
+
+(deftest ^:parallel search-result-xml-renders-curation-signals-test
+  (testing "the XML the LLM actually sees carries curated/data_layer/data_authority for a table result —
+            the render path that was a no-op until these reached search results (BOT-1570)"
+    (let [result (#'search/postprocess-search-result
+                  {:model          "table"
+                   :id             9
+                   :table_name     "Gold"
+                   :name           "Gold"
+                   :database_id    1
+                   :table_schema   "public"
+                   :curated        true
+                   :data_authority "authoritative"
+                   :data_layer     "final"
+                   :collection     {:id 3 :name "Official" :authority_level "official"}})
+          xml    (llm-shape/search-result->xml result)]
+      (is (str/includes? xml "is_curated=\"true\""))
+      (is (str/includes? xml "is_official=\"true\""))
+      (is (str/includes? xml "data_layer=\"final\""))
+      (is (str/includes? xml "data_authority=\"authoritative\"")))))
 
 (deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
