@@ -170,6 +170,13 @@
   :visibility :internal
   :doc        false)
 
+;; The `vector_search_explain` API parameter only instruments requests you author yourself; the point of a
+;; setting is organic traffic. The frontend issues the real search requests and cannot be made to pass the
+;; parameter, so observing production scan behaviour (the tuples-scanned / plan-node / prefilter-pool
+;; Prometheus counters and the time-waterfall logs) means flipping instrumentation on instance-wide -- via
+;; this setting or MB_SEMANTIC_SEARCH_EXPLAIN on a hosted instance, no deploy needed. EXPLAIN ANALYZE
+;; re-runs the inner vector subquery (roughly doubles vector-scan cost per search), so the intended
+;; lifecycle is: turn on during an investigation, watch the metrics over real traffic, turn off.
 (defsetting semantic-search-explain
   (deferred-tru
    (str "Run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
