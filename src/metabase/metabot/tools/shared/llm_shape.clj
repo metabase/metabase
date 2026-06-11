@@ -636,7 +636,7 @@
    gives the LLM the full portable FK `[database_name, schema, table]` it must put in
    `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
    without a separate `entity_details` round-trip."
-  [{:keys [id type name description verified collection
+  [{:keys [id type name description verified official curated data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
            base_table_portable_fk]}]
   (let [fqn (cond
@@ -663,6 +663,13 @@
       :search_name name
       :search_has_verified (some? verified)
       :search_verified verified
+      :search_has_official (some? official)
+      :search_official official
+      :search_has_curated (some? curated)
+      :search_curated curated
+      :search_data_layer (some-> data_layer clojure.core/name)
+      :search_data_authority (when (and data_authority (not= "unconfigured" (clojure.core/name data_authority)))
+                               (clojure.core/name data_authority))
       :search_description description
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))

@@ -136,9 +136,30 @@
                     :description "Order table"
                     :database_id 42
                     :database_schema "public"
+                    :official false
+                    :data_authority nil
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
       (is (= expected (#'search/postprocess-search-result result))))))
+
+(deftest ^:parallel postprocess-search-result-curation-signals-test
+  (testing "non-null curation signals (curated, official collection, table data_authority + data_layer) carried through"
+    (is (=? {:type           "table"
+             :curated        true
+             :official       true
+             :data_authority "authoritative"
+             :data_layer     "final"}
+            (#'search/postprocess-search-result
+             {:model          "table"
+              :id             9
+              :table_name     "Gold"
+              :name           "Gold"
+              :database_id    1
+              :table_schema   "public"
+              :curated        true
+              :data_authority "authoritative"
+              :data_layer     "final"
+              :collection     {:id 3 :name "Official" :authority_level "official"}})))))
 
 (deftest ^:parallel postprocess-search-result-test-2
   (testing "model (dataset) result postprocessing"
@@ -157,6 +178,7 @@
                     :description "Model for sales"
                     :database_id 43
                     :verified true
+                    :official false
                     :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
@@ -195,6 +217,7 @@
                     :name "Main Dashboard"
                     :description "Dashboard desc"
                     :verified false
+                    :official true
                     :collection {:id 10 :name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
@@ -216,6 +239,7 @@
                     :description "Question desc"
                     :database_id nil
                     :verified true
+                    :official false
                     :collection {:id 11 :name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
@@ -236,6 +260,7 @@
                     :description "Metric desc"
                     :database_id nil
                     :verified false
+                    :official false
                     :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
