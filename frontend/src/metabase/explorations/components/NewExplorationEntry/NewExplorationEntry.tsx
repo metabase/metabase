@@ -225,7 +225,10 @@ function ExplorationList({ explorations }: ExplorationListProps) {
       </Text>
       <Stack gap="sm" mih={0} className={S.explorationsContainer}>
         {explorations.map(
-          ({ id, name, current_user_last_touched_at: lastTouchedAt }) => (
+          (
+            { id, name, current_user_last_touched_at: lastTouchedAt },
+            index,
+          ) => (
             <Box
               component={ForwardRefLink}
               to={Urls.exploration(id)}
@@ -234,6 +237,9 @@ function ExplorationList({ explorations }: ExplorationListProps) {
               py="sm"
               bdrs="md"
               className={S.explorationLink}
+              style={{
+                animationDelay: `${index * 75}ms`,
+              }}
             >
               <Text>{name}</Text>
               <Tooltip

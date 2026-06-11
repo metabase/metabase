@@ -340,11 +340,11 @@
                              (filter #(= (:id heading) (:parent_group_id %)))
                              (map :name)
                              set))]
-        (testing "metric-anchored group: heading is the metric, sub-items are By <dimension>"
+        (testing "metric-anchored group: heading is the metric, sub-items are by <dimension>"
           (is (= "Revenue" (:group_name metric-heading)))
-          (is (= #{"By Price"} (leaves-of metric-heading))))
-        (testing "dimension-anchored group: heading is By <dimension>, sub-items are the metrics"
-          (is (= "By Price" (:group_name dimension-heading)))
+          (is (= #{"by Price"} (leaves-of metric-heading))))
+        (testing "dimension-anchored group: heading is by <dimension>, sub-items are the metrics"
+          (is (= "by Price" (:group_name dimension-heading)))
           (is (= #{"Revenue" "Signups"} (leaves-of dimension-heading))))))))
 
 (deftest exploration-dimension-group-heading-disambiguation-test
@@ -380,7 +380,7 @@
                                 :groups [(dim-grp users-created 1)
                                          (dim-grp orders-created 2)]}))))
             (testing "a single dimension group keeps the plain heading even with a known source"
-              (is (= #{"By Created At"}
+              (is (= #{"by Created At"}
                      (headings {:name   "single-heading"
                                 :groups [(dim-grp users-created 1)]}))))))))))
 
@@ -1785,8 +1785,8 @@
                     pair-set (set (map (juxt :card_id :dimension_id) members))]
                 (is (= 1 (count pair-set))
                     (str "leaf " (:id g) " bundles a single (card, dim) partition"))))))
-        (testing "metric-anchored leaves are named 'By <dimension>'"
-          (is (= #{"By Category" "By Price"}
+        (testing "metric-anchored leaves are named 'by <dimension>'"
+          (is (= #{"by Category" "by Price"}
                  (set (map :name leaf-nodes)))))))))
 
 (deftest exploration-get-multiple-groups-test
@@ -2136,6 +2136,7 @@
                            (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                                        {:exploration_thread_id (:id thread)
                                                                         :card_id               (:id card)
+                                                                        :database_id           (:database_id card)
                                                                         :group_id              group-id
                                                                         :dimension_id          (str "d" i)
                                                                         :dataset_query         (:dataset_query card)

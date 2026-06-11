@@ -44,6 +44,7 @@
   (first (t2/insert-returning-instances! :model/ExplorationQuery
                                          {:exploration_thread_id thread-id
                                           :card_id               card-id
+                                          :database_id           (mt/id)
                                           :group_id              (thread-group! thread-id)
                                           :dimension_id          "d1"
                                           :dataset_query         mbql
@@ -315,6 +316,7 @@
                   :model/ExplorationQuery
                   {:exploration_thread_id thread-id
                    :card_id               card-id
+                   :database_id           (mt/id)
                    :group_id              (thread-group! thread-id)
                    :dimension_id          "d1"
                    :dataset_query         (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))

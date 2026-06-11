@@ -377,7 +377,7 @@
                        :model/StoredResult
                        {:result_data   bytes
                         :creator_id    creator-id
-                        :database_id   (-> row :dataset_query :database)
+                        :database_id   (:database_id row)
                         :dataset_query (:dataset_query row)}))]
     (t2/insert! :model/ExplorationQueryResult
                 {:exploration_query_id             (:id row)

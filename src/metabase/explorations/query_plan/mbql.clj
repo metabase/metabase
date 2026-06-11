@@ -9,6 +9,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.metrics.core :as metrics]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -100,9 +101,9 @@
 
 (defn normalize-target-ref
   "Coerce a JSON-decoded legacy ref (string operator + string-typed option values)
-  into a well-formed MBQL 5 ref via the ref schema."
+  into a well-formed MBQL 5 ref."
   [target]
-  (lib/normalize :metabase.lib.schema.ref/ref target))
+  (metrics/normalize-target-ref target))
 
 (defn extract-default-temporal-breakout-col
   "If the metric Card's `dataset_query` carries a temporal breakout (its default

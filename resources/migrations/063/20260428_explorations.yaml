@@ -364,6 +364,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: database_id
+                  type: int
+                  remarks: Database the snapshot MBQL runs against, frozen alongside `dataset_query` at plan time. Lets the worker build the metadata provider and the data-permission gate read the database without parsing `dataset_query` or joining to the Card.
+                  constraints:
+                    nullable: false
+              - column:
                   name: segment_id
                   type: int
                   remarks: Optional segment applied as a filter on top of (card, dimension); null for the unsegmented base query
