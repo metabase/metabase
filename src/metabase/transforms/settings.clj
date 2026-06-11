@@ -1,5 +1,6 @@
 (ns metabase.transforms.settings
   (:require
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -37,12 +38,33 @@
   :audit      :getter)
 
 (setting/defsetting transforms-enabled
-  (deferred-tru "Enable transforms for instances that have not explicitly purchased the transform add-on.")
+  (deferred-tru "Whether transforms are enabled.")
+  :doc "When enabled, data analysts and admins can write, schedule and run transforms.
+  Disabling this feature will hide all transform features, prevent transform editing or creation, and prevent any new runs."
   :type       :boolean
   :visibility :authenticated
-  :default    false
   :export?    false
-  :audit      :getter)
+  :audit      :getter
+  :getter (fn []
+            (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
+              ; if the setting is set (whether true or false), use it, otherwise use the token feature
+              (if (some? v)
+                v
+                (premium-features/has-feature? :transforms-basic)))))
+
+(setting/defsetting transforms-setup-complete
+  (deferred-tru "Whether to show the enable transforms page.")
+  :type       :boolean
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :can-read-from-env? false
+  :getter (fn []
+            (let [v (setting/get-value-of-type :boolean :transforms-enabled)]
+              ; if the setting is set (whether true or false), then setup is complete. otherwise, check the token feature
+              (if (some? v)
+                true
+                (premium-features/has-feature? :transforms-basic)))))
 
 (setting/defsetting transforms-meter-locked
   (deferred-tru "True when the customer''s active transforms meter is locked (trial quota exhausted).")

@@ -717,14 +717,16 @@
   instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
   `:transforms-basic` feature."
   []
-  (or (not (premium-features.settings/is-hosted?))
-      (has-feature? :transforms-basic)))
+  (and (setting/get :transforms-enabled)
+       (or (not (premium-features.settings/is-hosted?))
+           (has-feature? :transforms-basic))))
 
 (defn python-transforms-enabled?
   "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
   and `:transforms-python`."
   []
-  (and (has-feature? :transforms-basic)
+  (and (setting/get :transforms-enabled)
+       (has-feature? :transforms-basic)
        (has-feature? :transforms-python)))
 
 (defn any-transforms-enabled?

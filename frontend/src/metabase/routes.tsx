@@ -76,7 +76,6 @@ import {
   CanAccessDataStudio,
   CanAccessOnboarding,
   CanAccessSettings,
-  CanAccessTransforms,
   IsAdmin,
   IsAuthenticated,
   IsNotAuthenticated,
@@ -396,7 +395,6 @@ export const getRoutes = (store: AppStore) => {
             store,
             CanAccessDataStudio,
             CanAccessDataModel,
-            CanAccessTransforms,
             IsAdmin,
           )}
         </Route>

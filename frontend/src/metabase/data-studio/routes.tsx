@@ -23,6 +23,7 @@ import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
+import { getDataStudioSettingsRoutes } from "./settings/routes";
 import {
   DependenciesUpsellPage,
   LibraryUpsellPage,
@@ -33,7 +34,6 @@ export function getDataStudioRoutes(
   store: Store<State>,
   CanAccessDataStudio: RouteComponent,
   CanAccessDataModel: RouteComponent,
-  _CanAccessTransforms: RouteComponent,
   IsAdmin: RouteComponent,
 ) {
   return (
@@ -56,6 +56,7 @@ export function getDataStudioRoutes(
           {PLUGIN_WORKSPACES.getDataStudioRoutes()}
         </Route>
         {getDataStudioGlossaryRoutes()}
+        {getDataStudioSettingsRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
