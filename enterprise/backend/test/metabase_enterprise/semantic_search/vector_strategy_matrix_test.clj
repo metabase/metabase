@@ -1,15 +1,6 @@
 (ns metabase-enterprise.semantic-search.vector-strategy-matrix-test
   "Quality matrix over the vector-search strategies on a small deterministic dataset.
 
-  Headline: no strategy dominates.
-  :brute-force is always exact and filter-immune, but computes distances over the whole filtered table.
-  Naive :hnsw is cheap but post-filters a fixed candidate window, so selective filters shrink its pool
-  (compounding with the permission drop) and adversarial ones empty it.
-  The iterative strategies fix the filter-driven misses, but they are still approximate at real
-  dimensionality, return nothing when `hnsw.max_scan_tuples` binds before far-away matches, and -- like
-  every variant -- cannot fix limit truncation or the Clojure-side permission under-fetch.
-  A saturating `ef_search` dials the approximation away again, at a latency cost.
-
   Covers four retrieval variants -- no HNSW index (exact seq scan), naive :hnsw (post-filter), and the two
   iterative-scan strategies -- with :brute-force as the exact SQL reference, and measures three things:
 
