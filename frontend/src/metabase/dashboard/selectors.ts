@@ -754,3 +754,25 @@ export const getCanResetFilters = createSelector(
   [getFiltersToReset],
   (filtersToReset) => filtersToReset.length > 0,
 );
+
+export const getCardFromQueryBuilder = (state: State) => state.qb.card;
+
+export const getDashboardCrumb = createSelector(
+  [getCardFromQueryBuilder, getDashboards],
+  (card, dashboards) => {
+    const id = card?.dashboard?.id;
+    if (!id) {
+      return undefined;
+    }
+
+    const dashboard = dashboards[id];
+    if (!dashboard) {
+      return undefined;
+    }
+
+    return {
+      id,
+      name: dashboard.name,
+    };
+  },
+);

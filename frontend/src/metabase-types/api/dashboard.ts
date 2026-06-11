@@ -103,6 +103,8 @@ export interface Dashboard {
   more?: string | null;
 }
 
+export type DashboardCrumb = Pick<Dashboard, "id" | "name">;
+
 export type RelatedDashboardXRays = {
   related?: RelatedDashboardXRayItem[];
   "zoom-in"?: RelatedDashboardXRayItem[];
