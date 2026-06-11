@@ -30,32 +30,33 @@
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
 (def ^:private render-cases
-  "Each case: inputs to `compile-create-index` and the single SQL string it should render. Add a row to cover a
-  new index kind, column shape, or quoting wrinkle."
+  "Each case: inputs to `compile-create-index` and the single SQL string it should render. `:name` is the un-prefixed
+  base name; the rendered physical name carries the `mb_idx_` prefix. Add a row to cover a new index kind, column
+  shape, or quoting wrinkle."
   [{:label      "schema-qualified single-column btree"
     :schema     "public" :table "events"
-    :structured {:kind :btree :name "idx_events_user_id" :columns [{:name "user_id"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"idx_events_user_id\" ON \"public\".\"events\" USING BTREE (\"user_id\")"}
+    :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_events_user_id\" ON \"public\".\"events\" USING BTREE (\"user_id\")"}
    {:label      "no schema qualifier"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "idx_events_user_id" :columns [{:name "user_id"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"idx_events_user_id\" ON \"events\" USING BTREE (\"user_id\")"}
+    :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_events_user_id\" ON \"events\" USING BTREE (\"user_id\")"}
    {:label      "renders all columns, not just the first"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "idx_multi" :columns [{:name "a"} {:name "b"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"idx_multi\" ON \"events\" USING BTREE (\"a\", \"b\")"}
+    :structured {:kind :btree :name "multi" :columns [{:name "a"} {:name "b"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_multi\" ON \"events\" USING BTREE (\"a\", \"b\")"}
    {:label      "access method comes from :kind, so other index types render too"
     :schema     nil :table "events"
-    :structured {:kind :gin :name "idx_gin" :columns [{:name "tags"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"idx_gin\" ON \"events\" USING GIN (\"tags\")"}
+    :structured {:kind :gin :name "gin" :columns [{:name "tags"}]}
+    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_gin\" ON \"events\" USING GIN (\"tags\")"}
    {:label      "unique renders CREATE UNIQUE INDEX"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "idx_email" :columns [{:name "email"}] :unique true}
-    :expected   "CREATE UNIQUE INDEX IF NOT EXISTS \"idx_email\" ON \"events\" USING BTREE (\"email\")"}
-   {:label      "quotes identifiers that need it, including embedded double-quotes"
+    :structured {:kind :btree :name "email" :columns [{:name "email"}] :unique true}
+    :expected   "CREATE UNIQUE INDEX IF NOT EXISTS \"mb_idx_email\" ON \"events\" USING BTREE (\"email\")"}
+   {:label      "the mb_idx_ prefix is applied to the base name, and identifiers that need quoting still get it"
     :schema     nil :table "events"
     :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}])
+    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}])
 
 (deftest ^:parallel compile-create-index-test
   (doseq [{:keys [label schema table structured expected]} render-cases]
@@ -84,12 +85,12 @@
   [{:label      "single-column btree"
     :table      "perf_hints_btree"
     :columns    "id INT, user_id INT"
-    :structured {:kind :btree :name "idx_exec_btree_user_id" :columns [{:name "user_id"}]}
+    :structured {:kind :btree :name "btree_user_id" :columns [{:name "user_id"}]}
     :expected   {:access-method "btree", :unique? false}}
    {:label      "unique single-column btree"
     :table      "perf_hints_unique"
     :columns    "id INT, email TEXT"
-    :structured {:kind :btree :name "idx_exec_unique_email" :columns [{:name "email"}] :unique true}
+    :structured {:kind :btree :name "unique_email" :columns [{:name "email"}] :unique true}
     :expected   {:access-method "btree", :unique? true}}])
 
 (deftest post-ctas-path-test
@@ -101,7 +102,8 @@
               schema     "public"]
           (doseq [{:keys [label table columns structured expected]} execute-cases]
             (testing label
-              (let [index-name (:name structured)
+              ;; the physical name carries the mb_ prefix the driver applies, not the base :name we pass in
+              (let [index-name (str driver/index-name-prefix (:name structured))
                     qtable     (str (sql.u/quote-name :postgres :schema schema) "."
                                     (sql.u/quote-name :postgres :table table))]
                 (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])

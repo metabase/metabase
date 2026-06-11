@@ -37,8 +37,10 @@ title: Driver interface changelog
   a separate statement after the table exists, or `:ctas-inline` for hints inlined into the CTAS). Defaults to `{}`.
 
 - Added `metabase.driver/compile-create-index` `[driver schema table structured]`, which renders a `:post-ctas` hint
-  into the DDL statement(s) that create it (including `CREATE UNIQUE INDEX` for unique hints). Only implemented by
-  drivers that support `:index/post-ctas-create`.
+  into the DDL statement(s) that create it (including `CREATE UNIQUE INDEX` for unique hints). The hint's `:name` is an
+  un-prefixed base name; the driver prepends `metabase.driver/index-name-prefix` (`mb_idx_`) to the physical name so the
+  objects Metabase creates are recognizable in the target database. Only implemented by drivers that support
+  `:index/post-ctas-create`.
 
 - Added `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]`, per-driver post-CTAS
   housekeeping that downstream transforms depend on (e.g. `ANALYZE` on Postgres). Runs synchronously after a transform

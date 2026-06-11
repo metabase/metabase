@@ -1424,9 +1424,10 @@
   [_driver schema table {index-name :name, :keys [kind columns unique]}]
   (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
         using     (keyword (str "using-" (name kind)))
+        index-id  (keyword (str driver/index-name-prefix index-name))
         index-ref (if unique
-                    [:unique (keyword index-name) :if-not-exists]
-                    [(keyword index-name) :if-not-exists])]
+                    [:unique index-id :if-not-exists]
+                    [index-id :if-not-exists])]
     [(sql/format {:create-index [index-ref (into [table-ref using] (map index-column) columns)]}
                  {:dialect (sql.qp/quote-style :postgres) :quoted true})]))
 

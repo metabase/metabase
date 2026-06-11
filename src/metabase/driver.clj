@@ -1555,6 +1555,12 @@
 ;; "Index" is the umbrella term for every physical-layout hint a transform's target table can carry. It isn't always
 ;; literally an index: Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
 
+(def index-name-prefix
+  "Prefix Metabase prepends to the physical name of every named index/hint it creates on a transform target table, so
+  the objects are easy to recognize (and tell apart from user-created ones) in the target database. Shared by every
+  driver that names its hints; callers pass the un-prefixed base name and the driver applies this at render time."
+  "mb_idx_")
+
 (defmulti supported-index-methods
   "Return the index methods this driver supports for transform target tables, as a map of `hint-kind` -> metadata map.
   Each metadata map carries at least `:lifecycle`, one of `:post-ctas` (applied as a separate statement after the
@@ -1571,7 +1577,8 @@
 
 (defmulti compile-create-index
   "Render a `:post-ctas` index hint into the DDL statement(s) that create it on the existing `table` in `schema`.
-  `structured` is the hint description, e.g. `{:kind :btree, :name \"idx_foo_bar\", :columns [{:name \"bar\"}]}`.
+  `structured` is the hint description, e.g. `{:kind :btree, :name \"foo_bar\", :columns [{:name \"bar\"}]}`. `:name`
+  is the un-prefixed base name; the driver prepends [[index-name-prefix]] to the rendered physical name.
 
   Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]].
 
