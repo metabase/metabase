@@ -312,7 +312,7 @@
 ;;;; and its pegged blast radius do not exist at this granularity at all; they are artifacts of the
 ;;;; module partition. The fns here model selective CI at namespace granularity with the
 ;;;; methodologically correct rule: a test reruns iff its OWN require closure (test files parsed too)
-;;;; reaches a changed namespace. Measured against 90 days of commits this is worth ~−24% CI spend
+;;;; reaches a changed namespace. Measured against 90 days of commits this is worth ~−21% CI spend
 ;;;; over the module-granularity rule with no code changes, and exposes `metabase.test`'s require
 ;;;; closure as the next binding constraint (see the granularity-experiment planning doc).
 ;;;;
