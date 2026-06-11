@@ -559,7 +559,9 @@
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
-    ;; check that we have permissions to run the query that we're trying to save
+    ;; check that we have permissions to run the query that we're trying to save.
+    ;; Strip :query-permissions/perms first -- it is populated internally by the QP
+    ;; middleware, so any value already on the incoming query is dropped here.
     (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.

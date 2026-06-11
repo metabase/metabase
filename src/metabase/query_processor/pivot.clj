@@ -622,6 +622,10 @@
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
+   ;; Do not bind *card-id* here. Callers that run pivot queries for saved cards
+   ;; (e.g. card.clj, dashboards) bind *card-id* themselves before calling
+   ;; run-pivot-query, so binding it here from the query's :info map would be
+   ;; redundant and could mis-set it for ad-hoc queries that carry a :card-id in :info.
    (qp.setup/with-qp-setup [query query]
      (let [rff               (or rff qp.reducible/default-rff)
            query             (lib/query (qp.store/metadata-provider) query)
