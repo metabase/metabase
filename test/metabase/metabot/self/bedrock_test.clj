@@ -13,66 +13,6 @@
 (set! *warn-on-reflection* true)
 
 ;;; ──────────────────────────────────────────────────────────────────
-;;; SigV4 signing
-;;; ──────────────────────────────────────────────────────────────────
-
-;; Golden values cross-checked against an independent Python implementation of the SigV4 spec
-;; (hashlib/hmac); the same signing code is also validated live against the real mantle endpoint.
-
-(def ^:private golden-creds
-  {:access-key-id     "AKIDEXAMPLE"
-   :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-   :region            "us-east-1"
-   :host              "bedrock-mantle.us-east-1.api.aws"
-   :amz-date          "20260101T120000Z"})
-
-(deftest ^:parallel sigv4-headers-post-golden-test
-  (let [headers (bedrock/sigv4-headers (merge golden-creds
-                                              {:method       :post
-                                               :path         "/anthropic/v1/messages"
-                                               :body         "{\"hello\":\"world\"}"
-                                               :content-type "application/json"}))]
-    (is (= {"host"          "bedrock-mantle.us-east-1.api.aws"
-            "x-amz-date"    "20260101T120000Z"
-            "content-type"  "application/json"
-            "authorization" (str "AWS4-HMAC-SHA256 "
-                                 "Credential=AKIDEXAMPLE/20260101/us-east-1/bedrock/aws4_request, "
-                                 "SignedHeaders=content-type;host;x-amz-date, "
-                                 "Signature=6c735dfbbe3d7a69a35684b2f677f041cebce02703c7286c7b26b56a224bf0df")}
-           (into {} headers)))))
-
-(deftest ^:parallel sigv4-headers-session-token-golden-test
-  (let [headers (bedrock/sigv4-headers (merge golden-creds
-                                              {:session-token "FwoGZXIvYXdzEXAMPLETOKEN"
-                                               :method        :post
-                                               :path          "/anthropic/v1/messages"
-                                               :body          "{\"hello\":\"world\"}"
-                                               :content-type  "application/json"}))]
-    (testing "the session token is sent and included in the signed headers"
-      (is (= "FwoGZXIvYXdzEXAMPLETOKEN" (get headers "x-amz-security-token"))))
-    (is (= (str "AWS4-HMAC-SHA256 "
-                "Credential=AKIDEXAMPLE/20260101/us-east-1/bedrock/aws4_request, "
-                "SignedHeaders=content-type;host;x-amz-date;x-amz-security-token, "
-                "Signature=9ca737aa04b4f91a973acbcc65f71541cb2d874b368927d6a1d1a9c8e1376294")
-           (get headers "authorization")))))
-
-(deftest ^:parallel sigv4-headers-get-no-body-golden-test
-  (let [headers (bedrock/sigv4-headers {:access-key-id     "AKIDEXAMPLE"
-                                        :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-                                        :region            "us-east-2"
-                                        :host              "bedrock-mantle.us-east-2.api.aws"
-                                        :amz-date          "20260101T120000Z"
-                                        :method            :get
-                                        :path              "/v1/models"})]
-    (testing "no content-type header is signed for a body-less request"
-      (is (not (contains? headers "content-type"))))
-    (is (= (str "AWS4-HMAC-SHA256 "
-                "Credential=AKIDEXAMPLE/20260101/us-east-2/bedrock/aws4_request, "
-                "SignedHeaders=host;x-amz-date, "
-                "Signature=15abca797f32148262ccdf66baceabbc75f3177154b8a5593536323974db8419")
-           (get headers "authorization")))))
-
-;;; ──────────────────────────────────────────────────────────────────
 ;;; Model listing
 ;;; ──────────────────────────────────────────────────────────────────
 
@@ -133,10 +73,11 @@
         body (json/decode+kw (:body req))]
     (is (= "https://bedrock-mantle.us-east-1.api.aws/anthropic/v1/messages" (:url req)))
     (testing "the unsigned anthropic-version header is sent alongside the signed SigV4 headers"
-      (is (=? {"anthropic-version" "2023-06-01"
-               "host"              "bedrock-mantle.us-east-1.api.aws"
-               "content-type"      "application/json"
-               "authorization"     #"^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/.*"}
+      (is (=? {"anthropic-version"    "2023-06-01"
+               "Host"                 "bedrock-mantle.us-east-1.api.aws"
+               "Content-Type"         "application/json"
+               "x-amz-content-sha256" #"^[0-9a-f]{64}$"
+               "Authorization"        #"^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/.*SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date.*"}
               (:headers req))))
     (testing "body is an Anthropic Messages request without the top-level cache_control mantle rejects"
       (is (=? {:model    "anthropic.claude-haiku-4-5"
