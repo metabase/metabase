@@ -1751,7 +1751,7 @@
             (is (= :completed (:status result)))
             (is (= 3 (count (mt/rows result))))))))))
 
-(deftest project-only-columns-from-original-table-preserves-nested-fields-test
+(deftest ^:parallel project-only-columns-from-original-table-preserves-nested-fields-test
   (testing "Sandbox column projection must keep nested fields whose `:name` is path-joined after preprocessing (#75305)"
     ;; For nested fields (e.g. Mongo object children), `lib/returned-columns` on a preprocessed sandbox query produces
     ;; `:name` like `"parent.child.leaf"` while `lib.metadata/fields` returns the raw leaf `:name`. Matching only by
