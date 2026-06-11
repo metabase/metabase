@@ -67,6 +67,17 @@ Once the template is on disk:
 5. **Strip the lockfile-ignoring block from `.gitignore`.** The template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb` plus the leading comment block (the chunk between `# Lockfiles —` and `bun.lockb`). The block has to go so the downstream project commits its lockfile for reproducible installs. **Verify with `git status`** — the lockfile your package manager just generated must now appear as a new untracked file. If it doesn't, the block is still in `.gitignore`; remove it and re-check. Do **not** skip this step or defer it to "later"; agents have repeatedly forgotten and shipped projects with no committed lockfile.
 6. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 7. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
+8. **Update `data-apps.yaml`** (the manifest at the project root). It declares the app(s) this repo provides, and is what Metabase reads when the repo is synced from Git. Each entry has a `slug` (the stable `/data-app/<slug>` URL identity), a `display_name`, and the `bundle` path to the built JS. Set `slug` and `display_name` for this project; leave `bundle: ./dist/index.js` unless you change the build output.
+
+   ```yaml
+   version: 1
+   apps:
+     - slug: sales-app
+       display_name: Sales App
+       bundle: ./dist/index.js
+   ```
+
+   The filename is `data-apps.yaml` (`.yaml`, not `.yml`) — that's the path Metabase looks for by default. Commit it alongside the built `dist/index.js`.
 
 ## Step 3 — Pull the typed schema
 
