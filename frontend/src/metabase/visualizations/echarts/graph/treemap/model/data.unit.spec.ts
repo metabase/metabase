@@ -1,4 +1,5 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getNodesFromPath } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -6,11 +7,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks/dataset";
 
-import {
-  getTreemapChartColumns,
-  getTreemapData,
-  getTreemapNodePath,
-} from "./data";
+import { getTreemapChartColumns, getTreemapData } from "./data";
 import type { TreemapChartColumns, TreemapTree } from "./types";
 
 const columns: DatasetColumn[] = [
@@ -437,19 +434,19 @@ describe("getTreemapNodePath", () => {
   ];
 
   it("resolves a top-level node id to a single-node path", () => {
-    expect(getTreemapNodePath(tree, "1")).toEqual([tree[1]]);
+    expect(getNodesFromPath(tree, "1")).toEqual([tree[1]]);
   });
 
   it("resolves a leaf id to the grouping → leaf path", () => {
-    expect(getTreemapNodePath(tree, "0-1")).toEqual([
+    expect(getNodesFromPath(tree, "0-1")).toEqual([
       tree[0],
       tree[0].children?.[1],
     ]);
   });
 
   it("returns null for an out-of-range segment", () => {
-    expect(getTreemapNodePath(tree, "5")).toBeNull();
-    expect(getTreemapNodePath(tree, "0-9")).toBeNull();
-    expect(getTreemapNodePath(tree, "1-0")).toBeNull(); // Grains has no children
+    expect(getNodesFromPath(tree, "5")).toBeNull();
+    expect(getNodesFromPath(tree, "0-9")).toBeNull();
+    expect(getNodesFromPath(tree, "1-0")).toBeNull(); // Grains has no children
   });
 });

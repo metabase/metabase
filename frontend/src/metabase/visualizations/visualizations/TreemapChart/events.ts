@@ -2,8 +2,10 @@ import { type EChartsType, graphic } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
 import { isNative } from "metabase/common/utils/card";
-import { getTreemapNodePath } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import { getTreemapNodeRectById } from "metabase/visualizations/echarts/graph/treemap/model/tree";
+import {
+  getNodesFromPath,
+  getTreemapNodeRectById,
+} from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
   TreemapTree,
@@ -134,7 +136,7 @@ export function getTreemapClickData({
   settings: ComputedVisualizationSettings;
   event: TreemapSeriesMouseEvent;
 }): ClickObject | null {
-  const path = getTreemapNodePath(tree, id);
+  const path = getNodesFromPath(tree, id);
   if (path == null) {
     return null;
   }

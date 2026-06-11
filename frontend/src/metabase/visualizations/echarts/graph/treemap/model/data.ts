@@ -6,33 +6,35 @@ import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
 
 import type { TreemapChartColumns, TreemapNode, TreemapTree } from "./types";
 
+type TreemapSettingsColumns =
+  | "treemap.grouping"
+  | "treemap.sub_grouping"
+  | "treemap.value";
+
 export function getTreemapChartColumns<TColumn extends DatasetColumn>(
   columns: TColumn[],
-  settings: Pick<
-    ComputedVisualizationSettings,
-    "treemap.grouping" | "treemap.sub_grouping" | "treemap.value"
-  >,
+  settings: Pick<ComputedVisualizationSettings, TreemapSettingsColumns>,
 ): TreemapChartColumns | null {
-  if (
-    settings["treemap.grouping"] == null ||
-    settings["treemap.value"] == null
-  ) {
+  const groupingColumName = settings["treemap.grouping"];
+  const valueColumnName = settings["treemap.value"];
+  const subGroupingColumnName = settings["treemap.sub_grouping"];
+
+  if (groupingColumName == null || valueColumnName == null) {
     return null;
   }
 
-  const grouping = getColumnDescriptors(
-    [settings["treemap.grouping"]],
-    columns,
-  )[0];
-  const value = getColumnDescriptors([settings["treemap.value"]], columns)[0];
+  const grouping = getColumnDescriptors([groupingColumName], columns)[0];
+  const value = getColumnDescriptors([valueColumnName], columns)[0];
 
   if (!grouping?.column || !value?.column) {
     return null;
   }
 
-  const subGroupingSetting = settings["treemap.sub_grouping"];
-  if (subGroupingSetting != null) {
-    const subGrouping = getColumnDescriptors([subGroupingSetting], columns)[0];
+  if (subGroupingColumnName != null) {
+    const subGrouping = getColumnDescriptors(
+      [subGroupingColumnName],
+      columns,
+    )[0];
     if (subGrouping?.column) {
       return { grouping, subGrouping, value };
     }
@@ -90,34 +92,6 @@ export function getTreemapData(
   });
 
   return Array.from(rootByKey.values());
-}
-
-/**
- * Resolve a path-encoded series node id (the ids set in `option.ts`: "0",
- * "0-1") to the chain of tree nodes along that path:
- * `"0"` → `[tree[0]]`, `"0-1"` → `[tree[0], tree[0].children[1]]`. The first
- * element is always the top-level grouping node; the last is the clicked node.
- * Returns `null` if any path segment is out of range. Used to build a
- * drill-through `ClickObject` from a clicked tile (see `TreemapChart/events.ts`).
- */
-export function getTreemapNodePath(
-  tree: TreemapTree,
-  id: string,
-): TreemapNode[] | null {
-  const path: TreemapNode[] = [];
-  let nodes: TreemapTree | undefined = tree;
-  for (const segment of id.split("-")) {
-    const index = Number(segment);
-    const node: TreemapNode | undefined = Number.isInteger(index)
-      ? nodes?.[index]
-      : undefined;
-    if (node == null) {
-      return null;
-    }
-    path.push(node);
-    nodes = node.children;
-  }
-  return path;
 }
 
 function getOrCreateNode(

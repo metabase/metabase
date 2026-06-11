@@ -5,6 +5,7 @@ import type GlobalModel from "echarts/types/src/model/Global";
 import type {
   NodeId,
   TreemapLayoutNode,
+  TreemapNode,
   TreemapRect,
   TreemapTree,
 } from "./types";
@@ -65,9 +66,7 @@ export function getTreemapNodeRectById(
 }
 
 export function getNode(id: NodeId, tree: TreemapTree) {
-  const [rootPart, leafPart] = id.split("-");
-  const root = tree[Number(rootPart)];
-  return leafPart == null ? root : root?.children?.[Number(leafPart)];
+  return getNodesFromPath(tree, id)?.at(-1);
 }
 
 /**
@@ -94,4 +93,27 @@ export function getTreemapLayoutNodes(chart: EChartsType): TreemapLayoutNode[] {
     });
   });
   return nodes;
+}
+
+/**
+ * `"0"` → `[tree[0]]`, `"0-1"` → `[tree[0], tree[0].children[1]]`
+ */
+export function getNodesFromPath(
+  tree: TreemapTree,
+  id: NodeId,
+): TreemapNode[] | null {
+  const path: TreemapNode[] = [];
+  let nodes: TreemapTree | undefined = tree;
+  for (const segment of id.split("-")) {
+    const index = Number(segment);
+    const node: TreemapNode | undefined = Number.isInteger(index)
+      ? nodes?.[index]
+      : undefined;
+    if (node == null) {
+      return null;
+    }
+    path.push(node);
+    nodes = node.children;
+  }
+  return path;
 }
