@@ -35,7 +35,6 @@ import {
 import {
   ActionAlert,
   ActionList,
-  ActionMenu,
   ActionsHeader,
   Root,
 } from "./ModelActionDetails.styled";
@@ -129,48 +128,46 @@ function ModelActionDetails({ model }: Props) {
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {hasActionsMenu && (
-            <ActionMenu>
-              <Menu
-                opened={menuOpened}
-                onChange={(opened) => (opened ? menu.open() : menu.close())}
-                position="bottom-end"
-                closeOnItemClick={false}
-              >
-                <Menu.Target>
-                  <div>
-                    <EntityMenuTrigger
-                      ariaLabel={t`Actions menu`}
-                      icon="ellipsis"
-                      onClick={menu.toggle}
-                      open={menuOpened}
-                    />
-                  </div>
-                </Menu.Target>
-                <Menu.Dropdown miw={184}>
-                  {hasImplicitActions ? (
-                    <Menu.Item
-                      leftSection={<Icon name="bolt" aria-hidden />}
-                      onClick={() => {
-                        onDeleteImplicitActions();
-                        menu.close();
-                      }}
-                    >
-                      {t`Disable basic actions`}
-                    </Menu.Item>
-                  ) : (
-                    <Menu.Item
-                      leftSection={<Icon name="bolt" aria-hidden />}
-                      onClick={() => {
-                        onEnableImplicitActions();
-                        menu.close();
-                      }}
-                    >
-                      {t`Create basic actions`}
-                    </Menu.Item>
-                  )}
-                </Menu.Dropdown>
-              </Menu>
-            </ActionMenu>
+            <Menu
+              opened={menuOpened}
+              onChange={(opened) => (opened ? menu.open() : menu.close())}
+              position="bottom-end"
+              closeOnItemClick={false}
+            >
+              <Menu.Target>
+                <div style={{ marginLeft: "0.5rem" }}>
+                  <EntityMenuTrigger
+                    ariaLabel={t`Actions menu`}
+                    icon="ellipsis"
+                    onClick={menu.toggle}
+                    open={menuOpened}
+                  />
+                </div>
+              </Menu.Target>
+              <Menu.Dropdown miw={184}>
+                {hasImplicitActions ? (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={() => {
+                      onDeleteImplicitActions();
+                      menu.close();
+                    }}
+                  >
+                    {t`Disable basic actions`}
+                  </Menu.Item>
+                ) : (
+                  <Menu.Item
+                    leftSection={<Icon name="bolt" aria-hidden />}
+                    onClick={() => {
+                      onEnableImplicitActions();
+                      menu.close();
+                    }}
+                  >
+                    {t`Create basic actions`}
+                  </Menu.Item>
+                )}
+              </Menu.Dropdown>
+            </Menu>
           )}
         </ActionsHeader>
       )}

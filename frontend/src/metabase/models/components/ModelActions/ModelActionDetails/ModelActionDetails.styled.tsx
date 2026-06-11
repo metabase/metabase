@@ -15,10 +15,6 @@ export const ActionsHeader = styled.div`
   align-items: center;
 `;
 
-export const ActionMenu = styled.div`
-  margin-left: 0.5rem;
-`;
-
 export const ActionList = styled.ul`
   width: 70%;
   margin-top: 1rem;

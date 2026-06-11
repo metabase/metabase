@@ -15,7 +15,6 @@ import {
   CardBadge,
   CardDescription,
   CardHeader,
-  CardMenu,
   CardRoot,
   CardTitle,
 } from "./AuthCard.styled";
@@ -175,41 +174,37 @@ const AuthCardMenu = ({
   }, [closeMenu, onDeactivate]);
 
   return (
-    <CardMenu>
-      <Menu
-        opened={opened}
-        onChange={(opened) => (opened ? openMenu() : closeMenu())}
-        position="bottom-end"
-        closeOnItemClick={false}
-      >
-        <Menu.Target>
-          <div>
-            <EntityMenuTrigger
-              icon="ellipsis"
-              onClick={toggleMenu}
-              open={opened}
-            />
-          </div>
-        </Menu.Target>
-        <Menu.Dropdown miw={184}>
+    <Menu
+      opened={opened}
+      onChange={(opened) => (opened ? openMenu() : closeMenu())}
+      position="bottom-end"
+      closeOnItemClick={false}
+    >
+      <Menu.Target>
+        <div style={{ marginLeft: "auto" }}>
+          <EntityMenuTrigger
+            icon="ellipsis"
+            onClick={toggleMenu}
+            open={opened}
+          />
+        </div>
+      </Menu.Target>
+      <Menu.Dropdown miw={184}>
+        <Menu.Item
+          leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
+          onClick={handleChange}
+        >
+          {isEnabled ? t`Pause` : t`Resume`}
+        </Menu.Item>
+        {onDeactivate && (
           <Menu.Item
-            leftSection={
-              <Icon name={isEnabled ? "pause" : "play"} aria-hidden />
-            }
-            onClick={handleChange}
+            leftSection={<Icon name="close" aria-hidden />}
+            onClick={handleDeactivate}
           >
-            {isEnabled ? t`Pause` : t`Resume`}
+            {t`Deactivate`}
           </Menu.Item>
-          {onDeactivate && (
-            <Menu.Item
-              leftSection={<Icon name="close" aria-hidden />}
-              onClick={handleDeactivate}
-            >
-              {t`Deactivate`}
-            </Menu.Item>
-          )}
-        </Menu.Dropdown>
-      </Menu>
-    </CardMenu>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
 };

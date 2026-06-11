@@ -43,7 +43,3 @@ export const CardBadge = styled.div<CardBadgeProps>`
   border-radius: 0.25rem;
   font-weight: bold;
 `;
-
-export const CardMenu = styled.div`
-  margin-left: auto;
-`;
