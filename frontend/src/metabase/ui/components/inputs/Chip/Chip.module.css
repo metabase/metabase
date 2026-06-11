@@ -24,35 +24,35 @@
 /* Unchecked — shared by the light and filled variants. */
 .ChipRoot .ChipLabel:not([data-disabled]) {
   border: none;
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_surface-secondary);
   color: var(--mb-color-text-primary);
 }
 
 .ChipRoot .ChipLabel:not([data-disabled]):hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-secondary-hover);
 }
 
 .ChipRoot .ChipLabel:not([data-disabled]):active {
-  background-color: var(--mb-color-background-selected);
+  background-color: var(--mb-color-background_surface-secondary-pressed);
 }
 
-/* Selected — light variant: a light brand fill with brand text. */
+/* Selected — light variant: a subtle brand fill with strong brand text. */
 .ChipRoot[data-variant="light"] .ChipLabel[data-checked]:not([data-disabled]) {
-  background-color: var(--mb-color-background-brand);
-  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-text-brand-strong);
 }
 
 .ChipRoot[data-variant="light"]
   .ChipLabel[data-checked]:not([data-disabled]):hover,
 .ChipRoot[data-variant="light"]
   .ChipLabel[data-checked]:not([data-disabled]):active {
-  background-color: var(--mb-color-background-hover);
-  color: var(--mb-color-text-hover);
+  background-color: var(--mb-color-background_surface-brand-subtle-hover);
+  color: var(--mb-color-text-brand-strong-hover);
 }
 
-/* Selected — filled variant: a solid brand fill with inverse text. */
+/* Selected — filled variant: a strong brand fill with inverse text. */
 .ChipRoot[data-variant="filled"] .ChipLabel[data-checked]:not([data-disabled]) {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-background_surface-brand-strong);
   color: var(--mb-color-text-primary-inverse);
 }
 
@@ -60,14 +60,14 @@
   .ChipLabel[data-checked]:not([data-disabled]):hover,
 .ChipRoot[data-variant="filled"]
   .ChipLabel[data-checked]:not([data-disabled]):active {
-  background-color: var(--mb-color-brand-hover);
+  background-color: var(--mb-color-background_surface-brand-strong-hover);
 }
 
 /* Disabled — both variants, checked or not. */
 .ChipRoot .ChipLabel[data-disabled] {
   border: none;
-  background-color: var(--mb-color-background-disabled);
-  color: var(--mb-color-text-tertiary);
+  background-color: var(--mb-color-background_surface-disabled);
+  color: var(--mb-color-text-disabled);
   cursor: default;
 }
 
