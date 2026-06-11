@@ -16,9 +16,6 @@
   Requests are authenticated with AWS Signature Version 4 computed from the `llm-bedrock-*` settings:
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
-   [buddy.core.mac :as mac]
    [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
@@ -32,70 +29,57 @@
    [metabase.util.malli :as mu]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.time ZoneOffset ZonedDateTime)
-   (java.time.format DateTimeFormatter)))
+   (java.net URI)
+   (java.util.function Consumer)
+   (software.amazon.awssdk.http ContentStreamProvider SdkHttpMethod SdkHttpRequest SdkHttpRequest$Builder)
+   (software.amazon.awssdk.http.auth.aws.signer AwsV4HttpSigner)
+   (software.amazon.awssdk.http.auth.spi.signer SignRequest$Builder SignedRequest)
+   (software.amazon.awssdk.identity.spi AwsCredentialsIdentity AwsSessionCredentialsIdentity)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------ AWS Signature Version 4 ------------------------------------------
 
-(def ^:private ^DateTimeFormatter amz-date-formatter
-  "SigV4 timestamp format (ISO 8601 basic), e.g. `20260609T120000Z`."
-  (.withZone (DateTimeFormatter/ofPattern "yyyyMMdd'T'HHmmss'Z'") ZoneOffset/UTC))
+(defn- aws-identity
+  "An AWS credentials identity, carrying the session token when one is present."
+  [{:keys [access-key-id secret-access-key session-token]}]
+  (if session-token
+    (AwsSessionCredentialsIdentity/create access-key-id secret-access-key session-token)
+    (AwsCredentialsIdentity/create access-key-id secret-access-key)))
 
-(defn- hmac-sha256 ^bytes [key ^String s]
-  (mac/hash s {:key key :alg :hmac+sha256}))
+(defn- unsigned-request
+  "The bare `SdkHttpRequest` (method, URL, content-type) the signer signs over. Host is derived from `url`."
+  ^SdkHttpRequest [{:keys [method url content-type]}]
+  (let [^SdkHttpRequest$Builder b (-> (SdkHttpRequest/builder)
+                                      (.method (SdkHttpMethod/fromValue (u/upper-case-en (name method))))
+                                      (.uri (URI/create url)))]
+    (when content-type
+      (.putHeader b "Content-Type" ^String content-type))
+    (.build b)))
 
-(defn- sha256-hex ^String [^String s]
-  (codecs/bytes->hex (buddy-hash/sha256 (or s ""))))
+(defn- signed-headers
+  "AWS SigV4 request headers for a Bedrock mantle request, computed by the AWS SDK's [[AwsV4HttpSigner]].
 
-(defn- signing-key
-  "Derive the SigV4 signing key: HMAC chain over date, region, and service, rooted at the secret."
-  ^bytes [secret-access-key date-stamp region service]
-  (-> (str "AWS4" secret-access-key)
-      (hmac-sha256 date-stamp)
-      (hmac-sha256 region)
-      (hmac-sha256 service)
-      (hmac-sha256 "aws4_request")))
-
-(defn sigv4-headers
-  "Compute AWS SigV4 request headers for a Bedrock mantle request.
-
-  Returns the map of headers to send: `host`, `x-amz-date`, `authorization`, plus `content-type`
-  and `x-amz-security-token` when given. Every returned header except `authorization` itself is
-  signed, so callers must send them byte-for-byte as returned (additional *unsigned* headers may
-  be added freely).
-
-  `amz-date` (a string in [[amz-date-formatter]] format) is injectable for deterministic tests;
-  it defaults to the current UTC time."
-  [{:keys [access-key-id secret-access-key session-token region service method path body content-type host amz-date]
-    :or   {service "bedrock"}}]
-  (let [amz-date     (or amz-date (.format amz-date-formatter (ZonedDateTime/now ZoneOffset/UTC)))
-        date-stamp   (subs amz-date 0 8)
-        headers      (cond-> (sorted-map "host"       host
-                                         "x-amz-date" amz-date)
-                       content-type  (assoc "content-type" content-type)
-                       session-token (assoc "x-amz-security-token" session-token))
-        signed-names (str/join ";" (keys headers))
-        canonical    (str (u/upper-case-en (name method)) "\n"
-                          path "\n"
-                          ;; canonical query string — mantle requests carry no query params
-                          "\n"
-                          (str/join (map (fn [[k v]] (str k ":" v "\n")) headers))
-                          "\n"
-                          signed-names "\n"
-                          (sha256-hex body))
-        scope        (str date-stamp "/" region "/" service "/aws4_request")
-        to-sign      (str "AWS4-HMAC-SHA256\n" amz-date "\n" scope "\n" (sha256-hex canonical))
-        signature    (-> secret-access-key
-                         (signing-key date-stamp region service)
-                         (hmac-sha256 to-sign)
-                         codecs/bytes->hex)]
-    (assoc headers
-           "authorization" (str "AWS4-HMAC-SHA256 "
-                                "Credential=" access-key-id "/" scope ", "
-                                "SignedHeaders=" signed-names ", "
-                                "Signature=" signature))))
+  Returns a `{header-name header-value}` map carrying `Host`, `X-Amz-Date`, `Authorization`,
+  `x-amz-content-sha256`, plus `Content-Type` and `X-Amz-Security-Token` when applicable. Additional
+  *unsigned* headers (e.g. `anthropic-version`) may be added to the outgoing request freely."
+  [{:keys [region body] :as creds}]
+  (let [request               (unsigned-request creds)
+        payload               (some-> body ContentStreamProvider/fromUtf8String)
+        ^SignedRequest signed (.sign (AwsV4HttpSigner/create)
+                                     (reify Consumer
+                                       (accept [_ b]
+                                         (let [^SignRequest$Builder b b]
+                                           (.identity b (aws-identity creds))
+                                           (.request b request)
+                                           (when payload
+                                             (.payload b payload))
+                                           (.putProperty b AwsV4HttpSigner/SERVICE_SIGNING_NAME "bedrock")
+                                           (.putProperty b AwsV4HttpSigner/REGION_NAME region)))))
+        ^SdkHttpRequest req   (.request signed)]
+    (into {}
+          (map (fn [[k vs]] [k (first vs)]))
+          (.headers req))))
 
 ;;; ------------------------------------------------ HTTP plumbing ----------------------------------------------
 
@@ -153,15 +137,14 @@
   `headers` are extra *unsigned* headers (e.g. `anthropic-version`)."
   [{:keys [method path body as headers]}]
   (let [{:keys [region] :as creds} (or (credentials) (throw (missing-credentials-ex)))
-        host         (str "bedrock-mantle." region ".api.aws")
+        url          (str "https://bedrock-mantle." region ".api.aws" path)
         content-type (when body "application/json")
-        sig-headers  (sigv4-headers (merge creds {:method       method
-                                                  :path         path
-                                                  :body         body
-                                                  :content-type content-type
-                                                  :host         host}))]
+        sig-headers  (signed-headers (merge creds {:method       method
+                                                   :url          url
+                                                   :body         body
+                                                   :content-type content-type}))]
     (http/request (cond-> {:method  method
-                           :url     (str "https://" host path)
+                           :url     url
                            :headers (merge headers sig-headers)}
                     as   (assoc :as as)
                     body (assoc :body body)))))
