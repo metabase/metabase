@@ -1417,6 +1417,8 @@ describe("issue 51934 (EMB-189)", () => {
     // when clicking it causes its own re-render.
     const clickPickerItem = (name) => {
       cy.get('[data-testid="mini-picker-list-loader"]').should("not.exist");
+      // Wait for picker content to render before looking for the specific item
+      cy.findAllByRole("menuitem").should("have.length.at.least", 1);
       cy.findByRole("menuitem", { name }).click({ force: true });
     };
 
