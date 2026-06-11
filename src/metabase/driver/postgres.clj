@@ -531,20 +531,23 @@
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
    expr]
-  (condp = (h2x/database-type expr)
-    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
-    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
-    "time"
-    (time-trunc unit expr)
-
-    "timetz"
+  ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
+  ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
+  ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
+  (cond
+    (h2x/database-or-effective-type-isa? expr "timetz" :type/TimeWithTZ)
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    (h2x/database-or-effective-type-isa? expr "time" :type/Time)
+    (time-trunc unit expr)
+
     ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
-    "date"
+    (h2x/database-or-effective-type-isa? expr "date" :type/Date)
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
-    #_else
+    :else
     (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
