@@ -105,6 +105,9 @@ type ReduxStoreUtilityFunctionExports = {
   queryMetric: ReduxStoreUtilityFunction<
     (params: QueryMetricParams) => Promise<QueryMetricResult>
   >;
+  executeAction: ReduxStoreUtilityFunction<
+    (params: ExecuteActionParams) => Promise<ExecuteActionResult>
+  >;
 };
 
 type ReduxStoreSelectorsExports = {
