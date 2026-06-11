@@ -13,13 +13,19 @@
   after), naive :hnsw misses everything under an anti-correlated filter, and the iterative strategies fix
   filter-driven misses but not limit truncation or permission under-fetch.
 
-  Every cell asserts an exact value or ordering, not a threshold.
+  The matrix cells assert exact values and orderings, not thresholds.
   Embeddings sit at exact distinct distances from the probe (no ties), the heap is populated in a fixed
-  order before the index exists, the index is built serially with a seeded PRNG, and every indexed query
-  forces the index path (a 300-row table would otherwise always seq-scan).
-  At this scale the graph itself is exact -- approximation error is a scale phenomenon and is measured by
-  the at-scale benchmarking harness, not here -- so what this matrix pins down are the structural
-  differences between the strategies' SQL shapes and scan termination rules."
+  order before the index exists, table stats are pinned with ANALYZE, and every indexed query forces the
+  index path (a 300-row table would otherwise always seq-scan).
+  The HNSW graph itself is NOT reproducible (pgvector draws node levels from the per-backend global PRNG,
+  which `setseed` does not touch), so exact cells are only those whose outcome is invariant across graphs;
+  each was validated against 30-60 independently built graphs.
+  On the 4-d matrix dataset the graph is exact regardless of its random shape -- even 3000 densely packed
+  filler docs do not change that -- so the matrix pins the structural differences between the strategies'
+  SQL shapes and scan termination rules.
+  Graph approximation error needs dimensionality, not tree size: [[graph-approximation-test]] covers that
+  axis on a 32-d densely packed dataset with banded assertions (band edges sit several misses away from
+  everything observed across dozens of graphs)."
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -92,17 +98,17 @@
    {:band :decoy      :n 20  :model "card" :d0 0.750 :dstep 0.007}])
 
 (defn- vector-at-distance
-  "A unit 4-d vector at exact cosine distance `d` (pgvector `<=>`) from [[probe-vector]]."
-  [^Random rng d]
+  "A unit `dims`-d vector at exact cosine distance `d` (pgvector `<=>`) from the probe `[1 0 0 ...]`."
+  [^Random rng dims d]
   ;; the probe component is fixed by `d` and the remainder is a seeded random unit direction orthogonal to
   ;; the probe axis, so the cosine against the probe is exactly 1 - d
-  (let [[u2 u3 u4] (loop []
-                     (let [g [(.nextGaussian rng) (.nextGaussian rng) (.nextGaussian rng)]
-                           n (Math/sqrt (double (reduce + (map * g g))))]
-                       (if (< n 1e-6) (recur) (mapv #(/ % n) g))))
-        a           (- 1.0 d)
-        b           (Math/sqrt (- 1.0 (* a a)))]
-    [a (* b u2) (* b u3) (* b u4)]))
+  (let [u (loop []
+            (let [g (repeatedly (dec dims) #(.nextGaussian rng))
+                  n (Math/sqrt (double (reduce + (map * g g))))]
+              (if (< n 1e-6) (recur) (mapv #(/ % n) g))))
+        a (- 1.0 d)
+        b (Math/sqrt (- 1.0 (* a a)))]
+    (into [a] (map #(* b %)) u)))
 
 (defn- make-dataset
   "Build the deterministic banded dataset.
@@ -119,7 +125,7 @@
                               (assoc row
                                      :id (inc idx)
                                      :name (format "%s %s %03d" (name band) model (inc idx))
-                                     :vector (vector-at-distance rng (:d row)))))
+                                     :vector (vector-at-distance rng 4 (:d row)))))
                           rows)]
     {:docs         (vec (for [{:keys [band model pinned verified d id name]} rows]
                           (let [collection-id (when (= band :restricted) restricted-collection-id)]
@@ -203,23 +209,27 @@
         (throw (ex-info "vector-strategy matrix assumes the stock hnsw.ef_search default"
                         {:hnsw.ef_search ef-search}))))))
 
+(def ^:private ^:dynamic *index*
+  "The semantic index the helpers below operate on; [[graph-approximation-test]] rebinds it."
+  semantic.tu/mock-index)
+
 (defn- drop-hnsw-index!
   []
   (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                 [(str "DROP INDEX IF EXISTS " (semantic.index/hnsw-index-name semantic.tu/mock-index))]))
+                 [(str "DROP INDEX IF EXISTS " (semantic.index/hnsw-index-name *index*))]))
 
 (defn- build-hnsw-index!
-  "Build the HNSW index on the mock index table, reproducibly."
+  "Build the HNSW index on [[*index*]]'s table."
   []
+  ;; the graph is NOT reproducible: pgvector draws node levels from the per-backend global PRNG, which
+  ;; `setseed` does not touch, so every assertion against the index must hold for any random graph
   (jdbc/with-transaction [tx (semantic.env/get-pgvector-datasource!)]
-    ;; serial build over the fixed-order heap; pgvector draws node levels from the backend PRNG, so a single
-    ;; seeded backend yields the same graph every run
+    ;; serial build keeps insertion order fixed and removes worker-count variation
     (jdbc/execute! tx ["SET LOCAL max_parallel_maintenance_workers = 0"])
-    (jdbc/execute! tx ["SELECT setseed(0.42)"])
     ;; m/ef_construction are the current pgvector defaults, pinned against future default changes
     (jdbc/execute! tx [(format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
-                               (semantic.index/hnsw-index-name semantic.tu/mock-index)
-                               (:table-name semantic.tu/mock-index))])))
+                               (semantic.index/hnsw-index-name *index*)
+                               (:table-name *index*))])))
 
 (defn- do-with-matrix-fixture!
   "Run `(f dataset)` against a temp pgvector DB whose index table is populated with the matrix dataset but has
@@ -235,6 +245,9 @@
               (assert-pgvector-prereqs!)
               (drop-hnsw-index!)
               (semantic.tu/upsert-index! (:docs ds) :serial? true)
+              ;; pin the stats the planner sees, so plan choice cannot vary with autoanalyze timing
+              (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                             [(str "ANALYZE " (:table-name *index*))])
               (f ds))))))))
 
 (def ^:private base-ctx
@@ -265,7 +278,7 @@
   [variant extra-ctx]
   (memoize/memo-clear! #'semantic.scoring/view-count-percentiles)
   (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
-                              semantic.tu/mock-index
+                              *index*
                               (merge base-ctx
                                      {:current-user-id (mt/user->id :rasta)}
                                      (variant-ctx variant)
@@ -376,3 +389,74 @@
                (is (= {:raw-count 20 :returned 12} (run! variant :rasta))))))
          (testing "an admin sees the full pool, pinning the loss on permissions rather than retrieval"
            (is (= {:raw-count 20 :returned 20} (run! :hnsw :crowberto)))))))))
+
+;;;; graph approximation: a 32-d densely packed dataset where HNSW genuinely misses
+
+(def ^:private packed-index
+  "A separate 32-d index: graph approximation error needs dimensionality, not tree size (a 4-d graph stays
+  exact even with thousands of packed fillers)."
+  (semantic.index/default-index {:provider "mock" :model-name "packed" :vector-dimensions 32}
+                                :table-name "index_table_packed_test"))
+
+(defn- make-packed-dataset
+  "`n` filler cards packed at near-identical distances from the probe, so the true top-20 differ from any
+  approximate top-20 by margins the graph cannot resolve.
+  Doc ids are assigned in ascending-distance order, so the exact top-k is simply ids 1..k."
+  [{:keys [seed n]}]
+  (let [rng  (Random. (long seed))
+        rows (mapv (fn [i]
+                     {:id     (inc i)
+                      :name   (format "packed card %04d" (inc i))
+                      :vector (vector-at-distance rng 32 (+ 0.10 (* 2e-5 i)))})
+                   (range n))]
+    {:docs       (vec (for [{:keys [id name]} rows]
+                        {:model           "card"
+                         :id              id
+                         :name            name
+                         :searchable_text name
+                         :embeddable_text name
+                         :created_at      #t "2025-01-01T12:00:00Z"
+                         :creator_id      (mt/user->id :rasta)
+                         :archived        false
+                         :legacy_input    {:id id :model "card" :name name}
+                         :metadata        {:title name}}))
+     :embeddings (into {probe-text (into [1.0] (repeat 31 0.0))} (map (juxt :name :vector)) rows)
+     :exact-ids  (mapv :id rows)}))
+
+(deftest graph-approximation-test
+  (mt/with-premium-features #{:semantic-search}
+    (mt/with-temporary-setting-values [semantic-search-results-limit results-limit]
+      (let [ds (make-packed-dataset {:seed 42 :n 2000})]
+        (semantic.tu/with-mock-embeddings (:embeddings ds)
+          (semantic.tu/with-test-db! {}
+            (binding [*index* packed-index]
+              (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!)
+                                                                packed-index)
+              (drop-hnsw-index!)
+              (semantic.tu/upsert-index! (:docs ds) :index packed-index :serial? true)
+              (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                             [(str "ANALYZE " (:table-name packed-index))])
+              (semantic.tu/with-only-semantic-weights
+                (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+                  (let [exact-top (take 20 (:exact-ids ds))
+                        recall20  (fn [variant & {:as extra-ctx}]
+                                    (recall-at 20 exact-top (query-ids! variant extra-ctx)))]
+                    (testing "without an index, retrieval stays exact even at 32 dims"
+                      (is (= exact-top (query-ids! :no-index))))
+                    (build-hnsw-index!)
+                    ;; the graph differs every build, so these cells assert bands; each edge sits several
+                    ;; misses beyond everything observed across dozens of independently built graphs
+                    ;; (the observed range is noted per cell) -- a value at 1.0 or near 0 means the cell broke
+                    (testing "naive :hnsw genuinely misses: recall@20 lands in a band strictly below 1"
+                      ;; observed 0.5-0.85
+                      (is (<= 0.3 (recall20 :hnsw) 0.95)))
+                    (testing "iterative scans with ef_search 16 (below the limit of 20) miss more"
+                      ;; observed 0.35-0.6
+                      (is (<= 0.15 (recall20 :hnsw-iterative-relaxed) 0.85))
+                      ;; observed 0.15-0.55, below relaxed on every graph measured: strict_order discards
+                      ;; more per visit in exchange for emission order, which the outer sort makes worthless
+                      ;; in this pipeline (the gap can shrink to one miss, so no cross-assertion)
+                      (is (<= 0.05 (recall20 :hnsw-iterative-strict) 0.8)))
+                    (testing "a saturating ef_search dials approximation away again, on the same graph"
+                      (is (= exact-top (query-ids! :hnsw-iterative-relaxed
+                                                   :vector-search-ef-search 200))))))))))))))
