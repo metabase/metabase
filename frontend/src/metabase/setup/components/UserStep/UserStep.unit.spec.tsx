@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { SetupStep, UserInfo  } from "metabase/redux/store";
+import type { SetupStep, UserInfo } from "metabase/redux/store";
 import {
   createMockSetupState,
   createMockState,

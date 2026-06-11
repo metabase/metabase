@@ -9,7 +9,13 @@ import {
   updateSetting,
   updateSettings,
 } from "metabase/redux/settings";
-import type { InviteInfo, Locale, SetupStep, State, UserInfo  } from "metabase/redux/store";
+import type {
+  InviteInfo,
+  Locale,
+  SetupStep,
+  State,
+  UserInfo,
+} from "metabase/redux/store";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
