@@ -7,7 +7,6 @@ import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
 import type { MetricsViewerDisplayType } from "metabase/metrics-viewer/types";
 import { getDimensionBreakoutConfig } from "metabase/metrics-viewer/utils";
 import { ActionIcon, Box, Flex, Icon, Menu } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
 
 import { ChartLayoutPicker } from "./ChartLayoutPicker";
 import { ChartTypePicker } from "./ChartTypePicker";
@@ -29,21 +28,22 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
 
   const handleDisplayTypeChange = useCallback(
     (display: MetricsViewerDisplayType) => {
-      updateActiveDimensionBreakout({ display });
+      updateActiveDimensionBreakout((prev) => ({ ...prev, display }));
     },
     [updateActiveDimensionBreakout],
   );
 
-  const handleVisualizationSettingsChange = useCallback(
-    (updates: Partial<VisualizationSettings>) => {
-      updateActiveDimensionBreakout({
+  const handleSplitChannelsChange = useCallback(
+    (splitChannels: boolean) => {
+      updateActiveDimensionBreakout((prev) => ({
+        ...prev,
         visualizationSettings: {
-          ...dimensionBreakout?.visualizationSettings,
-          ...updates,
+          ...prev.visualizationSettings,
+          "graph.split_panels": splitChannels,
         },
-      });
+      }));
     },
-    [updateActiveDimensionBreakout, dimensionBreakout?.visualizationSettings],
+    [updateActiveDimensionBreakout],
   );
 
   if (!dimensionBreakout || dimensionBreakout.type === "scalar") {
@@ -77,11 +77,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
         {showStackSeries && (
           <ChartLayoutPicker
             isStacked={isStacked}
-            onToggle={(stacked) =>
-              handleVisualizationSettingsChange({
-                "graph.split_panels": stacked,
-              })
-            }
+            onToggle={handleSplitChannelsChange}
           />
         )}
       </Flex>
@@ -138,11 +134,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                       c={!isStacked ? "brand" : "text-primary"}
                     />
                   }
-                  onClick={() =>
-                    handleVisualizationSettingsChange({
-                      "graph.split_panels": false,
-                    })
-                  }
+                  onClick={() => handleSplitChannelsChange(false)}
                 >
                   {t`Default`}
                 </Menu.Item>
@@ -158,9 +150,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
                     />
                   }
                   onClick={() => {
-                    handleVisualizationSettingsChange({
-                      "graph.split_panels": true,
-                    });
+                    handleSplitChannelsChange(true);
                     trackStackedSeriesEnabled();
                   }}
                 >

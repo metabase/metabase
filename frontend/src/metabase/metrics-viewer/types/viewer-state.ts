@@ -231,7 +231,9 @@ export interface UseViewerStateResult {
     options?: { updateExisting?: boolean },
   ) => void;
   updateActiveDimensionBreakout: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
+    setterFn: (
+      prev: MetricsViewerDimensionBreakoutState,
+    ) => MetricsViewerDimensionBreakoutState,
   ) => void;
   setShowColumnLabels: (showColumnLabels: boolean) => void;
   setBreakoutDimension: (

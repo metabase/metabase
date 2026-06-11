@@ -2,10 +2,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
-import type {
-  MetricsViewerDimensionBreakoutProjectionConfig,
-  MetricsViewerDimensionBreakoutState,
-} from "metabase/metrics-viewer/types";
+import type { MetricsViewerDimensionBreakoutProjectionConfig } from "metabase/metrics-viewer/types";
 import {
   type DimensionFilterValue,
   getDimensionIcon,
@@ -16,7 +13,12 @@ import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit } from "metabase-types/api";
 
 import S from "../../CenterControls.module.css";
-import { useProjectionControlsVisibility } from "../../hooks/useProjectionControlsVisibility";
+import {
+  hasBinningControls,
+  hasBucketControls,
+  hasCenterControls,
+  hasFilterControls,
+} from "../../utils";
 
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
@@ -27,7 +29,6 @@ type ControlsContentProps = {
   definition: MetricDefinition;
   allFilterDimensions?: DimensionMetadata[];
   canToggleColumnLabels?: boolean;
-  dimensionBreakout: MetricsViewerDimensionBreakoutState;
   setIsXAxisPopoverOpen: (opened: boolean) => void;
   variant: "inline" | "floating";
 };
@@ -37,11 +38,11 @@ export function ControlsContent(props: ControlsContentProps) {
     allFilterDimensions,
     canToggleColumnLabels,
     definition,
-    dimensionBreakout,
     setIsXAxisPopoverOpen,
     variant,
   } = props;
   const {
+    activeDimensionBreakout: dimensionBreakout,
     availableDimensions,
     sourceOrder,
     openSidebar,
@@ -57,20 +58,9 @@ export function ControlsContent(props: ControlsContentProps) {
     (sourceId) => (availableDimensions.bySource[sourceId]?.length ?? 0) > 0,
   );
   const hasAvailableDimensions = hasSharedDimensions || hasAnySourceDimensions;
-  const columnPickerLabel =
-    dimensionBreakout.type === "time"
-      ? t`Time`
-      : (dimensionBreakout.label ?? t`Select column`);
   const columnPickerIcon = projectionInfo.projectionDimension
     ? getDimensionIcon(projectionInfo.projectionDimension)
     : undefined;
-  const dimensionFilter = dimensionBreakout.projectionConfig.dimensionFilter;
-  const {
-    hasBinningControls,
-    hasBucketControls,
-    hasCenterControls,
-    hasFilterControls,
-  } = useProjectionControlsVisibility(projectionInfo);
 
   const handleOpenSidebar = () => {
     setIsXAxisPopoverOpen(false);
@@ -79,14 +69,15 @@ export function ControlsContent(props: ControlsContentProps) {
 
   const updateProjectionConfig = useCallback(
     (updates: Partial<MetricsViewerDimensionBreakoutProjectionConfig>) => {
-      updateActiveDimensionBreakout({
+      updateActiveDimensionBreakout((prev) => ({
+        ...prev,
         projectionConfig: {
-          ...dimensionBreakout?.projectionConfig,
+          ...prev?.projectionConfig,
           ...updates,
         },
-      });
+      }));
     },
-    [updateActiveDimensionBreakout, dimensionBreakout?.projectionConfig],
+    [updateActiveDimensionBreakout],
   );
 
   const handleDimensionFilterChange = useCallback(
@@ -110,63 +101,72 @@ export function ControlsContent(props: ControlsContentProps) {
     [updateProjectionConfig],
   );
 
+  const columnPickerLabel =
+    dimensionBreakout?.type === "time"
+      ? t`Time`
+      : (dimensionBreakout?.label ?? t`Select column`);
+  const dimensionFilter = dimensionBreakout?.projectionConfig.dimensionFilter;
+
   return (
     <Box className={S.centerControlsContent}>
-      {hasCenterControls && (
+      {hasCenterControls(projectionInfo) && (
         <Flex className={S.centerControls} align="center">
-          {hasFilterControls && projectionInfo.filterDimension && (
-            <>
-              {hasAvailableDimensions && (
+          {hasFilterControls(projectionInfo) &&
+            projectionInfo.filterDimension && (
+              <>
+                {hasAvailableDimensions && (
+                  <Box className={S.controlSection}>
+                    <Button
+                      className={S.controlButton}
+                      justify="space-between"
+                      fw="bold"
+                      aria-label={t`Change column`}
+                      variant="subtle"
+                      color="text-primary"
+                      leftSection={
+                        columnPickerIcon ? (
+                          <Icon c="brand" name={columnPickerIcon} size={16} />
+                        ) : undefined
+                      }
+                      onClick={handleOpenSidebar}
+                    >
+                      {columnPickerLabel}
+                    </Button>
+                  </Box>
+                )}
                 <Box className={S.controlSection}>
-                  <Button
-                    className={S.controlButton}
-                    justify="space-between"
-                    fw="bold"
-                    aria-label={t`Change column`}
-                    variant="subtle"
-                    color="text-primary"
-                    leftSection={
-                      columnPickerIcon ? (
-                        <Icon c="brand" name={columnPickerIcon} size={16} />
-                      ) : undefined
-                    }
-                    onClick={handleOpenSidebar}
-                  >
-                    {columnPickerLabel}
-                  </Button>
+                  <DimensionFilterButton
+                    definition={definition}
+                    filterDimension={projectionInfo.filterDimension}
+                    dimensionFilter={dimensionFilter}
+                    allFilterDimensions={allFilterDimensions}
+                    onChange={handleDimensionFilterChange}
+                  />
                 </Box>
-              )}
+              </>
+            )}
+          {hasBucketControls(projectionInfo) &&
+            projectionInfo.projectionDimension && (
               <Box className={S.controlSection}>
-                <DimensionFilterButton
+                <BucketButton
                   definition={definition}
-                  filterDimension={projectionInfo.filterDimension}
-                  dimensionFilter={dimensionFilter}
-                  allFilterDimensions={allFilterDimensions}
-                  onChange={handleDimensionFilterChange}
+                  dimension={projectionInfo.projectionDimension}
+                  projection={projectionInfo.projection!}
+                  onChange={handleTemporalUnitChange}
                 />
               </Box>
-            </>
-          )}
-          {hasBucketControls && projectionInfo.projectionDimension && (
-            <Box className={S.controlSection}>
-              <BucketButton
-                definition={definition}
-                dimension={projectionInfo.projectionDimension}
-                projection={projectionInfo.projection!}
-                onChange={handleTemporalUnitChange}
-              />
-            </Box>
-          )}
-          {hasBinningControls && projectionInfo.projectionDimension && (
-            <Box className={S.controlSection}>
-              <BinningButton
-                definition={definition}
-                dimension={projectionInfo.projectionDimension}
-                projection={projectionInfo.projection!}
-                onBinningChange={handleBinningChange}
-              />
-            </Box>
-          )}
+            )}
+          {hasBinningControls(projectionInfo) &&
+            projectionInfo.projectionDimension && (
+              <Box className={S.controlSection}>
+                <BinningButton
+                  definition={definition}
+                  dimension={projectionInfo.projectionDimension}
+                  projection={projectionInfo.projection!}
+                  onBinningChange={handleBinningChange}
+                />
+              </Box>
+            )}
         </Flex>
       )}
       {canToggleColumnLabels && <ColumnLabelOptions variant={variant} />}

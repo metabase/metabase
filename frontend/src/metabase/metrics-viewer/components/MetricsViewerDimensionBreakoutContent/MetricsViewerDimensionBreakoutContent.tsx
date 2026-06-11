@@ -20,15 +20,12 @@ export function MetricsViewerDimensionBreakoutContent() {
     definitions,
     formulaEntities,
     activeDimensionBreakout: dimensionBreakout,
-    queriesAreLoading,
-    queriesError,
     modifiedDefinitionsBySlotIndex,
     metricSlots,
     series: rawSeries,
-    cardIdToEntityIndex,
     sourceColors,
     showColumnLabels,
-    updateActiveDimensionBreakout: onDimensionBreakoutUpdate,
+    updateActiveDimensionBreakout,
   } = useMetricsViewerContext();
 
   const dimensionItems = useMemo(
@@ -99,9 +96,10 @@ export function MetricsViewerDimensionBreakoutContent() {
 
   const handleBrush = useCallback(
     ({ start, end }: { start: number; end: number }) => {
-      onDimensionBreakoutUpdate({
+      updateActiveDimensionBreakout((prev) => ({
+        ...prev,
         projectionConfig: {
-          ...dimensionBreakout?.projectionConfig,
+          ...prev.projectionConfig,
           dimensionFilter: {
             type: "specific-date",
             operator: "between",
@@ -109,9 +107,9 @@ export function MetricsViewerDimensionBreakoutContent() {
             hasTime: true,
           },
         },
-      });
+      }));
     },
-    [onDimensionBreakoutUpdate, dimensionBreakout?.projectionConfig],
+    [updateActiveDimensionBreakout],
   );
 
   if (!dimensionBreakout) {
@@ -140,16 +138,7 @@ export function MetricsViewerDimensionBreakoutContent() {
   return (
     <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
-        rawSeries={rawSeries}
         onBrush={isTimeDimensionBreakout ? handleBrush : undefined}
-        definitions={definitions}
-        formulaEntities={formulaEntities}
-        metricSlots={metricSlots}
-        dimensionBreakout={dimensionBreakout}
-        onDimensionBreakoutUpdate={onDimensionBreakoutUpdate}
-        cardIdToEntityIndex={cardIdToEntityIndex}
-        queriesAreLoading={queriesAreLoading}
-        queriesError={queriesError}
       />
       {!hideDimensionPill && showColumnLabels && (
         <Box mt="sm">

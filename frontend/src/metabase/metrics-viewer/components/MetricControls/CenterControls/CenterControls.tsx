@@ -8,7 +8,7 @@ import { Box, Button, Icon, Popover } from "metabase/ui";
 import S from "./CenterControls.module.css";
 import { ControlsContent } from "./components/ControlsContent";
 import { NoBreakoutControls } from "./components/NoBreakoutControls";
-import { useProjectionControlsVisibility } from "./hooks/useProjectionControlsVisibility";
+import { hasCenterControls } from "./utils";
 
 type CenterControlsProps = Pick<
   ComponentProps<typeof ControlsContent>,
@@ -24,7 +24,6 @@ export function CenterControls(props: CenterControlsProps) {
     () => getProjectionInfo(definition),
     [definition],
   );
-  const { hasCenterControls } = useProjectionControlsVisibility(projectionInfo);
 
   if (!dimensionBreakout) {
     return null;
@@ -34,7 +33,7 @@ export function CenterControls(props: CenterControlsProps) {
     return <NoBreakoutControls />;
   }
 
-  if (!hasCenterControls) {
+  if (!hasCenterControls(projectionInfo)) {
     return null;
   }
 
@@ -42,7 +41,6 @@ export function CenterControls(props: CenterControlsProps) {
     <>
       <Box className={S.centerCluster}>
         <ControlsContent
-          dimensionBreakout={dimensionBreakout}
           setIsXAxisPopoverOpen={setIsXAxisPopoverOpen}
           variant="floating"
           {...props}
@@ -75,7 +73,6 @@ export function CenterControls(props: CenterControlsProps) {
             bg="background-primary"
           >
             <ControlsContent
-              dimensionBreakout={dimensionBreakout}
               setIsXAxisPopoverOpen={setIsXAxisPopoverOpen}
               variant="inline"
               {...props}
