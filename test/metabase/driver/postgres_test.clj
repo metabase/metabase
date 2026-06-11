@@ -74,6 +74,14 @@
   (is (= ["extract(month from NOW())"]
          (sql.qp/format-honeysql :postgres (#'postgres/extract :month :%now)))))
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the time-aware path "
+                "and not cast to `timestamp`")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["MAKE_TIME(extract(hour from \"test_col\")::integer, 0, 0.0)"]
+             (sql.qp/format-honeysql :postgres (sql.qp/date :postgres :hour expr)))))))
+
 (deftest ^:parallel datetime-diff-test
   (is (= [["CAST("
            "  extract("
