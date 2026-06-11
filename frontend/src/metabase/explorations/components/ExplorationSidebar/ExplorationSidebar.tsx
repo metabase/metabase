@@ -472,7 +472,7 @@ function ExplorationTreeItem({
     : null;
   const isInteresting =
     !isError &&
-    (groupData?.interestingness_score ?? 0) >
+    (groupData?.interestingness_score ?? 0) >=
       QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
 
   return (

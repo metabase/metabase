@@ -10,6 +10,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { QUERY_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
 import {
   createExploration,
   createExplorationDocument,
@@ -660,6 +661,21 @@ describe("ExplorationSidebar", () => {
       });
 
       expect(marker("Low interest")).not.toBeInTheDocument();
+    });
+
+    it("shows the marker when the score is exactly at the threshold (>= 0.7)", () => {
+      setup({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Exactly threshold",
+            status: "done",
+            interestingness_score: QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
+          }),
+        ],
+      });
+
+      expect(marker("Exactly threshold")).toBeInTheDocument();
     });
 
     it("prefers contextual over heuristic — marks when contextual passes even if heuristic does not", () => {
