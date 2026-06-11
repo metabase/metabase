@@ -287,7 +287,8 @@
                                  required-perm))
 
 (defn- has-perm-for-table?
-  "Checks that the current user has the permissions for tables specified in `table-id->perm`."
+  "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
+  is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]
