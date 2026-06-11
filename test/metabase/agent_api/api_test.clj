@@ -548,6 +548,17 @@
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
       (t2/delete! :model/Card :id (:id create-resp))))
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:query (orders-query :limit 10)})
+          create-resp    (mt/user-http-request :rasta :post 200 "agent/v1/question"
+                                               {:name          "Agent Root Question"
+                                                :query         (:query construct-resp)
+                                                :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
+              create-resp))
+      (t2/delete! :model/Card :id (:id create-resp))))
   (testing "Creates a question with optional fields"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Question Collection"}]
       (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
@@ -647,6 +658,14 @@
                :collection_path personal-name
                :description     nil
                :dashcard_ids    []}
+              resp))
+      (t2/delete! :model/Dashboard :id (:id resp))))
+  (testing "An explicit null collection_id saves to the root collection, not the personal default"
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name          "Agent Root Dashboard"
+                                      :collection_id nil})]
+      (is (=? {:collection_id   nil
+               :collection_path "Our analytics"}
               resp))
       (t2/delete! :model/Dashboard :id (:id resp))))
   (testing "Creates a dashboard with questions"
