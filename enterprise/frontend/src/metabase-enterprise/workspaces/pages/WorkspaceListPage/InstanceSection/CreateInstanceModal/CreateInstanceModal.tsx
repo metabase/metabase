@@ -79,7 +79,7 @@ function CreateInstanceForm({ onCreate, onClose }: CreateInstanceFormProps) {
       <Form>
         <Stack gap="lg">
           <Text c="text-secondary">
-            {t`This should be a development instance of ${applicationName} that you already have running somewhere.`}
+            {t`This should be a development instance of ${applicationName} that you already have running.`}
           </Text>
           <FormTextInput
             name="name"
