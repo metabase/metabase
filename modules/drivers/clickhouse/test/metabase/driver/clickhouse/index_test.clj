@@ -143,7 +143,9 @@
             (testing "ADD INDEX + MATERIALIZE INDEX create the index with the expected type, columns, and granularity"
               (driver/execute-raw-queries! :clickhouse conn-spec
                                            (driver/compile-create-index :clickhouse nil table index))
-              (is (= {:type "minmax" :expr "a" :granularity 4}
+              ;; ClickHouse normalizes the index expression in the catalog and reports the single column wrapped in
+              ;; parens, so `system.data_skipping_indices.expr` reads back as "(a)" for the `(a)` we submitted.
+              (is (= {:type "minmax" :expr "(a)" :granularity 4}
                      (-> (only-skip-index conn-spec "default" table)
                          (select-keys [:type :expr :granularity])))))
             (finally (drop!))))))))
