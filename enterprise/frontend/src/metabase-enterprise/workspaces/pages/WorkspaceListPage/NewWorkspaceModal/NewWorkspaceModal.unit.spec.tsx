@@ -48,7 +48,9 @@ describe("NewWorkspaceModal", () => {
 
     await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
     await userEvent.click(screen.getByRole("checkbox", { name: "Postgres" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
 
     await waitFor(() =>
       expect(onCreate).toHaveBeenCalledWith(createdWorkspace),
@@ -59,7 +61,9 @@ describe("NewWorkspaceModal", () => {
     const { onCreate } = setup();
 
     await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
 
     expect(onCreate).not.toHaveBeenCalled();
   });
@@ -69,7 +73,9 @@ describe("NewWorkspaceModal", () => {
 
     await userEvent.type(screen.getByLabelText("Name"), "Brand new workspace");
     await userEvent.click(screen.getByRole("checkbox", { name: "Postgres" }));
-    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create workspace" }),
+    );
 
     await waitFor(() =>
       expect(trackSimpleEvent).toHaveBeenCalledWith({

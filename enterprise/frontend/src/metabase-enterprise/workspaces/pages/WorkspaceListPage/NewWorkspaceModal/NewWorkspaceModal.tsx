@@ -113,7 +113,7 @@ function NewWorkspaceForm({
           <FormErrorMessage />
           <Group justify="flex-end">
             <Button onClick={onClose}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Create`} variant="filled" />
+            <FormSubmitButton label={t`Create workspace`} variant="filled" />
           </Group>
         </Stack>
       </Form>
