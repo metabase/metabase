@@ -1,0 +1,428 @@
+(ns metabase.transforms.test-run.core-test
+  "Integration tests for the test-run orchestrator (Step 6).
+
+  All integration tests run under the :postgres gate (real DDL required).
+
+  ## Test strategy
+
+  Each test verifies:
+  1. The functional result (:passed / :failed / typed error).
+  2. The cleanup invariant: zero mb_transform_temp_table_test_* tables remain
+     in the schema after every case — including error and timeout paths.
+  3. No TransformRun row was created.
+
+  ## Fixture CSV constraint
+
+  The real `orders` table in test-data has exactly these 9 columns (position order):
+    id(Int), user_id(Int), product_id(Int), subtotal(Float), tax(Float),
+    total(Float), discount(Float?), created_at(DateTimeWithLocalTZ), quantity(Int)
+
+  parse-fixture does an EXACT header match (case-sensitive) against the real table
+  schema. Every fixture CSV for orders MUST include ALL 9 columns. NULLs are
+  represented as empty cells (not the string 'nil').
+
+  ## Native-transform construction
+
+  Native transforms MUST be built via lib/native-query — not a raw legacy
+  {:type :native :native {:query ...}} map. native-query-transform? returns
+  false for the legacy shape and the transform silently takes the MBQL branch.
+  See Step 4 log entry."
+  (:require
+   [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.core :as qp]
+   [metabase.test :as mt]
+   [metabase.transforms.test-run.core :as test-run.core]
+   [metabase.transforms.test-run.inputs :as inputs]
+   [metabase.transforms.test-run.resolve :as resolve]
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
+
+;;; ---------------------------------------------------------------------------
+;;; CSV temp-file helpers
+;;; ---------------------------------------------------------------------------
+
+(defn- write-temp-csv!
+  "Write csv-string to a temporary file and return the java.io.File."
+  ^File [csv-string]
+  (doto (File/createTempFile "test-run-fixture-" ".csv")
+    (spit csv-string)))
+
+(defmacro with-temp-csvs
+  "Create temp CSV files for each [name csv-str] pair in bindings, run body,
+  then delete all files in finally."
+  [bindings & body]
+  (let [pairs   (partition 2 bindings)
+        names   (mapv first pairs)
+        strings (mapv second pairs)]
+    `(let [~@(mapcat (fn [n s] [n `(write-temp-csv! ~s)]) names strings)]
+       (try
+         ~@body
+         (finally
+           ~@(map (fn [n] `(.delete ~n)) names))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Test invariant helpers
+;;; ---------------------------------------------------------------------------
+
+(defn- count-test-scratch-tables
+  "Count mb_transform_temp_table_test_* tables in schema on db-id via
+  information_schema. Production transform temp tables (hex-millis suffix, no
+  _test_ segment) are never matched."
+  [db-id ^String schema]
+  (let [result (qp/process-query
+                {:database db-id
+                 :type     :native
+                 :native   {:query (str "SELECT COUNT(*) FROM information_schema.tables"
+                                        " WHERE table_schema = '" schema "'"
+                                        " AND table_name LIKE 'mb_transform_temp_table_test_%'")}})]
+    (-> result (get-in [:data :rows]) first first int)))
+
+(defn- transform-run-count []
+  (t2/count :model/TransformRun))
+
+(defmacro assert-cleanup-invariant
+  "After body executes, assert: (1) no test-scratch tables remain in schema,
+  (2) TransformRun count is unchanged."
+  [db-id schema & body]
+  `(let [before-runs# (transform-run-count)]
+     ~@body
+     (is (zero? (count-test-scratch-tables ~db-id ~schema))
+         (str "Cleanup invariant: scratch tables remain in " ~schema))
+     (is (= before-runs# (transform-run-count))
+         "No TransformRun row should be created by run-test!")))
+
+;;; ---------------------------------------------------------------------------
+;;; Transform construction helpers
+;;; ---------------------------------------------------------------------------
+
+(defn- native-transform
+  "Build a native-SQL transform via lib/native-query (NEVER raw legacy map)."
+  [mp sql target-schema]
+  {:source {:type :query :query (lib/native-query mp sql)}
+   :target {:schema target-schema :type "table"}})
+
+(defn- mbql-count-transform
+  "Build an MBQL transform that computes COUNT(*) over table-kw."
+  [mp table-kw target-schema]
+  (let [tbl (lib.metadata/table mp (mt/id table-kw))
+        q   (-> (lib/query mp tbl) (lib/aggregate (lib/count)))]
+    {:source {:type :query :query q}
+     :target {:schema target-schema :type "table"}}))
+
+;;; ---------------------------------------------------------------------------
+;;; Fixture CSV constants
+;;; ---------------------------------------------------------------------------
+
+;; orders columns in position order (matching real test-data schema):
+;;   id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity
+;; Empty 7th field = NULL discount.
+(def ^:private orders-header
+  "id,user_id,product_id,subtotal,tax,total,discount,created_at,quantity")
+
+;; 3 rows: user 1 has 2 orders, user 2 has 1 order.
+(def ^:private orders-3-rows
+  (str orders-header "\n"
+       "1,1,14,37.65,2.07,100.00,,2019-02-11T21:40:27.892Z,2\n"
+       "2,1,16,49.21,2.71,200.00,,2019-02-11T21:40:27.892Z,2\n"
+       "3,2,22,88.86,4.89,150.00,,2019-02-11T21:40:27.892Z,3\n"))
+
+;; 1 row only.
+(def ^:private orders-1-row
+  (str orders-header "\n"
+       "1,1,14,37.65,2.07,100.00,,2019-02-11T21:40:27.892Z,2\n"))
+
+;; 2 rows: one per user.
+(def ^:private orders-2-rows
+  (str orders-header "\n"
+       "1,1,14,37.65,2.07,100.00,,2019-02-11T21:40:27.892Z,2\n"
+       "2,2,16,49.21,2.71,200.00,,2019-02-11T21:40:27.892Z,2\n"))
+
+;;; ===========================================================================
+;;; Happy path — native transform
+;;; ===========================================================================
+
+(deftest happy-path-native-transform-test
+  (testing "native transform: COUNT(*) GROUP BY user_id -> :passed"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [orders-f   orders-3-rows
+                                       expected-f "user_id,order_count\n1,2\n2,1\n"]
+                                      (let [transform (native-transform
+                                                       mp
+                                                       "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id"
+                                                       schema)
+                                            result    (test-run.core/run-test!
+                                                       transform {orders-id orders-f} expected-f {})]
+                                        (is (= :passed (:status result))
+                                            (str "Expected :passed; diff: " (pr-str (:diff result))))))))))))
+
+;;; ===========================================================================
+;;; Happy path — MBQL transform
+;;; ===========================================================================
+
+(deftest happy-path-mbql-transform-test
+  (testing "MBQL COUNT(*) over orders fixture (3 rows) -> :passed"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [orders-f   orders-3-rows
+                                       expected-f "count\n3\n"]
+                                      (let [transform (mbql-count-transform mp :orders schema)
+                                            result    (test-run.core/run-test!
+                                                       transform {orders-id orders-f} expected-f {})]
+                                        (is (= :passed (:status result))
+                                            (str "Expected :passed; got: " (pr-str result)))))))))))
+
+;;; ===========================================================================
+;;; Failing diff
+;;; ===========================================================================
+
+(deftest failing-diff-test
+  (testing "wrong expected values -> :failed with nonempty missing/extra rows"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [orders-f   orders-3-rows
+                                       ;; user 1 has 2 orders but expected says 99 — deliberately wrong.
+                                       expected-f "user_id,order_count\n1,99\n2,1\n"]
+                                      (let [transform (native-transform
+                                                       mp
+                                                       "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id"
+                                                       schema)
+                                            result    (test-run.core/run-test!
+                                                       transform {orders-id orders-f} expected-f {})]
+                                        (is (= :failed (:status result))
+                                            "Expected :failed with wrong expected data")
+                                        (is (or (seq (get-in result [:diff :missing-rows]))
+                                                (seq (get-in result [:diff :extra-rows]))
+                                                (seq (get-in result [:diff :cell-mismatches])))
+                                            (str "Diff report should show differences: "
+                                                 (pr-str (:diff result))))))))))))
+
+;;; ===========================================================================
+;;; Missing fixture -> typed error + cleanup
+;;; ===========================================================================
+
+(deftest missing-fixture-test
+  (testing "no fixtures provided -> ::missing-fixtures error, cleanup runs"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id  (mt/id)
+              schema "public"
+              mp     (mt/metadata-provider)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [expected-f "user_id,order_count\n1,2\n"]
+                                      (let [transform (native-transform
+                                                       mp
+                                                       "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id"
+                                                       schema)
+                                            e         (try
+                                                        (test-run.core/run-test! transform {} expected-f {})
+                                                        nil
+                                                        (catch clojure.lang.ExceptionInfo ex ex))]
+                                        (is (some? e) "Expected an exception for missing fixture")
+                                        (when e
+                                          (is (= ::inputs/missing-fixtures
+                                                 (:error-type (ex-data e)))))))))))))
+
+;;; ===========================================================================
+;;; Rewrite-failure (table-qualified column) -> typed error + cleanup
+;;; ===========================================================================
+
+(deftest rewrite-failure-test
+  (testing "table-qualified column SQL (SELECT orders.id FROM orders) -> ::cannot-test-run"
+    ;; The FROM-only rewrite leaves the `orders.` qualifier dangling on the
+    ;; SELECT column -> guard 3 fires -> ::cannot-test-run.
+    ;; Fixture must still have all 9 columns for the parse-fixture step.
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [orders-f   orders-1-row
+                                       expected-f "id\n1\n"]
+                                      (let [transform (native-transform
+                                                       mp
+                                                       "SELECT orders.id FROM orders"
+                                                       schema)
+                                            e         (try
+                                                        (test-run.core/run-test!
+                                                         transform {orders-id orders-f} expected-f {})
+                                                        nil
+                                                        (catch clojure.lang.ExceptionInfo ex ex))]
+                                        (is (some? e) "Expected ::cannot-test-run exception")
+                                        (when e
+                                          (is (= ::resolve/cannot-test-run
+                                                 (:error-type (ex-data e)))
+                                              (str "Got: " (pr-str (:error-type (ex-data e))))))))))))))
+
+;;; ===========================================================================
+;;; Cleanup invariant — explicit checks for error paths
+;;; ===========================================================================
+
+(deftest cleanup-after-missing-fixture-test
+  (testing "missing-fixture error: no seeding, no scratch tables left"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id  (mt/id)
+              schema "public"
+              mp     (mt/metadata-provider)
+              before (count-test-scratch-tables db-id schema)
+              runs   (transform-run-count)]
+          (with-temp-csvs
+            [expected-f "x\n1\n"]
+            (try
+              (test-run.core/run-test!
+               (native-transform mp "SELECT id FROM orders" schema)
+               {}
+               expected-f
+               {})
+              (catch clojure.lang.ExceptionInfo _)))
+          (is (= before (count-test-scratch-tables db-id schema))
+              "No scratch tables after missing-fixture error")
+          (is (= runs (transform-run-count))
+              "No TransformRun row"))))))
+
+(deftest cleanup-after-rewrite-failure-test
+  (testing "rewrite failure: seeding occurs but cleanup runs before throw"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)
+              before    (count-test-scratch-tables db-id schema)
+              runs      (transform-run-count)]
+          (with-temp-csvs
+            [orders-f   orders-1-row
+             expected-f "id\n1\n"]
+            (try
+              (test-run.core/run-test!
+               (native-transform mp "SELECT orders.id FROM orders" schema)
+               {orders-id orders-f}
+               expected-f
+               {})
+              (catch clojure.lang.ExceptionInfo _)))
+          (is (= before (count-test-scratch-tables db-id schema))
+              "No scratch tables after rewrite failure")
+          (is (= runs (transform-run-count))
+              "No TransformRun row"))))))
+
+;;; ===========================================================================
+;;; No TransformRun row — explicit test
+;;; ===========================================================================
+
+(deftest no-transform-run-row-test
+  (testing "run-test! never creates a TransformRun row (success and failure paths)"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)
+              before    (transform-run-count)]
+          (with-temp-csvs
+            [orders-f   orders-2-rows
+             expected-f "user_id,order_count\n1,1\n2,1\n"]
+            (try
+              (test-run.core/run-test!
+               (native-transform
+                mp
+                "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id ORDER BY user_id"
+                schema)
+               {orders-id orders-f}
+               expected-f
+               {})
+              (catch Exception _)))
+          (is (= before (transform-run-count))
+              "TransformRun count must be unchanged"))))))
+
+;;; ===========================================================================
+;;; Timeout — pg_sleep + tiny timeout -> exception + cleanup
+;;; ===========================================================================
+
+(deftest timeout-test
+  (testing "slow transform times out; scratch tables still cleaned up"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)
+              before    (count-test-scratch-tables db-id schema)
+              runs      (transform-run-count)]
+          (with-temp-csvs
+            [orders-f   orders-1-row
+             expected-f "total\n100.00\n"]
+            ;; pg_sleep(10) blocks for 10s; we set a 1s statement timeout -> throws.
+            (let [threw? (try
+                           (test-run.core/run-test!
+                            (native-transform
+                             mp
+                             "SELECT total FROM orders WHERE pg_sleep(10) IS NOT NULL"
+                             schema)
+                            {orders-id orders-f}
+                            expected-f
+                            {:timeout-ms 1000})
+                           false
+                           (catch Exception _ true))]
+              (is threw? "Expected exception from pg_sleep timeout")
+              (is (= before (count-test-scratch-tables db-id schema))
+                  "No scratch tables remain after timeout")
+              (is (= runs (transform-run-count))
+                  "No TransformRun row after timeout"))))))))
+
+;;; ===========================================================================
+;;; :ignore-columns passes through a noisy NOW() column
+;;; ===========================================================================
+
+(deftest ignore-columns-test
+  (testing ":ignore-columns skips a NOW() column -> :passed despite ts mismatch"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [db-id     (mt/id)
+              schema    "public"
+              mp        (mt/metadata-provider)
+              orders-id (mt/id :orders)]
+          (assert-cleanup-invariant db-id schema
+                                    (with-temp-csvs
+                                      [orders-f   orders-2-rows
+                                       ;; ts column has a placeholder value that won't match NOW() output,
+                                       ;; but :ignore-columns #{"ts"} excludes it from the diff.
+                                       expected-f "user_id,order_count,ts\n1,1,1970-01-01T00:00:00Z\n2,1,1970-01-01T00:00:00Z\n"]
+                                      (let [transform (native-transform
+                                                       mp
+                                                       (str "SELECT user_id, COUNT(*) AS order_count, NOW() AS ts"
+                                                            " FROM orders GROUP BY user_id ORDER BY user_id")
+                                                       schema)
+                                            result    (test-run.core/run-test!
+                                                       transform {orders-id orders-f} expected-f
+                                                       {:ignore-columns #{"ts"}})]
+                                        (is (= :passed (:status result))
+                                            (str "Expected :passed with ts ignored; got: "
+                                                 (pr-str result)))))))))))
