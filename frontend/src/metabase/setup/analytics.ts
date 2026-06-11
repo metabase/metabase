@@ -1,8 +1,8 @@
 import { trackSchemaEvent } from "metabase/analytics";
+import type { SetupStep } from "metabase/redux/store";
 import type { SetupVersion } from "metabase-types/analytics/setup";
 import type { UsageReason } from "metabase-types/api";
 
-import type { SetupStep } from "./types";
 
 /**
  * The internal "versioning" tracker that needs to be bumped for every significant
