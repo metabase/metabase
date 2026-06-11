@@ -365,8 +365,9 @@
 
 (def ^:private model-family-query-prefixes
   "Query prefixes for embedding-model families trained for asymmetric retrieval.
-  These models expect search queries — but not the indexed documents — to carry a fixed prefix."
-  [[#"(?i)snowflake-arctic-embed" "query: "]])
+  These models expect search queries — but not the indexed documents — to carry a fixed prefix.
+  Patterns must be mutually exclusive: lookup scans entries in unspecified order."
+  {#"(?i)snowflake-arctic-embed" "query: "})
 
 (defn- default-query-prefix
   [model-name]
