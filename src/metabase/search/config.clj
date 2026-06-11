@@ -319,7 +319,7 @@
   Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
   separate dispatch (with an `:hnsw` default) and must be updated by hand when adding a strategy.
 
-   - `:hnsw`                    approximate, index-backed, post-filters the candidate set
+   - `:hnsw`                   approximate, index-backed, post-filters the candidate set
    - `:brute-force`            exact, filter-first full scan (skips the index)
    - `:hnsw-iterative-relaxed` index-backed iterative scan, filters inline, results in approximate distance
                                order (pgvector `hnsw.iterative_scan = relaxed_order`)
