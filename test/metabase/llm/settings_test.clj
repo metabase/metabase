@@ -36,6 +36,50 @@
     (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
       (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
 
+;;; ------------------------------------------- llm-bedrock-configured? Tests -------------------------------------------
+
+(deftest llm-bedrock-configured?-test
+  (testing "returns false when neither credential is set"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id nil
+                                       llm-bedrock-secret-access-key nil]
+      (is (false? (llm.settings/llm-bedrock-configured?)))))
+  (testing "returns false when only the access key id is set"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key nil]
+      (is (false? (llm.settings/llm-bedrock-configured?)))))
+  (testing "returns false when only the secret access key is set"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id nil
+                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (false? (llm.settings/llm-bedrock-configured?)))))
+  (testing "returns true when both credentials are set"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (true? (llm.settings/llm-bedrock-configured?))))))
+
+;;; ------------------------------------------- llm-bedrock-region Setter Tests -------------------------------------------
+
+(deftest llm-bedrock-region-setter-accepts-known-region-test
+  (testing "accepts a known AWS region and trims whitespace"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-region nil]
+      (mt/discard-setting-changes [llm-bedrock-region]
+        (llm.settings/llm-bedrock-region! "  us-west-2  ")
+        (is (= "us-west-2" (llm.settings/llm-bedrock-region)))))))
+
+(deftest llm-bedrock-region-setter-rejects-unknown-region-test
+  (testing "rejects a region not in the AWS SDK's known set"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid AWS region \"evil\.example/\?x=\""
+         (llm.settings/llm-bedrock-region! "evil.example/?x=")))))
+
+(deftest llm-bedrock-region-setter-clears-on-empty-test
+  (testing "empty/nil clears the setting, falling back to the default"
+    (mt/with-temp-env-var-value! [mb-llm-bedrock-region nil]
+      (mt/discard-setting-changes [llm-bedrock-region]
+        (llm.settings/llm-bedrock-region! "us-west-2")
+        (llm.settings/llm-bedrock-region! "")
+        (is (= "us-east-1" (llm.settings/llm-bedrock-region)))))))
+
 ;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
 
 (deftest llm-proxy-base-url-feature-guard-test

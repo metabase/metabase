@@ -104,11 +104,15 @@
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "bedrock" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
   "claude-sonnet-4-6")
+
+(def ^:private default-bedrock-llm-metabot-model
+  "Default Bedrock model used for Metabot when no explicit model is selected."
+  "anthropic.claude-opus-4-8")
 
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
@@ -119,7 +123,8 @@
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
-  {"anthropic"                       default-anthropic-llm-metabot-model
+  {"anthropic"                            default-anthropic-llm-metabot-model
+   "bedrock"                              default-bedrock-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -234,10 +239,17 @@
                 (not (str/blank? token)))))
 
 (defn configured-provider-api-key
-  "Returns the configured API key for the given provider, or nil if unrecognized."
+  "Returns the configured API key for the given provider, or nil if unrecognized or unconfigured.
+
+  Bedrock has no single API key — it authenticates with AWS SigV4 from several `llm-bedrock-*`
+  settings. We return the access key ID as a presence sentinel, but only when Bedrock is fully
+  configured (both the access key ID and secret access key are set), so callers that use this as a
+  truthiness gate don't attempt requests that would fail on the missing secret."
   [provider]
   (case provider
     "anthropic"  (llm.settings/llm-anthropic-api-key)
+    "bedrock"    (when (llm.settings/llm-bedrock-configured?)
+                   (llm.settings/llm-bedrock-access-key-id))
     "openai"     (llm.settings/llm-openai-api-key)
     "openrouter" (llm.settings/llm-openrouter-api-key)
     nil))
@@ -245,11 +257,18 @@
 (defn- llm-provider-configured?
   "Check if a provider-and-model string has the necessary configuration.
   For `metabase/*` providers, checks that the proxy URL is set.
-  For direct providers, checks that a BYOK API key is set."
+  For Bedrock, checks that both the AWS access key ID and secret access key are set.
+  For other direct providers, checks that a BYOK API key is set."
   [provider-and-model]
   (boolean
-   (if (provider-util/metabase-provider? provider-and-model)
+   (cond
+     (provider-util/metabase-provider? provider-and-model)
      (some? (llm.settings/llm-proxy-base-url))
+
+     (= (provider-util/provider-and-model->provider provider-and-model) "bedrock")
+     (llm.settings/llm-bedrock-configured?)
+
+     :else
      (some-> provider-and-model
              provider-util/provider-and-model->provider
              configured-provider-api-key

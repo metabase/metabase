@@ -205,6 +205,13 @@
       (is (false? (#'openai/model-supports-temperature? model))
           model))))
 
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an openai. vendor prefix that is stripped before the check"
+    (doseq [model ["openai.gpt-5.5" "openai.gpt-5.4" "openai.gpt-5.5-2026-04-23" "openai.o3-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))
+    (is (true? (#'openai/model-supports-temperature? "openai.gpt-4.1-mini")))))
+
 (deftest temperature-omitted-for-reasoning-models-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
     (let [request-body (fn [opts]

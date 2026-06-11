@@ -14,6 +14,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
+   [metabase.metabot.self.bedrock :as bedrock]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as core]
    [metabase.metabot.self.openai :as openai]
@@ -29,6 +30,7 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/claude
+    "bedrock"    bedrock/bedrock
     "openai"     openai/openai
     "openrouter" openrouter/openrouter
     (throw (ex-info (str "Unknown LLM provider: " provider)
@@ -38,6 +40,7 @@
   ;; a `case` inside of function instead of a map so that with-redefs work well
   (case provider
     "anthropic"  claude/list-models
+    "bedrock"    bedrock/list-models
     "openai"     openai/list-models
     "openrouter" openrouter/list-models
     (throw (ex-info (str "Unknown LLM provider: " provider)

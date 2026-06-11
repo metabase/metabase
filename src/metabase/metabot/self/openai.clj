@@ -211,16 +211,15 @@
 (defn- model-supports-temperature?
   "Whether `model` accepts an explicit `temperature` parameter.
 
-  The GPT-5 family and the o-series reasoning models only support the default temperature and return a 400
-  (\"Unsupported parameter: 'temperature' is not supported with this model.\") when one is sent, so we omit it for them."
+  The GPT-5 family and the o-series reasoning models only support the default temperature."
   [model]
-  (let [model (str model)]
+  (let [model (str/replace-first (str model) #"^openai\." "")]
     (not (or (str/starts-with? model "gpt-5")
              (re-find #"^o\d" model)))))
 
-(mu/defn openai-raw
-  "Perform a streaming request to OpenAI Responses API."
-  [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy?]
+(mu/defn openai-request-body
+  "Build the OpenAI Responses API request body for an LLM request."
+  [{:keys [model system input tools schema tool_choice temperature max-tokens]
     :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
   (let [all-tools (or (when schema
                         ;; Structured output: force a tool call with the given JSON schema
@@ -228,20 +227,27 @@
                           :name        "structured_output"
                           :description "Output structured data"
                           :parameters  schema}])
-                      (when (seq tools) (mapv tool->openai tools)))
-        req       (cond-> {:model        model
-                           :stream       true
-                           :store        false
-                           :instructions system
-                           :input        (parts->openai-input input)}
-                    all-tools   (assoc :tool_choice (cond
-                                                      schema      "required"
-                                                      tool_choice tool_choice
-                                                      :else       "auto")
-                                       :tools       all-tools)
-                    (and temperature
-                         (model-supports-temperature? model)) (assoc :temperature temperature)
-                    max-tokens  (assoc :max_output_tokens max-tokens))]
+                      (when (seq tools) (mapv tool->openai tools)))]
+    (cond-> {:model        model
+             :stream       true
+             :store        false
+             :instructions system
+             :input        (parts->openai-input input)}
+      all-tools   (assoc :tool_choice (cond
+                                        schema      "required"
+                                        tool_choice tool_choice
+                                        :else       "auto")
+                         :tools       all-tools)
+      max-tokens  (assoc :max_output_tokens max-tokens)
+
+      (and temperature (model-supports-temperature? model))
+      (assoc :temperature temperature))))
+
+(mu/defn openai-raw
+  "Perform a streaming request to OpenAI Responses API."
+  [{:keys [model ai-proxy?] :as opts
+    :or   {model "gpt-4.1-mini"}} :- core/LLMRequestOpts]
+  (let [req (openai-request-body opts)]
     (try
       (let [api-key  (not-empty (llm/llm-openai-api-key))
             auth     (core/resolve-auth "openai" "OpenAI"
