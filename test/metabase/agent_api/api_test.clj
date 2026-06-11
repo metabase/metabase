@@ -442,10 +442,11 @@
 (deftest combined-query-accepts-resolved-handle-test
   (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
             skipping the representations pipeline"
-    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:query (orders-query
-                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
-                                                        :limit    5)})]
+    (let [table-id       (mt/id :orders)
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                               {:source     {:type "table" :id table-id}
+                                                :operations [["order-by" ["field" (visible-field-id table-id "ID")]]
+                                                             ["limit" 5]]})]
       (is (=? {:status             "completed"
                :row_count          5
                :continuation_token nil?
@@ -457,10 +458,11 @@
             continuation_token across pages"
     (let [page-size      200
           total-rows     250
+          table-id       (mt/id :orders)
           construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:query (orders-query
-                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
-                                                        :limit    total-rows)})
+                                               {:source     {:type "table" :id table-id}
+                                                :operations [["order-by" ["field" (visible-field-id table-id "ID")]]
+                                                             ["limit" total-rows]]})
           page1          (mt/user-http-request :rasta :post 202 "agent/v2/query"
                                                {:query (:query construct-resp)})
           page2          (mt/user-http-request :rasta :post 202 "agent/v2/query"
