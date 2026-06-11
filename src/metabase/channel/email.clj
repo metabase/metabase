@@ -186,7 +186,7 @@
 (mu/defn send-email-retrying!
   "Like [[send-message-or-throw!]] but retries sending on errors according to the retry settings."
   [email :- EmailMessage]
-  (retry/with-retry (retry/retry-configuration)
+  (retry/with-retry (channel.settings/retry-configuration)
     (send-message-or-throw! email)))
 
 (def ^:private SMTPStatus
