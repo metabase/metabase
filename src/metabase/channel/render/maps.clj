@@ -133,7 +133,7 @@
         gr (linear->srgb (+ (* -0.9689 x) (* 1.8758 y) (* 0.0415 z)))
         b  (linear->srgb (+ (* 0.0557 x) (* -0.2040 y) (* 1.0570 z)))
         clamp (fn ^long [^double v] (long (Math/round (* 255.0 (-> v (Math/max 0.0) (Math/min 1.0))))))]
-    (Color. (clamp r) (clamp gr) (clamp b))))
+    (Color. (int (clamp r)) (int (clamp gr)) (int (clamp b)))))
 
 (let [[l0 c0 h0] (color->lch grid-low-color)
       [l1 c1 h1] (color->lch grid-high-color)
@@ -245,7 +245,7 @@
                y       (int (Math/round (double (min y0 y1))))
                w       (max 1 (int (Math/round (Math/abs (- (double x1) (double x0))))))
                h       (max 1 (int (Math/round (Math/abs (- (double y1) (double y0))))))
-               c       (grid-color (double (or metric mn)) mn mx)]
+               c       ^Color (grid-color (double (or metric mn)) mn mx)]
            ;; semi-transparent so the basemap shows through, like the live grid overlay
            (.setColor g (Color. (.getRed c) (.getGreen c) (.getBlue c) 170))
            (.fillRect g x y w h)))))))

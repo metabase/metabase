@@ -80,7 +80,7 @@
 (defn- fetch-geojson-data*
   [url]
   ;; url->reader handles both classpath (when MB_ALLOW_CLASSPATH_GEOJSON) and remote URLs.
-  (with-open [reader (url->reader url)]
+  (with-open [^java.io.Reader reader (url->reader url)]
     (json/decode (slurp reader))))
 
 (def ^:private fetch-geojson-data
