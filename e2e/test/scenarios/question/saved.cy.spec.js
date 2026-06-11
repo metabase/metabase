@@ -297,13 +297,23 @@ describe("scenarios > question > saved", () => {
     cy.signIn("readonly");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    cy.findAllByTestId("header-cell")
-      .filter(":contains(Tax)")
-      .as("headerCell")
-      .then(($cell) => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
-        cy.wrap(originalWidth).as("originalWidth");
-      });
+    const taxHeaderCell = () =>
+      cy.findAllByTestId("header-cell").filter(":contains(Tax)").first();
+
+    // The data grid first paints every column at the TanStack default width and
+    // then asynchronously measures content to shrink columns to fit. Wait for
+    // that measurement to land before capturing the baseline, otherwise the drag
+    // is compared against the stale (wider) default width.
+    const DEFAULT_COLUMN_WIDTH = 150;
+    taxHeaderCell().should(($cell) => {
+      expect($cell[0].getBoundingClientRect().width).to.be.lessThan(
+        DEFAULT_COLUMN_WIDTH,
+      );
+    });
+
+    taxHeaderCell().then(($cell) => {
+      cy.wrap($cell[0].getBoundingClientRect().width).as("originalWidth");
+    });
 
     cy.findByTestId("resize-handle-TAX").trigger("mousedown", {
       button: 0,
@@ -324,11 +334,8 @@ describe("scenarios > question > saved", () => {
       });
     cy.get("body").trigger("mouseup", { force: true });
 
-    // Wait until column width gets updated
-    cy.wait(10);
-
     cy.get("@originalWidth").then((originalWidth) => {
-      cy.get("@headerCell").should(($newCell) => {
+      taxHeaderCell().should(($newCell) => {
         const newWidth = $newCell[0].getBoundingClientRect().width;
         expect(newWidth).to.be.gte(originalWidth + stepX * 2);
       });
