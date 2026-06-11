@@ -1,167 +1,150 @@
 ---
 name: metabase-ui-component-from-figma
-description: Update or build a Metabase design-system component (frontend/src/metabase/ui — Chip, Badge, Alert, Switch, etc.) to match a Figma spec described in a Linear issue. Use when a ticket asks to restyle/implement a `metabase/ui` component from Figma. Covers: checking out the issue, mapping usage and blast radius into a findings doc, building a Storybook showcase matrix FIRST, then styling the component from exact Figma tokens while iterating with the user, and committing + migrating call sites LAST.
+description: Update or build a Metabase design-system component (frontend/src/metabase/ui — Chip, Badge, Alert, Switch, etc.) to match a Figma spec described in a Linear issue. Use when a ticket asks to restyle an existing `metabase/ui` component or implement a new one from Figma. Covers: checking out the issue, mapping the component (usage/blast radius for an existing one, or scaffolding a new one), building a Storybook showcase matrix (before styling for existing components, after for new ones), styling from exact Figma tokens while iterating with the user, and committing + migrating call sites LAST.
 ---
 
 # Metabase UI component from Figma
 
-End-to-end workflow for bringing a `metabase/ui` (Mantine) component in line with a Figma design, driven by a Linear ticket. The phases are **ordered on purpose** — story before styling, styling before commit. Do not reorder them.
+End-to-end workflow for bringing a `metabase/ui` (Mantine) component in line with a Figma design, driven by a Linear ticket. 
 
-The golden rule: **build the Storybook showcase while the component still has its old styles, and only start changing component styles once the showcase exists.** The showcase is how you (and the user) judge the restyle at a glance and is a candidate visual-regression test.
+The golden rule (existing components): **build the Storybook showcase before changing any component styles.** Build it while the old styles are still in place — so the team can see the current component at a glance and get accustomed to it before the migration, then watch it light up as you restyle. You end up with a visual-regression (Loki) candidate either way. A **new** component has nothing to render until it's built, so this rule doesn't apply to create mode — there the order flips: implement and style the component first, then build its showcase to present the result.
 
-This is a frontend task — also load **typescript-write** (and **typescript-review** before handing off). Worked reference: this skill was distilled from Chip component implementation. Concrete Chip details appear as examples — adapt them per component.
+This is a frontend task — also load **typescript-write** (and **typescript-review** before handing off).
+
+## Two modes
+
+The ticket is one of two shapes; identify which up front, because Phase 2 differs:
+
+- **Update an existing component** — the component already exists with call sites, either in `metabase/ui` *or* as a legacy component elsewhere (e.g. `frontend/src/metabase/common/components/`, possibly Emotion styled-components) that this ticket also migrates into `metabase/ui`. The risk is *regression* (call sites, behavior), so you map usage and lock behavior with tests before touching it.
+- **Create a new component** — nothing equivalent exists anywhere yet. Rarer. The risk is *API design*, so you scaffold the component and its public surface first.
+
+Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode builds the showcase (Phase 3) *before* styling (Phase 4); create mode does the reverse — implement and style first, then build the showcase as the last step — because there's nothing to render until the component exists.
 
 ---
 
 ## Phase 1 — Check out the issue
 
-1. The user gives a Linear issue (link or `TEAM-1234`). Fetch it with the Linear MCP `get_issue`.
-2. From the issue pull:
-   - **Figma link(s)** — usually in the description. Extract the `node-id` (e.g. `?node-id=250-13588` → `250-13588`) and `fileKey` (the `/design/<fileKey>/...` segment).
-   - **`gitBranchName`** — the branch Linear associates with the issue.
-   - **Requirements** — e.g. "we use the `sm` and `md` sizes" / "the `light` and `filled` variants". These define the axes of your showcase matrix.
-3. Switch to the issue's branch if not already on it (`git rev-parse --abbrev-ref HEAD` to check; it may already match).
+1. Fetch the Linear issue with the Linear MCP `get_issue`.
+2. Pull from it:
+   - **Figma link(s)** — extract the `node-id` (`?node-id=250-13588` → `250-13588`) and `fileKey` (the `/design/<fileKey>/…` segment).
+   - **`gitBranchName`** — switch to it if not already there.
+   - **The component's intended API** — variants, sizes, and states the design system supports for this component. This defines the axes of your showcase (Phase 3).
+3. Decide the mode. Does the component already exist anywhere — in `frontend/src/metabase/ui/components/**/<Component>/`, or as a legacy component under `frontend/src/metabase/common/components/` (or elsewhere)? If so → **update** mode (a legacy component still counts; the ticket migrates it into `metabase/ui`). Only if nothing equivalent exists → **create** mode. Confirm with the user when unsure — a similarly-named primitive may already exist under a different group or name.
 
-## Phase 2 — Map usage & blast radius (findings doc)
+## Phase 2 — Understand the component
 
-Before touching anything, find where the component is defined and used, and write it down.
+### Mode: update an existing component
 
-1. Locate the component dir. A design-system component lives in `frontend/src/metabase/ui/components/<group>/<Component>/` — typically `Component.config.ts`, `Component.module.css`, `Component.stories.tsx`, `index.ts`. But the ticket may be **migrating a legacy component** that still lives in `frontend/src/metabase/common/components/<Component>/` (older patterns, possibly Emotion styled-components, maybe not yet a Mantine wrapper). If so, part of the work is bringing it into `metabase/ui` — confirm the target location with the user, and reach for the **emotion-migrate** skill if you're replacing styled-components along the way.
-2. Find every usage across `frontend/src` and `e2e` (JSX `<Component`, `Component.Group`, wrapper components like `Form<Component>Group`). Watch for false positives (a CSS class named `…ChipClass` is not the component).
-3. Write findings to **`local/<TICKET>-<component>-usage-findings.md`** (`local/` is gitignored). For each finding record:
-   - code location (`file:line`),
-   - short usage context,
-   - **non-standard usage notes** — excessive customization, inline styling, or invalid props. (Chip example: every call site passed `variant="brand"`, which is **not** a real Mantine Chip variant — it was a no-op overridden by CSS. Catching this early told us the call sites would need migrating in Phase 6.)
-4. **This document stays.** It is not a scratch file — the user reads it at the very end to manually verify every usage still looks right after the restyle. Keep it accurate; update it if call sites change.
+1. Locate the component dir under `frontend/src/metabase/ui/components/<group>/<Component>/` (typically `Component.config.ts` or `Component.tsx`, `Component.module.css`, `Component.stories.tsx`, `index.ts`). A ticket may also be **migrating a legacy component** from `frontend/src/metabase/common/components/` into `metabase/ui` — if it still uses Emotion styled-components, reach for the **emotion-migrate** skill.
+2. Map every usage across `frontend/src` and `e2e` (JSX `<Component`, sub-components like `Component.Group`, and wrapper components).
+3. Write findings to **`local/<TICKET>-<component>-usage-findings.md`** (`local/` is gitignored), one entry per usage: code location (`file:line`), short context, and **non-standard usage** (excessive customization, inline styling, invalid/legacy props). Invalid props are a signal that call sites will need migrating in Phase 6. This doc **stays** — the user walks it at the end to verify each real usage still looks right.
+4. State the blast radius plainly: how many call sites, where, and whether they're confined.
+5. **Lock behavior with tests before changing anything — when warranted.** Only for components that have **custom interactive behavior** (their own event handlers, state, keyboard logic, controlled/uncontrolled wiring). Add unit tests covering that current API/behavior so a regression shows up as a failing test. **Skip tests for thin Mantine wrappers** — don't test built-in Mantine behavior, and a pure visual restyle is covered by the showcase/Loki, not unit tests.
 
-State the blast radius plainly: how many call sites, where, and whether they're confined (e.g. "only two admin forms, via the `FormChipGroup` wrapper").
+### Mode: create a new component
 
-## Phase 3 — Build the Storybook showcase FIRST
+1. Decide whether it wraps a Mantine primitive (most common — extend it via a `.config.ts` using `<Mantine>.extend({...})` and theme registration) or is bespoke. Prefer wrapping Mantine.
+2. Scaffold the component dir + its public surface: `Component.tsx`/`Component.config.ts`, `Component.module.css`, `Component.stories.tsx`, `index.ts`, and wire the export through the group barrel and the `metabase/ui` barrel.
+3. There are no call sites to map yet; instead note the intended usage from the ticket so the eventual showcase reflects real props.
+4. **Order note:** for a new component, implement and style it (Phase 4) first, *then* build the showcase (Phase 3) to present the finished result — there's nothing to render until it exists. The phases below are written update-first; just run 4 before 3 in create mode.
 
-Goal: a single story that shows **every state at a glance**, themeable, and suitable to become a Loki visual-regression test. The component still has its OLD styles here — that's expected; the showcase will "light up" once you restyle in Phase 4.
+## Phase 3 — Build the Storybook showcase
+
+Goal: one story that shows **every state at a glance**, themeable, suitable as a Loki visual-regression test. **Update mode: build this before Phase 4, while the old styles are still in place. Create mode: do this after Phase 4**, once the component exists to render.
 
 ### Reusable showcase helpers
 
-Shared, Storybook-only primitives live in **`frontend/src/metabase/ui/stories/showcase/`** (not under `components/`, so they never leak into the `metabase/ui` barrel). Reuse them across component stories; extend the set when a new pattern is genuinely reusable (don't over-build):
+Use the shared, Storybook-only primitives in **`frontend/src/metabase/ui/stories/showcase/`**: `StoryShowcase` (titled panel), `StorySection`, `StoryRow`, and `StoryJsx` (monospace JSX with light syntax highlighting via `tokenizeJsx`). Extend the set only when a new pattern is genuinely reusable.
 
-- `StoryShowcase` — bordered `Paper` panel + a title.
-- `StorySection` — a titled section with an optional description line.
-- `StoryRow` — fixed-width label on the left + content on the right.
-- `StoryJsx` — monospace JSX with light syntax highlighting (a small regex tokenizer, `tokenizeJsx`, distinguishing `<>/=`, tag, prop name, prop value; tokens rendered as plain `<span>`s with `--mb-color-*` colors — `text-syntax-variable` for prop names, `text-syntax-string` for values, `text-secondary` for punctuation).
+### Derive the matrix from the component's full state space
 
-### Matrix shape is GUIDED BY FIGMA, not fixed
+Enumerate **all** the states the component can be in — every supported variant, size, and interaction/selection state (from its props/types and the design-system API, not merely the subset the issue happens to mention) — then cross-reference with the Figma spec and build the matrix on that. Don't omit a supported state because the ticket didn't list it; don't invent an axis Figma doesn't show (e.g. a static component has no hover/pressed).
 
-The Chip matrix was `variant × size × state`, but **the axes depend on the component**:
-- Some components have no interactive states — e.g. an **Alert** has no hover/pressed, but may have several variants and an icon. Don't invent axes Figma doesn't show.
-- Read the Figma spec to decide the axes (variants, sizes, states, with/without icon, etc.).
+**Exclude theme from the matrix.** Figma usually models light/dark as a component *property* (because it doesn't use variable modes), but theme is **not** a real component prop in the app — it's global. So never make theme a matrix axis or column; drive light/dark with the global Storybook `theme` toggle instead (see below).
 
-Typical layout (mirrors how the Figma component sheet is usually drawn):
-- A **title** (`StoryShowcase title="Chip"`).
-- A single **CSS-grid matrix**: the left column holds the state labels (one per row — Default, Hover, Pressed, Selected, …), then **one column per axis-combination** (e.g. `variant × size`: light·sm, light·md, filled·sm, filled·md). Each column is headed by the real JSX usage via `StoryJsx` (e.g. `<Chip variant="light" size="sm" />`), so the header states the props explicitly and the state label appears only once on the left. Use `gridTemplateColumns: \`<labelWidth> repeat(N, max-content)\`` and `React.Fragment` per row.
+Typical layout (mirrors the Figma component sheet): a `StoryShowcase` title, then a single **CSS-grid matrix** — state labels down the left column, one column per axis-combination (e.g. `variant × size`), each column headed by the real JSX usage via `StoryJsx`. Use `gridTemplateColumns: \`<labelWidth> repeat(N, max-content)\`` with a `React.Fragment` per row.
 
 ### Theme: use the global toggle, render ONE copy
 
-Render the showcase **once** and let Storybook's global `theme` control (light/dark, defined in `.storybook/preview.tsx`) switch it. Do **not** try to render light and dark panels side by side: Metabase bakes per-scheme hex into `--mantine-color-*` at `:root`, and Mantine color tokens (`c="text-primary"`, `color="brand"`) follow the global scheme.
+Render the showcase once and let Storybook's global `theme` control (defined in `.storybook/preview.tsx`) switch light/dark. Do **not** render light and dark side by side: Metabase bakes per-scheme hex into `--mantine-color-*` at `:root`, and Mantine color tokens follow the global scheme — a nested scheme wrapper won't re-scope them.
 
 ### Forcing hover/pressed for the matrix
 
-Use **`storybook-addon-pseudo-states`** (installed, registered in `.storybook/main.ts`). It works fine with Mantine's internal slots **if you point it at the right element**. Do NOT add `data-force-*` selectors to the component CSS; keep production CSS free of Storybook-only hooks.
+Use **`storybook-addon-pseudo-states`** (registered in `.storybook/main.ts`); don't add `data-force-*` hooks to component CSS. Set `parameters.pseudo` to force states per cell. Two things make or break it:
 
-How the addon rewrites `:hover` (and `:active`, `:focus`, …):
-- it adds, to every rule containing `:hover`, an extra selector — both a **compound** form (`<rule>.pseudo-hover`, the class on the *exact element* the `:hover` sat on) and an **ancestor** form (`.pseudo-hover-all <rule>`).
-- `parameters.pseudo = { hover: true }` → toggles `.pseudo-hover-all` on the story root (forces *every* hover rule in the story).
-- `parameters.pseudo = { hover: "<selector>" }` (string/array) → applies the **compound** form, i.e. `.pseudo-hover` on the element matching `<selector>`. **That selector must match the element the `:hover` rule attaches to.**
+1. **Aim the selector at the element the pseudo-class actually sits on**, which for a Mantine component is often an inner slot, not the root. A string/array value applies `.pseudo-<state>` to the matched element, so it must match that slot. Import the CSS-module class (`S.<Slot>`) to target it.
+2. **Land your per-cell hook on the root via the factory's root-props slot** (e.g. `wrapperProps`), because Mantine forwards top-level `data-*`/rest props to an inner element, not the root. Check the component's `.d.ts` for the right slot.
 
-Two gotchas that bit us on Chip, both essential:
-1. **Target the slot the pseudo-class lives on, not the root.** Chip's `:hover`/`:active` sit on the `label` slot (`.ChipLabel`), so per-row selectors must reach it: `` `[data-state-row="${id}"] .${S.ChipLabel}` `` — import `S` from the component's `.module.css` to get the hashed class. Targeting the root or a wrapper silently does nothing.
-2. **Land your hook on the root, not the hidden input.** Mantine forwards top-level `data-*` (and most rest props) to the hidden `<input>`, *not* the root element. Use the factory's dedicated root-props slot — for Chip that's `wrapperProps={{ "data-state-row": id }}`. (Check the component's `.d.ts` for the equivalent slot — `wrapperProps`, `rootProps`, etc.)
-
-So: give each cell a stable `data-*` on its root via the proper slot, then in the story's `parameters.pseudo` map the forced rows to `[data-… ] .<SlotClass>` selectors. The toolbar toggle still works independently (it uses the `-all` ancestor form).
+The addon toolbar toggle keeps working independently (it forces every rule in the story).
 
 ### Story conventions
 
-- Keep an interactive `Default` story plus the matrix story (e.g. `Overview`).
-- Restricting `argTypes` (e.g. `size: ["sm", "md"]`) to what the ticket supports is good.
-- **Scope controls per story.** `argTypes`/`args` merge meta → story, so a static matrix story should hide knobs it ignores: `parameters.controls = { include: ["children", "theme"] }` (or `{ disable: true }` to drop the panel entirely). The matrix usually fixes `variant`/`size`/`disabled` per cell, leaving only the label `children` and the global `theme` meaningful — wire `children` through to every cell so that knob actually does something.
-- `loki.config.js` has a `storiesFilter`; renaming stories can affect Loki. Check before renaming a story that's already in the filter.
+- Keep an interactive default story plus the matrix story.
+- Restrict `argTypes` to the supported API (e.g. only the sizes the DS uses).
+- **Scope controls per story.** A static matrix should hide knobs it ignores: `parameters.controls = { include: [...] }` (or `{ disable: true }`). Wire any kept knob (e.g. `children`) through to the cells so it does something.
+- `loki.config.js` has a `storiesFilter`; check it before renaming a story that's already covered.
 
-Validate the story before moving on:
-- `bun run lint-eslint-pure -- <files>`
-- `bun run type-check-pure`
+Validate: `bun run lint-eslint-pure -- <files>` and `bun run type-check-pure`.
 
 ### Optional: verify in the browser yourself
 
-If a browser-driving MCP is connected (e.g. **chrome-devtools-mcp** — tools like `new_page`, `navigate_page`, `take_snapshot`, `take_screenshot`, `evaluate_script`, `resize_page`), use it to check your own work against the running Storybook instead of relying solely on the user's eyes:
+If a browser-driving MCP is connected (e.g. **chrome-devtools-mcp**: `navigate_page`, `take_screenshot`, `take_snapshot`, `evaluate_script`, `resize_page`), use it to check your own work against the running Storybook (`http://localhost:6006/iframe.html?id=<story-id>`, the kebab-cased title + story). Screenshot for a visual read; `evaluate_script`/`take_snapshot` to confirm DOM facts (a hook landed on the root, pseudo classes applied, a resolved `--mb-color-*`). This is a **convenience, never a requirement** — without it, rely on the user's visual check (and you may suggest installing the plugin). Storybook is usually already running; don't start it. (Screenshot writes may be sandboxed to the repo root — save under `local/` then `mv`.)
 
-- Open the story canvas directly: `http://localhost:6006/iframe.html?id=<story-id>` (the id is the kebab-cased title + story, e.g. `components-ask-before-using-chip--overview`), or the full UI at `…/?path=/story/<story-id>`. Storybook is usually already running — don't start it yourself.
-- `take_screenshot` for a visual read; `resize_page` (e.g. 1600×1000) first if a wide matrix is clipped.
-- `take_snapshot` / `evaluate_script` to inspect the real DOM — confirm a `data-*` hook landed on the **root** (not the hidden input), that the pseudo-states classes were applied, or read a computed style / resolved `--mb-color-*` on a specific cell.
-
-This is a **convenience, never a requirement.** If no such MCP is connected, just rely on the user's visual check — and you may mention that installing one (the chrome-devtools-mcp plugin) would let you self-verify layout/DOM in future. Don't block on it. (File writes from these tools may be sandboxed to the repo root — save a screenshot under `local/` and `mv` it elsewhere if needed.)
-
-Pause here and let the user look at the showcase. Iterate on layout/spacing only — **no component style changes yet.**
+Pause here and let the user look. Iterate on layout/spacing only — **no component style changes yet.**
 
 ## Phase 4 — Style the component from Figma
 
-Only now do you change `Component.config.ts` / `Component.module.css`. Get **exact tokens from Figma** — do not eyeball hex from screenshots.
+Now change the component's `.config.ts` / `.module.css`. Get **exact tokens from Figma** — never eyeball hex from a screenshot.
 
 ### Figma desktop MCP is required for tokens
 
-`get_screenshot` works by `nodeId`, but `get_variable_defs`, `get_design_context`, and `get_metadata` read the **current selection in the Figma desktop app** via the **Dev Mode MCP server**.
+`get_screenshot` works by `nodeId`, but `get_variable_defs`, `get_design_context`, and `get_metadata` read the **current selection in the Figma desktop app** via the **Dev Mode MCP server**. If they error with "nothing selected" or the server isn't connected, **prompt the user** to enable the Dev Mode MCP server (Switch to Dev Mode → MCP section in right sidebar) and select the relevant layer(s). Don't pixel-sample a screenshot as a substitute.
 
-- If those tools error with "You currently have nothing selected" or the desktop MCP isn't connected, **prompt the user** to:
-  1. enable the Dev Mode MCP server in Figma desktop (Switch to Dev Mode → Find MCP section in right sidebar) and add it as a local MCP if needed, and
-  2. **select the relevant layer(s)** when you ask. You'll often ask them to select a representative component variant; you can then drill into specific state nodes by `nodeId`.
-- Do **not** spend many turns pixel-sampling a screenshot as a substitute — it's unreliable and wastes the budget. Get the user to wire up the desktop MCP instead.
+### Extract and map tokens
 
-### Extracting and mapping tokens
-
-1. `get_metadata` on the spec frame to get the node id + name of every `Theme=… , Variant=… , Size=… , State=…` symbol.
-2. `get_variable_defs` per state symbol for exact colors, spacing, radius, font.
-3. `get_design_context` (forceCode) on one symbol for exact CSS dims (padding, gap, icon size). It may interrupt asking about Code Connect — you can skip that.
-4. **Use the semantic token names `get_variable_defs` returns.** An up-to-date spec binds each color property to a semantic token (a role like `text/hover`, `background/selected`) — match it to the corresponding `--mb-color-*` key (key list: `frontend/src/metabase/ui/colors/types/color-keys.ts`) and use it directly; one definition then works in both themes. To sanity-check a token resolves to the shade you expect, read `frontend/src/metabase/ui/colors/constants/themes/light.ts` / `dark.ts` (semantic token → base ramp per scheme) and `base-colors.ts` (ramp → hsla). Caveat: `get_variable_defs` returns mode-aware *values* that may be the wrong mode for dark symbols — trust the variable **names**, not the returned hex for dark. If a property is bound to a **primitive ramp** instead of a semantic token, see the guardrail below.
+1. `get_metadata` on the spec frame for the node id + name of each variant/size/state symbol.
+2. `get_variable_defs` per symbol for exact colors, spacing, radius, font.
+3. `get_design_context` (forceCode) on one symbol for exact CSS dimensions (padding, gap, icon size). It may ask about Code Connect — skip that.
+4. **Use the semantic token names `get_variable_defs` returns.** An up-to-date spec binds each property to a semantic token (a role like `text/hover`, `background/selected`); match it to the corresponding `--mb-color-*` key (key list: `frontend/src/metabase/ui/colors/types/color-keys.ts`) and use it directly — one definition then works in both themes. Sanity-check the resolved shade against `colors/constants/themes/light.ts` / `dark.ts` and `base-colors.ts`. Caveat: returned *values* may be the wrong mode for dark symbols — trust the variable **names**, not the dark hex.
 
 ### Color rules — semantic tokens only, NO `color-mix`, NO primitives
 
-CSS modules **must not** use `color-mix` to fake transparency/shade of a variable, and literal hex is banned — see `docs/developers-guide/frontend.md` ("Colors"). Every color in the component must be a **semantic** `--mb-color-*` token (the full key list is `frontend/src/metabase/ui/colors/types/color-keys.ts`).
+Per `docs/developers-guide/frontend.md` ("Colors"): every color must be a **semantic** `--mb-color-*` token. No literal hex, and no `color-mix` in component CSS to fake a shade/alpha.
 
-**Guardrail — flag primitive tokens in the spec.** Up-to-date Figma designs should already bind to semantic tokens, so `get_variable_defs` should return semantic names. If you instead see **raw ramp / primitive tokens** (e.g. `Orion-Alpha/10`, `Ocean/60`, `Palm/40` — a color ramp + number, not a role) bound directly to a property:
+**Guardrail:** if `get_variable_defs` returns a **primitive ramp** (e.g. `Orion-Alpha/10`, `Ocean/60` — a ramp + number, not a role) bound directly to a property, do **not** translate it to a ramp, hardcode hex, or `color-mix` your way to it. **Stop and flag it to the user** with the specific property/state — it's a design-side gap (bind to a semantic token, or add one). Resume once the spec exposes a semantic token.
 
-- **Do not** translate them to a ramp yourself, hardcode the hex, or `color-mix` your way to the shade. Implementing a component against primitives directly is not advisable.
-- **Stop and flag it to the user** — that's a design-side gap to resolve with the design team (bind the property to a semantic token, or add a token if one is missing). Note which property/state uses the primitive so the conversation is concrete.
-- Resume once the spec exposes a semantic token (as happened on Chip for hover/selected/disabled).
+### Mantine implementation notes (reference)
 
-### Mantine wiring gotchas (verified on Chip)
+General gotchas when extending Mantine components — adapt per component:
 
-- **`data-variant` is on the ROOT** (`Box`), not the label. `data-checked` and `data-disabled` are on the label. Scope variant rules through a root class: `classNames.root` → `.ChipRoot[data-variant="filled"] .ChipLabel[data-checked]…`.
-- **Beat Mantine's built-in variant CSS.** It paints the unchecked label background at `.m_*:not([data-disabled])` specificity (0,2,0). Your rules must out-specify it — scoping through the root class (descendant combinator) gets you there (unchecked 0,3,0, hover 0,4,0, selected 0,5,0, selected-hover 0,6,0).
-- **Avoid chained `:not()`** — stylelint's `selector-not-notation: complex` rejects `:not(a):not(b)`, and combining into `:not(a, b)` *lowers* specificity. Gain specificity via the root class / attributes instead.
-- **Sizes via a `vars` resolver**, returning only Mantine's typed Chip vars (`--chip-size`, `--chip-padding`, `--chip-fz`, etc.) — custom var names fail type-check. Map size → those vars in `Component.config.ts`.
-- **Built-in icons** use `currentColor` (Mantine `CheckIcon` is `fill: currentColor`), so the icon inherits the label color automatically. Un-hide the `iconWrapper` if a prior config hid it.
-- For text-on-brand-fill, follow the existing convention (`Button` filled uses `--mb-color-text-primary-inverse`) unless the user wants it forced white; flag the dark-theme implication.
+- **Know which slot each data-attribute lands on.** Mantine puts state attributes on specific slots (e.g. `data-variant` on the root, `data-checked`/`data-disabled` on an inner slot). Scope rules accordingly, usually through a root `classNames.root` class.
+- **Out-specify Mantine's built-in variant CSS.** It styles slots at `.m_*:not([data-disabled])` specificity; a descendant combinator through your root class wins. Avoid chained `:not()` (stylelint's `selector-not-notation: complex` rejects it, and combining lowers specificity) — gain specificity via the root class / attributes instead.
+- **Size via a `vars` resolver**, returning only Mantine's typed vars for that component (custom var names fail type-check). Map size → vars in `.config.ts`.
+- **Built-in icons use `currentColor`**, so they inherit the slot's text color.
+- For text on a brand fill, follow the existing convention (`text-primary-inverse`) unless the user wants pure white; flag the dark-theme implication.
 
-Run `npx stylelint <css>`, `LINT_CSS_MODULES=true bun run lint-eslint-pure -- <files>`, and `bun run type-check-pure` after edits.
+After edits: `npx stylelint <css>`, `LINT_CSS_MODULES=true bun run lint-eslint-pure -- <files>`, `bun run type-check-pure`.
 
 ## Phase 5 — Iterate with the user
 
-Show the result in the user's running Storybook and **address feedback** — a color slightly off, a missing/extra state, spacing, radius, shadow, etc. Surface deliberate deviations explicitly (e.g. "filled-selected text uses `text-primary-inverse` for whitelabel safety, which is dark in dark mode vs Figma's white — want me to force white?"). If a browser MCP is connected (see Phase 3's "verify in the browser yourself"), screenshot the restyled matrix in both themes to catch issues before the user does. Keep iterating; **do not commit until the user is satisfied.**
+Show the result in the running Storybook and address feedback (color, spacing, radius, shadow, missing/extra state). Surface deliberate deviations explicitly so the user can veto them. If a browser MCP is connected, screenshot the matrix in both themes to catch issues first. **Do not commit until the user is satisfied.**
 
 ## Phase 6 — Commit, then migrate call sites
 
-Only after the user signs off on the Storybook state:
+Only after sign-off:
 
-1. Commit (the user must explicitly ask; commit only what's relevant — exclude build artifacts like `*.hot-update.*` and the gitignored `local/` doc). Follow the user's commit conventions.
-2. **Update call sites** flagged in Phase 2 if the restyle requires it — e.g. migrate invalid/renamed props (Chip: `variant="brand"` → `variant="filled"`). When doing bulk find/replace, be surgical: a blanket `variant="brand"` → `variant="filled"` also hits unrelated components (it caught two `FormSubmitButton`s on Chip) — verify each replacement is actually the target component and revert the rest.
-3. **Leave the findings doc in place.** The user walks through it to manually verify every real usage looks correct in the running app after the change.
+1. Commit when the user explicitly asks; commit only relevant files (exclude build artifacts and the gitignored `local/` doc). Follow the user's commit conventions.
+2. **Update mode:** migrate the call sites flagged in Phase 2 if the restyle requires it (e.g. invalid/renamed props). Be surgical with bulk find/replace — a blanket prop rename can hit unrelated components; verify each hit is the target. **Create mode:** confirm the public export is wired through the barrels and used as the ticket intends.
+3. Leave the findings doc in place for the user's manual verification pass.
 
 ---
 
 ## Checklist
 
-- [ ] Linear issue fetched; Figma node/fileKey + `gitBranchName` extracted; on the right branch.
-- [ ] Usage + blast radius written to `local/<TICKET>-<component>-usage-findings.md` (kept for final verification).
-- [ ] Storybook showcase matrix built (axes guided by Figma), single panel + global theme toggle, hover/pressed forced via `storybook-addon-pseudo-states` (`parameters.pseudo` selectors aimed at the pseudo-class's slot, hook landed on the root via the factory's root-props slot), controls scoped per story; lint + type-check pass. **Component styles untouched.**
-- [ ] Figma desktop MCP available (prompt user to enable + select if not); exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitive ramp tokens — flag any primitive/missing token to the user for design to resolve).
-- [ ] Component styled (config + CSS); stylelint + eslint(+CSS modules) + type-check pass.
+- [ ] Linear issue fetched; Figma node/fileKey + `gitBranchName` extracted; on the right branch; mode (update vs create) decided.
+- [ ] **Update:** usage + blast radius in `local/<TICKET>-<component>-usage-findings.md`; behavior locked with unit tests **if** the component has custom interactive logic (skip for thin Mantine wrappers / pure restyles). **Create:** component scaffolded with its public surface and barrel exports.
+- [ ] Storybook showcase matrix built from the component's full state space (theme excluded — global toggle drives light/dark), single panel, hover/pressed forced via `storybook-addon-pseudo-states`, controls scoped per story; lint + type-check pass. (Update mode: built before styling, **component styles untouched**. Create mode: built after the component is implemented in Phase 4.)
+- [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives — flag gaps to the user).
+- [ ] Component styled; stylelint + eslint(+CSS modules) + type-check pass.
 - [ ] Iterated with the user until satisfied.
-- [ ] Committed (when asked); call sites migrated and verified; findings doc handed back for manual verification.
+- [ ] Committed (when asked); call sites migrated/verified (update) or export wired (create); findings doc handed back.
