@@ -1,11 +1,15 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
+import type {
+  InviteInfo,
+  Locale,
+  SetupStep,
+  State,
+  UserInfo,
+} from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import type { DatabaseData, LocaleData } from "metabase-types/api";
-
-import type { SetupStep } from "./types";
 
 const DEFAULT_LOCALES: LocaleData[] = [];
 

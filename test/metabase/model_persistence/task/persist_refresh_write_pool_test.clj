@@ -27,7 +27,7 @@
                           sql-jdbc.execute/do-with-connection-with-options (fn [_driver _database _opts _f]
                                                                              (reset! ddl-ctx @#'driver.conn/*connection-type*)
                                                                              {:state :success})]
-              (#'task.persist-refresh/refresh-tables! (:id db) @#'task.persist-refresh/dispatching-refresher))
+              (#'task.persist-refresh/refresh-tables! (:id db) @#'task.persist-refresh/dispatching-refresher nil))
             (is (= :write-data @ddl-ctx))))))))
 
 (deftest unpersist-runs-ddl-under-write-connection-test
