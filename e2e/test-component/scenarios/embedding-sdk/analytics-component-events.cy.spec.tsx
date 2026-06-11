@@ -1,5 +1,7 @@
 import {
+  CollectionBrowser,
   CreateQuestion,
+  InteractiveQuestion,
   StaticQuestion,
 } from "@metabase/embedding-sdk-react";
 
@@ -123,7 +125,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
     cy.wait("@analyticsProxy");
 
-    cy.wrap(capturedEvents).should("have.length", 2);
+    // The beacon fires only once per JS context (module-level singleton); it
+    // already fired in the first test, so only the component event is captured here.
+    cy.wrap(capturedEvents).should("have.length", 1);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find(
@@ -145,7 +149,7 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     });
   });
 
-  it("fires one component event per mounted component plus one global beacon", () => {
+  it("fires one component event per mounted component", () => {
     updateSetting("anon-tracking-enabled", true);
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
@@ -155,28 +159,29 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.get<number>("@questionId").then((questionId) => {
       mountSdkContent(
         <>
-          <StaticQuestion questionId={questionId} />
-          <StaticQuestion questionId={questionId} />
+          <InteractiveQuestion questionId={questionId} />
+          <CollectionBrowser />
         </>,
       );
     });
 
     cy.wait("@analyticsProxy");
 
-    cy.wrap(capturedEvents).should("have.length", 3);
+    // beacon already fired in test 1 (once per JS context);
+    // InteractiveQuestion + CollectionBrowser = 2 component events
+    cy.wrap(capturedEvents).should("have.length", 2);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const componentEvents = events.filter(
-        (event) => event.component === "StaticQuestion",
+      const interactiveQuestionEvent = events.find(
+        (event) => event.component === "InteractiveQuestion",
       );
-      expect(componentEvents, "two StaticQuestion mount events").to.have.length(
-        2,
-      );
-    });
+      expect(interactiveQuestionEvent, "InteractiveQuestion mount event").to
+        .exist;
 
-    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
-      const beacon = events.find((event) => event.component === null);
-      expect(beacon, "global init beacon (component: null)").to.exist;
+      const collectionBrowserEvent = events.find(
+        (event) => event.component === "CollectionBrowser",
+      );
+      expect(collectionBrowserEvent, "CollectionBrowser mount event").to.exist;
     });
   });
 
