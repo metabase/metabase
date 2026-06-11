@@ -5,13 +5,13 @@
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
-   [metabase.collections.curation :as curation]
    [metabase.config.core :as config]
    ^{:clj-kondo/ignore [:discouraged-namespace :metabase/modules]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -257,8 +257,8 @@
 
 (defn- filter-recents-to-curated
   "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
-  Delegates to collections.curation/curated-ids, the source-of-truth check, so recent-view filtering can't
-  drift from search filtering and doesn't depend on the search index."
+  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
+  from the canonical rule and doesn't depend on the search index."
   [recents]
   (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))

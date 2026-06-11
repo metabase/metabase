@@ -2,13 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.activity-feed.models.recent-views :as recent-views]
-   [metabase.collections.curation :as curation]
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
