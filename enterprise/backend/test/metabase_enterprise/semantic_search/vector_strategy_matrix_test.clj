@@ -10,13 +10,16 @@
 
   The trade-offs demonstrated: even exact retrieval under-delivers end-to-end (the candidate pool is
   truncated at `semantic-search-results-limit` before re-ranking, and permission checks drop candidates
-  after), naive :hnsw can be far worse under selective filters, and the iterative strategies fix
+  after), naive :hnsw misses everything under an anti-correlated filter, and the iterative strategies fix
   filter-driven misses but not limit truncation or permission under-fetch.
 
-  Determinism: embeddings are constructed at exact, distinct distances from the probe (no ties), the heap is
-  populated in a fixed order before the index exists, the index is built serially with a seeded PRNG, every
-  indexed query forces the index path (a 300-row table would otherwise always seq-scan), and graph-dependent
-  cells assert thresholds rather than exact orderings."
+  Every cell asserts an exact value or ordering, not a threshold.
+  Embeddings sit at exact distinct distances from the probe (no ties), the heap is populated in a fixed
+  order before the index exists, the index is built serially with a seeded PRNG, and every indexed query
+  forces the index path (a 300-row table would otherwise always seq-scan).
+  At this scale the graph itself is exact -- approximation error is a scale phenomenon and is measured by
+  the at-scale benchmarking harness, not here -- so what this matrix pins down are the structural
+  differences between the strategies' SQL shapes and scan termination rules."
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
@@ -89,10 +92,10 @@
    {:band :decoy      :n 20  :model "card" :d0 0.750 :dstep 0.007}])
 
 (defn- vector-at-distance
-  "A unit 4-d vector at exact cosine distance `d` from [[probe-vector]].
-  The probe component is fixed by `d` and the remainder is a seeded random direction orthogonal to it, so
-  pgvector's `<=>` returns exactly `d` (modulo float error) for every generated doc."
+  "A unit 4-d vector at exact cosine distance `d` (pgvector `<=>`) from [[probe-vector]]."
   [^Random rng d]
+  ;; the probe component is fixed by `d` and the remainder is a seeded random unit direction orthogonal to
+  ;; the probe axis, so the cosine against the probe is exactly 1 - d
   (let [[u2 u3 u4] (loop []
                      (let [g [(.nextGaussian rng) (.nextGaussian rng) (.nextGaussian rng)]
                            n (Math/sqrt (double (reduce + (map * g g))))]
@@ -206,12 +209,14 @@
                  [(str "DROP INDEX IF EXISTS " (semantic.index/hnsw-index-name semantic.tu/mock-index))]))
 
 (defn- build-hnsw-index!
-  "Build the HNSW index reproducibly: serial build over the fixed-order heap with a seeded backend PRNG
-  (pgvector draws node levels from it), and build parameters pinned against future pgvector default changes."
+  "Build the HNSW index on the mock index table, reproducibly."
   []
   (jdbc/with-transaction [tx (semantic.env/get-pgvector-datasource!)]
+    ;; serial build over the fixed-order heap; pgvector draws node levels from the backend PRNG, so a single
+    ;; seeded backend yields the same graph every run
     (jdbc/execute! tx ["SET LOCAL max_parallel_maintenance_workers = 0"])
     (jdbc/execute! tx ["SELECT setseed(0.42)"])
+    ;; m/ef_construction are the current pgvector defaults, pinned against future default changes
     (jdbc/execute! tx [(format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
                                (semantic.index/hnsw-index-name semantic.tu/mock-index)
                                (:table-name semantic.tu/mock-index))])))
@@ -238,16 +243,18 @@
    :archived?     false})
 
 (defn- variant-ctx
-  "Per-variant search-context overrides.
-  Indexed variants force the index path: the planner would otherwise always seq-scan a 300-row table, making
-  every variant silently exact. The iterative variants pin both GUC knobs so nothing depends on settings."
+  "Per-variant search-context overrides."
   [variant]
   (case variant
     :no-index    {:vector-search-strategy :hnsw}
     :brute-force {:vector-search-strategy :brute-force}
+    ;; force-index because the planner would otherwise always seq-scan a 300-row table, making every
+    ;; variant silently exact
     :hnsw        {:vector-search-strategy     :hnsw
                   :vector-search-force-index? true}
     (:hnsw-iterative-relaxed :hnsw-iterative-strict)
+    ;; both GUC knobs pinned so nothing depends on settings; max_scan_tuples exceeds the table so it never
+    ;; binds except where a cell overrides it
     {:vector-search-strategy         variant
      :vector-search-force-index?     true
      :vector-search-ef-search        iterative-ef-search
@@ -290,28 +297,30 @@
                (is (= exact-rare (query-ids! :brute-force :verified true)))))
            (build-hnsw-index!)
            (testing "with the HNSW index (forced)"
-             (testing "unfiltered approximate retrieval is near-exact"
+             (testing "unfiltered retrieval is exact: graph approximation error does not manifest at this scale"
+               ;; a 300-doc 4-d graph returns the true top-20 even at ef_search 2, so these cells pin
+               ;; exactness rather than a recall band; the approximation-error axis is a scale phenomenon
+               ;; and is measured by the at-scale benchmarking harness, not this matrix
                (doseq [variant [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
                  (let [ids (query-ids! variant)]
                    (testing variant
-                     (is (<= 0.9 (recall-at 20 exact-all ids)))
-                     (is (<= 0.95 (ndcg-at 20 (:id->distance ds) exact-all ids)))))))
-             (testing "naive :hnsw post-filters the same global pool, so the adversarial filter still misses"
-               (is (<= (recall-at 12 exact-rare (query-ids! :hnsw :verified true))
-                       0.25)))
-             (testing "iterative scans keep pulling neighbours past the filter and recover the misses"
+                     (is (= (take 20 exact-all) ids))
+                     (is (= 1.0 (ndcg-at 20 (:id->distance ds) exact-all ids)))))))
+             (testing "naive :hnsw post-filters the same global pool, so the adversarial filter finds nothing"
+               ;; structural, not graph luck: the scan's top-20 would need fewer than 20 of the 262 docs
+               ;; nearer than the rare band for anything verified to enter the pool
+               (is (= [] (query-ids! :hnsw :verified true))))
+             (testing "iterative scans pull neighbours past the filter and fully recover, in exact order"
+               ;; the inner limit (20) exceeds the 12 matches, so the scan runs until the graph is exhausted
                (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
-                 (let [ids (query-ids! variant :verified true)]
-                   (testing variant
-                     (is (<= 9 (count ids)))
-                     (is (<= 0.75 (recall-at 12 exact-rare ids)))))))
+                 (testing variant
+                   (is (= exact-rare (query-ids! variant :verified true))))))
              (testing "hnsw.max_scan_tuples truncates an iterative scan before it reaches far-away matches"
-               ;; the rare band sits at distance ranks 269-280, far past a 64-tuple visit budget
-               (let [ids (query-ids! :hnsw-iterative-relaxed
+               ;; the rare band sits at distance ranks 269-280, far past a 64-tuple visit budget; the cap
+               ;; has scan-phase granularity, but no phase overshoots by the ~200 tuples that would need
+               (is (= [] (query-ids! :hnsw-iterative-relaxed
                                      :verified true
-                                     :vector-search-max-scan-tuples 64)]
-                 (is (< (count ids) 12))
-                 (is (<= (recall-at 12 exact-rare ids) 0.25)))))))))))
+                                     :vector-search-max-scan-tuples 64)))))))))))
 
 ;;;; layer 2: final top results vs an exhaustive run of the same scoring pipeline
 
@@ -331,20 +340,20 @@
              (testing "exact retrieval scores only its truncated pool: pinned docs sit at distance ranks 263-268"
                (is (= 0.4 (recall-at 10 ideal-top (query-ids! :no-index)))))
              (build-hnsw-index!)
-             (testing "indexed retrieval cannot beat the limit truncation, only lose more of the pool"
-               (is (>= 0.4 (recall-at 10 ideal-top (query-ids! :hnsw))))
-               (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+             (testing "indexed retrieval is stuck at the same recall: iterating does not fix limit truncation"
+               ;; the filters are non-selective here, so every variant's pool is the same exact top-20
+               (doseq [variant [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
                  (testing variant
-                   (is (>= 0.5 (recall-at 10 ideal-top (query-ids! variant))))))))))
+                   (is (= 0.4 (recall-at 10 ideal-top (query-ids! variant))))))))))
        (testing "under a selective filter the indexed iterative variants are strictly better end-to-end"
          (semantic.tu/with-only-semantic-weights
            (let [ideal-rare (mt/with-temporary-setting-values [semantic-search-results-limit 1000]
                               (query-ids! :brute-force :verified true))]
              (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :no-index :verified true))))
-             (is (<= (recall-at 10 ideal-rare (query-ids! :hnsw :verified true)) 0.25))
+             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :hnsw :verified true))))
              (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
                (testing variant
-                 (is (<= 0.75 (recall-at 10 ideal-rare (query-ids! variant :verified true)))))))))))))
+                 (is (= 1.0 (recall-at 10 ideal-rare (query-ids! variant :verified true)))))))))))))
 
 ;;;; layer 3: under-fetch from post-retrieval permission filtering
 
@@ -361,13 +370,9 @@
              (testing variant
                (is (= {:raw-count 20 :returned 12} (run! variant :rasta))))))
          (build-hnsw-index!)
-         (testing "indexed variants under-fetch the same way; iterating cannot help (the check runs in Clojure)"
+         (testing "indexed variants under-fetch identically; iterating cannot help (the check runs in Clojure)"
            (doseq [variant [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
-             (let [{:keys [raw-count returned]} (run! variant :rasta)]
-               (testing variant
-                 (is (= 20 raw-count))
-                 ;; an approximate pool can only swap restricted members for accessible ones, never shrink
-                 ;; below 12 (only 8 restricted docs exist) -- but every variant returns short of the limit
-                 (is (<= 12 returned 16))))))
+             (testing variant
+               (is (= {:raw-count 20 :returned 12} (run! variant :rasta))))))
          (testing "an admin sees the full pool, pinning the loss on permissions rather than retrieval"
            (is (= {:raw-count 20 :returned 20} (run! :hnsw :crowberto)))))))))
