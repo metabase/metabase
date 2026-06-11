@@ -40,6 +40,17 @@
 ;; connection; reading it once the connection has closed throws "object is already closed", which the
 ;; cache middleware swallows as a cache miss - silently disabling caching on H2.
 
+(defn- ->instant
+  "Coerce an app-db timestamp to an `Instant` for comparison. The app-db driver may return `:updated_at`
+  as a `LocalDateTime` (MySQL/MariaDB, stored in UTC), an `OffsetDateTime`/`ZonedDateTime` (H2/Postgres),
+  or a `java.util.Date`. `t/before?` throws on mixed temporal classes, so normalize first."
+  ^java.time.Instant [t]
+  (condp instance? t
+    java.time.Instant       t
+    java.time.LocalDateTime (.toInstant ^java.time.LocalDateTime t java.time.ZoneOffset/UTC)
+    java.util.Date          (.toInstant ^java.util.Date t)
+    (t/instant t)))
+
 (defn select-cache
   "Return a cache entry for `query-hash` relative to `cutoff` as a map with `:bytes` and `:stale?`, or
   nil if no usable entry exists.
@@ -59,7 +70,9 @@
                                             (not allow-stale?) (conj [:>= :updated_at cutoff]))
                                 :order-by [[:updated_at :desc]]})]
     {:bytes  bytes
-     :stale? (t/before? updated_at cutoff)}))
+     ;; In the default path the SQL already guarantees `updated_at >= cutoff`, so the entry is fresh -
+     ;; short-circuit to avoid the temporal comparison entirely. Only the opt-in stale path compares.
+     :stale? (boolean (and allow-stale? (.isBefore (->instant updated_at) (->instant cutoff))))}))
 
 (defn fetch-cache-stmt-ttl
   "Fetch a cache entry for :ttl caching strategy. Returns a map with `:bytes` and `:stale?`,

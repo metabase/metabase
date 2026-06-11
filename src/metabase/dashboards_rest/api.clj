@@ -1402,7 +1402,7 @@
   (with-dashboard-load-id dashboard_load_id
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
-               body
+               (dissoc body :ignore_cache :allow_stale)
                {:dashboard-id dashboard-id
                 :card-id      card-id
                 :dashcard-id  dashcard-id

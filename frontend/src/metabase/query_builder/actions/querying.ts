@@ -212,7 +212,13 @@ const loadStartUIControls = createThunkAction(
   },
 );
 
-export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
+export const queryCompleted = (
+  question: Question,
+  queryResults: Dataset[],
+  // `silent` is set by the background stale refresh: it updates the results without
+  // re-firing the "query is ready" favicon/title fanfare for a run the user didn't trigger.
+  { silent = false }: { silent?: boolean } = {},
+) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
@@ -258,7 +264,9 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
         queryResults,
       },
     });
-    dispatch(loadCompleteUIControls());
+    if (!silent) {
+      dispatch(loadCompleteUIControls());
+    }
 
     if (queryResults[0]?.stale) {
       dispatch(refreshStaleQueryResult(question));
@@ -289,7 +297,7 @@ const refreshStaleQueryResult =
       }
       // Guard against infinite loop if the server still returns stale data.
       if (!freshResults[0]?.stale) {
-        dispatch(queryCompleted(question, freshResults));
+        dispatch(queryCompleted(question, freshResults, { silent: true }));
       }
     } catch (error) {
       if (!isAbortError(error)) {

@@ -84,7 +84,7 @@
     (log/debugf "Caching strategy %s has not run yet" (pr-str strategy))
     (backend.db/select-cache query-hash invalidated-at (:allow-stale? strategy))))
 
-(defmethod fetch-cache-stmt-ee* :nocache [_ _ _]
+(defmethod fetch-cache-stmt-ee* :nocache [_ _]
   nil)
 
 (defenterprise fetch-cache-stmt

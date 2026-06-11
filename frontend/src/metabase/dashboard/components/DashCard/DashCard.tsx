@@ -1,9 +1,7 @@
 import cx from "classnames";
-import dayjs from "dayjs";
 import { getIn } from "icepick";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
-import { c, t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
@@ -27,7 +25,7 @@ import { useDispatch, useSelector, useStore } from "metabase/redux";
 import type { StoreDashcard } from "metabase/redux/store";
 import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Loader, Tooltip } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -197,15 +195,6 @@ function DashCardInner({
   const mainDataset =
     mainCard.id != null ? dashcardData?.[mainCard.id] : undefined;
   const isStale = !isLoading && mainDataset?.stale === true;
-
-  const staleTooltipLabel = useMemo(() => {
-    const date = mainDataset?.cached ? dayjs(mainDataset.cached) : null;
-    if (!date?.isValid()) {
-      return t`Showing stale results — refreshing`;
-    }
-    return c("{0} is a phrase like '1 minute ago' or '30 seconds ago'")
-      .t`Showing stale results from ${date.fromNow(false)} — refreshing`;
-  }, [mainDataset]);
 
   // When the displayed result is stale, kick off a background refresh without
   // clearing the card — the user keeps seeing data while the fresh query runs.
@@ -436,17 +425,6 @@ function DashCardInner({
             right="0.5rem"
             style={{ zIndex: 1, cursor: "default" }}
           />
-        ) : isStale ? (
-          <Tooltip label={staleTooltipLabel} position="bottom">
-            <Flex
-              pos="absolute"
-              bottom="0.5rem"
-              right="0.5rem"
-              style={{ zIndex: 1, cursor: "default" }}
-            >
-              <Loader size="xs" />
-            </Flex>
-          </Tooltip>
         ) : null}
         <DashCardVisualization
           dashcard={dashcard}
