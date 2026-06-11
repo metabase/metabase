@@ -15,6 +15,8 @@
       pure upstream module. This is what 'wrap `app-db`/`settings` behind a narrow seam and invert its
       back-references' looks like at the module-graph level."
   (:require
+   [clojure.java.shell :as shell]
+   [clojure.string :as str]
    [dev.deps-graph :as deps-graph]))
 
 (set! *warn-on-reflection* true)
@@ -175,6 +177,28 @@
                          :num-severed   (count back-deps)))))
          (sort-by (juxt :fragmentation :new-largest-size)))))
 
+(defn leaf-cut-impacts
+  "For every member of the largest SCC, sever ALL of the SCC's in-edges into it — i.e. make it a pure
+  downstream module that depends on the blob but that nothing in the blob depends on. The complement of
+  [[upstream-cut-impacts]]: that shape suits foundational chokepoints (`util`, `settings`), this one suits
+  feature modules (`metabot`, `transforms`), whose own blast radius collapses to their dependents outside
+  the blob once they leave it. The realistic refactor behind a severed in-edge is usually nesting the
+  dependent (a REST layer belongs inside the feature) or inverting it via events; high-churn feature
+  modules are where this pays, so rank these against commit frequency, not alone."
+  [graph]
+  (let [giant (largest-scc graph)]
+    (->> giant
+         (map (fn [m]
+                (let [in-deps (into (sorted-set)
+                                    (for [[v ws] graph
+                                          :when (and (contains? ws m) (contains? giant v) (not= v m))]
+                                      v))]
+                  (assoc (cut-impact (reduce (fn [g v] (update g v disj m)) graph in-deps) giant)
+                         :module        m
+                         :severed-edges (mapv (fn [v] [v m]) in-deps)
+                         :num-severed   (count in-deps)))))
+         (sort-by (juxt :fragmentation :new-largest-size)))))
+
 ;;;; ------------------------------------------------------------------------------------------------
 ;;;; Predicted blast radius
 ;;;; ------------------------------------------------------------------------------------------------
@@ -223,6 +247,48 @@
   (into (sorted-map)
         (map (fn [m] [m (#'deps-graph/module->test-files config m)]))
         modules))
+
+;;;; ------------------------------------------------------------------------------------------------
+;;;; Churn-weighted blast radius
+;;;; ------------------------------------------------------------------------------------------------
+
+(defn commit-file-lists
+  "Per-commit vectors of changed filenames over the last `days` days, from `git log`. Most-recent first."
+  [days]
+  (let [{:keys [out exit err]} (shell/sh "git" "log" (str "--since=" days ".days")
+                                         "--name-only" "--pretty=format:@@COMMIT@@")]
+    (when-not (zero? exit)
+      (throw (ex-info "git log failed" {:exit exit, :err err})))
+    (into []
+          (comp (map str/split-lines)
+                (map #(into [] (remove str/blank?) %))
+                (remove empty?))
+          (rest (str/split out #"@@COMMIT@@")))))
+
+(defn expected-tests-per-commit
+  "Churn-weighted blast radius under (possibly modified) `graph`: for each commit, map its changed files to
+  modules and count the union of test files those modules and their transitive dependents own — i.e. the
+  selective-CI bill for that commit. Weighting by real commits is what closure metrics miss: a module
+  nobody touches contributes nothing to CI spend no matter how upstream it is. Commits touching no
+  module-owned file (frontend, docs) are excluded from the distribution but reported in
+  `:num-commits-skipped`. `file->module` maps source filename → module; `module->tests` maps module → set
+  of its test files."
+  [graph module->tests file->module commits]
+  (let [dependents (transitive-dependents-graph graph)
+        counts     (->> commits
+                        (keep (fn [files]
+                                (when-let [modules (not-empty (into #{} (keep file->module) files))]
+                                  (count (transduce (map #(get module->tests % #{}))
+                                                    into #{}
+                                                    (into modules (mapcat dependents) modules))))))
+                        sort
+                        vec)]
+    {:num-commits         (count commits)
+     :num-commits-skipped (- (count commits) (count counts))
+     :mean                (when (seq counts) (double (/ (reduce + 0 counts) (count counts))))
+     :median              (when (seq counts) (nth counts (quot (count counts) 2)))
+     :p90                 (when (seq counts) (nth counts (min (dec (count counts))
+                                                              (long (Math/ceil (* 0.9 (count counts)))))))}))
 
 (comment
   (def config*  (deps-graph/kondo-config))

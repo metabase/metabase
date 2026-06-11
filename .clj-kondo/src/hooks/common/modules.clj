@@ -123,11 +123,14 @@
 ;;;; -------------------------------------------------------------------------
 ;;;; Visibility rules
 ;;;;
-;;;; STRICT MODEL: every cross-module access goes through the target's `:api`,
-;;;; and every dependency is declared in `:uses`. There is no implicit
-;;;; visibility based on tree relationships — neither parent→descendant nor
-;;;; descendant→parent nor sibling→sibling. The hierarchy exists for
-;;;; encapsulation scoping (controlled by `:module-exports`), not for trust.
+;;;; Every dependency must be declared in `:uses`, with no exceptions and no
+;;;; inheriting from ancestors. Cross-module access goes through the target's
+;;;; `:api`, with exactly one tree-based exception: subtree trust, where a
+;;;; descendant may reach past its ancestors' `:api` (see
+;;;; [[allowed-module-namespace?]]). The trust is unidirectional — parents go
+;;;; through their children's `:api` like any other consumer, and siblings get
+;;;; nothing from each other. `:module-exports` controls a separate axis: which
+;;;; nested modules may be *named* at all from outside their subtree.
 ;;;;
 ;;;; The `:module-exports` config key on a module is a SET of direct-child module
 ;;;; symbols that the parent explicitly promotes to externally-referenceable
@@ -463,11 +466,11 @@
   (which belongs to `current-module`). Returns a string describing the error
   type if there is one, otherwise `nil` if there are no errors.
 
-  Strict checks: the required module must be in current's `:uses`, and the
-  required namespace must be in the required module's `:api` (or current
-  must be in required's `:friends`). No implicit visibility based on
-  parent/sibling/descendant relationships — every cross-module access goes
-  through `:api`.
+  The required module must be in current's `:uses` (always, even between
+  relatives), and the required namespace must be in the required module's
+  `:api` — unless current is a descendant of the required module (subtree
+  trust) or appears in its `:friends`. See [[allowed-module-namespace?]] for
+  the access-path details.
 
   `current-ns` is accepted but currently unused by the check. It's kept in
   the signature because the hook callers already have it handy and future

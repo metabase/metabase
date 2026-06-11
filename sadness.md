@@ -203,6 +203,48 @@ protocol, defenterprise) or consciously accepted. But ~14 require-level
 changes for median 1236 → 1032 and blob 94 → 82 is a far smaller experiment
 than 'carve a module behind one `:api`' suggested.
 
+### Churn-weighted blast radius: what CI actually pays
+
+The per-module numbers above weight every module equally, but CI bills per
+*commit*, and commits concentrate in hot modules. New
+`expected-tests-per-commit` in `dev.module-scc` replays real history (here:
+90 days reachable from this branch — 764 commits, 281 touching module-owned
+backend files) against a (possibly cut) graph and counts each commit's
+selective-CI bill. Two corrections fall out:
+
+**The cliff was overstated.** The unweighted median collapsing 1236 → 60
+under the five-module carve does not mean CI gets 95% cheaper — developers
+disproportionately touch modules still inside or upstream of the residual
+66-blob (`metabot` 57 commits, `driver` 36, `lib` 25, `models` 20 in the
+window). Churn-weighted, the carves are worth a real but much smaller:
+
+| scenario | mean | median | p90 |
+|---|---:|---:|---:|
+| baseline | 1043 | 1236 | 1236 |
+| `metabot` leafed (3 edges) | 910 (−13%) | 1236 | 1236 |
+| `settings`+`util` (~14 requires) | 892 (−14%) | 1032 | 1184 |
+| five chokepoints carved | 772 (−26%) | 961 | 1113 |
+| five + `metabot` leafed | 648 (−38%) | 961 | 1113 |
+| five + `metabot` + `transforms` leafed | 624 (−40%) | 961 | 1113 |
+
+(Medians stay pegged because more than half of module-touching commits hit
+modules still in/upstream of the residual blob — one more reason the
+churn-weighted *mean* is the experiment's tracking metric. It is the only
+number here proportional to actual CI spend.)
+
+**There is a second cut family, and it's cheap.** `upstream-cut-impacts`
+suits foundational chokepoints; for hot *feature* modules the win is the
+complement, now in `leaf-cut-impacts`: sever the blob's in-edges so the
+feature becomes pure-downstream and its own blast collapses. `metabot` — the
+hottest module in the window — has only three in-blob dependents (`agent-api`,
+`llm`, `slackbot`). Leafing it drops its blast 1236 → ~105 and saves 13% of
+total predicted CI spend by itself. The realistic refactor: `agent-api` is
+metabot's REST layer and belongs nested inside it (the proposal's `agent`
+umbrella), and the `llm`/`slackbot` back-edges look like inversion (events)
+candidates. A note of caution: upstream modules (`util`, `driver`, `lib`)
+keep ~full blast no matter what — everything legitimately depends on them —
+so their high churn is a test-tiering problem, not a module-boundary problem.
+
 ### Baseline comparison: the stack hasn't changed the graph at all
 
 With the SCC tooling we can finally answer "how much did the stack improve
