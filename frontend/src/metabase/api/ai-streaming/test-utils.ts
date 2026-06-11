@@ -31,7 +31,7 @@ export function createMockReadableStream(
 
 export function mockEndpoint<T extends Response>(
   url: string,
-  endpointMock: (init?: RequestInit) => Promise<T>,
+  endpointMock: (init?: RequestInit | Request) => Promise<T>,
 ) {
   const originalFetch = global.fetch;
   const mockedFetch = jest.spyOn(global, "fetch");
@@ -39,11 +39,21 @@ export function mockEndpoint<T extends Response>(
   // fetch-mock is supposed to work with ReadableStreams, but when passed one
   // the getReader methods ends up as undefined
   return mockedFetch.mockImplementation((fetchedUrl, ...args) => {
+    // The client calls `fetch(new Request(url, init))`, so the first arg may be
+    // a Request (or URL) rather than a string.
+    const requestUrl =
+      fetchedUrl instanceof Request
+        ? fetchedUrl.url
+        : fetchedUrl instanceof URL
+          ? fetchedUrl.href
+          : fetchedUrl;
     const isRequestedUrl =
-      typeof fetchedUrl === "string" && fetchedUrl.includes(url);
+      typeof requestUrl === "string" && requestUrl.includes(url);
 
     if (isRequestedUrl) {
-      return endpointMock(args?.[0]);
+      return endpointMock(
+        fetchedUrl instanceof Request ? fetchedUrl : args?.[0],
+      );
     } else {
       // remove calls that route to global fetch
       mockedFetch.mock.calls.pop();
@@ -105,7 +115,7 @@ export function mockStreamedEndpoint(
       };
     }
 
-    return { status: 202, ok: true, body } as any;
+    return { status: 202, ok: true, body, headers: new Headers() } as any;
   });
 
   return Object.assign(mock, {

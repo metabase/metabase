@@ -9,7 +9,7 @@
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
-    [calls (fn [branch force? args] (swap! calls conj [branch force? args]) nil)]))
+    [calls (fn [branch force? args & _opts] (swap! calls conj [branch force? args]) nil)]))
 
 (deftest remote-sync-init-disabled-with-remote-synced-collection-clears-test
   (testing "When remote sync is disabled, existing remote-synced collections are cleared"

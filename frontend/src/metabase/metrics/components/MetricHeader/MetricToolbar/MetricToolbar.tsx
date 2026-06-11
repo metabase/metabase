@@ -192,22 +192,22 @@ function MetricToolbarButtons({
           </>
         )}
 
-        {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
-          <Menu.Divider role="separator" />
-        )}
-
         {showDataStudioLink && (
-          <Menu.Item
-            leftSection={<Icon name="grid_bordered" />}
-            onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}
-          >
-            {t`Open in Data Studio`}
-          </Menu.Item>
+          <>
+            <Menu.Divider role="separator" />
+            <Menu.Item
+              leftSection={<Icon name="grid_bordered" />}
+              onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}
+            >
+              {t`Open in Data Studio`}
+            </Menu.Item>
+          </>
         )}
         <PLUGIN_AUDIT.InsightsMenuItem
           card={card}
           label={t`Metric usage analytics`}
           iconName="pie_slice"
+          withDivider={!showDataStudioLink}
         />
 
         {card.can_write && (

@@ -150,10 +150,10 @@ function QuestionTableBadges({
     isLast && !subHead ? "text-primary" : "text-tertiary";
 
   const parts = tables.map((table) => (
-    <HeadBreadcrumbs.Badge
+    <HeadBreadcrumbs.Breadcrumb
       key={table.id}
       to={hasLink ? getTableURL(table) : ""}
-      inactiveColor={badgeInactiveColor}
+      color={badgeInactiveColor}
     >
       <span>
         {table.displayName()}
@@ -169,7 +169,7 @@ function QuestionTableBadges({
           </span>
         )}
       </span>
-    </HeadBreadcrumbs.Badge>
+    </HeadBreadcrumbs.Breadcrumb>
   ));
 
   return (

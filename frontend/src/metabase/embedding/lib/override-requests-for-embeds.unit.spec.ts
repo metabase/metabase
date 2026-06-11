@@ -96,8 +96,6 @@ describe("matchUrlPattern", () => {
 });
 
 describe("overrideRequests", () => {
-  const defaultOptions = { hasBody: false };
-
   it.each(["guest", "static", "public"] as const)(
     "leaves /api/frontend-errors untouched in %s embed mode",
     async (embedType) => {
@@ -105,7 +103,6 @@ describe("overrideRequests", () => {
         embedType,
         method: "POST",
         url: "/api/frontend-errors",
-        options: { ...defaultOptions, hasBody: true },
         data: { type: "component-crash" },
       });
 
@@ -119,7 +116,6 @@ describe("overrideRequests", () => {
       embedType: "guest",
       method: "GET",
       url: "/api/card/THE_JWT_TOKEN",
-      options: defaultOptions,
       data: {},
     });
 
@@ -131,7 +127,6 @@ describe("overrideRequests", () => {
       embedType: "guest",
       method: "POST",
       url: "/api/card/123/query",
-      options: { ...defaultOptions, hasBody: true },
       data: {},
     });
 

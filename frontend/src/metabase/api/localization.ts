@@ -1,4 +1,4 @@
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import {
   type LocaleDataWithLanguage,
   setLocalization,

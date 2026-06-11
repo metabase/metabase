@@ -63,13 +63,13 @@
               "custom expression examples"]
              (mapv :name (sort-by #(oss-score search-string %)
                                   (shuffle [a b c d])))))
-      ;; With :official-collection lifted to 80 in :default, the official bump dominates the
-      ;; text scorers — `d` now ranks highest, landing last under the ascending sort, despite
-      ;; having the weakest text match.
-      (is (= ["customer success stories"
+      ;; With :official-collection at 1 in :default, the official bump is only a tie-breaker —
+      ;; it can't overcome the text scorers, so `d` stays ranked by its (weakest) text match
+      ;; and the ordering matches OSS.
+      (is (= ["customer examples of bad sorting"
+              "customer success stories"
               "examples of custom expressions"
-              "custom expression examples"
-              "customer examples of bad sorting"]
+              "custom expression examples"]
              (mapv :name (sort-by #(ee-score search-string %)
                                   (shuffle [a b c (assoc d :collection_authority_level "official")]))))))))
 

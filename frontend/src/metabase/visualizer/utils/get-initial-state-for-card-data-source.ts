@@ -1,4 +1,4 @@
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
 import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
@@ -106,19 +106,19 @@ function pickColumns(
 export function getInitialStateForCardDataSource(
   card: Card,
   dataset: Dataset,
-): VisualizerVizDefinitionWithColumnsAndFallbacks {
+): VisualizerVizDefinitionWithColumnsAndPreloadedDatasets {
   const {
     data: { cols: originalColumns },
   } = dataset;
 
-  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
+  const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {
     display: isVisualizerSupportedVisualization(card.display)
       ? card.display
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
     settings: {},
-    datasetFallbacks: { [card.id]: dataset },
+    preloadedDatasets: { [card.id]: dataset },
   };
 
   const dataSource = createDataSource("card", card.id, card.name);
