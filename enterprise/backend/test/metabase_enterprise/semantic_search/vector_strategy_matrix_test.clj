@@ -1,6 +1,11 @@
 (ns metabase-enterprise.semantic-search.vector-strategy-matrix-test
   "Quality matrix over the vector-search strategies on a small deterministic dataset.
 
+  Headline: naive :hnsw is too risky around under-fetching.
+  :brute-force is reliable but has poor asymptotic performance.
+  :hnsw with iterative scans looks promising, but with post-filtering and re-ranking it can also
+  underperform.
+
   Covers four retrieval variants -- no HNSW index (exact seq scan), naive :hnsw (post-filter), and the two
   iterative-scan strategies -- with :brute-force as the exact SQL reference, and measures three things:
 
