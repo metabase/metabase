@@ -2381,14 +2381,14 @@
       (mt/with-test-user :rasta
         (thunk)))))
 
-(defmacro ^:private with-venues-only-access [& body]
+(defmacro ^:private with-venues-only-access! [& body]
   `(with-venues-only-access*! (fn [] ~@body)))
 
 (deftest pivot-query-does-not-bind-card-id-test
   (testing "run-pivot-query should not bind *card-id* from :info, so permission checks use the
             full ad-hoc path even when :card-id is present in the query's :info map"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (with-venues-only-access
+      (with-venues-only-access!
         (mt/with-temp [:model/Collection collection {}
                        :model/Card {card-id :id} {:collection_id (:id collection)
                                                   :dataset_query (mt/mbql-query venues)}]
@@ -2439,7 +2439,7 @@
   (testing "When *card-id* is bound by the caller (e.g. card.clj), pivot queries should
             still work correctly with card-level permission checks"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (with-venues-only-access
+      (with-venues-only-access!
         (mt/with-temp [:model/Collection collection {}
                        :model/Card {card-id :id} {:collection_id (:id collection)
                                                   :dataset_query (mt/mbql-query venues
@@ -2463,7 +2463,7 @@
 
 (deftest download-endpoint-replaces-info-test
   (testing "POST /api/dataset/:format replaces :info entirely rather than merging it with the query map"
-    (with-venues-only-access
+    (with-venues-only-access!
       (mt/with-temp [:model/Collection collection {}
                      :model/Card {card-id :id} {:collection_id (:id collection)
                                                 :dataset_query (mt/mbql-query venues)}]
@@ -2484,7 +2484,7 @@
 (deftest download-endpoint-pivot-join-permission-test
   (testing "POST /api/dataset/:format with was-pivot applies permission checks to joins"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (with-venues-only-access
+      (with-venues-only-access!
         (mt/with-temp [:model/Collection collection {}
                        :model/Card {card-id :id} {:collection_id (:id collection)
                                                   :dataset_query (mt/mbql-query venues)}]
