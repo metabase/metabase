@@ -14,6 +14,7 @@ import { renderWithProviders } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import type { SdkComponentName } from "./component-events";
@@ -247,5 +248,19 @@ describe("useTrackSdkComponentMount", () => {
         }),
       }),
     );
+  });
+
+  it("does not fire in iframe embed context", () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+
+    setup({
+      componentName: "StaticDashboard",
+      entityId: uniqueId(),
+      properties: STUB_DASHBOARD_PROPS,
+    });
+
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+
+    expect(mockTrackSdkEvent).not.toHaveBeenCalled();
   });
 });
