@@ -179,7 +179,7 @@ function WorkspaceMenu({ workspace, instance, instances }: WorkspaceMenuProps) {
               disabled={hasFreeInstance}
             >
               <Menu.Item
-                leftSection={<FixedSizeIcon name="gear" aria-hidden />}
+                leftSection={<FixedSizeIcon name="link" aria-hidden />}
                 disabled={!hasFreeInstance}
                 onClick={openProvision}
               >
@@ -189,7 +189,7 @@ function WorkspaceMenu({ workspace, instance, instances }: WorkspaceMenuProps) {
           )}
           {isProvisioned && (
             <Menu.Item
-              leftSection={<FixedSizeIcon name="gear" aria-hidden />}
+              leftSection={<FixedSizeIcon name="broken_link" aria-hidden />}
               onClick={openUnprovision}
             >
               {t`Unprovision`}
