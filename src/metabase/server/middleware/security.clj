@@ -179,7 +179,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [nonce data-app-inline-styles?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -210,9 +210,14 @@
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 ;; See [[generate-nonce]]
-                                 (when nonce
+                                 ;; See [[generate-nonce]].
+                                 (when (and nonce (not data-app-inline-styles?))
                                    (format "'nonce-%s'" nonce))
+                                 ;; Custom data apps render into an isolated iframe whose outer document only owns
+                                 ;; the iframe boundary. Allowing inline styles here lets single-file uploaded apps
+                                 ;; style their own sandboxed document without relaxing script-src or the main app CSP.
+                                 (when data-app-inline-styles?
+                                   "'unsafe-inline'")
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    frontend-address)
@@ -250,8 +255,8 @@
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes? nonce]
-  (update (content-security-policy-header nonce)
+  [allow-iframes? nonce data-app-inline-styles?]
+  (update (content-security-policy-header nonce data-app-inline-styles?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
                                                   (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
@@ -344,12 +349,12 @@
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
-      :or   {allow-iframes? false, allow-cache? false}}]
+  [& {:keys [origin nonce allow-iframes? allow-cache? data-app-inline-styles?]
+      :or   {allow-iframes? false, allow-cache? false, data-app-inline-styles? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce data-app-inline-styles?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
@@ -375,13 +380,18 @@
        (or (= (:request-method request) :options)
            (contains? #{400 402} (:status response)))))
 
+(defn- data-app-iframe-request?
+  [request]
+  (str/starts-with? (:uri request) "/embed/data-app/"))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
-                 :origin         (get (:headers request) "origin")
-                 :nonce          (:nonce request)
-                 :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :origin                      (get (:headers request) "origin")
+                 :nonce                       (:nonce request)
+                 :allow-iframes?              ((some-fn request/public? request/embed?) request)
+                 :allow-cache?                (request/cacheable? request)
+                 :data-app-inline-styles?     (data-app-iframe-request? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
