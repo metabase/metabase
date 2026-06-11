@@ -380,18 +380,19 @@
                       "7" "library-data"}  ; pre-existing value preserved
                      rows-by-id)))))))))
 
-(deftest table-curation-by-id-test
-  (testing "table curation is computed from appdb table columns (is_published/data_layer/data_authority) so
-            Migration 5 backfills existing semantic-index table rows correctly without a re-index"
+(deftest candidate-table-ids-test
+  (testing "Migration 5 sweeps only active published/authoritative tables, sorted into the two id lists it
+            backfills — others are implicitly not curated, and library tables ride root_collection_type"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {published :id}     {:db_id db-id :is_published true  :data_layer :final
-                                                     :data_authority :unconfigured}
-                   :model/Table {authoritative :id} {:db_id db-id :is_published false :data_layer :internal
-                                                     :data_authority :authoritative}
-                   :model/Table {plain :id}         {:db_id db-id :is_published false :data_layer :internal
-                                                     :data_authority :unconfigured}]
-      (let [by-id (#'semantic.db.migration.impl/table-curation-by-id)]
-        (is (true?  (get-in by-id [published :curated]))     "published + final layer counts")
-        (is (true?  (get-in by-id [authoritative :curated])) "authoritative counts regardless of publish state")
-        (is (false? (get-in by-id [plain :curated]))         "neither published-final nor authoritative")
-        (is (= "authoritative" (get-in by-id [authoritative :data_authority])))))))
+                   :model/Table {pub :id}      {:db_id db-id :active true  :is_published true :data_layer :final}
+                   :model/Table {auth :id}     {:db_id db-id :active true  :data_authority :authoritative}
+                   :model/Table {inactive :id} {:db_id db-id :active false :is_published true :data_layer :final}
+                   :model/Table {plain :id}    {:db_id db-id :active true}]
+      (let [{:keys [authoritative published]} (#'semantic.db.migration.impl/candidate-table-ids)
+            authoritative (set authoritative)
+            published     (set published)]
+        (is (contains? published (str pub))      "published-final tables go in :published")
+        (is (contains? authoritative (str auth)) "authoritative tables go in :authoritative")
+        (is (not (contains? published (str inactive))) "inactive tables are skipped")
+        (is (not (contains? published (str plain)))    "plain tables aren't candidates")
+        (is (not (contains? authoritative (str plain))))))))
