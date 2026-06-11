@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.redshift.index-test
-  "Tests for the Redshift inline index driver methods (Index Manager, milestone 0): `supported-index-methods` and
-  the sortkey rendering in `compile-transform`. These are pure rendering/capability checks and need no connection."
+  "Tests for the Redshift inline index driver methods (Index Manager, milestone 0): `supported-index-methods` and the
+  sortkey rendering at both creation seams, the CTAS in `compile-transform` (SQL transforms) and the CREATE TABLE in
+  `create-table!` (Python transforms). These are pure rendering/capability checks and need no connection."
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]))
+   [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]))
 
 (deftest ^:parallel feature-flags-test
   (testing "Redshift inlines hints into the CTAS and does not create them post-hoc"
@@ -42,3 +44,25 @@
              (driver/compile-transform :redshift {:output-table output-table
                                                   :query        {:query "SELECT 1" :params ["p"]}
                                                   :indexes      indexes}))))))
+
+(def ^:private create-table-cases
+  "Each case: inputs to the Python-transform `create-table!` renderer and the CREATE TABLE SQL it should produce. The
+  no-hint case is the upload-safe default (must match the inherited `:sql-jdbc` output)."
+  [{:label        "sortkey hint is inlined into the CREATE TABLE"
+    :columns      [["a" "INTEGER"]]
+    :indexes      [{:kind :sortkey :columns [{:name "a"}]}]
+    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER) COMPOUND SORTKEY (\"a\")"}
+   {:label        "interleaved sortkey, multiple columns"
+    :columns      [["a" "INTEGER"] ["b" "INTEGER"]]
+    :indexes      [{:kind :sortkey :style :interleaved :columns [{:name "a"} {:name "b"}]}]
+    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER, \"b\" INTEGER) INTERLEAVED SORTKEY (\"a\", \"b\")"}
+   {:label        "no sortkey hint -> plain CREATE TABLE (upload-safe default)"
+    :columns      [["a" "INTEGER"]]
+    :indexes      []
+    :expected-sql "CREATE TABLE \"events\" (\"a\" INTEGER)"}])
+
+(deftest ^:parallel create-table-sql-test
+  (doseq [{:keys [label columns indexes expected-sql]} create-table-cases]
+    (testing label
+      (is (= expected-sql
+             (#'redshift/create-table-sql :redshift :events columns {:indexes indexes}))))))

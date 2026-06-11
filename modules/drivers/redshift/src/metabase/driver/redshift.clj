@@ -233,27 +233,47 @@
 
 (defmethod driver/supported-index-methods :redshift
   [_driver _database]
-  ;; Redshift inlines sortkeys into the CTAS; distkeys come in a later milestone.
+  ;; Redshift has no secondary indexes: a sortkey is inlined into the table at creation time. That's the CTAS for a
+  ;; SQL transform and the CREATE TABLE for a Python transform, so the hint is rendered in both `compile-transform`
+  ;; and `create-table!`. distkeys come in a later milestone.
   {:sortkey {:lifecycle :ctas-inline}})
 
 (defn- sortkey-clause
-  "Render a sortkey hint, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`."
-  [driver {:keys [style columns]}]
-  (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
-        cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
-    (format "%s SORTKEY (%s)" style-sql cols)))
+  "Render the inline clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there is no
+  sortkey hint. Shared by both creation seams: the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`."
+  [driver indexes]
+  (when-let [{:keys [style columns]} (first (filter (comp #{:sortkey} :kind) indexes))]
+    (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
+          cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+      (format "%s SORTKEY (%s)" style-sql cols))))
 
 (defmethod driver/compile-transform :redshift
   [driver {:keys [query output-table indexes] :as transform-details}]
-  (if-let [sortkey (first (filter #(= :sortkey (:kind %)) indexes))]
+  (if-let [clause (sortkey-clause driver indexes)]
     (let [{sql-query :query sql-params :params} query
           k      (keyword output-table)
           target (if (namespace k)
                    (sql.u/quote-name driver :table (namespace k) (name k))
                    (sql.u/quote-name driver :table (name k)))]
-      [(format "CREATE TABLE %s %s AS %s" target (sortkey-clause driver sortkey) sql-query)
+      [(format "CREATE TABLE %s %s AS %s" target clause sql-query)
        sql-params])
     ((get-method driver/compile-transform :sql) driver transform-details)))
+
+(defn- create-table-sql
+  "Render the `CREATE TABLE (...)` for a Python-transform target, inlining a sortkey hint from `:indexes` when present.
+  Reuses the `:sql-jdbc` renderer for the column list and appends the inline clause."
+  [driver table-name column-definitions {:keys [primary-key indexes]}]
+  (let [base   (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+        clause (sortkey-clause driver indexes)]
+    (cond-> base clause (str " " clause))))
+
+(defmethod driver/create-table! :redshift
+  [driver db-id table-name column-definitions & {:as opts}]
+  ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey hint when one is present. Non-transform callers
+  ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
+  (let [sql (create-table-sql driver table-name column-definitions opts)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

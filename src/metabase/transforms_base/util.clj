@@ -519,7 +519,10 @@
   [:map
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
-   [:primary-key {:optional true} [:sequential :string]]])
+   [:primary-key {:optional true} [:sequential :string]]
+   ;; Inline index hints to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
+   ;; drivers that don't inline anything ignore it. Populated from a transform's desired hints by the manager.
+   [:indexes {:optional true} [:sequential :map]]])
 
 (mu/defn create-table-from-schema!
   "Create a table from a table-schema"
@@ -537,9 +540,9 @@
                                                        (driver/type->database-type driver :type/Text))))]
                                      [name db-type]))
                                  columns)
-        primary-key-opts (select-keys table-schema [:primary-key])]
+        opts (select-keys table-schema [:primary-key :indexes])]
     (log/infof "Creating table %s with %d columns" table-name (count columns))
-    (driver/create-table! driver database-id table-name column-definitions primary-key-opts)))
+    (driver/create-table! driver database-id table-name column-definitions opts)))
 
 (defn drop-table!
   "Drop a table in the database."
