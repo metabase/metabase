@@ -1,0 +1,373 @@
+(ns metabase-enterprise.semantic-search.vector-strategy-matrix-test
+  "Quality matrix over the vector-search strategies on a small deterministic dataset.
+
+  Covers four retrieval variants -- no HNSW index (exact seq scan), naive :hnsw (post-filter), and the two
+  iterative-scan strategies -- with :brute-force as the exact SQL reference, and measures three things:
+
+  1. distance recall / NDCG of candidate retrieval against a ground truth computed in pure Clojure,
+  2. recall of the final re-ranked top results against an exhaustive run of the same scoring pipeline,
+  3. under-fetch caused by post-retrieval permission filtering.
+
+  The trade-offs demonstrated: even exact retrieval under-delivers end-to-end (the candidate pool is
+  truncated at `semantic-search-results-limit` before re-ranking, and permission checks drop candidates
+  after), naive :hnsw can be far worse under selective filters, and the iterative strategies fix
+  filter-driven misses but not limit truncation or permission under-fetch.
+
+  Determinism: embeddings are constructed at exact, distinct distances from the probe (no ties), the heap is
+  populated in a fixed order before the index exists, the index is built serially with a seeded PRNG, every
+  indexed query forces the index path (a 300-row table would otherwise always seq-scan), and graph-dependent
+  cells assert thresholds rather than exact orderings."
+  (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
+   [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.test :as mt]
+   [next.jdbc :as jdbc])
+  (:import
+   (java.util Random)))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once #'semantic.tu/once-fixture)
+
+;;;; quality metrics
+
+(def ^:private cutoff
+  "The production cosine-distance cutoff; the dataset's bands are designed around it."
+  @#'semantic.index/max-cosine-distance)
+
+(defn- recall-at
+  "Fraction of the ideal top-`k` ids present in the returned top-`k`."
+  [k ideal-ids returned-ids]
+  (let [ideal (set (take k ideal-ids))]
+    (double (/ (count (filter ideal (take k returned-ids)))
+               (count ideal)))))
+
+(defn- sim
+  "Graded relevance of a cosine distance `d` in [0,2]: 1 (identical) .. 0 (opposite)."
+  [d]
+  (max 0.0 (- 1.0 (/ (double d) 2.0))))
+
+(defn- dcg
+  [rels]
+  (transduce (map-indexed (fn [i r] (/ (double r) (/ (Math/log (+ i 2.0)) (Math/log 2.0))))) + 0.0 rels))
+
+(defn- ndcg-at
+  "NDCG@`k` of `returned-ids` against the exact `ideal-ids` ranking, graded by true distance via `id->distance`."
+  [k id->distance ideal-ids returned-ids]
+  (/ (dcg (map (comp sim id->distance) (take k returned-ids)))
+     (dcg (map (comp sim id->distance) (take k ideal-ids)))))
+
+;;;; dataset
+
+(def ^:private probe-text "zebra quark")
+(def ^:private probe-vector [1.0 0.0 0.0 0.0])
+
+(def ^:private bands
+  "Band layout for the 300-doc dataset, in insertion (and ascending-distance) order.
+
+  - :restricted sits nearest the probe but in a permission-restricted collection, so it occupies top-k slots
+    that the permission filter then drops (under-fetch).
+  - :core/:mid are bulk filler so retrieval is nowhere near saturated.
+  - :pinned is inside the cutoff but far outside any candidate pool -- the re-ranking lever for layer 2.
+  - :rare holds the only verified docs and is anti-correlated with the probe: a :verified filter on it is
+    adversarial for post-filtering strategies. The adversarial filter must be a column with no supporting
+    btree: a :models filter would be served exactly by the (model, model_id) unique constraint at this table
+    size, bypassing the HNSW scan the matrix is exercising.
+  - :decoy lies beyond the cutoff and must never be returned."
+  [{:band :restricted :n 8   :model "card" :d0 0.020 :dstep 0.005}
+   {:band :core       :n 180 :model "card" :d0 0.100 :dstep 0.0015}
+   {:band :mid        :n 74  :model "card" :d0 0.400 :dstep 0.0008}
+   {:band :pinned     :n 6   :model "card" :d0 0.465 :dstep 0.002 :pinned true}
+   {:band :rare       :n 12  :model "card" :d0 0.550 :dstep 0.008 :verified true}
+   {:band :decoy      :n 20  :model "card" :d0 0.750 :dstep 0.007}])
+
+(defn- vector-at-distance
+  "A unit 4-d vector at exact cosine distance `d` from [[probe-vector]].
+  The probe component is fixed by `d` and the remainder is a seeded random direction orthogonal to it, so
+  pgvector's `<=>` returns exactly `d` (modulo float error) for every generated doc."
+  [^Random rng d]
+  (let [[u2 u3 u4] (loop []
+                     (let [g [(.nextGaussian rng) (.nextGaussian rng) (.nextGaussian rng)]
+                           n (Math/sqrt (double (reduce + (map * g g))))]
+                       (if (< n 1e-6) (recur) (mapv #(/ % n) g))))
+        a           (- 1.0 d)
+        b           (Math/sqrt (- 1.0 (* a a)))]
+    [a (* b u2) (* b u3) (* b u4)]))
+
+(defn- make-dataset
+  "Build the deterministic banded dataset.
+  Returns {:docs [...], :embeddings {text -> vec}, :id->distance {id -> d}, :id->band {id -> band}}.
+  Doc names share no stem with [[probe-text]], so the keyword side of the hybrid query never matches and the
+  RRF rank reduces to the pure semantic (distance) rank."
+  [{:keys [seed restricted-collection-id]}]
+  (let [rng  (Random. (long seed))
+        rows (for [{:keys [band n model d0 dstep pinned verified]} bands
+                   i (range n)]
+               {:band band :model model :pinned pinned :verified verified :d (+ d0 (* i dstep))})
+        rows (map-indexed (fn [idx row]
+                            (let [{:keys [band model]} row]
+                              (assoc row
+                                     :id (inc idx)
+                                     :name (format "%s %s %03d" (name band) model (inc idx))
+                                     :vector (vector-at-distance rng (:d row)))))
+                          rows)]
+    {:docs         (vec (for [{:keys [band model pinned verified d id name]} rows]
+                          (let [collection-id (when (= band :restricted) restricted-collection-id)]
+                            {:model           model
+                             :id              id
+                             :name            name
+                             :searchable_text name
+                             :embeddable_text name
+                             :created_at      #t "2025-01-01T12:00:00Z"
+                             :creator_id      (mt/user->id :rasta)
+                             :archived        false
+                             :pinned          (boolean pinned)
+                             :verified        (boolean verified)
+                             :collection_id   collection-id
+                             ;; the permission filter runs on the decoded legacy_input, so like the real
+                             ;; ingestion documents it must carry collection_id itself
+                             :legacy_input    {:id id :model model :name name :collection_id collection-id}
+                             :metadata        {:title name :distance d}})))
+     :embeddings   (into {probe-text probe-vector} (map (juxt :name :vector)) rows)
+     :id->distance (into {} (map (juxt :id :d)) rows)
+     :id->band     (into {} (map (juxt :id :band)) rows)}))
+
+(defn- exact-ids
+  "Ids of docs satisfying `pred`, within the distance cutoff, in exact ascending-distance order.
+  This is the pure-Clojure ground truth the SQL retrieval is measured against."
+  [{:keys [docs id->distance]} pred]
+  (->> docs
+       (filter pred)
+       (filter #(<= (id->distance (:id %)) cutoff))
+       (sort-by #(id->distance (:id %)))
+       (mapv :id)))
+
+(defn- band-ids
+  [{:keys [id->band]} band]
+  (set (keep (fn [[id b]] (when (= b band) id)) id->band)))
+
+(deftest dataset-sanity-test
+  (let [ds (make-dataset {:seed 42 :restricted-collection-id -1})]
+    (testing "300 docs, distinct strictly-positive distances, unit vectors"
+      (is (= 300 (count (:docs ds))))
+      (is (= 300 (count (distinct (vals (:id->distance ds))))))
+      (is (every? pos? (vals (:id->distance ds))))
+      (is (every? #(< (abs (- 1.0 (reduce + (map * % %)))) 1e-9)
+                  (vals (dissoc (:embeddings ds) probe-text)))))
+    (testing "geometry the assertions rely on"
+      (let [top-20 (set (take 20 (exact-ids ds (constantly true))))]
+        (testing "exact top-20 = the whole restricted band + nearest core docs, nothing verified"
+          (is (every? (some-fn (band-ids ds :restricted) (band-ids ds :core)) top-20))
+          (is (every? top-20 (band-ids ds :restricted))))
+        (testing "rare verified docs are all inside the cutoff, decoys all outside"
+          (is (= (band-ids ds :rare) (set (exact-ids ds :verified))))
+          (is (empty? (filter (band-ids ds :decoy) (exact-ids ds (constantly true))))))
+        (testing "at least a full pool of accessible docs lies within the cutoff"
+          (is (<= 20 (count (remove (band-ids ds :restricted) (exact-ids ds (constantly true)))))))))))
+
+;;;; fixture
+
+(def ^:private results-limit
+  "The candidate-pool size every variant retrieves, well below the 300-doc dataset so nothing saturates."
+  20)
+
+(def ^:private iterative-ef-search
+  "Below [[results-limit]], so the iterative strategies must run more than one scan iteration."
+  16)
+
+(defn- assert-pgvector-prereqs!
+  "Fail fast unless pgvector supports iterative scans and the server ef_search default is what the naive
+  :hnsw cells assume (there is deliberately no per-context ef knob for the naive strategy)."
+  []
+  (jdbc/with-transaction [tx (semantic.env/get-pgvector-datasource!)]
+    ;; a vector op loads the extension library, which registers the hnsw.* GUCs for SHOW
+    (jdbc/execute! tx ["SELECT '[1,2,3]'::vector <=> '[1,2,3]'::vector"])
+    (let [version   (-> (jdbc/execute-one! tx ["SELECT extversion FROM pg_extension WHERE extname = 'vector'"])
+                        vals first str)
+          ef-search (-> (jdbc/execute-one! tx ["SHOW hnsw.ef_search"]) vals first)]
+      (when-not (<= 0 (compare (mapv parse-long (take 2 (str/split version #"\.")))
+                               [0 8]))
+        (throw (ex-info "vector-strategy matrix needs pgvector >= 0.8.0 (iterative scans)"
+                        {:extversion version})))
+      (when-not (= "40" ef-search)
+        (throw (ex-info "vector-strategy matrix assumes the stock hnsw.ef_search default"
+                        {:hnsw.ef_search ef-search}))))))
+
+(defn- drop-hnsw-index!
+  []
+  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
+                 [(str "DROP INDEX IF EXISTS " (semantic.index/hnsw-index-name semantic.tu/mock-index))]))
+
+(defn- build-hnsw-index!
+  "Build the HNSW index reproducibly: serial build over the fixed-order heap with a seeded backend PRNG
+  (pgvector draws node levels from it), and build parameters pinned against future pgvector default changes."
+  []
+  (jdbc/with-transaction [tx (semantic.env/get-pgvector-datasource!)]
+    (jdbc/execute! tx ["SET LOCAL max_parallel_maintenance_workers = 0"])
+    (jdbc/execute! tx ["SELECT setseed(0.42)"])
+    (jdbc/execute! tx [(format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
+                               (semantic.index/hnsw-index-name semantic.tu/mock-index)
+                               (:table-name semantic.tu/mock-index))])))
+
+(defn- do-with-matrix-fixture!
+  "Run `(f dataset)` against a temp pgvector DB whose index table is populated with the matrix dataset but has
+  NO HNSW index yet. `f` runs its exact cells first, then calls [[build-hnsw-index!]] for the indexed ones."
+  [f]
+  (mt/with-premium-features #{:semantic-search}
+    (mt/with-temporary-setting-values [semantic-search-results-limit results-limit]
+      (mt/with-temp [:model/Collection {restricted-id :id} {:name "Matrix Restricted Collection"}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted-id)
+        (let [ds (make-dataset {:seed 42 :restricted-collection-id restricted-id})]
+          (semantic.tu/with-mock-embeddings (:embeddings ds)
+            (semantic.tu/with-test-db! {:mode :mock-initialized}
+              (assert-pgvector-prereqs!)
+              (drop-hnsw-index!)
+              (semantic.tu/upsert-index! (:docs ds) :serial? true)
+              (f ds))))))))
+
+(def ^:private base-ctx
+  {:search-string probe-text
+   :search-engine "semantic"
+   :archived?     false})
+
+(defn- variant-ctx
+  "Per-variant search-context overrides.
+  Indexed variants force the index path: the planner would otherwise always seq-scan a 300-row table, making
+  every variant silently exact. The iterative variants pin both GUC knobs so nothing depends on settings."
+  [variant]
+  (case variant
+    :no-index    {:vector-search-strategy :hnsw}
+    :brute-force {:vector-search-strategy :brute-force}
+    :hnsw        {:vector-search-strategy     :hnsw
+                  :vector-search-force-index? true}
+    (:hnsw-iterative-relaxed :hnsw-iterative-strict)
+    {:vector-search-strategy         variant
+     :vector-search-force-index?     true
+     :vector-search-ef-search        iterative-ef-search
+     :vector-search-max-scan-tuples  10000}))
+
+(defn- query-results!
+  "Run the full [[semantic.index/query-index]] pipeline for `variant`, returning {:results ... :raw-count ...}."
+  [variant extra-ctx]
+  (memoize/memo-clear! #'semantic.scoring/view-count-percentiles)
+  (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
+                              semantic.tu/mock-index
+                              (merge base-ctx
+                                     {:current-user-id (mt/user->id :rasta)}
+                                     (variant-ctx variant)
+                                     extra-ctx)))
+
+(defn- query-ids!
+  "Ordered result ids for `variant`, through the full pipeline."
+  [variant & {:as extra-ctx}]
+  (mapv :id (:results (query-results! variant extra-ctx))))
+
+;;;; layer 1: distance-level retrieval vs exact ground truth
+
+(deftest distance-recall-matrix-test
+  (do-with-matrix-fixture!
+   (fn [ds]
+     ;; isolate retrieval: weights reduce ranking to the distance rank, permission filtering is bypassed
+     (semantic.tu/with-only-semantic-weights
+       (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+         (let [exact-all  (exact-ids ds (constantly true))
+               exact-rare (exact-ids ds :verified)]
+           (testing "without an HNSW index"
+             (testing "retrieval is exact: the pool is the true top-20 in distance order"
+               (is (= (take 20 exact-all) (query-ids! :no-index)))
+               (is (= (take 20 exact-all) (query-ids! :brute-force))))
+             (testing "but post-filtering still finds NOTHING for an anti-correlated :verified filter"
+               ;; the exact global top-20 contains nothing verified, so filtering it afterwards yields zero;
+               ;; only filter-first (:brute-force) retrieval is immune
+               (is (= [] (query-ids! :no-index :verified true)))
+               (is (= exact-rare (query-ids! :brute-force :verified true)))))
+           (build-hnsw-index!)
+           (testing "with the HNSW index (forced)"
+             (testing "unfiltered approximate retrieval is near-exact"
+               (doseq [variant [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+                 (let [ids (query-ids! variant)]
+                   (testing variant
+                     (is (<= 0.9 (recall-at 20 exact-all ids)))
+                     (is (<= 0.95 (ndcg-at 20 (:id->distance ds) exact-all ids)))))))
+             (testing "naive :hnsw post-filters the same global pool, so the adversarial filter still misses"
+               (is (<= (recall-at 12 exact-rare (query-ids! :hnsw :verified true))
+                       0.25)))
+             (testing "iterative scans keep pulling neighbours past the filter and recover the misses"
+               (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+                 (let [ids (query-ids! variant :verified true)]
+                   (testing variant
+                     (is (<= 9 (count ids)))
+                     (is (<= 0.75 (recall-at 12 exact-rare ids)))))))
+             (testing "hnsw.max_scan_tuples truncates an iterative scan before it reaches far-away matches"
+               ;; the rare band sits at distance ranks 269-280, far past a 64-tuple visit budget
+               (let [ids (query-ids! :hnsw-iterative-relaxed
+                                     :verified true
+                                     :vector-search-max-scan-tuples 64)]
+                 (is (< (count ids) 12))
+                 (is (<= (recall-at 12 exact-rare ids) 0.25)))))))))))
+
+;;;; layer 2: final top results vs an exhaustive run of the same scoring pipeline
+
+(deftest full-pipeline-recall-matrix-test
+  (do-with-matrix-fixture!
+   (fn [ds]
+     (mt/with-dynamic-fn-redefs [semantic.index/filter-read-permitted identity]
+       (testing "re-ranking: a deterministic :pinned boost promotes docs the candidate pool never contains"
+         (semantic.tu/with-weights {:rrf 1 :pinned 10}
+           (let [ideal      (mt/with-temporary-setting-values [semantic-search-results-limit 1000]
+                              (query-ids! :brute-force))
+                 ideal-top  (take 10 ideal)
+                 exact-all  (exact-ids ds (constantly true))]
+             (testing "the ideal top-10 is the pinned band plus the nearest docs"
+               (is (= (into (band-ids ds :pinned) (take 4 exact-all))
+                      (set ideal-top))))
+             (testing "exact retrieval scores only its truncated pool: pinned docs sit at distance ranks 263-268"
+               (is (= 0.4 (recall-at 10 ideal-top (query-ids! :no-index)))))
+             (build-hnsw-index!)
+             (testing "indexed retrieval cannot beat the limit truncation, only lose more of the pool"
+               (is (>= 0.4 (recall-at 10 ideal-top (query-ids! :hnsw))))
+               (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+                 (testing variant
+                   (is (>= 0.5 (recall-at 10 ideal-top (query-ids! variant))))))))))
+       (testing "under a selective filter the indexed iterative variants are strictly better end-to-end"
+         (semantic.tu/with-only-semantic-weights
+           (let [ideal-rare (mt/with-temporary-setting-values [semantic-search-results-limit 1000]
+                              (query-ids! :brute-force :verified true))]
+             (is (= 0.0 (recall-at 10 ideal-rare (query-ids! :no-index :verified true))))
+             (is (<= (recall-at 10 ideal-rare (query-ids! :hnsw :verified true)) 0.25))
+             (doseq [variant [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+               (testing variant
+                 (is (<= 0.75 (recall-at 10 ideal-rare (query-ids! variant :verified true)))))))))))))
+
+;;;; layer 3: under-fetch from post-retrieval permission filtering
+
+(deftest permission-under-fetch-matrix-test
+  (do-with-matrix-fixture!
+   (fn [_ds]
+     (semantic.tu/with-only-semantic-weights
+       (let [run! (fn [variant user]
+                    (mt/with-test-user user
+                      (let [{:keys [results raw-count]} (query-results! variant {:current-user-id (mt/user->id user)})]
+                        {:raw-count raw-count :returned (count results)})))]
+         (testing "exact variants: the restricted band fills 8 of the 20 pool slots, then gets dropped"
+           (doseq [variant [:no-index :brute-force]]
+             (testing variant
+               (is (= {:raw-count 20 :returned 12} (run! variant :rasta))))))
+         (build-hnsw-index!)
+         (testing "indexed variants under-fetch the same way; iterating cannot help (the check runs in Clojure)"
+           (doseq [variant [:hnsw :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+             (let [{:keys [raw-count returned]} (run! variant :rasta)]
+               (testing variant
+                 (is (= 20 raw-count))
+                 ;; an approximate pool can only swap restricted members for accessible ones, never shrink
+                 ;; below 12 (only 8 restricted docs exist) -- but every variant returns short of the limit
+                 (is (<= 12 returned 16))))))
+         (testing "an admin sees the full pool, pinning the loss on permissions rather than retrieval"
+           (is (= {:raw-count 20 :returned 20} (run! :hnsw :crowberto)))))))))
