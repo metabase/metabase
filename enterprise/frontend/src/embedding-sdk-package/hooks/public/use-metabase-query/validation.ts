@@ -2,12 +2,15 @@ import {
   getMetricMappedTableIds,
   isMeasureSchema,
   isSegmentSchema,
+  isTableDimensionFilter,
+  isTableFieldSchema,
 } from "./guards";
 import type { MetricQueryRuntime } from "./runtime-types";
 
 export function validateMetricTableScopedInputs(query: MetricQueryRuntime) {
   validateTableScopedInputs({
     allowedTableIds: getMetricMappedTableIds(query),
+    breakouts: query.breakouts,
     filters: query.filters,
     measures: query.measures,
     context: "Metric query",
@@ -18,11 +21,13 @@ export function validateTableScopedInputs({
   allowedTableIds,
   filters,
   measures,
+  breakouts,
   context,
 }: {
   allowedTableIds: readonly number[] | null;
   filters?: readonly unknown[];
   measures?: readonly unknown[];
+  breakouts?: readonly unknown[];
   context: string;
 }) {
   if (!allowedTableIds) {
@@ -35,6 +40,17 @@ export function validateTableScopedInputs({
         tableId: filter.tableId,
         allowedTableIds,
         context: `${context} segments`,
+      });
+    }
+
+    if (
+      isTableDimensionFilter(filter) &&
+      typeof filter.dimension.tableId === "number"
+    ) {
+      validateGeneratedTableId({
+        tableId: filter.dimension.tableId,
+        allowedTableIds,
+        context: `${context} filters`,
       });
     }
   });
@@ -53,6 +69,35 @@ export function validateTableScopedInputs({
       });
     }
   });
+
+  breakouts?.forEach((breakout) => {
+    const field = getTableFieldFromBreakout(breakout);
+
+    if (field && typeof field.tableId === "number") {
+      validateGeneratedTableId({
+        tableId: field.tableId,
+        allowedTableIds,
+        context: `${context} breakouts`,
+      });
+    }
+  });
+}
+
+function getTableFieldFromBreakout(breakout: unknown) {
+  if (isTableFieldSchema(breakout)) {
+    return breakout;
+  }
+
+  if (
+    typeof breakout === "object" &&
+    breakout != null &&
+    "dimension" in breakout &&
+    isTableFieldSchema(breakout.dimension)
+  ) {
+    return breakout.dimension;
+  }
+
+  return null;
 }
 
 function validateGeneratedMeasure({

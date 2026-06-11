@@ -707,11 +707,13 @@
      (question-schema details))))
 
 (defn- model-schemas
-  [database-ids]
-  (for [card (select-cards :model database-ids)
-        :let [details (question-details card)]
-        :when details]
-    (model-schema details)))
+  ([database-ids]
+   (model-schemas database-ids nil))
+  ([database-ids collection-ids]
+   (for [card (select-cards :model database-ids collection-ids)
+         :let [details (question-details card)]
+         :when details]
+     (model-schema details))))
 
 (defn- metric-schemas
   ([database-ids]
@@ -778,7 +780,16 @@
         library-collection-values  (query-library-collection-values query-params)
         question-collection-values (query-question-collection-values query-params)
         database-ids               (database-ids-for-value (query-database-value query-params))
-        models                     (model-schemas nil)
+        question-collection-ids    (collection-scope question-collection-values)
+        models                     (cond
+                                     database-ids
+                                     (model-schemas database-ids)
+
+                                     question-collection-ids
+                                     (model-schemas nil question-collection-ids)
+
+                                     :else
+                                     [])
         questions-only             (truthy-query-param? (query-param query-params :questions))]
     (cond
       (or library-value library-collection-values question-collection-values)
@@ -788,7 +799,6 @@
 
                                   library-collection-values
                                   (library-collections-scope library-collection-values))
-            question-collection-ids (collection-scope question-collection-values)
             questions           (if question-collection-values
                                   (question-schemas nil question-collection-ids)
                                   [])

@@ -128,7 +128,6 @@ const useMetabaseQueryImpl = <
   const [error, setError] = useState<unknown>(null);
 
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
-  const tableDatasetQueryObject = useTableDatasetQueryObject(query);
   const queryRef = useRef(query);
 
   useEffect(() => {
@@ -171,7 +170,9 @@ const useMetabaseQueryImpl = <
 
         const result = await queryDataset(reduxStore)({
           datasetQuery:
-            tableDatasetQueryObject ?? buildTableDatasetQuery(currentQuery),
+            getTableDatabaseId(currentQuery) == null
+              ? buildTableDatasetQuery(currentQuery)
+              : createMetabaseQuery(currentQuery),
         });
 
         setData(mapDatasetQueryData(result));
@@ -194,13 +195,7 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [
-    queryDataset,
-    queryMetric,
-    queryQuestion,
-    reduxStore,
-    tableDatasetQueryObject,
-  ]);
+  }, [queryDataset, queryMetric, queryQuestion, reduxStore]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -245,26 +240,4 @@ export function createMetabaseQuery(
     ...buildTableDatasetQuery(query),
     database: Number(databaseId),
   };
-}
-
-function useTableDatasetQueryObject(
-  query: MetabaseQueryOptions<unknown, unknown>,
-) {
-  const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
-  const queryRef = useRef(query);
-
-  queryRef.current = query;
-
-  return useMemo(() => {
-    const currentQuery = queryRef.current;
-
-    if (!isTableQuery(currentQuery)) {
-      return null;
-    }
-
-    return getTableDatabaseId(currentQuery) == null
-      ? buildTableDatasetQuery(currentQuery)
-      : createMetabaseQuery(currentQuery);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- queryKey tracks query contents while avoiding object identity churn.
-  }, [queryKey]);
 }
