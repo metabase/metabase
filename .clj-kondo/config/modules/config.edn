@@ -177,6 +177,7 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
+                    :model/Table
                     :model/User}}
 
   agent-lib
@@ -1098,7 +1099,6 @@
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
               enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
-
 
   lib-be
   {:team "Querying Platform"
