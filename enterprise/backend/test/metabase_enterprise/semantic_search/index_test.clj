@@ -51,8 +51,17 @@
     (let [sql (vector-search-sql :hnsw)]
       (is (not (str/includes? sql "MATERIALIZED")))
       (is (re-find #"ORDER BY embedding <=>" sql))
-      ;; the filter is applied in the outer query, after the candidate set is chosen
-      (is (str/includes? sql "\"archived\" = FALSE"))))
+      ;; the filter is applied in the outer query, after the candidate set is chosen, so it appears *after*
+      ;; the inner ORDER BY embedding <=> ... LIMIT in the generated SQL
+      (is (str/includes? sql "\"archived\" = FALSE"))
+      (is (not (re-find #"(?s)\"archived\" = FALSE.*ORDER BY embedding <=>" sql)))))
+  (testing ":hnsw-iterative-* filters inline with the ordered/limited index scan (iterative scan)"
+    (doseq [strategy [:hnsw-iterative-relaxed :hnsw-iterative-strict]]
+      (let [sql (vector-search-sql strategy)]
+        (is (not (str/includes? sql "MATERIALIZED")))
+        ;; the filter lives *inside* the ordered+limited candidate scan (before the ORDER BY embedding <=>),
+        ;; so the HNSW index sees it and the iterative scan can extend until the limit is met
+        (is (re-find #"(?s)\"archived\" = FALSE.*ORDER BY embedding <=>" sql)))))
   (testing "no explicit strategy falls back to the configured default setting"
     (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
            (vector-search-sql nil)))))
@@ -80,7 +89,7 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
                           (semantic.settings/semantic-search-vector-strategy! :nonsense))))
   (testing "valid strategies round-trip"
-    (doseq [strategy [:hnsw :brute-force]]
+    (doseq [strategy [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict]]
       (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
         (is (= strategy (semantic.settings/semantic-search-vector-strategy))))))
   (testing "the setter kicks off the background build job only on the transition into :hnsw"
@@ -100,6 +109,60 @@
             (is (= 1 @triggers) "switching away from :hnsw does not trigger")
             (semantic.settings/semantic-search-vector-strategy! :hnsw)
             (is (= 2 @triggers) "transitioning back into :hnsw triggers again")))))))
+
+(deftest vector-session-settings-test
+  (testing ":hnsw and :brute-force need no session GUCs"
+    (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :hnsw})))
+    (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :brute-force}))))
+  (testing ":hnsw-iterative-* emits iterative_scan / ef_search / max_scan_tuples SET LOCALs; the strategy sets the order"
+    (is (= ["SET LOCAL hnsw.iterative_scan = strict_order"
+            "SET LOCAL hnsw.ef_search = 100"
+            "SET LOCAL hnsw.max_scan_tuples = 50000"]
+           (map first (#'semantic.index/vector-session-settings
+                       {:vector-search-strategy        :hnsw-iterative-strict
+                        :vector-search-ef-search       100
+                        :vector-search-max-scan-tuples 50000}))))
+    (is (= "SET LOCAL hnsw.iterative_scan = relaxed_order"
+           (first (first (#'semantic.index/vector-session-settings
+                          {:vector-search-strategy :hnsw-iterative-relaxed}))))))
+  (testing "force-index? appends enable_seqscan = off for any strategy"
+    (is (= ["SET LOCAL enable_seqscan = off"]
+           (map first (#'semantic.index/vector-session-settings
+                       {:vector-search-strategy :hnsw :vector-search-force-index? true}))))))
+
+(deftest ^:synchronized semantic-search-instrumentation-test
+  (mt/with-premium-features #{:semantic-search}
+    (with-open [_ (semantic.tu/open-temp-index!)]
+      (semantic.tu/upsert-index! (semantic.tu/mock-documents))
+      (testing "vector-search-explain? runs EXPLAIN ANALYZE and emits the vector-scan instrumentation metrics"
+        (let [analytics-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                       (swap! analytics-calls conj [metric args]))]
+            (mt/with-test-user :crowberto
+              (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                          {:search-string "dog training" :vector-search-explain? true}))
+            (let [by-metric (into {} (map (juxt first (comp vec second))) @analytics-calls)]
+              (testing "all four instrumentation metrics fire with numeric values"
+                (doseq [metric [:metabase-search/semantic-vector-inner-ms
+                                :metabase-search/semantic-vector-tuples-scanned
+                                :metabase-search/semantic-prefilter-pool-size]]
+                  (is (contains? by-metric metric))
+                  ;; args are [labels amount]; the amount must be a non-negative number
+                  (is (number? (second (by-metric metric))) (str metric " amount should be numeric"))
+                  (is (<= 0 (second (by-metric metric))) (str metric " amount should be non-negative"))))
+              (testing "the scan plan node is reported as a label"
+                (is (contains? by-metric :metabase-search/semantic-vector-scan-used-index))
+                (is (string? (get-in (by-metric :metabase-search/semantic-vector-scan-used-index)
+                                     [0 :plan-node]))))))))
+      (testing "with instrumentation off (the default) no instrumentation metrics are emitted"
+        (let [analytics-calls (atom [])]
+          (mt/with-dynamic-fn-redefs [analytics/inc! (fn [metric & args]
+                                                       (swap! analytics-calls conj [metric args]))]
+            (mt/with-test-user :crowberto
+              (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
+                                          {:search-string "dog training"}))
+            (is (not (contains? (set (map first @analytics-calls))
+                                :metabase-search/semantic-vector-inner-ms)))))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}

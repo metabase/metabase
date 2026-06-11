@@ -317,8 +317,17 @@
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
   Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
-  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
-  [:hnsw :brute-force])
+  separate dispatch (with an `:hnsw` default) and must be updated by hand when adding a strategy.
+
+   - `:hnsw`                    approximate, index-backed, post-filters the candidate set
+   - `:brute-force`            exact, filter-first full scan (skips the index)
+   - `:hnsw-iterative-relaxed` index-backed iterative scan, filters inline, results in approximate distance
+                               order (pgvector `hnsw.iterative_scan = relaxed_order`)
+   - `:hnsw-iterative-strict`  as above but exact distance order (`hnsw.iterative_scan = strict_order`)
+
+  The iterative scan keeps pulling neighbours until the limit is met or `hnsw.max_scan_tuples` is hit; the
+  `ef-search` and `max-scan-tuples` knobs tune it further."
+  [:hnsw :brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict])
 
 (def ^:private ui-contexts
   "Search `context` values issued by the frontend, one per UI surface.
@@ -411,9 +420,20 @@
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
-   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
-   ;; configured default setting.
-   [:vector-search-strategy {:optional true} [:maybe keyword?]]
+   ;; Semantic-engine vector-search strategy (see [[search.config/vector-search-strategies]]). When absent,
+   ;; the engine uses its configured default setting. The remaining vector-search-* knobs are experimental
+   ;; tuning parameters; they only affect the `:hnsw-iterative-*` strategies (except `explain?`, which works
+   ;; for any strategy). Each falls back to its EE setting default when absent.
+   [:vector-search-strategy        {:optional true} [:maybe keyword?]]
+   ;; pgvector `hnsw.ef_search` -- HNSW candidate-list size
+   [:vector-search-ef-search       {:optional true} [:maybe pos-int?]]
+   ;; pgvector `hnsw.max_scan_tuples` -- soft cap on tuples an iterative scan visits
+   [:vector-search-max-scan-tuples {:optional true} [:maybe pos-int?]]
+   ;; true to run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery (expensive)
+   [:vector-search-explain?        {:optional true} [:maybe :boolean]]
+   ;; true to `SET LOCAL enable_seqscan = off` to force the planner onto the HNSW index (experiment knob;
+   ;; deliberately not exposed over HTTP)
+   [:vector-search-force-index?    {:optional true} [:maybe :boolean]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;

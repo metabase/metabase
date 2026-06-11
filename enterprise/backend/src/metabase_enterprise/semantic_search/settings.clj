@@ -146,6 +146,42 @@
                   (when (and (= kw :hnsw) (not= old :hnsw))
                     (events/publish-event! :event/semantic-search-hnsw-enabled {})))))
 
+(defsetting semantic-search-ef-search
+  (deferred-tru
+   (str "Default pgvector `hnsw.ef_search` (HNSW candidate-list size) for the `hnsw-iterative-*` strategies. "
+        "Larger values improve recall at the cost of latency. Individual requests may override this via the "
+        "`vector_search_ef_search` API parameter."))
+  :type       :positive-integer
+  :default    40
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false)
+
+(defsetting semantic-search-max-scan-tuples
+  (deferred-tru
+   (str "Default pgvector `hnsw.max_scan_tuples` (soft cap on tuples an iterative scan visits) for the "
+        "`hnsw-iterative-*` strategies. Larger values improve recall under selective filters at the cost of "
+        "latency. Individual requests may override this via the `vector_search_max_scan_tuples` API parameter."))
+  :type       :positive-integer
+  :default    20000
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false)
+
+(defsetting semantic-search-explain
+  (deferred-tru
+   (str "Run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
+        "Expensive (re-executes the inner query); intended for ad-hoc analysis. Individual requests may "
+        "override this via the `vector_search_explain` API parameter."))
+  :type       :boolean
+  :default    false
+  :encryption :no
+  :export?    false
+  :visibility :internal
+  :doc        false)
+
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
   :type :integer

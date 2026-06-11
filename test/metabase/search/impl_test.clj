@@ -36,6 +36,31 @@
       (testing "Subclasses"
         (is (= :search.engine/hybrid (#'search.impl/parse-engine "hybrid"))))))
 
+(deftest vector-search-knobs-threading-test
+  (let [base {:current-user-id       1
+              :current-user-perms    #{"/"}
+              :is-superuser?         true
+              :is-impersonated-user? false
+              :is-sandboxed-user?    false
+              :models                nil
+              :search-string         "x"}]
+    (testing "the experimental vector-search knobs thread from input into the search context"
+      (is (=? {:vector-search-strategy        :hnsw-iterative-strict
+               :vector-search-ef-search       100
+               :vector-search-max-scan-tuples 50000
+               :vector-search-explain?        true
+               :vector-search-force-index?    true}
+              (search.impl/search-context
+               (merge base {:vector-search-strategy        "hnsw-iterative-strict"
+                            :vector-search-ef-search       100
+                            :vector-search-max-scan-tuples 50000
+                            :vector-search-explain?        true
+                            :vector-search-force-index?    true})))))
+    (testing "absent knobs stay absent (so the engine falls back to its setting defaults)"
+      (let [ctx (search.impl/search-context base)]
+        (is (not-any? ctx [:vector-search-strategy :vector-search-ef-search :vector-search-max-scan-tuples
+                           :vector-search-explain? :vector-search-force-index?]))))))
+
 (deftest ^:parallel order-clause-test
   (testing "it includes all columns and normalizes the query"
     (is (= [[:case

@@ -179,6 +179,9 @@
    [:model_ancestors                     {:default false} [:maybe :boolean]]
    [:search_engine                       {:optional true} [:maybe string?]]
    [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
+   [:vector_search_ef_search             {:optional true} [:maybe ms/PositiveInt]]
+   [:vector_search_max_scan_tuples       {:optional true} [:maybe ms/PositiveInt]]
+   [:vector_search_explain               {:optional true} [:maybe :boolean]]
    [:search_native_query                 {:optional true} [:maybe :boolean]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -209,6 +212,9 @@
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
     vector-search-strategy              :vector_search_strategy
+    vector-search-ef-search             :vector_search_ef_search
+    vector-search-max-scan-tuples       :vector_search_max_scan_tuples
+    vector-search-explain               :vector_search_explain
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -234,6 +240,9 @@
     :offset                              (request/offset)
     :search-engine                       search-engine
     :vector-search-strategy              vector-search-strategy
+    :vector-search-ef-search             vector-search-ef-search
+    :vector-search-max-scan-tuples       vector-search-max-scan-tuples
+    :vector-search-explain?              vector-search-explain
     :search-native-query                 search-native-query
     :search-string                       (some-> q str/trim not-empty)
     :table-db-id                         table-db-id
