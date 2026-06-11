@@ -10,7 +10,6 @@ import CreateCollectionModal, {
 } from "metabase/collections/containers/CreateCollectionModal";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
-import { Modal } from "metabase/common/components/Modal";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import {
@@ -24,6 +23,7 @@ import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
+import { Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { WritebackAction } from "metabase-types/api";
 
@@ -91,7 +91,14 @@ export const NewModals = withRouter((props: WithRouterProps) => {
       );
     case "action":
       return (
-        <Modal wide onClose={handleModalClose} enableTransition={false}>
+        <Modal
+          opened
+          size="85%"
+          padding={0}
+          withCloseButton={false}
+          transitionProps={{ duration: 0 }}
+          onClose={handleModalClose}
+        >
           <ActionCreator
             onClose={handleModalClose}
             onSubmit={handleActionCreated}

@@ -15,7 +15,6 @@ import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Modal } from "metabase/common/components/Modal";
 import {
   DetailsGroup,
   Header,
@@ -33,6 +32,7 @@ import {
   Divider,
   Group,
   Icon,
+  Modal,
   Stack,
   Tooltip,
   rem,
@@ -393,7 +393,13 @@ export function DetailViewSidesheet({
         onSuccess={handleActionSuccess}
       />
 
-      <Modal isOpen={isDeleteModalOpen} onClose={handleDeleteModalClose}>
+      <Modal
+        opened={isDeleteModalOpen}
+        size="640px"
+        padding={0}
+        withCloseButton={false}
+        onClose={handleDeleteModalClose}
+      >
         <DeleteObjectModal
           actionId={deleteActionId}
           objectId={rowId}

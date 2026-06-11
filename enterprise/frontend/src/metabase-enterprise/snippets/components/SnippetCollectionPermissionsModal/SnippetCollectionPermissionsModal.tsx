@@ -1,7 +1,7 @@
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { useListCollectionsQuery } from "metabase/api";
-import { Modal } from "metabase/common/components/Modal";
 import type { SnippetCollectionPermissionsModalProps } from "metabase/plugins";
+import { Modal } from "metabase/ui";
 
 export function SnippetCollectionPermissionsModal({
   collectionId,
@@ -10,7 +10,13 @@ export function SnippetCollectionPermissionsModal({
   useListCollectionsQuery({ namespace: "snippets" });
 
   return (
-    <Modal onClose={onClose}>
+    <Modal
+      opened
+      size="640px"
+      padding={0}
+      withCloseButton={false}
+      onClose={onClose}
+    >
       <CollectionPermissionsModal
         params={{ slug: String(collectionId) }}
         onClose={onClose}

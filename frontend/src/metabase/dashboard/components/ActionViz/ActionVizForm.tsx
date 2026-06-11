@@ -9,9 +9,9 @@ import { useActionInitialValues } from "metabase/actions/hooks/use-action-initia
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
 import { actionApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { Modal } from "metabase/common/components/Modal";
 import { useDispatch } from "metabase/redux";
 import { PublicApi } from "metabase/services";
+import { Modal } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
   ActionDashboardCard,
@@ -162,7 +162,10 @@ function ActionVizForm({
         )}
         {showEditModal && (
           <Modal
-            wide
+            opened
+            size="85%"
+            padding={0}
+            withCloseButton={false}
             data-testid="action-editor-modal"
             onClose={closeEditModal}
           >

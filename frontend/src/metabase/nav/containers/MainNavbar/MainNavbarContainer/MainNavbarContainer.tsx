@@ -18,7 +18,6 @@ import {
   getCollectionIcon,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import { Modal } from "metabase/common/components/Modal";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
@@ -181,20 +180,13 @@ function MainNavbarContainer({
 
   const closeModal = useCallback(() => setModal(null), []);
 
-  const renderModalContent = useCallback(() => {
-    if (modal === "MODAL_NEW_COLLECTION") {
-      return (
-        <CreateCollectionModal
-          onClose={closeModal}
-          onCreate={(collection: Collection) => {
-            closeModal();
-            onChangeLocation(Urls.collection(collection));
-          }}
-        />
-      );
-    }
-    return null;
-  }, [modal, closeModal, onChangeLocation]);
+  const handleCollectionCreate = useCallback(
+    (collection: Collection) => {
+      closeModal();
+      onChangeLocation(Urls.collection(collection));
+    },
+    [closeModal, onChangeLocation],
+  );
 
   if (error || databasesError) {
     return <NavbarErrorView />;
@@ -223,7 +215,12 @@ function MainNavbarContainer({
         showExternalCollectionsSection={showExternalCollectionsSection}
       />
 
-      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+      {modal === "MODAL_NEW_COLLECTION" && (
+        <CreateCollectionModal
+          onClose={closeModal}
+          onCreate={handleCollectionCreate}
+        />
+      )}
     </>
   );
 }

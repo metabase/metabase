@@ -6,7 +6,6 @@ import _ from "underscore";
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { CopyModal } from "metabase/common/components/CopyModal";
-import { Modal } from "metabase/common/components/Modal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
@@ -29,7 +28,7 @@ import type { QueryBuilderMode } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import { Text } from "metabase/ui";
+import { Modal, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
@@ -282,19 +281,37 @@ export function QueryModals({
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (
-        <Modal small onClose={onCloseModal}>
+        <Modal
+          opened
+          size="480px"
+          padding={0}
+          withCloseButton={false}
+          onClose={onCloseModal}
+        >
           <NewDatasetModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          size="640px"
+          padding={0}
+          withCloseButton={false}
+          onClose={onCloseModal}
+        >
           <ImpossibleToCreateModelModal onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.NEW_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          size="640px"
+          padding={0}
+          withCloseButton={false}
+          onClose={onCloseModal}
+        >
           <NewEventModal
             cardId={question.id()}
             collectionId={question.collectionId()}
@@ -304,13 +321,25 @@ export function QueryModals({
       );
     case MODAL_TYPES.EDIT_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          size="640px"
+          padding={0}
+          withCloseButton={false}
+          onClose={onCloseModal}
+        >
           <EditEventModal eventId={modalContext} onClose={onCloseModal} />
         </Modal>
       );
     case MODAL_TYPES.MOVE_EVENT:
       return (
-        <Modal onClose={onCloseModal}>
+        <Modal
+          opened
+          size="640px"
+          padding={0}
+          withCloseButton={false}
+          onClose={onCloseModal}
+        >
           <MoveEventModal
             eventId={modalContext}
             collectionId={question.collectionId()}
