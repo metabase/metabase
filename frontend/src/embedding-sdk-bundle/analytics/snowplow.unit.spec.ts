@@ -1,6 +1,8 @@
 import type { SelfDescribingJson } from "@snowplow/browser-tracker";
 
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import { createMockSettingsState } from "metabase/redux/store/mocks/settings";
+import { createMockState } from "metabase/redux/store/mocks/state";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 const mockNewTracker = jest.fn();
 const mockTrackSelfDescribingEvent = jest.fn();
@@ -13,12 +15,17 @@ jest.mock("@snowplow/browser-tracker", () => ({
 // Re-import the module under test so its module-scoped init guard resets per test.
 const loadModule = () => import("./snowplow");
 
-const makeStore = (overrides: Record<string, unknown> = {}) =>
-  ({
-    getState: () => ({
-      settings: { values: { "anon-tracking-enabled": true, ...overrides } },
-    }),
-  }) as unknown as { getState: () => SdkStoreState };
+function makeStore(overrides: Partial<EnterpriseSettings> = {}) {
+  return {
+    getState: () =>
+      createMockState({
+        settings: createMockSettingsState({
+          "anon-tracking-enabled": true,
+          ...overrides,
+        }),
+      }),
+  };
+}
 
 describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   beforeEach(() => {
@@ -73,7 +80,7 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
       expect(mockNewTracker).toHaveBeenCalledTimes(1);
     });
 
-    it("returns true on first call and false on subsequent calls", async () => {
+    it("wasJustInitialized: true on first call, false on subsequent calls", async () => {
       const { initSdkTracker } = await loadModule();
 
       const firstResult = initSdkTracker({
@@ -108,8 +115,8 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
         }),
       });
 
-      // The plugin is passed as plugins[0] in the newTracker call.
-      const plugin = mockNewTracker.mock.calls[0][2].plugins[0];
+      const [, , config] = mockNewTracker.mock.lastCall!;
+      const [plugin] = config.plugins;
       const contexts = plugin.contexts();
 
       expect(contexts).toContainEqual(
