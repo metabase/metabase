@@ -3,6 +3,7 @@ import {
   getActionExecutionMessage,
 } from "metabase/actions/utils";
 import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -44,11 +45,11 @@ export const executeRowAction = async ({
     const result =
       getDashboardType(dashboard.id) === "public"
         ? await PublicApi.executeDashcardAction(executeActionRequest)
-        : await dispatch(
-            actionApi.endpoints.executeDashcardAction.initiate(
-              executeActionRequest,
-            ),
-          ).unwrap();
+        : await runRtkEndpoint(
+            executeActionRequest,
+            dispatch,
+            actionApi.endpoints.executeDashcardAction,
+          );
 
     const message = getActionExecutionMessage(
       dashcard.action as WritebackAction,

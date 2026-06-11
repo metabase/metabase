@@ -35,7 +35,10 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       await executeAction({
         id: actionId,
         parameters: {
-          id: typeof objectId === "string" ? parseInt(objectId, 10) : objectId,
+          id:
+            typeof objectId === "string"
+              ? parseInt(objectId, 10)
+              : (objectId ?? null),
         },
       }).unwrap();
 

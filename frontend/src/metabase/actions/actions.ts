@@ -1,4 +1,5 @@
 import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { Dispatch } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import type {
@@ -18,12 +19,11 @@ export const executeAction =
   ({ action, parameters }: ExecuteActionOpts) =>
   async (dispatch: Dispatch): Promise<ActionFormSubmitResult> => {
     try {
-      const result = await dispatch(
-        actionApi.endpoints.executeAction.initiate({
-          id: action.id,
-          parameters,
-        }),
-      ).unwrap();
+      const result = await runRtkEndpoint(
+        { id: action.id, parameters },
+        dispatch,
+        actionApi.endpoints.executeAction,
+      );
 
       const message = getActionExecutionMessage(action, result);
       dispatch(addUndo({ message, toastColor: "success" }));

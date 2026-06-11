@@ -156,6 +156,9 @@ export const actionApi = Api.injectEndpoints({
         url: `/api/action/${id}/execute`,
         params: { parameters: JSON.stringify(parameters) },
       }),
+      // Prefetch is an imperative fetch-and-discard with row-specific params
+      // that rarely repeat, so there's nothing to gain from caching entries.
+      keepUnusedDataFor: 0,
     }),
     executeDashcardAction: builder.mutation<
       ActionExecutionResult,
@@ -176,6 +179,9 @@ export const actionApi = Api.injectEndpoints({
         url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
         params: { parameters: JSON.stringify(parameters) },
       }),
+      // Prefetch is an imperative fetch-and-discard with per-dashcard params
+      // that rarely repeat, so there's nothing to gain from caching entries.
+      keepUnusedDataFor: 0,
     }),
   }),
 });
