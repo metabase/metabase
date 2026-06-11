@@ -279,12 +279,9 @@
   - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),
     `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`
     (index-backed iterative scans with inline filters); ignored by other engines
-  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies;
-    admin only
-  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative
-    strategies; admin only
-  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive);
-    admin only
+  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies; (admin only)
+  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative strategies; (admin only)
+  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive); (admin only)
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types

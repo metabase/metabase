@@ -114,7 +114,7 @@
   (testing ":hnsw and :brute-force need no session GUCs"
     (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :hnsw})))
     (is (empty? (#'semantic.index/vector-session-settings {:vector-search-strategy :brute-force}))))
-  (testing ":hnsw-iterative-* emits iterative_scan / ef_search / max_scan_tuples SET LOCALs; the strategy sets the order"
+  (testing ":hnsw-iterative-* emits iterative_scan/ef_search/max_scan_tuples SET LOCALs; the strategy sets the order"
     (is (= ["SET LOCAL hnsw.iterative_scan = strict_order"
             "SET LOCAL hnsw.ef_search = 100"
             "SET LOCAL hnsw.max_scan_tuples = 50000"]
@@ -187,7 +187,8 @@
           (is (= {} (semantic.tu/table-indexes table-name))))
         (testing "under the default :brute-force strategy, create! builds the table and FTS indexes but not the HNSW index"
           (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :brute-force)]
-            (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
+            (semantic.index/create-index-table-if-not-exists!
+             (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
           (is (semantic.tu/table-exists-in-db? table-name))
           (is (=? (dissoc (expected-index-defs index) (semantic.index/hnsw-index-name index))
                   (semantic.tu/table-indexes table-name)))
@@ -197,7 +198,8 @@
           (semantic.tu/upsert-index! (semantic.tu/mock-documents))
           (is (pos? (semantic.tu/index-count index)))
           (mt/with-dynamic-fn-redefs [semantic.settings/semantic-search-vector-strategy (constantly :hnsw)]
-            (semantic.index/create-index-table-if-not-exists! (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
+            (semantic.index/create-index-table-if-not-exists!
+             (semantic.env/get-pgvector-datasource!) index {:force-reset? true}))
           (is (zero? (semantic.tu/index-count index)))
           (is (=? (expected-index-defs index) (semantic.tu/table-indexes table-name))))))))
 

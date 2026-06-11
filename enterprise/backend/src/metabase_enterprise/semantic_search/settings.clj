@@ -180,7 +180,7 @@
 ;; then off.
 (defsetting semantic-search-explain
   (deferred-tru
-   (str "Run gated EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
+   (str "Run EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
         "Expensive (re-executes the inner query); intended for ad-hoc analysis. Individual requests may "
         "override this via the `vector_search_explain` API parameter."))
   :type       :boolean

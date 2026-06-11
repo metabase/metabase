@@ -714,11 +714,13 @@
 (defn- hnsw-iterative-search-query
   "Build the semantic vector subquery as an index-backed iterative scan with `filters` applied inline."
   [index embedding-literal filters]
-  ;; The filters live inside the ordered/limited candidate scan (unlike `hnsw-search-query`, which post-
-  ;; filters), so the planner can pick the HNSW index and pgvector's iterative scan keeps pulling neighbours
-  ;; until the limit is met or `hnsw.max_scan_tuples` is hit. The recall/latency trade-off is governed by the
-  ;; iterative-scan GUCs (see `vector-session-settings`), not the SQL shape. The cutoff stays in the outer
-  ;; query (like `hnsw-search-query`) so the inner scan fills up to the limit before trimming.
+  ;; The filters live inside the ordered/limited candidate scan (unlike `hnsw-search-query`, which
+  ;; post-filters), so the planner can pick the HNSW index and pgvector's iterative scan keeps pulling
+  ;; neighbours until the limit is met or `hnsw.max_scan_tuples` is hit.
+  ;; The recall/latency trade-off is governed by the iterative-scan GUCs (see `vector-session-settings`),
+  ;; not the SQL shape.
+  ;; The cutoff stays in the outer query (like `hnsw-search-query`) so the inner scan fills up to the limit
+  ;; before trimming.
   (let [inner (cond-> {:select   (into common-search-columns
                                        [[[:raw (str "embedding <=> " embedding-literal)] :distance]])
                        :from     [(keyword (:table-name index))]
@@ -740,8 +742,8 @@
       (semantic-settings/semantic-search-vector-strategy)))
 
 (def ^:private iterative-strategy->guc
-  "Iterative vector-search strategies mapped to pgvector's `hnsw.iterative_scan` GUC value. The strategy keyword
-  encodes the ordering, so there is no separate order knob."
+  "Iterative vector-search strategies mapped to pgvector's `hnsw.iterative_scan` GUC value.
+  The strategy keyword encodes the ordering, so there is no separate order knob."
   {:hnsw-iterative-relaxed "relaxed_order"
    :hnsw-iterative-strict  "strict_order"})
 
@@ -770,13 +772,16 @@
 
 (defn- vector-session-settings
   "`SET LOCAL` statements for the pgvector session GUCs implied by `search-context`, as a (possibly empty)
-  vector of single-element `[sql]` statement vectors. Only `:hnsw-iterative` sets the iterative-scan GUCs;
-  any strategy may request `force-index?`. Each knob falls back to its EE setting when unset on the context."
+  vector of single-element `[sql]` statement vectors.
+  Only the `:hnsw-iterative-*` strategies set the iterative-scan GUCs; any strategy may request
+  `force-index?`.
+  Each knob falls back to its EE setting when unset on the context."
   [search-context]
-  ;; Values come from a fixed map or validated positive integers, so they are safe to interpolate (GUC names
-  ;; and values can't be passed as bound parameters). They are clamped to pgvector's GUC ranges (ef_search
-  ;; 1..1000, max_scan_tuples 32-bit) because an out-of-range SET LOCAL raises mid-transaction and would
-  ;; fail the whole search; the API schema enforces the same ranges, the clamp covers the settings path.
+  ;; Values come from a fixed map or validated positive integers, so they are safe to interpolate (GUC
+  ;; names and values can't be passed as bound parameters).
+  ;; They are clamped to pgvector's GUC ranges (ef_search 1..1000, max_scan_tuples 32-bit) because an
+  ;; out-of-range SET LOCAL raises mid-transaction and would fail the whole search; the API schema enforces
+  ;; the same ranges, the clamp covers the settings path.
   (let [iterative-guc (iterative-strategy->guc (vector-search-strategy search-context))
         clamp         (fn [v lo hi] (-> v (max lo) (min hi)))]
     (cond-> []
@@ -795,10 +800,11 @@
       (conj ["SET LOCAL enable_seqscan = off"]))))
 
 (defn- run-in-vector-session!
-  "Apply the [[vector-session-settings]] for `search-context` on a transaction over `db`, then call `(f conn)`
-  with that transaction. `SET LOCAL` resets at COMMIT, so the pooled connection is left clean. When no session
-  settings are needed and instrumentation is off, `f` is called directly on `db` (no transaction) to keep the
-  default strategy's hot path unchanged."
+  "Apply the [[vector-session-settings]] for `search-context` on a transaction over `db`, then call
+  `(f conn)` with that transaction.
+  `SET LOCAL` resets at COMMIT, so the pooled connection is left clean.
+  When no session settings are needed and instrumentation is off, `f` is called directly on `db` (no
+  transaction) to keep the default strategy's hot path unchanged."
   [db search-context f]
   (let [stmts (vector-session-settings search-context)]
     (if (and (empty? stmts) (not (explain? search-context)))
@@ -1001,15 +1007,15 @@
         (u/ignore-exceptions
           (with-open [_conn (.getConnection ^PooledDataSource db)]))))))
 
-;; ---------------------------------------------------------------------------------------------------------
+;; ----------------------------------------------------------------------------------------------------------
 ;; Gated vector-search instrumentation
 ;;
 ;; When `vector-search-explain?` is set (per-request) or `semantic-search-explain` (setting) is on, we
 ;; re-run the inner vector subquery under EXPLAIN (ANALYZE) to measure how the chosen strategy actually
 ;; behaves: which plan the index-table scan got, how many tuples it visited, how long the inner query took,
-;; and how that compares to a filter-first scan's candidate pool. It is off by default because the EXPLAIN
-;; re-executes the inner query.
-;; ---------------------------------------------------------------------------------------------------------
+;; and how that compares to a filter-first scan's candidate pool.
+;; It is off by default because the EXPLAIN re-executes the inner query.
+;; ----------------------------------------------------------------------------------------------------------
 
 (defn- explain->element
   "Coerce the single `EXPLAIN (… FORMAT JSON)` result value into its one plan element
@@ -1053,7 +1059,8 @@
 
 (defn- explain-vector-subquery
   "Run the inner vector subquery under EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) on `conn` and return its
-  [[scan-node-metrics]] plus the subquery's total execution time. Re-executes the inner query."
+  [[scan-node-metrics]] plus the subquery's total execution time.
+  Re-executes the inner query."
   [conn index embedding search-context]
   (let [[sql & params] (sql-format-quoted (semantic-search-query index embedding search-context))
         explain-sql    (str "EXPLAIN (ANALYZE true, BUFFERS true, FORMAT JSON) " sql)
@@ -1063,8 +1070,9 @@
            :planning-ms  (get element "Planning Time"))))
 
 (defn- prefilter-pool-size
-  "Count of index rows the non-vector filters alone select -- the candidate pool a filter-first (brute-force)
-  scan would compute distances over. The vector scan's `tuples-scanned` relative to this is the overfetch."
+  "Count of index rows the non-vector filters alone select -- the candidate pool a filter-first
+  (brute-force) scan would compute distances over.
+  The vector scan's `tuples-scanned` relative to this is the overfetch."
   [conn index search-context]
   (let [filters (search-filters search-context)
         q       (cond-> {:select [[[:raw "count(*)"] :n]] :from [(keyword (:table-name index))]}
@@ -1072,9 +1080,9 @@
     (:n (jdbc/execute-one! conn (sql-format-quoted q) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))))
 
 (defn- record-vector-instrumentation!
-  "Measure and report how the resolved strategy executed the inner vector subquery: EXPLAIN ANALYZE the scan
-  and count the prefilter pool, then log a structured line and bump the analytics counters. Never throws --
-  instrumentation failures must not break search."
+  "Measure and report how the resolved strategy executed the inner vector subquery: EXPLAIN ANALYZE the
+  scan and count the prefilter pool, then log a structured line and bump the analytics counters.
+  Never throws -- instrumentation failures must not break search."
   [conn index embedding search-context raw-count]
   (try
     (let [strategy (name (vector-search-strategy search-context))
