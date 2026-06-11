@@ -64,11 +64,13 @@
   (max 0.0 (- 1.0 (/ (double d) 2.0))))
 
 (defn- dcg
+  "Discounted cumulative gain of a sequence of per-position relevances."
   [rels]
   (transduce (map-indexed (fn [i r] (/ (double r) (/ (Math/log (+ i 2.0)) (Math/log 2.0))))) + 0.0 rels))
 
 (defn- ndcg-at
-  "NDCG@`k` of `returned-ids` against the exact `ideal-ids` ranking, graded by true distance via `id->distance`."
+  "NDCG@`k` of `returned-ids` against the exact `ideal-ids` ranking.
+  Relevance is graded by true distance via `id->distance`."
   [k id->distance ideal-ids returned-ids]
   (/ (dcg (map (comp sim id->distance) (take k returned-ids)))
      (dcg (map (comp sim id->distance) (take k ideal-ids)))))
@@ -227,7 +229,8 @@
     ;; serial build keeps insertion order fixed and removes worker-count variation
     (jdbc/execute! tx ["SET LOCAL max_parallel_maintenance_workers = 0"])
     ;; m/ef_construction are the current pgvector defaults, pinned against future default changes
-    (jdbc/execute! tx [(format "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)"
+    (jdbc/execute! tx [(format (str "CREATE INDEX %s ON %s USING hnsw (embedding vector_cosine_ops) "
+                                    "WITH (m = 16, ef_construction = 64)")
                                (semantic.index/hnsw-index-name *index*)
                                (:table-name *index*))])))
 
@@ -274,7 +277,8 @@
      :vector-search-max-scan-tuples  10000}))
 
 (defn- query-results!
-  "Run the full [[semantic.index/query-index]] pipeline for `variant`, returning {:results ... :raw-count ...}."
+  "Run the full [[semantic.index/query-index]] pipeline for `variant`.
+  Returns query-index's {:results ... :raw-count ...}."
   [variant extra-ctx]
   (memoize/memo-clear! #'semantic.scoring/view-count-percentiles)
   (semantic.index/query-index (semantic.env/get-pgvector-datasource!)
@@ -288,6 +292,36 @@
   "Ordered result ids for `variant`, through the full pipeline."
   [variant & {:as extra-ctx}]
   (mapv :id (:results (query-results! variant extra-ctx))))
+
+;;;; if one of these tests flakes
+;;
+;; The HNSW graph is rebuilt randomly on every run (see [[build-hnsw-index!]] -- it cannot be seeded), so a
+;; failure here is one of three things:
+;;
+;; 1. An EXACT matrix cell failing intermittently. These cells assert outcomes that are invariant across
+;;    random graphs (each was validated against 30-60 independently built graphs on pgvector 0.8.1), so an
+;;    intermittent failure means the invariance itself broke -- almost certainly a pgvector behavior change
+;;    (graph build defaults, scan-phase sizing, max_scan_tuples semantics). Do not loosen the assertion
+;;    blindly: re-validate with the loop below, work out which scan behavior changed, and either restore the
+;;    invariant by pinning the changed parameter or convert the cell to a band derived from fresh
+;;    measurements.
+;; 2. A BANDED cell in [[graph-approximation-test]] failing. The edges sit several misses beyond the range
+;;    observed across dozens of graphs (the observed range is noted per cell), but a rare excursion past an
+;;    edge is possible. Re-derive the edges rather than nudging by one miss: run the loop below, take the
+;;    min/max per cell, and set edges ~0.1-0.15 of recall beyond them. Keep upper edges strictly below 1.0;
+;;    a band touching 1.0 no longer demonstrates approximation, and the fix is a harder dataset (higher
+;;    dims, denser packing), not a wider band.
+;; 3. A deterministic failure after an environment change (new pgvector version, changed server defaults).
+;;    [[assert-pgvector-prereqs!]] catches the known dependencies on server state; extend it when a new one
+;;    is discovered.
+;;
+;; Each test run builds a fresh graph, so re-measuring a cell's distribution is just repetition:
+;;
+;;   (frequencies (map (fn [_] (dissoc (clojure.test/run-test <the-deftest>) :type)) (range 30)))
+;;
+;; For per-cell values, evaluate the cell's recall expression inside the fixture across runs (bind an atom,
+;; collect, take min/max). Beware deriving bands from raw SQL probes instead: in-pipeline recall has fatter
+;; tails (an ef8-vs-ef64 margin assertion derived from SQL probes flaked within 10 in-pipeline runs).
 
 ;;;; layer 1: distance-level retrieval vs exact ground truth
 
@@ -392,9 +426,10 @@
 
 ;;;; graph approximation: a 32-d densely packed dataset where HNSW genuinely misses
 
+;; a separate 32-d index because graph approximation error needs dimensionality, not tree size: a 4-d graph
+;; stays exact even with thousands of packed fillers
 (def ^:private packed-index
-  "A separate 32-d index: graph approximation error needs dimensionality, not tree size (a 4-d graph stays
-  exact even with thousands of packed fillers)."
+  "The index for [[graph-approximation-test]]'s 32-d packed dataset."
   (semantic.index/default-index {:provider "mock" :model-name "packed" :vector-dimensions 32}
                                 :table-name "index_table_packed_test"))
 
