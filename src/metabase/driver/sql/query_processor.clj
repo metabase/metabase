@@ -2032,6 +2032,10 @@
 (declare apply-clauses)
 
 (defn- resolve-persisted-source-sql
+  "If `source-query` came from a card with a valid persisted cache, independently look up the cache from the metadata
+  provider and return the native SQL. Returns nil if no cache exists, or if persisted cache use has been disabled for
+  this query (e.g. due to sandboxing or connection impersonation — see
+  [[metabase.query-processor.middleware.persistence/substitute-persisted-query]])."
   [source-query]
   (when-not (:qp/skip-persisted-cache source-query)
     (when-let [card-id (:qp/stage-is-from-source-card source-query)]

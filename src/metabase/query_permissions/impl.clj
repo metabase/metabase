@@ -287,7 +287,8 @@
                                  required-perm))
 
 (defn- has-perm-for-table?
-  "Checks that the current user has the permissions for tables specified in `table-id->perm`."
+  "Checks that the current user has the permissions for tables specified in `table-id->perm`. Returns true if access
+  is allowed, otherwise false."
   [perm-type table-id->required-perm db-id]
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]
@@ -367,7 +368,9 @@
                                 {:card-id card-id}))))))
 
 (defn check-data-perms
-  "Checks whether the current user has sufficient view data and query permissions to run `query`."
+  "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
+  user has perms for the query, and throws an exception otherwise (exceptions can be disabled by setting
+  `throw-exceptions?` to `false`)."
   [query required-perms & {:keys [throw-exceptions?]
                            :or   {throw-exceptions? true}}]
   (try
