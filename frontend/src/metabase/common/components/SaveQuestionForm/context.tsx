@@ -19,8 +19,8 @@ import {
   isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { FormProvider } from "metabase/forms";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -70,6 +70,7 @@ export const SaveQuestionProvider = ({
   onSave,
   multiStep = false,
   targetCollection: userTargetCollection,
+  initialCollectionId: userInitialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
@@ -121,13 +122,20 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
-    // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
+    // `userTargetCollection` and `userInitialCollectionId` come from the
+    // `targetCollection` / `initialCollection` sdk props and should take
+    // precedence over the recent dashboards.
     userTargetCollection === undefined &&
+    userInitialCollectionId === undefined &&
     lastSelectedDashboard?.can_write
       ? lastSelectedDashboard?.id
       : undefined;
 
+  // When a caller passes `initialCollectionId` explicitly, it takes precedence
+  // over the recent-items logic. Used by the SDK so the picker opens on the
+  // collection the user is browsing.
   const initialCollectionId =
+    userInitialCollectionId ??
     (!isAnalytics
       ? lastSelectedDashboard?.parent_collection.id
       : defaultCollectionId) ??

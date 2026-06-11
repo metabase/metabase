@@ -1,18 +1,24 @@
 import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { createDatabase } from "metabase/admin/databases/database";
+import { userApi } from "metabase/api";
+import { loadLocalization } from "metabase/api/localization";
+import { createDatabase } from "metabase/redux/databases";
 import {
   initializeSettings,
+  updateSetting,
   updateSettings,
-} from "metabase/admin/settings/settings";
-import { userApi } from "metabase/api";
-import { updateSetting } from "metabase/redux/settings";
-import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
+} from "metabase/redux/settings";
+import type {
+  InviteInfo,
+  Locale,
+  SetupStep,
+  State,
+  UserInfo,
+} from "metabase/redux/store";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { getSetting } from "metabase/selectors/settings";
 import { SetupApi } from "metabase/services";
-import { loadLocalization } from "metabase/utils/i18n";
-import { createAsyncThunk } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DatabaseData, Settings, UsageReason } from "metabase-types/api";
 
@@ -31,7 +37,6 @@ import {
   getSetupToken,
   getUsageReason,
 } from "./selectors";
-import type { SetupStep } from "./types";
 import { getDefaultLocale, getLocales } from "./utils";
 
 interface ThunkConfig {
@@ -231,6 +236,10 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     if (isEmbeddingUseCase || interestedInEmbedding) {
       settingsToChange["embedding-homepage"] = "visible";
+    }
+
+    if (interestedInEmbedding) {
+      settingsToChange["setup-embedding-autoenabled"] = true;
     }
 
     settingsToChange["setup-license-active-at-setup"] = isLicenseActive;

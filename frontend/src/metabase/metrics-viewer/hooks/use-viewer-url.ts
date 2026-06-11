@@ -4,15 +4,15 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import { useDispatch } from "metabase/redux";
+import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import {
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
   type MetricsViewerPageState,
-  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -20,8 +20,8 @@ import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeDimensionBreakout,
   deserializeFormulaEntities,
-  deserializeTab,
   encodeState,
   stateToSerializedState,
 } from "../utils/url-serialization";
@@ -55,11 +55,16 @@ export function useViewerUrl(
       if (!hash) {
         const params = new URLSearchParams(location.search);
         const metricId = params.get("metricId");
-        if (metricId) {
+        const measureId = params.get("measureId");
+        if (metricId || measureId) {
+          const entity = metricId
+            ? { type: "metric" as const, id: parseInt(metricId, 10) }
+            : { type: "measure" as const, id: parseInt(measureId!, 10) };
           serializedState = {
-            formulaEntities: [{ type: "metric", id: parseInt(metricId, 10) }],
-            tabs: [],
-            selectedTabId: null,
+            formulaEntities: [entity],
+            dimensionBreakouts: [],
+            selectedDimensionBreakoutId: null,
+            showColumnLabels: false,
           };
           const encodedHash = encodeState(serializedState);
           if (encodedHash === undefined) {
@@ -80,15 +85,22 @@ export function useViewerUrl(
       }
       lastHashRef.current = hash;
 
-      if (serializedState.tabs.length > 0) {
-        const tabs: MetricsViewerTabState[] =
-          serializedState.tabs.map(deserializeTab);
+      if (serializedState.dimensionBreakouts.length > 0) {
+        const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] =
+          serializedState.dimensionBreakouts.map(deserializeDimensionBreakout);
+        const showColumnLabels =
+          serializedState.showColumnLabels ??
+          dimensionBreakouts.some(
+            (dimensionBreakout) => dimensionBreakout.showColumnLabels === true,
+          );
 
         initialize({
           definitions: {},
           formulaEntities: [],
-          tabs,
-          selectedTabId: serializedState.selectedTabId,
+          dimensionBreakouts,
+          selectedDimensionBreakoutId:
+            serializedState.selectedDimensionBreakoutId,
+          showColumnLabels,
         });
       }
 

@@ -19,11 +19,14 @@
    [java-time.api :as t]
    [malli.error :as me]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.api-keys.core :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api.macros.scope :as scope]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
+   [metabase.oauth-server.core :as oauth-server]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.request.schema :as request.schema]
@@ -116,10 +119,12 @@
        (cond-> {:select    [[:session.user_id :metabase-user-id]
                             [:user.is_superuser :is-superuser?]
                             [:user.is_data_analyst :is-data-analyst?]
-                            [:user.locale :user-locale]]
+                            [:user.locale :user-locale]
+                            [:auth_identity.provider :auth-provider]]
                 :from      [[:core_session :session]]
                 :left-join [[:core_user :user] [:= :session.user_id :user.id]
-                            [:tenant] [:= :tenant.id :user.tenant_id]]
+                            [:tenant] [:= :tenant.id :user.tenant_id]
+                            [:auth_identity] [:= :auth_identity.id :session.auth_identity_id]]
                 :where     (into [:and
                                   (if enable-tenants?
                                     [:or [:= :tenant.id nil] :tenant.is_active]
@@ -160,6 +165,31 @@
                 :where     [:and
                             [:= :user.is_active true]
                             [:= :api_key.key_prefix [:raw "?"]]]
+                :limit     [:inline 1]}
+         enable-advanced-permissions?
+         (->
+          (sql.helpers/select
+           [:pgm.is_group_manager :is-group-manager?])
+          (sql.helpers/left-join
+           [:permissions_group_membership :pgm] [:and
+                                                 [:= :pgm.user_id :user.id]
+                                                 [:is :pgm.is_group_manager true]]))))))))
+
+;; Like the session/api-key queries above, this runs on every OAuth-bearer-authenticated API request, so
+;; compile it to SQL once. Keyed on the resolved user id from the OAuth access token.
+(def ^:private ^{:arglists '([enable-advanced-permissions?])} user-data-for-id-query
+  (memoize
+   (fn [enable-advanced-permissions?]
+     (first
+      (t2.pipeline/compile*
+       (cond-> {:select    [[:user.id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.is_data_analyst :is-data-analyst?]
+                            [:user.locale :user-locale]]
+                :from      [[:core_user :user]]
+                :where     [:and
+                            [:= :user.is_active true]
+                            [:= :user.id [:raw "?"]]]
                 :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
@@ -238,24 +268,78 @@
           (-> user-info
               (dissoc :api-key)))))))
 
+(def ^:private full-access-token-scopes
+  "The `:token-scopes` value that grants a bearer-authenticated request access to the general
+   REST API as its user. The `::scope/unrestricted` keyword sentinel (not the `\"*\"` string)
+   is the only thing that lets a scoped token through endpoints that declare no `:scope` (see
+   [[metabase.api.macros.scope/ensure-scopes-checked]])."
+  #{::scope/unrestricted})
+
+(defn- oauth-token->token-scopes
+  "Map the OAuth scopes granted to a bearer access token onto the `:token-scopes` value the API
+   scope middleware understands. A token carrying the full-access scope (`mb:full`) becomes the
+   unrestricted sentinel — reachable across the whole REST API as the user. Any narrower scope
+   set is passed through verbatim, so the token can reach only the agent endpoints that opt into
+   those scopes and is rejected elsewhere by `ensure-scopes-checked`.
+
+   This mapping is the single trust hinge for OAuth bearer auth on the general API; keep it here
+   and unit-test the two directions (full ⇒ unrestricted, narrow ⇒ passed through) so the
+   security invariant can't silently regress."
+  [granted-scopes]
+  (if (contains? granted-scopes oauth-server/full-access-scope)
+    full-access-token-scopes
+    granted-scopes))
+
+(mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
+  "Return current-user-info for a valid OAuth bearer access token on `request`, or nil. Mirrors the
+   shape returned by the session/api-key resolvers and additionally attaches `:token-scopes`, so the
+   merged request carries both the user identity and the access the token was granted. This is the
+   only place an OAuth access token authenticates a request to the general (`/api/*`) API."
+  [request]
+  (when (init-status/complete?)
+    (when-let [token (oauth-server/extract-bearer-token request)]
+      (when-let [{:keys [user-id scopes]} (oauth-server/resolve-access-token token)]
+        (some-> (t2/query-one (cons (user-data-for-id-query (premium-features/enable-advanced-permissions?))
+                                    [user-id]))
+                (m/update-existing :is-group-manager? boolean)
+                (assoc :token-scopes (oauth-token->token-scopes scopes)))))))
+
+(defn- auth-method
+  [session-info api-key-info oauth-info embedding-route]
+  (or ({"guest-embed" "guest"} embedding-route embedding-route)
+      (cond session-info (or (:auth-provider session-info) "session")
+            api-key-info "api-key"
+            oauth-info   "oauth")))
+
 (defn- merge-current-user-info
   [{:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (merge
-   request
-   (or (current-user-info-for-session metabase-session-key anti-csrf-token)
-       (current-user-info-for-api-key x-api-key))
-   (when x-metabase-locale
-     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
+  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
+        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
+        ;; Bearer is the lowest-precedence path: only consulted when there's no session or API key.
+        oauth-info   (when-not (or session-info api-key-info)
+                       (current-user-info-for-oauth-token request))
+        embedding-route (analytics/get-route)
+        auth-method (auth-method session-info api-key-info oauth-info embedding-route)]
+    (merge
+     request
+     ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
+     ;; merging it whole both authenticates the request and records the granted scopes.
+     (dissoc (or session-info api-key-info oauth-info) :auth-provider)
+     (when auth-method {:embedding/auth-method auth-method})
+     (when x-metabase-locale
+       (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
-  token OR a valid API key was passed."
+  token, API key, OR OAuth bearer access token was passed. A bearer token additionally sets `:token-scopes` (the access
+  it was granted); precedence is session > API key > bearer."
   [handler]
   (fn [request respond raise]
     (let [request' (tracing/with-span :db-app "db-app.session-lookup" {}
                      (merge-current-user-info request))]
-      (handler request' respond raise))))
+      (analytics/with-auth-method! (:embedding/auth-method request')
+        (handler request' respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |

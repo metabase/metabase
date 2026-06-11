@@ -15,10 +15,10 @@ import type {
   DraggedItem,
   VisualizerState,
   VisualizerVizDefinitionWithColumns,
-  VisualizerVizDefinitionWithColumnsAndFallbacks,
+  VisualizerVizDefinitionWithColumnsAndPreloadedDatasets,
 } from "metabase/redux/store/visualizer";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { clone } from "metabase/utils/clone";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -50,6 +50,7 @@ import {
 import { getUpdatedSettingsForDisplay } from "./utils/get-updated-settings-for-display";
 import {
   addColumnToCartesianChart,
+  attachRemappedDisplayColumn,
   cartesianDropHandler,
   combineWithCartesianChart,
   maybeImportDimensionsFromOtherDataSources,
@@ -96,7 +97,7 @@ function getInitialState(): VisualizerState {
 
 type InitVisualizerPayload =
   | {
-      state?: Partial<VisualizerVizDefinitionWithColumns>;
+      state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
     }
   | { cardId: CardId };
 
@@ -120,7 +121,7 @@ const initializeFromState = async (
   {
     state: initialState = {},
   }: {
-    state?: Partial<VisualizerVizDefinitionWithColumnsAndFallbacks>;
+    state?: Partial<VisualizerVizDefinitionWithColumnsAndPreloadedDatasets>;
   },
   dispatch: Dispatch,
 ) => {
@@ -139,7 +140,7 @@ const initializeFromState = async (
           dispatch(
             fetchCardQuery({
               cardId: Number(cardId),
-              fallbacks: initialState.datasetFallbacks,
+              preloadedDatasets: initialState.preloadedDatasets,
             }),
           ),
         ];
@@ -278,26 +279,26 @@ const fetchCard = createAsyncThunk<Card, CardId>(
 
 const fetchCardQuery = createAsyncThunk<
   Dataset,
-  { cardId: CardId; fallbacks?: Record<CardId, Dataset | null | undefined> }
->("visualizer/fetchCardQuery", async ({ cardId, fallbacks }, { dispatch }) => {
-  const result = await dispatch(
-    cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
-  );
-  if (result.data != null) {
-    const shouldAttemptFallback =
-      result.data.error_type &&
-      !result.data.data?.rows?.length &&
-      !result.data.data?.cols?.length;
-    if (shouldAttemptFallback) {
-      const fallback = fallbacks?.[cardId];
-      if (fallback) {
-        return fallback;
-      }
-    }
-    return result.data;
+  {
+    cardId: CardId;
+    preloadedDatasets?: Record<CardId, Dataset | null | undefined>;
   }
-  throw new Error("Failed to fetch card query");
-});
+>(
+  "visualizer/fetchCardQuery",
+  async ({ cardId, preloadedDatasets }, { dispatch }) => {
+    const dataset = preloadedDatasets?.[cardId];
+    if (dataset) {
+      return dataset;
+    }
+    const result = await dispatch(
+      cardApi.endpoints.getCardQuery.initiate({ cardId, parameters: [] }),
+    );
+    if (result.data != null) {
+      return result.data;
+    }
+    throw new Error("Failed to fetch card query");
+  },
+);
 
 export const undo = createAction("visualizer/undo");
 export const redo = createAction("visualizer/redo");
@@ -411,6 +412,17 @@ const visualizerSlice = createSlice({
 
         const dimension = state.settings["graph.dimensions"] ?? [];
         const isDimension = dimension.includes(column.name);
+
+        if (isDimension) {
+          // Re-attach display column so remapping survives remove + re-add.
+          attachRemappedDisplayColumn(
+            state,
+            columnRef,
+            originalColumn,
+            dataset as Dataset,
+            dataSource,
+          );
+        }
 
         if (isDimension && column.id) {
           const datasetMap = _.omit(state.datasets, dataSource.id) as Record<

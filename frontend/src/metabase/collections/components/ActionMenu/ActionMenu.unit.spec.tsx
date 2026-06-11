@@ -1,11 +1,10 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
+import { setupCardEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
-import { Collections } from "metabase/entities/collections";
-import { Dashboards } from "metabase/entities/dashboards";
-import { Questions } from "metabase/entities/questions";
 import {
   createMockSettingsState,
   createMockState,
@@ -21,10 +20,10 @@ import {
   createMockCard,
   createMockCollection,
   createMockCollectionItem,
-  createMockDashboard,
+  createMockDocument,
 } from "metabase-types/api/mocks";
 
-import ActionMenu, { getParentEntityLink } from "./ActionMenu";
+import ActionMenu from "./ActionMenu";
 
 interface SetupOpts {
   item: CollectionItem;
@@ -75,8 +74,8 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: true,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
@@ -85,7 +84,20 @@ describe("ActionMenu", () => {
           await screen.findByText("Don’t show visualization"),
         );
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(false);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: false,
+        });
       },
     );
 
@@ -96,15 +108,28 @@ describe("ActionMenu", () => {
           model,
           collection_position: 1,
           collection_preview: false,
-          setCollectionPreview: jest.fn(),
         });
+        setupCardEndpoints(createMockCard({ id: item.id }));
 
         setup({ item });
 
         await userEvent.click(getIcon("ellipsis"));
         await userEvent.click(await screen.findByText("Show visualization"));
 
-        expect(item.setCollectionPreview).toHaveBeenCalledWith(true);
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.calls(`path:/api/card/${item.id}`, {
+              method: "PUT",
+            }),
+          ).toHaveLength(1),
+        );
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/card/${item.id}`,
+          { method: "PUT" },
+        );
+        expect(JSON.parse(call?.options.body as string)).toEqual({
+          collection_preview: true,
+        });
       },
     );
 
@@ -113,7 +138,6 @@ describe("ActionMenu", () => {
         item: createMockCollectionItem({
           model: "dataset",
           collection_position: 1,
-          setCollectionPreview: jest.fn(),
         }),
       });
 
@@ -128,12 +152,12 @@ describe("ActionMenu", () => {
   describe("moving and archiving", () => {
     it("should allow to move and archive regular collections", async () => {
       const item = createMockCollectionItem({
+        id: 1,
         name: "Collection",
         model: "collection",
         can_write: true,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
       });
+      fetchMock.put("path:/api/collection/1", { ...item, archived: true });
 
       const { onMove } = setup({ item });
 
@@ -143,7 +167,14 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       await userEvent.click(await screen.findByText("Move to trash"));
-      expect(item.setArchived).toHaveBeenCalledWith(true);
+
+      const calls = fetchMock.callHistory.calls("path:/api/collection/1");
+      expect(calls).toHaveLength(1);
+      const [putCall] = calls;
+      expect(putCall.options.method).toBe("PUT");
+      expect(JSON.parse(putCall.options.body as string)).toMatchObject({
+        archived: true,
+      });
     });
 
     it("should not allow to move and archive personal collections", async () => {
@@ -152,14 +183,11 @@ describe("ActionMenu", () => {
         model: "collection",
         can_write: true,
         personal_owner_id: 1,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
     });
@@ -169,53 +197,13 @@ describe("ActionMenu", () => {
         name: "My Read Only collection",
         model: "collection",
         can_write: false,
-        setCollection: jest.fn(),
-        setArchived: jest.fn(() => Promise.resolve()),
-        copy: true,
       });
 
       setup({ item });
 
-      await userEvent.click(getIcon("ellipsis"));
+      expect(queryIcon("ellipsis")).not.toBeInTheDocument();
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
-    });
-
-    describe("getParentEntityLink", () => {
-      it("should generate collection link for collection question", () => {
-        const updatedCollection = Collections.wrapEntity(
-          createMockCollectionItem({ archived: false }),
-        );
-        const link = getParentEntityLink(updatedCollection, undefined);
-        expect(link).toBe("/collection/root");
-      });
-
-      it("should generate collection link for dashboards", () => {
-        const updatedDashboard = Dashboards.wrapEntity(
-          createMockDashboard({ archived: false }),
-        );
-        const parentCollection = Collections.wrapEntity(
-          createMockCollectionItem({ id: 123 }),
-        );
-        const link = getParentEntityLink(updatedDashboard, parentCollection);
-        expect(link).toBe("/collection/123-question");
-      });
-
-      it("should generate collection link for normal question", () => {
-        const updatedQuestion = Questions.wrapEntity(
-          createMockCard({ archived: false }),
-        );
-        const link = getParentEntityLink(updatedQuestion, undefined);
-        expect(link).toBe("/collection/root");
-      });
-
-      it("should generate collection link for dashboard question", () => {
-        const updatedQuestion = Questions.wrapEntity(
-          createMockCard({ archived: false, dashboard_id: 123 }),
-        );
-        const link = getParentEntityLink(updatedQuestion, undefined);
-        expect(link).toBe("/dashboard/123");
-      });
     });
   });
 
@@ -266,6 +254,67 @@ describe("ActionMenu", () => {
 
       await userEvent.click(getIcon("ellipsis"));
       expect(screen.queryByText("X-ray this")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("trashed documents", () => {
+    it("should restore a document via PUT /api/document/:id with archived: false", async () => {
+      const item = createMockCollectionItem({
+        id: 7,
+        name: "Trashed doc",
+        model: "document",
+        can_restore: true,
+        archived: true,
+      });
+      fetchMock.put(
+        "path:/api/document/7",
+        createMockDocument({ id: 7, archived: false, collection_id: null }),
+      );
+
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Restore"));
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls("path:/api/document/7", {
+          method: "PUT",
+        });
+        expect(calls).toHaveLength(1);
+      });
+
+      const [putCall] = fetchMock.callHistory.calls("path:/api/document/7", {
+        method: "PUT",
+      });
+      expect(JSON.parse(putCall.options.body as string)).toMatchObject({
+        archived: false,
+      });
+    });
+
+    it("should permanently delete a document via DELETE /api/document/:id", async () => {
+      const item = createMockCollectionItem({
+        id: 7,
+        name: "Trashed doc",
+        model: "document",
+        can_delete: true,
+        archived: true,
+      });
+      fetchMock.delete("path:/api/document/7", 204);
+
+      setup({ item });
+
+      await userEvent.click(getIcon("ellipsis"));
+      await userEvent.click(await screen.findByText("Delete permanently"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Delete permanently" }),
+      );
+
+      await waitFor(() => {
+        const calls = fetchMock.callHistory.calls("path:/api/document/7", {
+          method: "DELETE",
+        });
+        expect(calls).toHaveLength(1);
+      });
     });
   });
 

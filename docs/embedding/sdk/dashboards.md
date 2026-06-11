@@ -60,6 +60,10 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 {% include_file "{{ dirname }}/snippets/dashboards/interactive-dashboard.tsx" %}
 ```
 
+## Pass parameter values to a dashboard
+
+See [Modular embedding parameters](../parameters.md#pass-parameter-values-to-a-dashboard).
+
 ## Customizing dashboard height
 
 By default, dashboard components take full page height (100vh). You can override this with custom styles passed via `style` or `className` props.

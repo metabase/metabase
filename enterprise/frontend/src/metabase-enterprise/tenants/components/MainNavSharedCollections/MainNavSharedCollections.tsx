@@ -7,22 +7,22 @@ import {
 } from "metabase/api";
 import { CreateCollectionForm } from "metabase/collections/components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "metabase/collections/components/CreateCollectionForm/CreateCollectionForm";
+import { buildCollectionTree } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting } from "metabase/common/hooks";
-import { buildCollectionTree } from "metabase/entities/collections";
 import {
   PaddedSidebarLink,
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, Flex, Icon, Modal, Tooltip } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import {
   tenantSpecificCollections,
   tenantUsersPersonalCollections,
-} from "metabase/utils/urls";
+} from "metabase/urls";
 import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import { CollectionSyncStatusBadge } from "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge";
 import type { Collection } from "metabase-types/api";

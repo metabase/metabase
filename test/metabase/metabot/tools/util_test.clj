@@ -98,7 +98,6 @@
           (perms/grant-collection-read-permissions! group-id metabot-coll)
           (perms/grant-collection-read-permissions! group-id mb-child-coll1)
           (perms/grant-collection-read-permissions! group-id mb-child-coll2)
-
           (testing "admin can see all cards in metabot collection and subcollections"
             (let [admin-result (mt/with-test-user :crowberto
                                  (metabot.tools.util/get-metrics-and-models (:id metabot)))
@@ -109,7 +108,6 @@
               (is (contains? card-ids (:id mb-metric2)))
               (is (not (contains? card-ids (:id outside-model))))
               (is (not (contains? card-ids (:id outside-metric))))))
-
           (testing "normal user sees only permitted cards"
             (let [user-result (mt/with-test-user :rasta
                                 (metabot.tools.util/get-metrics-and-models (:id metabot)))
@@ -145,7 +143,6 @@
               mp (lib-be/application-database-metadata-provider test-db-id)
               orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               columns (lib/visible-columns orders-query)]
-
           (testing "adds table-reference for implicitly joined columns"
             (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
                   user-name-column (first (filter #(and (= "NAME" (:name %))
@@ -155,26 +152,22 @@
               (is (string? (:table-reference user-name-column)))
               (is (seq (:table-reference user-name-column)))
               (is (= "User" (:table-reference user-name-column)))))
-
           (testing "does not add table-reference for direct table columns"
             (let [processed-columns (map #(metabot.tools.util/add-table-reference orders-query %) columns)
                   id-column (first (filter #(and (= "ID" (:name %))
                                                  (not (:fk-field-id %))) processed-columns))]
               (is (some? id-column) "Expected to find direct ORDERS ID column")
               (is (not (contains? id-column :table-reference)))))
-
           (testing "handles columns without fk-field-id or table-id gracefully"
             (let [mock-column {:name "test-column" :type :string}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
               (is (= mock-column result))
               (is (not (contains? result :table-reference)))))
-
           (testing "handles columns with fk-field-id but no table-id"
             (let [mock-column {:name "test-fk" :fk-field-id 123}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
               (is (= mock-column result))
               (is (not (contains? result :table-reference)))))
-
           (testing "handles columns with table-id but no fk-field-id"
             (let [mock-column {:name "test-field" :table-id (mt/id :orders)}
                   result (metabot.tools.util/add-table-reference orders-query mock-column)]
@@ -196,7 +189,7 @@
                        :model/Metabot unverified-metabot {:name "unverified metabot"
                                                           :collection_id (:id metabot-coll)
                                                           :use_verified_content false}]
-        ;; Mark some content as verified
+          ;; Mark some content as verified
           (moderation/create-review! {:moderated_item_id (:id verified-model)
                                       :moderated_item_type "card"
                                       :moderator_id (mt/user->id :crowberto)
@@ -207,7 +200,6 @@
                                       :moderator_id (mt/user->id :crowberto)
                                       :status "verified"
                                       :text "This is verified"})
-
           (testing "metabot with use_verified_content=true sees only verified content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id verified-metabot)))
@@ -216,7 +208,6 @@
               (is (contains? card-ids (:id verified-metric)))
               (is (not (contains? card-ids (:id unverified-model))))
               (is (not (contains? card-ids (:id unverified-metric))))))
-
           (testing "metabot with use_verified_content=false sees all content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id unverified-metabot)))
@@ -242,170 +233,34 @@
         (is (thrown? clojure.lang.ExceptionInfo
                      (metabot.tools.util/get-table inactive-table-id)))))))
 
-(deftest parse-field-id-test
-  (testing "parse-field-id parses valid field IDs correctly"
-    (testing "table field IDs with numeric table ID"
-      (is (= {:model-tag "t", :model-id 154, :field-index 1}
-             (metabot.tools.util/parse-field-id "t154-1")))
-      (is (= {:model-tag "t", :model-id 1, :field-index 0}
-             (metabot.tools.util/parse-field-id "t1-0")))
-      (is (= {:model-tag "t", :model-id 999, :field-index 42}
-             (metabot.tools.util/parse-field-id "t999-42"))))
-
-    (testing "card/model/metric field IDs with numeric card ID"
-      (is (= {:model-tag "c", :model-id 125, :field-index 7}
-             (metabot.tools.util/parse-field-id "c125-7")))
-      (is (= {:model-tag "c", :model-id 2, :field-index 0}
-             (metabot.tools.util/parse-field-id "c2-0"))))
-
-    (testing "query field IDs with nano-id string"
-      (is (= {:model-tag "q", :model-id "puL95JSvym3k23W1UUuog", :field-index 0}
-             (metabot.tools.util/parse-field-id "qpuL95JSvym3k23W1UUuog-0")))
-      (is (= {:model-tag "q", :model-id "abc123XYZ", :field-index 5}
-             (metabot.tools.util/parse-field-id "qabc123XYZ-5"))))
-
-    (testing "query field IDs with nano-id containing dashes"
-      (is (= {:model-tag "q", :model-id "wG9GfYTcE-wKTg3wlZyuc", :field-index 6}
-             (metabot.tools.util/parse-field-id "qwG9GfYTcE-wKTg3wlZyuc-6")))
-      (is (= {:model-tag "q", :model-id "a-b-c", :field-index 0}
-             (metabot.tools.util/parse-field-id "qa-b-c-0"))))))
-
-(deftest resolve-column-test
-  (testing "resolve-column resolves field IDs to columns"
-    (let [columns [{:name "ID" :table-id 1 :type :number}           ; index 0
-                   {:name "NAME" :table-id 1 :type :string}         ; index 1
-                   {:name "EMAIL" :table-id 1 :type :string}        ; index 2
-                   {:name "USER_ID" :table-id 2 :type :number}      ; index 0 for table 2
-                   {:name "TOTAL" :table-id 2 :type :number}]]      ; index 1 for table 2
-      (testing "resolves table field IDs correctly"
-        (let [item {:field-id "t1-0" :operation "equals"}
-              result (metabot.tools.util/resolve-column item "t1-" columns)]
-          (is (= "ID" (get-in result [:column :name])))
-          (is (= 1 (get-in result [:column :table-id])))
-          (is (= :number (get-in result [:column :type])))))
-
-      (testing "resolves field IDs using flat index into columns vector"
-        (let [item {:field-id "t1-3" :operation "equals"}
-              result (metabot.tools.util/resolve-column item "t1-" columns)]
-          (is (= "USER_ID" (get-in result [:column :name])))
-          (is (= 2 (get-in result [:column :table-id])))))
-
-      (testing "resolves card field IDs using flat index"
-        (let [item {:field-id "c125-1" :operation "equals"}
-              result (metabot.tools.util/resolve-column item "c125-" columns)]
-          (is (= "NAME" (get-in result [:column :name])))
-          (is (= 1 (get-in result [:column :table-id])))))
-
-      (testing "resolves query field IDs using flat index"
-        (let [item {:field-id "qabc123-2" :operation "equals"}
-              result (metabot.tools.util/resolve-column item "qabc123-" columns)]
-          (is (= "EMAIL" (get-in result [:column :name])))))))
-
-  (testing "resolve-column throws for invalid field IDs"
-    (let [columns [{:name "ID" :table-id 1 :type :number}
-                   {:name "NAME" :table-id 1 :type :string}]]
-      (testing "throws for invalid field ID format"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid field_id format"
-             (metabot.tools.util/resolve-column {:field-id "invalid"} "t1-" columns)))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid field_id format"
-             (metabot.tools.util/resolve-column {:field-id "t154/1"} "t154-" columns))))
-
-      (testing "throws when field index is out of bounds"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"field t1-10 not found"
-             (metabot.tools.util/resolve-column {:field-id "t1-10"} "t1-" columns))))
-
-      (testing "throws when field ID prefix doesn't match expected prefix"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"does not match expected prefix"
-             (metabot.tools.util/resolve-column {:field-id "t999-0"} "t1-" columns)))))))
-
-;;; Nil handling tests - important for robustness against LLM edge cases
-
-(deftest parse-field-id-nil-handling-test
-  (testing "returns nil for nil input (no NPE)"
-    (is (nil? (metabot.tools.util/parse-field-id nil))))
-
-  (testing "returns nil for empty string"
-    (is (nil? (metabot.tools.util/parse-field-id ""))))
-
-  (testing "returns nil for non-string input"
-    (is (nil? (metabot.tools.util/parse-field-id 123)))
-    (is (nil? (metabot.tools.util/parse-field-id {:field-id "t1-0"})))
-    (is (nil? (metabot.tools.util/parse-field-id [:t 1 0]))))
-
-  (testing "returns nil for invalid format strings"
-    (is (nil? (metabot.tools.util/parse-field-id "invalid")))
-    (is (nil? (metabot.tools.util/parse-field-id "x1-0"))) ; invalid model tag
-    (is (nil? (metabot.tools.util/parse-field-id "t-1")))  ; missing model-id
-    (is (nil? (metabot.tools.util/parse-field-id "t1-")))  ; missing field-index
-    (is (nil? (metabot.tools.util/parse-field-id "t1")))   ; no separator
-    (is (nil? (metabot.tools.util/parse-field-id "-1-0"))) ; missing model tag
-    ))
-
-(deftest resolve-column-nil-handling-test
-  (testing "throws informative error for nil field-id"
-    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+(deftest find-column-by-field-id-test
+  (testing "finds column by integer field ID"
+    (let [columns [{:id 301 :name "ID"}
+                   {:id 302 :name "NAME"}
+                   {:id 303 :name "EMAIL"}]]
+      (is (= {:id 301 :name "ID"} (metabot.tools.util/find-column-by-field-id 301 columns)))
+      (is (= {:id 303 :name "EMAIL"} (metabot.tools.util/find-column-by-field-id 303 columns)))))
+  (testing "finds column by string-encoded field ID"
+    (let [columns [{:id 301 :name "ID"}
+                   {:id 302 :name "NAME"}]]
+      (is (= {:id 302 :name "NAME"} (metabot.tools.util/find-column-by-field-id "302" columns)))))
+  (testing "throws agent error when field ID not found"
+    (let [columns [{:id 301 :name "ID"}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid field_id format"
-           (metabot.tools.util/resolve-column {:field-id nil} "t1-" columns)))))
-
-  (testing "throws informative error for empty field-id"
-    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+           #"Field 999 not found"
+           (metabot.tools.util/find-column-by-field-id 999 columns)))))
+  (testing "throws for nil field ID"
+    (let [columns [{:id 301 :name "ID"}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid field_id format"
-           (metabot.tools.util/resolve-column {:field-id ""} "t1-" columns)))))
-
-  (testing "throws informative error for numeric field-id"
-    (let [columns [{:name "ID" :table-id 1 :type :number}]]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Invalid field_id format"
-           (metabot.tools.util/resolve-column {:field-id 123} "t1-" columns)))))
-
-  (testing "error data contains agent-error? flag for user-friendly handling"
-    (let [columns [{:name "ID" :table-id 1 :type :number}]]
+           #"not found"
+           (metabot.tools.util/find-column-by-field-id nil columns)))))
+  (testing "error data contains agent-error? flag"
+    (let [columns [{:id 301 :name "ID"}]]
       (try
-        (metabot.tools.util/resolve-column {:field-id nil} "t1-" columns)
-        (is false "Expected exception to be thrown")
+        (metabot.tools.util/find-column-by-field-id 999 columns)
+        (is false "Expected exception")
         (catch clojure.lang.ExceptionInfo e
           (is (:agent-error? (ex-data e)))
-          (is (= nil (:field-id (ex-data e)))))))))
-
-(deftest resolve-column-edge-cases-test
-  (testing "handles empty columns vector"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"not found"
-         (metabot.tools.util/resolve-column {:field-id "t1-0"} "t1-" []))))
-
-  (testing "handles columns vector with nil entries at accessed index"
-    ;; Index 0 is nil, so get returns nil and throws an error
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"not found"
-         (metabot.tools.util/resolve-column {:field-id "t1-0"} "t1-" [nil {:name "NAME"}]))))
-
-  (testing "handles columns vector with nil entries at other indices"
-    ;; Access index 1 which has valid data, index 0 is nil but not accessed
-    (let [columns [nil {:name "NAME" :table-id 1 :type :string}]
-          result (metabot.tools.util/resolve-column {:field-id "t1-1"} "t1-" columns)]
-      (is (some? (:column result)))
-      (is (= "NAME" (get-in result [:column :name])))))
-
-  (testing "preserves other item keys when resolving"
-    (let [columns [{:name "ID" :table-id 1 :type :number}]
-          item {:field-id "t1-0" :operation "equals" :value 42 :custom-key "preserved"}
-          result (metabot.tools.util/resolve-column item "t1-" columns)]
-      (is (= "equals" (:operation result)))
-      (is (= 42 (:value result)))
-      (is (= "preserved" (:custom-key result)))
-      (is (some? (:column result))))))
+          (is (= 404 (:status-code (ex-data e)))))))))

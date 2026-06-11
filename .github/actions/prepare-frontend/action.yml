@@ -21,7 +21,7 @@ runs:
       id: get-cache-keys
 
     - name: Restore M2 cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: |
           ~/.m2
@@ -39,7 +39,7 @@ runs:
       shell: bash
 
     - name: Restore node_modules cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       id: node-modules-cache
       with:
         path: |

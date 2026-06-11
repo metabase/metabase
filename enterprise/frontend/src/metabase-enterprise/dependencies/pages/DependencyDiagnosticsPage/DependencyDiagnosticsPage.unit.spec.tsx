@@ -12,7 +12,7 @@ import {
   screen,
   within,
 } from "__support__/ui";
-import type * as Urls from "metabase/utils/urls";
+import type * as Urls from "metabase/urls";
 import type {
   DependencyDiagnosticsUserParams,
   DependencyNode,
@@ -123,8 +123,9 @@ describe("DependencyDiagnosticsPage", () => {
     it("renders provided nodes in the list", async () => {
       setup({ nodes: CARD_NODES });
 
-      expect(await screen.findByText("Question 1")).toBeInTheDocument();
-      expect(await screen.findByText("Question 2")).toBeInTheDocument();
+      const list = await screen.findByRole("treegrid");
+      expect(await within(list).findByText("Question 1")).toBeInTheDocument();
+      expect(await within(list).findByText("Question 2")).toBeInTheDocument();
     });
   });
 

@@ -6,10 +6,11 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
@@ -35,17 +36,11 @@
   "Prefix used for temporary tables created during transforms."
   "mb_transform_temp_table")
 
-(defn- transforms-enabled?
-  "Whether any transforms are enabled."
-  []
-  (or (not (premium-features/is-hosted?))
-      (premium-features/has-feature? :transforms-basic)))
-
 (defn is-temp-transform-table?
   "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
   [table]
   (boolean
-   (when (and (transforms-enabled?) (:name table))
+   (when (and (premium-features/any-transforms-enabled?) (:name table))
      (str/starts-with? (u/lower-case-en (:name table)) transform-temp-table-prefix))))
 
 (derive ::event :metabase/event)
@@ -90,6 +85,19 @@
 ;; TODO - as @salsakran mentioned it would be nice to do this via the DB so we could better support multi-instance
 ;; setups in the future
 (defonce ^:private operation->db-ids (atom {}))
+
+;; In-JVM only, same scope as `operation->db-ids`.
+(defonce ^:private external-busy-predicates (atom []))
+
+(defn register-busy-predicate!
+  "Register a 0-arity `pred` to be checked before each `do-sync-operation`.
+  `pred` returns nil to permit the sync, or `{:reason \"...\"}` to skip it
+  (logged at WARN by the caller)."
+  [pred]
+  (swap! external-busy-predicates conj pred))
+
+(defn- external-busy []
+  (some (fn [p] (p)) @external-busy-predicates))
 
 (defn with-duplicate-ops-prevented
   "Run `f` in a way that will prevent it from simultaneously being ran more for a single database more than once for a
@@ -190,22 +198,36 @@
     (driver/sync-in-context (driver.u/database->driver database) database
                             f)))
 
-;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
-;; list of exception classes (like, driver-specific exceptions)
+(defonce ^:private transient-exception-hierarchy
+  (make-hierarchy))
+
+(defn register-transient-exception
+  "Register exception `klass` as a transient connection/environment-level failure — one that is expected to clear on a
+  later sync. [[transient-exception?]] then returns true for `klass` and its subclasses, so sync aborts and retries
+  the whole run later rather than treating the failure as permanent. Drivers may register driver-specific connection
+  exceptions this way."
+  [klass]
+  (alter-var-root #'transient-exception-hierarchy derive klass ::transient-exception))
+
 (doseq [klass [java.net.ConnectException
                java.net.NoRouteToHostException
                java.net.UnknownHostException
                com.mchange.v2.resourcepool.CannotAcquireResourceException
                javax.net.ssl.SSLHandshakeException]]
-  (derive klass ::exception-class-not-to-retry))
+  (register-transient-exception klass))
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
   behavior. You can disable this for debugging or test purposes."
   true)
 
-(defn- do-not-retry-exception? [e]
-  (or (isa? (class e) ::exception-class-not-to-retry)
+(defn transient-exception?
+  "True if `e` (or any of its causes) is a connection/environment-level failure — database unreachable, connection
+  pool exhausted, SSL handshake failure, and similar — rather than a failure that says anything about the data being
+  synced. Such failures are expected to clear on a later sync and should not be treated as a permanent failure of the
+  entity being synced. Register additional classes with [[register-transient-exception]]."
+  [e]
+  (or (isa? transient-exception-hierarchy (class e) ::transient-exception)
       (some-> (ex-cause e) recur)))
 
 (defn do-with-error-handling
@@ -217,7 +239,7 @@
    (try
      (f)
      (catch Throwable e
-       (if (and *log-exceptions-and-continue?* (not (do-not-retry-exception? e)))
+       (if (and *log-exceptions-and-continue?* (not (transient-exception? e)))
          (do
            (log/warn e message)
            e)
@@ -227,9 +249,8 @@
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
   Pass a `message` to help provide information about what failed for the log message.
 
-  The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
-  against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
-  recoverable for this sync run."
+  Exceptions classified as transient (see [[transient-exception?]]) are not swallowed: the sync is aborted, as the
+  database could not be reached and the failure is expected to clear on a later sync."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (^:once fn* [] ~@body)))
@@ -259,13 +280,17 @@
    :analyze           :fingerprint
    :refingerprint     :fingerprint})
 
-(mu/defn do-sync-operation
-  "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
+(mu/defn- do-sync-operation*
+  "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
+  wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
+  Performs no eligibility gating itself — the public wrappers decide whether to call it."
   [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  (when (database/should-sync? database)
+  (if-let [busy (external-busy)]
+    (log/warnf "Skipping %s for database %d: %s"
+               (name operation) (u/the-id database) (:reason busy))
     (let [run-type (operation->run-type operation)]
       (task-history/with-task-run (when run-type
                                     {:run_type    run-type
@@ -282,16 +307,48 @@
                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
               result (sync-fn)]
           (when (instance? Throwable result)
-            (prometheus/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))
+
+(mu/defn do-sync-operation
+  "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs
+  only when the database is eligible for *automatic* sync (see
+  [[metabase.warehouses.models.database/should-auto-sync?]]) — i.e. it is suppressed when the
+  `disable-auto-sync` setting is on."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-auto-sync? database)
+    (do-sync-operation* operation database message f)))
+
+(mu/defn do-explicit-sync-operation
+  "Internal implementation of [[explicit-sync-operation]]; use that instead of calling this directly.
+  For explicit, user-requested syncs (e.g. the Sync-now button): runs whenever the database is
+  syncable at all (see [[metabase.warehouses.models.database/should-sync?]]), ignoring the
+  `disable-auto-sync` setting, which suppresses only automatically-triggered syncs."
+  [operation :- :keyword
+   database  :- (ms/InstanceOf :model/Database)
+   message   :- ms/NonBlankString
+   f         :- fn?]
+  (when (database/should-sync? database)
+    (do-sync-operation* operation database message f)))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
   like error handling, logging, duplicate operation prevention, and event publishing. Intended for use with the
-  various top-level sync operations, such as `sync-metadata` or `analyze`."
+  various top-level sync operations, such as `sync-metadata` or `analyze`. Suppressed when
+  `disable-auto-sync` is on; for explicit user-requested syncs use [[explicit-sync-operation]]."
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
+
+(defmacro explicit-sync-operation
+  "Like [[sync-operation]], but for explicit, user-requested syncs: the work runs even when the
+  `disable-auto-sync` setting is enabled (that setting suppresses only automatically-triggered syncs)."
+  {:style/indent 3}
+  [operation database message & body]
+  `(do-explicit-sync-operation ~operation ~database ~message (fn [] ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -319,7 +376,9 @@
    "😎"]) ; smiling face with sunglasses
 
 (defn- percent-done->emoji [percent-done]
-  (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))
+  (let [last-idx (dec (count progress-emoji))
+        idx      (int (math/round (* percent-done last-idx)))]
+    (progress-emoji (max 0 (min last-idx idx)))))
 
 (defn emoji-progress-bar
   "Create a string that shows progress for something, e.g. a database sync process.
@@ -413,15 +472,23 @@
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 
-(defn reducible-sync-tables
-  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
-  [database-or-id & {:keys [schema-names table-names]}]
+(mu/defn reducible-sync-tables
+  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`.
+
+  Returns tables ordered by `[schema name]` so results match the order expected by [[metabase.driver/describe-fks]]."
+  [database-or-id                       :- [:or
+                                            ::lib.schema.id/database
+                                            [:map
+                                             [:id ::lib.schema.id/database]]]
+   & {:keys [schema-names table-names]} :- ::driver/describe-fks.options]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
                                  :db_id (u/the-id database-or-id)
                                  {:where [:and sync-tables-clause
                                           (when (seq schema-names) [:in :schema schema-names])
-                                          (when (seq table-names) [:in :name table-names])]})))
+                                          (when (seq table-names) [:in :name table-names])]
+                                  :order-by [[:schema :asc]
+                                             [:name :asc]]})))
 
 (defn sync-tables-count
   "The count of all tables that should be synced for `database-or-id`."
@@ -619,7 +686,7 @@
   "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
   [step-results]
   (when-let [caught-exception (:throwable step-results)]
-    (do-not-retry-exception? caught-exception)))
+    (transient-exception? caught-exception)))
 
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
@@ -677,8 +744,8 @@
    (or (isa? base-type :type/Temporal)
        (isa? base-type :type/Collection)
        (isa? base-type :type/Float)
-        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
-        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
+       ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
+       ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful
        (isa? semantic-type :type/PK)
        (isa? semantic-type :type/FK))))
 

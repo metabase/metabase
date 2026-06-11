@@ -1,5 +1,6 @@
 (ns metabase.lib.aggregation
-  (:refer-clojure :exclude [count distinct max min var select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)])
+  {:clj-kondo/ignore [:unused-excluded-var]}
+  (:refer-clojure :exclude [count distinct max min select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -95,7 +96,6 @@
          (lib.metadata.calculation/metadata query stage-number aggregation)
          {:lib/source :source/aggregations
           :lib/source-uuid (:lib/uuid (second aggregation))}
-
          (when base-type
            {:base-type base-type})
          (when effective-type

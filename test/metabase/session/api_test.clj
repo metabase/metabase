@@ -50,6 +50,20 @@
     (is (malli= SessionResponse
                 (mt/client :post 200 "session" (mt/user->credentials :rasta))))))
 
+(deftest login-logs-user-id-test
+  (testing "POST /api/session log line includes the user ID after login (#74017)"
+    (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+      (is (malli= SessionResponse
+                  (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+      (let [rasta-id (test.users/user->id :rasta)
+            log-line (->> (messages)
+                          (m/find-first (fn [{:keys [message]}]
+                                          (and (string? message)
+                                               (re-find #"POST /api/session" message)))))]
+        (is (some? log-line))
+        (is (re-find (re-pattern (str ":metabase-user-id " rasta-id))
+                     (:message log-line)))))))
+
 (deftest login-mixed-case-email-test
   (testing "POST /api/session - login with email of mixed case"
     (let [creds    (update (mt/user->credentials :rasta) :username u/upper-case-en)
@@ -458,17 +472,14 @@
               (mt/client :post 400 "session/reset_password" {})))
       (is (=? {:errors {:password "password is too common."}}
               (mt/client :post 400 "session/reset_password" {:token "anything"}))))
-
     (testing "Test that malformed token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that invalid token returns 400"
       (is (=? {:errors {:password "Invalid reset token"}}
               (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                              :password "whateverUP12!!"}))))
-
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
@@ -483,11 +494,9 @@
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
-
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
              (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
-
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (random-uuid))]
         (t2/update! :model/User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
@@ -499,19 +508,15 @@
     (testing "reset-token-ttl-hours-test is reset to default when not set"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours nil]
         (is (= 48 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 36]
         (is (= 36 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to large positive value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours (inc Integer/MAX_VALUE)]
         (is (= (inc Integer/MAX_VALUE) (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to zero"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours 0]
         (is (= 0 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))
-
     (testing "reset-token-ttl-hours-test is set to negative value"
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours -1]
         (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
@@ -521,23 +526,19 @@
     (testing "Unauthenticated"
       (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
-
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :admin-write-authed-read})))
                (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
-
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
-
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
-
     (testing "Includes user-local settings"
       (defsetting test-session-api-setting
         "test setting"
@@ -545,7 +546,6 @@
         :user-local :only
         :type       :string
         :default    "FOO")
-
       (mt/with-test-user :lucky
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
@@ -585,6 +585,8 @@
       (mt/with-model-cleanup [:model/User]
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
+          ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [http/post (constantly
                                    {:status 200
                                     :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
@@ -606,13 +608,13 @@
                                                   :is_active true
                                                   :first_name "last"
                                                   :last_name "luser"}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (testing "with throttling enabled"
               (is (malli= SessionResponse
                           (mt/client :post 200 "session/google_auth" {:token "foo"})))
@@ -625,15 +627,38 @@
                             (mt/client :post 200 "session/google_auth" {:token "foo"}))))))))
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:_error "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
+
+(deftest google-auth-logs-user-id-test
+  (testing "POST /api/session/google_auth log line includes the user ID after login (#74017)"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-temp [:model/User {user-id :id} {:email "test@metabase.com"
+                                                :is_active true}]
+        (with-redefs [http/post (constantly
+                                 {:status 200
+                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                               "\"email_verified\":\"true\","
+                                               "\"given_name\":\"test\","
+                                               "\"family_name\":\"user\","
+                                               "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-log-messages-for-level [messages [metabase.server.middleware.log :debug]]
+            (is (malli= SessionResponse
+                        (mt/client :post 200 "session/google_auth" {:token "foo"})))
+            (let [log-line (->> (messages)
+                                (m/find-first (fn [{:keys [message]}]
+                                                (and (string? message)
+                                                     (re-find #"POST /api/session/google_auth" message)))))]
+              (is (some? log-line))
+              (is (re-find (re-pattern (str ":metabase-user-id " user-id))
+                           (:message log-line))))))))))
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 

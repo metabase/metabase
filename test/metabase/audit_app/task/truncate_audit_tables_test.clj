@@ -34,25 +34,22 @@
          :model/QueryExecution {qe3-id :id} (merge (query-execution-defaults)
                                                    {:started_at (t/minus (t/offset-date-time) (t/years 1))})]
         ;; Mock a cloud environment so that we can change the setting value via env var
-        (with-redefs [premium-features/is-hosted? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
           (testing "When the threshold is 0 (representing infinity), no rows are deleted"
             (mt/with-temp-env-var-value! [mb-audit-max-retention-days 0]
               (#'task.truncate-audit-tables/truncate-audit-tables!)
               (is (= #{qe1-id qe2-id qe3-id}
                      (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
-
             (testing "When the threshold is 100 days, one row is deleted"
               (mt/with-temp-env-var-value! [mb-audit-max-retention-days 100]
                 (#'task.truncate-audit-tables/truncate-audit-tables!)
                 (is (= #{qe1-id qe2-id}
                        (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
-
             (testing "When the threshold is 30 days, two rows are deleted"
               (mt/with-temp-env-var-value! [mb-audit-max-retention-days 30]
                 (#'task.truncate-audit-tables/truncate-audit-tables!)
                 (is (= #{qe1-id}
                        (t2/select-fn-set :id :model/QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
-
             (testing "When the threshold set to 1 day, the remaining row is not deleted because the minimum threshold is 30"
               (mt/with-temp-env-var-value! [mb-audit-max-retention-days 1]
                 (#'task.truncate-audit-tables/truncate-audit-tables!)

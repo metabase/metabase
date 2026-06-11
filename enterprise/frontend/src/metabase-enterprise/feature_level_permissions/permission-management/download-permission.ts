@@ -7,15 +7,9 @@ import {
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -23,7 +17,16 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type TableEntityId,
+} from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {
@@ -78,7 +81,7 @@ const DOWNLOAD_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
 ) => {
   switch (permissionSubject) {
@@ -107,7 +110,7 @@ const getPermissionValue = (
 };
 
 export const buildDownloadPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,

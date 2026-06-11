@@ -492,8 +492,36 @@
             :include-expressions?         true
             :include-implicitly-joinable? false})))
 
+(defn- newly-stranded-downstream-refs
+  "Field refs in stages after `stage-number` that resolve against `before` but not against `after`. Non-empty means
+  narrowing a stage's `:fields` from `before` to `after` left a later stage referencing a column that stage no longer
+  returns."
+  [before after stage-number]
+  (let [stage-number (lib.util/canonical-stage-index before stage-number)
+        bad-refs     (fn [query]
+                       (let [bad (volatile! #{})]
+                         (lib.walk/walk-clauses
+                          query
+                          (fn [query path-type path clause]
+                            (when (and (= path-type :lib.walk/stage)
+                                       (> (second path) stage-number)
+                                       (vector? clause)
+                                       (= (first clause) :field))
+                              (let [col (lib.walk/apply-f-for-stage-at-path
+                                         lib.field.resolution/resolve-field-ref query path clause)]
+                                (when (or (not col)
+                                          (::lib.field.resolution/fallback-metadata? col)
+                                          (not (:active col true)))
+                                  (vswap! bad conj clause))))
+                            nil))
+                         @bad))]
+    (set/difference (bad-refs after) (bad-refs before))))
+
 (mu/defn with-fields :- ::lib.schema/query
-  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`."
+  "Specify the `:fields` for a query. Pass `nil` or an empty sequence to remove `:fields`.
+
+  Throws if narrowing the projection would strand a reference in a later stage (a column that stage no longer
+  returns)."
   ([xs]
    (fn [query stage-number]
      (with-fields query stage-number xs)))
@@ -513,8 +541,13 @@
                          (or xs []))
          ;; Those expr-refs which must still be included.
          to-add    (remove included expr-cols)
-         xs        (when xs (into xs (map lib.ref/ref) to-add))]
-     (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs))))
+         xs        (when xs (into xs (map lib.ref/ref) to-add))
+         result    (lib.util/update-query-stage query stage-number u/assoc-dissoc :fields xs)]
+     (when (and xs (lib.util/next-stage-number query stage-number))
+       (when-let [stranded (not-empty (newly-stranded-downstream-refs query result stage-number))]
+         (throw (ex-info "with-fields would strand downstream references to dropped columns"
+                         {:stage-number stage-number, :stranded stranded}))))
+     result)))
 
 (mu/defn fields :- [:maybe [:ref ::lib.schema/fields]]
   "Fetches the `:fields` for a query. Returns `nil` if there are no `:fields`. `:fields` should never be empty; this is
@@ -587,7 +620,6 @@
                                   :when field]
                               [join field]))
         join-fields  (lib.join/join-fields join)]
-
     ;; Nothing to do if it's already selected, or if this join already has :fields :all.
     ;; Otherwise, append it to the list of fields.
     (if (or (= join-fields :all)

@@ -19,6 +19,7 @@ import "sdk-specific-imports";
 
 import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
 
+import { MetabotSubscriber } from "./components/private/MetabotSubscriber/MetabotSubscriber";
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";
 import { CreateQuestion } from "./components/public/CreateQuestion";
@@ -73,6 +74,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useInitData,
   useLogVersionInfo,
   validateFunctionSchema,
+  MetabotSubscriber,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package

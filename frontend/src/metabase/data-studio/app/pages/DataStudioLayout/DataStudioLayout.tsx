@@ -13,12 +13,9 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { getUserIsAdmin } from "metabase/selectors/user";
-import {
-  canAccessTransforms as canAccessTransformsSelector,
-  getTransformsFeatureAvailable,
-} from "metabase/transforms/selectors";
+import { canAccessTransforms as canAccessTransformsSelector } from "metabase/transforms/selectors";
 import {
   ActionIcon,
   Box,
@@ -26,15 +23,14 @@ import {
   FixedSizeIcon,
   Flex,
   Group,
-  type IconName,
   Loader,
   Stack,
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isMac } from "metabase/utils/browser";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import type { IconName } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 import { getCurrentTab } from "./utils";
@@ -47,7 +43,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   const {
     value: _isNavbarOpened,
     setValue: setIsNavbarOpened,
-    isLoading,
+    isLoading: isLoadingNavbarKey,
   } = useUserKeyValue({
     namespace: "data_studio",
     key: "isNavbarOpened",
@@ -64,7 +60,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     [isNavbarOpened],
   );
 
-  return isLoading ? (
+  return isLoadingNavbarKey ? (
     <Center h="100%">
       <Loader />
     </Center>
@@ -88,11 +84,13 @@ type DataStudioNavProps = {
 
 function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const { pathname } = useSelector(getLocation);
-  const isAdmin = useSelector(getUserIsAdmin);
   const canAccessDataModel = useSelector(
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const canManageWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaces,
+  );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
@@ -100,8 +98,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
+  const hasSchemaViewerFeature = useHasTokenFeature("schema-viewer");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
-  const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -144,11 +142,12 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             />
           )}
           <DataStudioTab
-            label={t`Glossary`}
-            icon="glossary"
-            to={Urls.dataStudioGlossary()}
-            isSelected={currentTab === "glossary"}
+            label={t`Schema viewer`}
+            icon="network"
+            to={Urls.dataStudioSchemaViewer()}
+            isSelected={currentTab === "schema-viewer"}
             showLabel={isNavbarOpened}
+            isGated={!hasSchemaViewerFeature}
           />
           <DataStudioTab
             label={t`Dependency graph`}
@@ -173,7 +172,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               to={Urls.transformList()}
               isSelected={currentTab === "transforms"}
               showLabel={isNavbarOpened}
-              isGated={!hasTransformsFeature}
               rightSection={
                 hasTransformDirtyChanges &&
                 PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
@@ -182,9 +180,13 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               }
             />
           )}
-          {(canAccessTransforms || isAdmin) && (
-            <PLUGIN_WORKSPACES.WorkspacesSection showLabel={isNavbarOpened} />
-          )}
+          <DataStudioTab
+            label={t`Glossary`}
+            icon="glossary"
+            to={Urls.dataStudioGlossary()}
+            isSelected={currentTab === "glossary"}
+            showLabel={isNavbarOpened}
+          />
         </Stack>
         <Stack gap="0.75rem">
           {hasRemoteSyncFeature ? (
@@ -200,6 +202,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isSelected={currentTab === "git-sync"}
               showLabel={isNavbarOpened}
               isGated
+            />
+          )}
+          {canManageWorkspaces && (
+            <DataStudioTab
+              label={t`Workspaces`}
+              icon="folder"
+              to={Urls.workspaces()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
             />
           )}
           {canAccessTransforms && (

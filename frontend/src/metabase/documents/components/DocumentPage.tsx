@@ -30,6 +30,7 @@ import {
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { CopyModal } from "metabase/common/components/CopyModal";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
@@ -37,13 +38,12 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import { extractEntityId } from "metabase/utils/urls";
-import * as Urls from "metabase/utils/urls";
+import { extractEntityId } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import type {
   Card,
   CollectionId,
@@ -527,6 +527,10 @@ export const DocumentPage = ({
             title={t`Where should we save this document?`}
             onClose={() => setCollectionPickerMode(null)}
             entityType="document"
+            value={{
+              id: documentData?.collection_id ?? "root",
+              model: "collection",
+            }}
             onChange={(collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));
@@ -541,7 +545,7 @@ export const DocumentPage = ({
         )}
 
         {duplicateModalMode === "duplicate" && documentData && (
-          <EntityCopyModal
+          <CopyModal
             entityType="documents"
             onClose={() => setDuplicateModalMode(null)}
             onSaved={(document) => {

@@ -1,3 +1,8 @@
+import {
+  CollectionSchema,
+  ObjectUnionSchema,
+  SnippetCollectionSchema,
+} from "metabase/schema";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -23,6 +28,23 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+import { hydrateMetadataStore } from "./utils/hydrate-metadata-store";
+
+const flattenCollectionTree = (tree: Collection[]): Collection[] =>
+  tree.flatMap((collection) => [
+    collection,
+    ...flattenCollectionTree(collection.children ?? []),
+  ]);
+
+// Snippet collections live in their own entity slice (`snippetCollections`),
+// so hydrating them through `CollectionSchema` would clobber regular
+// collections. Hydrate through the matching schema instead.
+const collectionSchemaForRequest = (
+  request: { namespace?: string | null } | void,
+) =>
+  request?.namespace === "snippets"
+    ? SnippetCollectionSchema
+    : CollectionSchema;
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -39,6 +61,11 @@ export const collectionApi = Api.injectEndpoints({
         }),
         providesTags: (collections = []) =>
           provideCollectionListTags(collections),
+        onQueryStarted: (request, lifecycle) =>
+          hydrateMetadataStore([collectionSchemaForRequest(request)])(
+            request,
+            lifecycle,
+          ),
       },
     ),
     listCollectionsTree: builder.query<
@@ -54,6 +81,11 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionListTags(collections),
         "collection-tree",
       ],
+      onQueryStarted: (request, lifecycle) =>
+        hydrateMetadataStore<Collection[]>(
+          [collectionSchemaForRequest(request)],
+          flattenCollectionTree,
+        )(request, lifecycle),
     }),
     listCollectionItems: builder.query<
       ListCollectionItemsResponse,
@@ -68,6 +100,10 @@ export const collectionApi = Api.injectEndpoints({
         ...provideCollectionItemListTags(response?.data ?? [], models),
         { type: "collection", id: `${id}-items` },
       ],
+      onQueryStarted: hydrateMetadataStore<ListCollectionItemsResponse>(
+        [ObjectUnionSchema],
+        (response) => response.data,
+      ),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ignore_error, ...params }) => {
@@ -80,6 +116,11 @@ export const collectionApi = Api.injectEndpoints({
       },
       providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
+      onQueryStarted: (request, lifecycle) =>
+        hydrateMetadataStore(collectionSchemaForRequest(request))(
+          request,
+          lifecycle,
+        ),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({

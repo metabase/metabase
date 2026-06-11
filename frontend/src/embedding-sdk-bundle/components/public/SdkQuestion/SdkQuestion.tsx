@@ -60,6 +60,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "withDownloads"
     | "withAlerts"
     | "targetCollection"
+    | "initialCollection"
     | "onRun"
   >;
 
@@ -135,7 +136,10 @@ export const _SdkQuestion = ({
   entityTypes,
   dataPicker,
   targetCollection,
+  initialCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads = false,
   withAlerts = false,
@@ -143,6 +147,7 @@ export const _SdkQuestion = ({
   backToDashboard,
   getClickActionMode,
   navigateToNewCard,
+  onDrillThrough,
 
   height,
   width,
@@ -150,6 +155,7 @@ export const _SdkQuestion = ({
   style,
   title,
   withChartTypeSelector = true,
+  withEditorButton = true,
   onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => {
   const drillThroughQuestionProps: DrillThroughQuestionProps = {
@@ -159,8 +165,10 @@ export const _SdkQuestion = ({
     style,
     title,
     withChartTypeSelector,
+    withEditorButton,
     isSaveEnabled,
     targetCollection,
+    initialCollection,
     entityTypes,
     onBeforeSave,
     onSave,
@@ -191,7 +199,10 @@ export const _SdkQuestion = ({
         entityTypes={entityTypes}
         dataPicker={dataPicker}
         targetCollection={targetCollection}
+        initialCollection={initialCollection}
         initialSqlParameters={initialSqlParameters}
+        sqlParameters={sqlParameters}
+        onSqlParametersChange={onSqlParametersChange}
         hiddenParameters={hiddenParameters}
         withDownloads={withDownloads}
         withAlerts={withAlerts}
@@ -199,6 +210,7 @@ export const _SdkQuestion = ({
         backToDashboard={backToDashboard}
         getClickActionMode={getClickActionMode}
         navigateToNewCard={navigateToNewCard}
+        onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
       >
         {children ?? (
@@ -209,6 +221,7 @@ export const _SdkQuestion = ({
             style={style}
             title={title}
             withChartTypeSelector={withChartTypeSelector}
+            withEditorButton={withEditorButton}
           />
         )}
       </SdkQuestionProvider>

@@ -37,7 +37,6 @@
     [:model/Collection {coll-id :id} {:name "my coll"}
      :model/Database   {db-id :id}   {}
      :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
-
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :dashboard nil
@@ -340,7 +339,6 @@
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dashboard-id :view)
       ;; can't read? can't see:
       (is (= 0 (count (recent-views (mt/user->id :rasta)))))
-
       (is (= 3 (count
                 (mt/with-test-user :rasta
                   (recent-views (mt/user->id :rasta)))))))))
@@ -351,19 +349,15 @@
                    :model/Dashboard {dash-id-2 :id} {}
                    :model/Dashboard {dash-id-3 :id} {}]
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-2 :view)
       (is (= dash-id-2 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
       (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
-
       (testing "archived dashboards are not returned (#45223)"
         (t2/update! :model/Dashboard dash-id-3 {:archived true})
         (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
@@ -491,7 +485,7 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                         (recent-views (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
@@ -501,7 +495,7 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                   (recent-views (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
@@ -535,13 +529,12 @@
                                    [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
                                    [:model/Collection [collection-id collection-id-2 collection-id-3]]
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
-
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
         (with-redefs [mi/can-read?                              (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
-                                        (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
             (is (= 3 (:card freqs)))
             (is (= 3 (:dataset freqs)))

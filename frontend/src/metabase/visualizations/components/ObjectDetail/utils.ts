@@ -4,7 +4,8 @@ import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
-import { formatValue, singularize } from "metabase/utils/formatting";
+import { singularize } from "metabase/utils/formatting";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import type Question from "metabase-lib/v1/Question";
 import { canRunAction } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";

@@ -63,6 +63,29 @@
   {:headers  (po-headers locale)
    :messages (po-messages-seq locale)})
 
+(defn backend-message?
+  "True if `message` (the shape returned by `po-messages-seq`) originates from a Clojure source file
+  — i.e. one of its `:source-references` ends in `.clj` or `.cljc`. This is the same filter used by
+  `i18n.create-artifacts.backend` when writing the backend `.edn` artifacts, and by `i18n.validation`
+  when deciding which translations to sanity-check as `java.text.MessageFormat` patterns. Frontend
+  strings use a different format system (`#, javascript-format` in the `.po`) and their own
+  validation rules, so this scanner skips them."
+  [{:keys [source-references]}]
+  (boolean
+   (let [paths (eduction
+                ;; Sometimes 2 paths exist in a single string, space separated
+                (mapcat #(str/split % #" "))
+                ;; Strip off the line number at the end of some paths
+                (map #(str/split % #":"))
+                (map first)
+                source-references)]
+     (some (fn [path]
+             (some
+              (fn [suffix]
+                (str/ends-with? path suffix))
+              [".clj" ".cljc"]))
+           paths))))
+
 (defn print-message-count-xform
   "Transducer that prints a count of how many translation strings we process/write."
   [rf]

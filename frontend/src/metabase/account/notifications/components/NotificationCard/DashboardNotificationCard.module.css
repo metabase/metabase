@@ -1,0 +1,23 @@
+.root {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-sm);
+
+  &:not(:last-child) {
+    margin-bottom: 1.25rem;
+  }
+}
+
+.message {
+  &:not(:last-child)::after {
+    content: " · ";
+    white-space: pre;
+  }
+}
+
+.icon {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-text-secondary);
+  }
+}

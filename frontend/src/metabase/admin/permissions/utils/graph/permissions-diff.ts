@@ -1,7 +1,7 @@
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   ConcreteTableId,
-  Group,
+  GroupInfo,
   GroupsPermissions,
 } from "metabase-types/api";
 
@@ -119,7 +119,7 @@ function diffGroupPermissions(
 export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
-  groups: Group[],
+  groups: GroupInfo[],
   databases: Database[],
 ): PermissionsGraphDiff {
   const permissionsDiff: {

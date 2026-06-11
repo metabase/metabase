@@ -1,12 +1,12 @@
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { Badge } from "metabase/common/components/Badge";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Collection,
   CollectionEssentials,
@@ -58,7 +58,6 @@ export const CollectionBreadcrumbs = ({
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
         {separator}
@@ -75,7 +74,6 @@ export const CollectionBreadcrumbs = ({
         <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            isSingleLine
             onClick={onClick ? () => onClick(collection) : undefined}
           />
           {separator}
@@ -89,21 +87,16 @@ export const CollectionBreadcrumbs = ({
         {content}
         <CollectionBadge
           collectionId={collection.id}
-          isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
       </Flex>
       {dashboard && (
         <>
           {separator}
-          <Badge
-            icon={{ name: "dashboard" }}
-            inactiveColor="text-tertiary"
-            isSingleLine
-            to={Urls.dashboard(dashboard)}
-          >
+
+          <Breadcrumb icon="dashboard" to={Urls.dashboard(dashboard)}>
             {tc(dashboard.name)}
-          </Badge>
+          </Breadcrumb>
         </>
       )}
     </>

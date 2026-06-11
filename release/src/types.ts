@@ -33,14 +33,20 @@ export interface VersionInfo {
   rollout?: number;
 }
 
+export interface MajorVersionSupport {
+  major: number;
+  released: string;
+  lts: boolean;
+  eol: string;
+}
+
 export interface VersionInfoFile {
   latest: VersionInfo;
   beta?: VersionInfo;
   nightly?: VersionInfo;
   older: VersionInfo[];
+  major_version_support?: MajorVersionSupport[];
 }
-
-export type ReleaseChannel = "latest" | "beta" | "nightly";
 
 export type Issue = {
   number: number;

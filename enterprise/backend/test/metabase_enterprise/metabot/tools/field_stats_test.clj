@@ -5,21 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.field-stats :as metabot.tools.field-stats]
-   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
-
-(defn- table-query
-  [metadata-provider table-id]
-  (lib/query metadata-provider (lib.metadata/table metadata-provider table-id)))
-
-(defn- visible-field-id [query field-id-prefix field-display-name]
-  (->> (keep-indexed (fn [i col]
-                       (when (= (lib/display-name query col) field-display-name)
-                         i))
-                     (lib/visible-columns query))
-       first
-       (str field-id-prefix)))
 
 (defn- sandboxed-query []
   (let [mp       (mt/metadata-provider)
@@ -29,14 +16,11 @@
 
 (deftest sandboxed-field-values-test
   (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
-    (let [field-id       (mt/id :categories :name)
-          table-id       (mt/id :categories)
-          mp             (mt/metadata-provider)
-          tq             (table-query mp table-id)
-          agent-field-id (visible-field-id tq (metabot.tools.u/table-field-id-prefix table-id) "Name")]
+    (let [field-id (mt/id :categories :name)
+          table-id (mt/id :categories)]
       (try
         (let [result (metabot.tools.field-stats/field-values
-                      {:entity-type "table", :entity-id table-id, :field-id agent-field-id, :limit 10})]
+                      {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 10})]
           (testing "returns sandboxed field values"
             (is (= ["African" "American"] (get-in result [:structured-output :value_metadata :field_values])))))
         (finally
@@ -55,15 +39,12 @@
         (try
           ;; Clear the fingerprint to force re-fingerprinting via get-or-create-fingerprint!
           (t2/update! :model/Field field-id {:fingerprint nil :fingerprint_version 0})
-          (let [mp             (mt/metadata-provider)
-                tq             (table-query mp table-id)
-                agent-field-id (visible-field-id tq (metabot.tools.u/table-field-id-prefix table-id) "Name")]
-            (metabot.tools.field-stats/field-values
-             {:entity-type "table", :entity-id table-id, :field-id agent-field-id})
-            (let [new-fp (t2/select-one-fn :fingerprint :model/Field :id field-id)]
-              (testing "fingerprint was saved"
-                (is (some? new-fp)))
-              (testing "fingerprint reflects full table data, not the sandboxed subset"
-                (is (= full-distinct-count (get-in new-fp [:global :distinct-count]))))))
+          (metabot.tools.field-stats/field-values
+           {:entity-type "table", :entity-id table-id, :field-id field-id})
+          (let [new-fp (t2/select-one-fn :fingerprint :model/Field :id field-id)]
+            (testing "fingerprint was saved"
+              (is (some? new-fp)))
+            (testing "fingerprint reflects full table data, not the sandboxed subset"
+              (is (= full-distinct-count (get-in new-fp [:global :distinct-count])))))
           (finally
             (t2/update! :model/Field field-id {:fingerprint original-fp})))))))

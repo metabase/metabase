@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.query-processor.middleware.annotate-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.annotate-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.middleware.annotate-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

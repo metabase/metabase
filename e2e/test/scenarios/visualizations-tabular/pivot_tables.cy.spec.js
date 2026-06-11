@@ -247,7 +247,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         type: "query",
         query: {
           "source-table": ORDERS_ID,
-          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
           aggregation: [["count"]],
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
@@ -517,9 +517,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
       // check values in the table
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("42,156.87"); // sum of total for 2022
+      cy.findByText("42,156.87"); // sum of total for 2025
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("84,313.74"); // sum of "twice total" for 2022
+      cy.findByText("84,313.74"); // sum of "twice total" for 2025
 
       // check grand totals
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -613,6 +613,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByText("1,027"); // primary data value
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("3,798"); // subtotal value
+    });
+
+    it("should show no-results then hide an empty pivot dashcard (UXW-4145)", () => {
+      const FILTER_ID = "d7988e02";
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 16,
+          size_y: 8,
+        },
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.log(
+          "Add an ID filter to the dashboard and map it to the pivot card",
+        );
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [{ id: FILTER_ID, name: "ID", slug: "id", type: "id" }],
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: FILTER_ID,
+                  card_id,
+                  target: ["dimension", ["field", ORDERS.ID]],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashboard_id);
+      });
+
+      cy.log("Filtering to a value with no rows shows the no-results state");
+      H.filterWidget().click();
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
+        cy.button("Add filter").click();
+      });
+      // Pre-fix this rendered a blank pivot; the grand-total row hid the emptiness.
+      H.getDashboardCard(0).findByText("No results!").should("be.visible");
+
+      cy.log("Enabling 'hide if empty' removes the now-empty card");
+      H.editDashboard();
+      cy.findByTestId("dashboardcard-actions-panel").within(() => {
+        cy.icon("palette").click({ force: true });
+      });
+      cy.findByRole("dialog").within(() => {
+        cy.findByLabelText("Hide this card if there are no results").click({
+          force: true,
+        });
+        cy.button("Done").click();
+      });
+      H.saveDashboard();
+
+      cy.findByTestId("dashcard").should("not.exist");
     });
   });
 
@@ -829,7 +897,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     cy.wait("@datasetPivot");
     cy.findByTestId("query-visualization-root").within(() => {
       cy.contains("Row totals");
-      cy.findByText("333"); // Row totals for 2024
+      cy.findByText("333"); // Row totals for 2027
       cy.findByText("Grand totals");
     });
   });
@@ -850,8 +918,8 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             [
               "between",
               ["field", ORDERS.CREATED_AT, null],
-              "2022-11-09",
-              "2022-11-11",
+              "2025-11-09",
+              "2025-11-11",
             ],
             ["!=", ["field", ORDERS.PRODUCT_ID, null], 146],
           ],
@@ -873,18 +941,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 9, 2022");
+    cy.findByText("November 9, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 10, 2022");
+    cy.findByText("November 10, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("November 11, 2022");
+    cy.findByText("November 11, 2025");
     collapseRowsFor("Created At: Day");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 9, 2022");
+    cy.findByText("Totals for November 9, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 10, 2022");
+    cy.findByText("Totals for November 10, 2025");
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Totals for November 11, 2022");
+    cy.findByText("Totals for November 11, 2025");
 
     function collapseRowsFor(column_name) {
       cy.findByText(column_name).parent().find(".Icon-dash").click();
@@ -903,7 +971,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
         },
         database: SAMPLE_DB_ID,
       },
@@ -936,7 +1004,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
             ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
             ["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }],
           ],
-          filter: [">", ["field", ORDERS.CREATED_AT, null], "2026-01-01"],
+          filter: [">", ["field", ORDERS.CREATED_AT, null], "2029-01-01"],
         },
         database: SAMPLE_DB_ID,
       },

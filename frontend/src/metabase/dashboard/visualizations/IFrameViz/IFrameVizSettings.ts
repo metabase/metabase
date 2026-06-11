@@ -29,7 +29,6 @@ export const settings: VisualizationDefinition = {
       dashboard: false,
     },
     iframe: {
-      value: "",
       getDefault: () => "",
     },
   },

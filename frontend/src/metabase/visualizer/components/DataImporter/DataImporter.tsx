@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -14,14 +15,13 @@ import {
   Title,
 } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
   initializeVisualizer,
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
-import type { VisualizerDataSource } from "metabase-types/api";
+import type { DashboardId, VisualizerDataSource } from "metabase-types/api";
 
 import {
   trackVisualizerAddMoreDataClicked,
@@ -32,7 +32,13 @@ import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
 import { DatasetsList } from "./DatasetsList/DatasetsList";
 
-export const DataImporter = ({ className }: { className?: string }) => {
+export const DataImporter = ({
+  className,
+  dashboardId,
+}: {
+  className?: string;
+  dashboardId: DashboardId | undefined;
+}) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
   const dispatch = useDispatch();
@@ -121,6 +127,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           search={debouncedSearch}
           setDataSourceCollapsed={setDataSourceCollapsed}
           muted={!showDatasets}
+          dashboardId={dashboardId}
         />
       </Flex>
       <Flex

@@ -73,6 +73,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
@@ -403,11 +404,37 @@
    query
    joins))
 
+(mu/defn- tighten-join-projections :- ::lib.schema/query
+  "Narrow each join's inner-stage `:fields` to exactly the field-ids `query` references whose `:table-id` matches the
+  join's source table.
+
+  Assumes no two joins in stage 0 target the same `:table-id` (true for chain-filter's `joined-table-alias`
+  convention). If that ever breaks, both joins get the union of fields — still correct, only over-projection."
+  [query :- ::lib.schema/query]
+  (if (empty? (lib/joins query))
+    query
+    ;; Bucket by `:table-id`, not by join alias: aliases are stage-scoped and the same string can recur in nested
+    ;; scopes referring to different things. Table-id is the field's natural grain.
+    (let [field-ids   (lib/all-field-ids query)
+          cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
+          cols-by-tid (group-by :table-id cols)]
+      (lib.util/update-query-stage
+       query 0
+       update :joins
+       (fn [the-joins]
+         (mapv (fn [a-join]
+                 (let [thing (lib/joined-thing query a-join)
+                       tid   (when (= :metadata/table (:lib/type thing))
+                               (:id thing))]
+                   (cond-> a-join
+                     tid (lib/with-join-source-fields (get cols-by-tid tid)))))
+               the-joins))))))
+
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
   [:map {:closed true}
    [:original-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; return at most the lesser of `limit` (if specified) and `max-results`.
+   ;; return at most the lesser of `limit` (if specified) and `max-results`.
    [:limit {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private max-results 1000)
@@ -418,18 +445,30 @@
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
-  (let [database-id      (field/field-id->database-id field-id)
-        mp               (lib-be/application-database-metadata-provider database-id)
-        source-table-id  (field/field-id->table-id field-id)
-        joins            (find-all-joins source-table-id (cond-> (set (map :field-id constraints))
-                                                           original-field-id (conj original-field-id)))
-        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
-        field            (lib.metadata/field mp field-id)
-        original-field   (when original-field-id
-                           (let [original-table-id (field/field-id->table-id original-field-id)]
-                             (cond-> (lib.metadata/field mp original-field-id)
-                               (not= source-table-id original-table-id)
-                               (lib/with-join-alias (joined-table-alias original-table-id)))))]
+  (let [database-id       (field/field-id->database-id field-id)
+        mp                (lib-be/application-database-metadata-provider database-id)
+        field-table-id    (field/field-id->table-id field-id)
+        original-table-id (when original-field-id (field/field-id->table-id original-field-id))
+        ;; When the original (FK) field lives on a different table, reverse the join direction:
+        ;; make the original field's table the source and join the label table. The original table
+        ;; is typically the large fact table; putting it on the right side of a JOIN can OOM on
+        ;; engines like ClickHouse that materialize the right side in memory.
+        reversed?         (and original-table-id (not= original-table-id field-table-id))
+        source-table-id   (if reversed? original-table-id field-table-id)
+        joins             (find-all-joins source-table-id
+                                          (cond-> (set (map :field-id constraints))
+                                            reversed?       (conj field-id)
+                                            (not reversed?) (cond-> original-field-id (conj original-field-id))))
+        joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
+        field             (cond-> (lib.metadata/field mp field-id)
+                            reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
+        original-field    (when original-field-id
+                            (if reversed?
+                              ;; reversed: original field is on the source table, no alias
+                              (lib.metadata/field mp original-field-id)
+                              (cond-> (lib.metadata/field mp original-field-id)
+                                (not= field-table-id original-table-id)
+                                (lib/with-join-alias (joined-table-alias original-table-id)))))]
     (when original-field-id
       (log/tracef "Finding values of %s, remapped from %s."
                   (name-for-logging :model/Field field-id)
@@ -461,7 +500,11 @@
                                 (lib/order-by field))
                 (not original-field) (lib/breakout field))
         (add-filters source-table-id joined-table-ids constraints)
-        schema.metadata-queries/add-required-filters-if-needed)))
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST so it picks up joined-table field refs injected by middleware above (e.g. BigQuery partition
+        ;; filters). Without an explicit projection here the join's inner stage gets expanded to every column on the
+        ;; joined Table by add-implicit-clauses, OOM'ing on wide fact tables.
+        tighten-join-projections)))
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
@@ -488,7 +531,6 @@
          :has_more_values (if (nil? query-limit)
                             true
                             (= (count values) query-limit))})
-
       (catch Throwable e
         (throw (ex-info (tru "Error executing chain filter query")
                         {:field-id    field-id
@@ -646,9 +688,9 @@
       (some? remapping-field)
       (unremapped-chain-filter remapping-field constraints (assoc options :original-field-id field-id))
 
-     ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
-     ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
-     ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
+      ;; This is for fields that have human-readable values defined (e.g. you've went in and specified that enum
+      ;; value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
+      ;; database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`).
       (some? v->human-readable)
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
@@ -658,8 +700,8 @@
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
 
-     ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
-     ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
+      ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
+      ;; search by `category.name` but return tuples of `[venue.category_id category.name]`.
       (some? @remapping)
       (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)

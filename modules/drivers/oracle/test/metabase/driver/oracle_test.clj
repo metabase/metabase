@@ -1,5 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.oracle-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.oracle-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -111,8 +113,9 @@
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
     (with-redefs [premium-features/is-hosted? (constantly false)]
-      (let [expected [{:name "host"}
-                      {:name "port"}
+      (let [expected [{:type :group
+                       :fields [{:name "host"}
+                                {:name "port"}]}
                       {:name "sid"}
                       {:name "service-name"}
                       {:name "user"}
@@ -176,6 +179,7 @@
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
+                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -185,7 +189,7 @@
                           (driver.u/connection-props-server->client :oracle))]
         (is (= (count expected) (count actual))
             (str "actual names: " (pr-str (mapv :name actual))))
-        (is (= expected (mt/select-keys-sequentially expected actual)))))))
+        (is (=? expected actual))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to oracle via ssh tunnel"
@@ -627,16 +631,12 @@
           date-field (m/find-first (comp #{"Date"} :display-name) (lib/filterable-columns query))]
       (doseq [[x y] (partition-all 2 ["1970-01-01 00:00:00"
                                       "to_date('1970-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.000"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"
-
                                       "1970-01-01 10:09:08.001"
                                       "timestamp '1970-01-01 10:09:08.001'"
-
                                       ;; Oracle can't resolve less than milliseconds, so cast to date since we don't lose anything
                                       "1970-01-01 10:09:08.0001"
                                       "to_date('1970-01-01 10:09:08', 'YYYY-MM-DD HH24:MI:SS')"])]
@@ -690,6 +690,31 @@
                                 (lib/breakout products-category))]
       (is (= 20 (count (mt/rows (qp/process-query query))))))))
 
+(deftest table-privileges-test
+  (mt/test-driver :oracle
+    (testing "`current-user-table-privileges` returns correct structure and privileges"
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
+        (is (seq privileges) "Should return at least one table")
+        (doseq [priv privileges]
+          (is (= #{:role :schema :table :select :update :insert :delete}
+                 (set (keys priv)))
+              "Should have all required keys")
+          (is (nil? (:role priv)))
+          (is (string? (:schema priv)))
+          (is (string? (:table priv)))
+          (is (boolean? (:select priv)))
+          (is (boolean? (:update priv)))
+          (is (boolean? (:insert priv)))
+          (is (boolean? (:delete priv))))
+        (testing "Test tables should appear with at least SELECT privilege"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (seq test-tables) "ORDERS table should be found in privileges")
+            (is (every? :select test-tables))))
+        (testing "Owned tables should have full DML privileges"
+          (let [test-tables (filter (fn [priv] (str/includes? (u/upper-case-en (:table priv)) "ORDERS")) privileges)]
+            (is (every? (fn [priv] (and (:insert priv) (:update priv) (:delete priv))) test-tables)
+                "Owner should have insert, update, and delete on owned tables")))))))
 (defn- do-with-nls-territory
   "Execute `thunk` with all Oracle connections using the given `nls-territory` (e.g. \"ARGENTINA\").
   Wraps `do-with-connection-with-options` to run ALTER SESSION on each connection."
@@ -735,3 +760,24 @@
                (mt/with-native-query-testing-context query
                  (is (= [[3 1]]
                         (mt/formatted-rows [int int] (qp/process-query query)))))))))))))
+
+(deftest ^:parallel two-contains-filters-formatted-correct-test
+  (testing "a query with two contains filters should be formatted correctly (#74086)"
+    (mt/test-driver :oracle
+      (let [mp         (mt/metadata-provider)
+            id-field   (lib.metadata/field mp (mt/id :people :id))
+            name-field (lib.metadata/field mp (mt/id :people :name))
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/filter (lib/and
+                                   (lib/contains name-field "Alice")
+                                   (lib/contains name-field "ice")))
+                      (lib/with-fields [id-field name-field]))
+            result (qp/process-query query)
+            native-sql (-> result :data :native_form :query)
+            prettified-sql (driver/prettify-native-form driver/*driver* native-sql)
+            native-query (lib/native-query mp prettified-sql)]
+        (is (= "SELECT\n  *\nFROM\n  (\n    SELECT\n      \"mb_test\".\"test_data_people\".\"id\" \"id\",\n      \"mb_test\".\"test_data_people\".\"name\" \"name\"\n    FROM\n      \"mb_test\".\"test_data_people\"\n    WHERE\n      (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%Alice%' ESCAPE CHR(92)\n      )\n      AND (\n        \"mb_test\".\"test_data_people\".\"name\" LIKE '%ice%' ESCAPE CHR(92)\n      )\n  )\nWHERE\n  rownum <= 1048575"
+               prettified-sql))
+        (is (= [[1345 "Alice Connelly"]]
+               (mt/formatted-rows [int str] result)
+               (mt/formatted-rows [int str] (qp/process-query native-query))))))))

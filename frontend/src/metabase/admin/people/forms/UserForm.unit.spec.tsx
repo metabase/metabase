@@ -104,6 +104,13 @@ describe("UserForm", () => {
       expect(screen.queryByText("Attributes")).not.toBeInTheDocument();
     });
 
+    it("should not show validation errors before fields are touched (UXW-3719)", async () => {
+      setup({ initialValues: {} as typeof USER });
+
+      expect(await screen.findByLabelText(/Email/)).toBeInTheDocument();
+      expect(screen.queryByText(/required/i)).not.toBeInTheDocument();
+    });
+
     it("should allow you to add groups", async () => {
       const { onSubmit } = setup();
 

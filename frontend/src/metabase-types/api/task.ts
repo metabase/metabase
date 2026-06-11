@@ -69,13 +69,13 @@ export type TaskRunEntityType = "database" | "card" | "dashboard";
 export type TaskRunStatus = "started" | "success" | "failed" | "abandoned";
 export type TaskRunDateFilterOption =
   | "thisday"
-  | "past1days~"
-  | "past1weeks~"
-  | "past7days~"
-  | "past30days~"
-  | "past1months~"
-  | "past3months~"
-  | "past12months~";
+  | "past1days"
+  | "past1weeks"
+  | "past7days"
+  | "past30days"
+  | "past1months"
+  | "past3months"
+  | "past12months";
 
 export interface TaskRun {
   id: number;
@@ -101,12 +101,16 @@ export interface RunEntity {
   entity_name?: string;
 }
 
+export type TaskRunStartedAtParam =
+  | TaskRunDateFilterOption
+  | `${TaskRunDateFilterOption}~`;
+
 export type ListTaskRunsRequest = {
   "run-type"?: TaskRunType;
   "entity-type"?: TaskRunEntityType;
   "entity-id"?: number;
   status?: TaskRunStatus;
-  "started-at"?: TaskRunDateFilterOption;
+  "started-at"?: TaskRunStartedAtParam;
 } & PaginationRequest;
 
 export type ListTaskRunsResponse = {
@@ -115,5 +119,5 @@ export type ListTaskRunsResponse = {
 
 export type ListTaskRunEntitiesRequest = {
   "run-type": TaskRunType;
-  "started-at": TaskRunDateFilterOption;
+  "started-at": TaskRunStartedAtParam;
 };

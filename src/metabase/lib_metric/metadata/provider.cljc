@@ -16,7 +16,10 @@
   "Protocol extension for metric-specific operations on a MetadataProvider."
   (database-provider-for-table [this table-id]
     "Get the database-specific MetadataProvider for a given table-id.
-     Returns nil if the table cannot be found."))
+     Returns nil if the table cannot be found.")
+  (database-provider-for-database [this db-id]
+    "Get the database-specific MetadataProvider for a given database-id.
+     Returns nil if the database cannot be found."))
 
 (defn- route-table-metadata
   "Route table metadata request to the appropriate database provider."
@@ -56,6 +59,7 @@
          [metric-fetcher-fn     ;; (fn [metadata-spec] ...) returns metrics
           measure-fetcher-fn    ;; (fn [metadata-spec] ...) returns measures (optional, can be nil)
           dimension-fetcher-fn  ;; (fn [metadata-spec] ...) returns dimensions (optional, can be nil)
+          segment-fetcher-fn    ;; (fn [metadata-spec] ...) returns segments (optional, can be nil)
           table->db-fn          ;; (fn [table-id] ...) returns database-id
           db-provider-fn        ;; (fn [db-id] ...) returns MetadataProvider for that database
           setting-fn            ;; (fn [setting-key] ...) returns setting value
@@ -92,7 +96,9 @@
         [])
 
       :metadata/segment
-      (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) [])
+      (if segment-fetcher-fn
+        (segment-fetcher-fn metadata-spec)
+        (or (route-metadata-by-table table->db-fn db-provider-fn metadata-spec) []))
 
       :metadata/card
       (route-card-metadata table->db-fn db-provider-fn metadata-spec)
@@ -136,12 +142,16 @@
     (when-let [db-id (table->db-fn table-id)]
       (db-provider-fn db-id)))
 
+  (database-provider-for-database [_this db-id]
+    (db-provider-fn db-id))
+
   #?(:clj Object :cljs IEquiv)
   (#?(:clj equals :cljs -equiv) [_this another]
     (and (instance? MetricContextMetadataProvider another)
          (= metric-fetcher-fn (.-metric-fetcher-fn ^MetricContextMetadataProvider another))
          (= measure-fetcher-fn (.-measure-fetcher-fn ^MetricContextMetadataProvider another))
          (= dimension-fetcher-fn (.-dimension-fetcher-fn ^MetricContextMetadataProvider another))
+         (= segment-fetcher-fn (.-segment-fetcher-fn ^MetricContextMetadataProvider another))
          (= table->db-fn (.-table->db-fn ^MetricContextMetadataProvider another))
          (= db-provider-fn (.-db-provider-fn ^MetricContextMetadataProvider another))
          (= setting-fn (.-setting-fn ^MetricContextMetadataProvider another))
@@ -166,16 +176,20 @@
    - Routes table/column/segment requests to the appropriate database provider
    - Caches metric, measure, and dimension metadata internally"
   ([metric-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn nil))
+   (metric-context-metadata-provider metric-fetcher-fn nil nil nil table->db-fn db-provider-fn setting-fn nil))
   ([metric-fetcher-fn measure-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil table->db-fn db-provider-fn setting-fn nil))
+   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn nil nil table->db-fn db-provider-fn setting-fn nil))
   ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn]
-   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn nil))
+   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn nil table->db-fn db-provider-fn setting-fn nil))
   ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn table->db-fn db-provider-fn setting-fn column-post-process-fn]
+   (metric-context-metadata-provider metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn nil table->db-fn db-provider-fn setting-fn column-post-process-fn))
+  ([metric-fetcher-fn measure-fetcher-fn dimension-fetcher-fn segment-fetcher-fn
+    table->db-fn db-provider-fn setting-fn column-post-process-fn]
    (->MetricContextMetadataProvider
     metric-fetcher-fn
     measure-fetcher-fn
     dimension-fetcher-fn
+    segment-fetcher-fn
     table->db-fn
     db-provider-fn
     setting-fn

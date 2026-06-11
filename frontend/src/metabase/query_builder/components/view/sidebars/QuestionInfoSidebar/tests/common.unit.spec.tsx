@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";
@@ -10,6 +10,8 @@ import {
   createMockCard,
   createMockCollection,
   createMockModerationReview,
+  createMockSettings,
+  createMockTokenFeatures,
   createMockUserInfo,
 } from "metabase-types/api/mocks";
 import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
@@ -75,7 +77,14 @@ describe("QuestionInfoSidebar", () => {
 
     describe("for admins", () => {
       it("should show tabs for Overview, Relationships, History, and Insights", async () => {
-        setup({ user: { is_superuser: true } });
+        setup({
+          user: { is_superuser: true },
+          settings: createMockSettings({
+            "token-features": createMockTokenFeatures({
+              audit_app: false,
+            }),
+          }),
+        });
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(4);
         expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -84,9 +93,8 @@ describe("QuestionInfoSidebar", () => {
           "Relationships",
           "Insights",
         ]);
-        const insightsTab = await screen.findByRole("tab", {
-          name: "Insights",
-        });
+
+        const insightsTab = screen.getByText("Insights");
         await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),

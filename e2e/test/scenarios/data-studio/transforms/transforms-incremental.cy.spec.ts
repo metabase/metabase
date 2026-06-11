@@ -13,7 +13,8 @@ describe("scenarios > admin > transforms incremental", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -24,9 +25,6 @@ describe("scenarios > admin > transforms incremental", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
-      "checkTransformDependencies",
-    );
     cy.intercept("POST", "/api/transform/*/reset-checkpoint").as(
       "resetCheckpoint",
     );
@@ -66,7 +64,7 @@ describe("scenarios > admin > transforms incremental", () => {
         cy.findByLabelText("Name").type(" transform");
         cy.findByLabelText("Table name").should("have.value", TARGET_TABLE);
         cy.findByRole("switch", {
-          name: /Only process new and changed data/i,
+          name: /Only process new data/i,
         }).click({ force: true });
 
         cy.button("Save").click();
@@ -126,12 +124,12 @@ describe("scenarios > admin > transforms incremental", () => {
       cy.log("go to Transform Settings and reset checkpoint");
       cy.go("back");
       H.DataStudio.Transforms.settingsTab().click();
-      cy.findByRole("group", { name: /Current checkpoint/i }).within(() => {
+      cy.findByRole("group", { name: /Last processed/i }).within(() => {
         cy.findByText(/31/).should("exist");
       });
-      cy.button("Reset checkpoint").click();
+      cy.button("Reprocess all data").click();
       H.modal().within(() => {
-        cy.button("Reset").click();
+        cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
 
@@ -189,7 +187,7 @@ def transform(animals):
           cy.findByLabelText("Name").clear().type("Python transform");
           cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
           cy.findByRole("switch", {
-            name: /Only process new and changed data/i,
+            name: /Only process new data/i,
           }).click({ force: true });
           cy.button("Save").click();
           cy.wait("@createTransform").then(({ response }) => {
@@ -248,12 +246,12 @@ def transform(animals):
         cy.log("go to Transform Settings and reset checkpoint");
         cy.go("back");
         H.DataStudio.Transforms.settingsTab().click();
-        cy.findByRole("group", { name: /Current checkpoint/i }).within(() => {
+        cy.findByRole("group", { name: /Last processed/i }).within(() => {
           cy.findByText(/31/).should("exist");
         });
-        cy.button("Reset checkpoint").click();
+        cy.button("Reprocess all data").click();
         H.modal().within(() => {
-          cy.button("Reset").click();
+          cy.button("Reprocess on next run").click();
         });
         cy.wait("@resetCheckpoint");
 
@@ -308,7 +306,7 @@ def transform(animals):
         cy.findByLabelText("Name").clear().type("SQL transform");
         cy.findByLabelText("Table name").clear().type(TARGET_TABLE);
         cy.findByRole("switch", {
-          name: /Only process new and changed data/i,
+          name: /Only process new data/i,
         }).click({ force: true });
         cy.button("Save").click();
         cy.wait("@createTransform");
@@ -361,12 +359,12 @@ def transform(animals):
       cy.log("go to Transform Settings and reset checkpoint");
       cy.go("back");
       H.DataStudio.Transforms.settingsTab().click();
-      cy.findByRole("group", { name: /Current checkpoint/i }).within(() => {
+      cy.findByRole("group", { name: /Last processed/i }).within(() => {
         cy.findByText(/31/).should("exist");
       });
-      cy.button("Reset checkpoint").click();
+      cy.button("Reprocess all data").click();
       H.modal().within(() => {
-        cy.button("Reset").click();
+        cy.button("Reprocess on next run").click();
       });
       cy.wait("@resetCheckpoint");
 

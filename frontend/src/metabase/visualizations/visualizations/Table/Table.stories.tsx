@@ -13,6 +13,7 @@ import {
 import { Api } from "metabase/api";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { commonReducers } from "metabase/reducers-common";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
   createMockSettingsState,
@@ -20,7 +21,6 @@ import {
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Table } from "metabase/visualizations/visualizations/Table/Table";

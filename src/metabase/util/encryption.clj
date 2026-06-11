@@ -208,7 +208,7 @@
   (if (nil? b)
     false
     (u/ignore-exceptions
-      (when-let [byte-length (alength b)]
+      (let [byte-length (alength b)]
         (zero? (mod (- byte-length aes256-tag-length)
                     aes256-block-size))))))
 
@@ -237,7 +237,6 @@
                        (log/warnf e
                                   "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
                                   kind))]
-
     (cond (nil? secret-key)
           v
 

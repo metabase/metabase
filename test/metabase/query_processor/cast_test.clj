@@ -5,7 +5,8 @@
                         ;; there are several legacy usages of `field-is-type?` here, and I don't really want to add
                         ;; clj-kondo/ignores to all of them... so this will take care of it. We do still want to remove
                         ;; them soon.
-                        :deprecated-var {:exclude {metabase.types.core/field-is-type? {:namespaces ["metabase\\.query-processor\\.cast-test"]}}}
+                        :deprecated-var        {:exclude {metabase.types.core/field-is-type? {:namespaces [metabase.query-processor.cast-test]}
+                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}
                         ;; this is also ok here since this is a drivers namespace
                         :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:require
@@ -828,7 +829,6 @@
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
                                                           "2025-05-15 22:20:01"}}
-
                                              ;; iso mode
                                              {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode :iso
@@ -838,7 +838,6 @@
                                               :mode :iso
                                               :expected #{"2025-05-15T22:20:01Z"
                                                           "2025-05-15 22:20:01"}}
-
                                              ;; simple mode
                                              {:expression (lib/concat "20250515222001" "")
                                               :mode :simple

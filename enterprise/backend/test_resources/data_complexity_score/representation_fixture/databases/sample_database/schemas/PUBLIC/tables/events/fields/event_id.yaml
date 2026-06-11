@@ -1,0 +1,15 @@
+name: event_id
+active: true
+table_id:
+- Sample Database
+- PUBLIC
+- events
+serdes/meta:
+- id: Sample Database
+  model: Database
+- id: PUBLIC
+  model: Schema
+- id: events
+  model: Table
+- id: event_id
+  model: Field

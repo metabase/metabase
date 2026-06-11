@@ -7,14 +7,14 @@ import { Link } from "metabase/common/components/Link";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { type FileUpload, UploadMode } from "metabase/redux/store/upload";
 import { Box, Stack } from "metabase/ui";
+import type Table from "metabase-lib/v1/metadata/Table";
+import type { Collection } from "metabase-types/api";
+
 import {
   isUploadAborted,
   isUploadCompleted,
   isUploadInProgress,
-} from "metabase/utils/uploads";
-import type Table from "metabase-lib/v1/metadata/Table";
-import type { Collection } from "metabase-types/api";
-
+} from "../../utils";
 import StatusLarge from "../StatusLarge";
 
 const UPLOAD_MESSAGE_UPDATE_INTERVAL = 30 * 1000;

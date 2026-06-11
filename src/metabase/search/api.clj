@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
@@ -92,7 +92,6 @@
     (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
       (do (search/reindex!) {:message "reindex triggered"}))
-
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
 (mu/defn- set-weights!
@@ -102,14 +101,13 @@
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
-  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
-        rankers         (into #{}
+  (let [rankers         (into #{}
                               (map (fn [k]
                                      (if (namespace k)
                                        (keyword (namespace k))
                                        k)))
                               (keys overrides))
-        unknown-rankers (not-empty (remove known-ranker? rankers))]
+        unknown-rankers (not-empty (remove search.config/known-rankers rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
                       {:status-code 400})))
@@ -128,7 +126,8 @@
   "Return the current weights being used to rank the search results"
   [_route-params
    {:keys [context]} :- [:map [:context {:default :default} :keyword]]]
-  (search.config/weights {:context context}))
+  ;; normalize so the reported weights match what search actually applies for this context
+  (search.config/weights {:context (search.config/normalized-context context)}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -145,7 +144,9 @@
                                         [:context {:default :default} :keyword]
                                         [:search_engine {:optional true} :any]]]
   ;; remove cookie
-  (let [overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
+  ;; normalize so overrides are stored under the same key search reads them from
+  (let [context   (search.config/normalized-context context)
+        overrides (-> overrides (dissoc :search_engine :context) (update-vals parse-double))]
     (when (seq overrides)
       (set-weights! context overrides))
     (search.config/weights {:context context})))
@@ -162,16 +163,20 @@
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
 
+  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.
+  It defaults to `api`, the value for programmatic callers.
+
   Filters:
   - `archived`: set to true to search archived items only, default is false
   - `table_db_id`: search for tables, cards, and models of a certain DB
   - `models`: only search for items of specific models. If not provided, search for all models
-  - `filters_items_in_personal_collection`: only search for items in personal collections
+  - `filter_items_in_personal_collection`: only search for items in personal collections
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
+  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -198,6 +203,7 @@
     last-edited-by                      :last_edited_by
     model-ancestors                     :model_ancestors
     search-engine                       :search_engine
+    vector-search-strategy              :vector_search_strategy
     search-native-query                 :search_native_query
     table-db-id                         :table_db_id
     include-metadata                    :include_metadata
@@ -205,7 +211,9 @@
     has-temporal-dim                    :has_temporal_dim}
    :- [:map
        [:q                                   {:optional true} [:maybe :string]]
-       [:context                             {:optional true} [:maybe :keyword]]
+       ;; no `:optional true`: default-value-transformer skips defaults for absent optional keys, so it's
+       ;; what makes `:default :api` actually apply when the param is omitted
+       [:context                             {:default :api} search.config/Context]
        [:archived                            {:default false} [:maybe :boolean]]
        [:collection                          {:optional true} [:maybe ms/PositiveInt]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
@@ -218,6 +226,7 @@
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
        [:search_engine                       {:optional true} [:maybe string?]]
+       [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
        [:search_native_query                 {:optional true} [:maybe :boolean]]
        [:verified                            {:optional true} [:maybe true?]]
        [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -248,6 +257,7 @@
                 :models                              (not-empty (set models))
                 :offset                              (request/offset)
                 :search-engine                       search-engine
+                :vector-search-strategy              vector-search-strategy
                 :search-native-query                 search-native-query
                 :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id
@@ -259,7 +269,8 @@
                 :non-temporal-dim-ids                (process-non-temporal-dim-ids non-temporal-dim-ids)
                 :has-temporal-dim                    has-temporal-dim
                 :display-type                        (set display-type)}))
-      (analytics/inc! :metabase-search/response-ok))
+      (analytics/inc! :metabase-search/response-ok)
+      (analytics/observe! :metabase-search/response-results (:total <>)))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
         (when (or (not status-code) (= 5 (quot status-code 100)))

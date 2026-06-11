@@ -15,7 +15,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -76,7 +76,6 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-
                             ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
                             ;; the `after-select` method on users, which calls an EE method that needs ... a token
                             ;; check :|
@@ -128,6 +127,14 @@
    :transform-rolling-basic-runs           0
    :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
+
+(defenterprise transform-metered-as
+  "Return the meter bucket a new transform run of the given source-type counts toward,
+   based on the instance's current premium features. Returns nil when the run is not metered
+   (including all OSS runs, since premium features are never present there)."
+  metabase-enterprise.transforms.core
+  [_source-type]
+  nil)
 
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
@@ -190,7 +197,7 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+      (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
                                (some-> body json/decode+kw (assoc :canonical? true)))
       (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
                               {:valid         false
@@ -198,7 +205,7 @@
                                :status        "Unable to validate token"
                                :error-details "Token validation provided no response"})
       ;; exceptions are not cached.
-      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+      :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                     :body body}))))))
 
@@ -384,6 +391,23 @@
   []
   (t2/delete! :model/PremiumFeaturesCache))
 
+(defn- extract-locks
+  "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
+   Meters without an `:is-locked` field are dropped."
+  [meters]
+  (into {} (keep (fn [[k v]] (when-some [locked (:is-locked v)] [k locked]))) meters))
+
+(defn- update-locked-meters!
+  "Mirror the `:is-locked` flag for each meter in `result` to the local `:locked-meters`
+   setting, when `:meters` is present in a successful token-check response. Best-effort:
+   failures are logged but never propagated to the refresh path."
+  [result]
+  (when (contains? result :meters)
+    (try
+      (premium-features.settings/locked-meters! (extract-locks (:meters result)))
+      (catch Throwable t
+        (log/warn t "Failed to mirror :locked-meters from token-check response")))))
+
 (def ^:dynamic *testing-only-call-after-refresh*
   "When non-nil, a zero-arg function called after async background refresh completes.
    For testing only — do not use in production."
@@ -408,6 +432,7 @@
                     result-hash (hash-token-status result)
                     now         (t/instant)]
                 (write-cache-to-db! token-hash result-hash)
+                (update-locked-meters! result)
                 (swap! local-cache assoc token-hash {:result      result
                                                      :result-hash result-hash
                                                      :updated-at  now})
@@ -448,7 +473,6 @@
                     ;; Expired (> hard-ttl): synchronous refresh
                     :else
                     (do-refresh! token token-hash)))
-
                 ;; No local cache, no DB row, or hash mismatch: synchronous fetch
                 (do-refresh! token token-hash)))))
         (-clear-cache! [_]
@@ -479,7 +503,7 @@
            (catch Exception e
              (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
                (log/infof "Error checking token: %s" (ex-message e))
-               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
+               (analytics/inc! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :canonical?    false
               :status        (tru "Unable to validate token")
@@ -687,6 +711,26 @@
   "Returns true when we should record audit data into the audit log."
   []
   (or (premium-features.settings/is-hosted?) (has-feature? :audit-app)))
+
+(defn query-transforms-enabled?
+  "Whether query (native/MBQL) transforms are available on this instance. Available on any non-hosted
+  instance (OSS intentionally gets query transforms without a license), or on hosted instances with the
+  `:transforms-basic` feature."
+  []
+  (or (not (premium-features.settings/is-hosted?))
+      (has-feature? :transforms-basic)))
+
+(defn python-transforms-enabled?
+  "Whether Python transforms are available on this instance. EE only; requires both `:transforms-basic`
+  and `:transforms-python`."
+  []
+  (and (has-feature? :transforms-basic)
+       (has-feature? :transforms-python)))
+
+(defn any-transforms-enabled?
+  "Whether any kind of transform is available on this instance."
+  []
+  (or (query-transforms-enabled?) (python-transforms-enabled?)))
 
 (defenterprise decode-airgap-token
   "In OSS, this returns an empty map."

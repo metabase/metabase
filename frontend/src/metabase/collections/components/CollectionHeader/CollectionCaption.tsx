@@ -10,9 +10,9 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { Collection } from "metabase-types/api";
 
 import {

@@ -15,15 +15,16 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  Group,
+  GroupsPermissions,
+  SpecialGroupType,
+  TableEntityId,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
-import type {
-  PermissionSectionConfig,
-  SpecialGroupType,
-  TableEntityId,
-} from "../../types";
+import type { PermissionSectionConfig } from "../../types";
 import {
   DataPermission,
   DataPermissionType,
@@ -200,6 +201,7 @@ export const buildFieldsPermissions = ({
   defaultGroup,
   database,
   showTransformPermissions,
+  showWorkspacesPermissions,
 }: {
   entityId: TableEntityId;
   groupId: number;
@@ -209,6 +211,7 @@ export const buildFieldsPermissions = ({
   defaultGroup: Group;
   database: Database;
   showTransformPermissions: boolean;
+  showWorkspacesPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
@@ -246,6 +249,7 @@ export const buildFieldsPermissions = ({
       defaultGroup,
       permissionSubject: "fields",
       showTransformPermissions,
+      showWorkspacesPermissions,
     }),
   ]);
 };

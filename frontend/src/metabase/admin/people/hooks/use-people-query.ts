@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
@@ -20,7 +20,17 @@ export const usePeopleQuery = (pageSize: number, tenancy: UserTenancy) => {
 
   const [searchText, setSearchText] = useState("");
 
+  // Skip the mount-fire of this effect. Otherwise its trailing `setPage(0)`
+  // races any pagination clicks that land within SEARCH_DEBOUNCE_DURATION
+  // of mount and silently snaps the user back to page 0.
+  const isInitialMountRef = useRef(true);
+
   useEffect(() => {
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      return;
+    }
+
     const timerId = setTimeout(() => {
       const searchText =
         searchInputValue.length >= MIN_SEARCH_LENGTH ? searchInputValue : "";

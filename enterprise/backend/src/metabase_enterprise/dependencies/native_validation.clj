@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.native-validation
   (:require
    [clojure.string :as str]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.lib.core :as lib]
@@ -22,9 +23,10 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (let [with-params (lib/add-parameters-for-template-tags query)
-        compiled    (qp.compile/compile-with-inline-parameters with-params)]
-    (lib/native-query with-params (:query compiled))))
+  (database-routing/with-database-routing-off
+    (let [with-params (lib/add-parameters-for-template-tags query)
+          compiled    (qp.compile/compile-with-inline-parameters with-params)]
+      (lib/native-query with-params (:query compiled)))))
 
 (defn- has-substitutable-template-tags?
   "Returns true if the query has any card or table template tags that need
@@ -256,37 +258,41 @@
               errors)
         errors))))
 
-(mu/defn validate-native-query
-  "Compiles a (native) query and validates that the fields and tables it refers to really exist.
-
-   Returns a set of errors, each enriched with source entity information when possible."
-  [driver :- :keyword
-   query  :- ::lib.schema/query]
-  (into #{}
-        (comp
-         ;; Strip :unknown source attribution — consumers should not distinguish between
-         ;; "we tried and couldn't determine the source" vs "no source info available".
-         (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
-         ;; Remove errors referencing table placeholder names
-         (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
-        (if (has-substitutable-template-tags? query)
-          (if-let [compiled (compile-toplevel-query query)]
-            (let [errors (validate-with-sources driver compiled true)]
-              (if (empty? errors)
-                errors
-                (fallback-enrich driver compiled errors)))
-            ;; Fallback: cards with placeholder collision
-            (driver/validate-native-query-fields driver (compile-query query)))
-          (let [compiled (compile-query query)
-                errors   (validate-with-sources driver compiled false)]
-            (if (empty? errors)
-              errors
-              (fallback-enrich driver compiled errors))))))
-
 (defn- has-table-template-tags?
   "Returns true if the query has any table-type template tags."
   [query]
   (some #(= (:type %) :table) (lib/all-template-tags query)))
+
+(mu/defn validate-native-query
+  "Compiles a (native) query and validates that the fields and tables it refers to really exist.
+
+   Returns a set of errors, each enriched with source entity information when possible.
+   Returns empty set for queries with table-type template tags since the actual
+   table (and therefore columns) is unknown at check time."
+  [driver :- :keyword
+   query  :- ::lib.schema/query]
+  (if (has-table-template-tags? query)
+    #{}
+    (into #{}
+          (comp
+           ;; Strip :unknown source attribution — consumers should not distinguish between
+           ;; "we tried and couldn't determine the source" vs "no source info available".
+           (map #(cond-> % (= :unknown (:source-entity-type %)) (dissoc :source-entity-type :source-entity-id)))
+           ;; Remove errors referencing table placeholder names
+           (remove #(some-> (:name %) (str/starts-with? table-placeholder-prefix))))
+          (if (has-substitutable-template-tags? query)
+            (if-let [compiled (compile-toplevel-query query)]
+              (let [errors (validate-with-sources driver compiled true)]
+                (if (empty? errors)
+                  errors
+                  (fallback-enrich driver compiled errors)))
+              ;; Fallback: cards with placeholder collision
+              (driver/validate-native-query-fields driver (compile-query query)))
+            (let [compiled (compile-query query)
+                  errors   (validate-with-sources driver compiled false)]
+              (if (empty? errors)
+                errors
+                (fallback-enrich driver compiled errors)))))))
 
 (mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata.

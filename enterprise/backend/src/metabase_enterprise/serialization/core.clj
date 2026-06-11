@@ -1,24 +1,33 @@
 (ns metabase-enterprise.serialization.core
   (:require
    [metabase-enterprise.serialization.dump]
+   [metabase-enterprise.serialization.export]
+   ;; Required (without alias) so loading `serialization.core` populates the malli
+   ;; registry — callers can then refer to `::serialization.schema/...` keywords.
+   [metabase-enterprise.serialization.schema]
    [metabase-enterprise.serialization.v2.extract]
    [metabase-enterprise.serialization.v2.ingest]
    [metabase-enterprise.serialization.v2.load]
    [metabase-enterprise.serialization.v2.storage]
+   [metabase-enterprise.serialization.v2.storage.files]
    [metabase-enterprise.serialization.v2.storage.util]
    [potemkin :as p]))
 
 (comment
   metabase-enterprise.serialization.dump/keep-me
+  metabase-enterprise.serialization.export/keep-me
   metabase-enterprise.serialization.v2.extract/keep-me
   metabase-enterprise.serialization.v2.ingest/keep-me
   metabase-enterprise.serialization.v2.load/keep-me
   metabase-enterprise.serialization.v2.storage/keep-me
+  metabase-enterprise.serialization.v2.storage.files/keep-me
   metabase-enterprise.serialization.v2.storage.util/keep-me)
 
 (p/import-vars
  [metabase-enterprise.serialization.dump
   serialization-deep-sort]
+ [metabase-enterprise.serialization.export
+  export-metadata!]
  [metabase-enterprise.serialization.v2.extract
   make-targets-of-type
   extract]
@@ -36,6 +45,8 @@
   load-metabase!]
  [metabase-enterprise.serialization.v2.storage
   store!]
+ [metabase-enterprise.serialization.v2.storage.files
+  file-writer]
  [metabase-enterprise.serialization.v2.storage.util
   resolve-storage-path
   slugify-name])

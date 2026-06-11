@@ -1,4 +1,5 @@
-(ns metabase-enterprise.remote-sync.dashboard-api-test
+(ns ^:synchronous metabase-enterprise.remote-sync.dashboard-api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.remote-sync.dashboard-api-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -53,7 +54,6 @@
         ;; Verify error response contains dependency information
         (is (str/includes? (:message response) "content that is not remote synced")
             "Error message should mention content that is not remote synced"))
-
       ;; Verify the transaction was rolled back - dashboard should not be moved
       (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
         (is (= source-id (:collection_id unchanged-dash))
@@ -78,7 +78,6 @@
       ;; This should return 400 with transaction rollback
       (mt/user-http-request :crowberto :put 400 (str "dashboard/" dash-id)
                             {:collection_id target-id})
-
       ;; Verify the transaction was completely rolled back
       (let [unchanged-dash (t2/select-one :model/Dashboard :id dash-id)]
         (is (= source-id (:collection_id unchanged-dash))
@@ -152,7 +151,6 @@
         ;; Verify error response contains dependency information
         (is (str/includes? (:message response) "content that is not remote synced")
             "Error message should mention content that is not remote synced"))
-
       ;; Verify no dashboard was created
       (is (= 1 (t2/count :model/Dashboard :name "Dashboard to Copy"))
           "No new dashboard should be created after failed copy"))))

@@ -3,12 +3,9 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { RawMaybeLink } from "metabase/common/components/Badge/Badge.styled";
-import { Card } from "metabase/common/components/Card";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { Box, type BoxProps, Icon } from "metabase/ui";
-
-export const ItemCard = styled(Card)``;
+import { RawMaybeLink } from "metabase/common/components/MaybeLink/MaybeLink.styled";
+import { Box, type BoxProps } from "metabase/ui";
 
 export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
   display: block;
@@ -21,12 +18,6 @@ export const ItemLink = styled(RawMaybeLink)<{ to?: string }>`
             cursor: default;
           }
         `}
-`;
-
-export const ItemIcon = styled(Icon)`
-  color: var(--mb-color-brand);
-  height: 1.5rem;
-  width: 1.5rem;
 `;
 
 export const ActionsContainer = styled(Box)<BoxProps>`
@@ -49,10 +40,11 @@ export const Title = styled.div`
 
 export const Description = styled(MarkdownPreview)`
   color: var(--mb-color-text-secondary);
+  margin-top: 0.25rem;
 `;
 
 export const Body = styled.div`
-  padding: 1rem 1.5rem;
+  padding: 1rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   cursor: pointer;

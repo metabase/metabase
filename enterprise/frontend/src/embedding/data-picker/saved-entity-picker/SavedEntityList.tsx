@@ -2,24 +2,24 @@ import { Fragment } from "react";
 import { t } from "ttag";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/collections/constants";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { CardType, Collection, DatabaseId } from "metabase-types/api";
+import type { CardType, CollectionId, DatabaseId } from "metabase-types/api";
 
 import SavedEntityListS from "./SavedEntityList.module.css";
 import { CARD_INFO } from "./constants";
 
 interface SavedEntityListProps {
   type: Extract<CardType, "model" | "question">;
-  selectedId: string;
-  databaseId: DatabaseId;
-  collection?: Collection;
+  selectedId?: string;
+  databaseId?: DatabaseId;
+  collectionId?: CollectionId;
   onSelect: (tableOrModelId: string) => void;
 }
 
@@ -27,7 +27,7 @@ const SavedEntityList = ({
   type,
   selectedId,
   databaseId,
-  collection,
+  collectionId,
   onSelect,
 }: SavedEntityListProps): JSX.Element => {
   const tc = useTranslateContent();
@@ -37,12 +37,12 @@ const SavedEntityList = ({
     </Box>
   );
 
-  const isVirtualCollection = collection?.id === PERSONAL_COLLECTIONS.id;
+  const isVirtualCollection = collectionId === PERSONAL_COLLECTIONS.id;
 
   const { data, error, isFetching } = useListCollectionItemsQuery(
-    collection && !isVirtualCollection
+    collectionId != null && !isVirtualCollection
       ? {
-          id: collection.id,
+          id: collectionId,
           models: [CARD_INFO[type].model],
           sort_column: "name",
           sort_direction: "asc",
@@ -60,7 +60,7 @@ const SavedEntityList = ({
       <SelectList className={SavedEntityListS.SavedEntityListRoot}>
         <LoadingAndErrorWrapper
           className={SavedEntityListS.LoadingWrapper}
-          loading={!collection || isFetching}
+          loading={collectionId == null || isFetching}
           error={error}
         >
           <Fragment>

@@ -17,7 +17,7 @@ describe("scenarios > data studio > datamodel", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
 
     cy.intercept("GET", "/api/database").as("databases");
     cy.intercept("GET", "/api/database/*/schemas?*").as("schemas");
@@ -66,7 +66,7 @@ describe("scenarios > data studio > datamodel", () => {
       () => {
         beforeEach(() => {
           H.restore("postgres-writable");
-          H.activateToken("bleeding-edge");
+          H.activateToken("pro-self-hosted");
           cy.signInAsAdmin();
 
           H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -135,7 +135,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
       });
@@ -358,7 +358,7 @@ describe("scenarios > data studio > datamodel", () => {
 
       it("should filter unused tables only", () => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         const usedTableName = "Animals";
@@ -394,7 +394,7 @@ describe("scenarios > data studio > datamodel", () => {
 
     it("select/deselect functionality", { tags: ["@external"] }, () => {
       H.restore("postgres-writable");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
@@ -983,43 +983,40 @@ describe("scenarios > data studio > datamodel", () => {
     });
 
     describe("Sync options", () => {
-      it("should allow to sync table schema, re-scan table, and discard cached field values", () => {
+      it("should allow to sync table schema, re-scan field values, and discard cached field values from the actions menu", () => {
+        cy.intercept("POST", "/api/data-studio/table/sync-schema").as(
+          "syncSchema",
+        );
+        cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
+          "rescanValues",
+        );
+        cy.intercept("POST", "/api/data-studio/table/discard-values").as(
+          "discardValues",
+        );
+
         H.DataModel.visitDataStudio({
           databaseId: SAMPLE_DB_ID,
           schemaId: SAMPLE_DB_SCHEMA_ID,
           tableId: PRODUCTS_ID,
         });
-        TableSection.getSyncOptionsButton().click();
 
-        cy.log("sync table schema");
-        H.modal().within(() => {
-          cy.button("Sync table schema").click();
-          cy.button("Sync table schema").should("not.exist");
-          cy.button("Sync triggered!").should("be.visible");
-          cy.button("Sync triggered!").should("not.exist");
-          cy.button("Sync table schema").should("be.visible");
-        });
+        cy.log("re-sync schema");
+        TableSection.getActionsMenuButton().click();
+        H.menu().findByText("Re-sync schema").click();
+        cy.wait("@syncSchema");
+        verifyAndCloseToast("Sync triggered");
 
-        cy.log("re-scan table");
-        H.modal().within(() => {
-          cy.button("Re-scan table").click();
-          cy.button("Re-scan table").should("not.exist");
-          cy.button("Scan triggered!").should("be.visible");
-          cy.button("Scan triggered!").should("not.exist");
-          cy.button("Re-scan table").should("be.visible");
-        });
+        cy.log("re-scan field values");
+        TableSection.getActionsMenuButton().click();
+        H.menu().findByText("Re-scan field values").click();
+        cy.wait("@rescanValues");
+        verifyAndCloseToast("Scan triggered");
 
         cy.log("discard cached field values");
-        H.modal().within(() => {
-          cy.button("Discard cached field values").click();
-          cy.button("Discard cached field values").should("not.exist");
-          cy.button("Discard triggered!").should("be.visible");
-          cy.button("Discard triggered!").should("not.exist");
-          cy.button("Discard cached field values").should("be.visible");
-        });
-
-        cy.realPress("Escape");
-        H.modal().should("not.exist");
+        TableSection.getActionsMenuButton().click();
+        H.menu().findByText("Discard cached field values").click();
+        cy.wait("@discardValues");
+        verifyAndCloseToast("Discard triggered");
       });
     });
   });
@@ -1270,7 +1267,7 @@ describe("scenarios > data studio > datamodel", () => {
     describe("Empty states", { tags: "@external" }, () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
         H.resyncDatabase({ dbId: WRITABLE_DB_ID });
         H.queryWritableDB('delete from "Domestic"."Animals"');
@@ -1497,8 +1494,15 @@ function updateTableAttributes({
 }
 
 function publishTables(tableIds: TableId[]) {
-  return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
-    table_ids: tableIds,
+  return cy.request("GET", "/api/ee/library").then(({ body }) => {
+    const dataCollection = body.effective_children?.find(
+      (collection: { type?: string }) => collection.type === "library-data",
+    );
+
+    return cy.request("POST", "/api/ee/data-studio/table/publish-tables", {
+      table_ids: tableIds,
+      collection_id: dataCollection.id,
+    });
   });
 }
 

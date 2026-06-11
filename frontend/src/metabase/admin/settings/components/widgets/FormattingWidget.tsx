@@ -4,17 +4,18 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   type CurrencyStyle,
   getCurrencyOptions,
   getCurrencyStyleOptions,
+} from "metabase/utils/formatting";
+import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
-} from "metabase/utils/formatting";
+} from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
-
-import { SetByEnvVar } from "./AdminSettingInput";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {
@@ -182,6 +183,7 @@ export function FormattingWidget() {
               label={t`Unit of currency`}
               value={currency}
               inputType="select"
+              searchable
               options={currencyOptions}
               onChange={(newValue) =>
                 handleChange({
@@ -223,6 +225,7 @@ function FormattingInput({
   onChange,
   options,
   inputType,
+  searchable,
 }: {
   id: string;
   label: string;
@@ -230,6 +233,7 @@ function FormattingInput({
   onChange: (newValue: string | boolean | number) => void;
   options?: { label: string; value: string }[];
   inputType: "boolean" | "select" | "radio";
+  searchable?: boolean;
 }) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -253,6 +257,7 @@ function FormattingInput({
           value={localValue}
           onChange={handleChange}
           data={options ?? []}
+          searchable={searchable}
         />
       )}
       {inputType === "boolean" && (

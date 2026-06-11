@@ -42,9 +42,7 @@ describe("useIsParameterPanelSticky", () => {
 
     intersectionCallback = null;
 
-    global.IntersectionObserver = class MockedIntersectionObserver
-      implements IntersectionObserver
-    {
+    global.IntersectionObserver = class MockedIntersectionObserver implements IntersectionObserver {
       constructor(callback: IntersectionObserverCallback) {
         intersectionCallback = callback;
       }
@@ -53,6 +51,7 @@ describe("useIsParameterPanelSticky", () => {
       disconnect = mockDisconnect;
       root: Element | null = null;
       rootMargin: string = "";
+      scrollMargin: string = "";
       thresholds: ReadonlyArray<number> = [];
       takeRecords(): IntersectionObserverEntry[] {
         return [];

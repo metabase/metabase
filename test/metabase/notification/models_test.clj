@@ -1,4 +1,5 @@
 (ns metabase.notification.models-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.models-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.channel.api.channel-test :as api.channel-test]
@@ -38,7 +39,6 @@
                   (t2/insert-returning-pk! :model/Notification {:payload_type :notification/system-event
                                                                 :created_at   :%now
                                                                 :updated_at   :%now})))))
-
     (testing "failed if payload_type is invalid"
       (is (thrown-with-msg? Exception #"Value does not match schema*"
                             (t2/insert! :model/Notification {:payload_type :notification/not-existed}))))))
@@ -60,15 +60,37 @@
            java.lang.Exception
            #"Update payload_id is not allowed."
            (t2/update! :model/Notification noti-id {:payload_id 1338})))))
-
-  (testing "can't change creator id"
+  (testing "superusers can change creator_id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (is (thrown-with-msg?
-           java.lang.Exception
-           #"Update creator_id is not allowed."
-           (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))))))
+      (mt/with-current-user (mt/user->id :crowberto)
+        (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))
+      (is (= (mt/user->id :rasta)
+             (t2/select-one-fn :creator_id :model/Notification noti-id)))))
+  (testing "non-superusers and unauthenticated callers can't change creator_id"
+    (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
+                                                      :payload_id   1337
+                                                      :creator_id   (mt/user->id :crowberto)}]
+      (testing "non-superuser (single-pk update)"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               java.lang.Exception
+               #"Only superusers can change a notification's creator_id."
+               (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))
+      (testing "non-superuser (bulk update via :id [:in …])"
+        ;; The admin bulk endpoint uses this form; the model hook is the backstop in case the
+        ;; endpoint's superuser check is ever relaxed or bypassed.
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (thrown-with-msg?
+               java.lang.Exception
+               #"Only superusers can change a notification's creator_id."
+               (t2/update! :model/Notification :id [:in [noti-id]] {:creator_id (mt/user->id :lucky)})))))
+      (testing "no current user (system context)"
+        (is (thrown-with-msg?
+             java.lang.Exception
+             #"Only superusers can change a notification's creator_id."
+             (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :lucky)})))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
@@ -116,7 +138,6 @@
                                                                              :event_name      :event/card-create
                                                                              :notification_id n-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
-
     (testing "fail if type is system event but event-name is nil"
       (is (thrown-with-msg? Exception #"Value does not match schema"
                             (t2/insert! :model/NotificationSubscription {:type            :notification-subscription/system-event
@@ -144,7 +165,6 @@
                                                                              :event_name      random-event
                                                                              :notification_id n-id})]
         (is (some? (t2/select-one :model/NotificationSubscription sub-id)))))
-
     (testing "failed if type is invalid"
       (is (thrown-with-msg? Exception #"Must be a namespaced keyword under :event, got: :user-join"
                             (t2/insert! :model/NotificationSubscription {:type           :notification-subscription/system-event
@@ -178,12 +198,10 @@
                       :channel_id   (:id chn-2)
                       :recipients   [{:type     :notification-recipient/user
                                       :user_id  (mt/user->id :crowberto)}]}])]
-
           (testing "hydrate subscriptions"
             (is (=? [default-user-invited-subscription
                      default-card-created-subscription]
                     (:subscriptions (t2/hydrate noti :subscriptions)))))
-
           (testing "hydrate handlers"
             (is (=? [{:channel_type (:type chn-1)
                       :channel_id   (:id chn-1)
@@ -192,7 +210,6 @@
                       :channel_id   (:id chn-2)
                       :template_id  nil}]
                     (:handlers (t2/hydrate noti :handlers)))))
-
           (let [noti-handler (t2/select-one :model/NotificationHandler :channel_id (:id chn-1) :template_id (:id tmpl))]
             (testing "hydrate template + channel"
               (is (=? {:channel_type (:type chn-1)
@@ -203,7 +220,6 @@
                        :template     {:id (:id tmpl)
                                       :name "My Template"}}
                       (t2/hydrate noti-handler :template :channel))))
-
             (testing "hydrate recipients will also hydrate users and members of groups"
               (is (=? [{:type     :notification-recipient/user
                         :user_id  (mt/user->id :rasta)
@@ -242,7 +258,6 @@
                             (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
                                                                     :channel_id   (:id chn-1)
                                                                     :template_id  (:id tmpl-1)})))))
-
   (testing "can't update a handler with a template that has different channel type"
     (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-handlebars-body
                    :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
@@ -265,7 +280,6 @@
         (testing "success with user_id"
           (is (some? (insert! {:type :notification-recipient/user
                                :user_id (mt/user->id :rasta)}))))
-
         (testing "fail without user_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
                                 (insert! {:type :notification-recipient/user}))))
@@ -283,7 +297,6 @@
         (testing "success with group_id"
           (is (some? (insert! {:type                 :notification-recipient/group
                                :permissions_group_id (t2/select-one-pk :model/PermissionsGroup)}))))
-
         (testing "fail without group_id"
           (is (thrown-with-msg? Exception #"Value does not match schema"
                                 (insert! {:type :notification-recipient/group}))))
@@ -301,7 +314,6 @@
         (testing "success with value"
           (is (some? (insert! {:type    :notification-recipient/raw-value
                                :details {:value "ngoc@metabase.com"}}))))
-
         (testing "fail if details does not match schema"
           (is (thrown-with-msg? Exception #"Value does not match schema"
                                 (insert! {:type    :notification-recipient/raw-value
@@ -339,13 +351,11 @@
                      sub-id
                      "1 * * * * ? *")]
                    (notification.tu/send-notification-triggers sub-id))))
-
           (testing "delete the trigger when type changes"
             (t2/update! :model/NotificationSubscription sub-id {:type :notification-subscription/system-event
                                                                 :cron_schedule nil
                                                                 :event_name :event/card-create})
             (is (empty? (notification.tu/send-notification-triggers sub-id))))))
-
       (testing "delete the trigger when delete subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
@@ -353,7 +363,6 @@
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
           (t2/delete! :model/NotificationSubscription sub-id)
           (is (empty? (notification.tu/send-notification-triggers sub-id)))))
-
       (testing "delete notification will delete all subscription triggers"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
@@ -388,11 +397,9 @@
                                   :cron_schedule "1 * * * * ? *"}]}]
       (testing "sanity check that it has a trigger to begin with"
         (is (= 2 (count (notification.tu/notification-triggers id)))))
-
       (testing "disabled notification should remove triggers"
         (t2/update! :model/Notification id {:active false})
         (is (empty? (notification.tu/notification-triggers id))))
-
       (testing "activate notification should restore triggers"
         (t2/update! :model/Notification id {:active true})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))

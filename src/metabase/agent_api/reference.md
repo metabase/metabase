@@ -2,35 +2,32 @@
 
 The Agent API is a REST API for building headless, agentic BI applications on
 top of Metabase's semantic layer. It supports discovering tables and metrics,
-inspecting their fields, constructing queries, and executing them — all scoped
+inspecting their fields, constructing queries, and executing them - all scoped
 to the authenticated user's permissions.
 
 Base path: /api/agent
 
 ## Key concepts
 
-- **Databases**: Data sources connected to Metabase. Use /v1/database to list
-  them, and /v1/database/{id} to inspect a database's tables.
 - **Tables**: Database tables visible to the user.
 - **Metrics**: Standalone saved queries that represent pre-defined aggregations
   (e.g., "Total Revenue"). Metrics are stored in collections and can be used
   as a data source in the API. They have a fixed aggregation, but can be
-  filtered and grouped by their queryable dimensions. Use /v1/metric/{id} to
-  inspect a metric's dimensions, and POST /v1/construct-query with `metric_id`
-  to query one.
+  filtered and grouped by their queryable dimensions. Read
+  `metabase://metric/{id}/dimensions` via POST /v1/read-resource to inspect a
+  metric's dimensions, and POST /v2/construct-query with a program whose
+  `source` is `{"type": "metric", "id": <id>}` to query one.
 - **Measures**: Lightweight, reusable aggregation expressions (e.g.,
   `SUM(total)`) associated with a specific table. Unlike metrics, measures are
-  not standalone queries — they are building blocks that can be referenced in
-  table queries via `measure_id` in the aggregations array. Discover available
-  measures for a table via GET /v1/table/{id}?with-measures=true.
+  not standalone queries - they are building blocks that can be referenced in
+  table queries via `["measure", id]` inside an `aggregate` operation. Discover
+  available measures by reading `metabase://table/{id}/fields` via
+  POST /v1/read-resource.
 - **Segments**: Pre-defined filter conditions (e.g., "Active Users") that can
-  be applied to queries by referencing their segment_id.
-- **Field IDs**: Opaque string identifiers for columns, formatted as
-  `<prefix><entity-id>-<column-index>`. Prefix is `t` for table fields and
-  `c` for metric fields. Example: `t42-3` means the column at index 3 of table 42.
-  Field IDs are returned by the table/metric detail endpoints and must be used
-  as-is in query construction. They are positional — always fetch current
-  entity details before constructing queries.
+  be applied to queries via `["filter", ["segment", id]]`.
+- **Field IDs**: Integer identifiers for database columns. These are the real
+  database field IDs returned by the table/metric detail endpoints. Use them
+  inside operator forms as `["field", N]`.
 
 ## Authentication
 
@@ -48,14 +45,14 @@ Authorization: Bearer <jwt>
 The JWT must be signed with the shared secret configured in Metabase. Required
 claims:
 
-| Claim   | Type   | Required | Description                          |
-|---------|--------|----------|--------------------------------------|
-| iat     | int    | Yes      | Issued-at time (Unix seconds). JWT   |
-|         |        |          | must be <180 seconds old.            |
-| email   | string | Yes      | Email matching a Metabase user. The  |
-|         |        |          | claim name is configurable via the   |
-|         |        |          | jwt-attribute-email admin setting    |
-|         |        |          | (default: "email").                  |
+| Claim | Type   | Required | Description                         |
+| ----- | ------ | -------- | ----------------------------------- |
+| iat   | int    | Yes      | Issued-at time (Unix seconds). JWT  |
+|       |        |          | must be <180 seconds old.           |
+| email | string | Yes      | Email matching a Metabase user. The |
+|       |        |          | claim name is configurable via the  |
+|       |        |          | jwt-attribute-email admin setting   |
+|       |        |          | (default: "email").                 |
 
 Optional claims: first_name, last_name, groups (for group sync).
 
@@ -94,8 +91,7 @@ lacks access to a table or metric, the API returns 403.
 
 Query parameters on GET endpoints use kebab-case (e.g., `with-fields`,
 `with-related-tables`). JSON request and response bodies use snake_case (e.g.,
-`table_id`, `field_id`, `field_granularity`). This applies consistently across
-all endpoints.
+`table_id`, `field_id`). This applies consistently across all endpoints.
 
 ## Endpoints
 
@@ -105,205 +101,81 @@ Health check.
 
 Response: `{"message": "pong"}`
 
-### GET /v1/database
+### POST /v1/read-resource
 
-List all databases the current user has access to.
+Read one or more Metabase entities by `metabase://` URI. Replaces the older
+per-entity GET endpoints (`/v1/table/{id}`, `/v1/metric/{id}`, the
+`*_field_values` endpoints, and various GET browse endpoints) with a single
+unified surface.
 
-Response:
-
-```json
-[
-  {
-    "id": 1,
-    "name": "Production DB",
-    "engine": "postgres"
-  }
-]
-```
-
-### GET /v1/database/{id}
-
-Get details for a database by ID, optionally including its tables.
-
-Query parameters (all boolean, all optional):
-
-| Parameter           | Default | Description                             |
-|---------------------|---------|-----------------------------------------|
-| with-tables         | false   | Include tables in this database         |
-| with-fields         | false   | Include field metadata on each table    |
-| with-field-values   | false   | Include sample values on each field     |
-| with-related-tables | false   | Include FK-related tables               |
-| with-metrics        | false   | Include metrics defined on each table   |
-| with-measures       | false   | Include measures on each table          |
-| with-segments       | false   | Include segments defined on each table  |
-
-Response (without tables):
+Request:
 
 ```json
 {
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres"
+  "uris": ["metabase://table/42", "metabase://metric/10/dimensions"]
 }
 ```
 
-Response (with-tables=true):
+Up to 5 URIs per call. List endpoints (e.g. `metabase://databases`,
+`metabase://collection/{id}/items`) cap at 25 items and signal `truncated`
+plus `total` when more are available; drill into specific URIs or refine
+via `/v1/search`.
 
-```json
-{
-  "id": 1,
-  "name": "Production DB",
-  "engine": "postgres",
-  "tables": [
-    {
-      "type": "table",
-      "id": 42,
-      "name": "ORDERS",
-      "display_name": "Orders",
-      "database_id": 1,
-      "database_engine": "postgres",
-      "database_schema": "PUBLIC",
-      "fields": []
-    }
-  ]
-}
-```
+#### URI catalog
 
-When with-fields, with-metrics, etc. are enabled, each table in the response
-follows the same shape as GET /v1/table/{id} with the corresponding options.
+**Navigation (top-level lists):**
 
-### GET /v1/table/{id}
+- `metabase://databases`
+- `metabase://collections` (add `?tree=true` for the full hierarchy)
+- `metabase://user/recent-items`
 
-Get details for a table including fields, related tables, metrics, and
-segments.
+**Database drill-down:**
 
-Query parameters (all boolean, all optional):
+- `metabase://database/{id}`
+- `metabase://database/{id}/tables`
+- `metabase://database/{id}/models`
+- `metabase://database/{id}/schemas`
+- `metabase://database/{id}/schemas/{schemaName}/tables`
 
-| Parameter           | Default | Description                             |
-|---------------------|---------|-----------------------------------------|
-| with-fields         | true    | Include field metadata                  |
-| with-field-values   | false   | Include sample values on each field     |
-| with-related-tables | true    | Include FK-related tables               |
-| with-metrics        | true    | Include metrics defined on this table   |
-| with-measures       | false   | Include measures                        |
-| with-segments       | false   | Include segments defined on this table  |
+**Collection drill-down:**
+
+- `metabase://collection/{id}` (`id` may be an integer or `"root"` / `"trash"`)
+- `metabase://collection/{id}/items`
+- `metabase://collection/{id}/subcollections`
+
+**Entity drill-down:**
+
+- `metabase://table/{id}` (`/fields`, `/fields/{field_id}`, `/derived`)
+- `metabase://model/{id}` (`/fields`, `/fields/{field_id}`, `/sources`)
+- `metabase://question/{id}` (`/fields`, `/fields/{field_id}`, `/sources`)
+- `metabase://metric/{id}` (`/dimensions`, `/dimensions/{dimension_id}`)
+- `metabase://transform/{id}` (`/sources`, `/target`)
+- `metabase://dashboard/{id}` (`/items`)
 
 Response:
 
 ```json
 {
-  "type": "table",
-  "id": 42,
-  "name": "ORDERS",
-  "display_name": "Orders",
-  "database_id": 1,
-  "database_engine": "postgres",
-  "database_schema": "PUBLIC",
-  "description": "All customer orders",
-  "fields": [
-    {
-      "field_id": "t42-0",
-      "name": "ID",
-      "display_name": "ID",
-      "description": "Primary key",
-      "base_type": "type/BigInteger",
-      "semantic_type": "type/PK",
-      "database_type": "BIGINT",
-      "field_values": [1, 2, 3]
-    }
+  "resources": [
+    {"uri": "metabase://table/42", "content": { ... }},
+    {"uri": "metabase://metric/10/dimensions", "content": { ... }}
   ],
-  "related_tables": [
-    {
-      "id": 43,
-      "type": "table",
-      "name": "PRODUCTS",
-      "display_name": "Products",
-      "database_id": 1,
-      "related_by": "PRODUCT_ID"
-    }
-  ],
-  "metrics": [
-    {
-      "id": 10,
-      "type": "metric",
-      "name": "Total Revenue",
-      "default_time_dimension_field_id": "c10-2"
-    }
-  ],
-  "measures": [
-    {"id": 5, "name": "Sum of Total", "description": "Sum of the total column"}
-  ],
-  "segments": [
-    {"id": 1, "name": "Active Users", "description": "Users who logged in within 30 days"}
-  ]
+  "output": "<resources>...</resources>"
 }
 ```
 
-### GET /v1/metric/{id}
+Per-URI permission checks happen inside the dispatcher: single-entity URIs
+return `:error` when `mi/can-read?` denies, list endpoints silently filter
+unreadable items.
 
-Get details for a metric including its queryable dimensions.
+`:output` is an XML-shaped string formatted for LLM consumption. Programmatic
+callers should rely on the `:resources` array.
 
-Query parameters (all boolean, all optional):
+Errors:
 
-| Parameter                       | Default | Description                           |
-|---------------------------------|---------|---------------------------------------|
-| with-default-temporal-breakout  | true    | Include default time dimension        |
-| with-field-values               | false   | Include sample values on dimensions   |
-| with-queryable-dimensions       | true    | Include dimensions for group_by       |
-| with-segments                   | false   | Include applicable segments           |
-
-Response:
-
-```json
-{
-  "type": "metric",
-  "id": 10,
-  "name": "Total Revenue",
-  "description": "Sum of order totals",
-  "default_time_dimension_field_id": "c10-2",
-  "verified": true,
-  "queryable_dimensions": [
-    {
-      "field_id": "c10-0",
-      "name": "CREATED_AT",
-      "display_name": "Created At",
-      "base_type": "type/DateTime"
-    }
-  ],
-  "segments": []
-}
-```
-
-### GET /v1/table/{id}/field/{field-id}/values
-### GET /v1/metric/{id}/field/{field-id}/values
-
-Get statistics and sample values for a field. Accepts optional `limit` query
-parameter (default: 30).
-
-Response:
-
-```json
-{
-  "field_id": "t42-3",
-  "statistics": {
-    "distinct_count": 200,
-    "percent_null": 0.02,
-    "min": 1.5,
-    "max": 500.0,
-    "avg": 75.3,
-    "q1": 25.0,
-    "q3": 120.0,
-    "sd": 45.2,
-    "earliest": "2020-01-01T00:00:00Z",
-    "latest": "2024-12-31T23:59:59Z"
-  },
-  "values": ["Gadget", "Widget", "Doohickey"]
-}
-```
-
-Statistics fields vary by field type. Numeric fields include min/max/avg/q1/q3/sd.
-Date fields include earliest/latest. String fields include average_length and
-percent_email/percent_url/percent_state/percent_json.
+- 400 when more than 5 URIs are provided.
+- The endpoint never raises 404 for a single-URI miss; per-URI errors are
+  reported inside the response under `resources[].error`.
 
 ### POST /v1/search
 
@@ -348,237 +220,140 @@ Response:
 }
 ```
 
-### POST /v1/construct-query
+### POST /v2/construct-query
 
-Construct a query from a table or metric. Returns a base64-encoded query to
-pass to /v1/execute.
+Construct an MBQL query from a representations JSON payload. Returns a
+base64-encoded query string to pass to `/v1/execute`.
 
-**Important**: Field IDs used here must come from the detail endpoints
-(/v1/table/{id} or /v1/metric/{id}). Always fetch entity details first.
-
-#### Table query request
-
-All fields except `table_id` are optional:
+#### Request body
 
 ```json
-{
-  "table_id": 42,
-  "filters": [],
-  "fields": [{"field_id": "t42-0"}, {"field_id": "t42-1"}],
-  "aggregations": [{"field_id": "t42-3", "function": "sum"}],
-  "group_by": [{"field_id": "t42-5", "field_granularity": "month"}],
-  "order_by": [{"field": {"field_id": "t42-1"}, "direction": "desc"}],
-  "limit": 100
-}
+{"query": <external-query-object>}
 ```
 
-#### Metric query request
+The `query` value is a JSON object matching `::lib.schema/external-query` —
+Metabase's canonical MBQL 5 *portable representations format*, a
+self-describing serialization that uses portable FKs
+(`["<db-name>", "<schema>", "<table-name>", "<column-name>"]`) instead of
+numeric IDs, encodes operators as `["<name>", {opts}, <args>...]` clauses, and
+derives the application database from the first stage's `source-table` /
+`source-card`. There is **no** auxiliary `source_entity` envelope, and no
+standalone integer IDs.
 
-Metrics have a pre-defined aggregation, so only filters and group_by are
-supported:
+The full format reference — including every operator (filters, aggregations,
+expressions, temporal helpers), join syntax, multi-stage queries, FK
+conventions, and worked examples — lives in the `construct_notebook_query`
+tool prompt:
+
+  `resources/metabot/prompts/tools/construct_notebook_query.md`
+
+Minimal example:
 
 ```json
 {
-  "metric_id": 10,
-  "filters": [{"field_id": "c10-2", "operation": "greater-than", "value": "2024-01-01"}],
-  "group_by": [{"field_id": "c10-2", "field_granularity": "month"}]
+  "query": {
+    "lib/type": "mbql/query",
+    "stages": [
+      {
+        "lib/type": "mbql.stage/mbql",
+        "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+        "aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]]],
+        "breakout":    [["field", {}, ["Sample Database", "PUBLIC", "PEOPLE", "STATE"]]],
+        "limit": 100
+      }
+    ]
+  }
 }
 ```
 
 #### Response
 
 ```json
-{"query": "eyJkYXRhYmFzZSI6MSwi..."}
+{ "query": "eyJkYXRhYmFzZSI6MSwi..." }
 ```
 
-#### Filter types
+The value is a base64-encoded resolved MBQL 5 query map suitable for
+`/v1/execute` or for embedding in a `/v2/query` continuation token. Treat it
+as opaque.
 
-Filters are polymorphic. The required fields depend on the operation.
+#### Error responses
 
-**Segment filter** — apply a pre-defined segment:
+The representations pipeline distinguishes user-facing input errors (the
+LLM-/agent-authored query can't be resolved or doesn't validate) from internal
+failures. Input errors are returned as `400 Bad Request` with the originating
+ex-data fields surfaced in the body — most commonly `error`, `path`, and
+`candidates`. Examples:
+
+| `error`                       | When                                                                              |
+|-------------------------------|-----------------------------------------------------------------------------------|
+| `unknown-database`            | First-stage source uses a database name that doesn't exist                        |
+| `unknown-table`               | Portable FK names a table that doesn't exist (with closest-match candidates)      |
+| `unknown-field`               | Portable FK names a column that doesn't exist on the resolved table               |
+| `unknown-card`                | `source-card:` / `[metric, {}, <eid>]` references a missing entity_id             |
+| `missing-source-in-first-stage` | Neither `source-table:` nor `source-card:` was supplied on `stages[0]`          |
+| `ambiguous-fk` / `no-fk-path` | An implicit-join field reference can't be auto-wired (multiple FKs / no FK)       |
+| `uri-in-source-table`         | `source-table:` got a `metabase://...` URI instead of a portable FK               |
+
+All input errors carry `:agent-error? true` in the underlying ex-data; LLM
+callers are expected to read the message and self-correct on the next turn.
+
+### POST /v2/query
+
+Combined construct-and-execute endpoint with built-in pagination via
+continuation tokens.
+
+The request body is either:
+- A representations JSON payload (`{"query": <external-query-object>}`, same
+  shape as `/v2/construct-query`), **or**
+- A continuation token from a previous response: `{"continuation_token": "..."}`.
+
+Pagination is automatic. The per-page row limit is taken from the query's
+`limit:` field if present, otherwise defaults to 200, and is hard-capped at 200
+rows per page for memory and LLM-context safety. If the page is full and more
+rows may exist, the response includes a `continuation_token` you post back to
+fetch the next page.
+
+Response (HTTP 202, streaming):
 
 ```json
-{"segment_id": 5}
+{
+  "status": "completed",
+  "data": {
+    "cols": [{"name": "ID", "base_type": "type/Integer", "display_name": "ID"}],
+    "rows": [[1], [2], [3], [...]]
+  },
+  "row_count": 50,
+  "running_time": 87,
+  "continuation_token": "eyJxdWVyeSI6ey..."
+}
 ```
 
-**Existence filters** — no value needed:
-
-| Operation            | Description            |
-|----------------------|------------------------|
-| is-null              | Field is null          |
-| is-not-null          | Field is not null      |
-| string-is-empty      | String is empty        |
-| string-is-not-empty  | String is not empty    |
-| is-true              | Boolean is true        |
-| is-false             | Boolean is false       |
+To fetch the next page:
 
 ```json
-{"field_id": "t42-0", "operation": "is-not-null"}
-```
-
-**Temporal filters** — for date/datetime fields. Optional `bucket` specifies
-temporal bucketing granularity for the comparison. Accepts both truncation
-units (`minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`) and
-extraction units (`day-of-week`, `day-of-month`, `day-of-year`,
-`week-of-year`, `month-of-year`, `quarter-of-year`, `hour-of-day`,
-`minute-of-hour`, `second-of-minute`). Note: this is a broader set of
-values than `field_granularity` in group_by, which only accepts truncation
-units.
-
-| Operation             | Description                     |
-|-----------------------|---------------------------------|
-| equals                | Equals value                    |
-| not-equals            | Does not equal value            |
-| greater-than          | After (dates) / greater than    |
-| greater-than-or-equal | On or after / greater or equal  |
-| less-than             | Before (dates) / less than      |
-| less-than-or-equal    | On or before / less or equal    |
-
-```json
-{"field_id": "t42-5", "operation": "greater-than", "value": "2024-01-01"}
-```
-
-For multiple values, use `values` (array) instead of `value`:
-
-```json
-{"field_id": "t42-5", "operation": "equals", "values": ["2024-01-01", "2024-06-01"]}
-```
-
-**Temporal extraction filters** — filter by date component:
-
-| Operation              | Value type |
-|------------------------|------------|
-| year-equals            | int        |
-| year-not-equals        | int        |
-| quarter-equals         | int (1-4)  |
-| quarter-not-equals     | int        |
-| month-equals           | int (1-12) |
-| month-not-equals       | int        |
-| day-of-week-equals     | int (1-7)  |
-| day-of-week-not-equals | int        |
-| hour-equals            | int (0-23) |
-| hour-not-equals        | int        |
-| minute-equals          | int (0-59) |
-| minute-not-equals      | int        |
-| second-equals          | int (0-59) |
-| second-not-equals      | int        |
-
-```json
-{"field_id": "t42-5", "operation": "month-equals", "value": 12}
-```
-
-For multiple values: `{"field_id": "t42-5", "operation": "month-equals", "values": [1, 2, 3]}`
-
-**String filters**:
-
-| Operation           | Description                          |
-|---------------------|--------------------------------------|
-| equals              | Exact match                          |
-| not-equals          | Does not match                       |
-| string-contains     | Contains substring                   |
-| string-not-contains | Does not contain substring           |
-| string-starts-with  | Starts with prefix                   |
-| string-ends-with    | Ends with suffix                     |
-
-```json
-{"field_id": "t42-2", "operation": "string-contains", "value": "acme"}
-```
-
-For multiple values: `{"field_id": "t42-2", "operation": "equals", "values": ["A", "B"]}`
-
-**Numeric filters**:
-
-| Operation             | Description            |
-|-----------------------|------------------------|
-| equals                | Equals value           |
-| not-equals            | Does not equal value   |
-| greater-than          | Greater than           |
-| greater-than-or-equal | Greater than or equal  |
-| less-than             | Less than              |
-| less-than-or-equal    | Less than or equal     |
-
-```json
-{"field_id": "t42-3", "operation": "greater-than", "value": 100}
-```
-
-For multiple values: `{"field_id": "t42-3", "operation": "equals", "values": [10, 20, 30]}`
-
-#### Aggregations
-
-Field-based aggregation — `function` is required:
-
-| Function       | Description                |
-|----------------|----------------------------|
-| avg            | Average                    |
-| count          | Count of rows              |
-| count-distinct | Count of distinct values   |
-| max            | Maximum value              |
-| min            | Minimum value              |
-| sum            | Sum                        |
-
-```json
-{"field_id": "t42-3", "function": "sum"}
-```
-
-For `count`, omit `field_id` (count operates on rows, not a specific field):
-
-```json
-{"function": "count"}
-```
-
-To sort by an aggregation result, use `sort_order` on the aggregation itself
-(not `order_by`):
-
-```json
-{"field_id": "t42-3", "function": "sum", "sort_order": "desc"}
-```
-
-Measure-based aggregation — uses a pre-defined measure:
-
-```json
-{"measure_id": 5, "sort_order": "asc"}
-```
-
-#### Group by
-
-```json
-{"field_id": "t42-5", "field_granularity": "month"}
-```
-
-`field_granularity` is optional and controls temporal grouping granularity.
-Valid values: `minute`, `hour`, `day`, `week`, `month`, `quarter`, `year`,
-`day-of-week`. Note: this is a smaller set than the `bucket` field on
-filters, which also accepts extraction units like `day-of-month` and
-`hour-of-day`.
-
-#### Order by
-
-Order by a field (not an aggregation — use `sort_order` for that):
-
-```json
-{"field": {"field_id": "t42-1"}, "direction": "desc"}
+{ "continuation_token": "eyJxdWVyeSI6ey..." }
 ```
 
 ### POST /v1/execute
 
-Execute a query returned by /v1/construct-query.
+Execute a query returned by /v2/construct-query.
 
 **Important: streaming response.** This endpoint streams results, so the HTTP
 status code (202) is sent before query execution completes. A 202 status does
-NOT guarantee the query succeeded — you must check the `status` field in the
+NOT guarantee the query succeeded - you must check the `status` field in the
 response body. If the query fails mid-execution, the response body will contain
 `"status": "failed"` with an error message, even though the HTTP status was 202.
 
 Request:
 
 ```json
-{"query": "eyJkYXRhYmFzZSI6MSwi..."}
+{ "query": "eyJkYXRhYmFzZSI6MSwi..." }
 ```
 
 Response (HTTP 202):
 
 The response body may contain additional fields beyond those documented here.
-Ignore any fields not listed below — they are internal metadata and not part of
+Ignore any fields not listed below - they are internal metadata and not part of
 the stable API contract.
 
 On success:
@@ -588,11 +363,21 @@ On success:
   "status": "completed",
   "data": {
     "cols": [
-      {"name": "CREATED_AT", "base_type": "type/DateTime", "effective_type": "type/DateTime", "display_name": "Created At"},
-      {"name": "sum", "base_type": "type/Float", "effective_type": "type/Float", "display_name": "Sum of Total"}
+      {
+        "name": "CREATED_AT",
+        "base_type": "type/DateTime",
+        "effective_type": "type/DateTime",
+        "display_name": "Created At"
+      },
+      {
+        "name": "sum",
+        "base_type": "type/Float",
+        "effective_type": "type/Float",
+        "display_name": "Sum of Total"
+      }
     ],
     "rows": [
-      ["2024-01-01T00:00:00Z", 15234.50],
+      ["2024-01-01T00:00:00Z", 15234.5],
       ["2024-02-01T00:00:00Z", 18102.75]
     ]
   },
@@ -602,7 +387,7 @@ On success:
 ```
 
 | Field        | Description                                                     |
-|--------------|-----------------------------------------------------------------|
+| ------------ | --------------------------------------------------------------- |
 | status       | `"completed"` on success, `"failed"` on error                   |
 | data.cols    | Column metadata (name, base_type, effective_type, display_name) |
 | data.rows    | Array of row arrays, in the same order as cols                  |
@@ -612,34 +397,206 @@ On success:
 On failure:
 
 ```json
-{"status": "failed", "error": "Query error message"}
+{ "status": "failed", "error": "Query error message" }
 ```
 
 Row limits:
-- Default: 100 rows (applied when no `limit` is specified in construct-query for tables)
+
 - Simple queries (no aggregation): 2000 rows max
 - Aggregated queries: 10000 rows max
 
+### POST /v1/execute-sql
+
+Execute a raw SQL query against a database. Streams results in the same
+format as `/v1/execute`. Use this only when MBQL via `/v2/construct-query`
+cannot express the question.
+
+Requires the caller to have native-query permission on the target database;
+the QP middleware enforces this, with a friendly belt-and-suspenders check
+at the tool layer. Returns 403 when the user lacks permission or when the
+instance setting `mcp-execute-sql-enabled` is `false` (default `true`).
+
+Request:
+
+```json
+{ "database_id": 1, "sql": "SELECT count(*) FROM orders" }
+```
+
+Response: identical shape to `/v1/execute`.
+
+### POST /v1/question
+
+Save a previously constructed query as a named question (card). Pass the
+`query_handle` returned by `/v2/construct-query` as the `query` field
+(the MCP layer transparently resolves handles for clients connected via
+MCP; direct REST callers may instead pass the base64 query string).
+
+Request:
+
+```json
+{
+  "name": "Monthly Revenue",
+  "query": "<query_handle or base64>",
+  "display": "line",
+  "description": "Revenue by month",
+  "collection_id": 7,
+  "visualization_settings": {}
+}
+```
+
+Response:
+
+```json
+{
+  "id": 42,
+  "name": "Monthly Revenue",
+  "display": "line",
+  "collection_id": 7,
+  "description": "Revenue by month"
+}
+```
+
+### PUT /v1/question/{id}
+
+Update a saved question (card). Patch semantics - only fields you pass are
+changed. Subsumes "move card to collection" - setting `collection_id` moves
+the card. Setting `archived: true` archives it. Passing `query` replaces the
+underlying `dataset_query`.
+
+Request:
+
+```json
+{
+  "name": "Renamed Question",
+  "description": "Updated description",
+  "collection_id": 7,
+  "display": "bar",
+  "visualization_settings": {},
+  "archived": false,
+  "query": "<query_handle or base64>"
+}
+```
+
+Response:
+
+```json
+{
+  "id": 42,
+  "name": "Renamed Question",
+  "display": "bar",
+  "collection_id": 7,
+  "description": "Updated description",
+  "archived": false
+}
+```
+
+### POST /v1/dashboard
+
+Create a new dashboard, optionally populated with saved questions.
+
+Request:
+
+```json
+{
+  "name": "Revenue Dashboard",
+  "description": "...",
+  "collection_id": 7,
+  "question_ids": [42, 43]
+}
+```
+
+When `question_ids` is provided, cards are auto-positioned on the grid based
+on each card's display type.
+
+Response:
+
+```json
+{
+  "id": 7,
+  "name": "Revenue Dashboard",
+  "collection_id": 7,
+  "description": "...",
+  "dashcard_ids": [101, 102]
+}
+```
+
+### PUT /v1/dashboard/{id}
+
+Update a dashboard's metadata. Patch semantics. Setting `collection_id`
+moves the dashboard (and its cards). Setting `archived: true` archives the
+dashboard and cascades to its cards.
+
+Request:
+
+```json
+{
+  "name": "Renamed Dashboard",
+  "description": "...",
+  "collection_id": 7,
+  "archived": false
+}
+```
+
+Response:
+
+```json
+{
+  "id": 7,
+  "name": "Renamed Dashboard",
+  "collection_id": 7,
+  "description": "...",
+  "archived": false
+}
+```
+
+### POST /v1/collection
+
+Create a new collection. Optionally nested under another collection via
+`parent_collection_id`.
+
+Request:
+
+```json
+{ "name": "Marketing", "description": "...", "parent_collection_id": 1 }
+```
+
+Response:
+
+```json
+{
+  "id": 12,
+  "name": "Marketing",
+  "parent_id": 1,
+  "location": "/1/",
+  "description": "..."
+}
+```
+
 ## Typical workflow
 
-1. **Search** — POST /v1/search to find relevant tables or metrics
-2. **Inspect** — GET /v1/table/{id} or /v1/metric/{id} to get field IDs and
-   understand the schema
-3. **Explore field values** — GET /v1/table/{id}/field/{field-id}/values if
-   you need to know valid filter values or field statistics
-4. **Build query** — POST /v1/construct-query with filters, aggregations,
-   group_by, etc.
-5. **Execute** — POST /v1/execute with the base64-encoded query
-6. **Iterate** — Adjust filters/aggregations and repeat steps 4-5
+1. **Search** - POST /v1/search to find relevant tables, metrics, cards, or dashboards
+2. **Navigate** - POST /v1/read-resource with `metabase://` URIs to drill into
+   databases, schemas, tables, fields, collections, dashboards, etc.
+3. **Build query** - POST /v2/construct-query with a representations JSON
+   payload (`{"query": <external-query-object>}`); see the
+   `construct_notebook_query` tool prompt for the format reference
+4. **Execute** - POST /v1/execute with the base64-encoded query, or use
+   POST /v2/query to construct and execute in one round-trip with pagination
+5. **Save (optional)** - POST /v1/question to persist the query as a saved
+   question; PUT /v1/question/{id} to update one; POST /v1/dashboard to
+   bundle questions into a dashboard; POST /v1/collection to create a
+   collection
+6. **Iterate** - Adjust the query and repeat steps 3-4
 
 ## Error handling
 
-| HTTP Status | Meaning                                  |
-|-------------|------------------------------------------|
-| 200         | Success (GET endpoints, construct-query) |
-| 202         | Success (execute — streaming response)   |
-| 401         | Authentication failure                   |
-| 403         | Insufficient permissions                 |
-| 404         | Entity not found                         |
+| HTTP Status | Meaning                                                                                            |
+|-------------|----------------------------------------------------------------------------------------------------|
+| 200         | Success (GET endpoints, construct-query)                                                           |
+| 202         | Success (execute / query - streaming response)                                                     |
+| 400         | Invalid representations query (validation, repair, or resolution failure; `:agent-error?` paths)   |
+| 401         | Authentication failure                                                                             |
+| 403         | Insufficient permissions                                                                           |
+| 404         | Entity not found                                                                                   |
 
 ---

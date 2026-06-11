@@ -6,8 +6,8 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useDispatch } from "metabase/redux";
 import { Loader } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 export const getMetabotQuickLinks = () => {
   return (

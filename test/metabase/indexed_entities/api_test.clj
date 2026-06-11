@@ -1,9 +1,9 @@
 (ns metabase.indexed-entities.api-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.indexed-entities.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
-
    [toucan2.util :as u]))
 
 (deftest full-lifecycle-test
@@ -49,7 +49,6 @@
               (mt/with-non-admin-groups-no-root-collection-perms
                 (mt/user-http-request :rasta :get 403
                                       (str "/model-index/" (:id model-index))))))
-
           (testing "DELETE"
             (testing "Must have write access to the underlying model"
               (mt/with-non-admin-groups-no-root-collection-perms

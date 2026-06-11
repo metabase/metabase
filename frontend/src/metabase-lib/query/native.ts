@@ -60,17 +60,6 @@ export function engine(query: Query): string | null {
   return ML.engine(query);
 }
 
-/**
- * Returns the extra keys that are required for this database's native queries, for example `:collection` name is
- *  needed for MongoDB queries.
- */
-export function requiredNativeExtras(
-  databaseId: DatabaseId,
-  metadata: MetadataProvider,
-): string[] {
-  return ML.required_native_extras(databaseId, metadata);
-}
-
 type NativeExtras = {
   collection?: string | null;
 };

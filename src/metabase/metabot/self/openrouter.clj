@@ -12,6 +12,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -91,9 +92,10 @@
                 :description doc
                 :parameters  (mjs/transform params {:additionalProperties false})}}))
 
-(defn- openrouter-errors [res]
-  (let [status    (long (:status res 0))
-        error-msg (get-in res [:body :error :message])]
+(defn- openrouter-error-msg
+  "Canonical, status-specific OpenRouter error message."
+  [res]
+  (let [status (long (:status res 0))]
     (case status
       401 (tru "OpenRouter API key expired or invalid")
       402 (tru "OpenRouter has insufficient credits")
@@ -103,9 +105,7 @@
       500 (tru "OpenRouter returned an internal server error")
       502 (tru "OpenRouter upstream provider returned an error")
       503 (tru "OpenRouter service is unavailable")
-      (if error-msg
-        (tru "OpenRouter API error (HTTP {0}): {1}" status error-msg)
-        (tru "OpenRouter API error (HTTP {0})" status)))))
+      (tru "OpenRouter API error (HTTP {0})" status))))
 
 (defn list-models
   "List available OpenRouter models.
@@ -131,7 +131,7 @@
                          :display_name (or (:name model) (:id model))})
                       (reverse (sort-by :created (get-in res [:body :data]))))})
      (catch Exception e
-       (core/rethrow-api-error! "openrouter" openrouter-errors e)))))
+       (core/rethrow-api-error! "openrouter" openrouter-error-msg e)))))
 
 ;;; Streaming response → AISDK v5 chunks
 
@@ -192,7 +192,6 @@
                ;; For new tool calls, the id comes from the chunk; for deltas
                ;; on the same tool, we keep current-id.
                chunk-id      (or (:id tool-call) @current-id (core/mkid))]
-
            (cond-> result
              ;; Emit :start on first chunk
              (and id (not @message-id))                       (-> (rf {:type :start :messageId id})
@@ -298,9 +297,13 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
-          (core/sse-reducible (:body response)))
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "openrouter"
+                                     :model    model
+                                     :url      "/v1/chat/completions"
+                                     :request  req})))
         (catch Exception e
-          (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
+          (core/rethrow-api-error! "openrouter" openrouter-error-msg e))))))
 
 (defn openrouter
   "Call OpenRouter Chat Completions API, return AISDK stream."

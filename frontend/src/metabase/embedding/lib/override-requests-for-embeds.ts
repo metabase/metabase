@@ -1,4 +1,5 @@
 import { sessionPropertiesPath } from "metabase/api";
+import type { RequestMethod } from "metabase/api/client";
 import {
   PLUGIN_API,
   PLUGIN_CONTENT_TRANSLATION,
@@ -20,6 +21,9 @@ const getBaseUrlByEmbedType = (embedType: EmbedType): string =>
 const getIgnoreOverridePatterns = () => [
   sessionPropertiesPath,
   PLUGIN_CONTENT_TRANSLATION.getDictionaryBasePath,
+  // `/api/frontend-errors` only exists at the canonical path (see
+  // metabase.frontend-errors.api) — rewriting it would 404.
+  "/api/frontend-errors",
 ];
 
 /**
@@ -45,7 +49,7 @@ const EMBED_URL_TRANSFORMATIONS: Record<
   string,
   (data: { embedType: EmbedType }) => {
     url: string;
-    method: "GET" | "POST";
+    method: RequestMethod;
   }
 > = {
   [URL_PATTERNS.CARD_QUERY]: ({ embedType }) => ({
@@ -83,12 +87,9 @@ const EMBED_URL_TRANSFORMATIONS: Record<
 } as const;
 
 type RequestData = {
-  method: "GET" | "POST";
+  method: RequestMethod;
   url: string;
-  options: {
-    headers?: Record<string, string>;
-    hasBody: boolean;
-  } & Record<string, unknown>;
+  headers?: Record<string, string>;
 };
 
 /**
@@ -129,7 +130,7 @@ function getRequestTransformation({
   method,
   embedType,
   url,
-  options,
+  headers,
 }: RequestData & { embedType: EmbedType }): RequestData | null {
   const matchedPattern = findMatchingPattern(url);
 
@@ -143,7 +144,7 @@ function getRequestTransformation({
 
   // No transformation needed if pattern doesn't match
   if (!matchedPattern) {
-    return { method, url, options };
+    return { method, url, headers };
   }
 
   // Apply the transformation for this pattern
@@ -151,15 +152,12 @@ function getRequestTransformation({
     embedType,
   });
   if (!transformation) {
-    return { method, url, options };
+    return { method, url, headers };
   }
 
   return {
     ...transformation,
-    options: {
-      ...options,
-      hasBody: transformation.method === "POST",
-    },
+    headers,
   };
 }
 
@@ -182,11 +180,11 @@ function replaceWithEmbedBase({
   return url;
 }
 
-const overrideRequests = async ({
+export const overrideRequests = async ({
   embedType,
   method,
   url,
-  options,
+  headers,
   data,
 }: OnBeforeRequestHandlerConfig & {
   embedType: EmbedType;
@@ -195,26 +193,17 @@ const overrideRequests = async ({
     method,
     embedType,
     url,
-    options,
+    headers,
   });
 
   if (!transformation) {
-    return { method, url, options, data };
+    return { method, url, headers, data };
   }
-
-  if (!options.headers) {
-    options.headers = {};
-  }
-
-  /**
-   * Set header to indicate that this request is for guest embed.
-   */
-  options.headers["x-metabase-guest-embed"] = "true";
 
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
-    options: transformation.options,
+    headers: transformation.headers ?? {},
     data,
   };
 };

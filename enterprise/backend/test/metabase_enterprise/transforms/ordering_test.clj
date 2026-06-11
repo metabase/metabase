@@ -40,11 +40,10 @@
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "intermediate_output"}}))))
-
       (testing "transform-ordering correctly resolves the dependency"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform :id [:in [t-a t-b]])))))))))
 
 (deftest python-transform-mixed-source-tables-test
   (testing "Python transform with mixed int and name-based refs"
@@ -64,8 +63,7 @@
           (is (contains? deps {:table-ref {:database_id (mt/id)
                                            :schema "public"
                                            :table "output_a"}}))))
-
       (testing "transform-ordering resolves both dependencies"
         (is (= {t-a #{}
                 t-b #{t-a}}
-               (ordering/transform-ordering (t2/select :model/Transform :id [:in [t-a t-b]]))))))))
+               (:dependencies (ordering/transform-ordering #{t-a t-b} (t2/select :model/Transform :id [:in [t-a t-b]])))))))))

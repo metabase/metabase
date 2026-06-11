@@ -37,7 +37,7 @@ describe("scenarios > binning > binning options", () => {
 
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 2023");
+      cy.findByText("Q1 2026");
     });
 
     it("should work for longitude/latitude", () => {
@@ -86,7 +86,7 @@ describe("scenarios > binning > binning options", () => {
 
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 2023");
+      cy.findByText("Q1 2026");
     });
 
     it("should work for longitude/latitude", () => {
@@ -130,7 +130,7 @@ describe("scenarios > binning > binning options", () => {
 
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("January 2023");
+      cy.findByText("January 2026");
     });
 
     it("should work for longitude/latitude", () => {

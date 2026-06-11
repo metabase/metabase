@@ -68,7 +68,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/TIMESTAMP]
   [_driver ^ResultSet rs _rsmeta ^Long i]
   (fn []
-    (t/instant (.getObject rs i))))
+    (when-let [ts (.getObject rs i)]
+      (t/instant ts))))
 
 ;; Druid's COMPLEX<...> types are encoded as JDBC's other -- 1111. Values are rendered as string.
 (defmethod sql-jdbc.execute/read-column-thunk [:druid-jdbc Types/OTHER]
@@ -168,9 +169,20 @@
         identifier    (parent-method driver clause)]
     (if-not (driver-api/json-field? stored-field)
       identifier
-      (if (or (::sql.qp/forced-alias opts)
-              (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
-        (keyword (driver-api/qp.add.source-alias opts))
+      (cond
+        (or (::sql.qp/forced-alias opts)
+            (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
+
+        ;; The field is referenced through a join (source-table is a join-alias
+        ;; string). The join target is compiled as a subquery that already
+        ;; projects this nfc column with JSON extraction applied — reference the
+        ;; projected column directly instead of re-applying extraction, which
+        ;; would derive the wrong column name through nested projections. (#73198)
+        (string? (driver-api/qp.add.source-table opts))
+        identifier
+
+        :else
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)

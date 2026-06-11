@@ -35,11 +35,7 @@ describe("detail view", () => {
           .and("have.attr", "href", `/browse/databases/${SAMPLE_DB_ID}`);
         cy.findByRole("link", { name: "Products" })
           .should("be.visible")
-          .and(
-            "have.attr",
-            "href",
-            `/question#?db=${SAMPLE_DB_ID}&table=${PRODUCTS_ID}`,
-          );
+          .and("have.attr", "href", `/table/${PRODUCTS_ID}-products`);
         cy.findByText("Rustic Paper Wallet").should("be.visible");
       });
 
@@ -51,7 +47,7 @@ describe("detail view", () => {
         ["Vendor", "Swaniawski, Casper and Hilll"],
         ["Price", "29.46"],
         ["Rating", "4.6"],
-        ["Created At", "July 19, 2023, 7:44 PM"],
+        ["Created At", "July 19, 2026, 7:44 PM"],
       ]);
 
       DetailView.getRelationships().within(() => {
@@ -131,12 +127,12 @@ describe("detail view", () => {
         ["Tax", "2.07"],
         ["Total", "39.72"],
         ["Discount ($)", "empty"],
-        ["Created At", "February 11, 2025, 9:40 PM"],
+        ["Created At", "February 11, 2028, 9:40 PM"],
         ["Quantity", "2"],
         ["Order image", "https://example.com/order/1.jpg"],
         ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
-        ["Products → Created At", "December 31, 2023, 2:41 PM"],
+        ["Products → Created At", "December 31, 2026, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
         ["Products → Price", "25.1"],
         ["Products → Rating", "4"],
@@ -284,12 +280,12 @@ describe("detail view", () => {
         ["Tax", "$2.07"],
         ["Total", `${VERY_LONG_STRING}39.72`],
         ["Discount ($)", "empty"],
-        ["Created At", "February 11, 2025, 9:40 PM"],
+        ["Created At", "February 11, 2028, 9:40 PM"],
         ["Quantity", "two"],
         ["Order image", "https://example.com/order/1.jpg"],
         ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
-        ["Products → Created At", "December 31, 2023, 2:41 PM"],
+        ["Products → Created At", "December 31, 2026, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
         ["Products → Price", "25.1"],
         ["Products → Rating", "4"],

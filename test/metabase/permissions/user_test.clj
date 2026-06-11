@@ -39,7 +39,6 @@
       (is (contains?
            (permissions.user/user-permissions-set (mt/user->id :lucky))
            (permissions.path/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
-
       (testing "...and for any descendant Collections of my Personal Collection?"
         (mt/with-temp [:model/Collection child-collection      {:name     "child"
                                                                 :location (collection/children-location
@@ -58,11 +57,11 @@
   (testing "Users with transforms read permission can create transform collections, even in the root"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test transform coll" :namespace collection/transforms-ns}]
       (testing "without permission"
-        (with-redefs [data-perms/is-data-analyst? (constantly false)]
+        (mt/with-dynamic-fn-redefs [data-perms/is-data-analyst? (constantly false)]
           (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/")))
           (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (format "/collection/%s" coll-id))))))
       (testing "with permission"
-        (with-redefs [data-perms/is-data-analyst? (constantly true)]
+        (mt/with-dynamic-fn-redefs [data-perms/is-data-analyst? (constantly true)]
           (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/"))
           (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (permissions.path/collection-readwrite-path coll-id))))))))
 

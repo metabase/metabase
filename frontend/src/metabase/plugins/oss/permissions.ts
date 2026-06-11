@@ -1,23 +1,21 @@
 import type { ReactNode } from "react";
 
-import {
-  type DataPermission,
-  DataPermissionValue,
-  type DatabaseEntityId,
-  type EntityId,
-  type PermissionSubject,
-  type SpecialGroupType,
-} from "metabase/admin/permissions/types";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  DataPermission,
+  DatabaseEntityId,
   Dataset,
   Group,
   GroupPermissions,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
   User,
 } from "metabase-types/api";
+import { DataPermissionValue } from "metabase-types/api";
 
 import type { PluginGroupManagersType } from "../types";
 
@@ -37,7 +35,7 @@ const getDefaultAdminPermissionsTableFieldsConfirmations = (): Array<
   (
     _permissions: GroupsPermissions,
     _groupId: number,
-    _entityId: EntityId,
+    _entityId: PermissionEntityId,
     _value: DataPermissionValue,
   ) => any
 > => [];
@@ -86,7 +84,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
     groupId: number,
-    entityId: EntityId,
+    entityId: PermissionEntityId,
     permission: DataPermission,
     value: DataPermissionValue,
     database: Database,
@@ -96,7 +94,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        entityId: EntityId,
+        entityId: PermissionEntityId,
         value: any,
         database: Database,
         permission: DataPermission,
@@ -142,6 +140,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     permissionSubject: _permissionSubject,
     permissionView: _permissionView,
     showTransformPermissions: _showTransformPermissions,
+    showWorkspacesPermissions: _showWorkspacesPermissions,
   }: {
     entityId: DatabaseEntityId;
     groupId: number;
@@ -152,6 +151,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     permissionSubject: PermissionSubject;
     permissionView?: "group" | "database";
     showTransformPermissions?: boolean;
+    showWorkspacesPermissions?: boolean;
   }) => {
     return [] as any;
   },
@@ -160,11 +160,13 @@ const getDefaultFeatureLevelPermissions = () => ({
     groupType: _groupType,
     isExternal: _isExternal,
     showTransformPermissions: _showTransformPermissions,
+    showWorkspacesPermissions: _showWorkspacesPermissions,
   }: {
     subject: PermissionSubject;
     groupType?: SpecialGroupType;
     isExternal?: boolean;
     showTransformPermissions?: boolean;
+    showWorkspacesPermissions?: boolean;
   }) => [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,

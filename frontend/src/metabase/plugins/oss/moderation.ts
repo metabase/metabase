@@ -1,13 +1,14 @@
 import type React from "react";
 
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   BaseUser,
   Card,
   Dashboard,
+  IconName,
   MetabotInfo,
 } from "metabase-types/api";
 
@@ -22,8 +23,6 @@ export type RevisionOrModerationEvent = {
 const getDefaultPluginModeration = () => ({
   isEnabled: () => false,
   EntityModerationIcon: PluginPlaceholder,
-  QuestionModerationSection: PluginPlaceholder,
-  ModerationReviewBanner: PluginPlaceholder,
   ModerationReviewTextForQuestion: PluginPlaceholder,
   ModerationReviewTextForDashboard: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,

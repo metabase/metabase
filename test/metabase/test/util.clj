@@ -20,7 +20,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -38,6 +37,7 @@
    [metabase.test.data :as data]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize :as initialize]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -49,8 +49,7 @@
    [toucan2.model :as t2.model]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.transformed :as t2.transformed]
-   [toucan2.tools.with-temp :as t2.with-temp]
-   [toucan2.util :as t2.u])
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
    (java.net ServerSocket)
@@ -219,6 +218,24 @@
              :name "Mock Measure"
              :table_id (data/id :checkins)}))
 
+   :model/MetabotConversation
+   (fn [_] {:id      (str (random-uuid))
+            :user_id (rasta-id)})
+
+   :model/MetabotMessage
+   ;; `:conversation_id` is required and has no sensible default — callers must provide one.
+   (fn [_] {:role         "assistant"
+            :profile_id   "gpt-5"
+            :total_tokens 0
+            :data         []})
+
+   :model/AiUsageLog
+   (fn [_] {:source            "test"
+            :model             "test/model"
+            :prompt_tokens     0
+            :completion_tokens 0
+            :total_tokens      0})
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)
@@ -379,43 +396,17 @@
             :updated_at (t/zoned-date-time)})
 
    :model/Workspace
-   (fn [_]
-     (default-timestamped
-      {:name   (str "Test Workspace " (u/generate-nano-id))
-       :schema (str @#'driver.u/workspace-isolated-prefix (u/generate-nano-id))}))
+   (fn [_] (default-timestamped
+            {:name       (u.random/random-name)
+             :creator_id (rasta-id)}))
 
-   :model/WorkspaceTransform
-   (fn [_]
-     (default-timestamped
-      {:name   (str "Test Transform " (u/generate-nano-id))
-       :ref_id ((requiring-resolve 'metabase-enterprise.workspaces.util/generate-ref-id))
-       :source {:type  "query"
-                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
-       :target {:type "table"
-                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))}}))})
-
-;; WorkspaceTransform use composite primary keys are currently t2/insert-returning-instance!
-;; does not return the instance for model with composite keys on h2 and mysql
-;; so we have to define a custom with-temp here
-(methodical/defmethod t2.with-temp/do-with-temp* :model/WorkspaceTransform
-  [model explicit-attributes f]
-  (assert (some? model) (format "%s model cannot be nil." `with-temp))
-  (when (some? explicit-attributes)
-    (assert (map? explicit-attributes) (format "attributes passed to %s must be a map." `with-temp)))
-  (let [defaults          (t2.with-temp/with-temp-defaults model)
-        merged-attributes (merge {} defaults explicit-attributes)]
-    (t2.u/try-with-error-context ["with temp" {::model               model
-                                               ::explicit-attributes explicit-attributes
-                                               ::default-attributes  defaults
-                                               ::merged-attributes   merged-attributes}]
-      (let [temp-object (or (t2/insert-returning-instance! model merged-attributes)
-                            (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id merged-attributes)
-                                           :workspace_id (:workspace_id merged-attributes)))]
-        (try
-          (testing (format "\nwith temporary %s\n" (pr-str model))
-            (f temp-object))
-          (finally
-            (t2/delete! model :toucan/pk ((t2/select-pks-fn model) temp-object))))))))
+   :model/WorkspaceDatabase
+   (fn [_] (default-timestamped
+            {:database_id      (data/id)
+             :database_details {}
+             :input_schemas    []
+             :output_namespace ""
+             :status           :unprovisioned}))})
 
 ;; `with-temp` cleanup calls `t2/delete!` directly, which would hit our before-delete guard.
 ;; Bind `*allow-direct-deletion*` so with-temp cleanup works.
@@ -506,7 +497,6 @@
     (testing "Setting value"
       (is (= "abc"
              (with-temp-env-var-value-test-setting)))))
-
   (testing "override multiple env vars"
     (with-temp-env-var-value! [some-fake-env-var 123, "ANOTHER_FAKE_ENV_VAR" "def"]
       (testing "Should convert values to strings"
@@ -515,7 +505,6 @@
       (testing "should handle CAPITALS/SNAKE_CASE"
         (is (= "def"
                (:another-fake-env-var env/env))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
@@ -575,7 +564,7 @@
             (if raw-setting?
               (upsert-raw-setting! original-value setting-k value)
               ;; bypass the feature check when setting up mock data
-              (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
+              (dynamic-redefs/with-dynamic-fn-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                 (setting/set! setting-k value :bypass-read-only? true)))
             (catch Throwable e
               (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
@@ -590,7 +579,7 @@
               (if raw-setting?
                 (restore-raw-setting! original-value setting-k)
                 ;; bypass the feature check when reset settings to the original value
-                (with-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
+                (dynamic-redefs/with-dynamic-fn-redefs [metabase.settings.models.setting/has-feature? (constantly true)]
                   (setting/set! setting-k original-value :bypass-read-only? true)))
               (catch Throwable e
                 (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
@@ -795,10 +784,10 @@
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
         (binding [task.impl/*quartz-scheduler* (atom temp-scheduler)]
-          (with-redefs [qs/initialize (constantly temp-scheduler)
-                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                        ;; after it's done, but we need the scheduler for testing
-                        qs/shutdown (constantly nil)]
+          (dynamic-redefs/with-dynamic-fn-redefs [qs/initialize (constantly temp-scheduler)
+                                                  ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                                                  ;; after it's done, but we need the scheduler for testing
+                                                  qs/shutdown (constantly nil)]
             (thunk)))
         (finally
           (qs/shutdown temp-scheduler))))))
@@ -893,11 +882,6 @@
   [_]
   [:not= :id audit/audit-db-id])
 
-(def ^:private models-with-cleanup-hooks
-  "Models that require `t2/delete!` instead of raw SQL delete during cleanup.
-   Use this for models that have `before-delete` or `after-delete` hooks that must run."
-  #{:model/Workspace})
-
 (defn- model->model&pk [model]
   (if (vector? model)
     model
@@ -931,21 +915,16 @@
                       max-id-condition (if old-max-id [:> pk old-max-id] true)
                       additional-conditions (with-model-cleanup-additional-conditions model)
                       where-clause [:and max-id-condition additional-conditions]]]
-          (if (contains? models-with-cleanup-hooks model)
-            ;; Use t2/delete! to trigger before-delete/after-delete hooks
-            (t2/delete! model {:where where-clause})
-            ;; Fast path: raw SQL for models without hooks
-            (t2/query-one
-             {:delete-from (t2/table-name model)
-              :where where-clause})))
+          (t2/query-one
+           {:delete-from (t2/table-name model)
+            :where where-clause}))
         ;; TODO we don't (currently) have index update hooks on deletes, so we need this to ensure rollback happens.
         (search/reindex! {:in-place? true :async? false})))))
 
 (defmacro with-model-cleanup
   "Execute `body`, then delete any *new* rows created for each model in `models`.
 
-   By default, uses raw SQL DELETE for performance. For models in [[models-with-cleanup-hooks]],
-   uses `t2/delete!` to ensure `before-delete`/`after-delete` hooks are triggered.
+   Uses raw SQL DELETE for performance. Does not trigger `before-delete`/`after-delete` hooks.
 
   It's preferable to use `with-temp` instead, but you can use this macro if `with-temp` wouldn't work in your
   situation (e.g. when creating objects via the API).
@@ -1054,6 +1033,7 @@
         called-query? (promise)
         pause-query (promise)
         query-thunk (fn []
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       (data/run-mbql-query checkins
                         {:aggregation [[:count]]}))
         ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
@@ -1144,31 +1124,25 @@
     [:model/Card {card-id :id :as card} {:name "A Card"}
      :model/Dashboard {dash-id :id :as dash} {:name "A Dashboard"}]
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
-
       (testing "with single model"
         (with-discard-model-updates! [:model/Card]
           (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= card (t2/select-one :model/Card card-id)))))
-
       (testing "with multiple models"
         (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
             (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
-
             (t2/update! :model/Dashboard dash-id {:name "New Dashboard name"})
             (is (= "New Dashboard name" (t2/select-one-fn :name :model/Dashboard dash-id)))))
-
         (testing "outside macro, the changes should be reverted"
           (is (= (dissoc card :updated_at)
                  (dissoc (t2/select-one :model/Card card-id) :updated_at)))
           (is (= (dissoc dash :updated_at)
                  (dissoc (t2/select-one :model/Dashboard dash-id) :updated_at)))))
-
       (testing "make sure that we cleaned up the aux methods after"
         (is (= count-aux-method-before
                (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))))))))
@@ -1350,6 +1324,7 @@
          (= (first x) 'values-of))
     (let [[_ table+field] x
           [table field] (str/split (str table+field) #"\.")]
+      #_{:clj-kondo/ignore [:deprecated-var]}
       `(into {} (get-in (data/run-mbql-query ~(symbol table)
                           {:fields [~'$id ~(symbol (str \$ field))]})
                         [:data :rows])))
@@ -1480,7 +1455,6 @@
         (reset! temp-filename filename))
       (testing "File should be deleted at end of macro form"
         (is (not (.exists (io/file @temp-filename)))))))
-
   (testing "explicit filename"
     (with-temp-file [filename "parrot-list.txt"]
       (is (string? filename))
@@ -1490,7 +1464,6 @@
       (testing "should delete existing file"
         (with-temp-file [filename "parrot-list.txt"]
           (is (not (.exists (io/file filename))))))))
-
   (testing "multiple bindings"
     (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
       (is (string? filename))
@@ -1499,13 +1472,11 @@
       (is (not (.exists (io/file filename-2))))
       (is (not (str/ends-with? filename "parrot-list.txt")))
       (is (str/ends-with? filename-2 "parrot-list.txt"))))
-
   (testing "should delete existing file"
     (with-temp-file [filename "parrot-list.txt"]
       (spit filename "wow")
       (with-temp-file [filename "parrot-list.txt"]
         (is (not (.exists (io/file filename)))))))
-
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
@@ -1606,7 +1577,7 @@
                      actual)
 
         (map? expected)
-    ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
+        ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
         (select-keys actual (keys expected))
 
         :else

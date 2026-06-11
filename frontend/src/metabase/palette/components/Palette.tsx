@@ -1,28 +1,32 @@
 import type { Query } from "history";
-import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
+import { KBarPortal, VisualState, useKBar } from "kbar";
 import { useEffect, useRef } from "react";
 import { type PlainRoute, withRouter } from "react-router";
-import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Card, Center, Icon, Overlay, Stack, rem } from "metabase/ui";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useSelector } from "metabase/utils/redux";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
 
+import { HydratedKBarSearch } from "./HydratedKBarSearch";
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
+
+type CommandPaletteRouteProps = {
+  disableCommandPalette?: boolean;
+};
 
 /** Command palette */
 export const Palette = withRouter((props) => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
 
   const disableCommandPaletteForRoute = props.routes.some(
-    (route: PlainRoute & { disableCommandPalette?: boolean }) =>
-      route.disableCommandPalette,
+    (route: PlainRoute<CommandPaletteRouteProps>) =>
+      route.props?.disableCommandPalette,
   );
 
   useCommandPaletteBasicActions({ ...props, isLoggedIn });
@@ -56,10 +60,17 @@ export const PaletteContainer = withRouter(
     disabled: boolean;
     locationQuery: Query;
   }) => {
-    const { query } = useKBar((state) => ({ actions: state.actions }));
+    const { query } = useKBar();
     const ref = useRef(null);
+    const searchText =
+      typeof locationQuery.q === "string" ? locationQuery.q : "";
 
-    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+    const {
+      searchRequestId,
+      searchResults,
+      liveSearchTerm,
+      debouncedSearchTerm,
+    } = useCommandPalette({
       locationQuery,
       disabled,
     });
@@ -78,10 +89,7 @@ export const PaletteContainer = withRouter(
       >
         <Stack gap={rem(4)} pb="lg">
           <Box pos="relative">
-            <KBarSearch
-              className={S.input}
-              defaultPlaceholder={t`Search for anything…`}
-            />
+            <HydratedKBarSearch searchText={searchText} />
 
             <Stack
               className={S.iconContainer}
@@ -99,7 +107,8 @@ export const PaletteContainer = withRouter(
             locationQuery={locationQuery}
             searchRequestId={searchRequestId}
             searchResults={searchResults}
-            searchTerm={searchTerm}
+            liveSearchTerm={liveSearchTerm}
+            debouncedSearchTerm={debouncedSearchTerm}
           />
         </Stack>
       </Card>

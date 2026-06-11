@@ -35,8 +35,9 @@
   [:name])
 
 (defmethod serdes/dependencies "Metabot"
-  [{:keys [prompts]}]
-  (set (mapcat serdes/dependencies prompts)))
+  [{:keys [collection_id prompts]}]
+  (cond-> (set (mapcat serdes/dependencies prompts))
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Metabot" [_ metabot]
   [(serdes/infer-self-path "Metabot" metabot)])
@@ -49,5 +50,5 @@
    :transform {:created_at    (serdes/date)
                :updated_at    (serdes/date)
                :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id opts)}
-   :defaults {:use_verified_content false}})
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
+   :defaults  {:use_verified_content false}})

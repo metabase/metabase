@@ -27,6 +27,8 @@ interface RelativeDatePickerProps {
   value: RelativeDatePickerValue | undefined;
   availableUnits: DatePickerUnit[];
   availableDirections: RelativeIntervalDirection[];
+  minDate?: Date;
+  maxDate?: Date;
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onBack: () => void;
@@ -37,6 +39,8 @@ export function RelativeDatePicker({
   value: initialValue,
   availableUnits,
   availableDirections,
+  minDate,
+  maxDate,
   renderSubmitButton = renderDefaultSubmitButton,
   onChange,
   onBack,
@@ -85,6 +89,8 @@ export function RelativeDatePicker({
             <DateOffsetIntervalPicker
               value={value}
               availableUnits={availableUnits}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={renderSubmitButton}
               onChange={setValue}
               onSubmit={handleSubmit}
@@ -93,6 +99,8 @@ export function RelativeDatePicker({
             <DateIntervalPicker
               value={value}
               availableUnits={availableUnits}
+              minDate={minDate}
+              maxDate={maxDate}
               renderSubmitButton={renderSubmitButton}
               onChange={setValue}
               onSubmit={handleSubmit}

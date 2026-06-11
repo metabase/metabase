@@ -25,12 +25,10 @@
       (testing "can get the channel"
         (is (=? default-test-channel
                 (mt/user-http-request :crowberto :get 200 (str "channel/" (:id channel))))))
-
       (testing "can update channel name"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:name "New Name"})
         (is (= "New Name" (t2/select-one-fn :name :model/Channel (:id channel)))))
-
       (testing "can update channel details even if it fails to connect"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:details {:return-type  "return-value"
@@ -38,12 +36,10 @@
         (is (= {:return-type "return-value"
                 :return-value false}
                (t2/select-one-fn :details :model/Channel (:id channel)))))
-
       (testing "can update channel description"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:description "New description"})
         (is (= "New description" (t2/select-one-fn :description :model/Channel (:id channel)))))
-
       (testing "can disable a channel"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
                               {:active false})
@@ -79,7 +75,6 @@
     (testing "return active channels only"
       (is (= [(update chn-1 :type u/qualified-name)]
              (mt/user-http-request :crowberto :get 200 "channel"))))
-
     (testing "return all if include_inactive is true"
       (is (= (map #(update % :type u/qualified-name) [chn-1 (assoc chn-2 :name "Channel 2")])
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
@@ -98,7 +93,6 @@
         (get-channel :rasta 403)
         (is (= #{}
                (get-channels :rasta))))
-
       (mt/when-ee-evailable
        (with-disabled-subscriptions-permissions!
          (mt/with-user-in-groups [group {:name "test notification perm"}
@@ -109,7 +103,6 @@
                  (is (= #{}
                         (get-channels (:id user))))
                  (get-channel user 403))
-
                (testing "can see channels if they have settings permissions"
                  (perms/grant-application-permissions! group :setting)
                  (get-channel user 200)
@@ -121,7 +114,6 @@
     (is (=? {:errors {:type "Must be a namespaced channel. E.g: channel/http"}}
             (mt/user-http-request :crowberto :post 400 "channel"
                                   (assoc default-test-channel :type "metabase-test"))))
-
     (is (=? {:errors {:type "Must be a namespaced channel. E.g: channel/http"}}
             (mt/user-http-request :crowberto :post 400 "channel"
                                   (assoc default-test-channel :type "metabase/metabase-test")))))
@@ -130,7 +122,6 @@
       (is (=? {:errors {:type "nullable Must be a namespaced channel. E.g: channel/http"}}
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
                                     (assoc chn-1 :type "metabase-test"))))
-
       (is (=? {:errors {:type "nullable Must be a namespaced channel. E.g: channel/http"}}
               (mt/user-http-request :crowberto :put 400 (str "channel/" (:id chn-1))
                                     (assoc chn-1 :type "metabase/metabase-test")))))))
@@ -151,14 +142,12 @@
            (mt/user-http-request :crowberto :post 200 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "return-value"
                                                                        :return-value true})))))
-
   (testing "returns text error message if the channel return falsy value"
     (is (= {:message "Unable to connect channel"
             :data    {:connection-result false}}
            (mt/user-http-request :crowberto :post 400 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "return-value"
                                                                        :return-value false})))))
-
   (testing "return the exception message and data if the channel throws an exception"
     (is (= {:message "Test error"
             :data    {:errors {:email "Invalid email"}}}
@@ -202,7 +191,6 @@
                                               :details {:url          url
                                                         :auth-method  "none"
                                                         :auth-info    {}}}))]
-
     (testing "external-only strategy (default)"
       (testing "blocks localhost addresses"
         (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
@@ -216,7 +204,6 @@
         (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
                (:message
                 (channel-test "http://169.254.1.100/api/health" 400))))))
-
     (testing "allow-private strategy"
       (mt/with-temporary-setting-values [http-channel-host-strategy :allow-private]
         (testing "still blocks localhost addresses"
@@ -227,7 +214,6 @@
           (is (= "URLs referring to hosts that supply internal hosting metadata are prohibited."
                  (:message
                   (channel-test "http://169.254.1.100/api/health" 400)))))))
-
     (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
       (channel.http-test/with-server [url [channel.http-test/post-200 channel.http-test/post-400]]
         (testing "allow-all strategy allows localhost"
@@ -237,7 +223,7 @@
   (testing "audit log for channel apis"
     (mt/with-premium-features #{:audit-app}
       (mt/with-model-cleanup [:model/Channel]
-        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [id (:id (mt/user-http-request :crowberto :post 200 "channel" default-test-channel))]
             (testing "POST /api/channel"
               (is (= {:details  {:description "Test channel description"
@@ -250,7 +236,6 @@
                       :topic    :channel-create
                       :user_id  (mt/user->id :crowberto)}
                      (mt/latest-audit-log-entry :channel-create))))
-
             (testing "PUT /api/channel/:id"
               (mt/user-http-request :crowberto :put 200 (str "channel/" id) (assoc default-test-channel :name "Updated Name"))
               (is (= {:details  {:new {:name "Updated Name"} :previous {:name "Test channel"}}

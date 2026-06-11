@@ -8,7 +8,6 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
-   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [methodical.core :as methodical])
   (:import
@@ -16,8 +15,9 @@
 
 (set! *warn-on-reflection* true)
 
-;; Wrapping snapshot accepts a list of path regexes to apply to paths in the source returning
-;; nil when they do not match
+;; A read-only, path-filtered view over a snapshot, used to scope ingestion to a set of path regexes:
+;; files (and reads) outside the filters are omitted. It is not a write target — exports write to the
+;; unfiltered source snapshot — so the write methods throw rather than silently filtering writes.
 (defrecord WrappingSnapshot [original-snapshot path-filters]
   source.p/SourceSnapshot
 
@@ -30,11 +30,11 @@
     (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
       (source.p/read-file original-snapshot path)))
 
-  (write-files! [_ message files]
-    (source.p/write-files! original-snapshot message
-                           (filter (fn [file-spec]
-                                     (some (fn [path-filter] (re-matches path-filter (:path file-spec))) path-filters))
-                                   files)))
+  (write-files! [_ _message _files]
+    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
+
+  (apply-changes! [_ _message _upserts _delete-paths]
+    (throw (UnsupportedOperationException. "WrappingSnapshot is a read-only ingestion view, not a write target.")))
 
   (version [_]
     (source.p/version original-snapshot)))
@@ -53,15 +53,13 @@
         basename (str (last resolved) ".yaml")]
     (str/join File/separator (concat dirnames [basename]))))
 
-(defn- ->file-spec
-  "Converts entity from serdes stream into file spec for source write-files!"
-  [task-id count opts idx entity]
-  (when (instance? Exception entity)
-    (throw entity))
-  (u/prog1 {:path (remote-sync-path opts entity)
-            :content (yaml/generate-string (serialization/serialization-deep-sort entity)
-                                           {:dumper-options {:flow-style :block :split-lines false}})}
-    (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
+(defn entity->file-spec
+  "Serializes a single extracted entity into a `{:path :content}` file spec, using storage context
+  `opts` (from `serdes/storage-base-context`)."
+  [opts entity]
+  {:path    (remote-sync-path opts entity)
+   :content (yaml/generate-string (serialization/serialization-deep-sort entity)
+                                  {:dumper-options {:flow-style :block :split-lines false}})})
 
 (defn store!
   "Stores serialized entities from a stream to a remote source and commits the changes.
@@ -71,15 +69,22 @@
   identifier used to track progress updates), and a message (the commit message to use when writing
   files to the source).
 
-  Returns the version written to the source.
-
-  Throws Exception if any entity in the stream is an Exception instance."
+  Returns `{:version <written-version> :entries [{:model_type :entity_id :path} ...]}`."
   [stream snapshot task-id message]
-  (let [opts (serdes/storage-base-context)
-        stream-count (bounded-count 10000 stream)]
-    (->> stream
-         (map-indexed #(->file-spec task-id stream-count opts %1 %2))
-         (source.p/write-files! snapshot message))))
+  (let [opts         (serdes/storage-base-context)
+        stream-count (bounded-count 10000 stream)
+        entries      (volatile! [])
+        version      (->> stream
+                          (map-indexed (fn [idx entity]
+                                         (let [spec (entity->file-spec opts entity)]
+                                           (vswap! entries conj {:model_type (-> entity :serdes/meta last :model)
+                                                                 :entity_id  (:entity_id entity)
+                                                                 :path       (:path spec)})
+                                           (remote-sync.task/update-progress!
+                                            task-id (-> (min (inc idx) stream-count) (/ stream-count) (* 0.65) (+ 0.3)))
+                                           spec)))
+                          (source.p/write-files! snapshot message))]
+    {:version version :entries @entries}))
 
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.

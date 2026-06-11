@@ -107,6 +107,7 @@ const UserProfileForm = ({
                 name="locale"
                 label={t`Language`}
                 data={localeOptions}
+                searchable
                 description={
                   <CommunityLocalizationNotice isAdminView={false} />
                 }

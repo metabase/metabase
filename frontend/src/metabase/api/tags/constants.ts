@@ -2,6 +2,7 @@ export type TagType = (typeof TAG_TYPES)[number];
 
 export const TAG_TYPES = [
   "action",
+  "activity",
   "alert",
   "api-key",
   "bookmark",
@@ -17,6 +18,8 @@ export const TAG_TYPES = [
   "database",
   "dataset",
   "document",
+  "embed-theme",
+  "erd",
   "external-transform",
   "public-document",
   "comment",
@@ -44,6 +47,7 @@ export const TAG_TYPES = [
   "subscription",
   "subscription-channel",
   "table",
+  "table-remapping",
   "task",
   "task-run",
   "timeline",

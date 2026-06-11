@@ -40,7 +40,7 @@ describe("getSourceError", () => {
       }),
       dependentsCount: 5,
       expected:
-        "This table has sandboxing policies that block this replacement.",
+        "This table has row or column security policies that block this replacement.",
     },
     {
       name: "checkInfo has no source-level errors",

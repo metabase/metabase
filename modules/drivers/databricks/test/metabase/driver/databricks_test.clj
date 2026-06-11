@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.databricks-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.databricks-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.databricks-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -16,6 +18,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- maybe-qualify-schema
@@ -146,10 +149,11 @@
                (set fields)))))))
 
 (deftest ^:parallel describe-fks-test
-  (mt/test-driver
-    :databricks
-    (let [fks (vec (driver/describe-fks :databricks (mt/db) {:schema-names [(maybe-qualify-schema "test-data")]
-                                                             :table-names ["orders"]}))]
+  (mt/test-driver :databricks
+    (let [fks (vec (driver/describe-fks :databricks
+                                        (lib.metadata/database (mt/metadata-provider))
+                                        {:schema-names [(maybe-qualify-schema "test-data")]
+                                         :table-names ["orders"]}))]
       (testing "Only fks from current catalog are registered"
         (is (= 2 (count fks))))
       (testing "Expected fks are returned"
@@ -472,7 +476,17 @@
     (testing "Can connect returns true for catalog that is present on the instance"
       (is (true? (driver/can-connect? :databricks (:details (mt/db))))))
     (testing "Can connect returns false for catalog that is NOT present on the instance (#49444)"
-      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))))
+      (is (false? (driver/can-connect? :databricks (assoc (:details (mt/db)) :catalog "xixixix")))))
+    (testing "Disallows unsafe connection parameters"
+      (let [details (assoc (:details (mt/db)) :additional-options "VolumeOperationAllowedLocalPaths=/etc/hosts")]
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks details)))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/can-connect? :databricks (update details
+                                                                       :additional-options
+                                                                       u/lower-case-en))))
+        (is (thrown-with-msg? Exception #"Potentially dangerous keys"
+                              (driver/validate-db-details! :databricks details)))))))
 
 (deftest can-connect-using-m2m-test
   (mt/test-driver

@@ -9,12 +9,13 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { TitleSection } from "metabase/data-studio/common/components/TitleSection";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import { useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import {
@@ -24,7 +25,6 @@ import {
 import { RunButton } from "../../../components/RunButton";
 import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
-import { TitleSection } from "../../../components/TitleSection";
 
 import { LogOutput } from "./LogOutput";
 

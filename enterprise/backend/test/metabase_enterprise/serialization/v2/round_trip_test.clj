@@ -25,7 +25,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -38,17 +38,11 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
    (java.nio.file.attribute FileAttribute)))
-
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -176,7 +170,7 @@
                             out-file (io/file output-dir file)]
                       :when (.exists out-file)
                       :let [delta (compare-files ref-file out-file)]]
-                (is (nil? delta)
+                (is (= nil delta)
                     (str "Content mismatch for file: " (strip-base-path source-dir file)))
                 ;; Leave behind files for developers to inspect
                 (when (and (.exists dev-inspect-dir) delta)

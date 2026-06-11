@@ -14,7 +14,7 @@ import {
   useTransformPermissions,
 } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   ScheduleDisplayType,
   TransformJob,
@@ -23,9 +23,8 @@ import type {
 } from "metabase-types/api";
 
 import { JobEditor } from "../../components/JobEditor";
+import { JobMoreMenu } from "../../components/JobMoreMenu";
 import { POLLING_INTERVAL } from "../../constants";
-
-import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;
@@ -52,14 +51,11 @@ export function JobPage({ params }: JobPageProps) {
 
   const { transformsDatabases, isLoadingDatabases, databasesError } =
     useTransformPermissions();
-  const {
-    data: transforms,
-    isLoading: isLoadingTransforms,
-    error: transformsError,
-  } = useListTransformJobTransformsQuery(jobId || skipToken);
+  const { data: transforms, isLoading: isLoadingTransforms } =
+    useListTransformJobTransformsQuery(jobId || skipToken);
   const readOnly = useMemo(() => {
     if (!transformsDatabases || !transforms) {
-      return;
+      return true;
     }
     return !transforms.every((t) => canEditTransform(t, transformsDatabases));
   }, [transforms, transformsDatabases]);
@@ -68,9 +64,8 @@ export function JobPage({ params }: JobPageProps) {
     setIsPolling(isPollingNeeded(job));
   }
 
-  const isLoading = isLoadingJob || isLoadingDatabases || isLoadingTransforms;
-  const error = jobError || databasesError || transformsError;
-
+  const isLoading = isLoadingJob || isLoadingDatabases;
+  const error = jobError || databasesError;
   if (isLoading || error != null || job == null) {
     return (
       <Center h="100%">
@@ -79,15 +74,26 @@ export function JobPage({ params }: JobPageProps) {
     );
   }
 
-  return <JobPageBody job={job} readOnly={readOnly} />;
+  return (
+    <JobPageBody
+      job={job}
+      readOnly={readOnly}
+      isCheckingPermissions={isLoadingTransforms}
+    />
+  );
 }
 
 type JobPageBodyProps = {
   job: TransformJob;
   readOnly?: boolean;
+  isCheckingPermissions?: boolean;
 };
 
-function JobPageBody({ job, readOnly }: JobPageBodyProps) {
+function JobPageBody({
+  job,
+  readOnly,
+  isCheckingPermissions,
+}: JobPageBodyProps) {
   const [updateJob] = useUpdateTransformJobMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -152,6 +158,7 @@ function JobPageBody({ job, readOnly }: JobPageBodyProps) {
       job={job}
       menu={!readOnly && <JobMoreMenu job={job} />}
       readOnly={readOnly}
+      isCheckingPermissions={isCheckingPermissions}
       onNameChange={handleNameChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}

@@ -90,16 +90,21 @@
   (-> group-mappings vals flatten set))
 
 (defn stringify-valid-attributes
-  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings"
+  "Remove all invalid attributes from passed user attributes, make sure all the remaining keys and values are strings.
+  Multi-value attributes (vectors, lists, lazy seqs — produced by SAML/JWT for repeated attributes) are joined into a
+  comma-separated string so that downstream code receives a usable string value."
   [attrs]
   (->> attrs
        (keep (fn [[key value]]
                (cond
-                 (or (vector? value) (map? value) (nil? value))
+                 (or (map? value) (nil? value))
                  (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
 
                  (str/starts-with? (name key) "@")
                  (log/warnf "Dropping attribute '%s', keys beginning with `@` are reserved" (name key))
+
+                 (sequential? value)
+                 [(u/qualified-name key) (str/join "," (map str value))]
 
                  :else
                  [(u/qualified-name key) (str value)])))

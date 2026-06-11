@@ -2,14 +2,20 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
-import { Form, FormErrorMessage, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+} from "metabase/forms";
 import { Box, Button, Group, Modal, Stack, Text } from "metabase/ui";
 
 interface ArchiveModalProps {
   title?: string;
   message?: ReactNode;
   model: "card" | "model" | "metric" | "dashboard" | "collection";
-  modelId: number;
+  // null matches SimpleEventSchema's target_id for entities without a numeric id
+  modelId: number | null;
   isLoading?: boolean;
   onArchive: () => Promise<void>;
   onClose: () => void;
@@ -24,6 +30,8 @@ export const ArchiveModal = ({
   onClose,
   onArchive,
 }: ArchiveModalProps) => {
+  const archiveButtonLabel = t`Move to trash`;
+
   const archive = async () => {
     await archiveAndTrack({
       archive: onArchive,
@@ -45,15 +53,16 @@ export const ArchiveModal = ({
                 <FormErrorMessage />
               </Box>
               <Button onClick={onClose}>{t`Cancel`}</Button>
-              <Button
+              <FormSubmitButton
                 color="error"
                 variant="filled"
-                loading={isLoading}
+                label={archiveButtonLabel}
+                activeLabel={archiveButtonLabel}
+                successLabel={archiveButtonLabel}
+                failedLabel={archiveButtonLabel}
+                disabled={isLoading}
                 data-autofocus
-                onClick={archive}
-              >
-                {t`Move to trash`}
-              </Button>
+              />
             </Group>
           </Stack>
         </Form>

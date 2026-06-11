@@ -1,18 +1,21 @@
 import { match } from "ts-pattern";
 
-import { AIQuestionAnalysisSidebar } from "metabase/metabot/components/AIQuestionAnalysisSidebar";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { setTemplateTagConfig } from "metabase/query_builder/actions";
+import { AIQuestionAnalysisSidebar } from "metabase/query_builder/components/AIQuestionAnalysisSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { TimelineSidebar } from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import { getOriginalQuestion } from "metabase/query_builder/selectors";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
+import { TagEditorSidebar } from "metabase/querying/components/template_tags/TagEditorSidebar";
+import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   DatabaseId,
+  EmbeddingParameterVisibility,
   NativeDatasetQuery,
   RowValue,
   TemplateTag,
@@ -84,6 +87,9 @@ export const NativeQueryRightSidebar = (
     onCloseAIQuestionAnalysisSidebar,
   } = props;
 
+  const dispatch = useDispatch();
+  const originalQuestion = useSelector(getOriginalQuestion);
+
   return match({
     isShowingTemplateTagsEditor,
     isShowingDataReference,
@@ -99,6 +105,10 @@ export const NativeQueryRightSidebar = (
         <TagEditorSidebar
           {...props}
           query={query}
+          originalQuestion={originalQuestion}
+          setTemplateTagConfig={(tag, config) =>
+            dispatch(setTemplateTagConfig(tag, config))
+          }
           onClose={toggleTemplateTagsEditor}
         />
       ) : null;

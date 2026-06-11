@@ -1,4 +1,5 @@
 (ns metabase.search.appdb.index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.search.appdb.index-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -76,14 +77,13 @@
   (let [fulltext? (= :postgres (mdb/db-type))]
     (with-index
       (testing "The index is updated when models change"
-       ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
+        ;; Has a second entry is "Revenue Project(ions)", when using English dictionary
         (is (= (if fulltext? 2 1) (count (search.index/search "Projected Revenue"))))
         (is (= 0 (count (search.index/search "Protected Avenue"))))
         (t2/update! :model/Card {:name "Projected Revenue"} {:name "Protected Avenue"})
         (is (= (if fulltext? 1 0) (count (search.index/search "Projected Revenue"))))
         (is (= 1 (count (search.index/search "Protected Avenue"))))
-
-       ;; Delete hooks are remove for now, over performance concerns.
+        ;; Delete hooks are remove for now, over performance concerns.
        ;(t2/delete! :model/Card :name "Protected Avenue")
         #_(is (= 0 #_1 (count (search.index/search "Projected Revenue"))))
         #_(is (= 0 (count (search.index/search "Protected Avenue"))))))))
@@ -107,16 +107,14 @@
   (with-index
     (with-fulltext-filtering
       (testing "It does not match partial words"
-      ;; does not include revenue
+        ;; does not include revenue
         (is (= #{"venues"} (into #{} (comp (map second) (map u/lower-case-en)) (search.index/search "venue")))))
-
-    ;; no longer works without using the english dictionary
+      ;; no longer works without using the english dictionary
       (testing "Unless their lexemes are matching"
         (doseq [[a b] [["revenue" "revenues"]
                        ["collect" "collection"]]]
           (is (= (search.index/search a)
                  (search.index/search b)))))
-
       (testing "Or we match a completion of the final word"
         (is (seq (search.index/search "sat")))
         (is (seq (search.index/search "satisf")))
@@ -133,7 +131,7 @@
         (is (<= 1 (index-hits "user"))))
       (testing "But stop words are skipped"
         (is (= 0 (index-hits "or")))
-      ;; stop words depend on a dictionary
+        ;; stop words depend on a dictionary
         (is (= #_0 3 (index-hits "its the satisfaction of it"))))
       (testing "We can combine the individual results"
         (is (= (+ (index-hits "satisfaction")
@@ -234,7 +232,6 @@
                       :last_editor_id           nil
                       :verified                 nil})
                     (ingest-then-fetch! model-type card-name))))))
-
       (testing (format "everything %s" model-type)
         (let [card-name    (mt/random-name)
               yesterday    (t/- (now) (t/days 1))
@@ -417,7 +414,6 @@
                                                          :timestamp   two-days-ago
                                                          :most_recent true
                                                          :object      {}}]
-
         (is (=? (index-entity
                  {:model            "dashboard"
                   :model_id         (str dashboard-id)
@@ -507,7 +503,7 @@
                                                          :state      "initial"
                                                          :creator_id (mt/user->id :rasta)}]
       (model-index/add-values! model-index)
-      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+      (is (= "indexed-entity" (:model (u/rlast (search.ingestion/searchable-documents))))))))
 
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
@@ -547,8 +543,7 @@
    "metabase_table"    #{"action" "measure" "model_index_value" "report_card" "segment"}
    "document"          #{"action" "model_index_value" "report_card"}
    "report_card"       #{"action" "model_index_value"}
-   "report_dashboard"  #{"action" "model_index_value" "report_card"}
-   "workspace"         #{"collection"}})
+   "report_dashboard"  #{"action" "model_index_value" "report_card"}})
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
@@ -602,7 +597,6 @@
               pending-old  (search.index/gen-table-name)
               pending-new  (search.index/gen-table-name)
               version      (search.spec/index-version-hash)]
-
           ;; Set up old pending table (more than a day old)
           (search.index/create-table! pending-old)
           (search-index-metadata/create-pending! :appdb version pending-old)
@@ -610,18 +604,14 @@
                       {:index_name (name pending-old)}
                       {:created_at (t/minus (t/offset-date-time) (t/days 2))})
           (#'search.index/sync-tracking-atoms!)
-
           (testing "Active table is returned"
             (is (= active-table (search.index/active-table))))
-
           (testing "Old pending table is ignored (more than a day old)"
             (is (nil? (#'search.index/pending-table))))
-
           ;; Create new pending table (less than a day old)
           (search.index/create-table! pending-new)
           (search-index-metadata/create-pending! :appdb version pending-new)
           (#'search.index/sync-tracking-atoms!)
-
           (testing "New pending table is included (less than a day old)"
             (is (= active-table (search.index/active-table)))
             (is (= pending-new (#'search.index/pending-table)))))
@@ -629,16 +619,101 @@
           (t2/delete! :model/SearchIndexMetadata :version "pending-timeout-test")
           (#'search.index/delete-obsolete-tables!))))))
 
+(deftest strip-junk-chars-test
+  (let [strip @#'search.index/strip-junk-chars]
+    (testing "non-string values pass through unchanged"
+      (is (= 42        (strip 42)))
+      (is (= :a-kw     (strip :a-kw)))
+      (is (= nil       (strip nil)))
+      (is (= [:|| "x"] (strip [:|| "x"]))))
+    (testing "NUL byte (0x00) is replaced with a space — Postgres rejects raw NUL in text columns"
+      (is (= "a b" (strip "a b"))))
+    (testing "C0 controls (BEL, BS, VT, FF, US) are replaced with spaces"
+      (is (= "a b c d e f"
+             (strip "abcdef"))))
+    (testing "tab/newline/CR also become spaces (already whitespace for tsvector tokenization)"
+      (is (= "a b c d" (strip "a\tb\nc\rd"))))
+    (testing "DEL (0x7F) and C1 controls (0x80-0x9F) are replaced"
+      (is (= "a b c d" (strip "abcd"))))
+    (testing "unpaired surrogate code points are replaced"
+      (is (= "a b" (strip (str "a" (char 0xD800) "b")))))
+    (testing "ordinary text — letters, digits, punctuation, CJK, emoji — is untouched"
+      (is (= "Hello, world! 123 你好 🦄"
+             (strip "Hello, world! 123 你好 🦄"))))
+    (testing "BOM (U+FEFF) and zero-width joiner (U+200D — Cf class) are intentionally NOT stripped"
+      (is (= "a﻿b‍c" (strip "a﻿b‍c"))))
+    (testing "control chars at start/end of string"
+      (is (= " a " (strip " a"))))
+    (testing "consecutive control chars each become a space"
+      (is (= "a   b" (strip "a b"))))))
+
+(deftest document->entry-junk-chars-test
+  ;; document->entry calls (specialization/extra-entry-fields entity), which dispatches on (mdb/db-type)
+  ;; and is only implemented for :postgres and :h2 — running this on MySQL/MariaDB hits the missing-impl error.
+  (when (#{:postgres :h2} (mdb/db-type))
+    (let [->entry    @#'search.index/document->entry
+          FF         (str (char 0x000C))
+          NUL        (str (char 0x0000))
+          BEL        (str (char 0x0007))
+          DEL        (str (char 0x007F))
+          dirty-name (str "Title" FF "Sub" NUL "title" BEL)
+          dirty-st   (str "line1" DEL "line2")
+          entity     {:model           "card"
+                      :name            dirty-name
+                      :searchable_text dirty-st
+                      :display_data    {:name dirty-name}
+                      :legacy_input    {}
+                      :archived        false}
+          entry      (->entry entity)]
+      (testing "top-level :name column has control chars replaced with spaces"
+        (is (= "Title Sub title " (:name entry))))
+      (testing "search_vector / extra fields built from the stripped entity contain no raw control chars"
+        (let [printed (pr-str (vals (select-keys entry [:search_vector :with_native_query_vector
+                                                        :search_terms :native_search_terms])))]
+          (is (false? (.contains printed NUL)) "no NUL byte")
+          (is (false? (.contains printed BEL)) "no BEL")
+          (is (false? (.contains printed FF))  "no form feed")
+          (is (false? (.contains printed DEL)) "no DEL")))
+      (testing "display_data preserves original characters (value was a map at strip time, encoded after)"
+        (let [^String json-str (:display_data entry)]
+          (is (false? (.contains json-str ^CharSequence NUL)) "encoded JSON has no raw NUL")
+          (is (false? (.contains json-str ^CharSequence FF))  "encoded JSON has no raw form feed"))))))
+
+(deftest reindex-survives-duplicate-most-recent-revisions-test
+  ;; Two `revision` rows with `most_recent = true` for the same card cause the spec's LEFT
+  ;; JOIN to produce two rows per card. Before this fix, the resulting duplicate (model, model_id)
+  ;; pair in one upsert batch tripped a unique constraint, failing the batch (and the whole reindex).
+  (when (search/supports-index?)
+    (with-index
+      (let [card-id (t2/select-one-pk :model/Card :name "Customer Satisfaction")
+            insert-rev! (fn []
+                          ;; Raw SQL to bypass the before/after-insert hooks that would normally
+                          ;; demote older revisions to most_recent=false.
+                          (t2/query {:insert-into [(t2/table-name :model/Revision)]
+                                     :values [{:model "Card"
+                                               :model_id card-id
+                                               :user_id (mt/user->id :rasta)
+                                               :object "{}"
+                                               :is_creation false
+                                               :is_reversion false
+                                               :most_recent true
+                                               :timestamp :%now}]}))]
+        (insert-rev!)
+        (insert-rev!)
+        (testing "two revision rows with most_recent=true exist for the card"
+          (is (= 2 (t2/count :model/Revision :model "Card" :model_id card-id :most_recent true))))
+        (testing "reindex completes and writes a single row for the card"
+          (search.engine/reindex! :search.engine/appdb {:in-place? true})
+          (is (= 1 (t2/count (search.index/active-table) :model "card" :model_id (str card-id)))))))))
+
 (deftest when-index-created
   (when (search/supports-index?)
     (binding [search.spec/*testing-only-index-version-hash* "index-age-test"]
       (try
         (let [table-name (search.index/gen-table-name)
               version (search.spec/index-version-hash)]
-
           (testing "Nil age if no active table"
             (is (nil? (#'search.index/when-index-created))))
-
           (testing "Returns age of active table"
             (let [update-time (t/truncate-to (t/minus (t/offset-date-time) (t/days 2)) :millis)]
               (search.index/create-table! table-name)
@@ -647,7 +722,6 @@
               (t2/update! :model/SearchIndexMetadata
                           :index_name  (name table-name)
                           {:created_at  update-time})
-
               (is (= update-time (t/truncate-to (#'search.index/when-index-created) :millis))))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "index-age-test")

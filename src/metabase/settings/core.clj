@@ -91,6 +91,7 @@
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
+  db-stored-value
   default-value
   defsetting
   disabled-for-db-reasons
@@ -99,6 +100,7 @@
   export?
   get
   get-raw-value
+  get-raw-value-source
   log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?

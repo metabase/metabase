@@ -11,17 +11,17 @@ import {
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { ConfirmMoveDashboardQuestionCandidatesModal } from "./ConfirmMoveDashboardQuestionCandidatesModal";
 import { MoveQuestionsIntoDashboardsInfoModal } from "./MoveQuestionsIntoDashboardsInfoModal";
 
 interface MoveQuestionsIntoDashboardsModalProps {
   onClose: () => void;
-  params: { slug: string };
+  params: { slug?: string };
   location: Location<unknown>;
 }
 

@@ -32,7 +32,7 @@ jobs:
       MB_DB_TYPE: h2
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -58,7 +58,7 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -84,13 +84,13 @@ jobs:
           POSTGRES_DB: mb_test
           POSTGRES_HOST_AUTH_METHOD: trust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
           head-ref: ${{ env.HEAD_REF }}
 
-  migrations-mysql-8-4-ee:
+  migrations-mysql-8-0-ee:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     env:
@@ -102,14 +102,14 @@ jobs:
       MB_DB_USER: root
     services:
       mysql:
-        image: mysql:8.4
+        image: mysql:8.0
         ports:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
           MYSQL_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -135,7 +135,7 @@ jobs:
         ports:
           - "3306:3306"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -160,7 +160,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}
@@ -185,7 +185,7 @@ jobs:
           MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
           MARIADB_DATABASE: mb_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/cross-branch-migration-test
         with:
           base-ref: ${{ env.BASE_REF }}

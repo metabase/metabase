@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 
 import { loadMetadataForTable } from "metabase/questions/actions";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { b64url_to_utf8, utf8_to_b64url } from "metabase/utils/encoding";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { OpaqueDatasetQuery } from "metabase-types/api";

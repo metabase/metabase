@@ -2,16 +2,15 @@ import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import { Collections } from "metabase/entities/collections";
-import { Groups } from "metabase/entities/groups";
+import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
+import { Button } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import {
@@ -32,14 +31,14 @@ import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
 
-const getDefaultTitle = (namespace: CollectionNamespace) =>
+const getDefaultTitle = (namespace?: CollectionNamespace) =>
   namespace === "snippets"
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
 const mapStateToProps = (
   state: State,
-  props: { params: { slug?: string }; namespace: CollectionNamespace },
+  props: { params: { slug?: string }; namespace?: CollectionNamespace },
 ) => {
   const collectionId = Urls.extractCollectionId(props.params.slug);
   if (!collectionId) {
@@ -57,9 +56,6 @@ const mapStateToProps = (
       params: { collectionId },
       namespace: props.namespace,
     }),
-    collectionsList: Collections.selectors.getList(state, {
-      entityQuery: { tree: true },
-    }),
     isDirty: getIsDirty(state),
   };
 };
@@ -74,9 +70,8 @@ interface CollectionPermissionsModalProps {
   permissionEditor: PermissionEditorType | null;
   isDirty: boolean;
   onClose: () => void;
-  namespace: CollectionNamespace;
+  namespace?: CollectionNamespace;
   collection?: Collection;
-  collectionsList?: Collection[];
   initialize: (namespace: CollectionNamespace) => void;
   updateCollectionPermission: (
     params: UpdateCollectionPermissionParams,
@@ -88,14 +83,16 @@ const CollectionPermissionsModal = ({
   permissionEditor,
   isDirty,
   onClose,
-  namespace,
+  namespace = null,
   collection,
-  collectionsList,
 
   initialize,
   updateCollectionPermission,
   saveCollectionPermissions,
 }: CollectionPermissionsModalProps) => {
+  const { data: collectionsList } =
+    useListCollectionsTreeQuery(collectionsQuery);
+
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,
   );
@@ -163,7 +160,12 @@ const CollectionPermissionsModal = ({
               </Link>,
             ]),
         <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="save" primary disabled={!isDirty} onClick={handleSave}>
+        <Button
+          key="save"
+          variant="filled"
+          disabled={!isDirty}
+          onClick={handleSave}
+        >
           {t`Save`}
         </Button>,
       ]}
@@ -181,10 +183,6 @@ const CollectionPermissionsModal = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Collections.loadList({
-    entityQuery: collectionsQuery,
-  }),
-  Groups.loadList(),
-  connect(mapStateToProps, mapDispatchToProps),
-)(CollectionPermissionsModal);
+export default _.compose(connect(mapStateToProps, mapDispatchToProps))(
+  CollectionPermissionsModal,
+);

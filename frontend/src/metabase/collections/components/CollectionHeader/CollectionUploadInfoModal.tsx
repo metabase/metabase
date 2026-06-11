@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Modal } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
+import { Button, Modal } from "metabase/ui";
 
 import {
   InfoModalBody,
@@ -42,7 +41,12 @@ export const UploadInfoModal = ({
                 {t`You'll be able to pick the default database where the data should be stored when enabling the feature.`}
               </p>
             </InfoModalBody>
-            <Button as={Link} to="/admin/settings/uploads" primary role="link">
+            <Button
+              component={Link}
+              to="/admin/settings/uploads"
+              variant="filled"
+              role="link"
+            >
               {t`Go to setup`}
             </Button>
           </>

@@ -1,0 +1,7 @@
+{
+  "name": "__CUSTOM_VIZ_NAME__",
+  "icon": "icon.svg",
+  "metabase": {
+    "version": ">=1.60.0"
+  }
+}

@@ -1,5 +1,8 @@
+import type { Interception } from "cypress/types/net-stubbing";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createNativeQuestion,
   createQuestion,
   downloadAndAssert,
   getSignedJwtForResource,
@@ -7,9 +10,12 @@ import {
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountGuestEmbedQuestion } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndSetupGuestEmbedding } from "e2e/support/helpers/embedding-sdk-testing";
-import type { Card } from "metabase-types/api";
+import type { Card, TemplateTags } from "metabase-types/api";
+import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+
+const { H } = cy;
 
 describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
   const setup = ({ display }: { display?: Card["display"] } = {}) => {
@@ -83,6 +89,95 @@ describe("scenarios > embedding-sdk > guest-embed reproductions", () => {
       getSdkRoot().within(() => {
         cy.findByText("Product ID").should("be.visible");
         cy.findByText("Max of Quantity").should("be.visible");
+      });
+    });
+  });
+
+  it("should include the active editable filter in native question downloads (EMB-1549)", () => {
+    signInAsAdminAndSetupGuestEmbedding({ token: "pro-cloud" });
+
+    const TEMPLATE_TAGS: TemplateTags = {
+      category: {
+        id: "category",
+        name: "category",
+        "display-name": "Category",
+        type: "dimension",
+        "widget-type": "string/=",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+      },
+    };
+
+    const PARAMETERS = [
+      createMockParameter({
+        id: "category",
+        name: "Category",
+        slug: "category",
+        type: "string/=",
+        target: ["dimension", ["template-tag", "category"]],
+      }),
+    ];
+
+    createNativeQuestion(
+      {
+        name: "EMB-1549 native question with editable filter",
+        native: {
+          query: "SELECT * FROM PRODUCTS WHERE {{category}}",
+          "template-tags": TEMPLATE_TAGS,
+        },
+        parameters: PARAMETERS,
+        enable_embedding: true,
+        embedding_params: {
+          category: "enabled",
+        },
+      },
+      { wrapId: true },
+    );
+
+    cy.signOut();
+
+    cy.get("@questionId").then(async (questionId) => {
+      const token = await getSignedJwtForResource({
+        resourceId: questionId as unknown as number,
+        resourceType: "question",
+      });
+
+      mountGuestEmbedQuestion(
+        { token, withDownloads: true },
+        { shouldAssertCardQuery: false },
+      );
+
+      getSdkRoot()
+        .findAllByTestId("parameter-widget")
+        .button("Category")
+        .click();
+
+      H.popover().within(() => {
+        cy.findByText("Widget").click();
+        cy.findByText("Add filter").click();
+      });
+
+      getSdkRoot()
+        .findAllByTestId("parameter-widget")
+        .button("Category")
+        .should("contain.text", "Widget");
+
+      downloadAndAssert({
+        isDashboard: false,
+        isEmbed: true,
+        enableFormatting: true,
+        assertStatusCode: 200,
+        waitForDismiss: false,
+        fileType: "csv",
+        downloadUrl: "/api/embed/card/*/query/csv*",
+        downloadMethod: "GET",
+      });
+
+      cy.get<Interception>("@fileDownload").then((interception) => {
+        const url = new URL(interception.request.url);
+        const parameters = JSON.parse(
+          url.searchParams.get("parameters") ?? "{}",
+        );
+        expect(parameters).to.deep.equal({ category: ["Widget"] });
       });
     });
   });

@@ -47,6 +47,15 @@ If you do not have `clojure-eval` available to you or `clj-nrepl-eval`, do not f
 ./bin/test-agent :only '[metabase.foo-test metabase.bar-test]'  # multiple namespaces
 ```
 
+For module-scoped runs — useful when validating a branch's blast radius — pass `:module` (single) or `:modules` (vector) to scope tests to the module(s) the branch touched. The test runner resolves these to test directories: `enterprise/foo` → `enterprise/backend/test/metabase_enterprise/foo`, otherwise `test/metabase/<name>` (see `metabase.test-runner/parse-options`).
+
+```bash
+./bin/test-agent :module enterprise/workspaces
+./bin/test-agent :modules '[sql-parsing query-processor]'
+# Driver tests: --drivers=LIST adds the driver aliases and sets DRIVERS=LIST in one step.
+./bin/test-agent --drivers=mysql,h2,postgres :module enterprise/workspaces
+```
+
 Once again, do not use `clj -X:dev:test` directly — its progress-bar output is hard to parse.
 
 ## Tool Preferences

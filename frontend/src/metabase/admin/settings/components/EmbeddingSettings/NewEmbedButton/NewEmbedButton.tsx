@@ -1,10 +1,17 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
-export const NewEmbedButton = () => {
+interface NewEmbedButtonProps {
+  /**
+   * Force initial authentication mode to `guest`
+   */
+  forceIsGuest?: boolean;
+}
+
+export const NewEmbedButton = ({ forceIsGuest }: NewEmbedButtonProps) => {
   const dispatch = useDispatch();
 
   return (
@@ -17,8 +24,7 @@ export const NewEmbedButton = () => {
             id: "embed",
             props: {
               initialState: {
-                isGuest: true,
-                useExistingUserSession: true,
+                isGuest: forceIsGuest,
               },
             },
           }),

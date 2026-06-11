@@ -28,14 +28,12 @@ export type DraggedWellItem = BaseDraggedItem<{
 
 export type DraggedItem = DraggedColumn | DraggedWellItem;
 
-export interface VisualizerVizDefinitionWithColumns
-  extends VisualizerVizDefinition {
+export interface VisualizerVizDefinitionWithColumns extends VisualizerVizDefinition {
   columns: DatasetColumn[];
 }
 
-export interface VisualizerVizDefinitionWithColumnsAndFallbacks
-  extends VisualizerVizDefinitionWithColumns {
-  datasetFallbacks?: Record<number, Dataset | null | undefined>;
+export interface VisualizerVizDefinitionWithColumnsAndPreloadedDatasets extends VisualizerVizDefinitionWithColumns {
+  preloadedDatasets?: Record<number, Dataset | null | undefined>;
 }
 
 export interface VisualizerState extends VisualizerVizDefinitionWithColumns {

@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { Store } from "@reduxjs/toolkit";
-import type { StoryFn } from "@storybook/react/*";
+import type { StoryFn } from "@storybook/react";
 import { expect, userEvent, within } from "@storybook/test";
 import { KBarProvider, VisualState, useKBar } from "kbar";
 import { HttpResponse, http } from "msw";
@@ -12,10 +12,10 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import { commonReducers } from "metabase/reducers-common";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { Box, Center } from "metabase/ui";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
 import { LineChart } from "metabase/visualizations/visualizations/LineChart";
@@ -111,11 +111,13 @@ export const Recents = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
+    try {
+      const canvas = within(canvasElement);
 
-    await canvas.findByRole("option", { name: "Recents" });
-
-    asyncCallback();
+      await canvas.findByRole("option", { name: "Recents" });
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
@@ -124,21 +126,23 @@ export const Search = {
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
     const asyncCallback = createAsyncCallback();
-    const canvas = within(canvasElement);
+    try {
+      const canvas = within(canvasElement);
 
-    await userEvent.type(
-      await canvas.findByPlaceholderText(/Search for anything/),
-      "ord",
-    );
+      await userEvent.type(
+        await canvas.findByPlaceholderText(/Search for anything/),
+        "ord",
+      );
 
-    await canvas.findByRole("option", { name: "Results" });
+      await canvas.findByRole("option", { name: "Results" });
 
-    // Wait for the result to all show up because "Results" will be
-    // present when the search query is still loading
-    await expect(
-      await canvas.findByText("Product breakdown"),
-    ).toBeInTheDocument();
-
-    asyncCallback();
+      // Wait for the result to all show up because "Results" will be
+      // present when the search query is still loading
+      await expect(
+        await canvas.findByText("Product breakdown"),
+      ).toBeInTheDocument();
+    } finally {
+      asyncCallback();
+    }
   },
 };

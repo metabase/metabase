@@ -506,6 +506,11 @@ describe("issue 40635", () => {
     cy.button("Save").click();
     H.modal().button("Save").click();
 
+    H.undoToast()
+      .should("contain", "Add this to a dashboard")
+      .icon("close")
+      .click();
+
     assertSettingsSidebar();
     assertVisualizationColumns();
 
@@ -832,6 +837,12 @@ describe("issue 33844", () => {
 
   function testModelMetadata(isNew: boolean) {
     cy.log("make a column visible only in detail views");
+    // Wait for the metadata editor to finish loading before clicking the
+    // header. Otherwise a late query/metadata load remounts the results
+    // table and closes the column-settings sidebar we just opened, so the
+    // "Detail views only" option never appears.
+    H.waitForLoaderToBeRemoved();
+    H.tableInteractive().findByText("ID").should("be.visible");
     cy.findAllByTestId("detail-shortcut").should("not.exist");
     H.tableHeaderClick("ID");
     cy.findByLabelText("Detail views only").click();

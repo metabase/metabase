@@ -7,8 +7,8 @@ import {
 import { LoadingAndGenericErrorWrapper } from "metabase/common/components/LoadingAndGenericErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import { isSyncInProgress } from "metabase/utils/syncing";
 
 import { DatabaseList } from "../components/DatabaseList";

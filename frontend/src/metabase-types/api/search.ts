@@ -105,6 +105,7 @@ export interface SearchResult<
   model_index_id: number | null;
   table_description: string | null;
   table_name: string | null;
+  table_display_name: string | null;
   initial_sync_status: InitialSyncStatus | null;
   dashboard_count: number | null;
   context: any; // this might be a dead property
@@ -118,13 +119,30 @@ export interface SearchResult<
   based_on_upload?: TableId | null;
   "last-edit-info"?: LastEditInfo;
   result_metadata?: Field[];
+  collection_id?: CollectionId;
 }
 
+/**
+ * Model retrieved through the search endpoint
+ */
+export type ModelResult = SearchResult<number, "dataset">;
+
+// The frontend surface that issued a search request; the backend uses it to pick ranking weights and
+// filter defaults. Keep in sync with `metabase.search.config/ui-contexts`.
 export type SearchContext =
   | "search-bar"
   | "search-app"
   | "command-palette"
-  | "entity-picker";
+  | "entity-picker"
+  | "data-picker"
+  | "type-filter"
+  | "basic-actions"
+  | "browse"
+  | "embedding-setup"
+  | "document"
+  | "library"
+  | "dependencies"
+  | "model-migration";
 
 export type SearchRequest = {
   q?: string;
@@ -133,7 +151,7 @@ export type SearchRequest = {
   models?: SearchModel[];
   ids?: SearchResultId[];
   filter_items_in_personal_collection?: "only" | "exclude";
-  context?: SearchContext;
+  context: SearchContext;
   created_at?: string | null;
   created_by?: UserId[] | null;
   last_edited_at?: string | null;

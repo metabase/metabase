@@ -15,6 +15,7 @@ import {
 import { t } from "ttag";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Undo } from "metabase/redux/store/undo";
 import {
   dismissUndo,
@@ -22,9 +23,8 @@ import {
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Ellipsified, Portal, Progress } from "metabase/ui";
+import { Card, Ellipsified, Portal, Progress } from "metabase/ui";
 import { capitalize, inflect } from "metabase/utils/formatting";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import CS from "./UndoListing.module.css";
 import {
@@ -34,7 +34,6 @@ import {
   ControlsCardContent,
   DefaultText,
   DismissIcon,
-  ToastCard,
   UndoButton,
   UndoList,
 } from "./UndoListing.styled";
@@ -89,18 +88,30 @@ function UndoToast({
     }
   };
 
+  const dark = undo.dark ?? true;
+  const noBorder = undo.showProgress;
+
   return (
-    <ToastCard
+    <Card
       ref={undo.ref}
-      dark
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
-      noBorder={undo.showProgress}
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={style}
+      bg={dark ? "background-primary-inverse" : "background-primary"}
+      c={dark ? "text-secondary-inverse" : "text-primary"}
+      withBorder={!noBorder}
+      radius="md"
+      p="md"
+      mt="sm"
+      maw="calc(100vw - 2 * var(--mantine-spacing-md))"
+      style={{
+        overflowX: noBorder ? "hidden" : undefined,
+        ...style,
+        ...undo.style,
+      }}
     >
       {undo.showProgress && (
         <Progress
@@ -162,7 +173,7 @@ function UndoToast({
           )}
         </ControlsCardContent>
       </CardContent>
-    </ToastCard>
+    </Card>
   );
 }
 

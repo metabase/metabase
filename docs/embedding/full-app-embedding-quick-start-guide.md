@@ -12,8 +12,6 @@ redirect_from:
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
-{% include shared/in-page-promo-embedding-workshop.html %}
-
 ## Prerequisites
 
 {% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embedding=true%}

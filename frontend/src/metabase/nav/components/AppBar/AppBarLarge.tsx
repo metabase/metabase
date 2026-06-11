@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
@@ -7,10 +8,8 @@ import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import type { DetailViewState } from "metabase/redux/store";
 import { Box, Flex } from "metabase/ui";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, SearchResult } from "metabase-types/api";
 
-import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
-import QuestionLineage from "../../containers/QuestionLineage";
 import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";
 import { SearchBar } from "../search/SearchBar";
@@ -35,10 +34,14 @@ export interface AppBarLargeProps {
   isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isMetricsViewer?: boolean;
+  collectionBreadcrumbs?: ReactNode;
+  questionLineage?: ReactNode;
+  onSearchItemSelect?: (result: SearchResult) => void;
   onToggleNavbar: () => void;
 }
 
-const AppBarLarge = ({
+export const AppBarLarge = ({
   detailView,
   collectionId,
   isNavBarOpen,
@@ -53,13 +56,18 @@ const AppBarLarge = ({
   isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isMetricsViewer,
+  collectionBreadcrumbs,
+  questionLineage,
+  onSearchItemSelect,
   onToggleNavbar,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
   const { isVisible: isGitSyncVisible } =
     PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
-  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
+  const { hasMetabotAccess: isMetabotVisibleToUser } =
+    useUserMetabotPermissions();
 
   return (
     <AppBarRoot
@@ -67,7 +75,8 @@ const AppBarLarge = ({
         isNavBarVisible ||
         isMetabotVisible ||
         isDocumentSidebarOpen ||
-        isCommentSidebarOpen
+        isCommentSidebarOpen ||
+        isMetricsViewer
       }
     >
       <Flex align="center" miw="5rem" flex="1 1 auto">
@@ -92,16 +101,16 @@ const AppBarLarge = ({
               table={detailView.table}
             />
           ) : isQuestionLineageVisible ? (
-            <QuestionLineage />
+            questionLineage
           ) : isCollectionPathVisible ? (
-            <CollectionBreadcrumbs />
+            collectionBreadcrumbs
           ) : null}
         </AppBarInfoContainer>
       </Flex>
       {(isSearchVisible ||
         isNewButtonVisible ||
         isAppSwitcherVisible ||
-        isMetabotEnabled) && (
+        isMetabotVisibleToUser) && (
         <Flex
           align="center"
           gap="sm"
@@ -110,7 +119,11 @@ const AppBarLarge = ({
           flex="1 1 auto"
         >
           {isSearchVisible &&
-            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
+            (isEmbeddingIframe ? (
+              <SearchBar onSearchItemSelect={onSearchItemSelect} />
+            ) : (
+              <SearchButton mr="md" />
+            ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           {<MetabotAppBarButton />}
           {isAppSwitcherVisible && (
@@ -123,6 +136,3 @@ const AppBarLarge = ({
     </AppBarRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AppBarLarge;

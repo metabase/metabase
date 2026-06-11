@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { UpsellPill } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { getIsHosted } from "metabase/setup/selectors";
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/selectors/settings";
 
 export const UpsellEmailWhitelabelPill = ({ source }: { source: string }) => {
   const isHosted = useSelector(getIsHosted);

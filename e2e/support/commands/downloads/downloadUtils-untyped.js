@@ -15,7 +15,6 @@ const removeDirectory = (path) => {
 };
 
 const copyDirectory = ({ source, destination }) => {
-  console.log({ source, destination });
   try {
     if (fs.existsSync(source)) {
       fs.cpSync(source, destination, { recursive: true });

@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import type { Card } from "metabase-types/api";
 
 import type { MetricUrls } from "../../types";
@@ -28,6 +32,7 @@ export function MetricPageShell({
 }: MetricPageShellProps) {
   const [updateCard] = useUpdateCardMutation();
   const [deleteCard] = useDeleteCardMutation();
+  const dispatch = useDispatch();
 
   return (
     <>
@@ -46,7 +51,23 @@ export function MetricPageShell({
               archived: false,
             })
           }
-          onDeletePermanently={() => deleteCard(card.id)}
+          onDeletePermanently={async () => {
+            try {
+              await deleteCard(card.id).unwrap();
+              dispatch(push("/trash"));
+              dispatch(
+                addUndo({
+                  message: t`This item has been permanently deleted.`,
+                }),
+              );
+            } catch {
+              dispatch(
+                addUndo({
+                  message: t`There was an error permanently deleting this item.`,
+                }),
+              );
+            }
+          }}
         />
       )}
       <MetricHeader

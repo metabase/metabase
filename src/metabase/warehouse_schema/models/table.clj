@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -174,6 +175,7 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
                   :data_layer   :internal}]
+    (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -188,14 +190,18 @@
         original-table (t2/original table)
         current-active (:active original-table)
         new-active     (:active changes)]
-
+    ;; Don't allow tables to be moved into collections which are not part of the Library's "Data" collection.
+    ;; Tables can be moved out of any collection, however.
+    (when (:collection_id changes)
+      (collection/check-allowed-content :table (:collection_id changes)))
     ;; Prevent setting data_authority back to unconfigured once configured
     (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
                (= (keyword (:data_authority changes)) :unconfigured))
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
-
-    ;; Prevent changing data_source to/from metabase-transform
+    ;; Prevent changing data_source to/from metabase-transform.
+    ;; The "to metabase-transform" direction is allowed during deserialization so an existing synced table
+    ;; can be migrated to a transform-managed table via serdes.
     (when (contains? changes :data_source)
       (let [original-data-source (some-> (:data_source original-table) keyword)
             new-data-source      (some-> (:data_source changes) keyword)]
@@ -203,11 +209,11 @@
                    (not= new-data-source :metabase-transform))
           (throw (ex-info "Cannot change data_source from metabase-transform"
                           {:status-code 400})))
-        (when (and (not= original-data-source :metabase-transform)
+        (when (and (not mi/*deserializing?*)
+                   (not= original-data-source :metabase-transform)
                    (= new-data-source :metabase-transform))
           (throw (ex-info "Cannot set data_source to metabase-transform"
                           {:status-code 400})))))
-
     ;; Sync visibility_type and data_layer fields
     (let [changes (sync-visibility-fields changes original-table)]
       (cond
@@ -253,6 +259,24 @@
       (perms/set-default-table-permissions!
        table
        (group-perm-defaults table all-users-group non-magic-groups non-admin-groups)))))
+
+(defn set-new-tables-permissions!
+  "Batch variant of [[set-new-table-permissions!]] for many newly-inserted
+  tables on the same database. Acquires the cluster lock once and delegates
+  to [[perms/set-default-table-permissions-bulk!]]. All `tables` must share
+  `db-id`."
+  [db-id tables]
+  (when (seq tables)
+    (perms/with-db-scoped-permissions-lock db-id
+      (let [all-users-group  (perms/all-users-group)
+            non-magic-groups (perms/non-magic-groups)
+            non-admin-groups (conj non-magic-groups all-users-group)
+            tables+defaults  (mapv (fn [t]
+                                     [t (group-perm-defaults t all-users-group
+                                                             non-magic-groups
+                                                             non-admin-groups)])
+                                   tables)]
+        (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
 
 (t2/define-after-insert :model/Table
   [table]
@@ -387,122 +411,17 @@
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping
    & [{:keys [include-published-via-collection? active-only?]}]]
-  (let [opts (cond-> {}
-               (some? active-only?) (assoc :active-only? active-only?))
-        {:keys [clause with]} (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping opts)]
-    (if-let [published-clause (and include-published-via-collection?
-                                   (perms/published-table-visible-clause column-or-exp user-info))]
-      {:clause [:or clause
-                [:and
-                 [:in column-or-exp (perms/visible-table-filter-select
-                                     :id
-                                     user-info
-                                     {:perms/view-data :unrestricted}
-                                     opts)]
-                 published-clause]]
-       :with with}
-      {:clause clause
-       :with with})))
+  (perms/visible-table-filter-with-cte
+   column-or-exp user-info permission-mapping
+   (cond-> {}
+     (some? active-only?) (assoc :active-only? active-only?)
+     include-published-via-collection? (assoc :include-published-via-collection? true))))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db :db_id)])
-
-;;; ----------------------------------------- Transform Target Tables -----------------------------------------------
-
-(defn upsert-transform-target-table!
-  "Ensure a metabase_table row exists for the given (db_id, schema, name) triple.
-   If the table doesn't exist, creates it as a transform target (inactive, not yet physically materialized).
-   If it already exists (active or inactive), returns its id without modification.
-   Returns the table id.
-
-   The `transform_target` column is **conservative**: it is set eagerly to `true` when a transform is
-   configured to target this table (synchronous, never stale), and cleared asynchronously when no
-   transforms reference it anymore. This means the column may have false positives (a table marked as
-   a target when no transform actually targets it) but **never false negatives** (a targeted table
-   will always have `transform_target = true`)."
-  [db-id schema table-name]
-  (app-db/update-or-insert!
-   :model/Table
-   {:db_id db-id :schema schema :name table-name}
-   (fn [existing]
-     (when-not existing
-       {:display_name        (humanization/name->human-readable-name table-name)
-        :active              false
-        :transform_target    true
-        :data_source         :metabase-transform
-        :data_authority      :computed
-        :initial_sync_status "complete"}))))
-
-(defn delete-orphaned-provisional-table!
-  "If `table-id` points at an inactive provisional table that is not referenced by any other
-   transform or workspace row (excluding `exclude-transform-id`), delete it."
-  [table-id exclude-transform-id]
-  (when table-id
-    (when-let [table (t2/select-one :model/Table :id table-id
-                                    :active false :transform_target true :deactivated_at nil
-                                    :data_source :metabase-transform)]
-      (let [referenced?
-            (seq
-             (t2/query {:union
-                        (cons
-                         {:select [[[:inline 1] :ref]]
-                          :from   [:transform]
-                          :where  [:and
-                                   [:= :target_table_id (:id table)]
-                                   [:not= :id exclude-transform-id]]}
-                         (for [[table-name column-name]
-                               [["workspace_input" "table_id"]
-                                ["workspace_output" "global_table_id"]
-                                ["workspace_output" "isolated_table_id"]
-                                ["workspace_output_external" "global_table_id"]
-                                ["workspace_output_external" "isolated_table_id"]
-                                ["workspace_input_external" "table_id"]]]
-                           {:select [[[:inline 1] :ref]]
-                            :from   [(keyword table-name)]
-                            :where  [:= (keyword column-name) (:id table)]}))}))]
-        (when-not referenced?
-          (t2/delete! :model/Table :id (:id table)))))))
-
-(defn gc-transform-target-tables!
-  "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or workspace table. Safe because these rows were never active,
-   so they have no child records.
-
-   Note: this only handles *inactive* provisional tables. Active tables that were previously
-   targeted by a transform retain `transform_target = true` even after the transform is deleted.
-   A separate process to reset `transform_target` on active, unreferenced tables is not yet
-   implemented.
-
-   Uses FK-based NOT IN queries rather than scanning JSON columns."
-  []
-  (let [candidate-ids (t2/select-fn-set :id :model/Table
-                                        :active false :transform_target true :deactivated_at nil
-                                        :data_source :metabase-transform)]
-    (when (seq candidate-ids)
-      (let [referenced-ids
-            (into #{}
-                  (map :id)
-                  (t2/query {:union
-                             (for [[table-name column-name]
-                                   [["transform" "target_table_id"]
-                                    ["workspace_input" "table_id"]
-                                    ["workspace_output" "global_table_id"]
-                                    ["workspace_output" "isolated_table_id"]
-                                    ["workspace_output_external" "global_table_id"]
-                                    ["workspace_output_external" "isolated_table_id"]
-                                    ["workspace_input_external" "table_id"]]]
-                               {:select [[(keyword column-name) :id]]
-                                :from   [(keyword table-name)]
-                                :where  [:and
-                                         [:not= (keyword column-name) nil]
-                                         [:in (keyword column-name) candidate-ids]]})}))
-            dead-ids (into [] (remove referenced-ids) candidate-ids)]
-        (when (seq dead-ids)
-          (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
-          (t2/delete! :model/Table :id [:in dead-ids]))))))
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -660,9 +579,10 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
+(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id transform_id]}]
   (cond-> [[{:model "Database" :id db_id}]]
-    collection_id (conj [{:model "Collection" :id collection_id}])))
+    collection_id (conj [{:model "Collection" :id collection_id}])
+    transform_id  (conj [{:model "Transform" :id transform_id}])))
 
 (defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
   (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
@@ -720,21 +640,55 @@
   (conj (serdes/storage-path-prefixes (serdes/path table))
         {:label (:name table) :key (:name table)}))
 
+(defmethod serdes/metadata-query :model/Table
+  [model opts]
+  (t2/reducible-query
+   {:select [[:t.id :id]
+             [:t.db_id :db_id]
+             [:t.name :name]
+             [:t.schema :schema]
+             [:t.description :description]]
+    :from   [[(t2/table-name model) :t]]
+    :join   [[(t2/table-name :model/Database) :db] [:= :t.db_id :db.id]]
+    :where  [:and
+             (serdes/metadata-query-filter :model/Database :db opts)
+             (serdes/metadata-query-filter model :t opts)]}))
+
+(defmethod serdes/metadata-query-filter :model/Table
+  [_model alias {:keys [user-info table-ids schema-ids]}]
+  (let [perm-mapping {:perms/view-data      :unrestricted
+                      :perms/create-queries :query-builder}]
+    (cond-> [:and
+             [:= (u/qualified-key alias :active) true]
+             [:= (u/qualified-key alias :visibility_type) nil]
+             [:in (u/qualified-key alias :id)
+              (perms/visible-table-filter-select :id user-info perm-mapping)]]
+      (seq schema-ids) (conj (into [:or]
+                                   (for [[db-id schemas] schema-ids]
+                                     [:and
+                                      [:= (u/qualified-key alias :db_id) db-id]
+                                      [:in (u/qualified-key alias :schema) schemas]])))
+      (seq table-ids)  (conj [:in (u/qualified-key alias :id) table-ids]))))
+
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (search.spec/define-spec "table"
   {:model        :model/Table
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
-                  :archived      false
+                  :archived        false
                   ;; For published tables with no collection, we want to show "root" as the collection id
-                  :collection-id true
-                  :creator-id    false
-                  :database-id   :db_id
-                  :view-count    true
-                  :created-at    true
-                  :updated-at    true
-                  :is-published  :is_published}
+                  :collection-id   true
+                  :creator-id      false
+                  :database-id     :db_id
+                  :view-count      true
+                  :created-at      true
+                  :updated-at      true
+                  :is-published        :is_published
+                  :collection-type     :collection.type
+                  :collection-location :collection.location
+                  :root-collection-type {:fn collection/root-collection-type}
+                  :data-layer          :data_layer}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
@@ -745,14 +699,12 @@
                   :table-schema               :schema
                   :database-name              :db.name
                   :collection-authority_level :collection.authority_level
-                  :collection-location        :collection.location
                   ;; For published tables with no collection, show "Our analytics" as the collection name
                   :collection-name            [:coalesce :collection.name
                                                [:case
                                                 [:and :this.is_published
                                                  [:= :this.collection_id nil]] [:inline "Our analytics"]
-                                                :else nil]]
-                  :collection-type            :collection.type}
+                                                :else nil]]}
    :where        [:and
                   :active
                   [:= :visibility_type nil]

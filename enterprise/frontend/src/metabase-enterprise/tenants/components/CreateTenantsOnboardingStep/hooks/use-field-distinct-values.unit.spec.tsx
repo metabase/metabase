@@ -6,9 +6,9 @@ import {
 } from "__support__/server-mocks";
 import { waitFor } from "__support__/ui";
 import { mainReducers as reducers } from "metabase/reducers-main";
+import { MetabaseReduxProvider } from "metabase/redux";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import type { FieldId, RowValue } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 

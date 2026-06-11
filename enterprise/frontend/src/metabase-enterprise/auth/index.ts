@@ -1,4 +1,3 @@
-import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
@@ -6,6 +5,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 import type { AuthProvider } from "metabase/plugins/types";
+import { LOGIN, LOGIN_GOOGLE } from "metabase/redux/auth";
 import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { OidcAuthProvider, User } from "metabase-types/api";
@@ -81,9 +81,9 @@ export function initializePlugin() {
     const passwordUserFunction = (user: User) =>
       Boolean(
         user.sso_source !== "google" &&
-          user.sso_source !== "ldap" &&
-          user.sso_source !== "oidc" &&
-          MetabaseSettings.isPasswordLoginEnabled(),
+        user.sso_source !== "ldap" &&
+        user.sso_source !== "oidc" &&
+        MetabaseSettings.isPasswordLoginEnabled(),
       );
 
     PLUGIN_IS_PASSWORD_USER.push(passwordUserFunction);

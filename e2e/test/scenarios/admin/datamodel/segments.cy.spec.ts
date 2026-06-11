@@ -46,7 +46,7 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should track segment_created event when saving a new segment", () => {
       cy.intercept("POST", "/api/segment").as("createSegment");
-      cy.intercept("GET", "/api/table/1").as("getTable");
+      cy.intercept("GET", `/api/table/${ORDERS_ID}`).as("getTable");
       cy.visit("/admin/datamodel/segments");
 
       cy.button("New segment").click();
@@ -391,7 +391,7 @@ describe("scenarios > admin > datamodel > segments", () => {
     const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
 
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.log("set up remote sync");
       H.setupGitSync();
       H.configureGit("read-only");

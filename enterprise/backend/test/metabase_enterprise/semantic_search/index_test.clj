@@ -1,19 +1,83 @@
 (ns metabase-enterprise.semantic-search.index-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.semantic-search.index-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.embedding :as semantic.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
+   [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (org.postgresql.util PGobject)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once #'semantic.tu/once-fixture)
+
+(defn- vector-search-sql
+  "Format the private vector subquery for `strategy` against a stub index, returning the SQL string."
+  [strategy]
+  (let [index   {:table-name "idx_tbl"}
+        ctx     (cond-> {:search-string "pasta" :archived? false}
+                  strategy (assoc :vector-search-strategy strategy))
+        embedding [0.1 0.2 0.3]]
+    (first (sql/format (#'semantic.index/semantic-search-query index embedding ctx) :quoted true))))
+
+(deftest semantic-search-query-strategy-test
+  (testing ":brute-force applies the non-vector filters inside a MATERIALIZED CTE (filter-first, exact)"
+    (let [sql (vector-search-sql :brute-force)]
+      (is (str/includes? sql "AS MATERIALIZED"))
+      ;; filter lives inside the CTE, alongside the distance computation
+      (is (re-find #"AS MATERIALIZED \(SELECT.*\"archived\" = FALSE.*\)" sql))
+      ;; the distance expression appears once -- it is computed and stored in the materialized CTE, and the
+      ;; outer query reads that column rather than recomputing it
+      (is (= 1 (count (re-seq #"embedding <=>" sql))))
+      ;; no pure-vector ORDER BY ... LIMIT that would trigger the HNSW index
+      (is (not (re-find #"ORDER BY embedding <=>[^)]*LIMIT" sql)))))
+  (testing ":hnsw does a pure vector search in the inner CTE then post-filters (approximate)"
+    (let [sql (vector-search-sql :hnsw)]
+      (is (not (str/includes? sql "MATERIALIZED")))
+      (is (re-find #"ORDER BY embedding <=>" sql))
+      ;; the filter is applied in the outer query, after the candidate set is chosen
+      (is (str/includes? sql "\"archived\" = FALSE"))))
+  (testing "no explicit strategy falls back to the configured default setting"
+    (is (= (vector-search-sql (semantic.settings/semantic-search-vector-strategy))
+           (vector-search-sql nil)))))
+
+(defn- flattened-vector-candidates-cte
+  "Build the brute-force/hnsw hybrid query, flatten it the way `scored-search-query` does, and return the
+  hoisted `:vector_candidates` CTE binding (e.g. `[:vector_candidates <query> :materialized]`)."
+  [strategy]
+  (let [index  {:table-name "idx_tbl"}
+        ctx    {:search-string "pasta" :archived? false :vector-search-strategy strategy}
+        hybrid (#'semantic.index/hybrid-search-query index [0.1 0.2 0.3] ctx)
+        {:keys [ctes]} (#'semantic.index/flatten-ctes hybrid)]
+    (first (filter #(= :vector_candidates (first %)) ctes))))
+
+(deftest flatten-ctes-preserves-materialized-test
+  (testing "the :materialized opt survives CTE hoisting (the path every real query takes via scored-search-query)"
+    ;; A regression that dropped the opt would change only the query plan, not the results, so the
+    ;; results-based end-to-end tests can't catch it -- assert on the hoisted binding directly.
+    (is (= :materialized (last (flattened-vector-candidates-cte :brute-force)))))
+  (testing ":hnsw hoists a plain CTE binding with no opts"
+    (is (= 2 (count (flattened-vector-candidates-cte :hnsw))))))
+
+(deftest semantic-search-vector-strategy-setting-test
+  (testing "the setting rejects an unknown strategy"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid vector-search strategy"
+                          (semantic.settings/semantic-search-vector-strategy! :nonsense))))
+  (testing "valid strategies round-trip"
+    (doseq [strategy [:hnsw :brute-force]]
+      (mt/with-temporary-setting-values [semantic.settings/semantic-search-vector-strategy strategy]
+        (is (= strategy (semantic.settings/semantic-search-vector-strategy)))))))
 
 (deftest create-index-table!-test
   (mt/with-premium-features #{:semantic-search}
@@ -162,15 +226,12 @@
                                                (swap! realized inc)
                                                (assoc (first docs) :id id))))
                                   (range 123 500))]
-
           (testing "ensure upsert! and delete! don't realize the full reducible at once"
             (semantic.tu/check-index-has-no-mock-docs)
-
             (testing "upsert-index!"
               (with-redefs [semantic.index/upsert-index-pooled! (only-first-call realized @#'semantic.index/upsert-index-pooled!)]
                 (is (= {"card" 2} (semantic.tu/upsert-index! mock-docs))))
               (semantic.tu/check-index-has-mock-card))
-
             (reset! realized 0)
             (testing "delete-from-index!"
               (with-redefs [semantic.index/delete-from-index-batch-sql (only-first-call realized @#'semantic.index/delete-from-index-batch-sql)]
@@ -242,12 +303,10 @@
                        :content "Dog Training Guide"
                        :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
               (is (= [{:model "card" :model_id "2" :creator_id 2
                        :content "Elephant Migration"
                        :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
                      (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
               (is (= [{:model "card" :model_id "3" :creator_id 3
                        :content "Tiger Conservation"
                        :embedding (semantic.tu/get-mock-embedding "Tiger Conservation")}]
@@ -298,12 +357,10 @@
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "1"})))
-
       (is (= [{:model "card" :model_id "2" :creator_id 2
                :content "Elephant Migration"
                :embedding (semantic.tu/get-mock-embedding "Elephant Migration")}]
              (semantic.tu/query-embeddings {:model "card" :model_id "2"})))
-
       (is (= [{:model "card" :model_id "3" :creator_id 3
                :content "Dog Training Guide"
                :embedding (semantic.tu/get-mock-embedding "Dog Training Guide")}]
@@ -352,27 +409,23 @@
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "dog training"}))
-
               (let [permission-calls (filter #(= :metabase-search/semantic-permission-filter-ms (first %)) @analytics-calls)]
                 (is (= 1 (count permission-calls)))
                 (let [time-ms (first (second (first permission-calls)))]
                   (is (number? time-ms))
                   (is (< time-ms 1000) "Permission filtering should complete within 1000ms"))))
-
             (testing "Semantic search timing metrics"
               (reset! analytics-calls [])
               (mt/with-test-user :crowberto
                 (semantic.index/query-index (semantic.env/get-pgvector-datasource!) semantic.tu/mock-index
                                             {:search-string "elephant migration"
                                              :filter-items-in-personal-collection "only"}))
-
               (let [metric-names (set (map first @analytics-calls))]
                 (is (contains? metric-names :metabase-search/semantic-search-ms))
                 (is (contains? metric-names :metabase-search/semantic-embedding-ms))
                 (is (contains? metric-names :metabase-search/semantic-db-query-ms))
                 (is (contains? metric-names :metabase-search/semantic-permission-filter-ms))
                 (is (contains? metric-names :metabase-search/semantic-appdb-scores-ms)))
-
               (testing "timing values  are reasonable"
                 (doseq [[metric args] @analytics-calls
                         :when (#{:metabase-search/semantic-search-ms
@@ -388,7 +441,6 @@
                     (is (number? time-ms) (str "Time for " metric " should be numeric"))
                     (is (>= time-ms 0) (str "Time for " metric " should be non-negative"))
                     (is (< time-ms 1000) (str "Time for " metric " should be under 1000ms")))))
-
               (let [embedding-metrics (filter #(#{:metabase-search/semantic-search-ms
                                                   :metabase-search/semantic-embedding-ms
                                                   :metabase-search/semantic-db-query-ms} (first %)) @analytics-calls)]
@@ -403,26 +455,21 @@
       (testing "filter-type 'all' returns nil (no filter)"
         (is (nil? (#'semantic.index/personal-collection-filter
                    {:filter-items-in-personal-collection "all" :current-user-id user-id}))))
-
       (testing "filter-type nil defaults to 'all' behavior"
         (is (nil? (#'semantic.index/personal-collection-filter
                    {:filter-items-in-personal-collection nil :current-user-id user-id}))))
-
       (testing "filter-type 'only-mine' returns only current user's personal collection items"
         (is (= [:= :personal_owner_id user-id]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "only-mine" :current-user-id user-id}))))
-
       (testing "filter-type 'only' returns all personal collection items (any user)"
         (is (= [:is-not :personal_owner_id nil]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "only" :current-user-id user-id}))))
-
       (testing "filter-type 'exclude' returns only shared and uncollected items"
         (is (= [:is :personal_owner_id nil]
                (#'semantic.index/personal-collection-filter
                 {:filter-items-in-personal-collection "exclude" :current-user-id user-id}))))
-
       (testing "filter-type 'exclude-others' returns user's personal items plus shared/uncollected items"
         (is (= [:or
                 [:is :personal_owner_id nil]
@@ -440,110 +487,121 @@
         [:model/Collection {shared-coll-id :id} {:name "Shared Collection"}
          :model/Collection {user1-sub-coll-id :id} {:location (str "/" user1-personal-coll-id "/") :name "User1 Sub"}
          :model/Collection {user2-sub-coll-id :id} {:location (str "/" user2-personal-coll-id "/") :name "User2 Sub"}]
-
         (testing "empty input returns empty map"
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [])))
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [nil]))))
-
         (testing "shared collection is absent from result"
           (is (empty? (#'semantic.index/batch-resolve-personal-owner-ids [shared-coll-id]))))
-
         (testing "personal collections map to their owners"
           (is (= {user1-personal-coll-id user1-id
                   user2-personal-coll-id user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-personal-coll-id]))))
-
         (testing "sub-collections of personal collections map to root personal owner"
           (is (= {user1-sub-coll-id user1-id
                   user2-sub-coll-id user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-sub-coll-id user2-sub-coll-id]))))
-
         (testing "mixed input resolves all in one call"
           (is (= {user1-personal-coll-id user1-id
                   user2-sub-coll-id      user2-id}
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-sub-coll-id shared-coll-id nil]))))))))
 
-(deftest filter-can-read-indexed-entity-test
+(deftest filter-read-permitted-indexed-entity-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "filter-can-read-indexed-entity function"
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
-                                                 (mt/mbql-query products {:fields [$id $title]
-                                                                          :limit 1}))
-                                                :type "model"
-                                                :name "Readable Model"
-                                                :database_id (mt/id)
-                                                :collection_id coll-id)
-                     :model/Card model-2 (assoc (mt/card-with-source-metadata-for-query
-                                                 (mt/mbql-query products {:fields [$id $title]
-                                                                          :limit 1}))
-                                                :type "model"
-                                                :name "Unreadable Model"
-                                                :database_id (mt/id)
-                                                :collection_id coll-id)
-                     :model/ModelIndex model-index-1 {:model_id (:id model-1)
-                                                      :pk_ref (mt/$ids :products $id)
-                                                      :value_ref (mt/$ids :products $title)
-                                                      :schedule "0 0 0 * * *"
-                                                      :state "initial"
-                                                      :creator_id (mt/user->id :rasta)}
-                     :model/ModelIndex model-index-2 {:model_id (:id model-2)
-                                                      :pk_ref (mt/$ids :products $id)
-                                                      :value_ref (mt/$ids :products $title)
-                                                      :schedule "0 0 0 * * *"
-                                                      :state "initial"
-                                                      :creator_id (mt/user->id :rasta)}]
-        (let [indexed-entity-docs [{:id (str (:id model-index-1) ":123")
+    (testing "filter-read-permitted routes indexed-entity docs through the collection_id-only fast path"
+      (mt/with-temp [:model/Collection {readable-coll-id :id} {}
+                     :model/Collection {unreadable-coll-id :id} {}]
+        (let [indexed-entity-docs [{:id "1:123"
                                     :model "indexed-entity"
-                                    :content "Test Entity 1"}
-                                   {:id (str (:id model-index-2) ":456")
+                                    :collection_id readable-coll-id}
+                                   {:id "2:456"
                                     :model "indexed-entity"
-                                    :content "Test Entity 2"}
-                                   {:id "invalid:789"
+                                    :collection_id unreadable-coll-id}
+                                   {:id "3:789"
                                     :model "indexed-entity"
-                                    :content "Invalid Entity"}]]
-
-          (testing "returns all entities when user can read all parent cards"
+                                    :collection_id nil}]]
+          (testing "keeps all entities when user has root permissions"
             (binding [api/*current-user-permissions-set* (atom #{"/"})]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
-                (is (= 2 (count result)))
-                (is (= #{(str (:id model-index-1) ":123") (str (:id model-index-2) ":456")}
-                       (set (map :id result)))))))
-
-          (testing "returns no entities when user cannot read any parent cards"
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
+                (is (= 3 (count result))))))
+          (testing "drops all entities when user has no permissions"
             (binding [api/*current-user-permissions-set* (atom #{})]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
                 (is (= 0 (count result))))))
-
-          (testing "returns subset when user can read some parent cards"
-            (with-redefs [mi/can-read? (fn [card] (= (:id card) (:id model-1)))]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+          (testing "keeps only entities in readable collections"
+            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
                 (is (= 1 (count result)))
-                (is (= (str (:id model-index-1) ":123") (:id (first result)))))))
-
+                (is (= "1:123" (:id (first result)))))))
+          (testing "memoizes permission check per collection_id across docs"
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                  (#'semantic.index/filter-read-permitted
+                   (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
+                  (is (= 1 @calls) "expected one can-read? call for the single distinct collection_id")))))
           (testing "handles empty input"
-            (is (= [] (#'semantic.index/filter-can-read-indexed-entity []))))
+            (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
 
-          (testing "handles invalid entity IDs"
-            (let [invalid-only-docs [{:id "invalid:789" :model "indexed-entity" :content "Invalid"}]]
-              (is (= [] (#'semantic.index/filter-can-read-indexed-entity invalid-only-docs)))))
-
-          (testing "handles non-existent model indexes"
-            (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
-              (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
+(deftest filter-read-permitted-dispatch-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "fast path dispatches through the per-search-model t2 model"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
+          (testing "card and dashboard in the same collection do NOT share a memo bucket"
+            ;; Card dispatches through :model/Card, Dashboard through :model/Dashboard. Their
+            ;; `can-read?` answers happen to agree today (both route through
+            ;; `can-read-audit-helper` which ignores the model keyword for non-Collection models),
+            ;; but the dispatch MUST still hit each model's own defmethod so future divergence
+            ;; cannot silently ride on Card's semantics.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1 :model "card" :collection_id coll-id}
+                  {:id 2 :model "dashboard" :collection_id coll-id}])
+                (is (= 2 @calls)
+                    "card and dashboard must dispatch separately even for the same collection_id"))))
+          (testing "card and indexed-entity share the :model/Card memo bucket"
+            ;; indexed-entity is deliberately routed through :model/Card — its index row's
+            ;; `collection_id` is the parent Card's, denormalized at ingest time.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1   :model "card"            :collection_id coll-id}
+                  {:id "1:99" :model "indexed-entity" :collection_id coll-id}])
+                (is (= 1 @calls)
+                    "card and indexed-entity both dispatch through :model/Card and memoize together")))))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
     (testing "boolean inputs are returned unchanged"
       (is (true? (#'semantic.index/to-boolean true)))
       (is (false? (#'semantic.index/to-boolean false))))
-
     (testing "MySQL-style integer booleans are converted correctly"
       (is (false? (#'semantic.index/to-boolean 0)))
       (is (true? (#'semantic.index/to-boolean 1))))))
+
+(deftest decode-legacy-input-test
+  (letfn [(pgo [s] (doto (PGobject.) (.setType "jsonb") (.setValue s)))]
+    (testing "JSONB object value decodes to a map"
+      (is (= {:legacy_input {:name "Top 10" :model "card"}}
+             (#'semantic.index/decode-legacy-input
+              {:legacy_input (pgo "{\"name\":\"Top 10\",\"model\":\"card\"}")}))))
+    (testing "BOT-1543: JSONB string value (double-encoded) is decoded again"
+      (is (= {:legacy_input {:name "Pro" :model "collection"}}
+             (#'semantic.index/decode-legacy-input
+              {:legacy_input (pgo "\"{\\\"name\\\":\\\"Pro\\\",\\\"model\\\":\\\"collection\\\"}\"")}))))))
 
 (deftest doc->db-record-boolean-conversion-test
   (testing "doc->db-record properly converts boolean fields using to-boolean"
@@ -554,7 +612,6 @@
                     :embeddable_text "test content"
                     :creator_id 1
                     :embedding embedding-vec}]
-
       (testing "MySQL-style integer booleans are converted to real booleans"
         (let [doc-with-mysql-booleans (assoc base-doc
                                              :archived 0
@@ -566,7 +623,6 @@
           (is (true? (:official_collection result)))
           (is (false? (:pinned result)))
           (is (true? (:verified result)))))
-
       (testing "real boolean values are preserved"
         (let [doc-with-real-booleans (assoc base-doc
                                             :archived true
@@ -578,7 +634,6 @@
           (is (false? (:official_collection result)))
           (is (true? (:pinned result)))
           (is (false? (:verified result)))))
-
       (testing "nil boolean fields are handled correctly"
         (let [doc-with-nil-booleans base-doc
               result (#'semantic.index/doc->db-record nil doc-with-nil-booleans)]

@@ -9,6 +9,7 @@
    [metabase.lib-metric.dimension :as lib-metric.dimension]
    [metabase.lib-metric.metadata.provider :as provider]
    [metabase.lib.js.metadata :as js-metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util :as u]))
 
 (defn- object-get [obj k]
@@ -183,6 +184,15 @@
                            (let [provider (js-metadata/metadata-provider db-id metadata)]
                              (swap! db-provider-cache assoc db-id provider)
                              provider)))
+        ;; Segments live globally under `metadata.segments`, not per-database.
+        ;; Looking them up via `table->db-fn` + `db-provider-fn` means a user
+        ;; who hasn't loaded the metric's source table metadata sees no
+        ;; segments (because `table->db-fn` returns nil and routing short-
+        ;; circuits). Route segment requests through a db-agnostic provider
+        ;; so they always resolve against the full metadata snapshot.
+        segment-provider (delay (js-metadata/metadata-provider nil metadata))
+        segment-fetcher-fn (fn [spec]
+                             (lib.metadata.protocols/metadatas @segment-provider spec))
         setting-fn (fn [setting-key]
                      (some-> settings (object-get (name setting-key))))]
     (provider/metric-context-metadata-provider
@@ -190,6 +200,8 @@
      (when parsed-measures
        (fn [spec] (filter-measures parsed-measures spec)))
      (fn [spec] (filter-dimensions all-dimensions spec))
+     segment-fetcher-fn
      (fn [table-id] (get table->db-id table-id))
      db-provider-fn
-     setting-fn)))
+     setting-fn
+     nil)))

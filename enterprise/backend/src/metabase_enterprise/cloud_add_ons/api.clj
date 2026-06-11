@@ -19,14 +19,14 @@
   (deferred-tru "Could not establish a connection to Metabase Cloud."))
 (def ^:private error-cannot-purchase
   (deferred-tru "Could not purchase this add-on."))
+(def ^:private error-cannot-remove
+  (deferred-tru "Could not remove this add-on."))
 (def ^:private error-unexpected
   (deferred-tru "Unexpected error"))
 (def ^:private error-not-hosted
   (deferred-tru "Can only access Store API for Metabase Cloud instances."))
 (def ^:private error-not-eligible
   (deferred-tru "Can only purchase add-ons for eligible subscriptions."))
-(def ^:private error-not-store-user
-  (deferred-tru "Only Metabase Store users can purchase add-ons."))
 (def ^:private error-terms-not-accepted
   (deferred-tru "Need to accept terms of service."))
 (def ^:private error-no-quantity
@@ -36,14 +36,24 @@
   {:status 400 :body error-not-hosted})
 (def ^:private response-not-eligible
   {:status 400 :body error-not-eligible})
-(def ^:private response-not-store-user
-  {:status 403 :body error-not-store-user})
 (def ^:private response-terms-not-accepted
   {:status 400 :body {:errors {:terms_of_service error-terms-not-accepted}}})
 (def ^:private response-no-quantity
   {:status 400 :body {:errors {:quantity error-no-quantity}}})
 (def ^:private response-success-empty
   {:status 200 :body {}})
+
+(def ^:private cloud-add-on-product-types
+  [:enum
+   "metabase-ai"
+   "metabase-ai-tiered"
+   "metabase-ai-managed"
+   "python-execution"
+   "transforms"
+   "transforms-basic"
+   "transforms-advanced"
+   "transforms-basic-metered"
+   "transforms-advanced-metered"])
 
 (defn- handle-store-api-error
   "Handle exceptions from Store API calls and return appropriate error response."
@@ -108,7 +118,7 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai" "metabase-ai-tiered" "metabase-ai-managed" "python-execution" "transforms" "transforms-basic" "transforms-advanced" "transforms-basic-metered" "transforms-advanced-metered"]]]
+                              [:product-type cloud-add-on-product-types]]
    _query-params
    {:keys            [quantity]
     terms-of-service :terms_of_service} :- [:map
@@ -135,10 +145,6 @@
          (premium-features/enable-python-transforms?))
     response-not-eligible
 
-    (not (contains? (set (map :email (:store-users (premium-features/token-status))))
-                    (:email @api/*current-user*)))
-    response-not-store-user
-
     :else
     (try
       (let [add-on (cond-> {:product-type product-type}
@@ -150,6 +156,26 @@
       (catch Exception e
         (log/warnf e "Error purchasing add-on '%s'" product-type)
         (handle-store-api-error e {400 error-cannot-purchase})))))
+
+(api.macros/defendpoint :delete "/:product-type" :- [:map
+                                                     [:status :int]
+                                                     [:body :any]]
+  "Remove an add-on."
+  [{:keys [product-type]} :- [:map
+                              [:product-type cloud-add-on-product-types]]]
+  (api/check-superuser)
+  (cond
+    (not (premium-features/is-hosted?))
+    response-not-hosted
+
+    :else
+    (try
+      (hm.client/call :change-add-ons :remove-add-ons [{:product-type product-type}])
+      (premium-features/clear-cache!)
+      response-success-empty
+      (catch Exception e
+        (log/warnf e "Error removing add-on '%s'" product-type)
+        (handle-store-api-error e {400 error-cannot-remove})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/cloud-add-ons` routes."

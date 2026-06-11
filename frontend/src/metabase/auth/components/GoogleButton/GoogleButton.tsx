@@ -6,12 +6,12 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Link } from "metabase/common/components/Link";
+import { useDispatch, useSelector } from "metabase/redux";
+import { loginGoogle } from "metabase/redux/auth";
 import { Box, Checkbox, useColorScheme } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getCspNonce } from "metabase/utils/csp";
-import { useDispatch, useSelector } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 
-import { loginGoogle } from "../../actions";
 import { getGoogleClientId, getSiteLocale } from "../../selectors";
 
 import S from "./GoogleButton.module.css";

@@ -2,8 +2,6 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTablesEndpoints,
-  setupWorkspaceCheckoutEndpoint,
-  setupWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { PythonTransformEditorUiOptions } from "metabase/plugins/oss/transforms";
@@ -72,8 +70,6 @@ function setup({
   setupDatabasesEndpoints([mockDatabase]);
   setupTablesEndpoints([mockTable]);
   setupSearchEndpoints([]);
-  setupWorkspacesEndpoint([]);
-  setupWorkspaceCheckoutEndpoint({});
 
   renderWithProviders(
     <PythonTransformEditor

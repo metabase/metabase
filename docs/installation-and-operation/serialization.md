@@ -307,7 +307,7 @@ Type: Boolean.
 
 Default: Data model is included.
 
-Excludes [table metadata](../data-studio/data-structure.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
+Excludes [table metadata](../data-studio/managing-tables.md) settings, which admins define in **Data Studio > Data structure**. Excluding the data model is useful for subsequent exports where you only want content changes.
 
 ### Include field values
 

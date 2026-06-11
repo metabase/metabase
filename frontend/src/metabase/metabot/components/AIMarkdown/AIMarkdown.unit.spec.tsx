@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -24,6 +25,10 @@ const setup = (props: { children: string }) => {
 };
 
 describe("AIMarkdown", () => {
+  beforeEach(() => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+  });
+
   it("should render internal links for Metabase protocol links", async () => {
     setup({ children: "[My Question](metabase://question/123)" });
 
@@ -33,5 +38,46 @@ describe("AIMarkdown", () => {
 
     // Verify it's rendered as a smart link by checking for the icon
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
+  });
+
+  it("should render GFM tables", async () => {
+    setup({
+      children: `
+| Name | Value |
+| --- | --- |
+| Revenue | $42 |
+| Profit | $12 |
+      `.trim(),
+    });
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Value" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Revenue" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "$42" })).toBeInTheDocument();
+  });
+
+  it("should copy fenced code blocks", async () => {
+    setup({
+      children: `
+\`\`\`sql
+SELECT *
+FROM orders
+\`\`\`
+      `.trim(),
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Copy code" }),
+    );
+
+    const writeText = jest.mocked(navigator.clipboard.writeText);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText.mock.calls[0][0]).toContain("SELECT *\nFROM orders");
+    expect(writeText.mock.calls[0][0]).not.toContain("```");
   });
 });

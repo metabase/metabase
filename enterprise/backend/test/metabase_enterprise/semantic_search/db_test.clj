@@ -12,19 +12,15 @@
     (when semantic.db.datasource/db-url
       ;; Reset the data source to ensure clean test
       (reset! semantic.db.datasource/data-source nil)
-
       (testing "Data source is nil before initialization"
         (is (nil? @semantic.db.datasource/data-source)))
-
       (testing "init-db! creates a pooled data source"
         (semantic.db.datasource/init-db!)
         (is (some? @semantic.db.datasource/data-source))
         (is (instance? PoolBackedDataSource @semantic.db.datasource/data-source)))
-
       (testing "test-connection! works with pooled connection"
         (let [result (semantic.db.datasource/test-connection!)]
           (is (= {:test 1} result))))
-
       (testing "Connection pool properties are configured correctly"
         (when (instance? PoolBackedDataSource @semantic.db.datasource/data-source)
           (let [pool ^PoolBackedDataSource @semantic.db.datasource/data-source]

@@ -1,5 +1,6 @@
 (ns metabase.segments.api-test
   "Tests for /api/segment endpoints."
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.segments.api-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.api.response :as api.response]
@@ -50,7 +51,6 @@
 (deftest authentication-test
   (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "segment")))
-
   (is (= (get api.response/response-unauthentic :body)
          (client/client :put 401 "segment/13"))))
 
@@ -68,18 +68,14 @@
   (testing "POST /api/segment"
     (is (=? {:errors {:name "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :post 400 "segment" {})))
-
     (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name "abc"})))
-
     (is (=? {:errors {:table_id "value must be an integer greater than zero."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
                                                                   :table_id "foobar"})))
-
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name     "abc"
                                                                   :table_id 123})))
-
     (is (=? {:errors {:definition "Value must be a map."}}
             (mt/user-http-request :crowberto :post 400 "segment" {:name       "abc"
                                                                   :table_id   123
@@ -127,14 +123,11 @@
   (testing "PUT /api/segment/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
-
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name "abc"})))
-
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                    :revision_message ""})))
-
     (is (=? {:errors {:definition "nullable map"}}
             (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
                                                                    :revision_message "123"
@@ -236,7 +229,6 @@
   (testing "DELETE /api/segment/:id"
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" {:name "abc"})))
-
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
             (mt/user-http-request :crowberto :delete 400 "segment/1" :revision_message "")))))
 

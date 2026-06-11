@@ -62,11 +62,9 @@
       (throw (ex-info "Sorry, I have issues accessing the chart data. Is there anything else I can help you with?"
                       {:agent-error? true
                        :chart-id chart-id})))
-
     (let [new-chart-data (-> chart-data
                              (assoc :chart_id (str (random-uuid)))
                              (assoc :visualization_settings {:chart_type new-chart-type}))]
-
       {:new-chart-data new-chart-data
        :result {:chart-id (:chart_id new-chart-data)
                 :chart-content (format-chart-for-llm new-chart-data)
@@ -74,8 +72,8 @@
                 :chart-type new-chart-type
                 :instructions (str "Chart has been created successfully.\n\n"
                                    "Next steps to present the chart to the user:\n"
-                                   "- Always provide a direct link using: `[Chart]("
+                                   "- Always provide a direct link using: [Chart]("
                                    (format-chart-link (:chart_id new-chart-data))
-                                   ")` "
+                                   ") "
                                    "where Chart is a meaningful link text\n"
                                    "- If creating multiple charts, present all chart links")}})))

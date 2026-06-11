@@ -7,16 +7,9 @@ import {
   getPermissionWarningModal,
 } from "metabase/admin/permissions/selectors/confirmations";
 import {
-  DataPermission,
   DataPermissionType,
-  DataPermissionValue,
-  type EntityId,
   type PermissionOption,
   type PermissionSectionConfig,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type SpecialGroupType,
-  type TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getFieldsPermission,
@@ -24,7 +17,17 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type Group,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type SchemaEntityId,
+  type SpecialGroupType,
+  type TableEntityId,
+} from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   none: {
@@ -59,7 +62,7 @@ const DATA_MODEL_PERMISSIONS_DESC = [
 const getPermissionValue = (
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   permissionSubject: PermissionSubject,
 ): DataPermissionValue => {
   switch (permissionSubject) {
@@ -101,7 +104,7 @@ const getDisabledTooltip = (groupType: SpecialGroupType) => {
 };
 
 export const buildDataModelPermission = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: number,
   groupType: SpecialGroupType,
   permissions: GroupsPermissions,

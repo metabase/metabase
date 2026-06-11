@@ -7,7 +7,9 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 import { NewItemMenu } from "metabase/common/components/NewItemMenu";
-import { getLibraryCollectionType } from "metabase/data-studio/utils";
+import { canAccessDataStudio } from "metabase/data-studio/selectors";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -23,12 +25,24 @@ const CollectionEmptyState = ({
   const isTrashCollection = !!collection && isRootTrashCollection(collection);
   const isArchived = !!collection?.archived;
 
+  // The library-data description is a "publish tables" CTA; hide it from users who can't publish.
+  const canPublish = useSelector(canAccessDataStudio);
+  const isLibraryDataCollection = PLUGIN_LIBRARY.isLibraryDataCollectionType(
+    collection?.type,
+  );
+  const showDescription = !isLibraryDataCollection || canPublish;
+
   if (isTrashCollection) {
     return <TrashEmptyState />;
   } else if (isArchived) {
     return <ArchivedCollectionEmptyState />;
   } else {
-    return <DefaultCollectionEmptyState collection={collection} />;
+    return (
+      <DefaultCollectionEmptyState
+        collection={collection}
+        showDescription={showDescription}
+      />
+    );
   }
 };
 
@@ -55,7 +69,8 @@ const ArchivedCollectionEmptyState = () => {
 
 const DefaultCollectionEmptyState = ({
   collection,
-}: CollectionEmptyStateProps) => {
+  showDescription,
+}: CollectionEmptyStateProps & { showDescription: boolean }) => {
   const { title, description } = getDefaultEmptyStateMessages(collection);
   const canWrite = !!collection?.can_write;
   const isSemanticLayer = collection != null && isLibraryCollection(collection);
@@ -65,7 +80,9 @@ const DefaultCollectionEmptyState = ({
     <EmptyStateWrapper>
       <CollectionEmptyIcon />
       <EmptyStateTitle>{title}</EmptyStateTitle>
-      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      {showDescription && (
+        <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      )}
       {showAddButton && (
         <NewItemMenu
           trigger={
@@ -84,23 +101,16 @@ const DefaultCollectionEmptyState = ({
 };
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
-  switch (getLibraryCollectionType(collection?.type)) {
-    case "data":
-      return {
-        title: t`No published tables yet`,
-        description: t`Publish tables in the Library to see them here.`,
-      };
-    case "metrics":
-      return {
-        title: t`No metrics yet`,
-        description: t`Put metrics in the Library to see them here.`,
-      };
-    default:
-      return {
-        title: t`This collection is empty`,
-        description: t`Use collections to organize questions, dashboards, models, and other collections.`,
-      };
+  if (PLUGIN_LIBRARY.isLibrarySubCollectionType(collection?.type)) {
+    return PLUGIN_LIBRARY.getLibraryCollectionEmptyStateMessages(
+      collection.type,
+    );
   }
+
+  return {
+    title: t`This collection is empty`,
+    description: t`Use collections to organize questions, dashboards, models, and other collections.`,
+  };
 }
 
 export const CollectionEmptyIcon = (): JSX.Element => {

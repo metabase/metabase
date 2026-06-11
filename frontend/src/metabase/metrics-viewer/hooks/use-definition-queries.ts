@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
-import { metricApi } from "metabase/api";
+import { metricApi, useListSegmentsQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import { isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -21,8 +21,8 @@ import {
   type ExpressionDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
-  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -35,6 +35,7 @@ import {
   getEffectiveDefinitionEntry,
   getEffectiveTokenDefinitionEntry,
 } from "../utils/definition-entries";
+import { getDimensionBreakoutConfig } from "../utils/dimension-breakout-config";
 import type { MetricSlot } from "../utils/metric-slots";
 import {
   computeMetricSlots,
@@ -42,7 +43,6 @@ import {
   findStandaloneSlot,
 } from "../utils/metric-slots";
 import { parseExpression } from "../utils/parse-expression";
-import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
   resultsByEntityIndex: Map<number, Dataset>;
@@ -52,18 +52,20 @@ export interface UseDefinitionQueriesResult {
   breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
 }
 
-function getModifiedDefinitionForTab(
+function getModifiedDefinitionForDimensionBreakout(
   definition: MetricsViewerDefinitionEntry,
   slotIndex: number,
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
 ): MetricDefinition | null {
   if (!definition.definition) {
     return null;
   }
-  const tabConfig = getTabConfig(tab.type);
-  const dimensionId = tab.dimensionMapping[slotIndex];
+  const dimensionBreakoutConfig = getDimensionBreakoutConfig(
+    dimensionBreakout.type,
+  );
+  const dimensionId = dimensionBreakout.dimensionMapping[slotIndex];
   if (!dimensionId) {
-    if (tabConfig.minDimensions > 0) {
+    if (dimensionBreakoutConfig.minDimensions > 0) {
       return null;
     }
     return definition.definition;
@@ -71,13 +73,13 @@ function getModifiedDefinitionForTab(
   return getModifiedDefinition(
     definition.definition,
     dimensionId,
-    tab.projectionConfig,
+    dimensionBreakout.projectionConfig,
   );
 }
 
 function buildArithmeticRequest(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
   entity: ExpressionDefinitionEntry,
   metricSlots: MetricSlot[],
   entityIndex: number,
@@ -104,10 +106,10 @@ function buildArithmeticRequest(
     // Find the specific slot for this expression token
     const tokenSlot = findExpressionTokenSlot(metricSlots, entityIndex, i);
     const slotIndex = tokenSlot?.slotIndex ?? -1;
-    const modifiedDefinition = getModifiedDefinitionForTab(
+    const modifiedDefinition = getModifiedDefinitionForDimensionBreakout(
       definition,
       slotIndex,
-      tab,
+      dimensionBreakout,
     );
     if (!modifiedDefinition) {
       if (!definition.definition) {
@@ -172,7 +174,7 @@ function buildArithmeticRequest(
 function buildQueryItems(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   formulaEntities: MetricsViewerFormulaEntity[],
-  tab: MetricsViewerTabState | null,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState | null,
 ): {
   datasetRequestsByEntityIndex: Map<number, MetricDatasetRequest>;
   modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
@@ -182,7 +184,7 @@ function buildQueryItems(
   const modifiedDefinitionsBySlotIndex = new Map<number, MetricDefinition>();
   const expressionErrorsByEntityIndex = new Map<number, string>();
 
-  if (!tab) {
+  if (!dimensionBreakout) {
     return {
       datasetRequestsByEntityIndex,
       modifiedDefinitionsBySlotIndex,
@@ -199,10 +201,10 @@ function buildQueryItems(
       if (!slot) {
         return;
       }
-      const modifiedDefinition = getModifiedDefinitionForTab(
+      const modifiedDefinition = getModifiedDefinitionForDimensionBreakout(
         effectiveEntry,
         slot.slotIndex,
-        tab,
+        dimensionBreakout,
       );
       if (!modifiedDefinition) {
         return;
@@ -217,7 +219,7 @@ function buildQueryItems(
     if (isExpressionEntry(entity)) {
       buildArithmeticRequest(
         definitions,
-        tab,
+        dimensionBreakout,
         entity,
         metricSlots,
         entityIndex,
@@ -239,7 +241,7 @@ function buildQueryItems(
 export function useDefinitionQueries(
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
   formulaEntities: MetricsViewerFormulaEntity[],
-  tab: MetricsViewerTabState | null,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState | null,
 ): UseDefinitionQueriesResult {
   const dispatch = useDispatch();
 
@@ -248,8 +250,8 @@ export function useDefinitionQueries(
     modifiedDefinitionsBySlotIndex,
     expressionErrorsByEntityIndex,
   } = useMemo(
-    () => buildQueryItems(definitions, formulaEntities, tab),
-    [definitions, formulaEntities, tab],
+    () => buildQueryItems(definitions, formulaEntities, dimensionBreakout),
+    [definitions, formulaEntities, dimensionBreakout],
   );
 
   const breakoutRequests = useMemo(() => {
@@ -272,6 +274,8 @@ export function useDefinitionQueries(
       ];
     });
   }, [formulaEntities, definitions]);
+
+  useListSegmentsQuery(); // FIXME segments don't have any filters yet. We should load only segments that are related to the formula
 
   useEffect(() => {
     const requestsToMake = [...datasetRequestsByEntityIndex.values()];

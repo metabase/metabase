@@ -28,7 +28,7 @@ jobs:
       CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -52,7 +52,7 @@ jobs:
           output-name: "metabase.jar"
 
       - name: Retrieve Embedding SDK dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
@@ -87,6 +87,19 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js component
 
+      - name: Rewrite JUnit hook failures
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
+            bun e2e/support/fix-junit-hooks.ts ./target/junit
+          else
+            echo "No ./target/junit directory; nothing to process."
+          fi
+
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -100,7 +113,7 @@ jobs:
           previous-step-outcome: ${{ steps.run-tests.outcome }}
 
       - name: "SDK component tests > Upload Cypress Artifacts upon failure"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-embedding-sdk-react-${{ matrix.react-version }}
@@ -111,7 +124,7 @@ jobs:
 
       - name: "SDK component tests > Publish Summary"
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const {
@@ -131,7 +144,7 @@ jobs:
     outputs:
       target-ref: ${{ steps.get-target-ref.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 2
 
@@ -165,7 +178,7 @@ jobs:
 
     steps:
       - name: Check out the code from the previous commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.decide-target-ref.outputs.target-ref }}
 
@@ -212,7 +225,7 @@ jobs:
         run: ./bin/build.sh
 
       - name: Retrieve Embedding SDK dist artifact built from the current commit N
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
@@ -238,7 +251,20 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           node e2e/runner/run_cypress_ci.js component \
-            --env grepTags="-@skip-backward-compatibility"
+            --expose grepTags="-@skip-backward-compatibility"
+
+      - name: Rewrite JUnit hook failures
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -d ./target/junit ]; then
+            echo "fix-junit-hooks: invoking bun"
+            bun e2e/support/fix-junit-hooks.ts ./target/junit
+          else
+            echo "No ./target/junit directory; nothing to process."
+          fi
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -253,7 +279,7 @@ jobs:
           previous-step-outcome: ${{ steps.run-tests.outcome }}
 
       - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cypress-recording-embedding-sdk-cross-version
@@ -264,7 +290,7 @@ jobs:
 
       - name: Publish Summary
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: | #js
             const {

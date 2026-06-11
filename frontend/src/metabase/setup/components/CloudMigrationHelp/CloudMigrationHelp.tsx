@@ -1,10 +1,12 @@
 import { t } from "ttag";
 
 import { HelpCard } from "metabase/common/components/HelpCard";
-import { migrateToCloudGuideUrl } from "metabase/selectors/settings";
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
+import {
+  getIsHosted,
+  migrateToCloudGuideUrl,
+} from "metabase/selectors/settings";
 
-import { getIsHosted } from "../../selectors";
 import { useStep } from "../../useStep";
 import { SetupCardContainer } from "../SetupCardContainer";
 

@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type {
   DashboardId,
   DashboardWidth,
@@ -18,27 +18,6 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", {
     event: "auto_apply_filters_disabled",
     dashboard_id: getDashboardId(dashboardId),
-  });
-};
-
-export type DashboardAccessedVia =
-  | "internal"
-  | "public-link"
-  | "static-embed"
-  | "interactive-iframe-embed"
-  | "sdk-embed";
-
-export const trackExportDashboardToPDF = ({
-  dashboardId,
-  dashboardAccessedVia,
-}: {
-  dashboardId?: DashboardId;
-  dashboardAccessedVia: DashboardAccessedVia;
-}) => {
-  trackSchemaEvent("dashboard", {
-    event: "dashboard_pdf_exported",
-    dashboard_id: getDashboardId(dashboardId),
-    dashboard_accessed_via: dashboardAccessedVia,
   });
 };
 

@@ -1,9 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
+import {
+  type ArchivableItem,
+  isDeletable,
+  isRestorable,
+  useDeleteItem,
+  useRestore,
+  useSetArchive,
+} from "metabase/archive/hooks";
 import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
@@ -15,21 +21,22 @@ import {
   canArchiveItem,
   canBookmarkItem,
   canCopyItem,
-  canMoveItem,
-  canPinItem,
   canPreviewItem,
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
-import { useToast } from "metabase/common/hooks/use-toast";
-import { bookmarks as BookmarkEntity } from "metabase/entities";
-import { entityForObject } from "metabase/entities/utils";
+import {
+  canMoveItem,
+  canPinItem,
+  isPinnable,
+  useSetPinned,
+} from "metabase/common/hooks";
+import { useSetCollectionPreview } from "metabase/common/hooks/use-set-collection-preview";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import { connect, useDispatch } from "metabase/utils/redux";
-import * as Urls from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -85,8 +92,11 @@ function ActionMenu({
   createBookmark,
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
-  const dispatch = useDispatch();
-  const [sendToast] = useToast();
+  const archive = useSetArchive();
+  const restore = useRestore();
+  const deleteItem = useDeleteItem();
+  const setPinned = useSetPinned();
+  const setCollectionPreview = useSetCollectionPreview();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
@@ -99,8 +109,10 @@ function ActionMenu({
   const canCopy = onCopy && canCopyItem(item);
 
   const handlePin = useCallback(() => {
-    item.setPinned?.(!isItemPinned(item));
-  }, [item]);
+    if (isPinnable(item)) {
+      setPinned(item, !isItemPinned(item));
+    }
+  }, [item, setPinned]);
 
   const handleCopy = useCallback(() => {
     onCopy?.([item]);
@@ -110,9 +122,10 @@ function ActionMenu({
     onMove?.([item]);
   }, [item, onMove]);
 
-  const handleArchive = useCallback(() => {
-    return item.setArchived ? item.setArchived(true) : Promise.resolve();
-  }, [item]);
+  const handleArchive = useCallback(
+    () => archive(item as ArchivableItem, true),
+    [archive, item],
+  );
 
   const handleToggleBookmark = useMemo(() => {
     if (!createBookmark && !deleteBookmark) {
@@ -132,35 +145,22 @@ function ActionMenu({
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   const handleTogglePreview = useCallback(() => {
-    item?.setCollectionPreview?.(!isPreviewEnabled(item));
-  }, [item]);
+    setCollectionPreview(item.id, !isPreviewEnabled(item));
+  }, [item, setCollectionPreview]);
 
   const handleRestore = useCallback(async () => {
-    const Entity = entityForObject(item);
-    const result = await dispatch(
-      Entity.actions.update({ id: item.id, archived: false }),
-    );
-    await dispatch(BookmarkEntity.actions.invalidateLists());
+    if (!isRestorable(item)) {
+      return;
+    }
+    await restore(item);
+  }, [item, restore]);
 
-    const entity = Entity.HACK_getObjectFromAction(result);
-    const parentCollection = HACK_getParentCollectionFromEntityUpdateAction(
-      item,
-      result,
-    );
-    const redirect = getParentEntityLink(entity, parentCollection);
-
-    sendToast({
-      message: t`${item.name} has been restored.`,
-      actionLabel: t`View`, // could be collection or dashboard
-      action: () => dispatch(push(redirect)),
-    });
-  }, [item, dispatch, sendToast]);
-
-  const handleDeletePermanently = useCallback(() => {
-    const Entity = entityForObject(item);
-    dispatch(Entity.actions.delete(item));
-    sendToast({ message: t`This item has been permanently deleted.` });
-  }, [item, dispatch, sendToast]);
+  const handleDeletePermanently = useCallback(async () => {
+    if (!isDeletable(item)) {
+      return;
+    }
+    await deleteItem(item);
+  }, [item, deleteItem]);
 
   return (
     <>
@@ -189,25 +189,6 @@ function ActionMenu({
       />
     </>
   );
-}
-
-export function getParentEntityLink(
-  updatedEntity: any,
-  parentCollection: Pick<Collection, "id" | "name"> | undefined,
-) {
-  // get link for parent collection
-  const parentCollectionLink = parentCollection
-    ? Urls.collection(parentCollection)
-    : `/collection/root`;
-
-  // get link for parent dashboard if we're dealing with a dashboard question
-  const parentDashboardId =
-    updatedEntity.type === "question" ? updatedEntity.dashboard_id : undefined;
-  const parentDashboardLink = parentDashboardId
-    ? Urls.dashboard({ id: parentDashboardId, name: "" })
-    : undefined;
-
-  return parentDashboardLink ? parentDashboardLink : parentCollectionLink;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

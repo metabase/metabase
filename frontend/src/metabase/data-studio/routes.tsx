@@ -1,17 +1,17 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
@@ -26,13 +26,15 @@ import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
+  SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
   store: Store<State>,
-  CanAccessDataStudio: ComponentType,
-  CanAccessDataModel: ComponentType,
-  _CanAccessTransforms: ComponentType,
+  CanAccessDataStudio: RouteComponent,
+  CanAccessDataModel: RouteComponent,
+  _CanAccessTransforms: RouteComponent,
+  IsAdmin: RouteComponent,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -44,22 +46,20 @@ export function getDataStudioRoutes(
         />
         <Route path="data" component={CanAccessDataModel}>
           <Route component={DataSectionLayout}>
-            {getDataStudioMetadataRoutes()}
+            {getDataStudioMetadataRoutes(IsAdmin)}
           </Route>
         </Route>
         <Route path="transforms" component={TransformsSectionLayout}>
           {getDataStudioTransformRoutes()}
         </Route>
+        <Route component={WorkspacesSectionLayout}>
+          {PLUGIN_WORKSPACES.getDataStudioRoutes()}
+        </Route>
         {getDataStudioGlossaryRoutes()}
         {PLUGIN_LIBRARY.isEnabled ? (
-          PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
+          PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
         ) : (
           <Route path="library" component={LibraryUpsellPage} />
-        )}
-        {PLUGIN_WORKSPACES.isEnabled && (
-          <Route path="workspaces" component={WorkspacesSectionLayout}>
-            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
-          </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>
@@ -80,6 +80,13 @@ export function getDataStudioRoutes(
             path="dependency-diagnostics"
             component={DependencyDiagnosticsUpsellPage}
           />
+        )}
+        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
+          <Route path="schema-viewer">
+            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
+          </Route>
+        ) : (
+          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

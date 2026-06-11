@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackMetricsViewerMetricAdded = (
   targetId: number | null,
@@ -47,20 +47,15 @@ export const trackMetricsViewerFilterRemoved = (
   });
 };
 
-export const trackMetricsViewerDimensionTabAdded = () => {
+export const trackMetricsViewerDimensionSelected = () => {
   trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_added",
+    event: "metrics_viewer_dimension_selected",
   });
 };
 
-export const trackMetricsViewerDimensionTabSwitched = () => {
+export const trackStackedSeriesEnabled = () => {
   trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_switched",
-  });
-};
-
-export const trackMetricsViewerDimensionTabRemoved = () => {
-  trackSimpleEvent({
-    event: "metrics_viewer_dimension_tab_removed",
+    event: "stack_series_enabled",
+    triggered_from: "metrics_viewer",
   });
 };

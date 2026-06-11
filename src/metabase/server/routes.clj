@@ -13,6 +13,7 @@
    [metabase.server.auth-wrapper :as auth-wrapper]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
+   [metabase.server.routes.static :as static]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -76,9 +77,9 @@
   ;; hashes, so we serve them with far-future immutable cache headers.
   (GET ["/embedding-sdk/chunks/:filename" :filename #"[^/]+\.js"] [filename :as request]
     ((mw.embedding-sdk-bundle/serve-chunk-handler filename) request))
-
-  ;; fall back to serving _all_ other files under /app
-  (route/resources "/" {:root "frontend_client/app"})
+  ;; fall back to serving _all_ other files under /app, preferring
+  ;; pre-compressed (.br, .gz) variants when the browser supports them
+  (static/precompressed-resources "/" {:root "frontend_client/app"})
   (route/not-found {:status 404 :body "Not found."}))
 
 (mu/defn- api-handler :- ::api.macros/handler
@@ -109,11 +110,9 @@
    (GET "/readyz" [] health-handler)
    ;; ^/livez -> Liveness probe (no DB access)
    (GET "/livez" [] livez-handler)
-
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
    (OPTIONS "/api/*" [] {:status 200 :body ""})
-
    ;; ^/api/ -> All other API routes
    (context "/api" [] (api-handler api-routes))
    ;; ^/app/ -> static files under frontend_client/app

@@ -1,8 +1,8 @@
 import { fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-
 import type {
   ExpressionDefinitionEntry,
   ExpressionSubToken,
@@ -10,84 +10,24 @@ import type {
   MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   SelectedMetric,
   SourceColorMap,
-} from "../../../types/viewer-state";
-import { isExpressionEntry, isMetricEntry } from "../../../types/viewer-state";
-import { createMetricSourceId } from "../../../utils/source-ids";
+} from "metabase/metrics-viewer/types";
+import {
+  isExpressionEntry,
+  isMetricEntry,
+} from "metabase/metrics-viewer/types";
+import { createMetricSourceId } from "metabase/metrics-viewer/utils";
+
+import {
+  createMetricMetadata,
+  createMockNormalizedMetric,
+  setupDefinition,
+} from "../../../utils/__tests__/test-helpers";
 
 import { MetricSearchInput } from "./MetricSearchInput";
-
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-jest.mock("../../../utils/definition-builder", () => ({
-  getDefinitionName: (def: any) => def?.["display-name"] ?? null,
-}));
-
-jest.mock("../MetricPill", () => ({
-  MetricPill: ({
-    metric,
-    onRemove,
-  }: {
-    metric: SelectedMetric;
-    onRemove: (id: number, sourceType: "metric" | "measure") => void;
-  }) => (
-    <div data-testid="metric-pill" data-metric-name={metric.name}>
-      <span>{metric.name}</span>
-      <button onClick={() => onRemove(metric.id, metric.sourceType)}>
-        remove
-      </button>
-    </div>
-  ),
-}));
-
-jest.mock("../MetricExpressionPill", () => ({
-  MetricExpressionPill: ({
-    expressionEntry,
-    onClick,
-    onRemove,
-  }: {
-    expressionEntry: { name: string };
-    metricEntries: unknown[];
-    colors?: string[];
-    onClick: (e: React.MouseEvent) => void;
-    onRemove: () => void;
-  }) => {
-    return (
-      <div
-        data-testid="metric-expression-pill"
-        data-expression-text={expressionEntry.name}
-        onClick={onClick}
-      >
-        <span>{expressionEntry.name}</span>
-        <button onClick={onRemove}>remove</button>
-      </div>
-    );
-  },
-}));
-
-jest.mock("../MetricSearchDropdown", () => ({
-  MetricSearchDropdown: ({
-    onSelect,
-    externalSearchText,
-  }: {
-    onSelect: (metric: SelectedMetric) => void;
-    externalSearchText: string;
-  }) => (
-    <div data-testid="search-dropdown" data-search-text={externalSearchText}>
-      <button
-        onClick={() =>
-          onSelect({ id: 99, name: "New Metric", sourceType: "metric" })
-        }
-      >
-        select-new-metric
-      </button>
-    </div>
-  ),
-}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -106,11 +46,20 @@ function makeMetricEntry(metric: SelectedMetric): MetricDefinitionEntry {
     metric.sourceType === "metric"
       ? createMetricSourceId(metric.id)
       : (`measure:${metric.id}` as MetricSourceId);
-  // Create a fake definition with display-name for getDefinitionName
-  const fakeDefinition = {
-    "display-name": metric.name,
-  } as unknown as MetricDefinitionEntry["definition"];
-  return { id: sid, type: "metric" as const, definition: fakeDefinition };
+  if (metric.sourceType === "measure") {
+    return { id: sid, type: "metric" as const, definition: null };
+  }
+
+  const normalizedMetric = createMockNormalizedMetric({
+    id: metric.id,
+    name: metric.name ?? "",
+  });
+  const metadata = createMetricMetadata([normalizedMetric]);
+  return {
+    id: sid,
+    type: "metric" as const,
+    definition: setupDefinition(metadata, metric.id),
+  };
 }
 
 function makeExpressionEntry(
@@ -146,6 +95,7 @@ function buildFormulaEntities(
 type SetupOptions = {
   /** Mixed array of metric and expression entries (old-style convenience) */
   entries?: (MetricDefinitionEntry | ExpressionDefinitionEntry)[];
+  activeDimensionBreakout?: MetricsViewerDimensionBreakoutState | null;
   selectedMetrics?: SelectedMetric[];
   metricColors?: SourceColorMap;
   onFormulaEntitiesChange?: jest.Mock;
@@ -156,11 +106,14 @@ type SetupOptions = {
 };
 
 function setup(options: SetupOptions = {}) {
+  setupSearchEndpoints([]);
+
   const revenue = makeMetric(1, "Revenue");
   const costs = makeMetric(2, "Costs");
 
   const {
     selectedMetrics = [revenue, costs],
+    activeDimensionBreakout = null,
     metricColors = {},
     entries = selectedMetrics.map(makeMetricEntry),
     onFormulaEntitiesChange = jest.fn(),
@@ -181,6 +134,7 @@ function setup(options: SetupOptions = {}) {
     <MetricSearchInput
       definitions={definitions}
       formulaEntities={formulaEntities}
+      activeDimensionBreakout={activeDimensionBreakout}
       onFormulaEntitiesChange={onFormulaEntitiesChange}
       selectedMetrics={selectedMetrics}
       metricColors={metricColors}
@@ -239,7 +193,7 @@ describe("collapsed view (definitions present, not focused)", () => {
   it("renders a single metric definition as a MetricPill", () => {
     setup({ entries: [revenueEntry] });
 
-    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-viewer-pill")).toBeInTheDocument();
     expect(screen.getByText("Revenue")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
@@ -254,18 +208,37 @@ describe("collapsed view (definitions present, not focused)", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    const pill = screen.getByTestId("metric-expression-pill");
+    const pill = screen.getByTestId("metrics-viewer-expression-pill");
     expect(pill).toBeInTheDocument();
-    expect(pill).toHaveAttribute("data-expression-text", "Revenue + Costs");
+    expect(pill).toHaveTextContent("Revenue + Costs");
   });
 
   it("renders two separate metric entries as two pills", () => {
     setup({ entries: [revenueEntry, costsEntry] });
 
-    const pills = screen.getAllByTestId("metric-pill");
+    const pills = screen.getAllByTestId("metrics-viewer-pill");
     expect(pills).toHaveLength(2);
-    expect(pills[0]).toHaveAttribute("data-metric-name", "Revenue");
-    expect(pills[1]).toHaveAttribute("data-metric-name", "Costs");
+    expect(pills[0]).toHaveTextContent("Revenue");
+    expect(pills[1]).toHaveTextContent("Costs");
+  });
+
+  it("visually disables a metric without a dimension for the active breakout", () => {
+    setup({
+      entries: [revenueEntry, costsEntry],
+      activeDimensionBreakout: {
+        id: "time",
+        type: "time",
+        label: "Time",
+        display: "line",
+        dimensionMapping: { 0: "dim-created-at" },
+        projectionConfig: {},
+      },
+    });
+
+    const indicators = screen.getAllByTestId("color-indicator-container");
+    expect(
+      within(indicators[1]).getByRole("img", { hidden: true }),
+    ).toHaveStyle({ color: "var(--mb-color-icon-disabled)" });
   });
 
   it("does not render a text input when collapsed", () => {
@@ -287,7 +260,7 @@ describe("expanded view (focused text input)", () => {
   it("transitions to text input when clicking the container", async () => {
     const { user } = setup({ entries: [revenueEntry] });
 
-    await user.click(screen.getByTestId("metric-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
 
     await waitFor(() => {
       expect(screen.getByRole("textbox")).toBeInTheDocument();
@@ -304,7 +277,7 @@ describe("expanded view (focused text input)", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
 
     await waitFor(() => {
       expect(
@@ -319,9 +292,7 @@ describe("expanded view (focused text input)", () => {
     const input = screen.getByTestId("metrics-viewer-search-input");
     await user.type(input, "R");
 
-    await waitFor(() => {
-      expect(screen.getByTestId("search-dropdown")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Browse all")).toBeInTheDocument();
   });
 });
 
@@ -334,7 +305,7 @@ describe("blur behavior", () => {
       selectedMetrics: [revenue],
     });
 
-    await user.click(screen.getByTestId("metric-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
     await waitFor(() => {
       expect(
         screen.getByTestId("metrics-viewer-search-input"),
@@ -346,7 +317,7 @@ describe("blur behavior", () => {
     expect(
       screen.queryByTestId("metrics-viewer-search-input"),
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId("metric-pill")).toBeInTheDocument();
+    expect(screen.getByTestId("metrics-viewer-pill")).toBeInTheDocument();
   });
 
   it("shows the Run button when formula is dirty", async () => {
@@ -355,8 +326,7 @@ describe("blur behavior", () => {
       selectedMetrics: [revenue],
     });
 
-    // Click pill → transitions to editor
-    await user.click(screen.getByTestId("metric-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
     await waitFor(() => {
       expect(
         screen.getByTestId("metrics-viewer-search-input"),
@@ -382,7 +352,7 @@ describe("blur behavior", () => {
       entries: [revenueEntry, costsEntry, expr],
     });
 
-    await user.click(screen.getByTestId("metric-expression-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
     expect(await screen.findByRole("textbox")).toBeInTheDocument();
 
     expect(
@@ -402,8 +372,7 @@ describe("run button and validation", () => {
       onFormulaEntitiesChange,
     });
 
-    // Click pill → transitions to editor
-    await user.click(screen.getByTestId("metric-pill"));
+    await user.click(screen.getByTestId("metrics-formula-input"));
     await waitFor(() => {
       expect(
         screen.getByTestId("metrics-viewer-search-input"),
@@ -435,9 +404,7 @@ describe("run button and validation", () => {
       onFormulaEntitiesChange,
     });
 
-    // Click a pill to transition to the editor
-    const pills = screen.getAllByTestId("metric-pill");
-    await user.click(pills[0]);
+    await user.click(screen.getByTestId("metrics-formula-input"));
 
     await waitFor(() => {
       expect(
@@ -475,7 +442,7 @@ describe("removing pills", () => {
       onFormulaEntitiesChange,
     });
 
-    await user.click(screen.getByRole("button", { name: "remove" }));
+    await user.click(screen.getByLabelText("Remove Revenue"));
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
     expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
@@ -494,9 +461,7 @@ describe("removing pills", () => {
       onFormulaEntitiesChange,
     });
 
-    const removeButtons = screen.getAllByRole("button", { name: "remove" });
-    // Remove the first item (Revenue)
-    await user.click(removeButtons[0]);
+    await user.click(screen.getByLabelText("Remove Revenue"));
 
     expect(onRemoveMetric).toHaveBeenCalledWith(1, "metric");
     expect(onFormulaEntitiesChange).toHaveBeenCalledWith(
@@ -520,10 +485,8 @@ describe("removing pills", () => {
       onFormulaEntitiesChange,
     });
 
-    // The expression pill's remove button
-    const exprPill = screen.getByTestId("metric-expression-pill");
-    const removeButton = within(exprPill).getByRole("button");
-    await user.click(removeButton);
+    const exprPill = screen.getByTestId("metrics-viewer-expression-pill");
+    await user.click(within(exprPill).getByLabelText("Remove expression"));
 
     // Both Revenue and Costs are only referenced in the expression (the metric entries remain)
     // Since revenueEntry and costsEntry still exist in remaining definitions,
@@ -551,9 +514,7 @@ describe("expression pill display after committing a formula", () => {
       onFormulaEntitiesChange,
     });
 
-    // Click a pill to transition to the editor
-    const pills = screen.getAllByTestId("metric-pill");
-    await user.click(pills[0]);
+    await user.click(screen.getByTestId("metrics-formula-input"));
 
     await waitFor(() => {
       expect(
@@ -631,10 +592,6 @@ describe("typing in the text input", () => {
     const input = screen.getByRole("textbox");
     await user.type(input, "Rev");
 
-    expect(screen.getByTestId("search-dropdown")).toBeInTheDocument();
-    expect(screen.getByTestId("search-dropdown")).toHaveAttribute(
-      "data-search-text",
-      "Rev",
-    );
+    expect(await screen.findByText("Browse all")).toBeInTheDocument();
   });
 });

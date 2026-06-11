@@ -1,60 +1,58 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 import { noop } from "underscore";
 
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
-import type { DimensionPillBarItem } from "metabase/metrics-viewer/components/DimensionPillBar";
-import { DimensionPillBar } from "metabase/metrics-viewer/components/DimensionPillBar";
-import {
-  DISPLAY_TYPE_REGISTRY,
-  getTabConfig,
-} from "metabase/metrics-viewer/utils";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
 import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
-import { Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
+import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import type { DimensionMetadata } from "metabase-lib/metric";
+import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import type { CardId, SingleSeries } from "metabase-types/api";
 
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
-  MetricsViewerTabState,
 } from "../../types/viewer-state";
 
 import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
   rawSeries: SingleSeries[];
-  dimensionItems: DimensionPillBarItem[];
-  onDimensionChange: (slotIndex: number, dimension: DimensionMetadata) => void;
-  onDimensionRemove?: (slotIndex: number) => void;
   onBrush?: (range: { start: number; end: number }) => void;
   className?: string;
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   cardIdToEntityIndex: Record<CardId, number>;
   interactive?: boolean;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
 };
 
 export function MetricsViewerVisualization({
   rawSeries,
-  dimensionItems,
-  onDimensionChange,
-  onDimensionRemove,
   onBrush,
   className,
   definitions,
   formulaEntities,
   metricSlots,
-  tab,
-  onTabUpdate,
+  dimensionBreakout,
+  onDimensionBreakoutUpdate,
   cardIdToEntityIndex,
   interactive = true,
+  queriesAreLoading,
+  queriesError,
 }: MetricsViewerVisualizationProps) {
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
@@ -66,8 +64,8 @@ export function MetricsViewerVisualization({
             definitions,
             formulaEntities,
             metricSlots,
-            tab,
-            onTabUpdate,
+            dimensionBreakout,
+            onDimensionBreakoutUpdate,
             cardIdToEntityIndex,
           })
         : undefined,
@@ -77,18 +75,42 @@ export function MetricsViewerVisualization({
       formulaEntities,
       metricSlots,
       interactive,
-      onTabUpdate,
-      tab,
+      onDimensionBreakoutUpdate,
+      dimensionBreakout,
     ],
   );
 
-  const tabConfig = getTabConfig(tab.type);
-  const hasAnyOptions = dimensionItems.some((item) =>
-    item.type === "expression"
-      ? item.metricSources.some((s) => s.availableOptions.length > 0)
-      : item.availableOptions.length > 0,
+  if (queriesAreLoading || queriesError) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper
+          loading={queriesAreLoading}
+          error={queriesError}
+        />
+      </Center>
+    );
+  }
+
+  if (rawSeries.length === 0) {
+    return null;
+  }
+
+  const hasNoResults = rawSeries.every((series) =>
+    datasetContainsNoResults(series.data),
   );
-  const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
+
+  if (hasNoResults) {
+    return (
+      <Center h="100%">
+        <ErrorMessage
+          type="noRows"
+          title={t`No results!`}
+          message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
+          action={null}
+        />
+      </Center>
+    );
+  }
 
   return (
     <Flex
@@ -99,7 +121,8 @@ export function MetricsViewerVisualization({
       className={className}
     >
       {rawSeries.length > 1 &&
-      DISPLAY_TYPE_REGISTRY[tab.display].supportsMultipleSeries === false ? (
+      DISPLAY_TYPE_REGISTRY[dimensionBreakout.display]
+        .supportsMultipleSeries === false ? (
         <SimpleGrid cols={cols} flex={1} spacing={0}>
           {rawSeries.map((series, i) => (
             <Stack
@@ -136,14 +159,6 @@ export function MetricsViewerVisualization({
             onChangeCardAndRun={noop}
           />
         </DebouncedFrame>
-      )}
-
-      {!hideDimensionPill && (
-        <DimensionPillBar
-          items={dimensionItems}
-          onDimensionChange={onDimensionChange}
-          onDimensionRemove={onDimensionRemove}
-        />
       )}
     </Flex>
   );

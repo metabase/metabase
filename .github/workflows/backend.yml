@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 10
     name: Clj-Kondo
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run clj-kondo
@@ -30,23 +30,82 @@ jobs:
     timeout-minutes: 20
     name: Eastwood
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
   be-linter-eastwood-test:
-    if: ${{ !inputs.skip && github.ref_name == 'master' }}
+    # Master / release safety net: lint every backend test namespace.
+    if: ${{ !inputs.skip && github.event_name == 'push' && (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     name: Eastwood (tests only)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
         name: Run Eastwood linter on our backend tests
+
+  be-linter-eastwood-test-changed:
+    # PR / merge queue: lint only the test namespaces touched by the diff.
+    if: ${{ !inputs.skip && (github.event_name == 'pull_request' || github.event_name == 'merge_group') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    name: Eastwood (changed tests only)
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Enough history for `git merge-base` on a typical PR.
+          fetch-depth: 200
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Compute changed test namespaces
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Diff from the merge-base so changes that landed on the base branch after the PR was
+          # last synced don't widen our scope. Falls back to BASE_SHA if older than fetched depth.
+          git fetch --no-tags --depth=200 origin "$BASE_SHA"
+          DIFF_BASE=$(git merge-base "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || echo "$BASE_SHA")
+          # Test roots we lint: core, EE, and each driver module's test tree.
+          # :eastwood/test derives matching :source-paths from the classpath, so any
+          # namespace we name here is reachable. Include renames (R) so a test that
+          # was just renamed still gets linted under its new name.
+          FILES=$(git diff --name-only --diff-filter=AMR "$DIFF_BASE" "$HEAD_SHA" \
+                    -- 'test/**/*.clj' 'test/**/*.cljc' \
+                       'enterprise/backend/test/**/*.clj' 'enterprise/backend/test/**/*.cljc' \
+                       'modules/drivers/**/test/**/*.clj' 'modules/drivers/**/test/**/*.cljc')
+
+          if [ -z "$FILES" ]; then
+            echo "No backend test files changed; skipping lint."
+            echo "namespaces=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Defence-in-depth: paths flow into a subsequent shell command via $GITHUB_OUTPUT.
+          if grep -Eqv '^[A-Za-z0-9_./-]+$' <<<"$FILES"; then
+            echo "Refusing to lint: unexpected characters in changed file paths:" >&2
+            echo "$FILES" >&2
+            exit 1
+          fi
+
+          NS=$(sed -E 's#^(test/|enterprise/backend/test/|modules/drivers/[^/]+/test/)##; s#\.cljc?$##; s#/#.#g; s#_#-#g' <<<"$FILES" \
+                 | sort -u \
+                 | paste -sd' ' -)
+          echo "Changed test namespaces: $NS"
+          echo "namespaces=$NS" >> "$GITHUB_OUTPUT"
+      - name: Run Eastwood on changed test namespaces
+        if: steps.changed.outputs.namespaces != ''
+        env:
+          NAMESPACES: ${{ steps.changed.outputs.namespaces }}
+        run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test :namespaces "[$NAMESPACES]"
 
   be-tests:
     if: ${{ !inputs.skip }}
@@ -108,7 +167,7 @@ jobs:
           ':mb/old-migrations-test'
         }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -144,7 +203,7 @@ jobs:
           previous-step-outcome: ${{ steps.run-java-tests.outcome }}
 
       - name: Publish Test Report (JUnit)
-        uses: dorny/test-reporter@3eeb9fc888e82e8be2fb356bbeec2750231672bc # v1
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
         if: failure()
         with:
           path: "target/junit/**/*_test.xml"
@@ -156,7 +215,7 @@ jobs:
 
       - name: Upload Logs on Failure
         if: always() && !success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.test-group-name }}
           path: logs/test-log.json
@@ -173,7 +232,7 @@ jobs:
         java-version: [21]
     name: "Check Java ${{ matrix.java-version }}"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
@@ -186,7 +245,7 @@ jobs:
     timeout-minutes: 10
     name: Cljfmt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Run cljfmt
@@ -196,6 +255,7 @@ jobs:
     needs:
       - be-linter-eastwood
       - be-linter-eastwood-test
+      - be-linter-eastwood-test-changed
       - be-linter-clj-kondo
       - be-cljfmt
       - be-check
@@ -207,7 +267,7 @@ jobs:
       needs: ${{ toJson(needs) }}
     steps:
       - name: Check backend job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

@@ -1,8 +1,11 @@
+:global(.mb-mantine-Popover-dropdown):has(> .accordionListRoot) {
+  display: flex;
+  flex-direction: column;
+}
+
 .accordionListRoot {
   outline: none;
   overflow: auto;
-  max-width: inherit;
-  max-height: inherit;
 }
 
 .hasSearch {

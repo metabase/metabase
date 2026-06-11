@@ -109,6 +109,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror unable-to-acquire-connection
+  "The query references a database that we are unable to acquire a connection to."
+  :parent client
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server

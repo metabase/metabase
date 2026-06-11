@@ -181,6 +181,13 @@
                   (log/error e "Pulse card render error")
                   (body/render :render-error nil nil nil nil nil)))))))
 
+(mu/defn error-rendered-part :- ::body/RenderedPartCard
+  "The placeholder rendered-part shown when an individual card/part of a notification fails to
+  render. Channels substitute this for a failed part so one failure degrades to an error box
+  instead of breaking the whole alert/dashboard subscription."
+  []
+  (body/render :render-error nil nil nil nil nil))
+
 (mu/defn render-pulse-card :- ::body/RenderedPartCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 

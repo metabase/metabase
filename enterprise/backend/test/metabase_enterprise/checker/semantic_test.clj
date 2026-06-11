@@ -6,7 +6,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.checker.format.serdes :as serdes-format]
+   [metabase-enterprise.checker.format.serdes-assets :as serdes-format]
+   [metabase-enterprise.checker.format.serdes-schema :as serdes-schema]
    [metabase-enterprise.checker.provider :as provider]
    [metabase-enterprise.checker.semantic :as checker]
    [metabase-enterprise.checker.source :as source]
@@ -30,14 +31,18 @@
       test-fixtures-dir
       (.getPath (io/file (System/getProperty "user.dir") test-fixtures-dir)))))
 
-(defn- make-test-source []
-  (serdes-format/make-source (fixtures-path)))
+(defn- make-test-sources
+  "Create both schema and assets sources from fixtures.
+   Returns [schema-source assets-source]."
+  []
+  [(serdes-schema/make-database-source (str (fixtures-path) "/databases"))
+   (serdes-format/make-source (fixtures-path))])
 
-(defn- check-all [source]
-  (checker/check-entities source source (serdes-format/source-index source)))
+(defn- check-all [[schema-source assets-source]]
+  (checker/check-entities schema-source assets-source (serdes-format/source-index assets-source)))
 
-(defn- check-specific [source entity-ids]
-  (checker/check-entities source source (serdes-format/source-index source) entity-ids))
+(defn- check-specific [[schema-source assets-source] entity-ids]
+  (checker/check-entities schema-source assets-source (serdes-format/source-index assets-source) entity-ids))
 
 ;;; ===========================================================================
 ;;; Tests Using Real YAML Files
@@ -45,20 +50,20 @@
 
 (deftest source-index-test
   (testing "Source correctly indexes databases and cards; tables/fields are on-demand"
-    (let [source (make-test-source)
-          index  (serdes-format/source-index source)]
-      ;; Databases are in the schema model, not the assets index
-      (is (= #{"Test Database" "SQLite DB"} (set (source/all-database-names source))))
+    (let [[schema-source assets-source] (make-test-sources)
+          index  (serdes-format/source-index assets-source)]
+      ;; Databases are in the schema source
+      (is (= #{"Test Database" "SQLite DB"} (set (source/all-database-names schema-source))))
       ;; Cards are in the assets index
       (is (= 5 (count (:card index))) "Should have 5 cards")
-      ;; Tables and fields are resolved on demand
-      (is (= 4 (count (source/all-table-paths source))) "Should have 4 tables via source")
-      (is (= 11 (count (source/all-field-paths source))) "Should have 11 fields via source"))))
+      ;; Tables and fields are resolved on demand via schema source
+      (is (= 4 (count (source/all-table-paths schema-source))) "Should have 4 tables via source")
+      (is (= 11 (count (source/all-field-paths schema-source))) "Should have 11 fields via source"))))
 
 (deftest simple-mbql-query-test
   (testing "Simple MBQL query on orders table validates successfully"
-    (let [source (make-test-source)
-          results (check-all source)
+    (let [sources (make-test-sources)
+          results (check-all sources)
           result (get results "simple-orders")]
       (is (some? result) "Card should be found")
       (is (= "Simple Orders" (:name result)) "Card name should match")
@@ -70,8 +75,8 @@
 
 (deftest native-query-test
   (testing "Native SQL query validates successfully"
-    (let [source (make-test-source)
-          results (check-all source)
+    (let [sources (make-test-sources)
+          results (check-all sources)
           result (get results "native-orders")]
       (is (some? result) "Card should be found")
       (is (= "Native Orders" (:name result)) "Card name should match")
@@ -80,8 +85,8 @@
 
 (deftest mbql-with-joins-test
   (testing "MBQL query with joins validates successfully"
-    (let [source (make-test-source)
-          results (check-all source)
+    (let [sources (make-test-sources)
+          results (check-all sources)
           result (get results "orders-with-products")]
       (is (some? result) "Card should be found")
       (is (= "Orders With Products" (:name result)) "Card name should match")
@@ -94,8 +99,8 @@
 
 (deftest all-cards-checked-test
   (testing "All cards in fixtures are checked"
-    (let [source (make-test-source)
-          results (check-all source)]
+    (let [sources (make-test-sources)
+          results (check-all sources)]
       (is (>= (count results) 5) "Should check at least 5 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
@@ -112,14 +117,14 @@
 
 (deftest schemaless-database-index-test
   (testing "Schema-less databases are indexed correctly with nil schema"
-    (let [source (make-test-source)]
-      (is (= #{"Test Database" "SQLite DB"} (set (source/all-database-names source))))
-      (is (= 4 (count (source/all-table-paths source))) "Should have 4 tables via source"))))
+    (let [[schema-source _] (make-test-sources)]
+      (is (= #{"Test Database" "SQLite DB"} (set (source/all-database-names schema-source))))
+      (is (= 4 (count (source/all-table-paths schema-source))) "Should have 4 tables via source"))))
 
 (deftest schemaless-query-test
   (testing "Query on schema-less database validates successfully"
-    (let [source (make-test-source)
-          results (check-all source)
+    (let [sources (make-test-sources)
+          results (check-all sources)
           result (get results "schemaless-query")]
       (is (some? result) "Card should be found")
       (is (= "Schemaless Query" (:name result)) "Card name should match")
@@ -136,9 +141,9 @@
 
 (deftest fk-in-field-metadata-test
   (testing "FK target in field metadata is resolved to integer ID"
-    (let [source (make-test-source)
-          index (serdes-format/source-index source)
-          provider (provider/make-provider (store/make-store source source index))
+    (let [[schema-source assets-source] (make-test-sources)
+          index (serdes-format/source-index assets-source)
+          provider (provider/make-provider (store/make-store schema-source assets-source index))
           ;; Get the product_id field which has FK to products.id
           fields (lib.metadata.protocols/metadatas
                   provider {:lib/type :metadata/column})
@@ -150,8 +155,8 @@
 
 (deftest fk-in-result-metadata-test
   (testing "FK target in card result_metadata is resolved to integer ID"
-    (let [source (make-test-source)
-          results (check-all source)
+    (let [sources (make-test-sources)
+          results (check-all sources)
           result (get results "orders-with-fk")]
       (is (some? result) "Card should be found")
       (is (= "Orders With FK" (:name result)) "Card name should match")
@@ -242,8 +247,8 @@
 
 (deftest check-specific-cards-test
   (testing "Can check specific cards by entity-id"
-    (let [source (make-test-source)
-          results (check-specific source ["simple-orders" "native-orders"])]
+    (let [sources (make-test-sources)
+          results (check-specific sources ["simple-orders" "native-orders"])]
       (is (>= (count results) 2) "Should check at least 2 cards")
       (is (contains? results "simple-orders"))
       (is (contains? results "native-orders"))
@@ -1211,5 +1216,5 @@
   (fixtures-path)
 
   ;; Manually check all cards in fixtures
-  (def source (make-test-source))
-  (check-all source))
+  (def sources (make-test-sources))
+  (check-all sources))

@@ -7,12 +7,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sync.sync :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.test.mock.util :as mock.util]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -83,14 +85,18 @@
   [_ _ table]
   (get (sync-test-tables) (:name table)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks ::sync-test
-  [_ _ table]
-  (set (when (= "movie" (:name table))
-         #{{:fk-column-name   "studio"
-            :dest-table       {:name   "studio"
-                               :schema (when *supports-schemas?* "public")}
-            :dest-column-name "studio"}})))
+(mu/defmethod driver/describe-fks ::sync-test :- ::driver/describe-fks.result
+  [_driver                               :- :keyword
+   _database                             :- ::lib.schema.metadata/database
+   & {:keys [table-names], :as _options} :- ::driver/describe-fks.options]
+  (when (or (empty? table-names)
+            (contains? (set table-names) "movie"))
+    [{:fk-table-schema (when *supports-schemas?* "default")
+      :fk-table-name   "movie"
+      :fk-column-name  "studio"
+      :pk-table-schema (when *supports-schemas?* "public")
+      :pk-table-name   "studio"
+      :pk-column-name  "studio"}]))
 
 (defmethod driver/database-supports? [::sync-test :metadata/key-constraints]
   [_driver _feature _db]
@@ -113,7 +119,8 @@
                (assoc :fields (for [field (t2/select :model/Field, :table_id (:id table), {:order-by [:name]})]
                                 (into {} (-> field
                                              (update :fingerprint map?)
-                                             (update :fingerprint_version (complement zero?))))))
+                                             (update :fingerprint_version (complement zero?))
+                                             (update :dimension_interestingness double?)))))
                tu/boolean-ids-and-timestamps)))
 
 (defn- table-defaults []
@@ -132,24 +139,26 @@
 (defn- field-defaults []
   (merge
    (mt/object-defaults :model/Field)
-   {:created_at          true
-    :fingerprint         false
-    :fingerprint_version false
-    :fk_target_field_id  false
+   {:created_at                 true
+    :fingerprint                false
+    :fingerprint_version        false
+    :fk_target_field_id         false
     :database_is_auto_increment false
-    :id                  true
-    :last_analyzed       false
-    :parent_id           false
-    :position            0
-    :json_unfolding      false
-    :table_id            true
-    :updated_at          true}))
+    :id                         true
+    :last_analyzed              false
+    :parent_id                  false
+    :position                   0
+    :json_unfolding             false
+    :table_id                   true
+    :updated_at                 true
+    :dimension_interestingness  false}))
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)
-         :last_analyzed       true
-         :fingerprint_version true
-         :fingerprint         true))
+         :last_analyzed             true
+         :fingerprint_version       true
+         :fingerprint               true
+         :dimension_interestingness true))
 
 (defn- field:movie-id []
   (merge
@@ -290,26 +299,22 @@
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv nil}
                 field-and-values)))
-
       (testing "After querying field values they are stored"
         (get-or-create-vals ["a" "b" "c"])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values false}}
                 (query-field-and-values))))
-
       (testing "After clearing and querying use long field values"
         (field-values/clear-field-values-for-field! field)
         (get-or-create-vals ["a" "b" "c" (apply str (map str (range 100000)))])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}
                 (query-field-and-values))))
-
       (testing "Querying again will use cache"
         (get-or-create-vals ["x" "y" "z"])
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["a" "b" "c"] :has_more_values true}}
                 (query-field-and-values))))
-
       (testing "New values come in after sync"
         (binding [*execute-response* (fn [_query respond] (respond {:cols [{:name "field"}]}
                                                                    (partition-all 1 ["d" "e" "f"])))]
@@ -317,7 +322,6 @@
         (is (=? {:f {:name "title" :has_field_values :auto-list}
                  :fv {:values ["d" "e" "f"] :has_more_values false}}
                 (query-field-and-values))))
-
       (testing "After setting to search it should stay search and sync removes field-values"
         (t2/update! :model/Field (:id field) {:has_field_values "search"})
         (sync/sync-database! db)
