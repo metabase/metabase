@@ -873,7 +873,8 @@
                                (or (some? res)
                                    (contains? ingested import-k)))]
                 [k res]))
-        (coerce-keys (:coerce spec)))))
+        ;; coercing a stripped key would re-introduce it as an explicit nil
+        (coerce-keys (apply dissoc (:coerce spec) (::strip ingested))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (*make-spec* model-name nil)]

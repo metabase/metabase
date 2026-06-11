@@ -45,9 +45,9 @@
   This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of paths to
   keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
   indicate that all items in that vector should have a key removed."
-  {"Dashboard" #{:dashcards}
+  {"Dashboard" #{:dashcards :parameters}
    "Document"  #{:document}
-   "Card"      #{:dashboard_id :document_id}})
+   "Card"      #{:dashboard_id :document_id :parameters}})
 
 (def ^:private ^:dynamic *warned-version-mismatch*
   "Used to avoid double-logging on version mismatches. Warns if nil or set to true"
