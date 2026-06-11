@@ -55,21 +55,18 @@
            :root_collection_type (root-collection-type-of coll collection_id)}])))
 
 (defn- table-curation-signals
-  "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, data_authority,
-  and (for a published table in a collection) the root collection type.
-  The table search spec only joins the collection when is_published is true, so root_collection_type is
-  resolved only for published tables — otherwise source-of-truth would mark an unpublished table under a
-  library collection curated while the index would not."
+  "`[id signal-map]` pairs for tables, whose curation comes from is_published, data_layer, and data_authority.
+  root_collection_type is intentionally omitted: the table search spec joins the collection only for
+  published tables, and for a published table is_published already decides curation, so the root type never
+  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id, and lets
+  curated? coerce is_published consistently (only true/1 count)."
   [ids]
-  (let [rows (t2/select [:model/Table :id :collection_id :is_published :data_layer :data_authority]
-                        :id [:in ids])
-        coll (collection-info (into #{} (comp (filter :is_published) (keep :collection_id)) rows))]
-    (for [{:keys [id collection_id is_published data_layer data_authority]} rows]
-      [id {:model                "table"
-           :is_published         is_published
-           :data_layer           data_layer
-           :data_authority       data_authority
-           :root_collection_type (when is_published (root-collection-type-of coll collection_id))}])))
+  (for [{:keys [id is_published data_layer data_authority]}
+        (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in ids])]
+    [id {:model          "table"
+         :is_published   is_published
+         :data_layer     data_layer
+         :data_authority data_authority}]))
 
 (defn- curation-signals
   "`[id signal-map]` pairs for the given search-model string and ids, read from source-of-truth tables."

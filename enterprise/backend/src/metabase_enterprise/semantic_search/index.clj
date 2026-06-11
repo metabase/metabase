@@ -560,7 +560,12 @@
     [:verified            (when (some? verified) [:= :verified verified])]
     ;; "Verified or curated content" — precomputed flag (collections.curation/curated?)
     [:curated             (when (some? curated?) [:= :curated curated?])]
-    [:models              (when (seq models) [:in :model models])]
+    ;; search.impl sets :models to the applicable models; an empty (but present) set means filters left no
+    ;; applicable model (e.g. curated + non-curatable entity-types), so match nothing rather than omitting the
+    ;; predicate (= all models)
+    [:models              (cond
+                            (seq models)   [:in :model models]
+                            (some? models) [:= [:inline 1] [:inline 0]])]
     [:created-by          (when (seq created-by) [:in :creator_id created-by])]
     [:last-edited-by      (when (seq last-edited-by) [:in :last_editor_id last-edited-by])]
     [:table-db-id         (when table-db-id [:= :database_id table-db-id])]
