@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 
 /** Legend column width (px), from the Figma static-export spec. */
@@ -95,7 +96,7 @@ export function getTreemapLegendModel(
       name: node.displayName,
       valueLabel: formatValue(node.value),
       percentLabel: formatShare(node.value),
-      ...(hasChildren ? { color: colors[String(node.rawName)] } : {}),
+      ...(hasChildren ? { color: colors[getTreemapNodeKey(node)] } : {}),
       indent: false,
       top,
     });

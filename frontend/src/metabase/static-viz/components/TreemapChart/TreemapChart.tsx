@@ -49,13 +49,19 @@ export function TreemapChart({
     return null;
   }
 
-  const tree = getTreemapData(rawSeriesWithRemappings, treemapColumns);
+  const treemapRows = settings["treemap.rows"];
+  const tree = getTreemapData(
+    rawSeriesWithRemappings,
+    treemapColumns,
+    treemapRows,
+  );
   const hasChildren = tree.some((node) => node.children != null);
   // A 2-level treemap colors each group with its own palette hue (matching the
-  // dynamic chart); a 1-level one uses a single-hue ramp of the brand color,
-  // per the Figma static-export spec.
+  // dynamic chart, including user-chosen colors from `treemap.rows`); a 1-level
+  // one uses a single-hue ramp of the brand color, per the Figma static-export
+  // spec — custom colors are intentionally ignored there (renames still apply).
   const colors = hasChildren
-    ? getTreemapColors(tree)
+    ? getTreemapColors(tree, treemapRows)
     : getMonochromeTreemapColors(tree, renderingContext.getColor("brand"));
   const formatters = getTreemapFormatters(treemapColumns, settings);
 

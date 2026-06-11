@@ -545,4 +545,114 @@ describe("TREEMAP_CHART_DEFINITION", () => {
       expect(showLeafValuesSetting.getHidden).toBeUndefined();
     });
   });
+
+  describe("treemap.rows setting", () => {
+    const rowsSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap.rows"],
+    );
+
+    const rawSeries = [
+      {
+        card: createMockCard({ display: "treemap" }),
+        data: createMockDatasetData({
+          cols: columns,
+          rows: [
+            ["Phones", 10],
+            ["Laptops", 30],
+          ],
+        }),
+      },
+    ];
+
+    it("is hidden (consumed by the groups picker, no widget of its own)", () => {
+      expect(checkNotNull(rowsSetting.getHidden)([], {}, {} as never)).toBe(
+        true,
+      );
+    });
+
+    it("computes one row per grouping value, value-descending", () => {
+      const getValue = checkNotNull(rowsSetting.getValue);
+      const rows = getValue(rawSeries, {
+        "treemap.grouping": "Category",
+        "treemap.value": "Amount",
+        column: () => ({}),
+      });
+
+      expect(rows).toMatchObject([{ key: "Laptops" }, { key: "Phones" }]);
+    });
+
+    it("declares read dependencies on the data settings", () => {
+      expect(rowsSetting.readDependencies).toEqual([
+        "treemap.grouping",
+        "treemap.sub_grouping",
+        "treemap.value",
+      ]);
+    });
+  });
+
+  describe("treemap._groups_widget setting", () => {
+    const groupsWidgetSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["treemap._groups_widget"],
+    );
+
+    it("is a custom widget in the Data section reading treemap.rows", () => {
+      expect(groupsWidgetSetting.getSection?.()).toBe("Data");
+      expect(typeof groupsWidgetSetting.widget).toBe("function");
+      expect(groupsWidgetSetting.readDependencies).toEqual(["treemap.rows"]);
+    });
+  });
+
+  describe("series_settings (rename widget)", () => {
+    const seriesSetting = checkNotNull(
+      TREEMAP_CHART_DEFINITION.settings?.["series_settings"],
+    );
+
+    const treemapRows = [
+      {
+        key: "Phones",
+        name: "Phones",
+        originalName: "Phones",
+        color: "#509EE3",
+        defaultColor: true,
+        hidden: false,
+      },
+    ];
+
+    it("provides treemap.rows to the name widget", () => {
+      const getProps = checkNotNull(seriesSetting.getProps);
+      const props = getProps(
+        [],
+        { "treemap.rows": treemapRows },
+        jest.fn(),
+        undefined,
+        jest.fn(),
+      );
+
+      expect(props.pieRows).toEqual(treemapRows);
+    });
+
+    it("renames a row through updateRowName", () => {
+      const onChangeSettings = jest.fn();
+      const getProps = checkNotNull(seriesSetting.getProps);
+      const props = getProps(
+        [],
+        { "treemap.rows": treemapRows },
+        jest.fn(),
+        undefined,
+        onChangeSettings,
+      );
+
+      props.updateRowName("Smartphones", "Phones");
+
+      expect(onChangeSettings).toHaveBeenCalledWith({
+        "treemap.rows": [
+          expect.objectContaining({
+            key: "Phones",
+            name: "Smartphones",
+            originalName: "Phones",
+          }),
+        ],
+      });
+    });
+  });
 });

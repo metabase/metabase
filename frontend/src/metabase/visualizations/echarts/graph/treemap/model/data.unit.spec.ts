@@ -226,6 +226,47 @@ describe("getTreemapData (1-level)", () => {
       value: 7,
     });
   });
+
+  it("uses the custom name from treemap.rows for a top-level node", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", 10],
+        ["B", 20],
+      ]),
+      treemapColumns,
+      [
+        {
+          key: "A",
+          name: "Renamed A",
+          originalName: "A",
+          color: "#FF0000",
+          defaultColor: false,
+          hidden: false,
+        },
+      ],
+    );
+
+    expect(result.map((n) => n.displayName)).toEqual(["Renamed A", "B"]);
+  });
+
+  it("matches a null grouping value to its treemap.rows entry by null key", () => {
+    const result = getTreemapData(
+      makeRawSeries([[null, 7]]),
+      treemapColumns,
+      [
+        {
+          key: NULL_DISPLAY_VALUE,
+          name: "No category",
+          originalName: NULL_DISPLAY_VALUE,
+          color: "#FF0000",
+          defaultColor: false,
+          hidden: false,
+        },
+      ],
+    );
+
+    expect(result[0].displayName).toBe("No category");
+  });
 });
 
 describe("getTreemapData (2-level)", () => {
@@ -408,7 +449,7 @@ describe("getTreemapData (2-level)", () => {
   });
 });
 
-describe("getTreemapNodePath", () => {
+describe("getNodesFromPath", () => {
   const tree: TreemapTree = [
     {
       rawName: "Legumes",

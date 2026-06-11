@@ -4,6 +4,7 @@ import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
 
+import { getTreemapNodeKey } from "../model/data";
 import {
   type TreemapInlineValueIds,
   getTreemapTooltipContext,
@@ -57,7 +58,7 @@ export function getTreemapTooltipOption(
       // color, so per-row markers would be identical and redundant — omit them.
       // In the overview each top-level group keeps its own color.
       const getColor = (node: TreemapNode) =>
-        context.parentNode ? undefined : colors[String(node.rawName)];
+        context.parentNode ? undefined : colors[getTreemapNodeKey(node)];
 
       return reactNodeToHtmlString(
         <EChartsTooltip

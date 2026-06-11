@@ -1,10 +1,24 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import { getColumnDescriptors } from "metabase/visualizations/lib/graph/columns";
+import { getKeyFromDimensionValue } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, RawSeries, RowValue } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  TreemapRow,
+} from "metabase-types/api";
 
 import type { TreemapChartColumns, TreemapNode, TreemapTree } from "./types";
+
+/**
+ * The stable settings key for a top-level node — the same key `treemap.rows`
+ * entries use, so colors and custom names resolve across data changes.
+ */
+export function getTreemapNodeKey(node: TreemapNode): string {
+  return getKeyFromDimensionValue(node.rawName);
+}
 
 type TreemapSettingsColumns =
   | "treemap.grouping"
@@ -46,6 +60,7 @@ export function getTreemapChartColumns<TColumn extends DatasetColumn>(
 export function getTreemapData(
   rawSeries: RawSeries,
   treemapColumns: TreemapChartColumns,
+  treemapRows?: TreemapRow[],
 ): TreemapTree {
   const [
     {
@@ -53,6 +68,10 @@ export function getTreemapData(
     },
   ] = rawSeries;
   const { grouping, subGrouping, value } = treemapColumns;
+
+  const rowNameByKey = new Map<string, string>(
+    (treemapRows ?? []).map((row) => [row.key, row.name]),
+  );
 
   const rootByKey = new Map<RowValue, TreemapNode>();
   const leafMapByRoot = new Map<TreemapNode, Map<RowValue, TreemapNode>>();
@@ -64,7 +83,8 @@ export function getTreemapData(
     const { node: rootNode } = getOrCreateNode(
       rootByKey,
       groupingValue,
-      groupingValue == null ? NULL_DISPLAY_VALUE : String(groupingValue),
+      rowNameByKey.get(getKeyFromDimensionValue(groupingValue)) ??
+        (groupingValue == null ? NULL_DISPLAY_VALUE : String(groupingValue)),
       subGrouping != null,
     );
     addRowMetric(rootNode, metricValue, rowIndex);

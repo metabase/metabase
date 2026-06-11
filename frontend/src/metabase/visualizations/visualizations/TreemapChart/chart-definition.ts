@@ -1,19 +1,32 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { formatValue } from "metabase/visualizations/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import {
   dimensionSetting,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
+import { getTreemapRows } from "metabase/visualizations/shared/settings/treemap";
 import type {
   ComputedVisualizationSettings,
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries } from "metabase-types/api";
+import type { DatasetData, RawSeries, SingleSeries } from "metabase-types/api";
+
+import {
+  SliceNameWidget,
+  type SliceNameWidgetProps,
+} from "../PieChart/SliceNameWidget";
+
+import { TreemapGroupsPicker } from "./TreemapGroupsPicker";
 
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ getHidden: () => true }),
@@ -32,6 +45,58 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       );
       return firstDimension?.name;
     },
+  }),
+  "treemap._groups_widget": {
+    getSection: () => t`Data`,
+    widget: TreemapGroupsPicker,
+    getProps: (
+      rawSeries: RawSeries,
+      settings: ComputedVisualizationSettings,
+      _onChange: unknown,
+      _extra: unknown,
+      onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
+    ) => ({
+      rawSeries,
+      settings,
+      onChangeSettings,
+    }),
+    readDependencies: ["treemap.rows"],
+  },
+  ...nestedSettings<
+    "series_settings",
+    SingleSeries,
+    unknown,
+    SliceNameWidgetProps
+  >(SERIES_SETTING_KEY, {
+    getObjectKey: keyForSingleSeries,
+    widget: SliceNameWidget,
+    getHidden: (_series, _settings, extra) => !extra?.isDashboard,
+    getSection: (_series, _settings, extra) =>
+      extra?.isDashboard ? t`Display` : t`Style`,
+    getWrapperStyle: () => ({
+      marginBottom: 0,
+    }),
+    getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
+      const treemapRows = vizSettings["treemap.rows"];
+      if (treemapRows == null) {
+        return { pieRows: [], updateRowName: () => null };
+      }
+
+      return {
+        pieRows: treemapRows,
+        updateRowName: (newName: string, key: string | number) => {
+          onChangeSettings({
+            "treemap.rows": treemapRows.map((row) => {
+              if (row.key !== key) {
+                return row;
+              }
+              return { ...row, name: newName };
+            }),
+          });
+        },
+      };
+    },
+    readDependencies: ["treemap.rows"],
   }),
   ...dimensionSetting("treemap.sub_grouping", {
     getSection: () => t`Data`,
@@ -79,6 +144,32 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     },
     readDependencies: ["treemap.grouping"],
   }),
+  "treemap.rows": {
+    getHidden: () => true,
+    getValue: _.memoize(
+      (series: RawSeries, settings: ComputedVisualizationSettings) =>
+        getTreemapRows(series, settings, (value, options) =>
+          String(formatValue(value, options)),
+        ),
+      ([{ data }]: RawSeries, settings: ComputedVisualizationSettings) =>
+        JSON.stringify({
+          cols: data.cols,
+          rows: data.rows,
+          settings: _.pick(
+            settings,
+            "treemap.grouping",
+            "treemap.sub_grouping",
+            "treemap.value",
+            "treemap.rows",
+          ),
+        }),
+    ),
+    readDependencies: [
+      "treemap.grouping",
+      "treemap.sub_grouping",
+      "treemap.value",
+    ],
+  },
   "treemap.show_parent_labels": {
     getSection: () => t`Display`,
     get group() {

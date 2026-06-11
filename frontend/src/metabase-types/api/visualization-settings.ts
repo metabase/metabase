@@ -53,3 +53,17 @@ export interface PieRow {
   hidden: boolean;
   isOther: boolean;
 }
+
+export interface TreemapRow {
+  key: string;
+  name: string;
+  originalName: string;
+  color: string;
+  defaultColor: boolean;
+  /**
+   * True when the key is no longer present in the data — the row is retained
+   * so customizations survive filter changes, but it is not shown in the
+   * settings UI and never rendered.
+   */
+  hidden: boolean;
+}

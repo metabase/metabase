@@ -30,7 +30,11 @@ import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
-import type { PieRow, SmartScalarComparison } from "./visualization-settings";
+import type {
+  PieRow,
+  SmartScalarComparison,
+  TreemapRow,
+} from "./visualization-settings";
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
@@ -359,6 +363,7 @@ export type VisualizationSettings = {
   "treemap.grouping"?: string;
   "treemap.sub_grouping"?: string;
   "treemap.value"?: string;
+  "treemap.rows"?: TreemapRow[];
   "treemap.show_parent_labels"?: boolean;
   "treemap.show_parent_values"?: boolean;
   "treemap.show_leaf_labels"?: boolean;

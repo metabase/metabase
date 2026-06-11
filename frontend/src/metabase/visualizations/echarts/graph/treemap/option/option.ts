@@ -4,6 +4,7 @@ import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
+import { getTreemapNodeKey } from "../model/data";
 import {
   HEADER_VALUE_PERCENT_GAP,
   type TreemapLabelLayout,
@@ -271,7 +272,7 @@ function toSeriesData(
   };
 
   return tree.map((node, rootIndex) => {
-    const groupColor = colors[String(node.rawName)];
+    const groupColor = colors[getTreemapNodeKey(node)];
     const groupTint = getGroupHeaderBgTint(groupColor, headerTintTarget);
     const groupId = getTreemapNodeId(rootIndex);
 

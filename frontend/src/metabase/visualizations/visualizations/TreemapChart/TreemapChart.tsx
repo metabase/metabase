@@ -66,8 +66,13 @@ export const TreemapChart = ({
     if (!treemapColumns) {
       return null;
     }
-    const tree = getTreemapData(rawSeriesWithRemappings, treemapColumns);
-    const colors = getTreemapColors(tree);
+    const treemapRows = settings["treemap.rows"];
+    const tree = getTreemapData(
+      rawSeriesWithRemappings,
+      treemapColumns,
+      treemapRows,
+    );
+    const colors = getTreemapColors(tree, treemapRows);
     return { tree, colors, treemapColumns };
   }, [rawSeriesWithRemappings, settings]);
 
