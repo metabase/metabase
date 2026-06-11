@@ -1,6 +1,7 @@
 import Bowser from "bowser";
 
 import { cardApi, dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import type { DispatchFn } from "metabase/redux";
 import { CollectionsApi } from "metabase/services";
 import { b64url_to_utf8 } from "metabase/utils/encoding";
@@ -34,13 +35,15 @@ export const getEntityDetails = ({
           return Promise.resolve("unable to decode ad-hoc question");
         }
       }
-      return dispatch(cardApi.endpoints.getCard.initiate({ id }))
-        .unwrap()
-        .catch(nullOnCatch);
+      return runRtkEndpoint({ id }, dispatch, cardApi.endpoints.getCard).catch(
+        nullOnCatch,
+      );
     case "dashboard":
-      return dispatch(dashboardApi.endpoints.getDashboard.initiate({ id }))
-        .unwrap()
-        .catch(nullOnCatch);
+      return runRtkEndpoint(
+        { id },
+        dispatch,
+        dashboardApi.endpoints.getDashboard,
+      ).catch(nullOnCatch);
     case "collection":
       return CollectionsApi.get({ id }).catch(nullOnCatch);
     default:
