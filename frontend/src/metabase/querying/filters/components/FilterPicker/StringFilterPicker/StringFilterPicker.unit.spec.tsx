@@ -13,13 +13,9 @@ import {
   within,
 } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import {
-  DEFAULT_TEST_QUERY,
-  createMetadataProvider,
-} from "metabase-lib/test-helpers";
+import type { Database } from "metabase-types/api";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   PEOPLE,
@@ -32,7 +28,6 @@ import {
   createQuery,
   createQueryWithStringFilter,
   findStringColumn,
-  storeInitialState,
 } from "../test-utils";
 
 import { StringFilterPicker } from "./StringFilterPicker";
@@ -48,43 +43,29 @@ const EXPECTED_OPERATORS = [
   "Not empty",
 ];
 
-const databaseWithoutCaseSensitivity = createSampleDatabase({
-  features: COMMON_DATABASE_FEATURES.filter(
-    (feature) => feature !== "case-sensitivity-string-filter-options",
-  ),
-});
-
-const storeStateWithoutCaseSensitivity = createMockState({
-  entities: createMockEntitiesState({
-    databases: [databaseWithoutCaseSensitivity],
-  }),
-});
-
-function createQueryWithoutCaseSensitivity() {
-  const metadata = getMetadata(storeStateWithoutCaseSensitivity);
-  const provider = createMetadataProvider({ metadata });
-  return Lib.createTestQuery(provider, DEFAULT_TEST_QUERY);
-}
-
 type SetupOpts = {
+  database?: Database;
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
   filter?: Lib.FilterClause;
   withAddButton?: boolean;
-  state?: ReturnType<typeof createMockState>;
 };
 
 function setup({
+  database = createSampleDatabase(),
   query = createQuery(),
   column = findStringColumn(query),
   filter,
   withAddButton = false,
-  state = storeInitialState,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases: [database] }),
+  });
 
   renderWithProviders(
     <StringFilterPicker
@@ -264,11 +245,12 @@ describe("StringFilterPicker", () => {
     });
 
     it("should hide the case sensitive option when the database does not support it", async () => {
-      const query = createQueryWithoutCaseSensitivity();
       setup({
-        query,
-        column: findStringColumn(query, "PRODUCTS", "VENDOR"),
-        state: storeStateWithoutCaseSensitivity,
+        database: createSampleDatabase({
+          features: COMMON_DATABASE_FEATURES.filter(
+            (feature) => feature !== "case-sensitivity-string-filter-options",
+          ),
+        }),
       });
 
       await setOperator("Contains");
