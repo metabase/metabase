@@ -664,6 +664,17 @@
                               {:details {:db "new"}}))
       (is (true? (t2/select-one-fn :is_stub :model/Database :id db-id))))))
 
+(deftest reject-sample-database-edit-test
+  (testing "PUT /api/database/:id rejects any edit to the sample database with a sample-specific message"
+    (mt/with-temp [:model/Database {db-id :id} {:engine    ::test-driver
+                                                :is_sample true
+                                                :name      "Sample Database"}]
+      (is (re-find #"sample database cannot be edited"
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
+                                         {:name "New Name"})))
+      (testing "the row is unchanged"
+        (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id)))))))
+
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `provider_name`"

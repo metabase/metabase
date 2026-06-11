@@ -1103,6 +1103,9 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
+        _                               (when (:is_sample existing-database)
+                                          (throw (ex-info (tru "The sample database cannot be edited.")
+                                                          {:status-code 400})))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
         _                               (when admin_details
