@@ -71,6 +71,9 @@ export function getTreemapRows(
     if (savedRow != null) {
       return {
         ...savedRow,
+        // Rows saved before the remove-group feature existed have no
+        // `enabled` — missing means visible, only an explicit false disables.
+        enabled: savedRow.enabled !== false,
         hidden: false,
         ...(savedRow.defaultColor ? { color: colors[key] } : {}),
       };
@@ -82,6 +85,7 @@ export function getTreemapRows(
       originalName: name,
       color: colors[key],
       defaultColor: true,
+      enabled: true,
       hidden: false,
     };
   });
@@ -89,7 +93,11 @@ export function getTreemapRows(
   const currentKeySet = new Set(currentKeys);
   savedRows.forEach((savedRow) => {
     if (!currentKeySet.has(savedRow.key)) {
-      newRows.push({ ...savedRow, hidden: true });
+      newRows.push({
+        ...savedRow,
+        enabled: savedRow.enabled !== false,
+        hidden: true,
+      });
     }
   });
 

@@ -44,7 +44,6 @@ export type ChartSettingSeriesOrderProps = {
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
   isSortable?: boolean;
-  isRemovable?: boolean;
   accentColorOptions?: AccentColorOptions;
   getItemColor?: (item: SortableChartSettingOrderedItem) => string | undefined;
   addButtonLabel?: string;
@@ -66,7 +65,6 @@ export const ChartSettingSeriesOrder = ({
   onChangeSeriesColor,
   onSortEnd,
   isSortable = true,
-  isRemovable = true,
   getItemColor,
   accentColorOptions,
   otherColor,
@@ -221,9 +219,7 @@ export const ChartSettingSeriesOrder = ({
           <ChartSettingOrderedItems
             items={visibleItems}
             getItemName={getItemTitle}
-            onRemove={
-              isRemovable && visibleItems.length > 1 ? toggleDisplay : undefined
-            }
+            onRemove={visibleItems.length > 1 ? toggleDisplay : undefined}
             onEnable={toggleDisplay}
             onSortEnd={handleSortEnd}
             isSortable={isSortable}

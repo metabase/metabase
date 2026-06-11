@@ -72,6 +72,13 @@ export function getTreemapData(
   const rowNameByKey = new Map<string, string>(
     (treemapRows ?? []).map((row) => [row.key, row.name]),
   );
+  // Only an explicit `enabled: false` disables a group — rows saved before the
+  // remove-group feature existed have no `enabled` field and must stay visible.
+  const disabledKeys = new Set(
+    (treemapRows ?? [])
+      .filter((row) => row.enabled === false)
+      .map((row) => row.key),
+  );
 
   const rootByKey = new Map<RowValue, TreemapNode>();
   const leafMapByRoot = new Map<TreemapNode, Map<RowValue, TreemapNode>>();
@@ -79,6 +86,12 @@ export function getTreemapData(
   rows.forEach((row, rowIndex) => {
     const groupingValue = row[grouping.index];
     const metricValue = row[value.index];
+
+    // Groups removed via the X in the settings list are excluded entirely, so
+    // totals and percentages are computed over the remaining groups only.
+    if (disabledKeys.has(getKeyFromDimensionValue(groupingValue))) {
+      return;
+    }
 
     const { node: rootNode } = getOrCreateNode(
       rootByKey,

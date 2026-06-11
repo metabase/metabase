@@ -30,6 +30,7 @@ describe("getTreemapColors", () => {
         originalName: "Phones",
         color: "#FF0000",
         defaultColor: false,
+        enabled: true,
         hidden: false,
       },
     ]);

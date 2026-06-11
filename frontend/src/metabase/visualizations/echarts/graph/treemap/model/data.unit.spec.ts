@@ -1,6 +1,6 @@
 import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getNodesFromPath } from "metabase/visualizations/echarts/graph/treemap/model/tree";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn, RowValue, TreemapRow } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
   createMockColumn,
@@ -241,6 +241,7 @@ describe("getTreemapData (1-level)", () => {
           originalName: "A",
           color: "#FF0000",
           defaultColor: false,
+          enabled: true,
           hidden: false,
         },
       ],
@@ -249,21 +250,63 @@ describe("getTreemapData (1-level)", () => {
     expect(result.map((n) => n.displayName)).toEqual(["Renamed A", "B"]);
   });
 
-  it("matches a null grouping value to its treemap.rows entry by null key", () => {
+  it("excludes groups disabled via treemap.rows from the tree", () => {
     const result = getTreemapData(
-      makeRawSeries([[null, 7]]),
+      makeRawSeries([
+        ["A", 10],
+        ["B", 20],
+      ]),
       treemapColumns,
       [
         {
-          key: NULL_DISPLAY_VALUE,
-          name: "No category",
-          originalName: NULL_DISPLAY_VALUE,
+          key: "A",
+          name: "A",
+          originalName: "A",
           color: "#FF0000",
-          defaultColor: false,
+          defaultColor: true,
+          enabled: false,
           hidden: false,
         },
       ],
     );
+
+    expect(result.map((n) => n.rawName)).toEqual(["B"]);
+  });
+
+  it("keeps groups whose treemap.rows entry has no enabled field (legacy settings)", () => {
+    const result = getTreemapData(
+      makeRawSeries([
+        ["A", 10],
+        ["B", 20],
+      ]),
+      treemapColumns,
+      [
+        {
+          key: "A",
+          name: "A",
+          originalName: "A",
+          color: "#FF0000",
+          defaultColor: true,
+          hidden: false,
+        } as TreemapRow,
+      ],
+    );
+
+    expect(result.map((n) => n.rawName)).toEqual(["A", "B"]);
+  });
+
+  it("matches a null grouping value to its treemap.rows entry by null key", () => {
+    const result = getTreemapData(makeRawSeries([[null, 7]]), treemapColumns, [
+      {
+        key: NULL_DISPLAY_VALUE,
+        name: "No category",
+        originalName: NULL_DISPLAY_VALUE,
+        color: "#FF0000",
+        defaultColor: false,
+        enabled: true,
+        hidden: false,
+      },
+    ]);
 
     expect(result[0].displayName).toBe("No category");
   });

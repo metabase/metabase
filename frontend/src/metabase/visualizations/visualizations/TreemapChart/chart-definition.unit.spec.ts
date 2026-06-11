@@ -614,6 +614,7 @@ describe("TREEMAP_CHART_DEFINITION", () => {
         originalName: "Phones",
         color: "#509EE3",
         defaultColor: true,
+        enabled: true,
         hidden: false,
       },
     ];

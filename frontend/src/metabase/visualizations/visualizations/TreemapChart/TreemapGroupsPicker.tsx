@@ -1,4 +1,7 @@
+import { t } from "ttag";
+
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
+import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries, TreemapRow } from "metabase-types/api";
 
@@ -14,9 +17,10 @@ export type TreemapGroupsPickerProps = {
 
 /**
  * The per-group list under the Grouping picker: color swatch + name + a "…"
- * rename popover for each top-level group. Unlike pie's rows there is no
- * reordering (tiles auto-sort by value) and no hiding, so drag handles and the
- * remove button are disabled.
+ * rename popover + an X that removes the group from the chart (it can be added
+ * back via the picker that appears once something is removed). Unlike pie's
+ * rows there is no reordering — tiles auto-sort by value — so drag handles are
+ * disabled.
  */
 export function TreemapGroupsPicker({
   rawSeries,
@@ -30,7 +34,13 @@ export function TreemapGroupsPicker({
     return null;
   }
 
-  const items = treemapRows.map((row) => ({ ...row, enabled: true }));
+  // In a 2-level treemap the sub-group tiles render as derived shades of the
+  // parent hue, so the picker offers only the main accent row (a light/dark
+  // shade as the base would collide with the derived shades). A 1-level
+  // treemap has no derived shades, so the full palette is offered.
+  const isTwoLevel =
+    getTreemapChartColumns(rawSeries[0]?.data?.cols ?? [], settings)
+      ?.subGrouping != null;
 
   const handleChangeSeriesColor = (groupKey: string, color: string) =>
     onChangeSettings({
@@ -44,21 +54,23 @@ export function TreemapGroupsPicker({
 
   return (
     <ChartSettingSeriesOrder
-      value={items}
+      value={treemapRows}
       series={rawSeries}
       onChange={(rows) =>
-        onChangeSettings({
-          "treemap.rows": (rows as Array<TreemapRow & { enabled: boolean }>).map(
-            ({ enabled: _enabled, ...row }) => row,
-          ),
-        })
+        onChangeSettings({ "treemap.rows": rows as TreemapRow[] })
       }
       onChangeSeriesColor={handleChangeSeriesColor}
       onSortEnd={() => {}}
       onShowWidget={onShowWidget}
       hasEditSettings
       isSortable={false}
-      isRemovable={false}
+      accentColorOptions={
+        isTwoLevel
+          ? { main: true, light: false, dark: false, harmony: false }
+          : undefined
+      }
+      addButtonLabel={t`Add another group`}
+      searchPickerPlaceholder={t`Select a group`}
     />
   );
 }

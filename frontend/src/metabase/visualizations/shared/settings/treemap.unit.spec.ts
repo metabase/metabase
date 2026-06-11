@@ -68,7 +68,53 @@ describe("getTreemapRows", () => {
       expect(row.name).toBe(row.key);
       expect(row.originalName).toBe(row.key);
       expect(row.defaultColor).toBe(true);
+      expect(row.enabled).toBe(true);
       expect(typeof row.color).toBe("string");
+    });
+  });
+
+  it("treats saved rows without an enabled field as enabled (legacy settings)", () => {
+    const rawSeries = createRawSeries([
+      ["Phones", 10],
+      ["Laptops", 30],
+    ]);
+    // Rows persisted before the remove-group feature existed have no
+    // `enabled` field at all.
+    const legacy = {
+      key: "Phones",
+      name: "Smartphones",
+      originalName: "Phones",
+      color: "#FF0000",
+      defaultColor: false,
+      hidden: false,
+    } as TreemapRow;
+    const rows = getTreemapRows(rawSeries, createSettings([legacy]), formatter);
+
+    expect(rows.find((row) => row.key === "Phones")).toMatchObject({
+      name: "Smartphones",
+      enabled: true,
+    });
+  });
+
+  it("keeps a group disabled via the X across recomputes", () => {
+    const rawSeries = createRawSeries([
+      ["Phones", 10],
+      ["Laptops", 30],
+    ]);
+    const saved: TreemapRow = {
+      key: "Phones",
+      name: "Phones",
+      originalName: "Phones",
+      color: "#509EE3",
+      defaultColor: true,
+      enabled: false,
+      hidden: false,
+    };
+    const rows = getTreemapRows(rawSeries, createSettings([saved]), formatter);
+
+    expect(rows.find((row) => row.key === "Phones")).toMatchObject({
+      enabled: false,
+      hidden: false,
     });
   });
 
@@ -105,6 +151,7 @@ describe("getTreemapRows", () => {
       originalName: "Phones",
       color: "#FF0000",
       defaultColor: false,
+      enabled: true,
       hidden: false,
     };
     const rows = getTreemapRows(rawSeries, createSettings([saved]), formatter);
@@ -114,6 +161,7 @@ describe("getTreemapRows", () => {
       name: "Smartphones",
       color: "#FF0000",
       defaultColor: false,
+      enabled: true,
       hidden: false,
     });
   });
@@ -129,6 +177,7 @@ describe("getTreemapRows", () => {
       originalName: "Phones",
       color: "#STALE",
       defaultColor: true,
+      enabled: true,
       hidden: false,
     };
     const rows = getTreemapRows(rawSeries, createSettings([saved]), formatter);
@@ -148,6 +197,7 @@ describe("getTreemapRows", () => {
       originalName: "Discontinued",
       color: "#FF0000",
       defaultColor: false,
+      enabled: true,
       hidden: false,
     };
     const rows = getTreemapRows(rawSeries, createSettings([saved]), formatter);
@@ -163,6 +213,7 @@ describe("getTreemapRows", () => {
       originalName: "Phones",
       color: "#FF0000",
       defaultColor: false,
+      enabled: true,
       hidden: true,
     };
     const rows = getTreemapRows(
