@@ -1,32 +1,27 @@
 (ns metabase.metabot.schema.v1
-  "Schemas for the v1 at-rest `metabot_message.data` formats — the bespoke legacy formats
-  written before the AI SDK upgrade. A `data` value is a vector in one of three self-describing
-  shapes: ai-service entries (tagged by uppercase `:_type`), native entries (message parts
-  keyed by lowercase `:type`), or a user message. Validates post-select values, i.e. JSON
-  decoded with keywordized keys.
-
-  These are internal formats: the ai-service entries borrow names and concepts from AI SDK v4
-  `DataStreamPart`s (https://github.com/vercel/ai, ai@4, packages/ui-utils/src/data-stream-parts.ts)
-  but do not conform to them."
+  "Schemas for the v1 `metabot_message.data` storage formats, which is two sub-formats:
+  one written by the deprecated external ai service and another for our native clojure
+  implementation."
   (:require
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
 (mr/def ::data-type
-  "The data-part type vocabulary, shared by both entry formats."
+  "Known data part types."
   [:enum "adhoc_viz" "code_edit" "navigate_to" "state" "static_viz" "todo_list"
    "transform_suggestion"])
 
 (mr/def ::ai-service-entry
-  "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`.
+  "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`
+  (See https://github.com/vercel/ai, ai@4, packages/ui-utils/src/data-stream-parts.ts).
   The `:_type` tags are the v4 part names, uppercased, but the shapes diverge from v4's:
 
-  - fields are renamed: `tool_call`'s `{toolCallId, toolName, args}` is stored as
-    `:tool_calls [{:id :name :arguments}]`, `tool_result`'s `{toolCallId, result}` as
-    `:tool_call_id`/`:content`, and `finish_message`'s `finishReason` as `:finish_reason`
-  - only a subset of the v4 union appears; the other part types (`start_step`, `reasoning`,
-    `tool_call_delta`, …) never reach the column"
+  - only a subset of the v4 part types were ever used
+  - key names are often use snake case instead of camel
+  - some fields are renamed:
+    - `tool_call`'s `{toolCallId, toolName, args}` is stored as `:tool_calls [{:id :name :arguments}]`
+    - `tool_result`'s `{toolCallId, result}` as `{tool_call_id, content}`"
   [:multi {:dispatch :_type}
    ["TEXT"           [:map {:closed true}
                       [:role [:= "assistant"]]
@@ -60,7 +55,7 @@
                       [:usage :map]]]])
 
 (mr/def ::native-entry
-  "An entry written by the clojure-native agent: a message part keyed by lowercase `:type`."
+  "An entry written by the native clojure agent."
   [:multi {:dispatch :type}
    ["text"        [:map {:closed true}
                    [:type [:= "text"]]
@@ -101,8 +96,8 @@
    [:content :string]])
 
 (mr/def ::message-data
-  "A whole `metabot_message.data` value in the v1 format. Entries within a row are homogeneous;
-  assistant placeholder rows are `[]`."
+  "`metabot_message.data` v1 column format. Entries within a row are homogeneous.
+  Assistant placeholder rows are empty `[]`."
   [:or
    [:sequential {:max 0} :any]
    [:sequential {:min 1} ::user-message]
@@ -110,9 +105,7 @@
    [:sequential {:min 1} ::native-entry]])
 
 (comment
-  ;; validate a CSV dump of metabot_message (`id` and `data` columns, header row) against the
-  ;; v1 at-rest schema, e.g. from psql:
-  ;;   \copy (select id, data from metabot_message) to 'dump.csv' with csv header
+  ;; validate a CSV dump of the metabot_message table against the v1 schemas
   (require '[clojure.data.csv :as csv]
            '[clojure.java.io :as io]
            '[malli.error :as me]

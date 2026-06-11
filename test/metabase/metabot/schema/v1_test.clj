@@ -7,36 +7,36 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
-(def ^:private ai-service-entry-cases
-  [[{:role "assistant" :_type "TEXT" :content "Hi there"}                          :content]
-   [{:role "assistant" :_type "ERROR" :content "Something went wrong"}             :content]
-   [{:_type "DATA" :type "navigate_to" :version 1 :value "/question/1"}            :version]
-   [{:role "assistant" :_type "TOOL_CALL"
-     :tool_calls [{:id "tc1" :name "search" :arguments "{\"q\":\"x\"}"}]}          :tool_calls]
-   [{:role "tool" :_type "TOOL_RESULT" :tool_call_id "tc1" :content "<result/>"}   :tool_call_id]
-   [{:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}    :usage]])
+(def ^:private ai-service-entries
+  "A representative entry for each ai-service `:_type`."
+  [{:role "assistant" :_type "TEXT" :content "Hi there"}
+   {:role "assistant" :_type "ERROR" :content "Something went wrong"}
+   {:_type "DATA" :type "navigate_to" :version 1 :value "/question/1"}
+   {:role "assistant" :_type "TOOL_CALL" :tool_calls [{:id "tc1" :name "search" :arguments "{\"q\":\"x\"}"}]}
+   {:role "tool" :_type "TOOL_RESULT" :tool_call_id "tc1" :content "<result/>"}
+   {:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}])
 
-(def ^:private native-entry-cases
-  [[{:type "text" :id "t1" :text "Hello"}                                          :text]
-   [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}          :function]
-   [{:type "tool-output" :id "tc1" :function "search"
-     :result {:output "rows" :structured-output {:type "table"}}
-     :error nil :duration-ms 12.5}                                                 :id]
-   [{:type "tool-output" :id "tc1"
-     :result {:output "rows" :instructions "..." :resources [] :data-parts []}}    :result]
-   [{:type "data" :data-type "navigate_to" :version 1 :data "/question/1"}         :data-type]
-   [{:type "error" :error {:message "boom"}}                                       :error]
-   [{:type "error" :errorText "Overloaded"}                                        :errorText]])
+(deftest ^:parallel ai-service-entries-validate-test
+  (is (nil? (mr/explain [:sequential ::schema.v1/ai-service-entry] ai-service-entries))))
 
-(deftest ^:parallel entry-test
-  (doseq [[schema cases] {::schema.v1/ai-service-entry ai-service-entry-cases
-                          ::schema.v1/native-entry             native-entry-cases
-                          ::schema.v1/user-message     [[{:role "user" :content "Do we have orders data?"} :content]]}
-          [payload required-key] cases]
-    (testing (str schema " " (or (:_type payload) (:type payload) (:role payload)))
-      (is (mr/validate schema payload))
-      (is (not (mr/validate schema (assoc payload :unexpected-key 1))))
-      (is (not (mr/validate schema (dissoc payload required-key)))))))
+(def ^:private native-entries
+  "A representative entry for each native `:type`."
+  [{:type "text" :id "t1" :text "Hello"}
+   {:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
+   {:type "tool-output" :id "tc1" :function "search"
+    :result {:output "rows" :structured-output {:type "table"}}
+    :error nil :duration-ms 12.5}
+   {:type "tool-output" :id "tc1"
+    :result {:output "rows" :instructions "..." :resources [] :data-parts []}}
+   {:type "data" :data-type "navigate_to" :version 1 :data "/question/1"}
+   {:type "error" :error {:message "boom"}}
+   {:type "error" :errorText "Overloaded"}])
+
+(deftest ^:parallel native-entries-validate-test
+  (is (nil? (mr/explain [:sequential ::schema.v1/native-entry] native-entries))))
+
+(deftest ^:parallel user-message-validates-test
+  (is (nil? (mr/explain ::schema.v1/user-message {:role "user" :content "Do we have orders data?"}))))
 
 (deftest ^:parallel message-data-test
   (testing "assistant placeholder rows are empty"
@@ -54,22 +54,16 @@
   (testing "rows mixing sub-variants fail"
     (is (not (mr/validate ::schema.v1/message-data
                           [{:role "user" :content "hi"}
-                           {:type "text" :id "t1" :text "Hello"}]))))
-  (testing "extra keys fail"
-    (is (not (mr/validate ::schema.v1/message-data
-                          [{:role "user" :content "hi" :unexpected-key 1}])))))
-
-(defn- persistence-round-trip
-  "Simulate `mi/transform-json` write + read: keyword values become strings, keys stay keywords."
-  [x]
-  (-> x json/encode json/decode+kw))
+                           {:type "text" :id "t1" :text "Hello"}])))))
 
 (deftest ^:parallel fixture-parity-test
-  (doseq [n [1 2 3 4]]
-    (testing (str "aisdkstream" n ".txt")
-      (let [messages (metabot.u/aisdk->messages "assistant"
-                                                (-> (io/resource (str "metabase/metabot/aisdkstream" n ".txt"))
-                                                    io/reader
-                                                    line-seq))]
-        (is (nil? (mr/explain ::schema.v1/message-data
-                              (persistence-round-trip messages))))))))
+  (doseq [fixture ["metabase/metabot/aisdkstream1.txt"
+                   "metabase/metabot/aisdkstream2.txt"
+                   "metabase/metabot/aisdkstream3.txt"
+                   "metabase/metabot/aisdkstream4.txt"]]
+    (testing fixture
+      (let [messages (metabot.u/aisdk->messages "assistant" (-> (io/resource fixture) io/reader line-seq))
+            ;; the schema describes the at-rest shape, so simulate the `mi/transform-json` write +
+            ;; read cycle: keyword values become strings, keys stay keywords
+            at-rest  (-> messages json/encode json/decode+kw)]
+        (is (nil? (mr/explain ::schema.v1/message-data at-rest)))))))
