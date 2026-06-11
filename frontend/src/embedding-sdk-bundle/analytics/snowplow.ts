@@ -49,8 +49,8 @@ export function initSdkTracker({
     platform: "web",
     eventMethod: "post",
     contexts: { webPage: true },
-    // Plain JSON on the wire. The main-app tracker pins encodeBase64:true to keep
-    // its v3 format; the SDK tracker is new, so there's no legacy format to preserve.
+    // Plain JSON on the wire. The main-app tracker uses the default (encodeBase64:true);
+    // the SDK tracker is new, so there's no legacy format to preserve.
     encodeBase64: false,
     // Deliver through the instance proxy, not the collector's tp2 path.
     postPath: "/api/analytics-proxy",

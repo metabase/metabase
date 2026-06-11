@@ -1,4 +1,7 @@
-import { CreateQuestion } from "@metabase/embedding-sdk-react";
+import {
+  CreateQuestion,
+  StaticQuestion,
+} from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, updateSetting } from "e2e/support/helpers";
@@ -88,6 +91,8 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     // Wait for at least one proxy delivery, then assert on what was captured.
     cy.wait("@analyticsProxy");
 
+    cy.wrap(capturedEvents).should("have.length", 2);
+
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const componentEvent = events.find(
         (event) => event.component === "StaticQuestion",
@@ -118,6 +123,8 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
     cy.wait("@analyticsProxy");
 
+    cy.wrap(capturedEvents).should("have.length", 2);
+
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find(
         (event) => event.component === "InteractiveQuestion",
@@ -135,6 +142,41 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
         (event) => event.component === "CreateQuestion",
       );
       expect(createQuestionEvent, "no CreateQuestion event").to.be.undefined;
+    });
+  });
+
+  it("fires one component event per mounted component plus one global beacon", () => {
+    updateSetting("anon-tracking-enabled", true);
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    const capturedEvents = interceptAnalyticsProxy();
+
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(
+        <>
+          <StaticQuestion questionId={questionId} />
+          <StaticQuestion questionId={questionId} />
+        </>,
+      );
+    });
+
+    cy.wait("@analyticsProxy");
+
+    cy.wrap(capturedEvents).should("have.length", 3);
+
+    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
+      const componentEvents = events.filter(
+        (event) => event.component === "StaticQuestion",
+      );
+      expect(componentEvents, "two StaticQuestion mount events").to.have.length(
+        2,
+      );
+    });
+
+    cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
+      const beacon = events.find((event) => event.component === null);
+      expect(beacon, "global init beacon (component: null)").to.exist;
     });
   });
 

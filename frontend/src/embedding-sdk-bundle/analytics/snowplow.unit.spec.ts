@@ -39,7 +39,8 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   describe("initSdkTracker", () => {
     // Assert only the flags whose absence fails silently in a customer's prod app:
     // proxy path (CSP), server anonymisation (privacy), and no host-page storage.
-    // CORS: v3 uses XHR which defaults to withCredentials=false (equivalent to "omit").
+    // CORS: 3.1.6 hardcoded withCredentials=true with no config option; 3.2.0 added
+    // withCredentials as a config, so we pin it false to satisfy wildcard CORS on the proxy.
     // The rest is cosmetic config, not a safety contract.
     it("configures the proxy path, anonymises, and touches no storage", async () => {
       const { initSdkTracker } = await loadModule();
