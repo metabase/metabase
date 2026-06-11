@@ -777,7 +777,7 @@ function buildExpressionMetricSources(
             return undefined;
           }
           const token = entity.tokens[slot.tokenPosition];
-          return token?.type === "metric" ? token.count : undefined;
+          return token?.type === "metric" ? token.occurrenceCount : undefined;
         })(),
         colors: entryColors,
         currentDimension,
