@@ -66,7 +66,7 @@ import {
   PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getTokenFeature } from "metabase/setup";
+import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";

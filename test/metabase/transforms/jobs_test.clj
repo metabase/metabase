@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
@@ -474,6 +475,39 @@
                                                                           :name     "zombie_out"}}]
             (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
               (is (empty? (:order (#'jobs/get-plan #{})))))))))))
+
+(deftest run-transforms-skips-fresh-pulled-in-deps-test
+  (mt/with-premium-features #{:transforms-basic}
+    ;; b (2) depends on a (1), plus independent c (3); only b and c are requested, so a is pulled in.
+    (let [plan [{:id 1} {:id 2} {:id 3}]
+          deps {1 #{} 2 #{1} 3 #{}}
+          ran  (atom #{})]
+      (testing "a fresh pulled-in dep is not executed, but its dependent still runs"
+        (with-redefs [jobs/get-plan           (fn [_] {:order plan :deps deps})
+                      freshness/fresh-dep-ids (fn [_now dep-ids]
+                                                ;; only pulled-in deps are offered for gating
+                                                (is (= #{1} (set dep-ids)))
+                                                #{1})
+                      jobs/run-transform!     (fn [_ _ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{2 3} {:run-method :cron})))
+          (is (= #{2 3} @ran) "transform 1 (fresh dep) was skipped; 2 and 3 ran")))
+      (testing "skip-fresh-deps? false (manual run_all) force-refreshes the whole plan"
+        (reset! ran #{})
+        (with-redefs [jobs/get-plan           (fn [_] {:order plan :deps deps})
+                      freshness/fresh-dep-ids (fn [& _] (throw (ex-info "must not gate when disabled" {})))
+                      jobs/run-transform!     (fn [_ _ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{2 3} {:run-method :manual :skip-fresh-deps? false})))
+          (is (= #{1 2 3} @ran) "with skipping disabled, the dep runs too"))))
+    (testing "a plan that is entirely skipped exits cleanly as succeeded with nothing run"
+      (let [ran (atom #{})]
+        (with-redefs [jobs/get-plan           (fn [_] {:order [{:id 1}] :deps {1 #{}}})
+                      freshness/fresh-dep-ids (fn [_now _dep-ids] #{1})
+                      jobs/run-transform!     (fn [_ _ _ t] (swap! ran conj (:id t)))]
+          (is (= {::jobs/status :succeeded}
+                 (jobs/run-transforms! 0 #{} {:run-method :cron})))
+          (is (= #{} @ran)))))))
 
 (deftest run-transforms!-race-condition-test
   ;; Previously a race would ensure one transform run got the duplicate key error and aborted.

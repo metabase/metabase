@@ -43,6 +43,16 @@
                    :construct-notebook-query-advanced
                    :construct-notebook-query-operators])))))
 
+(deftest ^:parallel get-skill-by-id-string-test
+  (testing "resolves a known skill by its string id"
+    (is (= :construct-notebook-query-core
+           (:id (skills/get-skill-by-id-string "construct-notebook-query-core")))))
+  (testing "an unknown id returns nil without interning a keyword"
+    (let [unseen "load-skill-never-seen-id-xyz"]
+      (is (nil? (find-keyword unseen)) "precondition: id is not yet interned")
+      (is (nil? (skills/get-skill-by-id-string unseen)))
+      (is (nil? (find-keyword unseen)) "lookup must not have interned the id"))))
+
 (deftest ^:parallel skill-shape-test
   (testing "a parsed markdown skill has frontmatter + body"
     (let [s (skills/get-skill :construct-notebook-query-core)]

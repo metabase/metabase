@@ -16,7 +16,7 @@
   "Resolve and format a single skill id, or an inline message when it is unknown
   or not available to the current user."
   [id]
-  (let [skill (skills/get-skill (keyword id))]
+  (let [skill (skills/get-skill-by-id-string id)]
     (cond
       (nil? skill)
       (do (log/info "Unknown skill requested by load_skill" {:id id})

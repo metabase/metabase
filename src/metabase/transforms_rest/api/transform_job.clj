@@ -80,6 +80,8 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency {:optional true} :boolean]
+   [:scheduled {:optional true} :boolean]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
@@ -215,14 +217,19 @@
 (api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
                                                  [:message :string]
                                                  [:job_run_id :string]]
-  "Run a transform job manually."
-  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+  "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`
+  to force-refresh the whole plan."
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
+   _query-params
+   {:keys [run_all]} :- [:map
+                         [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
   (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.core/run-job! job-id {:run-method :manual
-                                       :user-id api/*current-user-id*})
+     (transforms.core/run-job! job-id {:run-method       :manual
+                                       :user-id          api/*current-user-id*
+                                       :skip-fresh-deps? (not run_all)})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))

@@ -236,6 +236,20 @@
                  :transform_id transform-id
                  :is_active true))
 
+(defn last-successful-run-times
+  "Map each id in `transform-ids` with a succeeded run to its most recent run's `end_time`. Ids with
+  no succeeded run are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (into {}
+          (map (juxt :transform_id :last_success))
+          (t2/select :model/TransformRun
+                     {:select   [:transform_id [[:max :end_time] :last_success]]
+                      :where    [:and
+                                 [:in :transform_id transform-ids]
+                                 [:= :status [:inline "succeeded"]]]
+                      :group-by [:transform_id]}))))
+
 (defn- timestamp-constraint
   [field-name date-string]
   (let [{:keys [start end]}

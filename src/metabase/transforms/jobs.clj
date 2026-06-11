@@ -1,5 +1,6 @@
 (ns metabase.transforms.jobs
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [metabase.channel.urls :as urls]
@@ -12,9 +13,11 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
@@ -286,6 +289,10 @@
         (Thread/sleep 250)
         (recur st)))))
 
+(defn- app-db-now
+  []
+  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+
 (defn run-transforms!
   "Run `transform-ids-to-run` and their dependencies, honoring the DAG.
 
@@ -294,15 +301,26 @@
   a single worker). A failed dependency fails its dependents transitively; a worker that overruns the
   transform timeout (plus grace) is interrupted and failed.
 
+  Transforms pulled into the plan only as dependencies (not directly requested) are skipped while
+  still fresh, unless `skip-fresh-deps?` is false.
+
   Returns `{::status :succeeded}`, `{::status :failed ::failures [...]}`, or `{::status :aborted}`
   when the job run was terminated externally (e.g. reaped) while this coordinator was still running."
-  [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?]
+                                :or   {skip-fresh-deps? true}}]
   (let [gone (promise)
         _    (swap! active-runs assoc run-id gone)
         final-state
         (try
           (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-                init-state {:succeeded         #{}
+                requested  (set transform-ids-to-run)
+                closure    (into #{} (map :id) plan)
+                ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
+                ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
+                skip       (or (when skip-fresh-deps?
+                                 (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested)))
+                               #{})
+                init-state {:succeeded         skip
                             :failed            #{}
                             :failures          []
                             ;; per lane: transform-id -> {:future :timer :tkey :transform}
@@ -320,6 +338,8 @@
                                          :py  1}
                             :timeout-ms (+ (u/minutes->ms (transforms.settings/transform-timeout))
                                            transform-worker-grace-ms)}]
+            (when (seq skip)
+              (log/infof "Skipping %d fresh pulled-in dependency transform(s): %s" (count skip) (pr-str skip)))
             (when start-promise (deliver start-promise :started))
             (run-coordinator-loop! init-state ctx))
           (finally
@@ -337,11 +357,20 @@
       #{})))
 
 (defn job-transforms
-  "Return the transforms that are executed when running the job with ID `job-id`.
+  "Return the transforms that are executed when running the job with ID `job-id`, in execution order.
 
-  The transforms are returned in the order of their execution."
+  Transforms pulled into the plan only as dependencies are marked with `:dependency true`
+  and `:scheduled` (whether any active job's schedule covers them)."
   [job-id]
-  (:order (get-plan (job-transform-ids job-id))))
+  (let [tagged    (job-transform-ids job-id)
+        plan      (:order (get-plan tagged))
+        dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
+        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+    (map (fn [{:keys [id] :as transform}]
+           (cond-> transform
+             (contains? dep-ids id) (assoc :dependency true
+                                           :scheduled  (contains? scheduled id))))
+         plan)))
 
 (defn- compile-transform-failure-messages [failures]
   (->> failures
