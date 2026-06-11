@@ -309,6 +309,18 @@ width: fixed
                                                   files)]
                             (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
                             new-version))
+                        (apply-changes! [_ _message upserts delete-paths]
+                          (let [n           (:counter (swap! state update :counter inc))
+                                new-version (str "written-" n)
+                                delete-set  (into #{} (remove str/blank?) delete-paths)
+                                tree        (as-> (get-in @state [:trees version] {}) t
+                                              (apply dissoc t delete-set)
+                                              (into t
+                                                    (comp (remove #(str/blank? (:path %)))
+                                                          (map (juxt :path :content)))
+                                                    upserts))]
+                            (swap! state #(-> % (assoc-in [:trees new-version] tree) (assoc :current new-version)))
+                            new-version))
                         (version [_] version)))]
     (reify source.p/Source
       (branches [_] [branch])

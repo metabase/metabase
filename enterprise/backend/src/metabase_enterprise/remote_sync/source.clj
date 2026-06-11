@@ -144,6 +144,7 @@
       (list-files [_] (vec (keys by-path)))
       (read-file [_ path] (get by-path path))
       (write-files! [_ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
+      (apply-changes! [_ _ _ _] (throw (ex-info "in-memory merge snapshot is read-only" {})))
       (version [_] nil))))
 
 (defn preview-merge

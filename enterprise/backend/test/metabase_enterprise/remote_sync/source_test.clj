@@ -74,6 +74,9 @@
       (write-files! [_ message files]
         (reset! written {:message message :files (vec files)})
         "merged-version")
+      (apply-changes! [_ message upserts _delete-paths]
+        (reset! written {:message message :files (vec upserts)})
+        "merged-version")
       (version [_] "remote-tip"))))
 
 (deftest store!-basic-test
