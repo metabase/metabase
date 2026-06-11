@@ -13,7 +13,7 @@ import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Transform, TransformJobId } from "metabase-types/api";
 
-import { getColumns } from "./utils";
+import { getColumns, isUnscheduledDependency } from "./utils";
 
 type TransformsSectionProps = {
   jobId: TransformJobId;
@@ -54,7 +54,9 @@ export function TransformTable({ transforms }: TransformTableProps) {
 
   const handleRowActivate = useCallback(
     (row: Row<Transform>) => {
-      dispatch(push(Urls.transform(row.original.id)));
+      if (!isUnscheduledDependency(row.original)) {
+        dispatch(push(Urls.transform(row.original.id)));
+      }
     },
     [dispatch],
   );
@@ -81,6 +83,7 @@ export function TransformTable({ transforms }: TransformTableProps) {
           <ListEmptyState label={t`There are no transforms for this job.`} />
         }
         ariaLabel={t`Job transforms`}
+        isRowDisabled={(row) => isUnscheduledDependency(row.original)}
         onRowClick={handleRowActivate}
       />
     </Card>
