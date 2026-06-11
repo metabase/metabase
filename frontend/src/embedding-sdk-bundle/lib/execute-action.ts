@@ -16,8 +16,8 @@ export type ExecuteActionParams = {
 };
 
 /**
- * Loose response shape from the execute-action endpoint. The body varies by
- * action kind (created-row / rows-updated / rows-deleted / rows-affected /
+ * Loose response shape from the execute-action endpoint. The body varies
+ * by action kind (created-row / rows-updated / rows-deleted / rows-affected
  * success+counts). Per-kind discrimination happens in the package hook via the
  * generated `ActionResult<TAction>` type — this lib stays loose.
  *

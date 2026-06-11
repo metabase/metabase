@@ -45,6 +45,24 @@ export type {
 export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
 export { useMetabaseQuery } from "./hooks/public/use-metabase-query";
+export { useAction } from "./hooks/public/use-action";
+export type {
+  ActionExecuteError,
+  ActionImplicitKind,
+  ActionKind,
+  ActionKindFromDataAppSchema,
+  ActionParameterSchema,
+  ActionParametersFromDataAppSchema,
+  ActionResultForBulk,
+  ActionResultForCreate,
+  ActionResultForDelete,
+  ActionResultForKind,
+  ActionResultForQuery,
+  ActionResultForUpdate,
+  ActionSchema,
+  AnyActionResult,
+  UseActionResult,
+} from "./hooks/public/use-action";
 export type {
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
