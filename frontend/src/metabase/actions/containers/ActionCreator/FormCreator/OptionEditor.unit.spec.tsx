@@ -69,9 +69,15 @@ describe("OptionEditor", () => {
       await userEvent.type(input, options.join("\n"));
       await userEvent.click(saveButton);
 
-      expect(input).toHaveValue(options.join("\n"));
-      expect(saveButton).toBeDisabled();
       expect(onChange).toHaveBeenCalledWith(options);
+
+      await userEvent.click(getIcon("list"));
+      await screen.findByRole("dialog");
+
+      expect(
+        screen.getByPlaceholderText("Enter one option per line"),
+      ).toHaveValue(options.join("\n"));
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
     it("should close popover on save", async () => {
