@@ -302,3 +302,45 @@ start-of-week, moving `util.retry` per the existing comment in that ns).
 The blast-radius problem is no longer 'splitting didn't help' — it's a ranked
 work list with predicted payoffs and a known cliff. The sadness was a
 measurement artifact of watching a step function.
+
+### Appendix: reproducing the baseline comparison
+
+The merge-base numbers come from running the same analysis at the historical
+checkout with that tree's own (flat-era) `dev.deps-graph` API:
+
+```
+git worktree add --detach /tmp/mb-baseline-scc "$(git merge-base origin/master HEAD)"
+cd /tmp/mb-baseline-scc && clj -M:dev -m nrepl.cmdline -p 50698
+```
+
+then evaluating, in that REPL (Tarjan inlined because `dev.module-scc`
+doesn't exist there; it is the same algorithm as
+[[dev.module-scc/strongly-connected-components]]):
+
+```clojure
+(require 'dev.deps-graph)
+(def deps*  (dev.deps-graph/dependencies))         ; flat-era 0-arity
+(def graph* (dev.deps-graph/module-dependencies deps*))
+;; SCC stats: count/size via dev.module-scc's Tarjan (copy the fn in)
+;; per-module test files: (#'dev.deps-graph/module->test-files m)  ; 1-arity at the merge-base
+;; predicted blast: same module-granularity rule as dev.module-scc/predicted-test-blast-radius
+(spit "/tmp/baseline-edges.edn"
+      (pr-str (into (sorted-set) (for [[v ws] graph* w ws] [v w]))))
+```
+
+The tip side and the diff run in the stack worktree's REPL with
+`dev.module-scc` loaded; rename normalization maps the 13 nested rest modules
+back to their flat names before comparing edge sets and giant-SCC membership:
+
+```clojure
+(let [norm       (fn [m] (if-let [[_ a b] (re-matches #"([^./]+)\.(rest|routes)" (str m))]
+                           (symbol (str a "-" b))
+                           m))
+      base-edges (clojure.edn/read-string (slurp "/tmp/baseline-edges.edn"))
+      cur-edges  (into (sorted-set) (for [[v ws] graph* w ws] [(norm v) (norm w)]))]
+  {:edges-only-current  (count (remove base-edges cur-edges))
+   :edges-only-baseline (count (remove cur-edges base-edges))})
+;; => {:edges-only-current 0, :edges-only-baseline 0}
+```
+
+Merge-base at the time of writing: `12d2583cfa8` (2026-04-22).

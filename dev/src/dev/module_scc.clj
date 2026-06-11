@@ -203,6 +203,13 @@
 ;;;; Predicted blast radius
 ;;;; ------------------------------------------------------------------------------------------------
 
+(defn- nearest-rank
+  "Nearest-rank percentile: the value at 1-based rank ⌈p·n⌉ of `sorted-values`, nil when empty. Matches
+  `dev.module-metrics`' percentile semantics so predicted numbers line up with the reported metrics."
+  [sorted-values p]
+  (when (seq sorted-values)
+    (nth sorted-values (max 0 (dec (long (Math/ceil (* p (count sorted-values)))))))))
+
 (defn- transitive-dependents-graph
   "Map of `module -> set of modules that transitively depend on it` for an adjacency map of direct deps."
   [graph]
@@ -237,7 +244,7 @@
                          (graph-nodes graph))
         counts     (sort (vals per-module))]
     {:per-module per-module
-     :median     (nth counts (quot (count counts) 2))
+     :median     (nearest-rank counts 0.5)
      :mean       (double (/ (reduce + 0 counts) (max 1 (count counts))))}))
 
 (defn module->test-files
@@ -286,9 +293,8 @@
     {:num-commits         (count commits)
      :num-commits-skipped (- (count commits) (count counts))
      :mean                (when (seq counts) (double (/ (reduce + 0 counts) (count counts))))
-     :median              (when (seq counts) (nth counts (quot (count counts) 2)))
-     :p90                 (when (seq counts) (nth counts (min (dec (count counts))
-                                                              (long (Math/ceil (* 0.9 (count counts)))))))}))
+     :median              (nearest-rank counts 0.5)
+     :p90                 (nearest-rank counts 0.9)}))
 
 (comment
   (def config*  (deps-graph/kondo-config))

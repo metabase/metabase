@@ -82,7 +82,7 @@
 
 (deftest metrics-test
   (with-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
-                (fn [_deps source-filenames]
+                (fn [_deps _config _prefix->mod source-filenames]
                   (relevant-test-files source-filenames))]
     (let [metrics     (module-metrics/metrics deps config)
           metrics-by-module (into {} (map (juxt :module identity)) metrics)]
@@ -145,7 +145,7 @@
 
 (deftest repo-metrics-test
   (with-redefs [dev.deps-graph/source-filenames->relevant-test-filenames
-                (fn [_deps source-filenames]
+                (fn [_deps _config _prefix->mod source-filenames]
                   (relevant-test-files source-filenames))]
     (is (= {:num-module-nodes 4
             :num-direct-edges 5
@@ -156,6 +156,9 @@
             :num-root-modules 1
             :num-modules-in-cycles 0
             :num-circular-edges 0
+            :num-nontrivial-sccs 0
+            :largest-scc-size 1
+            :sum-squared-scc-sizes 4
             :num-source-files 5
             :num-test-files 4
             :avg-tests-rerun-per-changed-source-file 2.4

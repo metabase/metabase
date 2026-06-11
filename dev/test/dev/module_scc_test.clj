@@ -74,4 +74,15 @@
         result       (module-scc/expected-tests-per-commit cyclic-graph m->tests file->module commits)]
     (is (= 3 (:num-commits result)))
     (is (= 1 (:num-commits-skipped result)))
-    (is (= 2 (:median result)))))
+    ;; nearest-rank p50 of [1 2] is the lower-middle value, matching dev.module-metrics
+    (is (= 1 (:median result)))))
+
+(deftest expected-tests-per-commit-percentile-test
+  (testing "p90 uses nearest-rank semantics: rank ⌈0.9·10⌉ = 9 of 10, not the maximum"
+    (let [m->tests     '{a #{"a1"}, e #{"e1"}}
+          file->module '{"src/a.clj" a, "src/e.clj" e}
+          ;; nine commits invalidating 1 test file, one invalidating 2 => counts [1×9 2]
+          commits      (conj (vec (repeat 9 ["src/e.clj"])) ["src/a.clj"])
+          result       (module-scc/expected-tests-per-commit cyclic-graph m->tests file->module commits)]
+      (is (= 1 (:median result)))
+      (is (= 1 (:p90 result))))))
