@@ -34,15 +34,10 @@ const WORKSPACE = createMockWorkspaceInstance({
 
 type SetupOpts = {
   isAdmin?: boolean;
-  canManageWorkspaces?: boolean;
   workspace?: WorkspaceInstance | null;
 };
 
-function setup({
-  isAdmin = true,
-  canManageWorkspaces = false,
-  workspace = null,
-}: SetupOpts = {}) {
+function setup({ isAdmin = true, workspace = null }: SetupOpts = {}) {
   setupDatabasesEndpoints([POSTGRES]);
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint([]);
@@ -54,7 +49,6 @@ function setup({
       permissions: {
         can_access_data_model: isAdmin,
         can_access_db_details: false,
-        can_manage_workspaces: canManageWorkspaces,
       },
     }),
     settings: mockSettings({
@@ -91,10 +85,9 @@ describe("WorkspaceIndexPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("non-admin with manage-workspaces permission skips the instance lookup and sees the list page", async () => {
+  it("non-admin skips the instance lookup and sees the list page", async () => {
     setup({
       isAdmin: false,
-      canManageWorkspaces: true,
       workspace: WORKSPACE,
     });
 

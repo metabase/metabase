@@ -5,11 +5,9 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Database, Workspace } from "metabase-types/api";
-
-import { HelpMenu } from "../../components/HelpMenu";
 
 import { NewWorkspaceButton } from "./NewWorkspaceButton";
 import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
@@ -64,14 +62,7 @@ function WorkspaceListPageBody({
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={
-          hasWorkspaces && (
-            <Group gap="sm">
-              <NewWorkspaceButton />
-              <HelpMenu />
-            </Group>
-          )
-        }
+        actions={hasWorkspaces && <NewWorkspaceButton />}
         py={0}
       />
       {hasWorkspaces ? (

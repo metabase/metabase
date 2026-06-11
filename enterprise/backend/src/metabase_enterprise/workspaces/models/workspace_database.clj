@@ -2,7 +2,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,27 +19,21 @@
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
-;;; - read:          Data Analyst.
-;;; - write/create:  Data Analyst + `:perms/workspaces :yes` for `:database_id`.
+;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.
 
 (defmethod mi/can-read? :model/WorkspaceDatabase
-  ([_instance]
-   (api/is-data-analyst?))
-  ([_model _pk]
-   (api/is-data-analyst?)))
+  ([_instance] api/*is-superuser?*)
+  ([_model _pk] api/*is-superuser?*))
 
 (defmethod mi/can-write? :model/WorkspaceDatabase
-  ([{:keys [database_id]}]
-   (and (api/is-data-analyst?)
-        (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
-  ([_model pk]
-   (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id pk)]
-     (mi/can-write? wsd))))
+  ([_instance]
+   api/*is-superuser?*)
+  ([_model _pk]
+   api/*is-superuser?*))
 
 (defmethod mi/can-create? :model/WorkspaceDatabase
-  [_model {:keys [database_id]}]
-  (and (api/is-data-analyst?)
-       (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
+  [_model _instance]
+  api/*is-superuser?*)
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

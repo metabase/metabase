@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -17,11 +16,9 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type { Workspace } from "metabase-types/api";
 
 import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
-import { canManageWorkspaceInstance } from "../../../selectors";
+import { canManageWorkspaces } from "../../../selectors";
 import { NewWorkspaceModal } from "../NewWorkspaceModal";
 import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
@@ -32,19 +29,13 @@ export function WorkspaceEmptyState() {
     useDisclosure(false);
   const [isSetupOpen, { open: openSetup, close: closeSetup }] =
     useDisclosure(false);
-  const dispatch = useDispatch();
-  const canManageInstance = useSelector(canManageWorkspaceInstance);
+  const canManageInstance = useSelector(canManageWorkspaces);
   const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
-
-  const handleCreate = (workspace: Workspace) => {
-    closeCreate();
-    dispatch(push(Urls.workspace(workspace.id)));
-  };
 
   const handleSetupClick = () => {
     trackWorkspaceSetupButtonClicked();
@@ -102,7 +93,7 @@ export function WorkspaceEmptyState() {
       </Card>
       <NewWorkspaceModal
         opened={isCreateOpen}
-        onCreate={handleCreate}
+        onCreate={closeCreate}
         onClose={closeCreate}
       />
       <SetupWorkspaceModal opened={isSetupOpen} onClose={closeSetup} />

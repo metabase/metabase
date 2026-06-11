@@ -95,10 +95,7 @@
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
   "List all Workspaces."
   []
-  ;; Top-level gate: only Data Analysts (and admins) may list. We then apply `mi/can-read?` per row
-  ;; for defense in depth — if `can-read?` ever grows tighter rules, the listing will narrow with it
-  ;; instead of leaking rows that the per-row check would refuse.
-  (api/check-data-analyst)
+  (api/check-superuser)
   (into [] (comp (filter mi/can-read?)
                  (map present-workspace))
         (ws/list-workspaces)))
