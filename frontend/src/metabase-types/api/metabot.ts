@@ -189,8 +189,16 @@ export type MetabotAgentResponse = {
 export type MetabotProvider =
   | "metabase"
   | "anthropic"
+  | "bedrock"
   | "openai"
   | "openrouter";
+
+export interface BedrockCredentials {
+  "access-key-id"?: string | null;
+  "secret-access-key"?: string | null;
+  region?: string | null;
+  "session-token"?: string | null;
+}
 
 export interface MetabotSettingsResponse {
   value: string | null;
@@ -206,6 +214,7 @@ export interface UpdateMetabotSettingsRequest {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: BedrockCredentials | null;
 }
 
 /* Metabot - Suggested Prompts */

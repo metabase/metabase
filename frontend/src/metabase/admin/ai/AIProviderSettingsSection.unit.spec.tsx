@@ -18,6 +18,7 @@ import {
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
+  BedrockCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
   SettingDefinition,
@@ -66,6 +67,21 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  bedrock: {
+    value: "bedrock/anthropic.claude-haiku-4-5",
+    models: [
+      {
+        id: "anthropic.claude-haiku-4-5",
+        display_name: "anthropic.claude-haiku-4-5",
+        group: "Anthropic",
+      },
+      {
+        id: "openai.gpt-5.5",
+        display_name: "openai.gpt-5.5",
+        group: "OpenAI",
+      },
+    ],
+  },
   openai: {
     value: "openai/gpt-4.1-mini",
     models: [
@@ -100,13 +116,18 @@ type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
   | "llm-openai-api-key"
-  | "llm-openrouter-api-key";
+  | "llm-openrouter-api-key"
+  | "llm-bedrock-access-key-id"
+  | "llm-bedrock-secret-access-key"
+  | "llm-bedrock-region"
+  | "llm-bedrock-session-token";
 
 type MetabotSettingDefinition = SettingDefinition<MetabotSettingKey>;
 type MetabotSettingsUpdateBody = {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
+  credentials?: BedrockCredentials | null;
 };
 
 type SetupOptions = {
@@ -180,6 +201,7 @@ async function setup({
 
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
+    bedrock: null,
     openai: null,
     openrouter: null,
     ...apiKeyValues,
@@ -232,6 +254,22 @@ async function setup({
     "llm-openrouter-api-key": createMockSettingDefinition({
       key: "llm-openrouter-api-key",
       value: mergedApiKeyValues.openrouter ?? undefined,
+    }),
+    "llm-bedrock-access-key-id": createMockSettingDefinition({
+      key: "llm-bedrock-access-key-id",
+      value: mergedApiKeyValues.bedrock ?? undefined,
+    }),
+    // The secret access key is configured whenever the access key ID is — they are saved together.
+    "llm-bedrock-secret-access-key": createMockSettingDefinition({
+      key: "llm-bedrock-secret-access-key",
+      value: mergedApiKeyValues.bedrock ? "**********ET" : undefined,
+    }),
+    "llm-bedrock-region": createMockSettingDefinition({
+      key: "llm-bedrock-region",
+      value: mergedApiKeyValues.bedrock ? "us-east-1" : undefined,
+    }),
+    "llm-bedrock-session-token": createMockSettingDefinition({
+      key: "llm-bedrock-session-token",
     }),
   };
 
@@ -322,6 +360,24 @@ async function setup({
         key: apiKeySettingKey,
         value: maskedApiKey,
       });
+    }
+
+    if (body.provider === "bedrock" && body.credentials) {
+      const mask = (value: string | null | undefined) =>
+        value ? `**********${String(value).slice(-2)}` : undefined;
+
+      settingsDefinitions["llm-bedrock-access-key-id"] =
+        createMockSettingDefinition({
+          ...settingsDefinitions["llm-bedrock-access-key-id"],
+          key: "llm-bedrock-access-key-id",
+          value: mask(body.credentials["access-key-id"]),
+        });
+      settingsDefinitions["llm-bedrock-secret-access-key"] =
+        createMockSettingDefinition({
+          ...settingsDefinitions["llm-bedrock-secret-access-key"],
+          key: "llm-bedrock-secret-access-key",
+          value: mask(body.credentials["secret-access-key"]),
+        });
     }
 
     if ("model" in body) {
@@ -1683,6 +1739,157 @@ describe("AIProviderSettingsSection", () => {
             (toast) => toast.message === "Unable to save provider settings.",
           ),
       ).toBe(true);
+    });
+  });
+
+  describe("Amazon Bedrock", () => {
+    it("shows Amazon Bedrock as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const bedrockOption = await screen.findByRole("option", {
+        name: "Amazon Bedrock",
+      });
+      expect(bedrockOption).toBeInTheDocument();
+      expect(bedrockOption).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the AWS credential fields when Amazon Bedrock is selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      expect(await screen.findByLabelText("Access key ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("Secret access key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Region")).toBeInTheDocument();
+      expect(screen.getByLabelText("Session token")).toBeInTheDocument();
+      expect(screen.queryByLabelText("API key")).not.toBeInTheDocument();
+    });
+
+    it("connects Amazon Bedrock by sending the credentials object", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Amazon Bedrock");
+
+      await userEvent.type(
+        await screen.findByLabelText("Access key ID"),
+        "AKIDEXAMPLE",
+      );
+      await userEvent.type(
+        screen.getByLabelText("Secret access key"),
+        "test-secret",
+      );
+      await userEvent.type(screen.getByLabelText("Region"), "us-east-2");
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
+            "access-key-id": "AKIDEXAMPLE",
+            "secret-access-key": "test-secret",
+            region: "us-east-2",
+            "session-token": null,
+          },
+        }),
+      );
+    });
+
+    it("does not echo obfuscated credentials when editing only the region of a connected Bedrock provider", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      const regionInput = await screen.findByLabelText("Region");
+      await userEvent.clear(regionInput);
+      await userEvent.type(regionInput, "us-west-2");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched access key and secret round-trip as obfuscated placeholders in the form, but
+      // must be sent as null so the backend leaves the real saved values (and session token) intact.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
+            "access-key-id": null,
+            "secret-access-key": null,
+            region: "us-west-2",
+            "session-token": null,
+          },
+        }),
+      );
+    });
+
+    it("shows the grouped model picker for a connected Bedrock provider", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await screen.findByLabelText("Model");
+
+      await openModelSelector();
+
+      expect(await screen.findByText("Anthropic")).toBeInTheDocument();
+      expect(screen.getByText("OpenAI")).toBeInTheDocument();
+    });
+
+    it("disconnects Bedrock by clearing the provider and AWS credential settings", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: {
+              "llm-metabot-provider": null,
+              "llm-bedrock-access-key-id": null,
+              "llm-bedrock-secret-access-key": null,
+              "llm-bedrock-session-token": null,
+            },
+          }),
+        ).toBe(true);
+      });
+
+      expect(
+        await screen.findByText("Connect to an AI provider"),
+      ).toBeInTheDocument();
     });
   });
 });
