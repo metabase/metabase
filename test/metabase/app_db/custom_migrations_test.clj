@@ -2944,20 +2944,61 @@
     (mt/with-temp
       [:model/Database  sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
        :model/Database  other       {:engine :h2,     :details {:db "mem:other"}}
-       :model/Card      sample-card {:database_id (:id sample)}
        :model/Card      other-card  {:database_id (:id other)}
        :model/Dashboard sample-dash {}
-       :model/Dashboard mixed-dash  {}
-       :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
-       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id sample-card)}
-       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}]
-      (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
-      (testing "the SQLite sample database is deleted, cascading to its cards"
-        (is (not (t2/exists? :model/Database :id (:id sample))))
-        (is (not (t2/exists? :model/Card :id (:id sample-card)))))
-      (testing "a dashboard left empty by the deletion is deleted"
-        (is (not (t2/exists? :model/Dashboard :id (:id sample-dash)))))
-      (testing "a dashboard that still has other cards, and unrelated content, is kept"
-        (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
-        (is (t2/exists? :model/Card :id (:id other-card)))
-        (is (t2/exists? :model/Database :id (:id other)))))))
+       :model/Dashboard mixed-dash  {}]
+      ;; Mirror the bundled sample content's fan-out: 8 tables x 7 fields, 39 cards, plus dashcards,
+      ;; series, and tabs. MySQL 9.7 resolves a multi-level ON DELETE CASCADE of this shape
+      ;; incompletely (it deletes the tables but orphans most cards and all fields), so the cleanup
+      ;; must not rely on DB-level cascade. This fixture makes that regression visible.
+      (let [table-ids     (vec (t2/insert-returning-pks! :model/Table
+                                                         (for [i (range 8)]
+                                                           {:db_id  (:id sample)
+                                                            :name   (str "sample_table_" i)
+                                                            :active true})))
+            _             (t2/insert! :model/Field
+                                      (for [tid table-ids
+                                            i   (range 7)]
+                                        {:table_id      tid
+                                         :name          (str "field_" i)
+                                         :base_type     :type/Text
+                                         :database_type "TEXT"
+                                         :position      i}))
+            card-ids      (vec (t2/insert-returning-pks! :model/Card
+                                                         (for [i (range 39)]
+                                                           {:name                   (str "sample card " i)
+                                                            :display                "table"
+                                                            :dataset_query          {}
+                                                            :visualization_settings {}
+                                                            :creator_id             (mt/user->id :rasta)
+                                                            :database_id            (:id sample)
+                                                            :table_id               (nth table-ids (mod i (count table-ids)))})))
+            [dc1 _dc2 dc3] (t2/insert-returning-pks! :model/DashboardCard
+                                                     [{:dashboard_id (:id sample-dash) :card_id (first card-ids)
+                                                       :size_x 4 :size_y 4 :row 0 :col 0}
+                                                      {:dashboard_id (:id mixed-dash) :card_id (second card-ids)
+                                                       :size_x 4 :size_y 4 :row 0 :col 0}
+                                                      {:dashboard_id (:id mixed-dash) :card_id (:id other-card)
+                                                       :size_x 4 :size_y 4 :row 0 :col 4}])
+            _             (t2/insert! :model/DashboardCardSeries {:dashboardcard_id dc1
+                                                                  :card_id          (nth card-ids 2)
+                                                                  :position         0})
+            _             (t2/insert! :model/DashboardTab {:dashboard_id (:id sample-dash)
+                                                           :name         "Tab 1"
+                                                           :position     0})]
+        (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
+        (testing "the SQLite sample database and all of its child content are deleted, with no orphans"
+          (is (not (t2/exists? :model/Database :id (:id sample))))
+          (is (zero? (t2/count :metabase_table :db_id (:id sample))))
+          (is (zero? (t2/count :metabase_field :table_id [:in table-ids])))
+          (is (zero? (t2/count :report_card :database_id (:id sample))))
+          (is (zero? (t2/count :report_dashboardcard :card_id [:in card-ids])))
+          (is (zero? (t2/count :dashboardcard_series :card_id [:in card-ids]))))
+        (testing "a dashboard left empty by the deletion is deleted, along with its tabs"
+          (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
+          (is (zero? (t2/count :dashboard_tab :dashboard_id (:id sample-dash)))))
+        (testing "a dashboard that still has other cards, and unrelated content, is kept"
+          (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
+          (is (t2/exists? :report_dashboardcard :id dc3))
+          (is (t2/exists? :model/Card :id (:id other-card)))
+          (is (t2/exists? :model/Database :id (:id other))))))))

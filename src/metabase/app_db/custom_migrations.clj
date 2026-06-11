@@ -1331,18 +1331,43 @@
     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))))
 
 (defn- remove-sqlite-sample-database-on-downgrade!
-  "Delete the SQLite sample database and the content it leaves dangling. Deleting the database
-  cascades to its tables/fields, its Cards, and those cards' dashcards; Dashboards left with no
-  cards as a result are then deleted too. No H2 sample database is restored."
+  "Delete the SQLite sample database and the content it leaves dangling: its tables/fields, its
+  Cards, and those cards' dashcards; Dashboards left with no cards as a result are then deleted
+  too. No H2 sample database is restored.
+
+  Children are deleted explicitly, bottom-up, rather than relying on ON DELETE CASCADE: MySQL 9.7
+  resolves multi-level cascade fan-outs incompletely, leaving orphaned rows that later break
+  ALTER TABLE statements which re-validate foreign keys."
   []
   (when-let [sample-db-id (:id (t2/query-one {:select [:id]
                                               :from   [:metabase_database]
                                               :where  [:and [:= :is_sample true] [:= :engine "sqlite"]]}))]
-    (let [affected-dashboard-ids (->> (t2/query {:select-distinct [:dc.dashboard_id]
+    (let [card-ids-q             {:select [:id] :from [:report_card] :where [:= :database_id sample-db-id]}
+          field-ids-q            {:select [:id]
+                                  :from   [:metabase_field]
+                                  :where  [:in :table_id {:select [:id]
+                                                          :from   [:metabase_table]
+                                                          :where  [:= :db_id sample-db-id]}]}
+          affected-dashboard-ids (->> (t2/query {:select-distinct [:dc.dashboard_id]
                                                  :from            [[:report_dashboardcard :dc]]
                                                  :join            [[:report_card :c] [:= :c.id :dc.card_id]]
                                                  :where           [:= :c.database_id sample-db-id]})
                                       (into #{} (map :dashboard_id)))]
+      (t2/query {:delete-from :dashboardcard_series
+                 :where       [:or
+                               [:in :card_id card-ids-q]
+                               [:in :dashboardcard_id {:select [:id]
+                                                       :from   [:report_dashboardcard]
+                                                       :where  [:in :card_id card-ids-q]}]]})
+      (t2/query {:delete-from :report_dashboardcard :where [:in :card_id card-ids-q]})
+      (t2/query {:delete-from :parameter_card :where [:in :card_id card-ids-q]})
+      (t2/query {:delete-from :report_card :where [:= :database_id sample-db-id]})
+      (t2/query {:delete-from :dimension :where [:in :field_id field-ids-q]})
+      (t2/query {:delete-from :metabase_field
+                 :where       [:in :table_id {:select [:id]
+                                              :from   [:metabase_table]
+                                              :where  [:= :db_id sample-db-id]}]})
+      (t2/query {:delete-from :metabase_table :where [:= :db_id sample-db-id]})
       (t2/query {:delete-from :metabase_database :where [:= :id sample-db-id]})
       (when (seq affected-dashboard-ids)
         (let [non-empty (->> (t2/query {:select-distinct [:dashboard_id]
@@ -1351,6 +1376,7 @@
                              (into #{} (map :dashboard_id)))
               empty-ids (remove non-empty affected-dashboard-ids)]
           (when (seq empty-ids)
+            (t2/query {:delete-from :dashboard_tab :where [:in :dashboard_id empty-ids]})
             (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]})))))))
 
 ;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
