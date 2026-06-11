@@ -329,24 +329,41 @@
                [ns-sym (into #{} (map :namespace) required)]))
         deps))
 
-(defn test-ns-info
-  "Parse the test trees (`test/`, `enterprise/backend/test/`) and return a map of
-  `test-ns -> {:file path, :requires #{ns-sym}}`. Files without an `ns` declaration are skipped;
-  unparseable files throw with file context (same policy as the modules-test classpath checks)."
+(defn- default-test-roots
+  "The OSS and EE test trees plus every driver's `test/` root — the same roots the test aliases put on
+  the classpath."
   []
-  (into {}
-        (keep (fn [^java.io.File f]
-                (when-let [decl (try
-                                  (ns.file/read-file-ns-decl f)
-                                  (catch Throwable e
-                                    (throw (ex-info (str "Failed to read ns declaration from " f)
-                                                    {:file (str f)}
-                                                    e))))]
-                  [(ns.parse/name-from-ns-decl decl)
-                   {:file     (.getPath f)
-                    :requires (set (ns.parse/deps-from-ns-decl decl))}])))
-        (concat (ns.find/find-sources-in-dir (io/file "test"))
-                (ns.find/find-sources-in-dir (io/file "enterprise/backend/test")))))
+  (into [(io/file "test") (io/file "enterprise/backend/test")]
+        (keep (fn [^java.io.File driver-dir]
+                (let [test-dir (io/file driver-dir "test")]
+                  (when (.isDirectory test-dir)
+                    test-dir))))
+        (.listFiles (io/file "modules/drivers"))))
+
+(defn test-ns-info
+  "Parse the test `roots` (default: `test/`, `enterprise/backend/test/`, `modules/drivers/*/test/`)
+  and return a map of `test-ns -> {:files #{path}, :requires #{ns-sym}}`. A namespace defined in more
+  than one root (the OSS and EE trees share a few test-ns names) keeps the union of files and
+  requires, so a change reaching either definition selects both files. Files without an `ns`
+  declaration are skipped; unparseable files throw with file context (same policy as the modules-test
+  classpath checks)."
+  ([]
+   (test-ns-info (default-test-roots)))
+  ([roots]
+   (reduce (fn [acc ^java.io.File f]
+             (if-let [decl (try
+                             (ns.file/read-file-ns-decl f)
+                             (catch Throwable e
+                               (throw (ex-info (str "Failed to read ns declaration from " f)
+                                               {:file (str f)}
+                                               e))))]
+               (update acc (ns.parse/name-from-ns-decl decl)
+                       #(merge-with into %
+                                    {:files    #{(.getPath f)}
+                                     :requires (set (ns.parse/deps-from-ns-decl decl))}))
+               acc))
+           {}
+           (mapcat ns.find/find-sources-in-dir roots))))
 
 (defn honest-test-selection
   "Namespace-granularity selective-CI model: map of `source namespace -> set of test files` that must
@@ -367,7 +384,7 @@
                                 (reduce (fn [a w] (update a w (fnil conj #{}) v)) acc ws))
                               {}
                               combined)
-         ns->file  (update-vals test-info :file)]
+         ns->files (update-vals test-info :files)]
      (into {}
            (map (fn [src-ns]
                   [src-ns (loop [seen #{} frontier (get reverse-g src-ns #{}) hits #{}]
@@ -376,9 +393,7 @@
                                 (recur seen (disj frontier v) hits)
                                 (recur (conj seen v)
                                        (into (disj frontier v) (remove seen (get reverse-g v)))
-                                       (if-let [file (get ns->file v)]
-                                         (conj hits file)
-                                         hits)))
+                                       (into hits (ns->files v))))
                               hits))]))
            (keys src-graph)))))
 
