@@ -41,6 +41,15 @@ export function getProviderOptions(
         addKeyUrl: "https://console.anthropic.com/settings/keys",
       },
     },
+    bedrock: {
+      value: "bedrock",
+      label: "Amazon Bedrock",
+      apiKey: {
+        placeholder: "AKIA...",
+        addKeyUrl:
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -78,14 +87,22 @@ export function isApiKeyMetabotProvider(
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" ||
+    provider === "bedrock" ||
+    provider === "metabase"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
+  | "llm-anthropic-api-key"
+  | "llm-bedrock-access-key-id"
+  | "llm-openai-api-key"
+  | "llm-openrouter-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  bedrock: "llm-bedrock-access-key-id",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };

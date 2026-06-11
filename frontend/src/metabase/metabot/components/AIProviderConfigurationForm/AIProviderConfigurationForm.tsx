@@ -1,5 +1,6 @@
 import {
   type ChangeEvent,
+  Fragment,
   type MutableRefObject,
   createContext,
   useCallback,
@@ -55,13 +56,61 @@ type MetabotModelOption = ComboboxItem & {
   group?: string | null;
 };
 
+type BedrockExtraField = "secretAccessKey" | "region" | "sessionToken";
+
+const BEDROCK_EXTRA_FIELDS = [
+  {
+    key: "secretAccessKey",
+    settingKey: "llm-bedrock-secret-access-key",
+    password: true,
+  },
+  { key: "region", settingKey: "llm-bedrock-region", password: false },
+  {
+    key: "sessionToken",
+    settingKey: "llm-bedrock-session-token",
+    password: true,
+  },
+] as const;
+
+const UNTOUCHED_BEDROCK_VALUES: Record<BedrockExtraField, string | null> = {
+  secretAccessKey: null,
+  region: null,
+  sessionToken: null,
+};
+
+function getBedrockFieldCopy(field: BedrockExtraField): {
+  label: string;
+  description?: string;
+  placeholder?: string;
+} {
+  switch (field) {
+    case "secretAccessKey":
+      return {
+        label: t`Secret access key`,
+        placeholder: t`Enter your AWS secret access key`,
+      };
+    case "region":
+      return {
+        label: t`Region`,
+        description: t`The AWS region to use for Bedrock.`,
+        placeholder: "us-east-1",
+      };
+    case "sessionToken":
+      return {
+        label: t`Session token`,
+        description: t`Optional. Only needed for temporary AWS credentials.`,
+        placeholder: t`Enter your AWS session token`,
+      };
+  }
+}
+
 function getModelDescription(provider: MetabotProvider | undefined) {
   if (provider === "metabase") {
     // eslint-disable-next-line metabase/no-literal-metabase-strings -- "Metabase" is the product name for the managed AI provider option, only shown to admins configuring AI.
     return t`Available models are provided by Metabase.`;
   }
 
-  return t`Available models are fetched from the selected provider using its configured API key.`;
+  return t`Available models are fetched from the selected provider using its configured credentials.`;
 }
 
 const AIProviderConfigurationContext = createContext<{
@@ -175,6 +224,7 @@ export function AIProviderConfigurationForm({
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-bedrock-access-key-id",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -198,6 +248,11 @@ export function AIProviderConfigurationForm({
 
       if (!apiKeySetting?.is_env_setting) {
         settingsToClear[apiKeySettingKey] = null;
+      }
+
+      if (connectedProvider === "bedrock") {
+        settingsToClear["llm-bedrock-secret-access-key"] = null;
+        settingsToClear["llm-bedrock-session-token"] = null;
       }
     }
 
@@ -412,8 +467,12 @@ const ProviderCredentialsFields = ({
   isCurrentConfigured: boolean;
   isEnvSetting: boolean;
 }) => {
+  const isBedrock = selectedProvider === "bedrock";
   const [model, setModel] = useState<string | undefined>(connectedModel);
   const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
+  const [bedrockLocalValues, setBedrockLocalValues] = useState<
+    Record<BedrockExtraField, string | null>
+  >(UNTOUCHED_BEDROCK_VALUES);
   const [sendToast] = useToast();
 
   useEffect(() => {
@@ -423,25 +482,14 @@ const ProviderCredentialsFields = ({
   const [updateMetabotSettings, updateMetabotSettingsResult] =
     useUpdateMetabotSettingsMutation();
 
-  const onConnect = async () => {
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      "api-key": apiKeyLocalValue || null,
-    }).unwrap();
-
-    setApiKeyLocalValue(null);
-  };
-
-  const hasDirtyApiKey = apiKeyLocalValue !== null;
-  const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey ? onConnect : null;
-
-  const { isMutating } = useAIProviderConfigurationContext(connectHandler);
-
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
+    "llm-bedrock-access-key-id",
+    "llm-bedrock-secret-access-key",
+    "llm-bedrock-region",
+    "llm-bedrock-session-token",
   ] as const);
 
   const selectedApiKeySetting =
@@ -450,7 +498,55 @@ const ProviderCredentialsFields = ({
   const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
     ? selectedApiKeySetting.env_name
     : undefined;
-  const needsApiKey = !hasConfiguredSettingValue(selectedApiKeySetting);
+
+  // Display values fall back to the saved settings so untouched fields round-trip unchanged
+  // when connecting.
+  const displayBedrockValues = Object.fromEntries(
+    BEDROCK_EXTRA_FIELDS.map(({ key, settingKey }) => [
+      key,
+      bedrockLocalValues[key] ??
+        String(providerApiKeyDetails[settingKey]?.value ?? ""),
+    ]),
+  ) as Record<BedrockExtraField, string>;
+
+  const onConnect = async () => {
+    if (isBedrock) {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        credentials: {
+          "access-key-id": apiKeyLocalValue || null,
+          "secret-access-key": bedrockLocalValues.secretAccessKey || null,
+          region: bedrockLocalValues.region || null,
+          "session-token": bedrockLocalValues.sessionToken || null,
+        },
+      }).unwrap();
+    } else {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        "api-key": apiKeyLocalValue || null,
+      }).unwrap();
+    }
+
+    setApiKeyLocalValue(null);
+    setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
+  };
+
+  const hasDirtyApiKey = apiKeyLocalValue !== null;
+  const hasDirtyBedrockCredentials =
+    isBedrock && Object.values(bedrockLocalValues).some((v) => v !== null);
+  const connectHandler =
+    !isCurrentConfigured || hasDirtyApiKey || hasDirtyBedrockCredentials
+      ? onConnect
+      : null;
+
+  const { isMutating } = useAIProviderConfigurationContext(connectHandler);
+
+  const needsApiKey = isBedrock
+    ? !hasConfiguredSettingValue(selectedApiKeySetting) ||
+      !hasConfiguredSettingValue(
+        providerApiKeyDetails["llm-bedrock-secret-access-key"],
+      )
+    : !hasConfiguredSettingValue(selectedApiKeySetting);
 
   const metabotSettingsQuery = useGetMetabotSettingsQuery(
     {
@@ -476,11 +572,20 @@ const ProviderCredentialsFields = ({
 
   useEffect(() => {
     setApiKeyLocalValue(null);
+    setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
   }, [selectedProvider, selectedApiKeySetting?.value]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
     setApiKeyLocalValue(event.target.value);
   };
+
+  const handleBedrockFieldChange =
+    (field: BedrockExtraField) => (event: ChangeEvent<HTMLInputElement>) => {
+      setBedrockLocalValues((values) => ({
+        ...values,
+        [field]: event.target.value,
+      }));
+    };
 
   const handleModelChange = async (value: string) => {
     setModel(value);
@@ -506,7 +611,7 @@ const ProviderCredentialsFields = ({
     <>
       <TextInput
         key={selectedProvider}
-        label={t`API key`}
+        label={isBedrock ? t`Access key ID` : t`API key`}
         type="password"
         description={
           <ExternalLink
@@ -530,6 +635,31 @@ const ProviderCredentialsFields = ({
       {apiKeyEnvSettingName ? (
         <SetByEnvVar varName={apiKeyEnvSettingName} />
       ) : null}
+
+      {isBedrock &&
+        BEDROCK_EXTRA_FIELDS.map(({ key, settingKey, password }) => {
+          const { label, description, placeholder } = getBedrockFieldCopy(key);
+          const setting = providerApiKeyDetails[settingKey];
+          const envSettingName = setting?.is_env_setting
+            ? setting.env_name
+            : undefined;
+
+          return (
+            <Fragment key={key}>
+              <TextInput
+                label={label}
+                type={password ? "password" : undefined}
+                description={description}
+                placeholder={placeholder}
+                value={displayBedrockValues[key]}
+                onChange={handleBedrockFieldChange(key)}
+                disabled={isMutating || isEnvSetting || !!envSettingName}
+                w="100%"
+              />
+              {envSettingName && <SetByEnvVar varName={envSettingName} />}
+            </Fragment>
+          );
+        })}
 
       {!needsApiKey && !apiKeyError && (
         <Select
