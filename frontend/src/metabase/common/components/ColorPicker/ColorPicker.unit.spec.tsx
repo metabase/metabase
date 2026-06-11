@@ -31,8 +31,8 @@ describe("ColorPicker", () => {
     await userEvent.click(screen.getByLabelText("white"));
 
     const color = Color.rgb(0, 0, 0);
-    const tooltip = await screen.findByRole("tooltip");
-    const input = within(tooltip).getByRole("textbox");
+    const popover = await screen.findByRole("dialog");
+    const input = within(popover).getByRole("textbox");
     await userEvent.clear(input);
     await userEvent.type(input, color.hex());
 
