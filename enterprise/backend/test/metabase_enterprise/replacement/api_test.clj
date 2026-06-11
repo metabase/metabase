@@ -172,14 +172,19 @@
                 (let [src (t2/select-one-fn :source :model/Transform :id transform-id)]
                   (is (= new-id (lib/primary-source-card-id (:query src))))))
               (testing "Dependencies point to new model"
-                (let [deps-to-old (t2/select :model/Dependency
-                                             :to_entity_type :card
-                                             :to_entity_id   old-id)
-                      deps-to-new (t2/select :model/Dependency
-                                             :to_entity_type :card
-                                             :to_entity_id   new-id)]
-                  (is (empty? deps-to-old))
-                  (is (seq deps-to-new)))))))))))
+                (deps.test/synchronously-run-backfill!)
+                (let [edges-to (fn [card-id]
+                                 (t2/select-fn-set (juxt :from_entity_type :from_entity_id)
+                                                   :model/Dependency
+                                                   :to_entity_type :card
+                                                   :to_entity_id   card-id))]
+                  (is (= #{[:dashboard dashboard-id]}
+                         (edges-to old-id)))
+                  (is (= #{[:card mbql-child-1-id]
+                           [:card mbql-child-2-id]
+                           [:card native-child-id]
+                           [:transform transform-id]}
+                         (edges-to new-id))))))))))))
 
 (deftest concurrent-run-returns-409-test
   (testing "POST /replace-source — returns 409 when another run is already active"
