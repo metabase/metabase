@@ -1,3 +1,4 @@
+import { executeAction } from "embedding-sdk-bundle/lib/execute-action";
 import { queryDataset } from "embedding-sdk-bundle/lib/query-dataset";
 import { queryMetric } from "embedding-sdk-bundle/lib/query-metric";
 import { queryQuestion } from "embedding-sdk-bundle/lib/query-question";
@@ -38,6 +39,7 @@ export function getHostBackedSdkStore() {
       queryMetric,
       queryQuestion,
       queryDataset,
+      executeAction,
       getLoginStatus,
     } as typeof win.METABASE_EMBEDDING_SDK_BUNDLE;
   }

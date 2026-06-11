@@ -12,6 +12,7 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 ## When to invoke this skill
 
 - "scaffold a new data app" / "create a Metabase data app" / "set up a data-app project"
+- "I want to build a data app" / any vague intent to author a data app
 - Starting a fresh agent task that will produce a data-app bundle.
 
 ### Detecting an existing project
@@ -214,6 +215,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `CollectionBrowser` | Collection picker. |
 | `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-semantic-schema-data-apps` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 | `useQuestionQuery` | Question-only data-fetching hook (`useQuestionQuery(questionId, options?)` returning `{ data, isLoading, error, refetch }`). The bare numeric id is the first arg; optional `{ initialSqlParameters?, enabled? }` is the second. Must be called under `<MetabaseProvider>`. Use when you need a quick question fetch without going through the schema layer (e.g. ad-hoc tooling, pre-schema apps); prefer `useMetabaseQuery` for new schema-backed work. |
+| `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction<TParameters, TKind>(actionId)` — the runtime arg is the action's numeric **id** (read from `schema.models.<m>.actions.<a>.id`), or its `entity_id` string, or `null`. Typing comes from the two generics: `ActionParametersFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types `execute`'s parameters object, and `ActionKindFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types the discriminated `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
 
 ### Blocked APIs
 
