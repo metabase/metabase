@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Button, Icon } from "metabase/ui";
+import { ActionIcon, Icon } from "metabase/ui";
 
 import {
   SectionContainer,
@@ -32,14 +32,16 @@ export const SetupSection = ({
           <SectionTitle>{title}</SectionTitle>
           <SectionDescription>{description}</SectionDescription>
         </SectionContainer>
-        <Button
+        <ActionIcon
+          variant="default"
           radius="xl"
-          c="brand"
-          leftSection={<Icon name={isExpanded ? "chevronup" : "chevrondown"} />}
+          size="2.5rem"
           aria-label={t`Setup section`}
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded(!isExpanded)}
-        />
+        >
+          <Icon name={isExpanded ? "chevronup" : "chevrondown"} c="brand" />
+        </ActionIcon>
       </SectionHeader>
       {isExpanded && children}
     </SectionRoot>

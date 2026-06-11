@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { Button, Icon } from "metabase/ui";
+import { ActionIcon, Button, Icon } from "metabase/ui";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {
@@ -94,6 +94,16 @@ function ModelActionPicker({
     onClick(updatedAction);
   };
 
+  const newActionButton = (
+    <Button
+      variant="subtle"
+      m="0.25rem 0.75rem"
+      onClick={toggleIsActionCreatorVisible}
+    >
+      {t`Create new action`}
+    </Button>
+  );
+
   return (
     <>
       <ModelCollapseSection
@@ -112,11 +122,7 @@ function ModelActionPicker({
                 data-testid={`action-item-${action.name}`}
               >
                 <span>{action.name}</span>
-                <Button
-                  variant="subtle"
-                  size="compact-md"
-                  c="text-tertiary"
-                  leftSection={<Icon name="pencil" />}
+                <ActionIcon
                   onClick={(event: MouseEvent<HTMLButtonElement>) => {
                     // we have a click listener on the parent
                     event.stopPropagation();
@@ -124,27 +130,17 @@ function ModelActionPicker({
                     setEditingActionId(action.id);
                     toggleIsActionCreatorVisible();
                   }}
-                />
+                >
+                  <Icon name="pencil" />
+                </ActionIcon>
               </ActionItem>
             ))}
-            <Button
-              variant="subtle"
-              m="0.25rem 0.75rem"
-              onClick={toggleIsActionCreatorVisible}
-            >
-              {t`Create new action`}
-            </Button>
+            {newActionButton}
           </ActionsList>
         ) : (
           <EmptyModelStateContainer>
             <div>{t`There are no actions for this model`}</div>
-            <Button
-              variant="subtle"
-              m="0.25rem 0.75rem"
-              onClick={toggleIsActionCreatorVisible}
-            >
-              {t`Create new action`}
-            </Button>
+            {newActionButton}
           </EmptyModelStateContainer>
         )}
       </ModelCollapseSection>

@@ -65,7 +65,7 @@
   color: var(--mb-color-text-primary-inverse);
   background-color: transparent;
   border: none;
-  padding: 0.25rem !important;
+  padding: 0.25rem;
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);

@@ -13,7 +13,6 @@ interface Props extends Omit<ButtonProps, "color"> {
   icon?: IconName;
   iconSize?: number;
   labelBreakpoint?: "sm";
-  onClick?: () => void;
 }
 
 // NOTE: some of this is duplicated from NotebookCell.jsx
@@ -40,14 +39,10 @@ export const ViewButton = ({
       }
       {...props}
     >
-      {children != null && (
-        <span
-          className={
-            labelBreakpoint === "sm" ? cx(CS.hide, CS.smShow) : undefined
-          }
-        >
-          {children}
-        </span>
+      {labelBreakpoint === "sm" && children != null ? (
+        <span className={cx(CS.hide, CS.smShow)}>{children}</span>
+      ) : (
+        children
       )}
     </Button>
   );

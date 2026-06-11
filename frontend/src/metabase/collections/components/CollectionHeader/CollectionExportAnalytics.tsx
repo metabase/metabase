@@ -3,9 +3,7 @@ import { t } from "ttag";
 import { useExportAnalyticsMutation } from "metabase/api";
 import { useSelector } from "metabase/redux";
 import { hasActiveExport } from "metabase/redux/analytics-export";
-import { Box, Button, Icon, Text, Tooltip } from "metabase/ui";
-
-import S from "./CollectionHeaderButton.module.css";
+import { ActionIcon, Box, Icon, Text, Tooltip } from "metabase/ui";
 
 export function CollectionExportAnalytics() {
   const [exportAnalytics] = useExportAnalyticsMutation();
@@ -30,14 +28,15 @@ export function CollectionExportAnalytics() {
       position="bottom"
     >
       <span>
-        <Button
-          className={S.headerButton}
-          variant="subtle"
+        <ActionIcon
+          variant="viewHeader"
+          size="2rem"
           aria-label={t`Export analytics`}
-          leftSection={<Icon name="download" size={20} />}
           onClick={handleExport}
           disabled={isExporting}
-        />
+        >
+          <Icon name="download" size={20} />
+        </ActionIcon>
       </span>
     </Tooltip>
   );

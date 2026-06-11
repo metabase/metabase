@@ -168,11 +168,11 @@ export function GroupMappingsWidgetView({
           <div>
             {!showAddRow && (
               <Button
+                className={CS.floatRight}
                 variant="filled"
                 size="sm"
                 mr="md"
                 mb={-40}
-                style={{ float: "right" }}
                 onClick={handleShowAddRow}
               >
                 {t`New mapping`}

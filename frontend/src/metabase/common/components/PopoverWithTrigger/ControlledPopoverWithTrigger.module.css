@@ -6,7 +6,6 @@
 
     &:hover {
       color: var(--mb-color-text-brand);
-      background: transparent;
     }
   }
 }

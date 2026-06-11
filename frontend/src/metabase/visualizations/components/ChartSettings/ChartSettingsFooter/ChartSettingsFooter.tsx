@@ -13,7 +13,7 @@ export const ChartSettingsFooter = ({
   onCancel,
   onReset,
 }: ChartSettingsFooterProps) => (
-  <Flex justify="flex-end" gap="md" p="1rem 2rem">
+  <Flex justify="flex-end" gap="md" py="md" px="xl">
     {onReset && (
       <Button
         variant="subtle"

@@ -20,26 +20,8 @@ export const Root = styled(FullWidthContainer, {
   background-color: ${(props) =>
     alpha(props.admin ? "accent7" : "brand", 0.85)};
 
-  .${ButtonsS.Button} {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${() => alpha("background-primary", 0.1)};
-    border: none;
-    font-size: 1em;
-    margin-left: 0.75em;
-  }
-
-  .${ButtonsS.ButtonPrimary} {
-    color: ${(props) => color(props.admin ? "text-primary" : "brand")};
-    background-color: var(--mb-color-background-primary);
-  }
-
-  .${ButtonsS.Button}:hover {
-    color: var(--mb-color-text-primary-inverse);
-    background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
-  }
-
   /* metabase/ui Button: subtle = secondary (cancel), filled = primary (save) */
-  button[data-variant="subtle"],
+  .${ButtonsS.Button}, button[data-variant="subtle"],
   button[data-variant="filled"] {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${() => alpha("background-primary", 0.1)};
@@ -48,12 +30,12 @@ export const Root = styled(FullWidthContainer, {
     margin-left: 0.75em;
   }
 
-  button[data-variant="filled"] {
+  .${ButtonsS.ButtonPrimary}, button[data-variant="filled"] {
     color: ${(props) => color(props.admin ? "text-primary" : "brand")};
     background-color: var(--mb-color-background-primary);
   }
 
-  button[data-variant="subtle"]:hover,
+  .${ButtonsS.Button}:hover, button[data-variant="subtle"]:hover,
   button[data-variant="filled"]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
