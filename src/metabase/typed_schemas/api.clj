@@ -46,9 +46,9 @@
                       :comment [:key :entityId :description]}
    :measure          {:runtime [:kind :id :tableId :name :columns]
                       :comment [:key :entityId :description]}
-   :metric           {:runtime [:kind :id :name :mappedTableIds :columns :dimensions]
+   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :mappedTableIds :columns :dimensions]
                       :comment [:key :entityId :description :verified :sourceTable]}
-   :metric-dimension {:runtime [:id :metricId :tableId :name :jsType :defaultTemporalBucket]
+   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :name :jsType :defaultTemporalBucket]
                       :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
    :column           {:runtime [:name :jsType]
                       :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
@@ -527,6 +527,7 @@
       (assoc (column-schema column)
              :key (generated-key (:name column) dimension-id)
              :id (str dimension-id))
+      :fieldId (when (integer? field-id) field-id)
       :tableId (when (integer? table-id) table-id)
       :metricId metric-id
       :keyDisambiguator (when (integer? table-id)
@@ -564,6 +565,13 @@
     {:databaseName database-name
      :schemaName   schema-name
      :tableName    table-name}))
+
+(defn- source-table-id
+  [card]
+  (let [source-table (or (get-in card [:dataset_query :query :source-table])
+                         (get-in card [:dataset_query :stages 0 :source-table]))]
+    (when (integer? source-table)
+      source-table)))
 
 (defn- fallback-metric-column
   [{:keys [name]}]
@@ -613,6 +621,8 @@
       :id         id
       :name       name
       :columns    [result-column]}
+     :databaseId (:database_id card)
+     :sourceTableId (source-table-id card)
      :entityId portable_entity_id
      :description description
      :verified (when verified true)

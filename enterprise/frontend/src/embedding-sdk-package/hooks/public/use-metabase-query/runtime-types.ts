@@ -81,6 +81,8 @@ export type FieldAggregationRuntime = {
 
 export type MetricReferenceRuntime = {
   id: ID;
+  databaseId?: ID;
+  sourceTableId?: ID;
   mappedTableIds: readonly number[];
 };
 

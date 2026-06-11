@@ -50,6 +50,8 @@ type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
 
 export type MetricReference<TMappedTableId extends number = number> = {
   id: ID;
+  databaseId?: ID;
+  sourceTableId?: ID;
   mappedTableIds: readonly TMappedTableId[];
   columns?: readonly SchemaColumn[];
   dimensions?: Record<string, MetricDimensionSchema>;

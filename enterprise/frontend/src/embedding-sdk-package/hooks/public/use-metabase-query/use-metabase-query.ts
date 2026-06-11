@@ -20,7 +20,10 @@ import {
   isUnaryOperator,
 } from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import { buildMetricDefinition } from "./metric-query-builder";
+import {
+  buildMetricDatasetQuery,
+  buildMetricDefinition,
+} from "./metric-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
@@ -32,6 +35,7 @@ import type {
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
+  MetricQuery,
   MetricReference,
   NumericAggregationDimension,
   OrderableAggregationDimension,
@@ -339,7 +343,7 @@ export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
 /** @internal */
 export function useMetabaseQueryObject(
-  query: TableQuery<unknown>,
+  query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
   const queryKey = useMemo(() => stableStringifyQuery(query), [query]);
   const queryRef = useRef(query);
@@ -352,13 +356,17 @@ export function useMetabaseQueryObject(
 
 /** @internal */
 export function createMetabaseQuery(
-  query: TableQuery<unknown>,
+  query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
+  if (isMetricQuery(query)) {
+    return buildMetricDatasetQuery(query);
+  }
+
   const databaseId = getTableDatabaseId(query);
 
   if (databaseId == null) {
     throw new Error(
-      "Query creation requires a generated table schema or databaseId.",
+      "Query creation requires a generated table schema, generated metric schema, or databaseId.",
     );
   }
 
