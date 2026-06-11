@@ -1,10 +1,18 @@
 (ns metabase-enterprise.semantic-search.vector-strategy-matrix-test
   "Quality matrix over the vector-search strategies on a small deterministic dataset.
 
-  Headline: naive :hnsw is too risky around under-fetching.
-  :brute-force is reliable but has poor asymptotic performance.
-  :hnsw with iterative scans looks promising, but with post-filtering and re-ranking it can also
-  underperform.
+  Headline: naive :hnsw is too risky around under-fetching: an anti-correlated :verified filter empties its
+  pool outright (final recall 0.0 where :brute-force scores 1.0), and even a half-selective filter halves it
+  before the permission drop halves it again ({:raw-count 10 :returned 6} against 20/16 for every other
+  variant).
+  :brute-force is reliable -- exact in every cell of the matrix -- but has poor asymptotic performance: it
+  computes distances over the whole filtered table.
+  :hnsw with iterative scans looks promising, recovering everything the naive scan loses to filters (recall
+  1.0 vs 0.0) at index-backed cost.
+  It can still underperform, though: recall@20 was observed at 0.15-0.6 on the 32-d packed dataset with
+  ef_search 16, a binding hnsw.max_scan_tuples empties a filtered scan that :brute-force answers exactly,
+  and post-retrieval re-ranking and permission filtering lose just as much through it (0.4 recall under
+  limit truncation, a 20 -> 12 pool drop) because they run after retrieval.
 
   Covers four retrieval variants -- no HNSW index (exact seq scan), naive :hnsw (post-filter), and the two
   iterative-scan strategies -- with :brute-force as the exact SQL reference, and measures three things:
