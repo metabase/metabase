@@ -9,6 +9,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- assistant-placeholder?
+  "An empty `metabot_message.data` value: assistant placeholder rows and aborted turns."
+  [data]
+  (and (sequential? data) (empty? data)))
+
 (defn error->text
   "Extract a v1 tool-output `:error` text."
   [error]
@@ -21,7 +26,7 @@
   (mapv (fn [{:keys [id name arguments]}]
           (let [output (get outputs id)
                 input  (try (json/decode+kw arguments)
-                            (catch Throwable _ arguments))]
+                            (catch Exception _ arguments))]
             (cond-> {:type       (str "tool-" name)
                      :toolCallId id
                      :state      (if output "output-available" "input-available")
@@ -105,7 +110,7 @@
   Throws on values that do not satisfy any v1 schema."
   [data]
   (cond
-    (empty? data)                                    data
+    (assistant-placeholder? data)                    data
     (mr/validate ::schema.v1/ai-service-data data)   (migrate-v1-external-ai-service->v2 data)
     (mr/validate ::schema.v1/native-data data)       (migrate-v1-native->v2 data)
     (mr/validate ::schema.v1/user-message-data data) (migrate-v1-user-message->v2 data)
