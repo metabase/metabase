@@ -1670,6 +1670,94 @@
             (is (= (t2/select-one-fn :id :model/Dashboard :entity_id (:entity_id dash1))
                    (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2))))))))))
 
+(defn- card-sourced-param
+  "A category parameter whose dropdown values come from `card-id`'s results."
+  [card-id]
+  {:id                   "abc"
+   :type                 "category"
+   :name                 "CATEGORY"
+   :slug                 "category"
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id}})
+
+(deftest self-referencing-parameter-card-test
+  (testing "a card whose parameter sources dropdown values from the card itself can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
+              _    (t2/update! :model/Card (:id card)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing card"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-card :parameters first :values_source_config :card_id)))))))))))
+
+(deftest mutually-referencing-parameter-cards-test
+  (testing "two cards whose parameters source dropdown values from each other can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll   (ts/create! :model/Collection :name "coll")
+              card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
+              card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
+              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
+              ser    (into [] (serdes.extract/extract {:no-settings   true
+                                                       :no-data-model false}))]
+          (testing "loading on top of the existing cards"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card-b)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                       :parameters first :values_source_config :card_id)))
+            (is (= (:id card-a)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-b))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-a (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                    new-b (t2/select-one :model/Card :entity_id (:entity_id card-b))]
+                (is (= (:id new-b)
+                       (-> new-a :parameters first :values_source_config :card_id)))
+                (is (= (:id new-a)
+                       (-> new-b :parameters first :values_source_config :card_id)))))))))))
+
+(deftest dashboard-parameter-sourcing-own-dashboard-question-test
+  (testing "a dashboard whose parameter sources dropdown values from a dashboard question on that same dashboard can be loaded (#73133)"
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (let [coll (ts/create! :model/Collection :name "coll")
+              dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
+              card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
+              _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
+              _    (t2/update! :model/Dashboard (:id dash)
+                               {:parameters [(card-sourced-param (:id card))]})
+              ser  (into [] (serdes.extract/extract {:no-settings   true
+                                                     :no-data-model false}))]
+          (testing "loading on top of the existing dashboard"
+            (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+            (is (= (:id card)
+                   (-> (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                       :parameters first :values_source_config :card_id))))
+          (testing "loading into an empty database"
+            (ts/with-db dest-db
+              (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
+              (let [new-dash (t2/select-one :model/Dashboard :entity_id (:entity_id dash))
+                    new-card (t2/select-one :model/Card :entity_id (:entity_id card))]
+                (is (= (:id new-card)
+                       (-> new-dash :parameters first :values_source_config :card_id)))
+                (is (= (:id new-dash)
+                       (:dashboard_id new-card)))))))))))
+
 (deftest continue-on-error-test
   (let [change-ser   (fn [ser changes] ;; kind of like left-join, but right side is indexed
                        (vec (for [entity ser]
