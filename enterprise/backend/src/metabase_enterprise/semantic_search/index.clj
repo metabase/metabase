@@ -1126,15 +1126,15 @@
               ;; Run the query (and any gated instrumentation) inside a vector session so the iterative-scan
               ;; GUCs from `vector-session-settings` apply on the same connection. Falls back to the plain
               ;; datasource path for the default strategy with instrumentation off.
-              raw-results (run-in-vector-session! db search-context
-                                                  (fn [conn]
-                                                    (let [results (tracing/with-span :search "search.semantic.db-query"
-                                                                    {:search/query-length (count search-string)}
-                                                                    (into [] xform (reducible-search-query conn query)))]
-                                                      (when (explain? search-context)
-                                                        (record-vector-instrumentation! conn index embedding search-context
-                                                                                        (count results)))
-                                                      results)))
+              raw-results (run-in-vector-session!
+                           db search-context
+                           (fn [conn]
+                             (let [results (tracing/with-span :search "search.semantic.db-query"
+                                             {:search/query-length (count search-string)}
+                                             (into [] xform (reducible-search-query conn query)))]
+                               (when (explain? search-context)
+                                 (record-vector-instrumentation! conn index embedding search-context (count results)))
+                               results)))
               db-query-time-ms (u/since-ms db-timer)
 
               filter-timer (u/start-timer)
