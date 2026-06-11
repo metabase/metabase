@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.task.index-cleanup-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
@@ -10,6 +9,7 @@
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.task.index-cleanup :as sut]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
@@ -50,7 +50,7 @@
                                             index-created-at (assoc :index_created_at index-created-at)
                                             indexer-last-poll (assoc :indexer_last_poll indexer-last-poll)))
                          (sql.helpers/where [:= :id index-id])
-                         (sql/format :quoted true))))
+                         semantic.util/format-honeysql)))
     index-id))
 
 (defn- set-active-index!
@@ -60,7 +60,7 @@
                  (-> (sql.helpers/update (keyword control-table-name))
                      (sql.helpers/set {:active_id index-id
                                        :active_updated_at [:now]})
-                     (sql/format :quoted true))))
+                     semantic.util/format-honeysql)))
 
 (defn- create-table!
   "Create a dummy table for testing."
@@ -155,14 +155,14 @@
                                   :gated_at old-time
                                   :document nil
                                   :document_hash nil}])
-                               (sql/format :quoted true)))
+                               semantic.util/format-honeysql))
             (cleanup-old-tombstones! pgvector index-metadata)
             ;; Verify no records were deleted since indexer hasn't run recently
             (let [remaining-records (jdbc/execute! pgvector
                                                    (-> (sql.helpers/select [:*])
                                                        (sql.helpers/from (keyword gate-table-name))
                                                        (sql.helpers/order-by :id)
-                                                       (sql/format :quoted true))
+                                                       semantic.util/format-honeysql)
                                                    {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                   remaining-ids (map :id remaining-records)]
               (is (contains? (set remaining-ids) "old-tombstone-1"))))
@@ -173,7 +173,7 @@
                              (-> {:update (keyword metadata-table-name)
                                   :set {:indexer_last_poll recent-time}
                                   :where [:= :id (-> active-index-metadata :metadata-row :id)]}
-                                 (sql/format :quoted true))))
+                                 semantic.util/format-honeysql)))
             (let [gate-table-name (:gate-table-name index-metadata)]
               (jdbc/execute! pgvector
                              (-> (sql.helpers/insert-into (keyword gate-table-name))
@@ -208,14 +208,14 @@
                                                 (.setType "jsonb")
                                                 (.setValue (json/encode {:content "some content"})))
                                     :document_hash "hash123"}])
-                                 (sql/format :quoted true)))
+                                 semantic.util/format-honeysql))
               (cleanup-old-tombstones! pgvector index-metadata)
               ;; Verify only old tombstones were deleted after cleanup task runs
               (let [remaining-records (jdbc/execute! pgvector
                                                      (-> (sql.helpers/select [:*])
                                                          (sql.helpers/from (keyword gate-table-name))
                                                          (sql.helpers/order-by :id)
-                                                         (sql/format :quoted true))
+                                                         semantic.util/format-honeysql)
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                     remaining-ids (map :id remaining-records)]
                 (is (= #{"recent-tombstone" "non-tombstone"} (set remaining-ids)))))))))))

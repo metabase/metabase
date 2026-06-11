@@ -3,7 +3,6 @@
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.util.relative-datetime-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -29,7 +28,7 @@
           honey {:select [[(mt/with-dynamic-fn-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
                              (sql.qp/->honeysql driver/*driver* rel-dt-clause))]
                           [(sql.qp/->honeysql driver/*driver* rel-dt-clause)]]}
-          sql (sql/format honey)
+          sql (sql.qp/format-honeysql driver/*driver* honey)
           result (apply run-native-query sql)
           [db-generated ss-generated] (-> result mt/rows first)]
       (is (= db-generated ss-generated)))))

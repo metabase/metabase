@@ -3,21 +3,22 @@
    [buddy.core.hash :as buddy-hash]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.io Closeable)
-           (java.sql Timestamp SQLException)
-           (java.time Duration Instant)
-           (org.postgresql.util PGobject)))
+  (:import
+   (java.io Closeable)
+   (java.sql SQLException Timestamp)
+   (java.time Duration Instant)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -63,17 +64,15 @@
     (is (= original-search-doc recovered-doc))))
 
 (defn- get-gate-rows! [pgvector index-metadata]
-  (jdbc/execute! pgvector (sql/format {:select   [:*]
-                                       :from     [(keyword (:gate-table-name index-metadata))]
-                                       :order-by [[:id :asc]]}
-                                      :quoted true)
+  (jdbc/execute! pgvector (semantic.util/format-honeysql {:select   [:*]
+                                                          :from     [(keyword (:gate-table-name index-metadata))]
+                                                          :order-by [[:id :asc]]})
                  {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- get-gate-row! [pgvector index-metadata id]
-  (jdbc/execute-one! pgvector (sql/format {:select [:*]
-                                           :from   [(keyword (:gate-table-name index-metadata))]
-                                           :where  [:= :id id]}
-                                          :quoted true)
+  (jdbc/execute-one! pgvector (semantic.util/format-honeysql {:select [:*]
+                                                              :from   [(keyword (:gate-table-name index-metadata))]
+                                                              :where  [:= :id id]})
                      {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn- comparable-gate-row [row]
@@ -203,10 +202,9 @@
                                         (get-gate-rows! pgvector index-metadata))]
             (jdbc/execute-one!
              pgvector
-             (sql/format {:update (keyword (:gate-table-name index-metadata))
-                          :set    {:gated_at t}
-                          :where  [:= :id id]}
-                         :quoted true)))
+             (semantic.util/format-honeysql {:update (keyword (:gate-table-name index-metadata))
+                                             :set    {:gated_at t}
+                                             :where  [:= :id id]})))
           (let [[g1 g2 g3] (sort (map :gated_at (get-gate-rows! pgvector index-metadata)))
                 lag-tolerance  (Duration/ofSeconds 3)
                 poll-times     #(sort (map :gated_at (:update-candidates (sut pgvector index-metadata % :lag-tolerance lag-tolerance))))
@@ -284,7 +282,7 @@
                                                 :indexer_last_seen_hash
                                                 :indexer_last_seen_id]
                                        :from   [(keyword (:metadata-table-name index-metadata))]}
-                                      (sql/format :quoted true))
+                                      semantic.util/format-honeysql)
                                   {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                    (sort-by :id))
               [index1-meta index2-meta] indexer-records]

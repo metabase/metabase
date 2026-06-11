@@ -1,9 +1,12 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
@@ -28,7 +31,7 @@
                          {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest describe-fields-sync-with-composite-pks-test
+(deftest ^:parallel describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
       (mt/dataset dataset-definition-test/composite-pk
@@ -301,6 +304,62 @@
                                                        :schema (namespace qualified-table-name)})
        (map #(vector (:id %) (:name %)))
        sort))
+
+(deftest ^:parallel create-table!-sql-test
+  (testing "should generate properly quoted SQL for CREATE TABLE statements; don't interpret :%keywords as function calls"
+    (is (= ["CREATE TABLE \"%PUBLIC\".\"EXAMPLE_CSV_FILE_925D85BA_AA56_4D3A_9590_1D79C9E4CAC1_20260610183010\" ("
+            "  \"_mb_row_id\" BIGINT GENERATED ALWAYS AS IDENTITY,"
+            "  \"id\" BIGINT,"
+            "  \"%name\" VARCHAR,"
+            "  PRIMARY KEY(\"_mb_row_id\")"
+            ")"]
+           (->> (#'sql-jdbc/create-table!-sql
+                 :sql-jdbc
+                 "%PUBLIC.EXAMPLE_CSV_FILE_925D85BA_AA56_4D3A_9590_1D79C9E4CAC1_20260610183010"
+                 (ordered-map/ordered-map
+                  :_mb_row_id [:bigint :generated-always :as :identity]
+                  :id         [:bigint]
+                  :%name      [:varchar])
+                 :primary-key
+                 [:_mb_row_id])
+                (driver/prettify-native-form :sql-jdbc)
+                str/split-lines)))))
+
+(deftest ^:parallel add-columns!-sql-test
+  (testing "should generate properly quoted SQL for ALTER TABLE ADD COLUMN statements; don't interpret :%keywords as function calls"
+    (is (= ["ALTER TABLE"
+            "  \"%public\".\"table_name\""
+            "ADD"
+            "  COLUMN \"_mb_row_id\" BIGINT GENERATED ALWAYS AS IDENTITY,"
+            "ADD"
+            "  COLUMN \"id\" BIGINT PRIMARY KEY,"
+            "ADD"
+            "  COLUMN \"%name\" VARCHAR"]
+           (->> (#'sql-jdbc/add-columns!-sql
+                 :sql-jdbc
+                 "%public.table_name"
+                 (ordered-map/ordered-map
+                  :_mb_row_id [:bigint :generated-always :as :identity]
+                  :id         [:bigint]
+                  :%name      [:varchar])
+                 :id)
+                (driver/prettify-native-form :sql-jdbc)
+                str/split-lines)))))
+
+(deftest ^:parallel insert-into!-sqls-test
+  (is (= [["INSERT INTO"
+           "  \"%schema\".\"table_name\" (\"id\", \"%name\")"
+           "VALUES"
+           "  (1, 'A'),"
+           "  (2, 'B'),"
+           "  (3, 'C''D')"]]
+         (for [[sql _args] (#'sql-jdbc/insert-into!-sqls
+                            :sql-jdbc
+                            "%schema.table_name"
+                            ["id" "%name"]
+                            [[1 "A"] [2 "B"] [3 "C'D"]]
+                            true)]
+           (str/split-lines (driver/prettify-native-form :sql-jdbc  sql))))))
 
 (deftest rename-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :atomic-renames)

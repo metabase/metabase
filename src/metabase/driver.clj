@@ -226,6 +226,8 @@
   [_]
   nil)
 
+;; TODO (Cam 2026-06-09) is this SQL-specific? If so, it belongs in [[metabase.driver.sql]]. If not, the name of this
+;; method is misleading. Move it or fix the name.
 (defmulti llm-sql-dialect-resource
   "Returns the resource path for dialect-specific LLM prompt instructions,
    or nil if no dialect-specific instructions exist for this driver."
@@ -930,8 +932,9 @@
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
-(defmethod database-supports?
-  :default [_driver _feature _] false)
+(defmethod database-supports? :default
+  [_driver _feature _]
+  false)
 
 (doseq [[feature supported?] {:convert-timezone                       false
                               :basic-aggregations                     true
@@ -1066,24 +1069,6 @@
   this dynamic variable in their implementation of [[metabase.driver/mbql->native]] and adjust query compilation
   behavior accordingly."
   false)
-
-(defmulti splice-parameters-into-native-query
-  "Deprecated and unused in 0.51.0+; multimethod declaration left here so drivers implementing it can still compile
-  until we remove this method completely in 0.54.0 or later.
-
-  Instead of implementing this method, you should instead look at the value
-  of [[metabase.driver/*compile-with-inline-parameters*]] in your implementation of [[metabase.driver/mbql->native]]
-  and adjust behavior accordingly."
-  {:added "0.32.0", :arglists '([driver inner-query]), :deprecated "0.51.0"}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod splice-parameters-into-native-query ::driver
-  [_driver _query]
-  (throw (ex-info (str "metabase.driver/splice-parameters-into-native-query is deprecated, bind"
-                       " metabase.driver/*compile-with-inline-parameters* during query compilation instead.")
-                  {:type ::qp.error-type/driver})))
 
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
@@ -1452,8 +1437,9 @@
   :hierarchy #'hierarchy)
 
 (defmulti schema-exists?
-  "Checks if a schema exists in the given database."
-  {:added "0.57.0" :arglists '([driver db-id schema])}
+  "Checks if a schema exists in the given database. This method should be implemented by drivers that support `:schemas`
+  and `:transforms/table`."
+  {:added "0.57.0" :arglists '([driver db-id ^String schema])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1521,10 +1507,15 @@
   ;; For most databases, the same limit is used for all identifier types.
   (table-name-length-limit driver))
 
+;; TODO (Cam 2026-06-10) it would better if this had `schema` and `table-name` as separate args.
 (defmulti create-table!
-  "Create a table named `table-name`. If the table already exists it will throw an error.
-  `args` is an optional map with an optional entry `primary-key`. The `primary-key` value is a vector of column names
-  that make up the primary key."
+  "Create a table named `table-name`. If the table already exists it will throw an error. `args` is an optional map with
+  an optional entry `primary-key`. The `primary-key` value is a vector of column names that make up the primary key.
+
+  `table-name` may be qualified
+  by schema e.g.
+
+    schema.table"
   {:added "0.47.0", :arglists '([driver database-id table-name column-definitions & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1661,22 +1652,46 @@
                          (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
+(mr/def ::column-definitions
+  "Schema for the shape of column definitions as passed to [[add-columns!]] and other methods.
+
+  A map of column-name keyword to column type and constraints, e.g.
+
+    ;; I think 255 here means VARCHAR(255) -- Cam
+    {:my-column [:varchar 255]}
+
+  Column types may be supplied as HoneySQL vectors (e.g. `[:varchar 255]`) or a raw string."
+  [:map-of
+   ;; TODO (Cam 2026-06-09) shouldn't column name be a string?
+   [:keyword {:description "column name"}]
+   [:or
+    {:description "type and constraints"}
+    :string ; raw type name
+    [:cat :keyword [:* :any]]]]) ; type name and constraints
+
+(mr/def ::add-columns!-options
+  "Schema for the shape of options passed to [[add-columns!]]."
+  [:maybe
+   [:map
+    {:closed true}
+    [:primary-key {:optional true} [:maybe [:cat :keyword]]]]])
+
 (defmulti add-columns!
-  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
-  `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column names
-  that make up the primary key. Currently only a single primary key is supported."
-  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & args])}
+  "Add columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an
+  error. `args` is an optional map with an optional key `primary-key`. The `primary-key` value is a vector of column
+  names that make up the primary key. Currently only a single primary key is supported.
+
+  This method must be implemented for drivers that support `:uploads`."
+  {:added "0.49.0", :arglists '([driver db-id table-name column-definitions & {:keys [primary-key], :as _opts}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti alter-columns!
-  "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
-  Currently, we do not currently support changing the primary key, or take any guidance on how to coerce values."
-  {:added "0.49.0"
-   :arglists '([driver db-id table-name column-definitions])
-   :deprecated "0.54.0"}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
+(mr/def ::alter-table-columns!-options
+  "Schema for the shape of the options map passed to [[alter-table-columns!]]."
+  [:maybe
+   [:map
+    {:closed true}
+    [:old-types {:optional true} [:maybe [:ref ::column-definitions]]]]])
 
 (defmulti alter-table-columns!
   "Alter columns given by `column-definitions` to a table named `table-name`. If the table doesn't exist it will throw an error.
@@ -1695,19 +1710,10 @@
   - `:old-types`: a map of the existing column definitions, e.g `{:my-column [:bigint]}`
      Can be useful to infer an expression to convert old values to the new type
      where the database engine does not support it natively.
-     Implementations are free to ignore this parameter if they cannot do anything with it.
-
-  Replaces `alter-columns!` that was previously used for the same purpose in versions < `0.54.0`"
-  {:added "0.54.0", :arglists '([driver db-id table-name column-definitions & opts])}
+     Implementations are free to ignore this parameter if they cannot do anything with it."
+  {:added "0.54.0", :arglists '([driver db-id table-name column-definitions & {:keys [old-types], :as _opts}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-;; used for compatibility with drivers only implementing alter-columns!
-;; remove once alter-columns! is deleted (v0.57+)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod alter-table-columns! ::driver
-  [driver db-id table-name column-definitions & _opts]
-  (alter-columns! driver db-id table-name column-definitions))
 
 (defmulti syncable-schemas
   "Returns the set of syncable schemas in the database (as strings)."

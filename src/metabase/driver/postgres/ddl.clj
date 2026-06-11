@@ -1,13 +1,13 @@
 (ns metabase.driver.postgres.ddl
   (:require
    [clojure.java.jdbc :as jdbc]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -18,12 +18,11 @@
    of the current (non-zero) value and ten minutes.
 
    This helps to address unexpectedly large/long running queries."
-  [tx]
+  [driver tx]
   (let [existing-timeout (->> #_{:clj-kondo/ignore [:discouraged-var]}
-                          (sql/format {:select [:setting]
-                                       :from   [:pg_settings]
-                                       :where  [:= :name "statement_timeout"]}
-                                      {:quoted false})
+                          (sql.qp/format-honeysql driver {:select [:setting]
+                                                          :from   [:pg_settings]
+                                                          :where  [:= :name "statement_timeout"]})
                               (sql.ddl/jdbc-query tx)
                               first
                               :setting
@@ -45,7 +44,7 @@
        {:write? true}
        (fn [^java.sql.Connection conn]
          (jdbc/with-db-transaction [tx {:connection conn}]
-           (set-statement-timeout! tx)
+           (set-statement-timeout! driver tx)
            (sql.ddl/execute! tx [(sql.ddl/drop-table-sql database (:table-name definition))])
            (sql.ddl/execute! tx (into [(sql.ddl/create-table-sql database definition query)] params)))
          {:state :success})))))
@@ -94,15 +93,14 @@
                       (fn create-kv-table [conn]
                         (sql.ddl/execute! conn [(format "drop table if exists %s.cache_info"
                                                         schema-name)])
-                        (sql.ddl/execute! conn (sql/format
-                                                (ddl.i/create-kv-table-honey-sql-form schema-name)
-                                                {:dialect :ansi})))]
+                        (sql.ddl/execute! conn (sql.qp/format-honeysql
+                                                driver
+                                                (ddl.i/create-kv-table-honey-sql-form schema-name))))]
                      [:persist.check/populate-kv-table
                       (fn create-kv-table [conn]
-                        (sql.ddl/execute! conn (sql/format
-                                                (ddl.i/populate-kv-table-honey-sql-form
-                                                 schema-name)
-                                                {:dialect :ansi})))]]]
+                        (sql.ddl/execute! conn (sql.qp/format-honeysql
+                                                driver
+                                                (ddl.i/populate-kv-table-honey-sql-form schema-name))))]]]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
@@ -110,7 +108,7 @@
      (fn [^java.sql.Connection conn]
        (jdbc/with-db-transaction
          [tx {:connection conn}]
-         (set-statement-timeout! tx)
+         (set-statement-timeout! driver tx)
          (loop [[[step stepfn] & remaining] steps]
            (let [result (try (stepfn tx)
                              (log/infof "Step %s was successful for db %s" step (:name database))

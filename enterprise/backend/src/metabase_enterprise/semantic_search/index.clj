@@ -5,13 +5,13 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
@@ -24,23 +24,15 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2])
   (:import
-   [java.time Instant LocalDate OffsetDateTime ZonedDateTime]
-   [java.util.concurrent ArrayBlockingQueue RejectedExecutionHandler RejectedExecutionException TimeUnit ThreadPoolExecutor]
-   [org.postgresql.util PGobject]))
+   (java.time Instant LocalDate OffsetDateTime ZonedDateTime)
+   (java.util.concurrent ArrayBlockingQueue RejectedExecutionException RejectedExecutionHandler ThreadPoolExecutor TimeUnit)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
 (comment
   ((requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/init-db!))
   (def db @@(requiring-resolve 'metabase-enterprise.semantic-search.db.datasource/data-source)))
-
-(defn sql-format-quoted
-  "Call [[sql/format]] with {:quoted true}.
-
-  Ensures identifiers are quoted since the nano-ids used in temp table names when testing (and various other places)
-  might contain uppercase chars or hyphens which need to be quoted."
-  [honey-sql & {:as opts}]
-  (sql/format honey-sql (merge opts {:quoted true})))
 
 (def ^:dynamic *batch-size*
   "The number of documents to process per batch when updating the index."
@@ -204,7 +196,7 @@
                           (-> (sql.helpers/select [:%count.* :count])
                               (sql.helpers/from (keyword table-name))
                               (sql.helpers/limit 1)
-                              sql-format-quoted))
+                              semantic.util/format-honeysql))
        :count))
 
 (defn- analytics-set-index-size!
@@ -308,7 +300,7 @@
              (sql.helpers/values db-records)
              (sql.helpers/on-conflict :model :model_id)
              (sql.helpers/do-update-set (db-records->update-set db-records))
-             sql-format-quoted))
+             semantic.util/format-honeysql))
        batch-documents))))
 
 (defn- unwrap-pgobject
@@ -328,7 +320,7 @@
 (defn- partition-existing-embeddings [connectable index texts]
   (let [found-embeddings
         (->> (jdbc/execute! connectable
-                            (sql-format-quoted (existing-embedding-query index texts))
+                            (semantic.util/format-honeysql (existing-embedding-query index texts))
                             {:builder-fn jdbc.rs/as-unqualified-lower-maps})
              (into {} (map (fn [{:keys [content embedding]}]
                              [content (decode-pgobject embedding)]))))]
@@ -417,7 +409,7 @@
 (defn- drop-index-table-sql
   [{:keys [table-name]}]
   (-> (sql.helpers/drop-table :if-exists (keyword table-name))
-      sql-format-quoted))
+      semantic.util/format-honeysql))
 
 (defn drop-index-table!
   "Drops the index table for the given embedding model if it exists."
@@ -466,37 +458,37 @@
                     (format "whitespace in the table name (%s) is not currently supported" table-name))
           {:keys [vector-dimensions]}          embedding-model]
       (log/info "Creating index table" table-name)
-      (jdbc/execute! connectable (sql/format (sql.helpers/create-extension :vector :if-not-exists)))
+      (jdbc/execute! connectable (semantic.util/format-honeysql (sql.helpers/create-extension :vector :if-not-exists)))
       (when force-reset? (drop-index-table! connectable index))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-table (keyword table-name) :if-not-exists)
            (sql.helpers/with-columns (index-table-schema vector-dimensions))
-           sql-format-quoted))
+           semantic.util/format-honeysql))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
             [(keyword (hnsw-index-name index)) :if-not-exists]
             [(keyword table-name) :using-hnsw [[:raw "embedding vector_cosine_ops"]]])
-           sql-format-quoted))
+           semantic.util/format-honeysql))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
             [(keyword (fts-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin :text_search_vector])
-           sql-format-quoted))
+           semantic.util/format-honeysql))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
             [(keyword (fts-native-index-name index)) :if-not-exists]
             [(keyword table-name) :using-gin :text_search_with_native_query_vector])
-           sql-format-quoted))
+           semantic.util/format-honeysql))
       (jdbc/execute!
        connectable
        (-> (sql.helpers/create-index
             [(keyword (content-index-name index)) :if-not-exists]
             [(keyword table-name) :content])
-           sql-format-quoted)))
+           semantic.util/format-honeysql)))
     (catch Exception e
       (throw (ex-info "Failed to create index table" {} e)))))
 
@@ -857,7 +849,7 @@
 (defn- reducible-search-query
   "Extracted so can be redefd in tests."
   [db query]
-  (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+  (jdbc/plan db (semantic.util/format-honeysql query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn query-index
   "Query the index for documents similar to the search string.
@@ -924,7 +916,7 @@
                         {:embedding-model (:name embedding-model)}
                         total-time-ms)
         (comment
-          (jdbc/execute! db (sql-format-quoted query)))
+          (jdbc/execute! db (semantic.util/format-honeysql query)))
         {:results final-results
          :raw-count (count raw-results)}))))
 
@@ -936,20 +928,20 @@
   (def scorers (scoring/semantic-scorers (:table-name index) search-ctx))
 
   (keyword-search-query index search-ctx)
-  (sql-format-quoted (keyword-search-query index search-ctx))
-  (jdbc/execute! db (sql-format-quoted (keyword-search-query index search-ctx)))
+  (semantic.util/format-honeysql (keyword-search-query index search-ctx))
+  (jdbc/execute! db (semantic.util/format-honeysql (keyword-search-query index search-ctx)))
 
   (semantic-search-query index embed search-ctx)
-  (sql/format (semantic-search-query index embed search-ctx))
-  (jdbc/execute! db (sql-format-quoted (semantic-search-query index embed search-ctx)))
+  (semantic.util/format-honeysql (semantic-search-query index embed search-ctx))
+  (jdbc/execute! db (semantic.util/format-honeysql (semantic-search-query index embed search-ctx)))
 
   (hybrid-search-query index embed search-ctx)
-  (sql-format-quoted (hybrid-search-query index embed search-ctx))
-  (jdbc/execute! db (sql-format-quoted (hybrid-search-query index embed search-ctx)))
+  (semantic.util/format-honeysql (hybrid-search-query index embed search-ctx))
+  (jdbc/execute! db (semantic.util/format-honeysql (hybrid-search-query index embed search-ctx)))
 
   (scored-search-query index embed search-ctx scorers)
-  (sql-format-quoted (scored-search-query index embed search-ctx scorers))
-  (jdbc/execute! db (sql-format-quoted (scored-search-query index embed search-ctx scorers)))
+  (semantic.util/format-honeysql (scored-search-query index embed search-ctx scorers))
+  (jdbc/execute! db (semantic.util/format-honeysql (scored-search-query index embed search-ctx scorers)))
 
   (query-index db index search-ctx))
 
@@ -960,7 +952,7 @@
         (sql.helpers/where [:and
                             [:= :model model]
                             [:in :model_id (map str batch-ids)]])
-        sql-format-quoted)))
+        semantic.util/format-honeysql)))
 
 (defn delete-from-index!
   "Deletes documents from the index table based on model and model_ids."
@@ -1020,10 +1012,10 @@
   (def scorers (scoring/semantic-scorers (:table-name index) search-context))
 
   ;; Format queries for execution
-  (def semantic-sql (sql-format-quoted (semantic-search-query index embedding search-context)))
-  (def keyword-sql (sql-format-quoted (keyword-search-query index search-context)))
-  (def hybrid-sql (sql-format-quoted (hybrid-search-query index embedding search-context)))
-  (def scored-sql (sql-format-quoted (scored-search-query index embedding search-context scorers)))
+  (def semantic-sql (semantic.util/format-honeysql (semantic-search-query index embedding search-context)))
+  (def keyword-sql (semantic.util/format-honeysql (keyword-search-query index search-context)))
+  (def hybrid-sql (semantic.util/format-honeysql (hybrid-search-query index embedding search-context)))
+  (def scored-sql (semantic.util/format-honeysql (scored-search-query index embedding search-context scorers)))
 
   ;; do in repl ->
   #_(explain-analyze-query db semantic-sql)
@@ -1031,7 +1023,7 @@
   #_(explain-analyze-query db hybrid-sql)
   #_(explain-analyze-query db scored-sql)
 
-  (def existing-sql (sql-format-quoted (existing-embedding-query index ["Some Text"])))
+  (def existing-sql (semantic.util/format-honeysql (existing-embedding-query index ["Some Text"])))
   #_(explain-analyze-query db existing-sql)
 
   ;; Code to test the custom thread pool. The transduction should process batches in parallel and new batches should

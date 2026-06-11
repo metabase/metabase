@@ -7,11 +7,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -425,7 +425,7 @@
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
-  (let [[sql & params] (sql/format honeysql-form {:dialect :ansi, :quoted true, :quoted-snake false})]
+  (let [[sql & params] (sql.qp/format-honeysql (or driver/*driver* :h2) honeysql-form)]
     {:query  sql
      :params (seq params)}))
 

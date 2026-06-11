@@ -1,4 +1,5 @@
 (ns metabase.util.honey-sql-2-test
+  {:clj-kondo/config '{:linters {:discouraged-var {honey.sql/format {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [honey.sql :as sql]

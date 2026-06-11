@@ -5,7 +5,6 @@
   without data loss. Each embedding model (provider/name/dimensions) gets its own index table,
   with a control table managing which index is currently active."
   (:require
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    ;; TODO: extract schema code to go under db.migration
    [metabase-enterprise.semantic-search.index :as semantic.index]
@@ -19,9 +18,12 @@
 
 ;; metadata and control tables allow multiple indexes to coexist
 ;; while maintaining a single active pointer.
-;; This enables model switching without data loss - old indexes remain available and can still be targeted with index functions.
-;; Garbage / pending / switchover policy beyond 'one is active' TBD, right now we want the active index to reflect the global
-;; embedding configuration in metabase settings / envars.
+;;
+;; This enables model switching without data loss - old indexes remain available and can still be targeted with index
+;; functions.
+;;
+;; Garbage / pending / switchover policy beyond 'one is active' TBD, right now we want the active index to reflect the
+;; global embedding configuration in metabase settings / envars.
 (def ^:private schema-0
   "The version 0 schema for an index metadata system. This acts as a 'root' for indexes, and assumes a single set of documents
   that will be indexed into multiple indexes (for different embedding models and so on)."
@@ -74,32 +76,32 @@
 
 (def default-index-metadata
   "The default index metadata configuration that will be used for the search engine integration."
-  {:version                   "2"
-   :metadata-table-name       "index_metadata"
-   :control-table-name        "index_control"
-   :gate-table-name           "index_gate"
-   :index-table-qualifier     "%s"})
+  {:version               "2"
+   :metadata-table-name   "index_metadata"
+   :control-table-name    "index_control"
+   :gate-table-name       "index_gate"
+   :index-table-qualifier "%s"})
 
 (defn- create-index-metadata-table-if-not-exists-sql [index-metadata]
   (let [{:keys [metadata-table-name]} index-metadata
         schema (:metadata schema-0)]
     (-> (sql.helpers/create-table (keyword metadata-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
-        (sql/format :quoted true))))
+        semantic.util/format-honeysql)))
 
 (defn- create-control-table-if-not-exists-sql [index-metadata]
   (let [{:keys [control-table-name]} index-metadata
         schema (:control schema-0)]
     (-> (sql.helpers/create-table (keyword control-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
-        (sql/format :quoted true))))
+        semantic.util/format-honeysql)))
 
 (defn- create-gate-table-if-not-exists-sql [index-metadata]
   (let [{:keys [gate-table-name]} index-metadata
         schema (:gate schema-0)]
     (-> (sql.helpers/create-table (keyword gate-table-name) :if-not-exists)
         (sql.helpers/with-columns schema)
-        (sql/format :quoted true))))
+        semantic.util/format-honeysql)))
 
 (comment
   (create-index-metadata-table-if-not-exists-sql default-index-metadata)
@@ -123,7 +125,7 @@
                                :active_updated_at nil}])
          (sql.helpers/on-conflict :id)
          (sql.helpers/do-nothing)
-         (sql/format :quoted true)))
+         semantic.util/format-honeysql))
     nil))
 
 (defn create-tables-if-not-exists!
@@ -149,21 +151,19 @@
     (log/info "Creating gate table gated_at index if not exists")
     (jdbc/execute!
      pgvector
-     (sql/format
+     (semantic.util/format-honeysql
       (sql.helpers/create-index
        [(keyword (str (:gate-table-name index-metadata) "_gated_at")) :if-not-exists]
-       [(keyword (:gate-table-name index-metadata)) :gated_at :id])
-      :quoted true))
+       [(keyword (:gate-table-name index-metadata)) :gated_at :id])))
     (log/info "Creating gate table tombstone cleanup index if not exists")
     ;; Partial index on nil documents in the gate table to optimize identification of old tombstones
     (jdbc/execute!
      pgvector
-     (sql/format
+     (semantic.util/format-honeysql
       {:create-index
        [[(keyword (str (:gate-table-name index-metadata) "_tombstone_cleanup")) :if-not-exists]
         [(keyword (:gate-table-name index-metadata)) :gated_at]]
-       :where [:and [:= :document nil] [:= :document_hash nil]]}
-      :quoted true))
+       :where [:and [:= :document nil] [:= :document_hash nil]]}))
     nil))
 
 (defn drop-tables-if-exists!
@@ -179,15 +179,15 @@
     (jdbc/execute!
      pgvector
      (-> (sql.helpers/drop-table :if-exists (keyword metadata-table-name))
-         (sql/format :quoted true)))
+         semantic.util/format-honeysql))
     (jdbc/execute!
      pgvector
      (-> (sql.helpers/drop-table :if-exists (keyword control-table-name))
-         (sql/format :quoted true)))
+         semantic.util/format-honeysql))
     (jdbc/execute!
      pgvector
      (-> (sql.helpers/drop-table :if-exists (keyword gate-table-name))
-         (sql/format :quoted true)))
+         semantic.util/format-honeysql))
     nil))
 
 (defn- row->index [{:keys [provider
@@ -226,7 +226,7 @@
           active-row-sql      (-> {:select [:m.*]
                                    :from   [[(keyword control-table-name)  :c]]
                                    :join   [[(keyword metadata-table-name) :m] [:= :m.id :c.active_id]]}
-                                  (sql/format :quoted true))
+                                  semantic.util/format-honeysql)
           active-row          (jdbc/execute-one! pgvector active-row-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
       (when active-row
         {:index (row->index active-row)
@@ -243,7 +243,7 @@
         activation-sql (-> {:update (keyword control-table-name)
                             :set    {:active_id         index-id
                                      :active_updated_at [:now]}}
-                           (sql/format :quoted true))]
+                           semantic.util/format-honeysql)]
     (jdbc/execute! pgvector activation-sql)
     nil))
 
@@ -277,7 +277,7 @@
                                      [:= :model_name model-name]
                                      [:= :vector_dimensions vector-dimensions]]
                             :order-by [[:index_created_at :desc]]}
-                           (sql/format :quoted true))
+                           semantic.util/format-honeysql)
         model-rows     (jdbc/execute! pgvector model-rows-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})
 
         {[active] true
@@ -341,7 +341,7 @@
                                              :index_version     index-version
                                              :index_created_at  [:now]}])
                        (sql.helpers/returning :id)
-                       (sql/format :quoted true))
+                       semantic.util/format-honeysql)
         {:keys [id]} (jdbc/execute-one! pgvector insert-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
     id))
 

@@ -1,22 +1,23 @@
 (ns metabase-enterprise.semantic-search.dlq-test
   (:require
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.io Closeable)
-           (java.net SocketException)
-           (java.sql Timestamp)
-           (java.time Duration Instant InstantSource)
-           (org.postgresql.util PGobject)))
+  (:import
+   (java.io Closeable)
+   (java.net SocketException)
+   (java.sql Timestamp)
+   (java.time Duration Instant InstantSource)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -78,18 +79,18 @@
           (is (= 2 (semantic.dlq/add-entries! pgvector index-metadata index-id entries)))
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
-                                          (sql/format {:select [:*] :from [table-name] :order-by [:gate_id]} :quoted true)
+                                          (semantic.util/format-honeysql {:select [:*] :from [table-name] :order-by [:gate_id]})
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 2 (count results)))
             (is (= "gate1" (:gate_id (first results))))
             (is (= 0 (:retry_count (first results)))))
           (let [table-name  (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 all-results (jdbc/execute! pgvector
-                                           (sql/format {:select [[:gate_id :id] [:error_gated_at :gated_at]] :from [table-name]} :quoted true)
+                                           (semantic.util/format-honeysql {:select [[:gate_id :id] [:error_gated_at :gated_at]] :from [table-name]})
                                            {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 2 (semantic.dlq/delete-entries! pgvector index-metadata index-id all-results)))
             (let [remaining (jdbc/execute! pgvector
-                                           (sql/format {:select [:*] :from [table-name]} :quoted true))]
+                                           (semantic.util/format-honeysql {:select [:*] :from [table-name]}))]
               (is (empty? remaining)))))))))
 
 (deftest dlq-entry-upsert-test
@@ -115,7 +116,7 @@
             (is (= 1 (semantic.dlq/add-entries! pgvector index-metadata index-id updated-entry))))
           (let [table-name (semantic.dlq/dlq-table-name-kw index-metadata index-id)
                 results    (jdbc/execute! pgvector
-                                          (sql/format {:select [:*] :from [table-name] :order-by [:gate_id]} :quoted true)
+                                          (semantic.util/format-honeysql {:select [:*] :from [table-name] :order-by [:gate_id]})
                                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
             (is (= 1 (count results)))
             (is (= "gate1" (:gate_id (first results))))

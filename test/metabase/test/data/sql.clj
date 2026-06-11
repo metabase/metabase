@@ -466,12 +466,12 @@
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (qualify-and-quote driver database-name view-name)
         qualified-table (qualify-and-quote driver database-name table-name)]
-    (sql/format
+    (sql.qp/format-honeysql
+     driver
      {(if materialized? :create-materialized-view :create-view)
       [[[:raw qualified-view]]]
       :select [:*]
-      :from [[[:raw qualified-table]]]}
-     :dialect (sql.qp/quote-style driver))))
+      :from [[[:raw qualified-table]]]})))
 
 (defmulti drop-view-sql
   "Generate sql to drop a view in database if it exists.
@@ -486,7 +486,7 @@
   [driver database view-name {:keys [materialized?]}]
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (qualify-and-quote driver database-name view-name)]
-    (sql/format
+    (sql.qp/format-honeysql
+     driver
      {(if materialized? :drop-materialized-view :drop-view)
-      [[:if-exists [:raw qualified-view]]]}
-     :dialect (sql.qp/quote-style driver))))
+      [[:if-exists [:raw qualified-view]]]})))

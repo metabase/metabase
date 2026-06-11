@@ -4,7 +4,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.driver :as driver]
@@ -80,7 +79,7 @@
   [checkpoint-config]
   (let [{:keys [field-name]} checkpoint-config
         table-id (mt/id :transforms_products)
-        timestamp-sql (first (sql/format (sql.qp/current-datetime-honeysql-form driver/*driver*)))
+        timestamp-sql (first (sql.qp/format-honeysql driver/*driver* (sql.qp/current-datetime-honeysql-form driver/*driver*)))
         query (format "SELECT *, %s AS %s FROM {{source_table}} AS %s ORDER BY %s"
                       timestamp-sql
                       (sql.u/quote-name driver/*driver* :field "load_timestamp")

@@ -23,6 +23,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.app-db.format :as app-db.format]
+   [metabase.app-db.setup]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -35,15 +36,17 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private NamespacedKeyword
-  [:and :keyword [:fn (comp seq namespace)]])
+(comment
+  ;; make sure [[metabase.app-db.setup]] is loaded so the `:metabase.app-db.setup/application-db` Honey SQL dialect
+  ;; gets defined and so default Honey SQL options and the like are loaded.
+  metabase.app-db.setup/keep-me)
 
 (mu/defn type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 
      (type-keyword->descendants :Semantic/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
-  [type-keyword :- NamespacedKeyword]
+  [type-keyword :- qualified-keyword?]
   (set (map u/qualified-name (cons type-keyword (descendants type-keyword)))))
 
 (defn isa
@@ -106,6 +109,8 @@
 (defmethod compile clojure.lang.IPersistentMap
   [honey-sql]
   (let [sql-args (try
+                   ;; this is one of the officially supported functions you're asked to use instead
+                   #_{:clj-kondo/ignore [:discouraged-var]}
                    (sql/format honey-sql {:quoted true, :dialect :metabase.app-db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running

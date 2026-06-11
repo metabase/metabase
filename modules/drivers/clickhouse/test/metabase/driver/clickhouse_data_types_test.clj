@@ -316,7 +316,7 @@
     [["val1" "val2" "val3" "val4"]]]])
 
 (comment
-  ;; This test doesn't pass because honey.sql/format doesn't generate a valid
+  ;; This test doesn't pass because [[honey.sql/format]] doesn't generate a valid
   ;; insert statement. We can exclude this test for now or modify it to test
   ;; similar behaviour in a way that works.
   ["array_of_tuples_test"

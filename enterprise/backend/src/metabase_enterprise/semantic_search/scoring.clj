@@ -2,10 +2,10 @@
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
-   [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
@@ -39,7 +39,7 @@
                                 (-> (view-count-percentile-query
                                      index-table
                                      p-value)
-                                    (sql/format {:quoted true}))
+                                    semantic.util/format-honeysql)
                                 {:builder-fn jdbc.rs/as-unqualified-lower-maps})]
              [(keyword model) vcp])))
 

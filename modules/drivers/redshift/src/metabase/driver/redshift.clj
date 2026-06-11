@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -20,22 +19,18 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Statement
-    Types)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Statement Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -188,36 +183,37 @@
   ;; The `database-is-auto-increment` and `database-required` columns are currently missing because they are only
   ;; needed for actions, which redshift doesn't support yet.
   [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select [[:c.column_name :name]
-                        [:c.data_type :database-type]
-                        [[:- :c.ordinal_position [:inline 1]] :database-position]
-                        [:c.table_schema :table-schema]
-                        [:c.table_name :table-name]
-                        [[:not= :pk.column_name nil] :pk?]
-                        [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
-               ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
-               :from [[:svv_columns :c]]
-               :left-join [[{:select [:tc.table_schema
-                                      :tc.table_name
-                                      :kc.column_name]
-                             :from [[:information_schema.table_constraints :tc]]
-                             :join [[:information_schema.key_column_usage :kc]
-                                    [:and
-                                     [:= :tc.constraint_name :kc.constraint_name]
-                                     [:= :tc.table_schema :kc.table_schema]
-                                     [:= :tc.table_name :kc.table_name]]]
-                             :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
-                            :pk]
-                           [:and
-                            [:= :c.table_schema :pk.table_schema]
-                            [:= :c.table_name :pk.table_name]
-                            [:= :c.column_name :pk.column_name]]]
-               :where [:and
-                       [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
-                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
-               :order-by [:table-schema :table-name :database-position]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [[:c.column_name :name]
+             [:c.data_type :database-type]
+             [[:- :c.ordinal_position [:inline 1]] :database-position]
+             [:c.table_schema :table-schema]
+             [:c.table_name :table-name]
+             [[:not= :pk.column_name nil] :pk?]
+             [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
+    ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
+    :from [[:svv_columns :c]]
+    :left-join [[{:select [:tc.table_schema
+                           :tc.table_name
+                           :kc.column_name]
+                  :from [[:information_schema.table_constraints :tc]]
+                  :join [[:information_schema.key_column_usage :kc]
+                         [:and
+                          [:= :tc.constraint_name :kc.constraint_name]
+                          [:= :tc.table_schema :kc.table_schema]
+                          [:= :tc.table_name :kc.table_name]]]
+                  :where [:= :tc.constraint_type [:inline "PRIMARY KEY"]]}
+                 :pk]
+                [:and
+                 [:= :c.table_schema :pk.table_schema]
+                 [:= :c.table_name :pk.table_name]
+                 [:= :c.column_name :pk.column_name]]]
+    :where [:and
+            [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
+            (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+            (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
+    :order-by [:table-schema :table-name :database-position]}))
 
 (defmethod driver/db-start-of-week :redshift
   [_]
@@ -686,9 +682,12 @@
     (doseq [[k v] column-definitions]
       (f driver db-id table-name {k v} settings))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/alter-columns! :redshift
-  [_driver _db-id _table-name column-definitions]
+(mu/defmethod driver/alter-table-columns! :redshift
+  [_driver            :- :keyword
+   _db-id             :- ::lib.schema.id/database
+   _table-name        :- :string
+   column-definitions :- ::driver/column-definitions
+   & {:as _opts} :- ::driver/alter-table-columns!-options]
   ;; TODO: redshift doesn't allow promotion of ints to floats using ALTER TABLE.
   (let [[column-name type-and-constraints] (first column-definitions)
         type (first type-and-constraints)]

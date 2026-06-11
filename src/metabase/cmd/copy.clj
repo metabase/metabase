@@ -192,6 +192,9 @@
 
 (defn- sql-for-selecting-instances-from-source-db [model]
   (first
+   ;; I guess we don't want to use [[metabase.app-db.core/compile]] here since it would compile for the destination DB
+   ;; and not the source DB
+   #_{:clj-kondo/ignore [:discouraged-var]}
    (sql/format
     (merge {:select [[:*]]
             :from   [[(t2/table-name model)]]}

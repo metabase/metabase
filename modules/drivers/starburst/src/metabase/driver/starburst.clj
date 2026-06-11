@@ -145,16 +145,14 @@
       out-form)))
 
 (defmethod sql.qp/apply-top-level-clause [:starburst :page]
-  [_ _ honeysql-query {{:keys [items page]} :page}]
+  [driver _top-level-clause honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
       (sql.helpers/limit honeysql-query items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
       (let [over-clause (format "row_number() OVER (%s)"
-                                (first (sql/format (select-keys honeysql-query [:order-by])
-                                                   :allow-dashed-names? true
-                                                   :quoting :ansi)))]
+                                (first (sql.qp/format-honeysql driver (select-keys honeysql-query [:order-by]))))]
         (-> (apply sql.helpers/select (map last (:select honeysql-query)))
             (sql.helpers/from (sql.helpers/select honeysql-query [[:raw over-clause] :__rownum__]))
             (sql.helpers/where [:> :__rownum__ offset])

@@ -3,7 +3,6 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.util :as semantic.u]
@@ -27,8 +26,8 @@
   (:size
    (jdbc/execute-one!
     pgvector
-    (sql/format {:select [[[:count :*] :size]]
-                 :from [[[:raw table-name-str]]]}))))
+    (semantic.u/format-honeysql {:select [[[:count :*] :size]]
+                                 :from [[[:raw table-name-str]]]}))))
 
 (defn- collect-gate-size!
   [pgvector]
@@ -47,8 +46,8 @@
   (if (semantic.u/table-exists? pgvector (:control-table-name index-metadata))
     (:id (jdbc/execute-one!
           pgvector
-          (sql/format {:select [[:active_id :id]]
-                       :from [[[:raw (:control-table-name index-metadata)]]]})
+          (semantic.u/format-honeysql {:select [[:active_id :id]]
+                                       :from [[[:raw (:control-table-name index-metadata)]]]})
           {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
     (log/warn "Control table does not exist. Index may not have been initialized.")))
 

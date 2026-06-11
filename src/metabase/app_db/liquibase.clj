@@ -597,7 +597,9 @@
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
-                 formatted-sql (sql/format remaining-query)
+                 ;; allowing direct use of [[sql/format]] here since using [[metabase.app-db.query/compile]] would
+                 ;; cause circular deps
+                 formatted-sql   #_{:clj-kondo/ignore [:discouraged-var]} (sql/format remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)
                (log/warnf "The following changesets were not rolled back. Likely because %s: %s"

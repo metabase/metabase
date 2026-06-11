@@ -7,34 +7,20 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
    [metabase.system.core :as system]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
   (:import
    (java.time Instant)
    (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
-
-(defmulti can-persist-test-honeysql-quote-style
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod can-persist-test-honeysql-quote-style :default
-  [_driver]
-  :ansi)
-
-(defmethod can-persist-test-honeysql-quote-style :mysql
-  [_driver]
-  :mysql)
 
 (deftest can-persist-test
   (testing "Can each database that allows for persistence actually persist"
@@ -48,9 +34,9 @@
             (let [schema-name (ddl.i/schema-name (mt/db) (system/site-uuid))
                   query       {:query
                                (first
-                                (sql/format {:select [:key :value]
-                                             :from   [(keyword schema-name "cache_info")]}
-                                            {:dialect (can-persist-test-honeysql-quote-style driver/*driver*)}))}
+                                (sql.qp/format-honeysql driver/*driver*
+                                                        {:select [:key :value]
+                                                         :from   [(keyword schema-name "cache_info")]}))}
                   values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
               (is (partial= {"settings-version" "1"
                              "instance-uuid"    (system/site-uuid)}

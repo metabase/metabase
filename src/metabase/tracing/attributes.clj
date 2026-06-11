@@ -10,6 +10,9 @@
    Values become ? placeholders. That is a best-effort sanitizing solution."
   [hsql-map]
   (try
+    ;; I guess since this doesn't actually get executed we don't really need to worry about quoting it, thus
+    ;; calling [[honey.sql/format]] directly is fine here.
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (first (sql/format hsql-map {:quoted false}))
     (catch Exception _
       (pr-str hsql-map))))

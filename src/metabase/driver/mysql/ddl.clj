@@ -3,7 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.connection :as driver.conn]
@@ -11,6 +10,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.ddl :as sql.ddl]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [some]])
@@ -143,15 +143,14 @@
                 (fn create-kv-table [conn]
                   (sql.ddl/execute! conn [(format "drop table if exists %s.cache_info"
                                                   schema-name)])
-                  (sql.ddl/execute! conn (sql/format
-                                          (ddl.i/create-kv-table-honey-sql-form schema-name)
-                                          {:dialect :mysql})))]
+                  (sql.ddl/execute! conn (sql.qp/format-honeysql
+                                          driver
+                                          (ddl.i/create-kv-table-honey-sql-form schema-name))))]
                [:persist.check/populate-kv-table
                 (fn create-kv-table [conn]
-                  (sql.ddl/execute! conn (sql/format
-                                          (ddl.i/populate-kv-table-honey-sql-form
-                                           schema-name)
-                                          {:dialect :mysql})))]]]
+                  (sql.ddl/execute! conn (sql.qp/format-honeysql
+                                          driver
+                                          (ddl.i/populate-kv-table-honey-sql-form schema-name))))]]]
     ;; Unlike postgres, mysql ddl clauses will not rollback in a transaction.
     ;; So we keep track of undo-steps to manually rollback previous, completed steps.
     (sql-jdbc.execute/do-with-connection-with-options

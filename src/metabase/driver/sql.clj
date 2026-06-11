@@ -75,8 +75,9 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(defmethod driver/prettify-native-form :sql
-  [driver native-form]
+(mu/defmethod driver/prettify-native-form :sql :- [:maybe :string]
+  [driver      :- :keyword
+   native-form :- [:maybe :string]]
   (sql.u/format-sql-and-fix-params driver native-form))
 
 (mu/defmethod driver/substitute-native-parameters-in-stage-method :sql :- ::lib.schema/stage.native

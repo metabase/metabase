@@ -511,10 +511,14 @@
   [[metabase.util.honey-sql-2]]; like `:ansi`, but uppercases the result). Check [[honey.sql/dialects]] for all
   available dialects, or register a custom one with [[honey.sql/register-dialect!]].
 
-    (honey.sql/format ... :quoting (quote-style driver), :allow-dashed-names? true)
+    (honey.sql/format ... :quoting (quote-style driver), :quoted-snake true)
 
   (The name of this method reflects Honey SQL 1 terminology, where \"dialect\" was called \"quote style\". To avoid
-  needless churn, I haven't changed it yet. -- Cam)"
+  needless churn, I haven't changed it yet. -- Cam)
+
+  NOTE: usage of this method is usually a code smell; prefer
+  using [[metabase.driver.sql.query-processor/format-honeysql]] to using [[honey.sql/format]] directly, as this will
+  *ALWAYS* set quoting and `:dialect` correctly for a driver."
   {:added "0.32.0" :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2093,12 +2097,15 @@
 (defn- format-honeysql-2 [driver dialect honeysql-form]
   ;; make sure [[driver/*driver*]] is bound, we need it for [[sqlize-value]]
   (binding [driver/*driver* driver]
+    ;; this is one of the officially supported functions you're asked to use instead of using [[sql/format]] directly,
+    ;; so ignore the discouraged var warning
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (sql/format honeysql-form {:dialect      dialect
                                :quoted       true
                                :quoted-snake false
                                :inline       driver/*compile-with-inline-parameters*
                                ;; Enable :nested when we want to compile just one particular snippet.
-                               :nested (not (map? honeysql-form))})))
+                               :nested       (not (map? honeysql-form))})))
 
 (defmulti format-honeysql
   "Compile `honeysql-form` to a `[sql & args]` vector. Prior to 0.51.0, this was a plain function, but was made a

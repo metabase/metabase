@@ -20,19 +20,20 @@
       - The loop will instead start adding failed gate docs to the dead-letter-queue (see dlq.clj).
       - Progress its watermark regardless (to avoid indexer stalls if e.g. documents are poisoned)."
   (:require
-   [honey.sql :as sql]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.gate :as semantic.gate]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
-  (:import (java.sql Timestamp)
-           (java.time Clock Duration Instant InstantSource)))
+  (:import
+   (java.sql Timestamp)
+   (java.time Clock Duration Instant InstantSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -60,7 +61,7 @@
   (let [dml {:update [(keyword (:metadata-table-name index-metadata))]
              :set    {:indexer_stalled_at nil}
              :where  [:and [:= :table_name (:table-name index)] [:!= nil :indexer_stalled_at]]}
-        sql (sql/format dml :quoted true)
+        sql (semantic.util/format-honeysql dml)
         {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)
         cleared (pos? update-count)]
     (when cleared
@@ -84,7 +85,7 @@
                       [:= :table_name (:table-name index)]
                       ;; do not overwrite existing (earlier) timestamps
                       [:= nil :indexer_stalled_at]]}
-        sql (sql/format dml :quoted true)
+        sql (semantic.util/format-honeysql dml)
         {update-count ::jdbc/update-count} (jdbc/execute-one! pgvector sql)
         timestamp (when (pos? update-count) now)]
     (when timestamp
@@ -133,7 +134,7 @@
           documents-query       {:select [:id :gated_at :model :model_id :document]
                                  :from   [(keyword (:gate-table-name index-metadata))]
                                  :where  [:in :id (sort (map :id novel-candidates))]}
-          documents-sql         (sql/format documents-query :quoted true)
+          documents-sql         (semantic.util/format-honeysql documents-query)
           lookup-start          (u/start-timer)
           gate-docs             (when (seq novel-candidates) (jdbc/execute! pgvector documents-sql {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
           lookup-duration-ms    (u/since-ms lookup-start)

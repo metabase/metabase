@@ -494,3 +494,29 @@
        clojure.lang.ExceptionInfo
        #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
        (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(deftest ^:parallel schema-exists?-escape-schema-test
+  (mt/test-drivers (mt/driver-select {:+features [:schemas :transforms/table]})
+    (is (not= (get-method driver/schema-exists? driver/*driver*)
+              (get-method driver/schema-exists? :default))
+        "Drivers with the :schemas and :transforms/table features must implement driver/schema-exists?")
+    (testing "Should properly escape schemas"
+      (are [schema] (not (driver/schema-exists? driver/*driver* (mt/id) schema))
+        "schema_that_needs_\"_escaping"
+        "schema_that_needs_`_escaping"))))
+
+(deftest ^:parallel add-columns!-test
+  (mt/test-drivers (mt/driver-select {:+features [:uploads]})
+    #_{:clj-kondo/ignore [:metabase/validate-deftest]} ; not actually executing these destructive functions
+    (is (not= (get-method driver/add-columns! driver/*driver*)
+              (get-method driver/add-columns! :default))
+        "Drivers with the :uploads feature must implement driver/add-columns!")))
+
+(deftest ^:parallel stop-adding-sql-specific-methods-here-test
+  (doseq [[symb] (ns-publics 'metabase.driver)
+          ;; this is an existing usage and prompted me to write this test in the first place, so we'll allow it for
+          ;; now.
+          :when  (not= symb 'llm-sql-dialect-resource)]
+    (testing symb
+      (is (not (str/includes? symb "sql"))
+          "SQL-specific driver methods do not belong in metabase.driver; put them in metabase.driver.sql.* or metabase.driver.sql-jdbc.*"))))

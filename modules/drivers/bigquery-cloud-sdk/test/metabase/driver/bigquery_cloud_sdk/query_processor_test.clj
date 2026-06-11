@@ -812,6 +812,8 @@
           (mt/with-report-timezone-id! nil
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
+                     ;; raw `sql/format` ok here because this test is compiling without quoting for readability
+                     #_{:clj-kondo/ignore [:discouraged-var]}
                      (sql/format {:where (sql.qp/->honeysql
                                           :bigquery-cloud-sdk
                                           [:=
@@ -836,6 +838,8 @@
                                        :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]}))
                   (compile-sql [field-type unit]
                     (qp.store/with-metadata-provider (mock-metadata-provider field-type)
+                      ;; raw `sql/format` ok here because this test is compiling without quoting for readability
+                      #_{:clj-kondo/ignore [:discouraged-var]}
                       (let [[sql] (sql/format {:where (sql.qp/->honeysql
                                                        :bigquery-cloud-sdk
                                                        [:=

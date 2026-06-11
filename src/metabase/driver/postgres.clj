@@ -21,7 +21,6 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -250,10 +249,13 @@
                           "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
                           "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
-(defn- get-tables-sql
-  [schemas table-names]
+(mu/defn- get-tables-sql
+  [driver :- :keyword
+   schemas
+   table-names]
   ;; Ref: https://github.com/davecramer/pgjdbc/blob/a714bfd/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L1272
-  (sql/format
+  (sql.qp/format-honeysql
+   driver
    (cond->  {:select    [[:n.nspname :schema]
                          [:c.relname :name]
                          [[:case-expr :c.relkind
@@ -285,13 +287,15 @@
      (sql.helpers/where [:in :n.nspname schemas])
 
      (seq table-names)
-     (sql.helpers/where [:in :c.relname table-names]))
-   {:dialect :ansi}))
+     (sql.helpers/where [:in :c.relname table-names]))))
 
-(defn- get-tables
+(mu/defn- get-tables
   ;; have it as its own method for ease of testing
-  [database schemas tables]
-  (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
+  [{driver :engine, :as database} :- [:map
+                                      [:driver :keyword]]
+   schemas
+   tables]
+  (sql-jdbc.execute/reducible-query database (get-tables-sql driver schemas tables)))
 
 (defn- describe-syncable-tables
   [{driver :engine :as database}]
@@ -336,7 +340,8 @@
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
   [driver & {:keys [schema-names table-names]}]
-  (sql/format
+  (sql.qp/format-honeysql
+   driver
    {:union-all
     [{:select [[:c.column_name :name]
                [[:case
@@ -417,59 +422,60 @@
               [:>= :pa.attnum [:inline 1]]
               (nullable-in :pn.nspname schema-names)
               (when table-names [:in :pc.relname table-names])]}]
-    :order-by [:table-schema :table-name :database-position]}
-   :dialect (sql.qp/quote-style driver)))
+    :order-by [:table-schema :table-name :database-position]}))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :postgres
   [driver & {:keys [schema-names table-names]}]
-  (sql/format {:select (vec
-                        {:fk_ns.nspname       "fk-table-schema"
-                         :fk_table.relname    "fk-table-name"
-                         :fk_column.attname   "fk-column-name"
-                         :pk_ns.nspname       "pk-table-schema"
-                         :pk_table.relname    "pk-table-name"
-                         :pk_column.attname   "pk-column-name"})
-               :from   [[:pg_constraint :c]]
-               :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
-                        [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
-                        [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
-                        [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
-                        [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
-                        [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
-               :where  [:and
-                        [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
-                        [:= :c.contype [:raw "'f'::char"]]
-                        [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
-                        [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
-                        (when table-names [:in :fk_table.relname table-names])
-                        (when schema-names [:in :fk_ns.nspname schema-names])]
-               :order-by [:fk-table-schema :fk-table-name]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select (vec
+             {:fk_ns.nspname       "fk-table-schema"
+              :fk_table.relname    "fk-table-name"
+              :fk_column.attname   "fk-column-name"
+              :pk_ns.nspname       "pk-table-schema"
+              :pk_table.relname    "pk-table-name"
+              :pk_column.attname   "pk-column-name"})
+    :from   [[:pg_constraint :c]]
+    :join   [[:pg_class     :fk_table]  [:= :c.conrelid :fk_table.oid]
+             [:pg_namespace :fk_ns]     [:= :c.connamespace :fk_ns.oid]
+             [:pg_attribute :fk_column] [:= :c.conrelid :fk_column.attrelid]
+             [:pg_class     :pk_table]  [:= :c.confrelid :pk_table.oid]
+             [:pg_namespace :pk_ns]     [:= :pk_table.relnamespace :pk_ns.oid]
+             [:pg_attribute :pk_column] [:= :c.confrelid :pk_column.attrelid]]
+    :where  [:and
+             [:raw "fk_ns.nspname !~ '^information_schema|catalog_history|pg_'"]
+             [:= :c.contype [:raw "'f'::char"]]
+             [:= :fk_column.attnum [:raw "ANY(c.conkey)"]]
+             [:= :pk_column.attnum [:raw "ANY(c.confkey)"]]
+             (when table-names [:in :fk_table.relname table-names])
+             (when schema-names [:in :fk_ns.nspname schema-names])]
+    :order-by [:fk-table-schema :fk-table-name]}))
 
 (defmethod sql-jdbc.sync/describe-indexes-sql :postgres
   [driver & {:keys [schema-names table-names]}]
   ;; From https://github.com/pgjdbc/pgjdbc/blob/master/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java#L2662
-  (sql/format {:select [:tmp.table-schema
-                        :tmp.table-name
-                        [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
-               :from [[{:select [[:n.nspname :table-schema]
-                                 [:ct.relname :table-name]
-                                 [:ci.oid :ci_oid]
-                                 [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
-                        :from [[:pg_catalog.pg_class :ct]]
-                        :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
-                               [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
-                               [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
-                        :where [:and
-                                ;; No filtered indexes
-                                [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
-                                [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
-                                (when (seq schema-names) [:in :n.nspname schema-names])
-                                (when (seq table-names) [:in :ct.relname table-names])]}
-                       :tmp]]
-               ;; The only column or the first column in a composite index
-               :where [:= :tmp.pos 1]}
-              :dialect (sql.qp/quote-style driver)))
+  (sql.qp/format-honeysql
+   driver
+   {:select [:tmp.table-schema
+             :tmp.table-name
+             [[:trim :!both [:inline "\""] :!from [:pg_catalog.pg_get_indexdef :tmp.ci_oid :tmp.pos false]] :field-name]]
+    :from [[{:select [[:n.nspname :table-schema]
+                      [:ct.relname :table-name]
+                      [:ci.oid :ci_oid]
+                      [[:. [:composite [:information_schema._pg_expandarray :i.indkey]] :n] :pos]]
+             :from [[:pg_catalog.pg_class :ct]]
+             :join [[:pg_catalog.pg_namespace :n] [:= :ct.relnamespace :n.oid]
+                    [:pg_catalog.pg_index :i] [:= :ct.oid :i.indrelid]
+                    [:pg_catalog.pg_class :ci] [:= :ci.oid :i.indexrelid]]
+             :where [:and
+                     ;; No filtered indexes
+                     [:= [:pg_catalog.pg_get_expr :i.indpred :i.indrelid] nil]
+                     [:raw "n.nspname !~ '^information_schema|catalog_history|pg_'"]
+                     (when (seq schema-names) [:in :n.nspname schema-names])
+                     (when (seq table-names) [:in :ct.relname table-names])]}
+            :tmp]]
+    ;; The only column or the first column in a composite index
+    :where [:= :tmp.pos 1]}))
 
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them.
@@ -1221,10 +1227,10 @@
 (defmethod driver/rename-tables!* :postgres
   [driver db-id sorted-rename-map]
   (let [sqls (mapv (fn [[from-table to-table]]
-                     (first (sql/format {:alter-table (keyword from-table)
-                                         :rename-table (keyword (name to-table))}
-                                        :quoted true
-                                        :dialect (sql.qp/quote-style driver))))
+                     (first (sql.qp/format-honeysql
+                             driver
+                             {:alter-table (keyword from-table)
+                              :rename-table (keyword (name to-table))})))
                    sorted-rename-map)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
@@ -1243,37 +1249,33 @@
   generate the ALTER COLUMN statement without a USING."
   [column old-type new-type]
   (case [old-type new-type]
-
     [[:boolean] [:bigint]]
     [:case
-     (quote-identifier column) 1
+     (h2x/identifier :field column) 1
      :else 0]
 
     [[:boolean] [:float]]
     [:case
-     (quote-identifier column) 1.0
+     (h2x/identifier :field column) 1.0
      :else 0.0]
 
     nil))
 
 (defmethod sql-jdbc.sync/alter-table-columns-sql :postgres
   [driver table-name column-definitions & {:keys [old-types]}]
-  (with-quoting driver
-    (-> {:alter-table  (keyword table-name)
-         :alter-column (for [[column column-type] column-definitions
-                             :let [old-type (get old-types column)]]
-                         (let [base (list* (quote-identifier column)
-                                           :type
-                                           (if (string? column-type)
-                                             [[:raw column-type]]
-                                             column-type))]
-                           (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
-                             (vec (concat base [:using using]))
-                             (vec base))))}
-        (sql/format
-         :quoted  true
-         :dialect (sql.qp/quote-style driver))
-        first)))
+  (->> {:alter-table  (keyword table-name)
+        :alter-column (for [[column column-type] column-definitions
+                            :let [old-type (get old-types column)]]
+                        (let [base (list* (h2x/identifier :field column)
+                                          :type
+                                          (if (string? column-type)
+                                            [[:raw column-type]]
+                                            column-type))]
+                          (if-some [using (alter-column-using-hsql-expr column old-type column-type)]
+                            (vec (concat base [:using using]))
+                            (vec base))))}
+       (sql.qp/format-honeysql driver)
+       first))
 
 (defmethod driver/table-name-length-limit :postgres
   [_driver]
@@ -1317,12 +1319,12 @@
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
-          dialect      (sql.qp/quote-style driver)
-          [sql & _] (sql/format {::copy       (keyword table-name)
-                                 :columns     (quote-columns driver column-names)
-                                 ::from-stdin "''"}
-                                :quoted true
-                                :dialect dialect)
+          [sql & _]    (sql.qp/format-honeysql
+                        driver
+                        {::copy       (keyword table-name)
+                         :columns     (for [col column-names]
+                                        (h2x/identifier :field col))
+                         ::from-stdin "''"})
           ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
           ;; little faster but not by much (3.63m), and 10,000 threw an error:
           ;;     PreparedStatement can have at most 65,535 parameters
@@ -1383,7 +1385,7 @@
   (let [special-chars-pattern #"[^a-zA-Z0-9_]"
         needs-quote?          (re-find special-chars-pattern role)
         quoted-role           (cond->> role
-                                needs-quote? (memoized-quote-identifier driver conn))]
+                                needs-quote? (memoized-quote-identifier driver driver conn))]
     (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :postgres

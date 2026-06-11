@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.migration-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
-   [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase-enterprise.semantic-search.core :as semantic.core]
@@ -12,6 +11,7 @@
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase-enterprise.semantic-search.util :as semantic.util]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -132,16 +132,16 @@
         (testing "migration table has expected columns"
           (is (map-contains-keys?
                (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                  (sql/format {:select [:*]
-                                               :from [:migration]}))
+                                  (semantic.util/format-honeysql {:select [:*]
+                                                                  :from [:migration]}))
                (qualify :migration [:migrated_at
                                     :status
                                     :version]))))
         (testing "control table has expected columns"
           (is (map-contains-keys?
                (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                  (sql/format {:select [:*]
-                                               :from [:index_control]}))
+                                  (semantic.util/format-honeysql {:select [:*]
+                                                                  :from [:index_control]}))
                (qualify :index_control [:active_id
                                         :active_updated_at
                                         :id
@@ -149,8 +149,8 @@
         (testing "metadata table has expected columns"
           (is  (map-contains-keys?
                 (jdbc/execute-one! (semantic.env/get-pgvector-datasource!)
-                                   (sql/format {:select [:*]
-                                                :from [:index_metadata]}))
+                                   (semantic.util/format-honeysql {:select [:*]
+                                                                   :from [:index_metadata]}))
                 (qualify :index_metadata [:id
                                           :index_created_at
                                           :index_version
@@ -165,10 +165,10 @@
         (testing "index table has expected columns"
           (let [index-table (->
                              (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                                (sql/format {:select [[:im.table_name]]
-                                                             :from [[:index_control :ic]]
-                                                             :join [[:index_metadata :im]
-                                                                    [:= :ic.active_id :im.id]]}))
+                                                (semantic.util/format-honeysql {:select [[:im.table_name]]
+                                                                                :from [[:index_control :ic]]
+                                                                                :join [[:index_metadata :im]
+                                                                                       [:= :ic.active_id :im.id]]}))
                              :index_metadata/table_name)]
             (is (=? #{"archived"
                       "collection_id"
@@ -200,17 +200,17 @@
                       "verified"
                       "view_count"}
                     (->>  (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                                         (sql/format {:select [:column_name]
-                                                      :from [:information_schema.columns]
-                                                      :where [[:= :table_name [:inline index-table]]]}))
+                                         (semantic.util/format-honeysql {:select [:column_name]
+                                                                         :from [:information_schema.columns]
+                                                                         :where [[:= :table_name [:inline index-table]]]}))
                           (map :columns/column_name)
                           set)))))
         (testing "index table has expected columns"
           (is (= ["document" "document_hash" "gated_at" "id" "model" "model_id" "updated_at"]
                  (->> (jdbc/execute! (semantic.env/get-pgvector-datasource!)
-                                     (sql/format {:select [:column_name]
-                                                  :from [:information_schema.columns]
-                                                  :where [[:= :table_name [:inline "index_gate"]]]}))
+                                     (semantic.util/format-honeysql {:select [:column_name]
+                                                                     :from [:information_schema.columns]
+                                                                     :where [[:= :table_name [:inline "index_gate"]]]}))
                       (map :columns/column_name)
                       sort
                       vec))))))
@@ -220,11 +220,11 @@
 
 (defn- has-column?!
   [tx table-name column-name]
-  (seq (jdbc/execute-one! tx (sql/format {:select [[[:raw 1] :contains]]
-                                          :from [:information_schema.columns]
-                                          :where [:and
-                                                  [:= :table_name [:inline table-name]]
-                                                  [:= :column_name [:inline column-name]]]}))))
+  (seq (jdbc/execute-one! tx (semantic.util/format-honeysql {:select [[[:raw 1] :contains]]
+                                                             :from [:information_schema.columns]
+                                                             :where [:and
+                                                                     [:= :table_name [:inline table-name]]
+                                                                     [:= :column_name [:inline column-name]]]}))))
 
 (deftest dynamic-schema-migration-test
   (mt/with-premium-features #{:semantic-search}
@@ -235,25 +235,25 @@
         (with-redefs-fn {#'semantic.db.migration.impl/migrate-dynamic-schema!
                          (fn [tx _opts]
                            (let [table_names (->> (jdbc/execute! tx
-                                                                 (sql/format {:select [:table_name]
-                                                                              :from [:index_metadata]
-                                                                              :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
-                                                                              :group-by [:table_name]}))
+                                                                 (semantic.util/format-honeysql {:select [:table_name]
+                                                                                                 :from [:index_metadata]
+                                                                                                 :where [[:< :index_version semantic.db.migration.impl/dynamic-schema-version]]
+                                                                                                 :group-by [:table_name]}))
                                                   (map :index_metadata/table_name)
                                                   set)]
                              (doseq [table_name table_names]
                                (when-not (has-column?! tx table_name "new_col")
-                                 (jdbc/execute! tx (sql/format {:alter-table [table_name] :add-column [[:new_col :int]]}))))
-                             (jdbc/execute! tx (sql/format {:update :index_metadata
-                                                            :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
-                                                            :where [[:in :table_name table_names]]}))))
+                                 (jdbc/execute! tx (semantic.util/format-honeysql {:alter-table [table_name] :add-column [[:new_col :int]]}))))
+                             (jdbc/execute! tx (semantic.util/format-honeysql {:update :index_metadata
+                                                                               :set {:index_version semantic.db.migration.impl/dynamic-schema-version}
+                                                                               :where [[:in :table_name table_names]]}))))
                          #'semantic.db.migration.impl/dynamic-schema-version (inc original-dynamic-schema)}
           (fn []
             ;; Trigger migration by next initialization attempt
             (semantic.core/init! (semantic.tu/mock-documents) nil)
             (let [#:index_metadata{:keys [index_version table_name]}
                   (jdbc/execute-one! (semantic.db.datasource/ensure-initialized-data-source!)
-                                     (sql/format
+                                     (semantic.util/format-honeysql
                                       {:select [:*]
                                        :from [:index_metadata]}))]
               (testing "Index metadata table ids were updated"
@@ -272,9 +272,9 @@
   [pgvector index-metadata]
   (let [{:keys [control-table-name metadata-table-name]} index-metadata]
     (->> (jdbc/execute-one! pgvector
-                            (sql/format {:select [:im.table_name]
-                                         :from   [[(keyword metadata-table-name) :im]]
-                                         :join   [[(keyword control-table-name) :ic] [:= :ic.active_id :im.id]]}))
+                            (semantic.util/format-honeysql {:select [:im.table_name]
+                                                            :from   [[(keyword metadata-table-name) :im]]
+                                                            :join   [[(keyword control-table-name) :ic] [:= :ic.active_id :im.id]]}))
          vals
          first)))
 
@@ -284,14 +284,13 @@
   collection_type, root_collection_type)."
   [pgvector kw-tbl row]
   (jdbc/execute! pgvector
-                 (sql/format {:insert-into kw-tbl
-                              :values      [(merge {:name                                 [:inline ""]
-                                                    :content                              [:inline ""]
-                                                    :text_search_vector                   [:to_tsvector [:inline "simple"] [:inline ""]]
-                                                    :text_search_with_native_query_vector [:to_tsvector [:inline "simple"] [:inline ""]]
-                                                    :embedding                            [:raw "'[0,0,0,0]'::vector"]}
-                                                   row)]}
-                             :quoted true)))
+                 (semantic.util/format-honeysql {:insert-into kw-tbl
+                                                 :values      [(merge {:name                                 [:inline ""]
+                                                                       :content                              [:inline ""]
+                                                                       :text_search_vector                   [:to_tsvector [:inline "simple"] [:inline ""]]
+                                                                       :text_search_with_native_query_vector [:to_tsvector [:inline "simple"] [:inline ""]]
+                                                                       :embedding                            [:raw "'[0,0,0,0]'::vector"]}
+                                                                      row)]})))
 
 (deftest migration-4-backfill-test
   (testing "migration 4 backfills root_collection_type from the gate doc, then via an appdb walk of the Library forest"
@@ -346,34 +345,32 @@
                                                 :root_collection_type [:inline "library-data"]})
             ;; Gate doc for row 1 — JSON includes root_collection_type
             (jdbc/execute! pgvector
-                           (sql/format {:insert-into gate-tbl
-                                        :values [{:id            [:inline "card_1"]
-                                                  :model         [:inline "card"]
-                                                  :model_id      [:inline "1"]
-                                                  :updated_at    [:now]
-                                                  :document      [:cast [:inline "{\"root_collection_type\":\"library\"}"] :jsonb]
-                                                  :document_hash [:inline "h"]}]}
-                                       :quoted true))
+                           (semantic.util/format-honeysql {:insert-into gate-tbl
+                                                           :values [{:id            [:inline "card_1"]
+                                                                     :model         [:inline "card"]
+                                                                     :model_id      [:inline "1"]
+                                                                     :updated_at    [:now]
+                                                                     :document      [:cast [:inline "{\"root_collection_type\":\"library\"}"] :jsonb]
+                                                                     :document_hash [:inline "h"]}]}))
             ;; Roll metadata.index_version back to 3 so migration 4 re-runs against the table.
             (jdbc/execute! pgvector
-                           (sql/format {:update meta-tbl
-                                        :set    {:index_version 3}}))
+                           (semantic.util/format-honeysql {:update meta-tbl
+                                                           :set    {:index_version 3}}))
             ;; Trigger re-migration via init.
             (semantic.core/init! (semantic.tu/mock-documents) nil)
             ;; Verify each backfill branch.
             (let [rows-by-id (->> (jdbc/execute! pgvector
-                                                 (sql/format {:select   [:model_id :root_collection_type]
-                                                              :from     [kw-tbl]
-                                                              :order-by [:model_id]}
-                                                             :quoted true)
+                                                 (semantic.util/format-honeysql {:select   [:model_id :root_collection_type]
+                                                                                 :from     [kw-tbl]
+                                                                                 :order-by [:model_id]})
                                                  {:builder-fn jdbc.rs/as-unqualified-maps})
                                   (map (juxt :model_id :root_collection_type))
                                   (into {}))]
-              (is (= {"1" "library"        ; pulled from gate.document->>'root_collection_type'
-                      "2" "library"        ; collection_id IS the library root
-                      "3" "library"        ; library-data sub-collection — walks up to library
-                      "4" "library"        ; deeper library-data sub-sub — still walks up
-                      "5" "library"        ; library-metrics sub-collection — still walks up
-                      "6" nil              ; non-library collection, no gate doc
-                      "7" "library-data"}  ; pre-existing value preserved
+              (is (= {"1" "library"       ; pulled from gate.document->>'root_collection_type'
+                      "2" "library"       ; collection_id IS the library root
+                      "3" "library"       ; library-data sub-collection — walks up to library
+                      "4" "library"       ; deeper library-data sub-sub — still walks up
+                      "5" "library"       ; library-metrics sub-collection — still walks up
+                      "6" nil             ; non-library collection, no gate doc
+                      "7" "library-data"} ; pre-existing value preserved
                      rows-by-id)))))))))

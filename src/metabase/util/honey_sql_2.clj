@@ -2,7 +2,7 @@
   "Honey SQL 2 utilities and extra registered functions/operators."
   (:refer-clojure
    :exclude
-   [+ - / * abs mod inc dec cast concat format second])
+   [+ - / * abs mod inc dec cast concat second])
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -399,16 +399,6 @@
 
 (defn inc "Add 1 to `x`."        [x] (+ x 1))
 (defn dec "Subtract 1 from `x`." [x] (- x 1))
-
-(defn format
-  "SQL `format` function."
-  [format-str expr]
-  (sql/call :format expr (literal format-str)))
-
-(defn round
-  "SQL `round` function."
-  [x decimal-places]
-  (sql/call :round x decimal-places))
 
 (defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
 (defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))

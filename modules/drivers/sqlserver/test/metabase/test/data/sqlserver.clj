@@ -3,7 +3,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
@@ -154,18 +153,18 @@
   (let [database-name (get-in database [:settings :database-source-dataset-name])
         qualified-view (sql.tx/qualify-and-quote driver view-name)
         qualified-table (sql.tx/qualify-and-quote driver database-name table-name)]
-    (sql/format
+    (sql.qp/format-honeysql
+     driver
      {(if materialized? :create-materialized-view :create-view) [[[:raw qualified-view]]]
       :select [:*]
-      :from [[[:raw qualified-table]]]}
-     :dialect (sql.qp/quote-style driver))))
+      :from [[[:raw qualified-table]]]})))
 
 (defmethod sql.tx/drop-view-sql :sqlserver
   [driver _database view-name {:keys [materialized?]}]
   (let [qualified-view (sql.tx/qualify-and-quote driver view-name)]
-    (sql/format
-     {(if materialized? :drop-materialized-view :drop-view) [[:if-exists [:raw qualified-view]]]}
-     :dialect (sql.qp/quote-style driver))))
+    (sql.qp/format-honeysql
+     driver
+     {(if materialized? :drop-materialized-view :drop-view) [[:if-exists [:raw qualified-view]]]})))
 
 (defmethod sql.tx/generated-column-sql :sqlserver [_ expr]
   (format "AS (%s)" expr))

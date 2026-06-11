@@ -28,6 +28,18 @@ title: Driver interface changelog
     between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
     implementations for it.
 
+- `metabase.driver.sql-jdbc.sync/alter-columns-sql`, deprecated in 0.54.0, has been removed. Please implement
+  `metabase.driver.sql-jdbc.sync/alter-table-columns-sql` instead.
+
+- `metabase.driver/alter-columns!`, deprecated in 0.54.0, has been removed. Please implement
+  `metabase.driver/alter-table-columns!` instead.
+
+- `metabase.driver/splice-parameters-into-native-query`, deprecated in 0.51.0 and unused since, has been removed.
+
+- The namespace `metabase.driver.sql-jdbc.quoting` has been removed due to confusing/broken behavior, e.g.
+  `metabase.driver.sql-jdbc.quoting/with-quoting` did not work when used with `honey.sql/format`. Use
+  `metabase.util.honey-sql-2/identifier` instead of the functions in this namespace.
+
 ## Metabase 0.62.0
 
 - `sql.params.substitution/field->clause`, `to-clause`, `desugar-filter-clause`, `wrap-value-literals-in-mbql`, and

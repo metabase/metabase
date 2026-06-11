@@ -1,7 +1,6 @@
 (ns metabase.sync.sync-metadata.fks
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
-   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -86,7 +85,7 @@
                       [:= :f.id fk-field-id-query]
                       [:not= pk-field-id-query nil]
                       (valid-condition pk-field-id-query)]})]
-    (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
+    (mdb/compile q)))
 
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
