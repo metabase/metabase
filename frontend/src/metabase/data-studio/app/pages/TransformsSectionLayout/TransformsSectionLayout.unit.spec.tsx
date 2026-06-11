@@ -37,6 +37,7 @@ const setup = ({
   isHosted = false,
   hasTransformFeature = false,
   transformsEnabled = false,
+  transformsSetupComplete = false,
   isAdmin = false,
   isStoreUser = false,
   canAccessDbDetails = false,
@@ -46,6 +47,7 @@ const setup = ({
   isHosted?: boolean;
   hasTransformFeature?: boolean;
   transformsEnabled?: boolean;
+  transformsSetupComplete?: boolean;
   isAdmin?: boolean;
   isStoreUser?: boolean;
   canAccessDbDetails?: boolean;
@@ -71,6 +73,7 @@ const setup = ({
       hosting: isHosted,
     }),
     "transforms-enabled": transformsEnabled,
+    "transforms-setup-complete": transformsSetupComplete,
     "is-hosted?": isHosted,
     "token-status": {
       status: "valid",
@@ -129,6 +132,7 @@ describe("TransformSectionLayout", () => {
     it("should show allow you into transforms if transforms are enabled and writable databases exist", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createTransformSupportedDatabase({ transforms_permissions: "write" }),
         ],
@@ -148,6 +152,7 @@ describe("TransformSectionLayout", () => {
       setup({
         hasTransformFeature: true,
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createTransformSupportedDatabase({ transforms_permissions: "write" }),
         ],
@@ -188,6 +193,7 @@ describe("TransformSectionLayout", () => {
     it("should show empty state when no databases are writable or supported", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [
           createMockDatabase({ id: 1, transforms_permissions: "none" }),
           createMockDatabase({
@@ -214,6 +220,7 @@ describe("TransformSectionLayout", () => {
     it("should show empty state when transforms are enabled and the database list is empty", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databases: [],
       });
 
@@ -223,6 +230,7 @@ describe("TransformSectionLayout", () => {
     it("should show the 'View your database connections' button linking to admin databases for admin users", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: true,
         databases: [],
       });
@@ -237,6 +245,7 @@ describe("TransformSectionLayout", () => {
     it("should show the 'View your database connections' button for users with manage database permission", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: false,
         canAccessDbDetails: true,
         databases: [],
@@ -253,6 +262,7 @@ describe("TransformSectionLayout", () => {
     it("should not show the 'View your database connections' button for non-admin users without manage database permission", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         isAdmin: false,
         databases: [],
       });
@@ -268,6 +278,7 @@ describe("TransformSectionLayout", () => {
     it("should show an error UI (not the empty state) when the databases request fails", async () => {
       setup({
         transformsEnabled: true,
+        transformsSetupComplete: true,
         databasesError: true,
       });
 
