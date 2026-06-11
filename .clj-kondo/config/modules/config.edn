@@ -167,7 +167,7 @@
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Table :model/User}}
 
   analytics
   {:team "UX West"
