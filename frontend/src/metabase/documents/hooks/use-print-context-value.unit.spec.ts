@@ -54,13 +54,7 @@ describe("usePrintContextValue", () => {
   it("waits until the optional readiness predicate passes", async () => {
     let ready = false;
     const isReady = jest.fn(() => ready);
-    const { result } = renderHook(() =>
-      usePrintContextValue({
-        isReady,
-        pollIntervalMs: 100,
-        timeoutMs: 1_000,
-      }),
-    );
+    const { result } = renderHook(() => usePrintContextValue({ isReady }));
     let resolved = false;
     let promise: Promise<void> | undefined;
 
@@ -87,13 +81,7 @@ describe("usePrintContextValue", () => {
 
   it("stops waiting when the readiness timeout expires", async () => {
     const isReady = jest.fn(() => false);
-    const { result } = renderHook(() =>
-      usePrintContextValue({
-        isReady,
-        pollIntervalMs: 100,
-        timeoutMs: 250,
-      }),
-    );
+    const { result } = renderHook(() => usePrintContextValue({ isReady }));
     let resolved = false;
     let promise: Promise<void> | undefined;
 
@@ -108,7 +96,9 @@ describe("usePrintContextValue", () => {
     expect(resolved).toBe(false);
 
     await act(async () => {
-      jest.advanceTimersByTime(300);
+      // Push the faked clock past the 15s readiness deadline; the next poll
+      // tick then exits the wait loop even though isReady still returns false.
+      jest.advanceTimersByTime(16_000);
       await promise;
     });
 

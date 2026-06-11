@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -25,14 +26,16 @@ import {
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase/documents/components/Editor/constants";
 import { MAX_GROUP_SIZE } from "metabase/documents/constants";
 import { useExternalCardData } from "metabase/documents/contexts/ExternalCardDataContext";
-import { usePrefetchQueue } from "metabase/documents/contexts/PrefetchQueueContext";
 import {
   loadMetadataForDocumentCard,
   openVizSettingsSidebar,
 } from "metabase/documents/documents.slice";
 import { useCardData } from "metabase/documents/hooks/use-card-data";
 import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
-import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
+import {
+  useNodeInViewport,
+  useReportPrefetchLoading,
+} from "metabase/documents/hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -222,14 +225,7 @@ export const CardEmbedComponent = memo(
       ? externalCardDataResult
       : regularCardData;
 
-    const prefetchQueue = usePrefetchQueue();
-    useEffect(() => {
-      if (!prefetchQueue) {
-        return;
-      }
-      prefetchQueue.reportLoading(_id, isLoading);
-      return () => prefetchQueue.reportLoading(_id, false);
-    }, [prefetchQueue, _id, isLoading]);
+    useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -240,13 +236,7 @@ export const CardEmbedComponent = memo(
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
 
-    const setRef = useCallback(
-      (el: HTMLDivElement | null) => {
-        viewportRef(el);
-        cardEmbedRef.current = el;
-      },
-      [viewportRef, cardEmbedRef],
-    );
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();

@@ -5,19 +5,15 @@ import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next
 import type { PrintContextValue } from "metabase/documents/contexts/PrintContext";
 import { delay } from "metabase/utils/promise";
 
-const DEFAULT_TIMEOUT_MS = 15_000;
-const DEFAULT_POLL_INTERVAL_MS = 100;
+const READINESS_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 100;
 
 type UsePrintContextValueOptions = {
   isReady?: () => boolean;
-  timeoutMs?: number;
-  pollIntervalMs?: number;
 };
 
 export function usePrintContextValue({
   isReady,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-  pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
 }: UsePrintContextValueOptions = {}): PrintContextValue {
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -31,11 +27,11 @@ export function usePrintContextValue({
     // register as in-flight) before we poll readiness and call window.print().
     await waitUntilNextFramePainted();
 
-    const deadline = Date.now() + timeoutMs;
+    const deadline = Date.now() + READINESS_TIMEOUT_MS;
     while (isReady && !isReady() && Date.now() < deadline) {
-      await delay(pollIntervalMs);
+      await delay(POLL_INTERVAL_MS);
     }
-  }, [isReady, timeoutMs, pollIntervalMs]);
+  }, [isReady]);
 
   return useMemo(
     () => ({ isPrinting, prepareForPrint }),

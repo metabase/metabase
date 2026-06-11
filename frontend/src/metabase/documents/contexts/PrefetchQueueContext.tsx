@@ -14,17 +14,8 @@ import {
 
 const PrefetchQueueContext = createContext<PrefetchQueue | null>(null);
 
-export function PrefetchQueueProvider({
-  children,
-  store: providedStore,
-}: {
-  children: ReactNode;
-  store?: PrefetchQueueStore;
-}) {
-  const store = useMemo(
-    () => providedStore ?? new PrefetchQueueStore(),
-    [providedStore],
-  );
+export function PrefetchQueueProvider({ children }: { children: ReactNode }) {
+  const store = useMemo(() => new PrefetchQueueStore(), []);
   const isAllowed = useIsPrefetchAllowed();
 
   useEffect(() => {

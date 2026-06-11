@@ -1,6 +1,7 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
+import { useMergedRef } from "@mantine/hooks";
 import type { Editor, NodeViewProps } from "@tiptap/core";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useNodeInViewport } from "metabase/documents/hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
@@ -89,14 +90,10 @@ export function useBlockMenus({
 
   // Merges the viewport IntersectionObserver ref with the floating-ui
   // reference setters into a single stable callback ref.
-  const setReferenceElement = useCallback(
-    (el: HTMLElement | null) => {
-      viewportRef(el);
-      commentsRefs.setReference(el);
-      anchorRefs.setReference(el);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [viewportRef, commentsRefs.setReference, anchorRefs.setReference],
+  const setReferenceElement = useMergedRef<HTMLElement>(
+    viewportRef,
+    commentsRefs.setReference,
+    anchorRefs.setReference,
   );
 
   return {

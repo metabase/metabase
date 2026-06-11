@@ -1,12 +1,7 @@
 import { useIntersection, useMergedRef } from "@mantine/hooks";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
+import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { usePrefetchQueue } from "metabase/documents/contexts/PrefetchQueueContext";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useScrollContainer } from "metabase/documents/contexts/ScrollContainerContext";
@@ -38,31 +33,31 @@ export function useNodeInViewport(id?: string) {
   const { isPrinting } = usePrintContext();
   const prefetchQueue = usePrefetchQueue();
 
-  const options = useMemo(
-    () => ({
-      root: scrollContainer,
-      // 200% margin: IO fires when the card is up to 2 viewport heights
-      // away from visible, giving React + ECharts time to mount before
-      // the user can see the card during normal scrolling. Trade-off:
-      // more visualizations stay mounted in the buffer, but bounded
-      // (~5-8 cards in a typical doc).
-      rootMargin: "200%",
-      threshold: 0,
-    }),
-    [scrollContainer],
-  );
-
-  const { ref: ioRef, entry } = useIntersection(options);
+  const { ref: ioRef, entry } = useIntersection({
+    root: scrollContainer,
+    // 200% margin: IO fires when the card is up to 2 viewport heights
+    // away from visible, giving React + ECharts time to mount before
+    // the user can see the card during normal scrolling. Trade-off:
+    // more visualizations stay mounted in the buffer, but bounded
+    // (~5-8 cards in a typical doc).
+    rootMargin: "200%",
+    threshold: 0,
+  });
 
   const elementRef = useRef<HTMLElement | null>(null);
   const ref = useMergedRef(elementRef, ioRef);
 
   const ioIntersecting = entry?.isIntersecting ?? false;
 
+  // Only nodes with an id can hold prefetch tickets, so id-less nodes
+  // (text blocks) skip the store subscription instead of being notified
+  // on every ticket grant.
   const subscribe = useCallback(
     (onChange: () => void) =>
-      prefetchQueue ? prefetchQueue.subscribe(onChange) : noopSubscribe(),
-    [prefetchQueue],
+      id != null && prefetchQueue
+        ? prefetchQueue.subscribe(onChange)
+        : noopSubscribe(),
+    [prefetchQueue, id],
   );
   const hasPrefetchTicket = useSyncExternalStore(
     subscribe,
@@ -71,11 +66,7 @@ export function useNodeInViewport(id?: string) {
   );
 
   const isInViewport = isPrinting || ioIntersecting;
-
-  const isInViewportRef = useRef(isInViewport);
-  useEffect(() => {
-    isInViewportRef.current = isInViewport;
-  }, [isInViewport]);
+  const isInViewportRef = useCurrentRef(isInViewport);
 
   useEffect(() => {
     if (!prefetchQueue || id == null) {
@@ -86,7 +77,7 @@ export function useNodeInViewport(id?: string) {
       getElement: () => elementRef.current,
       isInViewport: () => isInViewportRef.current,
     });
-  }, [prefetchQueue, id]);
+  }, [prefetchQueue, id, isInViewportRef]);
 
   // Re-run the idle prefetch pass whenever any node's intersection state
   // changes, so the coordinator can re-rank candidates by distance.
@@ -97,4 +88,22 @@ export function useNodeInViewport(id?: string) {
   const shouldLoadData = isInViewport || hasPrefetchTicket;
 
   return { ref, isInViewport, shouldLoadData };
+}
+
+/**
+ * Companion to `useNodeInViewport`: reports the node's data-fetch state to
+ * the prefetch coordinator so it can limit concurrent prefetches and answer
+ * "is anything still loading?" for print readiness. Any node view that
+ * fetches data gated by `shouldLoadData` must also call this.
+ */
+export function useReportPrefetchLoading(id: string, isLoading: boolean) {
+  const prefetchQueue = usePrefetchQueue();
+
+  useEffect(() => {
+    if (!prefetchQueue) {
+      return;
+    }
+    prefetchQueue.reportLoading(id, isLoading);
+    return () => prefetchQueue.reportLoading(id, false);
+  }, [prefetchQueue, id, isLoading]);
 }

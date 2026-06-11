@@ -163,9 +163,7 @@ export class PrefetchQueueStore implements PrefetchQueue {
       this.prefetchedIds.add(id);
     }
 
-    if (idsToPrefetch.length > 0) {
-      this.notify();
-    }
+    this.notify();
   }
 
   private notify(): void {

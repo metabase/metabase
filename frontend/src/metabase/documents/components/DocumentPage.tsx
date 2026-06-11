@@ -57,7 +57,10 @@ import {
   trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
-import { PrefetchQueueProvider } from "../contexts/PrefetchQueueContext";
+import {
+  PrefetchQueueProvider,
+  usePrefetchQueue,
+} from "../contexts/PrefetchQueueContext";
 import { PrintContext } from "../contexts/PrintContext";
 import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
@@ -80,7 +83,6 @@ import {
   getSelectedEmbedIndex,
   getSelectedQuestionId,
 } from "../selectors";
-import { PrefetchQueueStore } from "../utils/prefetch-queue";
 
 import { DocumentArchivedEntityBanner } from "./DocumentArchivedEntityBanner";
 import { DocumentHeader } from "./DocumentHeader";
@@ -88,6 +90,29 @@ import styles from "./DocumentPage.module.css";
 import { DocumentRevisionHistorySidebar } from "./DocumentRevisionHistorySidebar";
 import { Editor } from "./Editor";
 import { EmbedQuestionSettingsSidebar } from "./EmbedQuestionSettingsSidebar";
+
+// The prefetch queue tracks every card embed's in-flight load, so it doubles
+// as the print-readiness signal: printing waits until nothing is loading.
+const DocumentPrintContextProvider = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
+  const prefetchQueue = usePrefetchQueue();
+  const areDocumentCardsReadyForPrint = useCallback(
+    () => !prefetchQueue?.hasInflightLoads(),
+    [prefetchQueue],
+  );
+  const printContextValue = usePrintContextValue({
+    isReady: areDocumentCardsReadyForPrint,
+  });
+
+  return (
+    <PrintContext.Provider value={printContextValue}>
+      {children}
+    </PrintContext.Provider>
+  );
+};
 
 export const DocumentPage = ({
   params,
@@ -107,18 +132,6 @@ export const DocumentPage = ({
   const previousLocationKey = usePrevious(location.key);
   const forceUpdate = useForceUpdate();
   const dispatch = useDispatch();
-
-  // The prefetch queue already tracks every card embed's in-flight load, so it
-  // doubles as the print-readiness signal: printing waits until nothing is
-  // loading. Owned here so it can both back `isReady` and feed the provider.
-  const prefetchQueue = useMemo(() => new PrefetchQueueStore(), []);
-  const areDocumentCardsReadyForPrint = useCallback(
-    () => !prefetchQueue.hasInflightLoads(),
-    [prefetchQueue],
-  );
-  const printContextValue = usePrintContextValue({
-    isReady: areDocumentCardsReadyForPrint,
-  });
 
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
@@ -492,8 +505,8 @@ export const DocumentPage = ({
   }, [isLeaveConfirmModalOpen, documentData]);
 
   return (
-    <PrintContext.Provider value={printContextValue}>
-      <PrefetchQueueProvider store={prefetchQueue}>
+    <PrefetchQueueProvider>
+      <DocumentPrintContextProvider>
         <Box className={styles.documentPage}>
           {documentData?.archived && <DocumentArchivedEntityBanner />}
           <Box className={styles.contentArea}>
@@ -662,7 +675,7 @@ export const DocumentPage = ({
             </Box>
           )}
         </Box>
-      </PrefetchQueueProvider>
-    </PrintContext.Provider>
+      </DocumentPrintContextProvider>
+    </PrefetchQueueProvider>
   );
 };
