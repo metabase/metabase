@@ -121,7 +121,7 @@ function WorkspaceInstanceInfo({ instance }: WorkspaceInstanceInfoProps) {
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name="workspace" aria-hidden />
+        <FixedSizeIcon name="external" aria-hidden />
         {instance != null ? (
           <Anchor
             component={Link}
@@ -179,7 +179,7 @@ function WorkspaceMenu({ workspace, instance, instances }: WorkspaceMenuProps) {
               disabled={hasFreeInstance}
             >
               <Menu.Item
-                leftSection={<FixedSizeIcon name="workspace" aria-hidden />}
+                leftSection={<FixedSizeIcon name="gear" aria-hidden />}
                 disabled={!hasFreeInstance}
                 onClick={openProvision}
               >
@@ -189,7 +189,7 @@ function WorkspaceMenu({ workspace, instance, instances }: WorkspaceMenuProps) {
           )}
           {isProvisioned && (
             <Menu.Item
-              leftSection={<FixedSizeIcon name="workspace" aria-hidden />}
+              leftSection={<FixedSizeIcon name="gear" aria-hidden />}
               onClick={openUnprovision}
             >
               {t`Unprovision`}
