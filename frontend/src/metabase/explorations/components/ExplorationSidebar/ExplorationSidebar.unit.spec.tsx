@@ -145,12 +145,12 @@ function getRow(name: string): HTMLElement {
 }
 
 describe("ExplorationSidebar", () => {
-  it("shows a spinner for pending queries", () => {
+  it("marks pending queries as busy (shimmering text, no spinner)", () => {
     setup({ queries: [pendingQuery] });
 
-    expect(
-      within(getRow("Revenue by plan")).getByLabelText("Loading…"),
-    ).toBeInTheDocument();
+    const row = getRow("Revenue by plan");
+    expect(row).toHaveAttribute("aria-busy", "true");
+    expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
   });
 
   it("shows a chart icon for done queries", () => {
@@ -514,7 +514,7 @@ describe("ExplorationSidebar", () => {
     ];
     const headingRow = () => screen.getByRole("group", { name: /Revenue/ });
 
-    it("shows a loading icon while any descendant query is still loading", () => {
+    it("marks the heading as busy while any descendant query is still loading", () => {
       setup({
         queries: [
           createQuery({ id: 1, name: "Leaf A", status: "pending" }),
@@ -524,9 +524,7 @@ describe("ExplorationSidebar", () => {
         selectedEntityId: { type: "group", id: "leaf:b" },
       });
 
-      expect(
-        within(headingRow()).getByLabelText("Loading…"),
-      ).toBeInTheDocument();
+      expect(headingRow()).toHaveAttribute("aria-busy", "true");
     });
 
     it("shows no status icon when settled with an errored child (loading-only)", () => {
@@ -544,9 +542,8 @@ describe("ExplorationSidebar", () => {
         selectedEntityId: { type: "group", id: "leaf:a" },
       });
 
-      // The heading never surfaces an error icon — only loading.
-      const row = headingRow();
-      expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
+      // The heading never surfaces an error icon, and a settled child isn't busy.
+      expect(headingRow()).toHaveAttribute("aria-busy", "false");
     });
 
     it("shows no status icon when all descendant queries are done", () => {
@@ -560,7 +557,7 @@ describe("ExplorationSidebar", () => {
       });
 
       const row = headingRow();
-      expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
+      expect(row).toHaveAttribute("aria-busy", "false");
       expect(
         within(row).queryByLabelText("Failed to generate"),
       ).not.toBeInTheDocument();
@@ -607,7 +604,7 @@ describe("ExplorationSidebar", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a loading status icon on the Findings heading while the AI summary is generating", () => {
+  it("marks the Findings heading as busy while the AI summary is generating", () => {
     const aiSummaryDocument = createExplorationDocument({
       id: 42,
       name: "AI Summary",
@@ -625,7 +622,7 @@ describe("ExplorationSidebar", () => {
     });
 
     const findings = screen.getByRole("group", { name: /Findings/ });
-    expect(within(findings).getByLabelText("Loading…")).toBeInTheDocument();
+    expect(findings).toHaveAttribute("aria-busy", "true");
   });
 
   describe("potentially-interesting marker", () => {
@@ -1099,9 +1096,7 @@ describe("ExplorationSidebar", () => {
 
       // Leaf rows are labelled by the BE-provided group name; each row's status
       // is derived from that group's own queries.
-      expect(
-        within(getRow("Still running")).getByLabelText("Loading…"),
-      ).toBeInTheDocument();
+      expect(getRow("Still running")).toHaveAttribute("aria-busy", "true");
       expect(
         within(getRow("Has an error")).getByLabelText("Failed to generate"),
       ).toBeInTheDocument();
@@ -1110,9 +1105,9 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
 
       // Heading inherits the rolled-up status: one descendant query is still
-      // loading, so it shows the loading indicator (never the leaf "Ready" icon).
+      // loading, so it reads as busy (never the leaf "Ready" icon).
       const heading = screen.getByRole("group", { name: /Status metric/ });
-      expect(within(heading).getByLabelText("Loading…")).toBeInTheDocument();
+      expect(heading).toHaveAttribute("aria-busy", "true");
       expect(within(heading).queryByLabelText("Ready")).not.toBeInTheDocument();
     });
 

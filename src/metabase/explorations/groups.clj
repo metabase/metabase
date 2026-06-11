@@ -71,19 +71,34 @@
       base
       (tru "{0} - {1}" source base))))
 
+(def ^:private qualified-dimension-separator
+  "Separator `metabase.explorations.api/exploration-query-dim-label` inserts when it
+   disambiguates a leaf's dimension name by its source (the `metabase.lib.display-name`
+   join separator)."
+  " → ")
+
+(defn- by-dimension
+  "Render a `by <dimension>` label. Lower-case `by` for the plain, unambiguous dimension name;
+   capital `By` for a qualified/disambiguated one (so the qualifier reads as a proper name)."
+  [label qualified?]
+  (if qualified?
+    (tru "By {0}" label)
+    (tru "by {0}" label)))
+
 (defn group-display-name
-  "Sidebar heading for a group: `By <dimension>` for a dimension-anchored block, otherwise the
+  "Sidebar heading for a group: `by <dimension>` for a dimension-anchored block, otherwise the
    metric's name. `card-name-by-id` maps a metric Card id to its name. When `ambiguous?` (the
    base dimension name is shared by another group), the dimension is qualified by its source —
-   `By <source> - <dimension>` — so same-named groups stay identifiable."
+   `By <source> - <dimension>` (capital `By`) — so same-named groups stay identifiable."
   ([group card-name-by-id]
    (group-display-name group card-name-by-id false))
   ([group card-name-by-id ambiguous?]
    (if (dimension-anchored? group)
      (let [dim (anchor-dimension group)]
-       (tru "By {0}" (if ambiguous?
+       (by-dimension (if ambiguous?
                        (dimension-long-name dim)
-                       (dimension-base-name dim))))
+                       (dimension-base-name dim))
+                     ambiguous?))
      (or (get card-name-by-id (:card_id (first (:metrics group)))) ""))))
 
 (defn- effective-score
@@ -113,7 +128,7 @@
 (defn- leaf-node
   "A sub-item under a group. For a dimension-anchored group the leaves vary by metric, so name
    each by its metric (Card) name; for a metric-anchored group they vary by dimension, so name
-   each `By <dimension>`."
+   each `by <dimension>` (capital `By` when the dimension name is qualified by its source)."
   [group [card-id dim-id] qs card-name-by-id]
   {:id              (leaf-id (:id group) card-id dim-id)
    :parent_group_id (group-node-id group)
@@ -122,7 +137,7 @@
    :name            (if (dimension-anchored? group)
                       (or (get card-name-by-id card-id) (leaf-name qs))
                       (if-let [dn (:dimension_name (first qs))]
-                        (tru "By {0}" dn)
+                        (by-dimension dn (str/includes? dn qualified-dimension-separator))
                         (leaf-name qs)))
    :query_ids       (mapv :id qs)
    ::max-score      (max-score qs)})

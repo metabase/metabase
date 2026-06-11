@@ -25,6 +25,10 @@ import {
   trackExplorationVisualizationChanged,
 } from "metabase/explorations/analytics";
 import {
+  ExplorationErrorMarker,
+  PotentiallyInterestingMarker,
+} from "metabase/explorations/components/PotentiallyInterestingMarker";
+import {
   EXPLORATION_NAME_MAX_LENGTH,
   QUERY_INTERESTINGNESS_SCORE_THRESHOLD,
 } from "metabase/explorations/constants";
@@ -34,7 +38,6 @@ import {
   Ellipsified,
   Icon,
   type IconProps,
-  Loader,
   Menu,
   Stack,
   Text,
@@ -46,10 +49,10 @@ import type {
   ExplorationQueryStatus,
   ExplorationThreadId,
 } from "metabase-types/api";
+import { isSettledExplorationQueryStatus } from "metabase-types/api";
 
 import type { SelectedEntityId } from "../../pages/ExplorationPage";
 import { getAdjacentById, shouldIgnoreKeyboardEvent } from "../../utils";
-import { PotentiallyInterestingMarker } from "../PotentiallyInterestingMarker";
 
 import S from "./ExplorationSidebar.module.css";
 import {
@@ -270,6 +273,14 @@ interface ExplorationTreeHeadingProps extends ExplorationTreeNodeProps {
   item: ITreeNodeItem<ExplorationTreeHeading>;
 }
 
+function isSettled(status: ExplorationQueryStatus | undefined): boolean {
+  return status == null || isSettledExplorationQueryStatus(status);
+}
+
+function isLoadingStatus(status: ExplorationQueryStatus | undefined): boolean {
+  return status != null && !isSettledExplorationQueryStatus(status);
+}
+
 function isExplorationTreeHeadingProps(
   props: ExplorationTreeNodeProps,
 ): props is ExplorationTreeHeadingProps {
@@ -283,14 +294,16 @@ function ExplorationTreeHeading({
   depth,
   canWrite,
 }: ExplorationTreeHeadingProps) {
+  const isLoading = isLoadingStatus(item.data?.status);
   return (
     <Box
       role="group"
       aria-label={item.name}
       aria-expanded={isExpanded}
+      aria-busy={isLoading}
       className={S.treeRow}
       onClick={onToggleExpand}
-      style={{ marginLeft: depth * 16 }}
+      style={{ marginLeft: `${depth}rem` }}
     >
       <Icon
         name={isExpanded ? "chevrondown" : "chevronright"}
@@ -298,10 +311,16 @@ function ExplorationTreeHeading({
         aria-hidden
       />
       <ExplorationHeadingStatusIcon status={item.data?.status} />
-      <Ellipsified flex={1} size="md" lh="1.5rem">
+      <Ellipsified
+        flex={1}
+        size="md"
+        lh="1rem"
+        fw={500}
+        {...(isLoading ? { className: S.shimmerText, c: "transparent" } : {})}
+      >
         {item.name}
       </Ellipsified>
-      {item.data?.lastActivityAt && (
+      {item.data?.lastActivityAt && isSettled(item.data.status) && (
         <Tooltip label={getFormattedTime(item.data.lastActivityAt)}>
           <Text
             size="md"
@@ -396,8 +415,7 @@ function ExplorationThreadMenu({
     <Menu>
       <Menu.Target>
         <ActionIcon
-          size="1.25rem"
-          mr="-0.25rem"
+          size="1rem"
           c="icon-primary"
           onClick={(e) => e.stopPropagation()}
         >
@@ -462,11 +480,14 @@ function ExplorationTreeItem({
       ? { type: "group", id: item.data.group_id }
       : { type: "document", id: item.data.id };
 
-  const iconProps =
-    typeof item.icon === "string" ? { name: item.icon } : item.icon;
+  const iconProps: IconProps = {
+    color: isSelected ? "brand" : "icon-secondary",
+    name: typeof item.icon === "string" ? item.icon : item.icon.name,
+  };
 
   const groupData = item.data.type === "group" ? item.data : null;
   const isError = groupData?.status === "error";
+  const isLoading = isLoadingStatus(item.data?.status);
   const errorMessage = isError
     ? groupData.queries.find((query) => query.status === "error")?.error_message
     : null;
@@ -481,6 +502,7 @@ function ExplorationTreeItem({
       to={getSelectedEntityIdUrl(entityId)}
       role="treeitem"
       aria-selected={isSelected}
+      aria-busy={isLoading}
       className={cx(S.treeRow, {
         [S.treeRowSelected]: isSelected,
       })}
@@ -492,7 +514,13 @@ function ExplorationTreeItem({
         status={item.data?.status}
         iconProps={iconProps}
       />
-      <Ellipsified flex={1} size="md" lh="1.5rem">
+      <Ellipsified
+        flex={1}
+        size="md"
+        lh="1rem"
+        fw={500}
+        {...(isLoading ? { className: S.shimmerText, c: "transparent" } : {})}
+      >
         {item.name}
       </Ellipsified>
       {isError && <ExplorationErrorMarker message={errorMessage} />}
@@ -506,9 +534,6 @@ function ExplorationHeadingStatusIcon({
 }: {
   status: ExplorationQueryStatus | undefined;
 }) {
-  if (status === "running" || status === "pending") {
-    return <Loader size="xs" aria-label={t`Loading…`} />;
-  }
   if (status === "canceled") {
     return (
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
@@ -524,32 +549,15 @@ function ExplorationTreeItemIcon({
   status: ExplorationQueryStatus | undefined;
   iconProps: IconProps;
 }) {
-  if (status === "running" || status === "pending") {
-    return <Loader size="xs" aria-label={t`Loading…`} />;
-  }
   if (status === "canceled") {
     return (
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
     );
   }
-  if (status === "error") {
-    return <Icon {...iconProps} c="text-secondary" aria-hidden />;
-  }
-  return <Icon {...iconProps} c="text-secondary" aria-label={t`Ready`} />;
-}
 
-function ExplorationErrorMarker({ message }: { message?: string | null }) {
-  return (
-    <Tooltip label={message || t`Failed to generate`}>
-      <Box
-        aria-label={t`Failed to generate`}
-        data-testid="exploration-error-marker"
-        w="0.375rem"
-        h="0.375rem"
-        bg="feedback-negative"
-        bdrs="50%"
-        flex="none"
-      />
-    </Tooltip>
-  );
+  if (status === "error" || isLoadingStatus(status)) {
+    return <Icon {...iconProps} aria-hidden />;
+  }
+
+  return <Icon {...iconProps} aria-label={t`Ready`} />;
 }

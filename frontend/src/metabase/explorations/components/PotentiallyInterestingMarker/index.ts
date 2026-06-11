@@ -1,1 +1,4 @@
-export { PotentiallyInterestingMarker } from "./PotentiallyInterestingMarker";
+export {
+  PotentiallyInterestingMarker,
+  ExplorationErrorMarker,
+} from "./PotentiallyInterestingMarker";
