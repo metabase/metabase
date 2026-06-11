@@ -18,6 +18,8 @@
                (perms/impersonation-enforced-for-db? (:database query))))
     (lib.util.match/replace-lite query
       {:persisted-info/native &truthy}
+      ;; Signal to the SQL QP's independent persisted-cache lookup that it should not use the cache for this
+      ;; query. See [[metabase.driver.sql.query-processor/resolve-persisted-source-sql]].
       (-> &match
           (dissoc :persisted-info/native)
           (assoc :qp/skip-persisted-cache true)))
