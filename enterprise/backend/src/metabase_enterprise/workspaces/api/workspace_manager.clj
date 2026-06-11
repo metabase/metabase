@@ -62,6 +62,27 @@
    ;; The list endpoint omits it — clients should treat a missing array as `[]`.
    [:databases   {:optional true} [:sequential WorkspaceDatabaseResponse]]])
 
+;;; ------------------------------------------ Instance schemas ------------------------------------------------
+
+(def ^:private CreateInstanceParams
+  [:map {:closed true}
+   [:url     ms/NonBlankString]
+   [:api_key ms/NonBlankString]
+   [:name    {:optional true} [:maybe :string]]])
+
+(def ^:private UpdateInstanceParams
+  [:map {:closed true}
+   [:name {:optional true} [:maybe :string]]])
+
+(def ^:private InstanceResponse
+  [:map {:closed true}
+   [:id           ms/PositiveInt]
+   [:url          ms/NonBlankString]
+   [:name         [:maybe :string]]
+   [:workspace_id [:maybe ms/PositiveInt]]
+   [:created_at   DateTimeWithTimeZone]
+   [:updated_at   DateTimeWithTimeZone]])
+
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
@@ -79,6 +100,11 @@
           (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (m/update-existing :databases #(mapv present-workspace-database %))))
+
+(defn- present-instance
+  "Shape a `workspace_instance` row for the API: drop the encrypted `api_key`."
+  [instance]
+  (select-keys instance [:id :url :name :workspace_id :created_at :updated_at]))
 
 ;;; ---------------------------------------------- Endpoints ---------------------------------------------------
 
@@ -120,6 +146,52 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws/delete-workspace! id)
+  {:id id :deleted true})
+
+;;; ------------------------------------------- Instance CRUD --------------------------------------------------
+;;;
+;;; The registry of dev (child) instances. Superuser-only via the
+;;; `:model/WorkspaceInstance` permission predicates. `workspace_id` is never set
+;;; through these endpoints.
+
+(api.macros/defendpoint :get "/instance" :- [:sequential InstanceResponse]
+  "List all registered dev instances."
+  []
+  (api/check-superuser)
+  (into [] (comp (filter mi/can-read?)
+                 (map present-instance))
+        (t2/select :model/WorkspaceInstance {:order-by [[:id :asc]]})))
+
+(api.macros/defendpoint :get "/instance/:id" :- InstanceResponse
+  "Get a single dev instance by id."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (present-instance (api/read-check :model/WorkspaceInstance id)))
+
+(api.macros/defendpoint :post "/instance" :- InstanceResponse
+  "Register a new dev instance. Starts free (unbound)."
+  [_route-params _query-params params :- CreateInstanceParams]
+  (api/create-check :model/WorkspaceInstance params)
+  (present-instance
+   (t2/select-one :model/WorkspaceInstance
+                  :id (t2/insert-returning-pk! :model/WorkspaceInstance params))))
+
+(api.macros/defendpoint :put "/instance/:id" :- InstanceResponse
+  "Rename a dev instance. Only `name` is editable; `url`/`api_key` are immutable."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   params :- UpdateInstanceParams]
+  (api/write-check :model/WorkspaceInstance id)
+  (let [row (select-keys params [:name])]
+    (when (seq row)
+      (t2/update! :model/WorkspaceInstance :id id row)))
+  (present-instance (t2/select-one :model/WorkspaceInstance :id id)))
+
+(api.macros/defendpoint :delete "/instance/:id"
+  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
+  "Remove a dev instance."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/write-check :model/WorkspaceInstance id)
+  (t2/delete! :model/WorkspaceInstance :id id)
   {:id id :deleted true})
 
 ;;; ------------------------------------------- Config download --------------------------------------------------

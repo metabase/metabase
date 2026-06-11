@@ -3,16 +3,28 @@ import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceEndpoint,
+  setupDatabasesEndpoints,
+  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Workspace } from "metabase-types/api";
-import { createMockWorkspace } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockWorkspace,
+} from "metabase-types/api/mocks";
 
 import { WorkspaceListPage } from "./WorkspaceListPage";
 
+const ELIGIBLE_DATABASE = createMockDatabase({
+  features: ["workspace"],
+  settings: { "database-enable-workspaces": true },
+});
+
 function setup({ workspaces = [] as Workspace[] } = {}) {
   setupListWorkspacesEndpoint(workspaces);
+  setupListWorkspaceInstancesEndpoint([]);
+  setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
   renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {

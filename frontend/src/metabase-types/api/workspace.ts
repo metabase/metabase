@@ -35,3 +35,25 @@ export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
 };
+
+export type WorkspaceInstanceId = number;
+
+export type WorkspaceInstance = {
+  id: WorkspaceInstanceId;
+  name: string;
+  workspace_id: WorkspaceId | null;
+  url: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateWorkspaceInstanceRequest = {
+  name: string;
+  url: string;
+  api_key: string;
+};
+
+export type UpdateWorkspaceInstanceRequest = {
+  id: WorkspaceInstanceId;
+  name?: string;
+};

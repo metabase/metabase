@@ -12,6 +12,7 @@
   (:require
    [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase-enterprise.workspaces.models.workspace-instance]
    [metabase-enterprise.workspaces.query-processor.middleware]
    [metabase-enterprise.workspaces.settings]
    [metabase-enterprise.workspaces.table-remapping]

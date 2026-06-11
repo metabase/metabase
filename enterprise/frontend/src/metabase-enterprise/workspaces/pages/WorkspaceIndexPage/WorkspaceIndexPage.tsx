@@ -3,7 +3,7 @@ import { useSelector } from "metabase/redux";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
 import { canManageWorkspaces } from "../../selectors";
-import { WorkspaceInstancePage } from "../WorkspaceInstancePage";
+import { CurrentWorkspacePage } from "../CurrentWorkspacePage";
 import { WorkspaceListPage } from "../WorkspaceListPage";
 
 export function WorkspaceIndexPage() {
@@ -20,7 +20,7 @@ export function WorkspaceIndexPage() {
   }
 
   if (workspace != null && canManageInstance) {
-    return <WorkspaceInstancePage />;
+    return <CurrentWorkspacePage />;
   }
 
   return <WorkspaceListPage />;

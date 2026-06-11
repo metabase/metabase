@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupDeleteWorkspaceInstanceEndpoint } from "__support__/server-mocks";
+import { setupDeleteCurrentWorkspaceEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 
 import { DeleteSection } from "./DeleteSection";
@@ -10,7 +10,7 @@ import { DeleteSection } from "./DeleteSection";
 const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 function setup() {
-  setupDeleteWorkspaceInstanceEndpoint();
+  setupDeleteCurrentWorkspaceEndpoint();
 
   renderWithProviders(<Route path="*" component={DeleteSection} />, {
     withRouter: true,

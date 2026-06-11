@@ -1,34 +1,75 @@
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Group, Stack, Title } from "metabase/ui";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import { Stack } from "metabase/ui";
+import {
+  useListWorkspaceInstancesQuery,
+  useListWorkspacesQuery,
+} from "metabase-enterprise/api";
+import type {
+  Database,
+  Workspace,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
-import { NewWorkspaceButton } from "./NewWorkspaceButton";
-import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
-import { WorkspaceItem } from "./WorkspaceItem";
+import { InstanceSection } from "./InstanceSection";
+import { WorkspaceSection } from "./WorkspaceSection";
 
 export function WorkspaceListPage() {
-  const { data: workspaces, isLoading, error } = useListWorkspacesQuery();
+  const {
+    data: workspaces,
+    isLoading: isLoadingWorkspaces,
+    error: workspacesError,
+  } = useListWorkspacesQuery();
+  const {
+    data: instances,
+    isLoading: isLoadingInstances,
+    error: instancesError,
+  } = useListWorkspaceInstancesQuery();
+  const {
+    data: databasesResponse,
+    isLoading: isLoadingDatabases,
+    error: databasesError,
+  } = useListDatabasesQuery();
 
-  if (isLoading || error != null || workspaces == null) {
+  const isLoading =
+    isLoadingWorkspaces || isLoadingInstances || isLoadingDatabases;
+  const error = workspacesError ?? instancesError ?? databasesError;
+
+  if (
+    isLoading ||
+    error != null ||
+    workspaces == null ||
+    instances == null ||
+    databasesResponse == null
+  ) {
     return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <WorkspaceListPageBody workspaces={workspaces} />;
+  return (
+    <WorkspaceListPageBody
+      workspaces={workspaces}
+      instances={instances}
+      databases={databasesResponse.data}
+    />
+  );
 }
 
 type WorkspaceListPageBodyProps = {
   workspaces: Workspace[];
+  instances: WorkspaceInstance[];
+  databases: Database[];
 };
 
-function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
-  const hasWorkspaces = workspaces.length > 0;
-
+function WorkspaceListPageBody({
+  workspaces,
+  instances,
+  databases,
+}: WorkspaceListPageBodyProps) {
   return (
     <PageContainer data-testid="workspace-list-page">
       <PaneHeader
@@ -37,29 +78,10 @@ function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
         }
         py={0}
       />
-      {hasWorkspaces ? (
-        <WorkspaceSection workspaces={workspaces} />
-      ) : (
-        <WorkspaceEmptyState />
-      )}
+      <Stack gap="3.5rem">
+        <WorkspaceSection workspaces={workspaces} databases={databases} />
+        <InstanceSection instances={instances} />
+      </Stack>
     </PageContainer>
-  );
-}
-
-type WorkspaceSectionProps = {
-  workspaces: Workspace[];
-};
-
-function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
-  return (
-    <Stack data-testid="workspace-list" gap="lg">
-      <Group justify="space-between">
-        <Title order={4}>{t`Active workspaces`}</Title>
-        <NewWorkspaceButton />
-      </Group>
-      {workspaces.map((workspace) => (
-        <WorkspaceItem key={workspace.id} workspace={workspace} />
-      ))}
-    </Stack>
   );
 }

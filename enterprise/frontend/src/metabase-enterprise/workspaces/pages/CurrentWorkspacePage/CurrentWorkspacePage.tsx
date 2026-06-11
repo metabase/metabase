@@ -11,16 +11,16 @@ import {
   useListTableRemappingsQuery,
 } from "metabase-enterprise/api";
 import type {
+  CurrentWorkspace,
   Database,
   TableRemapping,
-  WorkspaceInstance,
 } from "metabase-types/api";
 
 import { DeleteSection } from "./DeleteSection";
 import { TableRemappingSection } from "./TableRemappingSection";
 import { getDatabasesInfo } from "./utils";
 
-export function WorkspaceInstancePage() {
+export function CurrentWorkspacePage() {
   const {
     data: workspace,
     isLoading: isLoadingWorkspace,
@@ -52,7 +52,7 @@ export function WorkspaceInstancePage() {
   }
 
   return (
-    <WorkspaceInstancePageBody
+    <CurrentWorkspacePageBody
       workspace={workspace}
       remappings={remappings}
       databases={databasesResponse.data}
@@ -60,21 +60,21 @@ export function WorkspaceInstancePage() {
   );
 }
 
-type WorkspaceInstancePageBodyProps = {
-  workspace: WorkspaceInstance;
+type CurrentWorkspacePageBodyProps = {
+  workspace: CurrentWorkspace;
   remappings: TableRemapping[];
   databases: Database[];
 };
 
-function WorkspaceInstancePageBody({
+function CurrentWorkspacePageBody({
   workspace,
   remappings,
   databases,
-}: WorkspaceInstancePageBodyProps) {
+}: CurrentWorkspacePageBodyProps) {
   const databasesInfo = getDatabasesInfo(workspace, databases, remappings);
 
   return (
-    <PageContainer data-testid="workspace-instance-page">
+    <PageContainer data-testid="current-workspace-page">
       <PaneHeader
         title={<Title order={3}>{workspace.name}</Title>}
         breadcrumbs={

@@ -4,28 +4,29 @@ import {
   setupDatabasesEndpoints,
   setupGetCurrentWorkspaceEndpoint,
   setupListTableRemappingsEndpoint,
+  setupListWorkspaceInstancesEndpoint,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import type { WorkspaceInstance } from "metabase-types/api";
+import type { CurrentWorkspace } from "metabase-types/api";
 import {
+  createMockCurrentWorkspace,
+  createMockCurrentWorkspaceDatabase,
   createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
-  createMockWorkspaceInstance,
-  createMockWorkspaceInstanceDatabase,
 } from "metabase-types/api/mocks";
 
 import { WorkspaceIndexPage } from "./WorkspaceIndexPage";
 
 const POSTGRES = createMockDatabase({ id: 10, name: "Postgres" });
 
-const WORKSPACE = createMockWorkspaceInstance({
+const WORKSPACE = createMockCurrentWorkspace({
   name: "Dev workspace",
   databases: {
-    [POSTGRES.id]: createMockWorkspaceInstanceDatabase({
+    [POSTGRES.id]: createMockCurrentWorkspaceDatabase({
       input_schemas: ["public"],
       output: { schema: "ws_dev" },
     }),
@@ -34,7 +35,7 @@ const WORKSPACE = createMockWorkspaceInstance({
 
 type SetupOpts = {
   isAdmin?: boolean;
-  workspace?: WorkspaceInstance | null;
+  workspace?: CurrentWorkspace | null;
 };
 
 function setup({ isAdmin = true, workspace = null }: SetupOpts = {}) {
@@ -42,6 +43,7 @@ function setup({ isAdmin = true, workspace = null }: SetupOpts = {}) {
   setupGetCurrentWorkspaceEndpoint(workspace);
   setupListTableRemappingsEndpoint([]);
   setupListWorkspacesEndpoint([]);
+  setupListWorkspaceInstancesEndpoint([]);
 
   const state = createMockState({
     currentUser: createMockUser({
@@ -69,7 +71,7 @@ describe("WorkspaceIndexPage", () => {
     setup({ isAdmin: true, workspace: WORKSPACE });
 
     expect(
-      await screen.findByTestId("workspace-instance-page"),
+      await screen.findByTestId("current-workspace-page"),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("workspace-list-page")).not.toBeInTheDocument();
   });
@@ -81,7 +83,7 @@ describe("WorkspaceIndexPage", () => {
       await screen.findByTestId("workspace-list-page"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("workspace-instance-page"),
+      screen.queryByTestId("current-workspace-page"),
     ).not.toBeInTheDocument();
   });
 
@@ -95,7 +97,7 @@ describe("WorkspaceIndexPage", () => {
       await screen.findByTestId("workspace-list-page"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId("workspace-instance-page"),
+      screen.queryByTestId("current-workspace-page"),
     ).not.toBeInTheDocument();
   });
 });
