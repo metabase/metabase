@@ -15,17 +15,6 @@
         "string",
         "null"
       ],
-      "enum": [
-        "StaticDashboard",
-        "InteractiveDashboard",
-        "EditableDashboard",
-        "StaticQuestion",
-        "InteractiveQuestion",
-        "CollectionBrowser",
-        "MetabotQuestion",
-        "CreateDashboardModal",
-        null
-      ],
       "maxLength": 1024
     },
     "properties": {
