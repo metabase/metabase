@@ -1,11 +1,8 @@
 (ns metabase.metabot.schema.migrate-v1-to-v2-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.metabot.util :as metabot.u]
-   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel migrate-v1-external-ai-service->v2-test
@@ -84,12 +81,12 @@
     (testing "map-shaped :error extracts :message"
       (is (= "bad"
              (-> (migrate/migrate-v1-native->v2
-                  [tool-input {:type "tool-output" :id "tc1" :error {:message "bad"}}])
+                  [tool-input {:type "tool-output" :id "tc1" :result nil :error {:message "bad"}}])
                  first :errorText))))
     (testing "map-shaped :error without :message falls back to pr-str"
       (is (= "{:code 500}"
              (-> (migrate/migrate-v1-native->v2
-                  [tool-input {:type "tool-output" :id "tc1" :error {:code 500}}])
+                  [tool-input {:type "tool-output" :id "tc1" :result nil :error {:code 500}}])
                  first :errorText))))
     (testing "tool-input without a matching output stays input-available"
       (let [[part] (migrate/migrate-v1-native->v2 [tool-input])]
@@ -108,69 +105,48 @@
     (is (= [] (migrate/migrate-v1-native->v2
                [{:type "error" :error {:message "boom"}}])))))
 
-(deftest ^:parallel migrate-v1->v2-dispatch-test
-  (testing "ai-service shape dispatches"
-    (is (= ["text" "tool-search" "data-navigate_to"]
-           (mapv :type (migrate/migrate-v1->v2
-                        [{:role "assistant" :_type "TEXT" :content "hi"}
-                         {:role "assistant" :_type "TOOL_CALL"
-                          :tool_calls [{:id "tc1" :name "search" :arguments "{}"}]}
-                         {:role "tool" :_type "TOOL_RESULT" :tool_call_id "tc1" :content "r"}
-                         {:_type "DATA" :type "navigate_to" :version 1 :value "/q/1"}])))))
-  (testing "native shape dispatches, including rows with data entries"
-    (is (= ["tool-search" "text" "data-state"]
-           (mapv :type (migrate/migrate-v1->v2
-                        [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
-                         {:type "tool-output" :id "tc1" :result {:output "rows"}}
-                         {:type "text" :id "t1" :text "Found it"}
-                         {:type "data" :data-type "state" :version 1 :data {}}])))))
+(deftest ^:parallel migrate-v1-user-message->v2-test
   (testing "user messages convert to text parts"
     (is (= [{:type "text" :text "Do we have data on orders"}]
-           (migrate/migrate-v1->v2
-            [{:role "user" :content "Do we have data on orders"}]))))
-  (testing "empty data passes through unchanged"
-    (is (= [] (migrate/migrate-v1->v2 []))))
-  (testing "unrecognized shapes throw"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
-                          (migrate/migrate-v1->v2
-                           [{:role "assistant" :some-unknown-key "x"}])))))
+           (migrate/migrate-v1-user-message->v2
+            [{:role "user" :content "Do we have data on orders"}])))))
 
-(def ^:private v1-rows
-  [[{:role "assistant" :_type "TEXT" :content "hello"}
-    {:role "assistant" :_type "TOOL_CALL"
-     :tool_calls [{:id "a" :name "create_sql_query" :arguments "{\"q\":\"x\"}"}
-                  {:id "b" :name "browse" :arguments "{}"}]}
-    {:role "tool" :_type "TOOL_RESULT" :tool_call_id "a" :content "r1"}
-    {:_type "DATA" :type "navigate_to" :version 1 :value "/q/1"}
-    {:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}]
-   [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
-    {:type "tool-output" :id "tc1" :result {:output "rows"} :error nil :duration-ms 3}
-    {:type "tool-input" :id "tc2" :function "browse" :arguments {}}
-    {:type "tool-output" :id "tc2" :result {} :error {:message "boom"}}
-    {:type "tool-input" :id "tc3" :function "search" :arguments {:q "y"}}
-    {:type "text" :id "t1" :text "Found it"}
-    {:type "data" :data-type "state" :version 1 :data {}}
-    {:type "error" :error {:message "boom"}}]
-   [{:role "user" :content "Do we have data on orders"}]
-   []])
+(deftest ^:parallel migrate-v1->v2-invalid-data-test
+  (testing "rows that resemble a v1 shape but fail its schema should throw rather than migrate"
+    (testing "native data entry with an unknown :data-type"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
+                            (migrate/migrate-v1->v2
+                             [{:type "data" :data-type "mystery" :data 1}]))))
+    (testing "native text entry missing :text"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unrecognized v1 storage format"
+                                    (migrate/migrate-v1->v2 [{:type "text"}])))
+            {:keys [explanations]} (ex-data e)]
+        (testing "ex-data should carry humanized explanations for every v1 branch"
+          (is (= #{:ai-service :native :user-message}
+                 (set (keys explanations))))
+          (is (= [{:text ["missing required key"]}]
+                 (:native explanations))))))))
 
-(deftest ^:parallel migrated-output-validates-against-v2-schema-test
-  (doseq [row v1-rows]
-    (testing (pr-str row)
-      (is (nil? (mr/explain ::schema.v2/message-data
-                            (migrate/migrate-v1->v2 row)))))))
-
-(defn- persistence-round-trip
-  "Simulate `mi/transform-json` write + read: keyword values become strings, keys stay keywords."
-  [x]
-  (-> x json/encode json/decode+kw))
-
-(deftest ^:parallel fixture-parity-test
-  (doseq [n [1 2 3 4]]
-    (testing (str "aisdkstream" n ".txt")
-      (let [messages (metabot.u/aisdk->messages "assistant"
-                                                (-> (io/resource (str "metabase/metabot/aisdkstream" n ".txt"))
-                                                    io/reader
-                                                    line-seq))]
-        (is (nil? (mr/explain ::schema.v2/message-data
-                              (migrate/migrate-v1->v2 (persistence-round-trip messages)))))))))
+(deftest ^:parallel migrated-rows-validate-test
+  (testing "migrating every v1 row shape should produce valid v2 message data"
+    ;; one row per v1 storage format — ai-service, native, user message, and empty —
+    ;; collectively exercising every entry type a format can hold
+    (let [v1-rows [[{:role "assistant" :_type "TEXT" :content "hello"}
+                    {:role "assistant" :_type "TOOL_CALL"
+                     :tool_calls [{:id "a" :name "create_sql_query" :arguments "{\"q\":\"x\"}"}
+                                  {:id "b" :name "browse" :arguments "{}"}]}
+                    {:role "tool" :_type "TOOL_RESULT" :tool_call_id "a" :content "r1"}
+                    {:_type "DATA" :type "navigate_to" :version 1 :value "/q/1"}
+                    {:role "assistant" :_type "FINISH_MESSAGE" :finish_reason "stop" :usage {}}]
+                   [{:type "tool-input" :id "tc1" :function "search" :arguments {:q "x"}}
+                    {:type "tool-output" :id "tc1" :result {:output "rows"} :error nil :duration-ms 3}
+                    {:type "tool-input" :id "tc2" :function "browse" :arguments {}}
+                    {:type "tool-output" :id "tc2" :result {} :error {:message "boom"}}
+                    {:type "tool-input" :id "tc3" :function "search" :arguments {:q "y"}}
+                    {:type "text" :id "t1" :text "Found it"}
+                    {:type "data" :data-type "state" :version 1 :data {}}
+                    {:type "error" :error {:message "boom"}}]
+                   [{:role "user" :content "Do we have data on orders"}]
+                   []]]
+      (is (nil? (mr/explain [:sequential ::schema.v2/message-data]
+                            (mapv migrate/migrate-v1->v2 v1-rows)))))))

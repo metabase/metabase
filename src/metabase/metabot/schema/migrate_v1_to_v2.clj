@@ -1,31 +1,16 @@
 (ns metabase.metabot.schema.migrate-v1-to-v2
-  "Pure conversions from the v1 at-rest `metabot_message.data` formats
-  (`metabase.metabot.schema.v1`) to the v2 format (`metabase.metabot.schema.v2`'s
-  `::message-data`). Not wired into any read or write path yet."
+  "Migration fns to migrate messages from the metabase.metabot.schema.v1 to the
+  metabase.metabot.schema.v2 at-rest formats."
   (:require
-   [metabase.util.json :as json]))
+   [malli.error :as me]
+   [metabase.metabot.schema.v1 :as schema.v1]
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
-(defn- v1-external-ai-service? [data]
-  (and (sequential? data)
-       (boolean (some :_type data))))
-
-(defn- v1-native? [data]
-  (and (sequential? data)
-       (seq data)
-       (every? #(#{"tool-input" "tool-output" "text" "error" "data"} (:type %)) data)))
-
-(defn- v1-user-message? [data]
-  (and (sequential? data)
-       (seq data)
-       (every? #(and (= "user" (:role %))
-                     (string? (:content %))
-                     (nil? (:_type %)))
-               data)))
-
 (defn error->text
-  "Render a v1 tool-output `:error` value (string, map, or anything else) as text."
+  "Extract a v1 tool-output `:error` text."
   [error]
   (cond
     (string? error) error
@@ -115,26 +100,27 @@
   (mapv (fn [{:keys [content]}] {:type "text" :text content}) data))
 
 (defn migrate-v1->v2
-  "Convert a v1 `metabot_message.data` value to the v2 format, dispatching on the detected
-  shape. Empty arrays (assistant placeholders and aborted turns) pass through. Throws on
-  unrecognized shapes."
+  "Convert a v1 `metabot_message.data` value to the v2 format.
+  Empty arrays (assistant placeholders and aborted turns) pass through.
+  Throws on values that do not satisfy any v1 schema."
   [data]
   (cond
-    (empty? data)                  data
-    (v1-external-ai-service? data) (migrate-v1-external-ai-service->v2 data)
-    (v1-native? data)              (migrate-v1-native->v2 data)
-    (v1-user-message? data)        (migrate-v1-user-message->v2 data)
-    :else                          (throw (ex-info "Unrecognized v1 storage format" {:data data}))))
+    (empty? data)                                    data
+    (mr/validate ::schema.v1/ai-service-data data)   (migrate-v1-external-ai-service->v2 data)
+    (mr/validate ::schema.v1/native-data data)       (migrate-v1-native->v2 data)
+    (mr/validate ::schema.v1/user-message-data data) (migrate-v1-user-message->v2 data)
+    :else
+    (throw (ex-info "Unrecognized v1 storage format"
+                    {:data         data
+                     :explanations {:ai-service   (me/humanize (mr/explain ::schema.v1/ai-service-data data))
+                                    :native       (me/humanize (mr/explain ::schema.v1/native-data data))
+                                    :user-message (me/humanize (mr/explain ::schema.v1/user-message-data data))}}))))
 
 (comment
-  ;; validate the v1->v2 conversion against a CSV dump of metabot_message (`id` and `data`
-  ;; columns, header row), e.g. from psql:
-  ;;   \copy (select id, data from metabot_message) to 'dump.csv' with csv header
+  ;; validate the v1->v2 conversion against a CSV dump of metabot_message table
   (require '[clojure.data.csv :as csv]
            '[clojure.java.io :as io]
-           '[malli.error :as me]
-           '[metabase.metabot.schema.v2]
-           '[metabase.util.malli.registry :as mr])
+           '[metabase.metabot.schema.v2])
 
   (defn validate-conversion-csv [path]
     (with-open [reader (io/reader path)]
