@@ -79,6 +79,7 @@ import histogramTicks45Degrees from "./histogram-ticks-45-degrees.json";
 import histogramTicks90Degrees from "./histogram-ticks-90-degrees.json";
 import imageCutOff37275 from "./image-cut-off-37275.json";
 import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
+import lineBreakoutReplaceMissingValuesZero from "./line-breakout-replace-missing-values-zero.json";
 import lineChartBrokenDimensionsMetricsSettings from "./line-chart-broken-dimensions-metrics-settings.json";
 import lineChartSplitPanelsTimeseriesDifferentRanges from "./line-chart-split-panels-timeseries-different-ranges.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
@@ -225,6 +226,7 @@ export const data = {
   lineUnpinFromZero,
   lineSettings,
   lineReplaceMissingValuesZero,
+  lineBreakoutReplaceMissingValuesZero,
   lineChartBrokenDimensionsMetricsSettings,
   comboStackedBarsAreasNormalized,
   comboStackedBarsAreas,
