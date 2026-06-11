@@ -1,5 +1,5 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -133,6 +133,26 @@ export function DetailViewSidesheet({
   });
 
   const [actionsMenuOpened, actionsMenu] = useDisclosure(false);
+  const actionsMenuOpenedRef = useRef(actionsMenuOpened);
+
+  useEffect(() => {
+    actionsMenuOpenedRef.current = actionsMenuOpened;
+  }, [actionsMenuOpened]);
+
+  const openActionsMenu = useCallback(() => {
+    actionsMenuOpenedRef.current = true;
+    actionsMenu.open();
+  }, [actionsMenu]);
+
+  const closeActionsMenu = useCallback(() => {
+    actionsMenuOpenedRef.current = false;
+    actionsMenu.close();
+  }, [actionsMenu]);
+
+  const toggleActionsMenu = useCallback(() => {
+    actionsMenuOpenedRef.current = !actionsMenuOpenedRef.current;
+    actionsMenu.toggle();
+  }, [actionsMenu]);
 
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
@@ -188,6 +208,10 @@ export function DetailViewSidesheet({
   useWindowEvent(
     "keydown",
     (event) => {
+      if (actionsMenuOpenedRef.current) {
+        return;
+      }
+
       const activeElement = document.activeElement;
       const isInputFocused =
         activeElement instanceof HTMLElement &&
@@ -207,7 +231,7 @@ export function DetailViewSidesheet({
       }
     },
     {
-      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
+      // Otherwise modals get closed earlier and isModalOpen evaluates to false in the handler.
       capture: true,
     },
   );
@@ -279,7 +303,7 @@ export function DetailViewSidesheet({
               <Menu
                 opened={actionsMenuOpened}
                 onChange={(opened) =>
-                  opened ? actionsMenu.open() : actionsMenu.close()
+                  opened ? openActionsMenu() : closeActionsMenu()
                 }
                 position="bottom-end"
                 closeOnItemClick={false}
@@ -296,7 +320,7 @@ export function DetailViewSidesheet({
                         p={0}
                         variant="subtle"
                         w={20}
-                        onClick={actionsMenu.toggle}
+                        onClick={toggleActionsMenu}
                       />
                     </Tooltip>
                   </div>
@@ -308,7 +332,7 @@ export function DetailViewSidesheet({
                       leftSection={<Icon name={item.icon} aria-hidden />}
                       onClick={() => {
                         item.action();
-                        actionsMenu.close();
+                        closeActionsMenu();
                       }}
                     >
                       {item.title}
