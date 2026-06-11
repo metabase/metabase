@@ -1,6 +1,6 @@
 ---
 title: Schema viewer
-summary: Visualize relationships between tables in you database using an entity-relationship diagram (ERD)
+summary: Visualize relationships between tables in your database using an entity-relationship diagram (ERD)
 ---
 
 # Schema viewer
@@ -45,11 +45,11 @@ In the schema viewer, you can:
 - Search for a table and center the schema viewer on that table.
 - Drag and rearrange the tables.
 - Click a table header to open an info panel.
-- Click a foreign key field to navigate the connected table.
+- Click a foreign key field to navigate to the connected table.
 
 ## Permissions for schema viewer
 
-The schema viewer is part of Data studio, which only people in the Admin or [Data Analysts](../people-and-groups/managing.md#data-analysts) groups can access.
+The schema viewer is part of Data Studio, which only people in the Admin or [Data Analysts](../people-and-groups/managing.md#data-analysts) groups can access.
 
 The Data Analyst group additionally needs to have at least [query builder](../permissions/data.md) permissions for one or more tables in a database to use the schema viewer for that database.
 
