@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
+import "metabase/common/components/Popover/Popover.module.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
@@ -93,7 +94,7 @@ export function Tooltip({
     [preventOverflow],
   );
 
-  // themes styles come from frontend/src/metabase/common/components/Popover/Popover.css
+  // themes styles come from frontend/src/metabase/common/components/Popover/Popover.module.css
   // Tippy theming API: https://atomiks.github.io/tippyjs/v6/themes/
   const theme = `tooltip ${isPadded ? "" : "no-padding"}`;
 

@@ -17,6 +17,21 @@ function isEventInsideElement(e: Event, el: Element) {
   return isElement(target) && el.contains(target);
 }
 
+// An Escape originating inside a Mantine dropdown is handled by Mantine itself
+// (onKeyDownCapture on the dropdown element). It must not also close a stack
+// entry: Mantine closes the dropdown synchronously during the capture phase,
+// so by the time the event bubbles to this stack's document listener the
+// dropdown is already unregistered and a parent modal would wrongly become the
+// topmost entry. composedPath() is frozen at dispatch time, so the origin is
+// still detectable here.
+function isEventInsideMantinePopover(e: Event) {
+  const target = e.composedPath()[0];
+  return (
+    isElement(target) &&
+    target.closest('[data-element-id="mantine-popover"]') !== null
+  );
+}
+
 export function removePopoverData(popoverData: PopoverData) {
   const index = RENDERED_POPOVERS.indexOf(popoverData);
   if (index >= 0) {
@@ -45,7 +60,8 @@ export function shouldClosePopover(
     return (
       mostRecentPopover &&
       mostRecentPopover === popoverData &&
-      e.key === "Escape"
+      e.key === "Escape" &&
+      !isEventInsideMantinePopover(e)
     );
   }
 

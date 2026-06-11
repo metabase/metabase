@@ -36,6 +36,13 @@ export const PopoverWithRef = ({
     });
   }, []);
 
+  // A Mantine Popover mounted with a null reference never gets positioned by
+  // floating-ui, even if the reference is wired later — mount it only once
+  // the anchor exists
+  if (!anchorEl) {
+    return null;
+  }
+
   return (
     <Popover {...popoverProps}>
       <Popover.Target>

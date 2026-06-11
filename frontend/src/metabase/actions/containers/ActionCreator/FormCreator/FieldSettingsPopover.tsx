@@ -1,12 +1,12 @@
 import type { ChangeEvent } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Radio } from "metabase/common/components/Radio";
 import { Toggle } from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { Popover, UnstyledButton } from "metabase/ui";
 import { TextInput } from "metabase/ui/components/inputs/TextInput";
 import type {
   FieldSettings,
@@ -32,25 +32,35 @@ export function FieldSettingsPopover({
   fieldSettings,
   onChange,
 }: FieldSettingsPopoverProps) {
+  const [isOpened, setIsOpened] = useState(false);
+
   return (
-    <TippyPopoverWithTrigger
-      placement="bottom-end"
-      triggerContent={
-        <SettingsTriggerIcon
-          name="gear"
-          size={16}
-          tooltip={t`Change field settings`}
-          aria-label={t`Field settings`}
-        />
-      }
-      maxWidth={400}
-      popoverContent={() => (
+    <Popover
+      opened={isOpened}
+      onChange={setIsOpened}
+      position="bottom-end"
+      trapFocus
+    >
+      <Popover.Target>
+        <UnstyledButton onClick={() => setIsOpened((opened) => !opened)}>
+          <SettingsTriggerIcon
+            name="gear"
+            size={16}
+            tooltip={t`Change field settings`}
+            aria-label={t`Field settings`}
+          />
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown
+        setupSequencedCloseHandler={() => setIsOpened(false)}
+        maw={400}
+      >
         <FormCreatorPopoverBody
           fieldSettings={fieldSettings}
           onChange={onChange}
         />
-      )}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

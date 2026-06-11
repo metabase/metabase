@@ -6,8 +6,9 @@ import { forwardRef, useEffect } from "react";
 import { PreventEagerPortal } from "metabase/ui";
 import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
-// hack to prevent parent TippyPopover from closing when selecting a Menu.Item
-// remove when TippyPopover is no longer used
+// hack to prevent a parent registered in the RENDERED_POPOVERS stack (legacy
+// Modal via OnClickOutsideWrapper) from closing when selecting a Menu.Item
+// remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used
 export const MenuDropdown = forwardRef(function MenuDropdown(
   { children, ...props }: MenuDropdownProps,
   ref: Ref<HTMLDivElement>,

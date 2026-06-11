@@ -1,8 +1,8 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
+import { Popover } from "metabase/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { InputProps } from "../Input";
@@ -46,6 +46,7 @@ export const AutocompleteInput = ({
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLDivElement | null>(null);
+  const [isOpened, setIsOpened] = useState(false);
   const filteredOptions = useMemo(() => {
     return filterOptions(String(value), options);
   }, [value, options, filterOptions]);
@@ -76,55 +77,56 @@ export const AutocompleteInput = ({
   };
 
   return (
-    <TippyPopoverWithTrigger
-      sizeToFit
-      renderTrigger={({ onClick: handleShowPopover, closePopover }) => (
+    <Popover
+      opened={isOpened && filteredOptions.length > 0}
+      onChange={setIsOpened}
+      position="bottom-start"
+    >
+      <Popover.Target>
         <Input
           ref={inputRef}
           role="combobox"
           aria-autocomplete="list"
           {...rest}
           value={value}
-          onClick={handleShowPopover}
+          onClick={() => setIsOpened(true)}
           onFocus={(evt) => {
             onFocus?.(evt);
-            handleShowPopover();
+            setIsOpened(true);
           }}
           onChange={(evt) => {
             handleChange(evt);
-            handleShowPopover();
+            setIsOpened(true);
           }}
           onBlur={(evt) => {
             onBlur?.(evt);
-            closePopover();
+            setIsOpened(false);
+          }}
+          onKeyDown={(evt) => {
+            if (evt.key === "Escape") {
+              setIsOpened(false);
+            }
           }}
         />
-      )}
-      placement="bottom-start"
-      popoverContent={({ closePopover }) => {
-        if (filteredOptions.length === 0) {
-          return null;
-        }
-
-        return (
-          <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
-            {filteredOptions.map((item, index) => (
-              <SelectList.Item
-                isSelected={cursorIndex === index}
-                key={item}
-                id={item}
-                name={item}
-                onSelect={(item) => {
-                  handleOptionSelect(String(item));
-                  closePopover();
-                }}
-              >
-                {item}
-              </SelectList.Item>
-            ))}
-          </OptionsList>
-        );
-      }}
-    />
+      </Popover.Target>
+      <Popover.Dropdown setupSequencedCloseHandler={() => setIsOpened(false)}>
+        <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
+          {filteredOptions.map((item, index) => (
+            <SelectList.Item
+              isSelected={cursorIndex === index}
+              key={item}
+              id={item}
+              name={item}
+              onSelect={(item) => {
+                handleOptionSelect(String(item));
+                setIsOpened(false);
+              }}
+            >
+              {item}
+            </SelectList.Item>
+          ))}
+        </OptionsList>
+      </Popover.Dropdown>
+    </Popover>
   );
 };
