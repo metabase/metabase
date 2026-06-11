@@ -54,6 +54,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
         </Group>
       </Popover.Target>
       <Popover.Dropdown
+        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
         setupSequencedCloseHandler={() => setIsOpened(false)}
         className={S.ColorPillPicker}
       >

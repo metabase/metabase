@@ -21,7 +21,7 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
   // swallows mousedown before it reaches Mantine's document-level
   // closeOnClickOutside listener, so the stack (window capture) is the only
   // thing that can close the popover on an outside click there.
-  // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used
+  // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
   setupSequencedCloseHandler?: () => void;
 };
 
@@ -32,7 +32,10 @@ type SequencedCloseHandlerSetupProps = {
 
 // Rendered inside the dropdown so that it is mounted only while the popover is
 // open — registering on the wrapper itself would permanently occupy the top of
-// the stack and block the parent modal from ever closing
+// the stack and block the parent modal from ever closing.
+// TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer
+// used (GDGT-2575, together with the setupSequencedCloseHandler prop and the
+// dropdownRef/useMergedRef wiring below)
 const SequencedCloseHandlerSetup = ({
   dropdownRef,
   onClose,
@@ -43,7 +46,13 @@ const SequencedCloseHandlerSetup = ({
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    setupCloseHandler(dropdownRef.current, () => onCloseRef.current());
+    const dropdownEl = dropdownRef.current;
+    // the target element, same exclusion as in Mantine's own useClickOutside —
+    // a click on the trigger must toggle the popover, not close-and-reopen it
+    const targetEl = dropdownEl?.id
+      ? document.querySelector(`[aria-controls="${dropdownEl.id}"]`)
+      : null;
+    setupCloseHandler(dropdownEl, () => onCloseRef.current(), targetEl);
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler, dropdownRef]);
 

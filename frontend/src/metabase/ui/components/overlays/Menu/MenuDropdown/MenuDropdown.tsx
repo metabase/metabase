@@ -8,7 +8,7 @@ import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced
 
 // hack to prevent a parent registered in the RENDERED_POPOVERS stack (legacy
 // Modal via OnClickOutsideWrapper) from closing when selecting a Menu.Item
-// remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used
+// remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
 export const MenuDropdown = forwardRef(function MenuDropdown(
   { children, ...props }: MenuDropdownProps,
   ref: Ref<HTMLDivElement>,

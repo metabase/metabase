@@ -37,7 +37,10 @@ export const ColorPicker = forwardRef(function ColorPicker(
           onChange={onChange}
         />
       </Popover.Target>
-      <Popover.Dropdown setupSequencedCloseHandler={() => setIsOpened(false)}>
+      <Popover.Dropdown
+        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
+        setupSequencedCloseHandler={() => setIsOpened(false)}
+      >
         <ColorPickerContent value={value} onChange={onChange} />
       </Popover.Dropdown>
     </Popover>
