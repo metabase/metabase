@@ -65,6 +65,7 @@ const setup = async ({
           forceEntitySelect={forceEntitySelect}
           searchText={searchText}
           footerComponent={footer}
+          context="search-bar"
         />
       )}
     />,

@@ -36,7 +36,7 @@ export type InitializationStatus =
   | InitializationStatusError;
 
 export type { ButtonProps } from "metabase/ui";
-export type { MetabaseFontFamily } from "metabase/ui/fonts";
+export type { MetabaseFontFamily } from "metabase/utils/fonts";
 export type {
   ChartColor,
   MetabaseTheme,

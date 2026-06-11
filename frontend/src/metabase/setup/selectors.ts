@@ -3,11 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 import type { InviteInfo, Locale, State, UserInfo } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
-import type {
-  DatabaseData,
-  LocaleData,
-  TokenFeature,
-} from "metabase-types/api";
+import type { DatabaseData, LocaleData } from "metabase-types/api";
 
 import type { SetupStep } from "./types";
 
@@ -75,15 +71,6 @@ export const getDatabaseEngine = (state: State): string | undefined => {
 
 export const getSetupToken = (state: State) => {
   return getSetting(state, "setup-token");
-};
-
-export const getIsHosted = (state: State): boolean => {
-  return getSetting(state, "is-hosted?");
-};
-
-export const getTokenFeature = (state: State, feature: TokenFeature) => {
-  const tokenFeatures = getSetting(state, "token-features");
-  return tokenFeatures[feature];
 };
 
 export const getAvailableLocales = (state: State): LocaleData[] => {

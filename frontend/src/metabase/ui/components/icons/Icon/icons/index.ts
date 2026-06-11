@@ -460,6 +460,8 @@ import slack_component from "./slack.svg?component";
 import slack_source from "./slack.svg?source";
 import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
+import sliders_component from "./sliders.svg?component";
+import sliders_source from "./sliders.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
 import smile_component from "./smile.svg?component";
@@ -1518,6 +1520,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     slack_colorized: {
       component: slack_colorized_component,
       source: slack_colorized_source,
+    },
+    sliders: {
+      component: sliders_component,
+      source: sliders_source,
     },
     smartscalar: {
       component: smartscalar_component,
