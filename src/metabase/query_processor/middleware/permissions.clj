@@ -92,7 +92,9 @@
      (dissoc stage-or-join :query-permissions/sandboxed-table))))
 
 (defn remove-persisted-info-native-keys
-  "Strips `:persisted-info/native` from query stages."
+  "Pre-processing middleware. Removes any `:persisted-info/native` keys from the query. This key is populated later by
+  the fetch-source-query middleware to point at a persisted/cached native query, so any value already present at this
+  stage is stale and is cleared (like the functions above)."
   [query]
   (lib.walk/walk
    query
