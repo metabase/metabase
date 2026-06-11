@@ -199,23 +199,28 @@
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified-or-curated
-  content is returned — verified cards and cards in official collections.
+  content is returned — verified, official-collection, or library-published cards.
 
   Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
-  ;; TODO (Chris 2026-06-09) -- this approximates collections.curation/curated? for card scope using
-  ;; verified + official collection. It can't see library-published metrics (root collection type) the
-  ;; way the precomputed `curated` search column can; fully closing that gap means routing this scope
-  ;; through search instead of a raw report_card query.
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
         use-verified-content? (:use_verified_content metabot)
         verified? (premium-features/has-feature? :content-verification)
         official? (premium-features/has-feature? :official-collections)
-        ;; Curation signals tractable here, each gated on its feature.
+        library?  (premium-features/has-feature? :library)
+        ;; ids of collections under a Library-type root; their metrics/models are library-published content
+        library-coll-ids (when library?
+                           (let [roots (t2/select :model/Collection
+                                                  :type [:in (mapv name collection/library-collection-types)]
+                                                  :location "/")]
+                             (into (set (map :id roots)) (mapcat collection/descendant-ids roots))))
+        ;; Mirror collections.curation/curated? for card scope: verified, official-collection, or
+        ;; library-published (under a Library root). Each disjunct is gated on its feature.
         curated-conds (cond-> []
                         verified? (conj [:= :mr.status [:inline "verified"]])
-                        official? (conj [:= :collection.authority_level [:inline "official"]]))
+                        official? (conj [:= :collection.authority_level [:inline "official"]])
+                        (seq library-coll-ids) (conj [:in :report_card.collection_id (vec library-coll-ids)]))
         ;; Columns are qualified with report_card because the official-collections branch joins
         ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id

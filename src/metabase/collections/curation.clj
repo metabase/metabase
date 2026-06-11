@@ -25,12 +25,22 @@
   (or (true? v) (= 1 v)))
 
 (defn curated?
-  "Whether the given curation-signal map is curated.
+  "Whether the given curation-signal map is curated. THIS IS THE AUTHORITATIVE RULE.
   Reads `:model` `:verified` `:official_collection` `:is_published` `:root_collection_type`
   `:data_layer` `:data_authority`; text signals may be strings or keywords.
-  This is the canonical rule: changing it requires a semantic-search index migration to recompute the
-  precomputed `curated` column for existing rows (the appdb index self-updates on reindex), and a
-  matching update to [[curated-honeysql]]."
+
+  Several places re-encode or apply this rule and MUST be kept in sync when it changes:
+    - [[curated-honeysql]] — SQL mirror of this predicate (used by the semantic backfill)
+    - metabase.search.in-place.filter/build-optional-filter-query (the `[:curated …]` methods) — in-place
+      engine SQL filter
+    - metabase.metabot.tools.util/metabot-metrics-and-models-query — suggested-prompt source filter
+    - metabase.metabot.curation/curated-ids — source-of-truth check for recent views
+    - metabase-enterprise.semantic-search.db.migration.impl/add-data-authority-and-curated-columns! —
+      recomputes the precomputed `curated` column for existing index rows
+
+  The signals above are populated at ingestion by the search specs, so a NEW signal must also be added to
+  metabase.queries.models.card, metabase.dashboards.models.dashboard, metabase.warehouse-schema.models.table
+  (and metabase.search.spec attr-types), and reaches existing rows only on reindex / via the migration above."
   [{:keys [model verified official_collection is_published root_collection_type data_layer data_authority]}]
   ;; No feature gate: a signal can only be set while its feature is present, so the flag is already
   ;; feature-correct and self-heals on the next reindex after any feature change.
@@ -46,6 +56,7 @@
 
 (defn curated-honeysql
   "HoneySQL mirror of [[curated?]] for SQL contexts, e.g. backfilling the precomputed `curated` column.
+  Keep in sync with [[curated?]] (the authoritative rule).
   `col` resolves a signal key to a HoneySQL fragment for the target table; pass a constant for any
   column the table lacks (the semantic index has no `is_published`, so it leans on
   `root_collection_type`)."

@@ -223,6 +223,20 @@
                   (is (every? verified-ids (take 2 ordered-ids)))
                   (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
 
+(deftest metabot-verified-content-library-test
+  (testing "with the :library feature, use_verified_content=true includes library-published metrics/models
+            (BOT-1570), matching collections.curation/curated?"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection lib  {:type "library-metrics" :name "libcoll"}
+                     :model/Collection norm {:name "normcoll"}
+                     :model/Card lib-metric   {:type :metric :collection_id (:id lib)}
+                     :model/Card plain-metric {:type :metric :collection_id (:id norm)}
+                     :model/Metabot metabot {:name "mb" :use_verified_content true}]
+        (let [ids (set (map :id (mt/with-test-user :crowberto
+                                  (metabot.tools.util/get-metrics-and-models (:id metabot)))))]
+          (is (contains? ids (:id lib-metric))       "library-published metric is curated")
+          (is (not (contains? ids (:id plain-metric))) "plain metric is not curated"))))))
+
 (deftest metabot-verified-content-no-feature-test
   (testing "use_verified_content=true with no curation features active returns nothing, rather than falling
             through unfiltered to uncurated content"

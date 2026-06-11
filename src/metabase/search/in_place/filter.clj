@@ -160,9 +160,9 @@
 ;; Curated filters — the "verified or curated content" setting for Metabot. The canonical rule is
 ;; [[metabase.collections.curation/curated?]], which the appdb/semantic engines apply via a precomputed
 ;; `curated` index column. The legacy in-place engine has no such column, so it approximates the rule
-;; in SQL over the signals that are tractable here: verified + official-collection for card-like
-;; models, and published-at-final for tables. Library-membership-by-root-collection-type and
-;; data_authority are not enforced here; the legacy engine is being retired.
+;; in SQL over the signals that are tractable here: verified + official-collection for card-like models,
+;; and published-at-final-layer or authoritative for tables. Library-membership-by-root-collection-type is
+;; not enforced here; the legacy engine is being retired. Keep in sync with [[curated?]].
 
 (defn- curated-card-like-query
   "Build the curated OR clause for a card-like `model` (`item-type` is the moderation_review type)."
