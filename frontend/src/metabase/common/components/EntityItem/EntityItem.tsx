@@ -1,6 +1,7 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
+import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
@@ -22,12 +23,19 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import type { IconProps } from "metabase/ui";
-import { Checkbox, Ellipsified } from "metabase/ui";
+import {
+  ActionIcon,
+  Checkbox,
+  Ellipsified,
+  Icon,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -156,7 +164,15 @@ function EntityItemMenu({
   const isXrayShown = isModel && isXrayEnabled;
 
   const actions = useMemo(() => {
-    const result = [];
+    const result: {
+      title: string;
+      icon: IconName;
+      action?: () => void;
+      link?: string;
+      tooltip?: string;
+      disabled?: boolean;
+      color?: ColorName;
+    }[] = [];
 
     if (onPin) {
       result.push({
@@ -200,7 +216,7 @@ function EntityItemMenu({
       result.push({
         title: c("Verb").t`Duplicate`,
         icon: "clone",
-        action: onCopy,
+        action: () => onCopy([item]),
       });
     }
 
@@ -208,7 +224,7 @@ function EntityItemMenu({
       result.push({
         title: t`Move`,
         icon: "move",
-        action: onMove,
+        action: () => onMove([item]),
       });
     }
 
@@ -239,16 +255,13 @@ function EntityItemMenu({
         title: t`Delete permanently`,
         icon: "trash",
         action: onDeletePermanently,
-        color: "danger" as const,
-        hoverColor: "danger" as const,
-        hoverBgColor: "background-error" as const,
+        color: "danger",
       });
     }
 
     return result;
   }, [
-    item.id,
-    item.model,
+    item,
     isPinned,
     isXrayShown,
     isPreviewed,
@@ -268,12 +281,52 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer style={{ textAlign: "center" }}>
-      <EntityMenu
-        triggerAriaLabel={t`Actions`}
-        triggerIcon="ellipsis"
-        items={actions}
-        className={className}
-      />
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <ActionIcon
+            variant="viewHeader"
+            size={36}
+            aria-label={t`Actions`}
+            className={className}
+          >
+            <Icon name="ellipsis" />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {actions.map(
+            ({ title, icon, action, link, tooltip, disabled, color }) => {
+              const menuItem = link ? (
+                <Menu.Item
+                  key={title}
+                  component={Link}
+                  to={link}
+                  leftSection={<Icon name={icon} />}
+                >
+                  {title}
+                </Menu.Item>
+              ) : (
+                <Menu.Item
+                  key={title}
+                  leftSection={<Icon name={icon} />}
+                  c={color}
+                  disabled={disabled}
+                  onClick={action}
+                >
+                  {title}
+                </Menu.Item>
+              );
+
+              return tooltip ? (
+                <Tooltip key={title} label={tooltip} position="right">
+                  <div>{menuItem}</div>
+                </Tooltip>
+              ) : (
+                menuItem
+              );
+            },
+          )}
+        </Menu.Dropdown>
+      </Menu>
     </EntityMenuContainer>
   );
 }

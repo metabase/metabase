@@ -1,8 +1,9 @@
 import cx from "classnames";
+import { t } from "ttag";
 
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Flex, Icon, Text } from "metabase/ui";
+import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
@@ -10,7 +11,7 @@ import type { ObjectId } from "./types";
 export interface ObjectDetailHeaderProps {
   actionItems: {
     title: string;
-    icon: string;
+    icon: IconName;
     action: () => void;
   }[];
   canZoom: boolean;
@@ -74,13 +75,29 @@ export function ObjectDetailHeader({
           )}
 
           {actionItems.length > 0 && (
-            <EntityMenu
-              items={actionItems}
-              triggerIcon="ellipsis"
-              triggerProps={{
-                "data-testid": "actions-menu",
-              }}
-            />
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon
+                  variant="viewHeader"
+                  size={36}
+                  aria-label={t`Actions`}
+                  data-testid="actions-menu"
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {actionItems.map(({ title, icon, action }) => (
+                  <Menu.Item
+                    key={title}
+                    leftSection={<Icon name={icon} />}
+                    onClick={action}
+                  >
+                    {title}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
           )}
 
           <Flex ml="md" pl="md" className={S.closeButton}>

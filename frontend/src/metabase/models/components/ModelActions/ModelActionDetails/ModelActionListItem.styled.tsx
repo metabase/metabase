@@ -5,7 +5,6 @@ import styled from "@emotion/styled";
 
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
-import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const ActionHeader = styled.div`
@@ -39,15 +38,6 @@ export const ActionSubtitlePart = styled.span`
     content: "·";
     margin-left: 6px;
     margin-right: 6px;
-  }
-`;
-
-export const MenuIcon = styled(Icon)`
-  color: var(--mb-color-text-primary);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-brand);
   }
 `;
 

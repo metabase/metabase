@@ -19,6 +19,7 @@ import type {
   Table as ApiTable,
   DatasetColumn,
   DatasetData,
+  IconName,
   TableId,
   VisualizationSettings,
   WritebackAction,
@@ -146,7 +147,11 @@ export const getActionItems = ({
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
 }) => {
-  const actionItems = [];
+  const actionItems: {
+    title: string;
+    icon: IconName;
+    action: () => void;
+  }[] = [];
   /**
    * Public actions require an additional endpoint which is out of scope
    * of Milestone 1 in #32320 epic.

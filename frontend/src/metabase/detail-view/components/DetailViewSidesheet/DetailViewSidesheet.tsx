@@ -10,7 +10,6 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
@@ -31,6 +30,7 @@ import {
   Divider,
   Group,
   Icon,
+  Menu,
   Stack,
   Tooltip,
   rem,
@@ -274,9 +274,8 @@ export function DetailViewSidesheet({
             )}
 
             {actionItems.length > 0 && (
-              <EntityMenu
-                items={actionItems}
-                renderTrigger={({ onClick }: { onClick: () => void }) => (
+              <Menu position="bottom-end">
+                <Menu.Target>
                   <Tooltip label={t`Actions`}>
                     <Button
                       aria-label={t`Actions`}
@@ -287,11 +286,21 @@ export function DetailViewSidesheet({
                       p={0}
                       variant="subtle"
                       w={20}
-                      onClick={onClick}
                     />
                   </Tooltip>
-                )}
-              />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {actionItems.map(({ title, icon, action }) => (
+                    <Menu.Item
+                      key={title}
+                      leftSection={<Icon name={icon} />}
+                      onClick={action}
+                    >
+                      {title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
             )}
 
             {url && (

@@ -12,7 +12,7 @@ import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon } from "metabase/ui";
+import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -21,7 +21,7 @@ import {
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { Card, IconName, WritebackAction } from "metabase-types/api";
 
 import {
   EmptyStateActionContainer,
@@ -33,7 +33,6 @@ import {
 import {
   ActionAlert,
   ActionList,
-  ActionMenu,
   ActionsHeader,
   Root,
 } from "./ModelActionDetails.styled";
@@ -96,7 +95,7 @@ function ModelActionDetails({ model }: Props) {
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
   const menuItems = useMemo(() => {
-    const items = [];
+    const items: { title: string; icon: IconName; action: () => void }[] = [];
     const hasImplicitActions = implicitActions.length > 0;
 
     if (hasImplicitActions) {
@@ -149,11 +148,29 @@ function ModelActionDetails({ model }: Props) {
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
-            <ActionMenu
-              triggerIcon="ellipsis"
-              items={menuItems}
-              triggerProps={{ "aria-label": t`Actions menu` }}
-            />
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon
+                  variant="viewHeader"
+                  size={36}
+                  ml="0.5rem"
+                  aria-label={t`Actions menu`}
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {menuItems.map(({ title, icon, action }) => (
+                  <Menu.Item
+                    key={title}
+                    leftSection={<Icon name={icon} />}
+                    onClick={action}
+                  >
+                    {title}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
           )}
         </ActionsHeader>
       )}

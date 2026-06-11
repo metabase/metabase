@@ -12,6 +12,7 @@ import type {
   Database,
   Dataset,
   DatasetColumn,
+  IconName,
   RowValues,
   Table,
   TableColumnOrderSetting,
@@ -29,7 +30,11 @@ export const getActionItems = ({
   onDelete: (action: WritebackAction) => void;
   onUpdate: (action: WritebackAction) => void;
 }) => {
-  const actionItems = [];
+  const actionItems: {
+    title: string;
+    icon: IconName;
+    action: () => void;
+  }[] = [];
   const privateActions = actions.filter((action) => !action.public_uuid);
   const deleteAction = privateActions.find(isValidImplicitDeleteAction);
   const updateAction = privateActions.find(isValidImplicitUpdateAction);
