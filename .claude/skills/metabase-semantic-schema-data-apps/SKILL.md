@@ -11,13 +11,13 @@ Keep the semantic layer and presentation layer separate.
 
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
-- Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
+- Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
 - Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
 - Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, customer segments, or chart series.
-- Visualization data must be derived from `useMetabaseQuery` results. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
+- Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
 - Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
 - Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
 - Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
@@ -168,9 +168,9 @@ Measures must come from tables in the metric's `mappedTableIds`.
 
 ## Interactive Metabase Views
 
-Use Metabase's SDK `InteractiveQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a table-backed semantic query with `useMetabaseQueryObject`, then pass the query object to `InteractiveQuestion`.
+Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the query object to the SDK question component.
 
-Current constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. If the desired view is metric-backed but can be expressed from a generated table plus measures, filters, and breakouts, prefer that table-backed `InteractiveQuestion` query. Use `useMetabaseQuery` and custom rendering for metrics only when there is no table-backed equivalent or the UI needs direct row data.
+`useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
 
 Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
 
@@ -200,6 +200,7 @@ Chart only, without the toolbar:
 ```tsx
 import {
   InteractiveQuestion,
+  StaticQuestion,
   breakout,
   count,
   useMetabaseQueryObject,
@@ -232,7 +233,38 @@ const revenueQuery = useMetabaseQueryObject({
 return <InteractiveQuestion query={revenueQuery} />;
 ```
 
-Do not wrap `InteractiveQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
+Static question:
+
+```tsx
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return <StaticQuestion query={revenueQuery} />;
+```
+
+Metric-backed SDK question:
+
+```tsx
+const revenueMetric = schema.metrics.revenue;
+const ordersTable = schema.tables.orders;
+
+const revenueByMonthQuery = useMetabaseQueryObject({
+  metric: revenueMetric,
+  measures: [ordersTable.measures.totalRevenue],
+  breakouts: [breakout(revenueMetric.dimensions.createdAt, { bucket: "month" })],
+});
+
+return (
+  <InteractiveQuestion query={revenueByMonthQuery}>
+    <InteractiveQuestion.QuestionVisualization />
+  </InteractiveQuestion>
+);
+```
+
+Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
 
 ## Filters And Breakouts
 
