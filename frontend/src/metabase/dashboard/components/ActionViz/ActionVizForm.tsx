@@ -156,7 +156,6 @@ function ActionVizForm({
             onClose={closeEditModal}
           >
             <ActionCreator
-              initialAction={action}
               action={action}
               modelId={action.model_id}
               databaseId={action.database_id}

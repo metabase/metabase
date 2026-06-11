@@ -266,6 +266,7 @@
     integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
+    io.opentelemetry/opentelemetry-sdk-testing {:mvn/version "1.54.1"}      ; InMemorySpanExporter for tracing tests; pinned to match the resolved OTel SDK version
     io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
     ;; Native postgres binaries for every OS/arch we're likely to run on in
     ;; dev or CI. Without these Zonky falls back to x86_64 under Rosetta on
@@ -496,7 +497,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/clickhouse/test"
     "modules/drivers/databricks/test"
-    "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
@@ -560,8 +560,6 @@
     "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/druid/src"
-    "modules/drivers/druid/test"
     "modules/drivers/hive-like/src"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
@@ -599,7 +597,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/clickhouse/src"
                 "modules/drivers/databricks/src"
-                "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/hive-like/src"
                 "modules/drivers/mongo/src"
@@ -625,7 +622,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/clickhouse/src"
                                  "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"
@@ -772,10 +768,9 @@
   ;;    ./bin/mage cljfmt-all
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
-  :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
-   :ns-default cljfmt.tool
-   :exec-fn    cljfmt.tool/fix}
+  ;;
+  ;; (this doc was here because we previously had a `:cljfmt` alias here, now specified in `bb.edn`, but leaving these
+  ;; dox here in case anyone comes looking for it -- Cam
 
 ;;; building Uberjar, build and release scripts
 

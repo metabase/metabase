@@ -4,7 +4,10 @@ import _ from "underscore";
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
 import { sumArray } from "metabase/utils/arrays";
 import { measureText } from "metabase/utils/measure-text";
-import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
+import {
+  COLUMN_SPLIT_SETTING,
+  isPivotGroupColumn,
+} from "metabase/visualizations/lib/data_grid";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
@@ -228,12 +231,23 @@ export function checkRenderable(
   settings: VisualizationSettings,
   query?: NativeQuery | null,
 ) {
-  if (data.cols.some((col) => col.source === "native")) {
+  const isConfiguredNativePivot = Boolean(
+    settings[COLUMN_SPLIT_SETTING] &&
+    data.cols.some((col) => col.source === "native"),
+  );
+
+  if (
+    data.cols.some((col) => col.source === "native") &&
+    !isConfiguredNativePivot
+  ) {
     throw new Error(
       t`Pivot tables are only supported for questions built in the query builder.`,
     );
   }
-  if (data.cols.length < 2 || !data.cols.every(isColumnValid)) {
+  if (
+    data.cols.length < 2 ||
+    (!isConfiguredNativePivot && !data.cols.every(isColumnValid))
+  ) {
     throw new Error(t`Pivot tables can only be used with aggregated queries.`);
   }
   if (!databaseSupportsPivotTables(query)) {

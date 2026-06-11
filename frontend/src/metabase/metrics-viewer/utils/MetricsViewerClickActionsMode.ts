@@ -12,8 +12,8 @@ import {
   type MetricDefinitionEntry,
   type MetricSourceId,
   type MetricsViewerDefinitionEntry,
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
-  type MetricsViewerTabState,
   isMetricEntry,
 } from "../types/viewer-state";
 
@@ -26,8 +26,10 @@ type MetricsViewerClickActionParams = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   cardIdToEntityIndex: Record<CardId, number>;
 };
 
@@ -35,22 +37,24 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
   private definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   private formulaEntities: MetricsViewerFormulaEntity[];
   private metricSlots: MetricSlot[];
-  private tab: MetricsViewerTabState;
-  private onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  private dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  private onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   private cardIdToEntityIndex: Record<CardId, number>;
   constructor({
     definitions,
     formulaEntities,
     metricSlots,
-    tab,
-    onTabUpdate,
+    dimensionBreakout,
+    onDimensionBreakoutUpdate,
     cardIdToEntityIndex,
   }: MetricsViewerClickActionParams) {
     this.definitions = definitions;
     this.formulaEntities = formulaEntities;
     this.metricSlots = metricSlots;
-    this.tab = tab;
-    this.onTabUpdate = onTabUpdate;
+    this.dimensionBreakout = dimensionBreakout;
+    this.onDimensionBreakoutUpdate = onDimensionBreakoutUpdate;
     this.cardIdToEntityIndex = cardIdToEntityIndex;
   }
   actionsForClick(clickObject: ClickObject): ClickAction[] {
@@ -65,8 +69,8 @@ export class MetricsViewerClickActionsMode implements ClickActionsMode {
       entity,
       entityIndex,
       metricSlots: this.metricSlots,
-      tab: this.tab,
-      onTabUpdate: this.onTabUpdate,
+      dimensionBreakout: this.dimensionBreakout,
+      onDimensionBreakoutUpdate: this.onDimensionBreakoutUpdate,
       clickObject,
     };
     return [getZoomInTimeSeriesAction(params)].filter(
@@ -80,8 +84,10 @@ type GetActionParams = {
   entity: MetricsViewerFormulaEntity | undefined; //entity that was clicked on
   entityIndex: number | undefined;
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   clickObject: ClickObject;
 };
 
@@ -90,8 +96,8 @@ function getZoomInTimeSeriesAction({
   entity,
   entityIndex,
   metricSlots,
-  tab,
-  onTabUpdate,
+  dimensionBreakout,
+  onDimensionBreakoutUpdate,
   clickObject,
 }: GetActionParams): ClickAction | undefined {
   if (!entity || entityIndex == null || !isMetricEntry(entity)) {
@@ -110,7 +116,7 @@ function getZoomInTimeSeriesAction({
     entity,
     entityIndex,
     metricSlots,
-    tab,
+    dimensionBreakout,
     currentTemporalUnit,
   );
   if (!nextTemporalUnit) {
@@ -136,9 +142,9 @@ function getZoomInTimeSeriesAction({
     icon: "zoom_in",
     buttonType: "horizontal",
     onClick: ({ closePopover }) => {
-      onTabUpdate({
+      onDimensionBreakoutUpdate({
         projectionConfig: {
-          ...tab.projectionConfig,
+          ...dimensionBreakout.projectionConfig,
           temporalUnit: nextTemporalUnit,
           dimensionFilter,
         },
@@ -189,7 +195,7 @@ function getNextTemporalUnit(
   entity: MetricDefinitionEntry,
   entityIndex: number,
   metricSlots: MetricSlot[],
-  tab: MetricsViewerTabState,
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
   currentUnit: TemporalUnit,
 ): TemporalUnit | undefined {
   const definition = getEffectiveDefinitionEntry(
@@ -200,7 +206,7 @@ function getNextTemporalUnit(
   if (!slot) {
     return undefined;
   }
-  const dimensionId = tab.dimensionMapping[slot.slotIndex];
+  const dimensionId = dimensionBreakout.dimensionMapping[slot.slotIndex];
   if (!definition || !dimensionId) {
     return undefined;
   }

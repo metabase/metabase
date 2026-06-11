@@ -40,7 +40,7 @@
                                               (.namingPattern "streaming-response-test-thread-pool-%d")
                                               ;; Daemon threads do not block shutdown of the JVM
                                               (.daemon true))))]
-    (with-redefs [thread-pool/thread-pool (constantly pool)]
+    (mt/with-dynamic-fn-redefs [thread-pool/thread-pool (constantly pool)]
       (try
         (thunk)
         (finally
@@ -309,12 +309,10 @@
         (testing "InterruptedException should not write to output stream"
           (streaming-response/write-error! os (InterruptedException. "interrupted") :api)
           (is (zero? (.size os))))
-
         (testing "EofException should not write to output stream"
           (.reset os)
           (streaming-response/write-error! os (org.eclipse.jetty.io.EofException. "eof") :api)
           (is (zero? (.size os))))
-
         (testing "Other exceptions should be formatted and written"
           (.reset os)
           (streaming-response/write-error! os (RuntimeException. "runtime error") :api)

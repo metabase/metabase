@@ -12,6 +12,8 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.experiment :as experiment]
@@ -19,6 +21,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
@@ -42,10 +45,13 @@
   "See [[make-nestable-sql]] but does not wrap in result in parens."
   [sql]
   (-> sql
-      (str/replace #";([\s;]*(--.*\n?)*)*$" "")
+      ;; Strip the trailing run of semicolons / whitespace / line comments. Possessive quantifiers (`*+`) make
+      ;; this match in a single forward pass: without them the nested unbounded quantifiers over overlapping
+      ;; character classes backtrack super-linearly (O(n^2) on many trailing comment lines), which can wedge the JVM.
+      (str/replace #";[\s;]*+(?:--.*+[\s;]*+)*+$" "")
       str/trimr
       (as-> trimmed
-        ;; Query could potentially end with a comment.
+            ;; Query could potentially end with a comment.
             (if (re-find #"--.*$" trimmed)
               (str trimmed "\n")
               trimmed))))
@@ -1416,7 +1422,7 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one (nth (:aggregation *inner-query*) index)
+  (match/match-one (nth (:aggregation *inner-query*) index)
     [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
     (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
@@ -1621,7 +1627,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace form
+   (match/replace form
      [:field (opts :guard :lib/uuid) id-or-name] ;; mbql5
      [:field (force-using-column-alias-opts opts is-breakout) id-or-name]
 
@@ -1901,7 +1907,7 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-one args
+    (if-let [field-arg (match/match-one args
                          [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause
@@ -2049,8 +2055,13 @@
 
 (defmethod ->honeysql [:sql :metadata/table]
   [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (h2x/identifier :table schema table-name))))
+  ;; `:db` is normally absent on `:metadata/table` — sync doesn't populate it.
+  ;; Workspace remap (and any future cross-DB rewriter) can fill it to route the
+  ;; query at a database different from the connection's bound one. The
+  ;; identifier helper drops nil components, so absent `:db` produces the same
+  ;; `schema.table` shape as before.
+  (let [{table-name :name, schema :schema, db :db} table]
+    (->honeysql driver (h2x/identifier :table db schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _top-level-clause honeysql-form {source-table-id :source-table}]
@@ -2179,16 +2190,33 @@
          (> (count source-aliases) 1)
          (not (apply distinct? source-aliases)))))
 
+(defn- resolve-persisted-source-sql
+  "If `source-query` came from a card with a valid persisted cache, independently look up the cache from the metadata
+  provider and return the native SQL. Returns nil if no cache exists, or if persisted cache use has been disabled for
+  this query (e.g. due to sandboxing or connection impersonation — see
+  [[metabase.query-processor.middleware.persistence/substitute-persisted-query]])."
+  [source-query]
+  (when-not (:qp/skip-persisted-cache source-query)
+    (when-let [card-id (:qp/stage-is-from-source-card source-query)]
+      (let [mp   (driver-api/metadata-provider)
+            card (lib.metadata.protocols/card mp card-id)]
+        (when-let [persisted-info (:lib/persisted-info card)]
+          (when (qp.persisted/can-substitute? card persisted-info)
+            (qp.persisted/persisted-info-native-query
+             (:id (lib.metadata.protocols/database mp))
+             persisted-info)))))))
+
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
   column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
   are aliased as `__mb_source`."
-  [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
+  [driver honeysql-form {{:keys [native params] :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
+        persisted-sql (resolve-persisted-source-sql source-query)
         source-clause (cond
-                        persisted
-                        (sql-source-query persisted nil)
+                        persisted-sql
+                        (sql-source-query persisted-sql nil)
 
                         native
                         (sql-source-query native params)
@@ -2199,8 +2227,8 @@
     (merge
      honeysql-form
      (if (needs-cte-for-duplicate-cols? source-metadata)
-        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
-        ;; This is ok since we control the alias.
+       ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
+       ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
         :from [[table-alias]]}
@@ -2257,7 +2285,6 @@
         (u/prog1 (compile-mbql driver inner-query)
           (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
           (driver-api/debug> (list '🍯 <>)))))
-
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
                               (:database query)
@@ -2266,7 +2293,8 @@
           mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
       (recur driver mbql5-query))))
 
-(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5})
+(def ^:private experimental-mbql5-drivers {:h2 :h2-mbql5
+                                           :postgres :postgres-mbql5})
 
 (defn- mbql5-experiment-report
   [driver experimental-driver query]
@@ -2307,10 +2335,26 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
-  (let [{sql-query :query sql-params :params} query]
+  [driver {:keys [query output-db output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ;; If the workspace remap populated `:output-db`, qualify the output
+        ;; table with that DB so the CTAS lands in the iso database. Used by
+        ;; MySQL workspace transforms today — the iso namespace lives at the
+        ;; AST `:db` position and the canonical `output-table` is bare.
+        ;;
+        ;; HoneySQL renders `(keyword ns name)` as ``ns`.`name`` on MySQL — we
+        ;; lean on that here. 3-part `:db.:schema.:name` writes (Snowflake / SQL
+        ;; Server / BigQuery cross-DB) aren't expressible through this single-
+        ;; keyword shape; when those workspaces land they'll either need
+        ;; `output-table` to carry both qualifiers or a different HoneySQL form.
+        target-id (cond
+                    (and (not (str/blank? output-db))
+                         (str/blank? (namespace (keyword output-table))))
+                    (keyword output-db (clojure.core/name (keyword output-table)))
+                    :else
+                    (keyword output-table))]
     [(first (format-honeysql driver
-                             {:create-table-as [(keyword output-table)]
+                             {:create-table-as [target-id]
                               :raw sql-query}))
      sql-params]))
 

@@ -682,7 +682,7 @@
   (do
     (require '[clojure.java.shell :refer [sh]])
     (sh "pbcopy" :in (json/encode (get-slack-manifest) {:pretty true}))))
-  ;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
+;; 5. there will be a notification at the top of the manifest page to verify your new site url, click verify
 
 ;; ----------------- DEV -----------------------
 

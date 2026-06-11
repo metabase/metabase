@@ -42,7 +42,7 @@ jobs:
 
         env:
           DISPATCH_ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/prepare-backend
       - uses: ./.github/actions/prepare-frontend
 
@@ -130,7 +130,7 @@ jobs:
       - name: Run repro-bot with Claude Code
         id: claude
         continue-on-error: true
-        uses: anthropics/claude-code-action@3ac52d0da9f8ec9ca7b4dc23bb477e36ef9c77a9 # v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1.0.133
         env:
           CLAUDE_CODE_DEBUG_LOGS_DIR: /tmp/claude-debug-logs
           CLAUDE_WORKING_DIR: ${{ github.workspace }}/repro-bot

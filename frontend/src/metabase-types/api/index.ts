@@ -1,6 +1,7 @@
 export * from "./actions";
 export * from "./activity";
 export * from "./admin";
+export * from "./advanced-config";
 export * from "./advanced-permission";
 export * from "./ai-entity-analysis";
 export * from "./alert";
@@ -21,8 +22,10 @@ export * from "./dataset";
 export * from "./dependencies";
 export * from "./document";
 export * from "./email";
+export * from "./embed";
 export * from "./embedding-theme";
 export * from "./entity-id";
+export * from "./erd";
 export * from "./field";
 export * from "./geojson";
 export * from "./group";
@@ -70,6 +73,8 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
+export * from "./workspace";
+export * from "./workspace-instance";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

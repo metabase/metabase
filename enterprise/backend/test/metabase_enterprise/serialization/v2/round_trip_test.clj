@@ -25,7 +25,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing use-fixtures]]
+   [clojure.test :refer [deftest is testing]]
    [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
@@ -38,17 +38,11 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [metabase.warehouses.models.database :as models.database])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path StandardCopyOption)
    (java.nio.file.attribute FileAttribute)))
-
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-                        (thunk))))
 
 (set! *warn-on-reflection* true)
 
@@ -190,15 +184,14 @@
 (defn- update-baseline!
   "Run this if you've examined the output of [[directory-comparison-test]], and are happy to accept the changes."
   []
-  (mt/with-dynamic-fn-redefs [models.database/assert-not-h2! (constantly nil)]
-    (let [temp-dir   (temp-dir "serialization_test")
-          output-dir (.toFile (.resolve temp-dir "serialization_output"))]
-      (mt/with-empty-h2-app-db!
-        (load-extract! source-dir output-dir))
-      (delete-dir-contents! source-dir)
-      (Files/move (.toPath output-dir)
-                  (.toPath source-dir)
-                  (into-array [StandardCopyOption/REPLACE_EXISTING])))))
+  (let [temp-dir   (temp-dir "serialization_test")
+        output-dir (.toFile (.resolve temp-dir "serialization_output"))]
+    (mt/with-empty-h2-app-db!
+      (load-extract! source-dir output-dir))
+    (delete-dir-contents! source-dir)
+    (Files/move (.toPath output-dir)
+                (.toPath source-dir)
+                (into-array [StandardCopyOption/REPLACE_EXISTING]))))
 
 (comment
   (delete-dir-contents! source-dir)

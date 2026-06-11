@@ -1,9 +1,9 @@
 ---
-title: AI in Metabase
+title: AI in Metabase overview
 summary: Overview of all the ways you can use AI with Metabase.
 ---
 
-# AI in Metabase
+# AI in Metabase overview
 
 AI in Metabase is optional. You can use Metabase without AI at all. But if you do want to use AI to interact with Metabase, we have you covered.
 
@@ -50,7 +50,7 @@ See [full docs for MCP server](mcp.md).
 
 **Best for: developers creating stuff that other people will use.**
 
-Use a coding agent like Claude Code to understand your database's metadata, generate Metabase content as YAML files locally, verify the schema, then sync and import the generated content into your production Metabase. Sky's the limit on what you can accomplish.
+Use a coding agent like Claude Code with the Metabase CLI to create Metabase content directly in a development instance, then version that content as YAML files and pull the changes into your production Metabase.
 
 **Controls**: Only admins can sync content to Metabase instances.
 

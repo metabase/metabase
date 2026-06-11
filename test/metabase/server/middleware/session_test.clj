@@ -277,11 +277,10 @@
           (mt/with-premium-features #{}
             (is (= false
                    (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil))))))
-
         (testing "is `true` if advanced-permisison is enabled"
           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
           ;; `enable-advanced-permissions?` will still return false
-          (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
+          (mt/with-dynamic-fn-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
             (is (true?
                  (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil)))))))
       (finally
@@ -298,7 +297,6 @@
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))
-
     (testing "...but if we do specifiy the token, they should come back"
       (try
         (t2/insert! :model/Session {:id              test-session-id
@@ -314,7 +312,6 @@
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
           (t2/delete! :model/Session :id test-session-id)))
-
       (testing "(unless the token is wrong)"
         (try
           (t2/insert! :model/Session {:id              test-session-id
@@ -436,7 +433,6 @@
     (testing "No Session"
       (is (= nil
              (session-locale nil))))
-
     (testing "w/ Session"
       (testing "for user with no `:locale`"
         (mt/with-temp [:model/User {user-id :id}]
@@ -446,11 +442,9 @@
             (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id})
             (is (= nil
                    (session-locale session-key)))
-
             (testing "w/ X-Metabase-Locale header"
               (is (= "es_MX"
                      (session-locale session-key :headers {"x-metabase-locale" "es-mx"})))))))
-
       (testing "for user *with* `:locale`"
         (mt/with-temp [:model/User {user-id :id} {:locale "es-MX"}]
           (let [session-id (session/generate-session-id)
@@ -459,7 +453,6 @@
             (t2/insert! :model/Session {:id session-id :key_hashed session-key-hashed, :user_id user-id, :created_at :%now})
             (is (= "es_MX"
                    (session-locale session-key)))
-
             (testing "w/ X-Metabase-Locale header"
               (is (= "en_GB"
                      (session-locale session-key :headers {"x-metabase-locale" "en-GB"}))))))))))
@@ -483,7 +476,6 @@
                                                       :path      "/"
                                                       :expires   "Sat, 1 Jan 2022 01:00:00 GMT"}}}
                    (mw.session/reset-session-timeout* request response request-time)))))
-
         (testing "with embedded sessions"
           (let [request {:cookies               {request/metabase-embedded-session-cookie {:value "8df268ab-00c0-4b40-9413-d66b966b696a"}
                                                  request/metabase-session-timeout-cookie  {:value "alive"}}
@@ -526,21 +518,23 @@
 (deftest auth-method-test
   (testing "auth-method prefers route-based override on special routes"
     (let [f #'mw.session/auth-method]
-      (are [session-info api-key-info embedding-route expected]
-           (= expected (f session-info api-key-info embedding-route))
+      (are [session-info api-key-info oauth-info embedding-route expected]
+           (= expected (f session-info api-key-info oauth-info embedding-route))
         ;; session-based auth on non-special routes
-        {:auth-provider "password"} nil nil            "password"
-        {:auth-provider "saml"}     nil nil            "saml"
-        {:auth-provider "jwt"}      nil nil            "jwt"
-        {:auth-provider "ldap"}     nil nil            "ldap"
-        {}                          nil nil            "session"
+        {:auth-provider "password"} nil nil nil            "password"
+        {:auth-provider "saml"}     nil nil nil            "saml"
+        {:auth-provider "jwt"}      nil nil nil            "jwt"
+        {:auth-provider "ldap"}     nil nil nil            "ldap"
+        {}                          nil nil nil            "session"
         ;; api-key on non-special route
-        nil                         {}  nil            "api-key"
+        nil                         {}  nil nil            "api-key"
+        ;; oauth bearer on non-special route
+        nil                         nil {:metabase-user-id 1} nil "oauth"
         ;; route override: special routes win over credentials
-        nil                         {}  "guest-embed"  "guest"   ; api-key + embed -> guest
-        nil                         nil "guest-embed"  "guest"   ; anon guest embed
-        nil                         nil "public"       "public"
-        nil                         nil "metabot"      "metabot"
-        nil                         nil "agent-api"    "agent-api"
+        nil                         {}  nil "guest-embed"  "guest"   ; api-key + embed -> guest
+        nil                         nil nil "guest-embed"  "guest"   ; anon guest embed
+        nil                         nil nil "public"       "public"
+        nil                         nil nil "metabot"      "metabot"
+        nil                         nil nil "agent-api"    "agent-api"
         ;; fully anonymous, non-special route
-        nil                         nil nil            nil))))
+        nil                         nil nil nil            nil))))

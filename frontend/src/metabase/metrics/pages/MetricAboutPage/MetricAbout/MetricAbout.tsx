@@ -1,18 +1,15 @@
-import { useCallback, useMemo } from "react";
-import { push } from "react-router-redux";
-
-import { OverviewVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
-import { useMetricDefinition } from "metabase/metrics/common/hooks";
-import { useDispatch } from "metabase/redux";
+import { MetricCardVisualization } from "metabase/data-studio/common/components/OverviewVisualization";
+import { useCardQueryData } from "metabase/data-studio/common/hooks/use-card-query-data";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { Box, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import * as LibMetric from "metabase-lib/metric";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { Card } from "metabase-types/api";
 
 import type { MetricUrls } from "../../../types";
 
 import { AboutVisualization } from "./AboutVisualization";
 import { DescriptionSection } from "./DescriptionSection";
+import { ExploreMetricButton } from "./ExploreMetricButton";
 import S from "./MetricAbout.module.css";
 
 interface MetricAboutProps {
@@ -21,37 +18,30 @@ interface MetricAboutProps {
 }
 
 export function MetricAbout({ card, urls }: MetricAboutProps) {
-  const { definition } = useMetricDefinition(card.id ?? null);
-  const dispatch = useDispatch();
+  const { data, isLoading } = useCardQueryData(card);
 
-  const hasTimeDimension = useMemo(
-    () =>
-      definition
-        ? LibMetric.defaultBreakoutDimensions(definition).some(
-            LibMetric.isDateOrDateTime,
-          )
-        : false,
-    [definition],
-  );
-
-  const handleChartClick = useCallback(() => {
-    if (card.id != null) {
-      dispatch(push(Urls.exploreMetric(card.id)));
-    }
-  }, [dispatch, card.id]);
+  // Time series → show value + change over time. Keyed off result columns, not the
+  // Lib metric definition, so metrics defined on models (name-based breakout refs) work too.
+  const cols = card.result_metadata;
+  const isTimeSeries = isDate(cols?.[0]) && isNumeric(cols?.[1]);
 
   return (
-    <Flex className={S.root} flex={1}>
-      <Box
-        className={S.chartContainer}
-        flex={1}
-        mah={700}
-        onClick={handleChartClick}
-      >
-        {hasTimeDimension ? (
+    <Flex className={S.root} flex={1} gap="md">
+      <Box className={S.chartContainer} flex={1} mah={700}>
+        {isNumericMetric(card) && (
+          <Box className={S.exploreButtonOverlay}>
+            <ExploreMetricButton cardId={card.id} />
+          </Box>
+        )}
+        {isTimeSeries ? (
           <AboutVisualization card={card} />
         ) : (
-          <OverviewVisualization card={card} />
+          <MetricCardVisualization
+            card={card}
+            data={data}
+            isLoading={isLoading}
+            className={S.visualizationPanel}
+          />
         )}
       </Box>
       <Stack flex="0 0 360px" className={S.descriptionSection} mah={700}>

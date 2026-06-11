@@ -190,7 +190,7 @@
                                                                 (^:once fn* [query info]
                                                                   (qp
                                                                    (qp/userland-query query info)
-                                                               ;; Pass streaming rff with 2000 row threshold
+                                                                   ;; Pass streaming rff with 2000 row threshold
                                                                    (notification.temp-storage/notification-rff
                                                                     cells-to-disk-threshold
                                                                     {:dashboard_id dashboard_id
@@ -311,13 +311,12 @@
                                                                     (^:once fn* [query info]
                                                                       (qp
                                                                        (qp/userland-query query info)
-                                                                      ;; Pass streaming rff with 2000 row threshold
+                                                                       ;; Pass streaming rff with 2000 row threshold
                                                                        (notification.temp-storage/notification-rff
                                                                         cells-to-disk-threshold
                                                                         {:card-id card-id})))))
                      fixup-viz-settings
                      format-qp-result))]
-
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
      :result result

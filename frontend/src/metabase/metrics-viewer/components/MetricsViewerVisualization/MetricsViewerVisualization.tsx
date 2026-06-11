@@ -17,8 +17,8 @@ import type { CardId, SingleSeries } from "metabase-types/api";
 import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
-  MetricsViewerTabState,
 } from "../../types/viewer-state";
 
 import S from "./MetricsViewerVisualization.module.css";
@@ -30,8 +30,10 @@ type MetricsViewerVisualizationProps = {
   definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
   formulaEntities: MetricsViewerFormulaEntity[];
   metricSlots: MetricSlot[];
-  tab: MetricsViewerTabState;
-  onTabUpdate: (updates: Partial<MetricsViewerTabState>) => void;
+  dimensionBreakout: MetricsViewerDimensionBreakoutState;
+  onDimensionBreakoutUpdate: (
+    updates: Partial<MetricsViewerDimensionBreakoutState>,
+  ) => void;
   cardIdToEntityIndex: Record<CardId, number>;
   interactive?: boolean;
   queriesAreLoading: boolean;
@@ -45,8 +47,8 @@ export function MetricsViewerVisualization({
   definitions,
   formulaEntities,
   metricSlots,
-  tab,
-  onTabUpdate,
+  dimensionBreakout,
+  onDimensionBreakoutUpdate,
   cardIdToEntityIndex,
   interactive = true,
   queriesAreLoading,
@@ -62,8 +64,8 @@ export function MetricsViewerVisualization({
             definitions,
             formulaEntities,
             metricSlots,
-            tab,
-            onTabUpdate,
+            dimensionBreakout,
+            onDimensionBreakoutUpdate,
             cardIdToEntityIndex,
           })
         : undefined,
@@ -73,8 +75,8 @@ export function MetricsViewerVisualization({
       formulaEntities,
       metricSlots,
       interactive,
-      onTabUpdate,
-      tab,
+      onDimensionBreakoutUpdate,
+      dimensionBreakout,
     ],
   );
 
@@ -119,7 +121,8 @@ export function MetricsViewerVisualization({
       className={className}
     >
       {rawSeries.length > 1 &&
-      DISPLAY_TYPE_REGISTRY[tab.display].supportsMultipleSeries === false ? (
+      DISPLAY_TYPE_REGISTRY[dimensionBreakout.display]
+        .supportsMultipleSeries === false ? (
         <SimpleGrid cols={cols} flex={1} spacing={0}>
           {rawSeries.map((series, i) => (
             <Stack

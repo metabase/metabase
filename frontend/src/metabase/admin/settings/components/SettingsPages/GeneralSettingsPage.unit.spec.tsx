@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   findRequests,
@@ -34,15 +35,28 @@ const generalSettings = {
   "humanization-strategy": "simple",
   "enable-xrays": false,
   "allowed-iframe-hosts": "https://cooldashboards.limo",
+  "csp-img-enabled": true,
+  "csp-img-allowed-hosts": "https://imgcdn.example.com",
   "search-engine": "appdb",
+  "custom-viz-enabled": false,
 } as const;
 
 const setup = async ({
   isCloudPlan,
   hasAuditApp,
-}: { isCloudPlan?: boolean; hasAuditApp?: boolean } = {}) => {
+  cspImgEnabled,
+  customVizEnabled,
+}: {
+  isCloudPlan?: boolean;
+  hasAuditApp?: boolean;
+  cspImgEnabled?: boolean;
+  customVizEnabled?: boolean;
+} = {}) => {
   const settings = createMockSettings({
     ...generalSettings,
+    "csp-img-enabled": cspImgEnabled ?? generalSettings["csp-img-enabled"],
+    "custom-viz-enabled":
+      customVizEnabled ?? generalSettings["custom-viz-enabled"],
     "token-features": createMockTokenFeatures({
       hosting: isCloudPlan ?? false,
       audit_app: hasAuditApp ?? true,
@@ -74,10 +88,16 @@ const setup = async ({
   });
 
   renderWithProviders(
-    <>
-      <GeneralSettingsPage />
-      <UndoListing />
-    </>,
+    <Route
+      path="*"
+      component={() => (
+        <>
+          <GeneralSettingsPage />
+          <UndoListing />
+        </>
+      )}
+    />,
+    { withRouter: true, initialRoute: "/admin/settings/general" },
   );
 
   await screen.findByText("Site name");
@@ -91,13 +111,15 @@ describe("GeneralSettingsPage", () => {
       "Site name",
       "Site url",
       "Redirect to HTTPS",
-      "Custom homepage",
+      "Homepage",
       "Email address for help requests",
       "Send anonymous tracking data to Metabase",
       "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
+      "Restrict image domains",
+      "Allowed domains for images",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -166,6 +188,45 @@ describe("GeneralSettingsPage", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(2);
     });
+  });
+
+  it("should load and persist the allowed image domains setting", async () => {
+    await setup();
+
+    const imgInput = await screen.findByLabelText("Allowed domains for images");
+    await userEvent.clear(imgInput);
+    await userEvent.type(imgInput, "https://images.example.org");
+    await userEvent.tab();
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(
+        puts.some((req) =>
+          req.url.includes("/api/setting/csp-img-allowed-hosts"),
+        ),
+      ).toBe(true);
+    });
+
+    const imgPut = (await findRequests("PUT")).find((req) =>
+      req.url.includes("/api/setting/csp-img-allowed-hosts"),
+    );
+    expect(imgPut?.body).toEqual({ value: "https://images.example.org" });
+  });
+
+  it("should disable the allowed-hosts textarea when csp-img-enabled is off", async () => {
+    await setup({ cspImgEnabled: false });
+
+    const imgInput = await screen.findByLabelText("Allowed domains for images");
+    expect(imgInput).toBeDisabled();
+  });
+
+  it("should disable the csp-img-enabled toggle when custom-viz is enabled", async () => {
+    await setup({ cspImgEnabled: true, customVizEnabled: true });
+
+    const toggle = await screen.findByRole("switch", {
+      name: /Restrict image domains/i,
+    });
+    expect(toggle).toBeDisabled();
   });
 
   it("should show Anonymous Tracking input for non-cloud plans", async () => {

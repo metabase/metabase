@@ -4,6 +4,10 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.email.messages :as messages]
+   [metabase.channel.init]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.events.core :as events]
    [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -16,7 +20,8 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.model-persistence.init/keep-me)
+(comment metabase.channel.init/keep-me
+         metabase.model-persistence.init/keep-me)
 
 (p/defprotocol+ ^:private GetSchedule
   (^:private schedule-string [_]))
@@ -127,19 +132,51 @@
                                (refresh! [_ _database _definition _card]
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))
-              original-update! t2/update!]
+              original-update! (mt/original-fn #'t2/update!)]
           (testing "If saving the `persisted` (or `error`) state fails..."
-            (with-redefs [t2/update! (fn [model id update]
-                                       (when (= "persisted" (:state update))
-                                         (throw (ex-info "simulated error" {})))
-                                       (original-update! model id update))]
+            (mt/with-dynamic-fn-redefs [t2/update! (fn [model id update]
+                                                     (when (= "persisted" (:state update))
+                                                       (throw (ex-info "simulated error" {})))
+                                                     (original-update! model id update))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
-                                    (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
+                                    (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil))))
             (testing "the PersistedInfo is left in the `refreshing` state"
               (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
             (testing "but a subsequent refresh run will refresh the table"
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
+
+(deftest task-establishes-no-write-connection-context-test
+  (testing "The persist-refresh task layer leaves *connection-type* at :default; refresh! and unpersist!
+            implementations are responsible for declaring write themselves (so a read sub-step like query
+            compilation is not forced into a write context)."
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-temp [:model/Database     db {:settings {:persist-models-enabled true}}
+                     :model/Card         model {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo _refreshable {:card_id (u/the-id model) :database_id (u/the-id db)}
+                     :model/Card         model2 {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo deletable {:card_id         (u/the-id model2)
+                                                     :database_id     (u/the-id db)
+                                                     :state           "deletable"
+                                                     ;; old enough to be prunable
+                                                     :state_change_at (t/minus (t/local-date-time) (t/hours 2))}]
+        (testing "refresh! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card]
+                              (reset! seen @#'driver.conn/*connection-type*)
+                              {:state :success})
+                            (unpersist! [_ _database _persisted-info]))]
+            (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher nil)
+            (is (= :default @seen))))
+        (testing "unpersist! receives :default"
+          (let [seen      (atom ::unset)
+                refresher (reify task.persist-refresh/Refresher
+                            (refresh! [_ _database _definition _card] {:state :success})
+                            (unpersist! [_ _database _persisted-info]
+                              (reset! seen @#'driver.conn/*connection-type*)))]
+            (#'task.persist-refresh/prune-deletables! refresher [deletable])
+            (is (= :default @seen))))))))
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [:model/TaskHistory]
@@ -159,7 +196,7 @@
                                  (swap! card-ids conj (:id card))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (testing "Does not refresh archived cards or cards no longer models."
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
@@ -178,7 +215,7 @@
                                    (throw (ex-info "DBs are risky" {:ka :boom})))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
@@ -195,7 +232,7 @@
                      :model/PersistedInfo punmodeled {:card_id (u/the-id unmodeled) :database_id (u/the-id db)}
                      :model/PersistedInfo deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
                                                      :state "deletable"
-                                              ;; need an "old enough" state change
+                                                     ;; need an "old enough" state change
                                                      :state_change_at (t/minus (t/local-date-time) (t/hours 2))}
                      ;; Record not in "deletable" state, but with nil card_id
                      :model/PersistedInfo deletable2 {:card_id nil :database_id (u/the-id db)}]
@@ -209,7 +246,7 @@
             (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
-            ;; we manually pass in the deleteable ones to not catch others in a running instance
+          ;; we manually pass in the deleteable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           (testing "We delete persisted_info records for all of the pruned"
             (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
@@ -222,7 +259,7 @@
                                  :id)
                                 persisted-records)]
               (is (= [] existing))))
-            ;; don't assert equality if there are any deletable in the app db
+          ;; don't assert equality if there are any deletable in the app db
           (doseq [deletable-persisted [deletable punmodeled parchived]]
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"
@@ -259,9 +296,47 @@
     (testing "send an email if persist-refresh fails"
       (let [email-sent (atom false)]
         ;; TODO -- a real test that actually made sure this function worked instead of swapping it out would be nice.
-        (with-redefs [task.persist-refresh/publish-refresh-error-event! (fn [& _args]
-                                                                          (reset! email-sent true))]
+        (mt/with-dynamic-fn-redefs [task.persist-refresh/publish-refresh-error-event! (fn [& _args]
+                                                                                        (reset! email-sent true))]
           (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
                                                      (fn []
                                                        {:error-details ["some-error"]}))
           (is (true? @email-sent)))))))
+
+(deftest persisted-model-refresh-error-event-accepts-quartz-trigger-test
+  (with-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
+    (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/8 * * ? *")]
+      (is (identical?
+           trigger
+           (:trigger (events/publish-event!
+                      :event/persisted-model-refresh-error
+                      {:database-id     1
+                       :persisted-infos [{:id       1
+                                          :error    "boom"
+                                          :database {:id 1}
+                                          :card     {:collection nil}}]
+                       :trigger         trigger})))))))
+
+(deftest publish-refresh-error-event-sends-admin-email-test
+  (mt/with-fake-inbox
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-temp [:model/Database       db             {:settings {:persist-models-enabled true}}
+                     :model/Card           model          {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo  persisted-info {:card_id     (u/the-id model)
+                                                           :database_id (u/the-id db)
+                                                           :state       "persisted"}]
+        (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger db "0 0 0/8 * * ? *")]
+          (#'task.persist-refresh/save-task-history!
+           "persist-refresh" (u/the-id db)
+           (fn []
+             {:success       0
+              :error         1
+              :trigger       trigger
+              :error-details [{:persisted-info-id (u/the-id persisted-info)
+                               :error             "simulated refresh failure"}]})))
+        (let [msgs (get @mt/inbox "crowberto@metabase.com")
+              body (-> msgs first :body first :content str)]
+          (is (= 1 (count msgs)))
+          (is (re-find #"Model cache refresh failed" (str (:subject (first msgs)))))
+          (is (re-find #"Last run trigger" body))
+          (is (re-find #"Scheduled" body)))))))

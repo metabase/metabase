@@ -41,11 +41,9 @@
       (testing (pr-str (list 'locale x))
         (is (= (Locale/forLanguageTag (if language "en-US" "en"))
                (i18n.impl/locale x)))))
-
     (testing "If something is already a Locale, `locale` should act as an identity fn"
       (is (= (Locale/forLanguageTag "en-US")
              (i18n.impl/locale #locale "en-US")))))
-
   (testing "nil"
     (is (= nil
            (i18n.impl/locale nil)))))
@@ -109,20 +107,16 @@
     (testing "Should be able to translate stuff"
       (is (= "¡Tu base de datos ha sido añadida!"
              (i18n.impl/translate "es" "Your database has been added!"))))
-
     (testing "should be able to use language-country Locale if available"
       (is (= "Está muy bien, gracias"
              (i18n.impl/translate "es-MX" "I''m good thanks"))))
-
     (testing "should fall back from `language-country` Locale to `language`"
       (is (= "¡Tu base de datos ha sido añadida!"
              (i18n.impl/translate "es-MX" "Your database has been added!"))))
-
     (testing "Should fall back to English if no bundles/translations exist"
       (is (= "abc 123 wow"
              (i18n.impl/translate "ok" "abc 123 wow")
              (i18n.impl/translate "es" "abc 123 wow"))))
-
     (testing "format strings with arguments"
       (is (= "deben tener 140 caracteres o menos"
              (i18n.impl/translate "es" "must be {0} characters or less" [140]))))))
@@ -132,7 +126,6 @@
     (testing "Should fall back to original format string if translated one is busted"
       (is (= "Bad translation 100"
              (i18n.impl/translate "ba-DD" "Bad translation {0}" [100]))))
-
     (testing "if the original format string is busted, should just return format-string as-is (better than nothing)"
       (is (= "Bad original {a}"
              (i18n.impl/translate "ba-DD" "Bad original {a}" [100]))))))
@@ -144,7 +137,7 @@
       (binding [config/*disable-setting-cache* true]
         (is (= "en" (i18n.impl/site-locale-from-setting)))
         ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
-        (with-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
             (is (nil? (i18n/site-locale))
                 `i18n/site-locale)

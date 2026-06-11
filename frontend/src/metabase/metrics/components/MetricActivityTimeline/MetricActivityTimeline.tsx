@@ -50,7 +50,7 @@ export function MetricActivityTimeline({ card }: MetricActivityTimelineProps) {
           entity: "card",
           id: card.id,
           revision_id: revision.id,
-        })
+        }).unwrap()
       }
       canWrite={card.can_write}
       entity="card"

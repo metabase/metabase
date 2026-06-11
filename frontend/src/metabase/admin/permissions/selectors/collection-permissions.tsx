@@ -10,15 +10,13 @@ import {
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
 import { collectionApi } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import {
+  getCollectionIcon,
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
-import {
-  ROOT_COLLECTION,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,
@@ -32,6 +30,7 @@ import type {
   CollectionNamespace,
   CollectionPermissions,
   Group as GroupType,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
@@ -41,7 +40,6 @@ import {
   DataPermissionType,
   type DataPermissionValue,
   type PermissionEditorType,
-  type SpecialGroupType,
 } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";

@@ -76,57 +76,46 @@
                                                    {:primary-key [:id]}]]
           (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-
             (write-sequence! table-id {:id 1} [[user-id {:name "Snorkmaiden" :favourite_food "pork"}]
                                                [user-id {:name "Snorkmaiden" :favourite_food "orc"}]
                                                [user-id nil]])
-
             (is (= [] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (not (next-batch-num :redo user-id test-scope)))
             (is (= {:outputs [{:op "created", :table-id table-id :row {:id 1, :name "Snorkmaiden", :favourite_food "orc"}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
             (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 1, :name "Snorkmaiden", :favourite_food "pork"}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
             (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 1}}]}
                    (undo-via-api! user-id test-scope)))
             (is (= [] (table-rows table-id)))
-
             (is (not (next-batch-num :undo user-id test-scope)))
             (is (next-batch-num :redo user-id test-scope))
             (is (= "Nothing to do" (undo-via-api! user-id test-scope)))
-
             (is (not (next-batch-num :undo user-id test-scope)))
             (is (next-batch-num :redo user-id test-scope))
             (is (= {:outputs [{:op "created", :table-id table-id :row {:id 1, :name "Snorkmaiden", :favourite_food "pork"}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "pork"]] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
             (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 1, :name "Snorkmaiden", :favourite_food "orc"}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [[1 "Snorkmaiden" "orc"]] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (next-batch-num :redo user-id test-scope))
             (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 1}}]}
                    (redo-via-api! user-id test-scope)))
             (is (= [] (table-rows table-id)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (not (next-batch-num :redo user-id test-scope)))
             (is (= "Nothing to do" (redo-via-api! user-id test-scope)))
-
             (is (next-batch-num :undo user-id test-scope))
             (is (not (next-batch-num :redo user-id test-scope)))))))))
 
@@ -144,31 +133,25 @@
           (mt/with-temp [:model/User {user-2 :id} {:is_superuser true}]
             (let [user-1     (mt/user->id :crowberto)
                   test-scope {:table-id table-id}]
-
-             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
-             ;; If we improve the semantics, we'll need to improve this test!
+              ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
+              ;; If we improve the semantics, we'll need to improve this test!
 
               (write-sequence! table-id {:id 2} [[user-1 {:name "Moomintroll" :power 3}]
                                                  [user-1 {:name "Moomintroll" :power 9001}]
                                                  [user-2 {:name "Moominswole" :power 9001}]
                                                  [user-1 nil]])
-
               (is (= [] (table-rows table-id)))
-
               (is (next-batch-num :undo user-2 test-scope))
               (is (not (next-batch-num :redo user-2 test-scope)))
               (is (= "Your previous change has a conflict with another edit" (undo-via-api! user-2 test-scope)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (not (next-batch-num :redo user-1 test-scope)))
               (is (= {:outputs [{:op "created", :table-id table-id, :row {:id 2, :name "Moominswole", :power 9001}}]}
                      (undo-via-api! user-1 test-scope)))
               (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= "Your previous change has a conflict with another edit" (undo-via-api! user-1 test-scope)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (next-batch-num :undo user-2 test-scope))
@@ -176,55 +159,45 @@
               (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 9001}}]}
                      (undo-via-api! user-2 test-scope)))
               (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 3}}]}
                      (undo-via-api! user-1 test-scope)))
               (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 2}}]}
                      (undo-via-api! user-1 test-scope)))
               (is (= [] (table-rows table-id)))
-
               (is (not (next-batch-num :undo user-1 test-scope)))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= "Nothing to do" (undo-via-api! user-1 test-scope)))
-
               (is (not (next-batch-num :undo user-1 test-scope)))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "created", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 3}}]}
                      (redo-via-api! user-1 test-scope)))
               (is (= [[2 "Moomintroll" 3]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moomintroll", :power 9001}}]}
                      (redo-via-api! user-1 test-scope)))
               (is (= [[2 "Moomintroll" 9001]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "updated", :table-id table-id, :row {:id 2, :name "Moominswole", :power 9001}}]}
                      (redo-via-api! user-2 test-scope)))
               (is (= [[2 "Moominswole" 9001]] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (next-batch-num :redo user-1 test-scope))
               (is (= {:outputs [{:op "deleted", :table-id table-id, :row {:id 2}}]}
                      (redo-via-api! user-1 test-scope)))
               (is (= [] (table-rows table-id)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (not (next-batch-num :redo user-1 test-scope)))
               (is (= "Nothing to do" (redo-via-api! user-1 test-scope)))
-
               (is (next-batch-num :undo user-2 test-scope))
               (is (not (next-batch-num :redo user-2 test-scope)))
               (is (= "Nothing to do" (redo-via-api! user-2 test-scope)))
-
               (is (next-batch-num :undo user-1 test-scope))
               (is (not (next-batch-num :redo user-1 test-scope))))))))))
 
@@ -238,32 +211,24 @@
                                                    {:primary-key [:id]}]]
           (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-
             ;; NOTE: this test relies on the "conflicts even when different columns changed" semantics
             ;; If we improve the semantics, we'll need to improve this test!
 
             (write-sequence! table-id {:id 1} [[user-id {:name "Too-ticky" :status "sitting"}]
                                                [user-id {:name "Too-tickley" :status "squirming"}]
                                                [user-id nil]])
-
             (write-sequence! table-id {:id 2} [[user-id {:name "Toffle" :status "uncomfortable"}]
                                                [user-id {:name "Toffle" :status "comforted"}]
                                                [user-id nil]])
-
             (action-v2.tu/create-rows! table-id user-id 200 [{:id 1, :name "Too-tickley", :status "squirming"}])
-
             (action-v2.tu/create-rows! table-id user-id 200 [{:id 2, :name "Toggle", :status "restored"}])
             (action-v2.tu/delete-rows! table-id user-id 200 [{:id 2}])
-
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))
-
             (is (nil? (next-batch-num :redo user-id test-scope)))
             (is (next-batch-num :undo user-id test-scope))
-
             (undo-via-api! user-id test-scope)
             (is (= [[1 "Too-tickley" "squirming"]
                     [2 "Toggle" "restored"]] (table-rows table-id)))
-
             (redo-via-api! user-id test-scope)
             (is (= [[1 "Too-tickley" "squirming"]] (table-rows table-id)))))))))
 
@@ -280,7 +245,6 @@
                                          table-2 [{:id [:int]} {:primary-key [:id]}]]
           (let [user-1     (mt/user->id :crowberto)
                 user-2     (mt/user->id :rasta)]
-
             (testing "Total rows"
               (with-redefs [undo/retention-total-rows 17]
                 (dotimes [i 25]
@@ -291,10 +255,8 @@
                                                  :raw_after  (if (even? i) nil {})}
                                         {:id 2} {:raw_before (if (odd? i) {} nil)
                                                  :raw_after  (if (odd? i) nil {})}}})))
-
               (is (= 16 (t2/count :model/Undo)))
               (is (= 8 (count-batches))))
-
             (testing "Total batches"
               (with-redefs [undo/retention-total-batches 15]
                 (dotimes [i 25]
@@ -305,10 +267,8 @@
                                                  :raw_after  (if (even? i) nil {})}
                                         {:id 2} {:raw_before (if (odd? i) {} nil)
                                                  :raw_after  (if (odd? i) nil {})}}})))
-
               (is (= 30 (t2/count :model/Undo)))
               (is (= 15 (count-batches))))
-
             (testing "User id"
               (with-redefs [undo/retention-batches-per-user 5]
                 (dotimes [i 25]
@@ -320,12 +280,10 @@
                                                  :raw_after  (if (even? i) nil {})}
                                         {:id 2} {:raw_before (if (odd? i) {} nil)
                                                  :raw_after  (if (odd? i) nil {})}}})))
-
               (is (= 20 (t2/count :model/Undo)))
               (is (= 10 (count-batches)))
               (is (= 5 (count-batches [:= :user_id user-1])))
               (is (= 5 (count-batches [:= :user_id user-2]))))
-
             (testing "Scope"
               (t2/delete! :model/Undo)
               (with-redefs [undo/retention-batches-per-scope 9]
@@ -339,18 +297,15 @@
                                                    :raw_after  (if (even? i) nil {})}
                                           {:id 2} {:raw_before (if (odd? i) {} nil)
                                                    :raw_after  (if (odd? i) nil {})}}})))
-
                 (is (= 32 (t2/count :model/Undo)))
                 (is (= 16 (count-batches)))
                 (is (= 7 (count-batches [:= :table_id table-1])))
                 (is (= 9 (count-batches [:= :table_id table-2])))))
-
             (testing "A haphazard mix"
               (with-redefs [undo/retention-total-rows        17
                             undo/retention-total-batches     21
                             undo/retention-batches-per-user  5
                             undo/retention-batches-per-scope 9]
-
                 (dotimes [i 25]
                   ;; just toggle existence
                   (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
@@ -360,7 +315,6 @@
                                                  :raw_after  (if (even? i) nil {})}
                                         {:id 2} {:raw_before (if (odd? i) {} nil)
                                                  :raw_after  (if (odd? i) nil {})}}})))
-
               (is (= 16 (t2/count :model/Undo)))
               (is (= 8 (count-batches)))
               (is (= 3 (count-batches [:= :user_id user-1])))
@@ -377,10 +331,8 @@
                                                    {:primary-key [:id]}]]
           (let [user-id    (mt/user->id :crowberto)
                 test-scope {:table-id table-id}]
-
             ;; Create a regular undoable change first
             (action-v2.tu/create-rows! table-id user-id 200 [{:id 1, :name "Undoable change"}])
-
             ;; Manually create a non-undoable change using track-change! directly
             (undo/track-change!
              user-id
@@ -391,17 +343,14 @@
                         :undoable   false}}})                            ; mark as non-undoable
 
             (is (= [[1 "Undoable change"]] (table-rows table-id)))
-
             ;; Should have batches available to undo
             (is (next-batch-num :undo user-id test-scope))
             (is (not (next-batch-num :redo user-id test-scope)))
-
             ;; Try to undo - should fail because the latest batch has undoable: false
             (let [before-batch-num (next-batch-num :undo user-id test-scope)]
               (is (= "Your previous change cannot be undone"
                      (undo-via-api! user-id test-scope)))
               (testing "batchnum is unchanged"
                 (is (= before-batch-num (next-batch-num :undo user-id test-scope)))))
-
             ;; Table should remain unchanged
             (is (= [[1 "Undoable change"]] (table-rows table-id)))))))))

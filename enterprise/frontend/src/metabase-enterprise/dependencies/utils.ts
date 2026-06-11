@@ -730,6 +730,10 @@ export function getErrorTypeLabel(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return count === 1 ? t`Missing table` : t`Missing tables`;
+    case "missing-card":
+      return count === 1 ? t`Missing question` : t`Missing questions`;
     case "missing-column":
       return count === 1 ? t`Missing column` : t`Missing columns`;
     case "missing-table-alias":
@@ -748,6 +752,18 @@ export function getErrorTypeLabelWithCount(
   count = 0,
 ): string {
   switch (type) {
+    case "missing-table":
+      return ngettext(
+        msgid`${count} missing table`,
+        `${count} missing tables`,
+        count,
+      );
+    case "missing-card":
+      return ngettext(
+        msgid`${count} missing question`,
+        `${count} missing questions`,
+        count,
+      );
     case "missing-column":
       return ngettext(
         msgid`${count} missing column`,

@@ -35,7 +35,6 @@
            (seq metadata-keys))
       (let [overrides       (if (seq id)
                               (select-keys type-overrides id)
-
                               (into {} (keep #(when-let [x (deref %)]
                                                 (when (search-name (:name x))
                                                   [(:name x) %])))

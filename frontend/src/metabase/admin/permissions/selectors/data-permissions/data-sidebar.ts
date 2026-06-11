@@ -9,9 +9,12 @@ import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { isNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Database as DatabaseType } from "metabase-types/api";
+import type {
+  Database as DatabaseType,
+  PermissionEntityId,
+} from "metabase-types/api";
 
-import type { EntityId, RawDataRouteParams } from "../../types";
+import type { RawDataRouteParams } from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,
@@ -22,7 +25,7 @@ import { getDatabase } from "../../utils/metadata";
 import { getIsLoadingDatabaseTables } from "./permission-editor";
 
 export type DataTreeNodeItem = {
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 

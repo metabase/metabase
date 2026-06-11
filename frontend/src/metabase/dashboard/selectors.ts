@@ -8,7 +8,6 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
-import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getDashboardQuestions,
@@ -47,6 +46,7 @@ import type {
   DashboardId,
   DashboardParameterMapping,
   DashboardTabId,
+  EmbeddingParameterVisibility,
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";

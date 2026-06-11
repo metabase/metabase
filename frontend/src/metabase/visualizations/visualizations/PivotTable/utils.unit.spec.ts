@@ -1,3 +1,4 @@
+import { COLUMN_SPLIT_SETTING } from "metabase/visualizations/lib/data_grid";
 import type { PivotTableColumnSplitSetting } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
 
@@ -323,6 +324,43 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rows: [],
       };
       expect(() => checkRenderable([{ data }] as any, {} as any)).not.toThrow();
+    });
+
+    it("should throw for native columns without saved pivot settings", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "native", name: "field-1" }),
+          createMockColumn({ source: "native", name: "count" }),
+        ],
+        rows: [],
+      };
+
+      expect(() => checkRenderable([{ data }] as any, {} as any)).toThrow(
+        /only supported for questions built in the query builder/,
+      );
+    });
+
+    it("should not throw for native columns with saved pivot settings (#69100)", () => {
+      const data = {
+        cols: [
+          createMockColumn({ source: "native", name: "field-1" }),
+          createMockColumn({ source: "native", name: "count" }),
+        ],
+        rows: [],
+      };
+
+      expect(() =>
+        checkRenderable(
+          [{ data }] as any,
+          {
+            [COLUMN_SPLIT_SETTING]: {
+              columns: [],
+              rows: ["field-1"],
+              values: ["count"],
+            },
+          } as any,
+        ),
+      ).not.toThrow();
     });
   });
 

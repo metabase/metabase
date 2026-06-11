@@ -1,11 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { datasetApi } from "metabase/api";
 import { useLazyGetBugReportDetailsQuery } from "metabase/api/bug-report";
 import { useLazyListLogsQuery } from "metabase/api/logger";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { MetabaseApi } from "metabase/services";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
@@ -81,7 +82,11 @@ export const useErrorInfo = (
     const queryResults =
       hasQueryData(entity) &&
       entityInfo?.dataset_query &&
-      (await MetabaseApi.dataset(entityInfo.dataset_query).catch(nullOnCatch));
+      (await runRtkEndpoint(
+        entityInfo.dataset_query,
+        dispatch,
+        datasetApi.endpoints.getAdhocQuery,
+      ).catch(nullOnCatch));
 
     // if this is an ad-hoc exploration on top of a saved question, fetch the original card
     if (hasQueryData(entity) && entityInfo?.original_card_id) {

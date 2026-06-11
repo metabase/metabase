@@ -22,11 +22,9 @@ import {
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
 import { collectionApi } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { getCollectionIcon } from "metabase/collections/utils";
 import { findCollectionById } from "metabase/common/utils/collections";
-import {
-  ROOT_COLLECTION,
-  getCollectionIcon,
-} from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";

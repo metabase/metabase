@@ -16,7 +16,7 @@ import { Box, Popover } from "metabase/ui";
 
 import { DatePicker } from "./DatePicker";
 
-import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),

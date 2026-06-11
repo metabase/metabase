@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
+import { ROOT_COLLECTION } from "metabase/collections/constants";
 import { isPublicCollection } from "metabase/collections/utils";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,14 +10,13 @@ import {
   DashboardPickerModal,
   QuestionPickerModal,
 } from "metabase/common/components/Pickers";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import CS from "metabase/css/core/index.css";
 import {
   ClickMappings,
   clickTargetObjectType,
 } from "metabase/dashboard/components/ClickMappings";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import { Questions } from "metabase/entities/questions";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Icon, Select } from "metabase/ui";
@@ -40,7 +40,7 @@ const LINK_TARGETS = {
   // TODO: we can probably just have one picker to pick either a question or a dashboard
   question: {
     Name: ({ id }: { id: CardId | DashboardId | undefined }) => (
-      <Questions.Name id={id} />
+      <QuestionName id={id as CardId | undefined} />
     ),
     PickerComponent: QuestionPickerModal,
     pickerIcon: "bar" as const,

@@ -133,6 +133,42 @@ describe("data_grid", () => {
       expect(pivotedData.cols[1].display_name).toEqual(expect.any(String));
     });
 
+    it("should format hour-of-day pivot column headers without the date (metabase#74525)", () => {
+      const Dhour = {
+        name: "Dhour",
+        display_name: "Created At: Hour of day",
+        base_type: TYPE.DateTime,
+        unit: "hour-of-day",
+        source: "breakout",
+      };
+      const data = {
+        rows: [
+          ["a", "2020-01-01T00:00:00", 1],
+          ["a", "2020-01-01T06:00:00", 2],
+          ["b", "2020-01-01T00:00:00", 3],
+          ["b", "2020-01-01T06:00:00", 4],
+        ],
+        cols: [D1, Dhour, M],
+      };
+      const settings = {
+        column: (col) =>
+          col === Dhour
+            ? {
+                column: col,
+                date_style: "",
+                time_style: "h:mm A",
+                time_enabled: "minutes",
+              }
+            : { column: col },
+      };
+      const pivotedData = pivot(data, 0, 1, 2, settings);
+      expect(pivotedData.cols.map((col) => col.display_name)).toEqual([
+        "Dimension 1",
+        "12:00 AM",
+        "6:00 AM",
+      ]);
+    });
+
     it("should infer sort order of sparse data correctly", () => {
       const data = makeData([
         ["a", "x", 1],
@@ -281,6 +317,54 @@ describe("data_grid", () => {
       expect(getValues(leftHeaderItems)).toEqual(["x", "y", "Grand totals"]);
       expect(rowCount).toEqual(3);
       expect(columnCount).toEqual(3);
+    });
+
+    it("should add stale native text columns to rows (#69100)", () => {
+      const rawData = {
+        cols: [
+          {
+            name: "Category",
+            display_name: "Category",
+            base_type: TYPE.Text,
+            source: "native",
+          },
+          {
+            name: "State",
+            display_name: "State",
+            base_type: TYPE.Text,
+            source: "native",
+          },
+          {
+            name: "Total",
+            display_name: "Total",
+            base_type: TYPE.Float,
+            source: "native",
+          },
+        ],
+        rows: [
+          ["Doohickey", "CA", 1],
+          ["Gadget", "CA", 2],
+          ["Widget", "CA", 3],
+        ],
+      };
+      const { topHeaderItems, leftHeaderItems, rowCount, columnCount } =
+        multiLevelPivotForIndexes(rawData, [], [], [], {
+          columnSplit: {
+            columns: ["State"],
+            rows: ["Old model - Category"],
+            values: ["Total"],
+          },
+        });
+
+      expect(getValues(topHeaderItems)).toEqual(["CA"]);
+      expect(getValues(leftHeaderItems)).toEqual([
+        "Doohickey",
+        "Gadget",
+        "Widget",
+        "Grand totals",
+      ]);
+      expect(rowCount).toEqual(4);
+      expect(columnCount).toEqual(1);
     });
 
     it("should produce multi-level top header without row totals", () => {

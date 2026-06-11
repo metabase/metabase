@@ -196,17 +196,14 @@
                                          :db_id (u/the-id db)
                                          :active true}]
       (#'sync-tables/archive-tables! db)
-
       (testing "Old deactivated table is archived with suffix"
         (let [archived-table (t2/select-one :model/Table (:id table-1))]
           (is (some? (:archived_at archived-table)))
           (is (str/starts-with? (:name archived-table) "old_table__mbarchiv__"))))
-
       (testing "Recently deactivated table is not archived"
         (let [recent-table (t2/select-one :model/Table (:id table-2))]
           (is (nil? (:archived_at recent-table)))
           (is (= "recent_table" (:name recent-table)))))
-
       (testing "Active table is not affected"
         (let [active-table (t2/select-one :model/Table (:id table-3))]
           (is (nil? (:archived_at active-table)))
@@ -227,12 +224,10 @@
                                             :transform_target false
                                             :deactivated_at   (t/minus (t/offset-date-time) (t/days 30))}]
       (#'sync-tables/archive-tables! db)
-
       (testing "Transform target table is not archived or renamed"
         (let [table (t2/select-one :model/Table (:id provisional))]
           (is (nil? (:archived_at table)))
           (is (= "transform_output" (:name table)))))
-
       (testing "Normal table is archived as usual"
         (let [table (t2/select-one :model/Table (:id normal))]
           (is (some? (:archived_at table)))
@@ -249,7 +244,6 @@
       (let [original-name (:name table)
             original-archived-at (:archived_at table)]
         (#'sync-tables/archive-tables! db)
-
         (let [updated-table (t2/select-one :model/Table (:id table))]
           (is (= original-name (:name updated-table)))
           (is (= original-archived-at (:archived_at updated-table))))))))
@@ -262,16 +256,13 @@
                                        :active true}]
       (testing "Initially active table has no deactivated_at"
         (is (nil? (:deactivated_at (t2/select-one :model/Table (:id table))))))
-
       (testing "Setting active to false sets deactivated_at"
         (t2/update! :model/Table (:id table) {:active false})
         (let [updated-table (t2/select-one :model/Table (:id table))]
           (is (some? (:deactivated_at updated-table)))
           (is (false? (:active updated-table)))))
-
       (testing "Reactivating table clears deactivated_at and archived_at"
         (t2/update! :model/Table (:id table) {:archived_at (t/offset-date-time)})
-
         (t2/update! :model/Table (:id table) {:active true})
         (let [reactivated-table (t2/select-one :model/Table (:id table))]
           (is (nil? (:deactivated_at reactivated-table)))
@@ -286,16 +277,13 @@
                                                 :active false
                                                 :deactivated_at (t/minus (t/offset-date-time) (t/days 20))}]
       (#'sync-tables/archive-tables! db)
-
       (testing "the original table was archived and renamed"
         (let [archived-table (t2/select-one :model/Table (:id original-table))]
           (is (some? (:archived_at archived-table)))
           (is (str/starts-with? (:name archived-table) "sensitive_table__mbarchiv__"))))
-
       (mt/with-temp [:model/Table new-table {:name "sensitive_table"
                                              :db_id (u/the-id db)
                                              :active true}]
-
         (testing "the new table should be treated as completely separate"
           (is (not= (:id original-table) (:id new-table)))
           (is (= "sensitive_table" (:name new-table)))
@@ -327,21 +315,71 @@
       (testing "normal table should be updated to writable"
         (is (true? (t2/select-one-fn :is_writable :model/Table (:id normal-table))))))))
 
+(deftest no-spurious-update-when-metadata-unchanged-test
+  (testing (str "update-table-metadata-if-needed! should not issue an UPDATE (which would bump updated_at) "
+                "when none of the tracked metadata fields have changed. Regression test for GHY-3272 — "
+                "a customer with a trigger on metabase_table.updated_at was seeing it fire on every sync.")
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}
+                   :model/Table    tbl {:name                    "stable_table"
+                                        :db_id                   (u/the-id db)
+                                        :description             nil
+                                        :database_require_filter nil
+                                        :estimated_row_count     100
+                                        :initial_sync_status     "complete"
+                                        :visibility_type         nil
+                                        :is_writable             false
+                                        :data_authority          :unconfigured}]
+      (let [select-cols        (into [:model/Table :id :name :schema :data_authority]
+                                     @#'sync-tables/keys-to-update)
+            matching-metadata  {:name                    "stable_table"
+                                :schema                  nil
+                                :description             nil
+                                :database_require_filter nil
+                                :estimated_row_count     100
+                                :is_writable             false}
+            initial-updated-at (t2/select-one-fn :updated_at :model/Table (:id tbl))]
+        (testing "no-op sync does not bump updated_at"
+          (#'sync-tables/update-table-metadata-if-needed!
+           matching-metadata
+           (t2/select-one select-cols (:id tbl))
+           db)
+          (is (= initial-updated-at
+                 (t2/select-one-fn :updated_at :model/Table (:id tbl)))))
+        (testing "a real change still bumps updated_at"
+          (#'sync-tables/update-table-metadata-if-needed!
+           (assoc matching-metadata :estimated_row_count 999)
+           (t2/select-one select-cols (:id tbl))
+           db)
+          (is (not= initial-updated-at
+                    (t2/select-one-fn :updated_at :model/Table (:id tbl))))
+          (is (= 999
+                 (t2/select-one-fn :estimated_row_count :model/Table (:id tbl)))))))))
+
+(deftest create-or-reactivate-tables-deterministic-id-order-test
+  (testing "new tables are inserted sorted by [schema name] so auto-increment ids are assigned deterministically"
+    (let [metadatas #{{:schema "public" :name "zebra"}
+                      {:schema "alpha"  :name "beta"}
+                      {:schema "public" :name "apple"}
+                      {:schema "public" :name "mango"}}]
+      (mt/with-temp [:model/Database db {}]
+        (#'sync-tables/create-or-reactivate-tables! db metadatas)
+        (is (= ["beta" "apple" "mango" "zebra"]
+               (map :name (t2/select [:model/Table :name]
+                                     :db_id (u/the-id db)
+                                     {:order-by [[:id :asc]]}))))))))
+
 (deftest sample-database-tables-data-authority-test
   (testing "Tables from sample databases should be marked as :ingested"
     (mt/with-temp [:model/Database sample-db {:is_sample true}
                    :model/Database normal-db {:is_sample false}]
       (let [sample-table-metadata {:name "sample_table"}
             normal-table-metadata {:name "normal_table"}]
-
         (testing "creating a table in a sample database"
           (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
             (is (= :ingested (:data_authority created-table)))))
-
         (testing "creating a table in a normal database"
           (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
             (is (= :unconfigured (:data_authority created-table)))))
-
         (testing "reactivating a table in a sample database"
           (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
                                                       :name           "existing_sample_table"

@@ -48,6 +48,7 @@ import {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
@@ -94,7 +95,6 @@ import {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,
@@ -271,6 +271,7 @@ const mapDispatchToProps = {
   onOpenQuestionInfo,
   onOpenQuestionSettings,
   onOpenTimelines,
+  setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 
@@ -306,7 +307,6 @@ const mapDispatchToProps = {
   setDatasetEditorTab,
   setDatasetQuery,
   setDidFirstNonTableChartRender,
-  setIsNativeEditorOpen,
   setIsShowingSnippetSidebar,
   setLimit,
   setMetadataDiff,
@@ -346,7 +346,10 @@ type QueryBuilderInnerProps = ReduxProps &
 
 function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useFavicon({ favicon: props.pageFavicon ?? null });
-  useListTimelinesQuery({ include: "events" });
+  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
+    useListTimelinesQuery({
+      include: "events",
+    });
   const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
     useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
@@ -510,14 +513,22 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   ]);
 
   useEffect(() => {
-    if (areBookmarksLoaded && hasQuestion) {
+    // Gate on the timelines actually being loaded (not just bookmarks), and
+    // re-run when they arrive: showTimelinesForCollection reads the fetched
+    // timelines from the store at dispatch time, so running it before the
+    // `/api/timeline` request resolves dispatches an empty set and the chart
+    // never receives its events. This restores the pre-#73674 `allLoaded`
+    // guarantee that was lost when the Timelines.loadList HOC was removed.
+    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
       showTimelinesForCollection(collectionId);
     }
   }, [
     areBookmarksLoaded,
+    areTimelinesLoaded,
     hasQuestion,
     collectionId,
     showTimelinesForCollection,
+    fetchedTimelines,
   ]);
 
   useEffect(() => {

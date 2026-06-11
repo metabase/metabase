@@ -34,6 +34,7 @@
   (case driver
     nil                  nil
     :postgres            "postgres"
+    :postgres-mbql5      "postgres"
     :mysql               "mysql"
     :snowflake           "snowflake"
     :bigquery            "bigquery"
@@ -46,6 +47,7 @@
     :clickhouse          "clickhouse"
     :vertica             nil
     :h2                  nil
+    :h2-mbql5            nil
     ;; Default: try using the driver name as dialect
     (name driver)))
 

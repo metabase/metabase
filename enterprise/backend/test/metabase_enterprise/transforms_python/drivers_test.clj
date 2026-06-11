@@ -24,7 +24,7 @@
 (defn- execute-e2e-transform!
   "Execute an e2e Python transform test using execute-python-transform!"
   [table-name transform-code source-tables]
-  (let [schema (when (#{:postgres :bigquery-cloud-sdk} driver/*driver*)
+  (let [schema (when (#{:postgres :bigquery-cloud-sdk :snowflake} driver/*driver*)
                  (sql.tx/session-schema driver/*driver*))
         target {:type "table"
                 :schema schema
@@ -122,7 +122,6 @@
                       :columns columns}]
     (mt/as-admin
       (transforms-base.u/create-table-from-schema! driver db-id table-schema))
-
     (when (seq data)
       (driver/insert-from-source! driver db-id table-schema
                                   {:type :rows
@@ -143,9 +142,7 @@
                                                      :else
                                                      v)) row))
                                               data)}))
-
     (sync/sync-database! (mt/db) {:scan :schema})
-
     (t2/select-one-pk :model/Table :name (name qualified-table-name) :db_id db-id)))
 
 (defn- cleanup-table!
@@ -183,17 +180,13 @@
           rows (map json/decode lines)
           metadata (:output-manifest result)
           headers (map :name (:fields metadata))]
-
       (testing "Column headers are correct"
         (is (= (set expected-columns) (disj (set headers) "_id"))))
-
       (testing "Row count is correct"
         (is (= expected-row-count (count rows))))
-
       (testing "Metadata contains all expected columns"
         (is (= (set expected-columns)
                (disj (set (map :name (:fields metadata))) "_id"))))
-
       {:headers headers
        :rows rows
        :metadata metadata})))
@@ -239,15 +232,12 @@
             validation (execute-and-validate-transform!
                         transform-code table-name table-id
                         expected-columns expected-row-count)]
-
         (when validation
           (testing (str "Exotic types for " driver-key)
             (let [{:keys [metadata]} validation
                   type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
                              [name (python-runner/restricted-insert-type base_type)])]
-
               (is (isa? :type/Integer (type-map "id")))
-
               (case driver-key
                 :postgres (do
                             (is (isa? (type-map "bigint") :type/BigInteger))
@@ -287,7 +277,6 @@
                 expected-columns ["id" "name" "price" "active" "created_date" "created_at"]
                 validation (execute-and-validate-transform!
                             transform-code table-name table-id expected-columns 3)]
-
             (when validation
               (let [{:keys [metadata]} validation]
                 (testing "Base type preservation"
@@ -342,12 +331,10 @@
                                     "text_length" "int_doubled" "float_squared" "bool_inverted"]
                   validation (execute-and-validate-transform!
                               transform-code table-name table-id expected-columns 3)]
-
               (when validation
                 (let [{:keys [rows metadata]} validation
                       type-map (u/for-map [{:keys [name base_type]} (:fields metadata)]
                                  [name (python-runner/restricted-insert-type base_type)])]
-
                   (testing "Original columns preserved"
                     (is (isa? (type-map "id") (if (= driver/*driver* :snowflake) :type/Number :type/Integer)))
                     (is (isa? (type-map "text_field") :type/Text))
@@ -355,13 +342,11 @@
                     (is (isa? (type-map "float_field") :type/Float))
                     (is (isa? (type-map "bool_field") :type/Boolean))
                     (is (isa? (type-map "date_field") (if (= driver/*driver* :mongo) :type/Instant :type/Date))))
-
                   (testing "Computed columns have correct types"
                     (is (isa? (type-map "text_length") :type/Integer))
                     (is (isa? (type-map "int_doubled") :type/Integer))
                     (is (isa? (type-map "float_squared") :type/Float))
                     (is (isa? (type-map "bool_inverted") :type/Boolean)))
-
                   (testing "Edge case data handling"
                     (let [[row1 row2 row3] (sort-by #(get % "id") rows)]
                       (is (= 1 (get row1 "id")))
@@ -396,17 +381,14 @@
             (testing "Both transforms succeeded"
               (is (some? result1))
               (is (some? result2)))
-
             (when (and result1 result2)
               (testing "Results are identical"
                 (is (= (:output result1) (:output result2)))
                 (is (= (count (:fields (:output-manifest result1)))
                        (count (:fields (:output-manifest result2))))))
-
               (let [expected-columns ["id" "name" "price" "active" "created_date" "created_at"
                                       "computed_field" "name_upper"]
                     validation (validate-transform-output result1 expected-columns 3)]
-
                 (when validation
                   (testing "Computed columns are added correctly"
                     (let [{:keys [metadata]} validation
@@ -430,7 +412,6 @@
                                      (str source-table-name "_exotic")
                                      exotic-config
                                      (:data exotic-config)))]
-
               (try
                 (let [transform-code (str "import pandas as pd\n"
                                           "\n"
@@ -466,10 +447,8 @@
                       ;; deal with non-deterministic order (e.g. bigquery)
                       id-idx      (u/index-of #{"id"} columns)
                       result-rows (sort-by #(nth % id-idx) result-rows)]
-
                   (testing "E2E transform execution succeeded"
                     (is (seq result-rows) "Transform should produce results"))
-
                   (testing "Expected data transformations"
                     (let [first-row (first result-rows)
                           second-row (second result-rows)
@@ -478,30 +457,24 @@
                       (testing "Computed columns are present and have reasonable values"
                         (is (> (count columns) 7) "Should have additional computed columns")
                         (is (= 3 (count result-rows)) "Should have 3 rows from source data"))
-
                       (testing "Computed column values are mathematically correct"
                         (testing "Row 1 price_with_tax calculation"
                           (let [price-with-tax (get-column first-row "price_with_tax")]
                             (is (and (number? price-with-tax) (> price-with-tax 21.5) (< price-with-tax 21.7))
                                 "First row price_with_tax should be ~21.59")))
-
                         (testing "Row 2 price_with_tax calculation"
                           (let [price-with-tax (get-column second-row "price_with_tax")]
                             (is (and (number? price-with-tax) (> price-with-tax 16.7) (< price-with-tax 16.8))
                                 "Second row price_with_tax should be ~16.74")))
-
                         (testing "Name length calculations"
                           (is (== 9 (get-column first-row "name_length")) "First row name_length should be 9")
                           (is (== 9 (get-column second-row "name_length")) "Second row name_length should be 9"))
-
                         (testing "Boolean expense calculations"
                           (is (true? (get-column first-row "is_expensive")) "First row is_expensive should be true")
                           (is (false? (get-column second-row "is_expensive")) "Second row is_expensive should be false"))
-
                         (testing "Date year extraction"
                           (is (== 2024 (get-column first-row "created_year")) "First row created_year should be 2024")
                           (is (== 2024 (get-column second-row "created_year")) "Second row created_year should be 2024"))
-
                         (testing "Null value handling"
                           (is (seq third-row) "Third row should contain values (nulls handled gracefully)"))))))
                 (finally

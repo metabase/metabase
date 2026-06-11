@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
@@ -221,14 +222,21 @@
     {:conflicts (vec all-conflicts)
      :summary (into #{} (map :category) all-conflicts)}))
 
-(defn- branch-changed-since-scheduling?
-  "Returns true if `pre-task-branch` was captured by the async-* function and the
-   `remote-sync-branch` setting has since drifted to a different value. Used as a
-   defense-in-depth check against any future code path that bypasses the operation-level
-   guards and mutates the setting between scheduling and the work running."
-  [pre-task-branch]
-  (and (some? pre-task-branch)
-       (not= pre-task-branch (settings/remote-sync-branch))))
+(defn- record-exported-paths!
+  "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
+  deletes can resolve the old path. `entries` is a seq of {:model_type :entity_id :path}; only
+  entity-id models are recorded. Correlates entity_id -> model_id per model type."
+  [entries]
+  (doseq [[model-type es] (group-by :model_type entries)
+          :let [spec (spec/spec-for-model-type model-type)]
+          :when (and spec (= :entity-id (:identity spec)))]
+    (let [eid->path (into {} (map (juxt :entity_id :path)) es)
+          id->eid   (t2/select-pk->fn :entity_id (:model-key spec) :entity_id [:in (vec (keys eid->path))])]
+      (doseq [[id eid] id->eid
+              :let [path (eid->path eid)]
+              :when path]
+        (t2/update! :model/RemoteSyncObject :model_type model-type :model_id id
+                    {:file_path path})))))
 
 (defn import!
   "Imports and reloads Metabase entities from a remote snapshot.
@@ -245,7 +253,8 @@
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
   [^SourceSnapshot snapshot task-id & {:keys [force? pre-task-branch]}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
+  (when (and (some? pre-task-branch)
+             (not= pre-task-branch (settings/remote-sync-branch)))
     (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
@@ -264,13 +273,12 @@
               has-transforms? (snapshot-has-transforms? base-ingestable)
               {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)
               ingestable-snapshot (source.ingestable/wrap-progress-ingestable task-id 0.7 base-ingestable)]
-
           (cond
             (and first-import? (not force?) (seq conflicts))
             (u/prog1 {:status :conflict
                       :version (source.p/version snapshot)
-                      :conflicts summary  ; Keep backward compatibility: return set of category names
-                      :conflict-details conflicts  ; New: detailed conflict info
+                      :conflicts summary          ; Keep backward compatibility: return set of category names
+                      :conflict-details conflicts ; New: detailed conflict info
                       :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
               (log/infof (:message <>)))
 
@@ -292,7 +300,10 @@
                 (settings/remote-sync-transforms! true))
               (t2/with-transaction [_conn]
                 (remove-unsynced! (spec/all-syncable-collection-ids) imported-data)
-                (sync-objects! sync-timestamp imported-data))
+                (sync-objects! sync-timestamp imported-data)
+                ;; Record the actual repo path each entity was read from, so later renames/deletes
+                ;; resolve the real file and stay on the incremental export fast-path.
+                (record-exported-paths! (source.ingestable/cached-file-paths base-ingestable)))
               (when (and (not has-transforms?)
                          (settings/remote-sync-transforms))
                 (log/info "No transforms in remote source, disabling remote-sync-transforms setting")
@@ -312,6 +323,193 @@
       {:status :error
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
+;;; ------------------------------------------- Incremental Export Fast-Path -------------------------------------------
+
+(def ^:private closure-opts
+  {:include-field-values false :include-database-secrets false
+   :continue-on-error false :skip-archived true})
+
+(defn- export-closure
+  "All `[model-type id]` entities a full export would pull for the entity `[model-type model-id]`
+  (its transitive `serdes/descendants` + `serdes/required`, including the entity itself)."
+  [model-type model-id]
+  (keys (merge-with into
+                    (u/traverse #{[model-type model-id]} #(serdes/descendants (first %) (second %) closure-opts))
+                    (u/traverse #{[model-type model-id]} #(serdes/required (first %) (second %))))))
+
+(defn- untracked-content-deps
+  "The `[model-type id]` entities in the change's export closure that are remote-sync content but have
+  no RemoteSyncObject row — dependencies a full export would pull (via `serdes/descendants`/`required`)
+  yet that aren't independently tracked (e.g. a card in a non-synced collection referenced by a synced
+  card, and that card's collection). These get written alongside the change so the incremental export
+  matches what a full export would emit. Excludes the entity itself and non-content deps (e.g.
+  databases, which are resolved by reference at import)."
+  [model-type model-id]
+  (into #{}
+        (filter (fn [[mt id]]
+                  (and (not (and (= mt model-type) (= id model-id)))
+                       (spec/spec-for-model-type mt)
+                       (not (t2/exists? :model/RemoteSyncObject :model_type mt :model_id id)))))
+        (export-closure model-type model-id)))
+
+(defn- dep-upserts
+  "Serializes the untracked dependency entities `dep-ids` (a set of `[model-type id]`) into file-specs
+  to upsert, reusing the storage context `opts` so paths dedupe consistently with the changed entities.
+  Returns `[]` when there are no deps, a vector of file-specs on success, or nil if any dependency's
+  path is already occupied by a different entity (a collision that requires a full export)."
+  [snapshot opts dep-ids]
+  (if (empty? dep-ids)
+    []
+    (let [specs (->> dep-ids
+                     (map (fn [[mt id]] {:model_type mt :model_id id}))
+                     spec/extract-entities-for-rows
+                     (map (fn [e] [(source/entity->file-spec opts e) (:entity_id e)])))]
+      ;; keep going only if every dependency's target path is free: absent, or already holding that
+      ;; same entity. A present file whose entity_id can't be read counts as occupied — don't clobber it.
+      (when (every? (fn [[spec eid]]
+                      (if-let [content (source.p/read-file snapshot (:path spec))]
+                        (= eid (try (:entity_id (yaml/parse-string content))
+                                    (catch Exception _ nil)))
+                        true))
+                    specs)
+        (mapv first specs)))))
+
+(defn- incremental-updates-for-row
+  "The updates a single dirty `row` contributes to an incremental plan: a map of
+  {:upserts :delete-paths :synced :removed-ids :pull} (any subset), or `:remote-sync/unsyncable-record`
+  if the row can't be synced incrementally and the whole batch must fall back to a full export."
+  [opts snapshot {:keys [status file_path] :as row}]
+  (try
+    (let [info   (delay (when-let [entity (first (spec/extract-entities-for-rows [row]))]
+                          (let [spec (source/entity->file-spec opts entity)
+                                content (source.p/read-file snapshot (:path spec))
+                                yaml (when content
+                                       ;; errors parsing should throw an invalidate the row
+                                       (yaml/parse-string content))]
+                            {:entity entity
+                             :spec spec
+                             :eid (:entity_id entity)
+                             :new-path (:path spec)
+                             :file-exists? (boolean content)
+                             :file-eid (:entity_id yaml)})))]
+      (cond
+        (not= :entity-id ;; only entity-id models can be synced incrementally
+              (:identity (spec/spec-for-model-type (:model_type row))))
+        :remote-sync/unsyncable-record
+
+        (not (#{"create" "update" "removed" "delete"} status))
+        :remote-sync/unsyncable-record
+
+        (and (#{"removed" "delete"} status) ;; removed/delete with no stored path needs a full export
+             (str/blank? file_path))
+        :remote-sync/unsyncable-record
+
+        (#{"removed" "delete"} status)
+        {:delete-paths [file_path]
+         :removed-ids [(:id row)]}
+
+        ;; past here, we're seeing create and update statuses
+        (not @info) ;; entity no longer exists
+        :remote-sync/unsyncable-record
+
+        ;; create: brand-new file, no old path to delete.
+        ;; Target must be free or same entity id
+        (and (= "create" status)
+             (or (not (:file-exists? @info))
+                 (= (:eid @info) (:file-eid @info))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]}
+
+        ;; in-place update: at its stored path, or (no stored path) the repo file at
+        ;; new-path is already this entity — overwrite.
+        (and (= "update" status)
+             (or (= file_path (:new-path @info))
+                 (and (str/blank? file_path)
+                      (= (:eid @info) (:file-eid @info)))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]}
+
+        ;; rename: update whose stored path differs from new path. Write the
+        ;; new file and delete the old one.
+        (and (= "update" status)
+             (not (str/blank? file_path))
+             (not= file_path (:new-path @info))
+             (or (not (:file-exists? @info))
+                 (= (:eid @info) (:file-eid @info))))
+        {:pull (untracked-content-deps (:model_type row) (:model_id row))
+         :upserts [(:spec @info)]
+         :synced [{:id (:id row) :file_path (:new-path @info)}]
+         :delete-paths [file_path]}
+
+        ;; any other create/update case (e.g. the target path is occupied by a different entity) needs
+        ;; a full export
+        :else
+        :remote-sync/unsyncable-record))
+    (catch Exception _
+      :remote-sync/unsyncable-record)))
+
+(defn- incremental-plan
+  "Builds a plan for a safe incremental export of the current `dirty-rows`, or `:remote-sync/unsyncable-batch` if any
+  row can't be handled incrementally.
+
+  Every row must be on an entity-id model and be one of:
+  - `create`/`update` — re-serialize the entity and upsert its file. A create, or an update whose path
+    is unchanged, is an overwrite-in-place; an update whose stored `file_path` differs is a rename, so
+    the old file is also deleted. The target path must be free or already hold this same entity, and
+    the change must not reference remote-sync content that isn't already in the repo (else a full
+    export, which pulls that dependency via `serdes/descendants`, is required).
+  - `delete`/`removed` — delete the entity's stored `file_path`. Requires a stored `file_path`
+    (after a fresh import none is recorded yet, so we fall back to a full export, which self-heals).
+
+  Returns one of:
+  - {:upserts [file-spec] :delete-paths [path] :synced [{:id :file_path}] :removed-ids [id]} — a safe
+    incremental plan;
+  - `:remote-sync/unsyncable-batch` — a row (or a dependency path collision) forces a full export."
+  [snapshot dirty-rows]
+  (let [opts (serdes/storage-base-context)
+        plan (->> dirty-rows
+                  (map #(incremental-updates-for-row opts snapshot %))
+                  (reduce (fn [plan updates]
+                            (if (= updates :remote-sync/unsyncable-record)
+                              (reduced :remote-sync/unsyncable-batch)
+                              (merge-with into plan updates)))
+                          {:upserts [] :delete-paths [] :synced [] :removed-ids [] :pull #{}}))]
+    (if (= plan :remote-sync/unsyncable-batch)
+      :remote-sync/unsyncable-batch
+      (if-let [deps (dep-upserts snapshot opts (:pull plan))]
+        (-> plan (update :upserts into deps) (dissoc :pull))
+        ;; a dependency's path is occupied by a different entity — needs a full export
+        :remote-sync/unsyncable-batch))))
+
+(defn- path-top-level-dir [^String path]
+  (let [i (str/index-of path "/")]
+    (if i (subs path 0 i) path)))
+
+(defn- disabled-content-dirs
+  "Top-level repo directories whose content is disabled by the current settings."
+  []
+  (cond-> #{}
+    (not (settings/remote-sync-transforms))    (into ["transforms" "python-libraries" "python_libraries"])
+    (not (settings/library-is-remote-synced?)) (conj "snippets")))
+
+(defn- full-export!
+  "Re-serializes the entire remote-synced set into `snapshot` and commits it, then marks every
+  RemoteSyncObject row synced (as of `sync-timestamp`) and records each entity's file_path. Used when
+  the pending changes can't be applied incrementally (name collisions, disabled content needing a
+  reconcile, etc.). Throws if there is no remote-syncable content. Returns {:status :success}."
+  [snapshot task-id message sync-timestamp]
+  (let [models (spec/extract-entities-for-export)]
+    (when (not models)
+      (throw (ex-info "No remote-syncable content available." {})))
+    (remote-sync.task/update-progress! task-id 0.3)
+    (let [{:keys [version entries]} (source/store! models snapshot task-id message)]
+      (remote-sync.task/set-version! task-id version)
+      (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
+      (record-exported-paths! entries))
+    {:status :success}))
+
 (defn export!
   "Exports remote-synced collections to a remote source repository.
 
@@ -321,47 +519,70 @@
     from the current setting at task start, the export aborts with `:error` (defense-in-depth
     against any path that mutates the setting between scheduling and the work running).
 
-  Extracts all remote-synced collections, serializes their content, writes the files to the source, and
-  updates all RemoteSyncObject statuses to 'synced'.
+  Takes the incremental fast-path when every pending change can be applied incrementally (see
+  `incremental-plan` — creates, in-place updates, renames, and deletes of entity-id models). Otherwise does a
+  full export: re-serializes the entire synced set, writes it, marks all RemoteSyncObject rows synced,
+  and records each entity's `file_path` so future renames/deletes can go incremental.
 
-  Returns a map with :status (either :success or :error), :version, and optionally :message keys. Various
-  exceptions may be thrown during export and are caught and converted to error status maps."
+  Returns a map with {:status :success}, {:status :error}, or throws an exception with an appropriate message."
   [^SourceSnapshot snapshot task-id message & {:keys [pre-task-branch]}]
-  (when (branch-changed-since-scheduling? pre-task-branch)
+  ;; Defense-in-depth: refuse to run if the branch setting drifted between scheduling and now.
+  (when (and (some? pre-task-branch)
+             (not= pre-task-branch (settings/remote-sync-branch)))
     (log/warnf "Aborting export: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
     (throw (ex-info "Branch setting changed since task was scheduled; aborting to protect data integrity"
                     {:pre-task-branch pre-task-branch
                      :current-branch  (settings/remote-sync-branch)})))
-  (if snapshot
-    (let [sync-timestamp (t/instant)]
-      (try
-        (analytics/inc! :metabase-remote-sync/exports)
-        (serdes/with-cache
-          (if-let [models (spec/extract-entities-for-export)]
+
+  (when (not snapshot)
+    (throw (ex-info "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable." {})))
+
+  (let [sync-timestamp (t/instant)]
+    (try
+      (analytics/inc! :metabase-remote-sync/exports)
+      (serdes/with-cache
+        (let [disabled-files (filterv (comp (disabled-content-dirs) path-top-level-dir)
+                                      (source.p/list-files snapshot))
+              dirty-rows     (seq (remote-sync.object/dirty-rows))
+              plan           (when dirty-rows (incremental-plan snapshot dirty-rows))]
+          (cond
+            ;; nothing to do: no pending changes and no stale files in now-disabled content dirs
+            (and (empty? dirty-rows) (empty? disabled-files))
             (do
+              (log/info "Remote sync export: no changes to export")
+              {:status :success})
+
+            ;; a dirty row can't be applied incrementally → full re-serialize
+            (= plan :remote-sync/unsyncable-batch)
+            (full-export! snapshot task-id message sync-timestamp)
+
+            ;; Incremental fast-path: write only the changed entities, and delete their old paths plus
+            ;; any files left behind in now-disabled content dirs — preserving every other file. Avoids
+            ;; re-serializing the entire synced set.
+            :else
+            (let [{:keys [upserts delete-paths synced removed-ids]} plan
+                  delete-paths (into (vec delete-paths) disabled-files)]
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
+              (let [written-version (source.p/apply-changes! snapshot message upserts delete-paths)]
                 (remote-sync.task/set-version! task-id written-version))
-              (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})
-              {:status :success
-               :version (source.p/version snapshot)})
-            {:status :error
-             :message "No remote-syncable content available."}))
-        (catch Exception e
-          (if (:cancelled? (ex-data e))
-            (log/info "Export to git repository was cancelled")
-            (do
-              (log/errorf e "Failed to export to git repository: %s" (ex-message e))
-              (analytics/inc! :metabase-remote-sync/exports-failed)
-              (remote-sync.task/fail-sync-task! task-id (ex-message e))
-              {:status :error
-               :version (source.p/version snapshot)
-               :message (format "Failed to export to git repository: %s" (ex-message e))})))
-        (finally
-          (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
-    {:status :error
-     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
+              (doseq [{:keys [id file_path]} synced]
+                (t2/update! :model/RemoteSyncObject :id id
+                            {:status "synced" :file_path file_path :status_changed_at sync-timestamp}))
+              (when (seq removed-ids)
+                (t2/delete! :model/RemoteSyncObject :id [:in removed-ids]))
+              (log/infof "Remote sync incremental export: wrote %d, deleted %d"
+                         (count upserts) (count delete-paths))
+              {:status :success}))))
+      (catch Exception e
+        ;; handle-task-result! records the failure on this result, and skips entirely when the task
+        ;; was already cancelled (ended_at set) — so cancellation needs no special case here.
+        (log/errorf e "Failed to export to git repository: %s" (ex-message e))
+        (analytics/inc! :metabase-remote-sync/exports-failed)
+        {:status :error
+         :message (format "Failed to export to git repository: %s" (ex-message e))})
+      (finally
+        (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
 
 (defn create-task-with-lock!
   "Takes a cluster-wide lock and either returns an existing in-progress RemoteSyncTask ID or creates a new one.
@@ -406,6 +627,51 @@
         expiry-time (t/plus last-checked (t/seconds ttl-seconds))]
     (t/after? (t/instant) expiry-time)))
 
+(defn- cache-valid? [cache-state current-branch force-refresh?]
+  (and cache-state
+       (not force-refresh?)
+       (= current-branch (:branch cache-state))
+       (not (cache-expired? (:last-checked cache-state)))))
+
+(defn- snapshot-or-missing-branch
+  "Returns a snapshot of `source`, or `::missing-branch` if the configured branch
+  no longer exists on the remote. Other exceptions propagate."
+  [source]
+  (try
+    (source.p/snapshot source)
+    (catch Exception e
+      (case (:error-type (ex-data e))
+        :missing-branch ::missing-branch
+        (throw e)))))
+
+(defn- branch-missing-result
+  "Response for a configured branch that no longer exists upstream. Intentionally
+  not cached so the next call re-checks after the user switches branches."
+  [current-branch last-imported]
+  {:last-checked (t/instant)
+   :branch current-branch
+   :remote-version nil
+   :local-version last-imported
+   :has-changes? false
+   :branch-missing? true
+   :cached? false})
+
+(defn- fresh-result!
+  "Computes a has-remote-changes? response from a successful snapshot, caches it,
+  and returns it tagged as uncached."
+  [current-branch last-imported snapshot]
+  (let [current-remote (source.p/version snapshot)
+        result {:last-checked (t/instant)
+                :branch current-branch
+                :remote-version current-remote
+                :local-version last-imported
+                ;; has-changes? is true if nothing's been imported yet, or if
+                ;; remote moved past local.
+                :has-changes? (or (nil? last-imported)
+                                  (not= last-imported current-remote))}]
+    (reset! remote-changes-cache result)
+    (assoc result :cached? false)))
+
 (defn has-remote-changes?
   "Check if remote has new changes compared to last imported version.
    Uses cache to avoid frequent git operations. Returns map with:
@@ -413,6 +679,9 @@
    - :remote-version string (git SHA)
    - :local-version string (git SHA of last import, or nil)
    - :cached? boolean (whether result came from cache)
+   - :branch-missing? boolean (true if the configured branch no longer exists
+     on the remote; the result is not cached in that case so the next call
+     picks up a branch switch immediately)
 
    Cache is invalidated if:
    - TTL has expired
@@ -422,29 +691,15 @@
    (has-remote-changes? nil))
   ([{:keys [force-refresh?]}]
    (let [cache-state @remote-changes-cache
-         current-branch (settings/remote-sync-branch)
-         cache-valid? (and cache-state
-                           (not force-refresh?)
-                           (= current-branch (:branch cache-state))
-                           (not (cache-expired? (:last-checked cache-state))))]
-     (if cache-valid?
+         current-branch (settings/remote-sync-branch)]
+     (if (cache-valid? cache-state current-branch force-refresh?)
        (assoc cache-state :cached? true)
        (let [last-imported (remote-sync.task/last-version)
              source (source/source-from-settings current-branch)
-             snapshot (source.p/snapshot source)
-             current-remote (source.p/version snapshot)
-             ;; has-changes? is true if:
-             ;; - never imported (last-imported is nil), OR
-             ;; - remote version differs from local version
-             has-changes? (or (nil? last-imported)
-                              (not= last-imported current-remote))
-             result {:last-checked (t/instant)
-                     :branch current-branch
-                     :remote-version current-remote
-                     :local-version last-imported
-                     :has-changes? has-changes?}]
-         (reset! remote-changes-cache result)
-         (assoc result :cached? false))))))
+             snapshot (snapshot-or-missing-branch source)]
+         (if (= ::missing-branch snapshot)
+           (branch-missing-result current-branch last-imported)
+           (fresh-result! current-branch last-imported snapshot)))))))
 
 ;;; ------------------------------------------- Task Result Handling -------------------------------------------
 
@@ -497,37 +752,43 @@
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
 
-  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, and a
-  sync-fn function that takes a task-id and performs the sync operation. Creates a new task (or errors if one is
-  already running), then executes the sync function in a virtual thread with a timeout.
+  Takes a task-type string ('import' or 'export'), a branch name to update in settings upon completion, a
+  sync-fn function that takes a task-id and performs the sync operation, and an optional :on-success callback
+  that receives [task-id result] after a successful sync. Creates a new task (or errors if one is already
+  running), then executes the sync function in a virtual thread with a timeout.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 if a sync task is already in progress."
-  [task-type branch sync-fn]
+  [task-type branch sync-fn & {:keys [on-success]}]
   (let [{task-id :id existing? :existing? :as task} (create-task-with-lock! task-type)]
     (api/check-400 (not existing?) "Remote sync in progress")
     (u.jvm/in-virtual-thread*
      (dh/with-timeout {:interrupt? true
                        :timeout-ms (* (settings/remote-sync-task-time-limit-ms) 10)}
-       (handle-task-result!
-        (try
-          (sync-fn task-id)
-          (catch Exception e
-            (log/error e "Remote sync task failed")
-            {:status :error
-             :message (source-error-message e)}))
-        task-id branch)))
+       (let [result (try
+                      (sync-fn task-id)
+                      (catch Exception e
+                        (log/error e "Remote sync task failed")
+                        {:status :error
+                         :message (source-error-message e)}))]
+         (handle-task-result! result task-id branch)
+         (when (and on-success (= :success (:status result)))
+           (try
+             (on-success task-id result)
+             (catch Exception e
+               (log/error e "Remote sync task :on-success function failed")))))))
     task))
 
 (defn async-import!
   "Imports remote-synced collections from a remote source repository asynchronously.
 
   Takes a branch name to import from, a force? boolean (if true, imports even if there are unsaved changes or conflicts),
-  and an import-args map of additional arguments to pass to the import function. Checks for dirty changes and throws an
+  and an import-args map of additional arguments to pass to the import function. Optionally accepts an :on-success
+  callback that receives [task-id result] after a successful import. Checks for dirty changes and throws an
   exception if force? is false and changes exist.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and force? is false."
-  [branch force? import-args]
+  [branch force? import-args & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch (settings/remote-sync-branch)
         source          (source/source-from-settings branch)
@@ -541,18 +802,20 @@
                   (import! (source.p/snapshot source) task-id
                            (assoc import-args
                                   :force?           force?
-                                  :pre-task-branch  pre-task-branch))))))
+                                  :pre-task-branch  pre-task-branch)))
+                :on-success on-success)))
 
 (defn async-export!
   "Exports the remote-synced collections to the remote source repository asynchronously.
 
   Takes a branch name to export to, a force? boolean (if true, exports even if there are new changes in the remote
-  branch), and a commit message string. Checks if the remote branch has changed since the last sync and throws an
+  branch), and a commit message string. Optionally accepts an :on-success callback that receives [task-id result]
+  after a successful export. Checks if the remote branch has changed since the last sync and throws an
   exception if force? is false and changes exist.
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are new remote changes and force? is false."
-  [branch force? message]
+  [branch force? message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
@@ -565,7 +828,9 @@
                        :conflicts true})))
     (run-async! "export" branch
                 (fn [task-id]
-                  (export! snapshot task-id message :pre-task-branch pre-task-branch)))))
+                  (export! snapshot task-id message
+                           :pre-task-branch pre-task-branch))
+                :on-success on-success)))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
@@ -580,11 +845,11 @@
 (defn stash!
   "Creates a new remote branch from the current `remote-sync-branch` and starts an
    async export to it. Returns the resulting RemoteSyncTask. Does not publish events."
-  [new-branch message]
+  [new-branch message & {:keys [on-success]}]
   (guards/ensure-no-active-task!)
   (let [source (source/source-from-settings)]
     (source.p/create-branch source new-branch (settings/remote-sync-branch))
-    (async-export! new-branch false message)))
+    (async-export! new-branch false message :on-success on-success)))
 
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.

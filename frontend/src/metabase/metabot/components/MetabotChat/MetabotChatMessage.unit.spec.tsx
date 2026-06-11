@@ -1,5 +1,6 @@
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { MetabotAgentChatMessage } from "metabase/metabot/state";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { AgentMessage, Messages } from "./MetabotChatMessage";
 
@@ -9,12 +10,16 @@ const setup = (message: MetabotAgentChatMessage) =>
       debug={false}
       readonly={false}
       hideActions
-      showFeedbackButtons={false}
       setFeedbackMessage={() => {}}
       submittedFeedback={undefined}
-      onCopy={() => {}}
+      getCopyText={() => ""}
       message={message}
     />,
+    {
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
   );
 
 describe("AgentMessage", () => {
@@ -96,10 +101,9 @@ describe("AgentMessage", () => {
           debug
           readonly={false}
           hideActions
-          showFeedbackButtons={false}
           setFeedbackMessage={() => {}}
           submittedFeedback={undefined}
-          onCopy={() => {}}
+          getCopyText={() => ""}
           message={{
             id: "msg",
             role: "agent",

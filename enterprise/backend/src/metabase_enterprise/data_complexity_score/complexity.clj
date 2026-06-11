@@ -17,11 +17,13 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons.
+  "Bump when the scoring formula changes in a way that would break historical score comparisons.
+  Weight changes, new/removed components, and rollup-affecting restructures count; pure-shape changes do not.
+  Tunables in the fingerprint (`embedding-model`, `synonym-threshold`, `text-variant`, etc) don't need a bump."
+  1)
 
-  Changes to `embedding-model`, `synonym-threshold`, `text-variant`, etc don't need a bump.
-  These parameters are already captured in the fingerprint.
-  Formula versioning is reserved for cases where the actual formulas or components change."
+(def format-version
+  "Bump when the response shape changes in a way that breaks consumer parsing, even when scores are equivalent."
   1)
 
 (def weights
@@ -34,15 +36,70 @@
    :field            1
    :repeated-measure 2})
 
-(def ^:private component->group
-  "Thematic parent per sub-component — drives the `<group>.total` + `<group>.<component>` rollup in
-  emitted keys so operators can tell `size` from `ambiguity` without SQL.
-  Must cover every key produced by [[score-catalog]] or the missing ones emit as `nil.<component>`."
-  {:entity-count      :size
-   :field-count       :size
-   :name-collisions   :ambiguity
-   :synonym-pairs     :ambiguity
-   :repeated-measures :ambiguity})
+(def complexity-bands
+  "Tree of rating bands mirroring [[score-catalog]]'s output.
+  Each node's `:bands` rates that node's `:score`; `:components` follows the same nesting as the scored catalog."
+  {:bands [{:rating "low"    :label "Low complexity"    :max 999}
+           {:rating "medium" :label "Medium complexity" :max 9999}
+           {:rating "high"   :label "High complexity"}]})
+
+(def ^:private nil-rating {:rating nil :rating-label nil})
+
+(defn- ->band-lookup
+  "Bundle `bands` with a pre-built `:rating`→presentation `:lookup` for fast rating-by-score."
+  [bands]
+  {:bands  bands
+   :lookup (u/for-map [{:keys [rating label]} bands]
+             [rating {:rating rating :rating-label label}])})
+
+(defn- compile-bands
+  "Replace each node's `:bands` in the bands tree with a precomputed `:band-lookup`."
+  [bands]
+  (cond-> {}
+    (:bands bands)
+    (assoc :band-lookup (->band-lookup (:bands bands)))
+
+    (:components bands)
+    (assoc :components (update-vals (:components bands) compile-bands))))
+
+(def ^:private compiled-bands
+  (compile-bands complexity-bands))
+
+(defn- rating-for-score
+  "Look up `score`'s rating in a preprocessed `band-lookup`, or `nil-rating` when nothing matches."
+  [{:keys [bands lookup]} score]
+  (or (when (some? score)
+        (some (fn [{:keys [rating max]}]
+                (when (or (nil? max) (<= score max))
+                  (lookup rating)))
+              bands))
+      nil-rating))
+
+(defn- decorate-with-ratings*
+  "Walk a catalog `node` and the matching `bands` subtree in parallel, merging rating fields onto every node.
+  Each node is rated against its own `:band-lookup`, or `nil-rating` when absent.
+  Error leaves carry only `:error` and are left untouched. Children recurse along `:components`."
+  [bands node]
+  (if (:error node)
+    node
+    (let [decorated (merge node (rating-for-score (:band-lookup bands) (:score node)))]
+      (cond-> decorated
+        (:components node)
+        (update :components
+                (fn [components]
+                  (reduce-kv (fn [m k child]
+                               (assoc m k (decorate-with-ratings* (get-in bands [:components k])
+                                                                  child)))
+                             {}
+                             components)))))))
+
+;; TODO: also emit the rating onto Snowplow events so benchmark consumers can correlate the band
+;; against the raw score without re-applying the bands.
+(defn decorate-with-ratings
+  "Decorate each catalog with rating fields per `complexity-bands`."
+  [score]
+  (let [decorate (partial decorate-with-ratings* compiled-bands)]
+    (reduce #(u/update-if-exists %1 %2 decorate) score [:library :universe :metabot])))
 
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
@@ -296,10 +353,10 @@
        :value-doesnt-matter))))
 
 (defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns nil
-   `:score`/`:measurement` plus an `:error` string so the failure cascades through aggregates
-   instead of being mistaken for a real zero. A nil `embedder` produces an empty lookup and scores
-   a real zero."
+  "Compute the synonym sub-score for `entities` using `embedder`.
+  On embedder failure returns an `{:error \"...\"}`-only leaf, so the failure cascades through aggregates
+  (their `:score` rolls up to nil) and consumers can branch on `:error` presence.
+  A nil `embedder` produces an empty lookup and scores a real zero."
   [entities embedder]
   (try
     (let [name->vec     (or (and embedder (embedder entities)) {})
@@ -317,7 +374,7 @@
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
                   msg)]
-        {:measurement nil :score nil :error err}))))
+        {:error err}))))
 
 (defn- nil-safe-sum
   "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
@@ -326,16 +383,33 @@
   (when (every? some? xs)
     (reduce + xs)))
 
-(defn score-catalog
-  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
+(defn- score-tree-leaves
+  "Pure: build the leaves-only tree of sub-score maps for one catalog.
+  Each leaf is a `{:measurement <num-or-nil> :score <num-or-nil> [:error <str>]}` map; the surrounding shape
+  defines the `:size`/`:ambiguity` grouping that [[score-catalog]] then rolls up."
   [entities embedder]
-  (let [components {:entity-count      (score-entity-count entities)
-                    :name-collisions   (score-name-collisions entities)
-                    :synonym-pairs     (score-synonym-pairs entities embedder)
-                    :field-count       (score-field-count entities)
-                    :repeated-measures (score-repeated-measures entities)}]
-    {:total      (nil-safe-sum (map (comp :score val) components))
-     :components components}))
+  {:size      {:entity-count (score-entity-count entities)
+               :field-count  (score-field-count entities)}
+   :ambiguity {:name-collisions   (score-name-collisions entities)
+               :synonym-pairs     (score-synonym-pairs entities embedder)
+               :repeated-measures (score-repeated-measures entities)}})
+
+(defn- rollup-node
+  "Recursively roll up a node's children into `{:score <sum> :components {...}}`.
+  Leaves — maps carrying `:score` (computed) or `:error` (uncomputed) — pass through unchanged.
+  `:score` cascades nil through aggregates so an uncomputed sub-score nils out everything it feeds."
+  [node]
+  (if (or (contains? node :score) (contains? node :error))
+    node
+    (let [components (update-vals node rollup-node)]
+      {:score      (nil-safe-sum (map (comp :score val) components))
+       :components components})))
+
+(defn score-catalog
+  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`.
+  Returns `{:score <sum> :components {:size {...} :ambiguity {...}}}`; see [[score-tree-leaves]] for the leaf layout."
+  [entities embedder]
+  (rollup-node (score-tree-leaves entities embedder)))
 
 ;;; ----------------------------------- public API ------------------------------------
 
@@ -381,42 +455,57 @@
   [event score]
   (cond-> event (some? score) (assoc :score score)))
 
+(defn- node->events
+  "Walk one catalog and emit a Snowplow event per node.
+  Computed leaves use a `<path>` key and carry `:measurement`; error leaves use the same `<path>` key with `:error`.
+  Internal nodes use a `<path>.total` key with the rolled-up `:score` (the root emits as `total`).
+  `:score` is omitted when nil; see [[with-score]]."
+  [base catalog path node]
+  (let [;; `:total` here is the Snowplow wire-format suffix for rollup nodes, not an in-memory field.
+        key   (apply dotted-key (if (:components node) (conj path :total) path))
+        event (cond-> (-> base
+                          (assoc :catalog catalog :key key)
+                          (with-score (:score node)))
+                (:measurement node) (assoc :measurement (:measurement node))
+                (:error node)       (assoc :error (truncate-error (:error node))))]
+    (cons event
+          (mapcat (fn [[k child]] (node->events base catalog (conj path k) child))
+                  (:components node)))))
+
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
   Returns true when they are all successfully delivered.
   Returns false when tracking is disabled or any emission failed."
   [{:keys [library universe metabot meta]}]
+  ;; TODO (Chris 2026-06-02) -- add an optional `computed_at` field to the data_complexity Snowplow schema
+  ;; (1-0-1) and emit it, sourced from (:calculated-at meta) on the re-publish path and from compute-time
+  ;; `now` on the fresh path.
+  ;; Until then a re-published cached score (see [[republish-score!]]) is dated by Snowplow's collector
+  ;; ingest time, overstating freshness by up to the cron cooldown window (12h).
   (let [base   {:event           :data_complexity_scoring
                 :batch_id        (str (random-uuid))
                 :formula_version (:formula-version meta)
                 :parameters      (parameters-map meta)}
-        events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
-                     event (concat (for [[component sub] (:components result)]
-                                     ;; leaf component
-                                     (cond-> (-> base
-                                                 (assoc :catalog     catalog
-                                                        :key         (dotted-key (component->group component) component)
-                                                        :measurement (:measurement sub))
-                                                 (with-score (:score sub)))
-                                       (:error sub) (assoc :error (truncate-error (:error sub)))))
-                                   (for [[group entries] (group-by #(component->group (key %)) (:components result))]
-                                     ;; group total
-                                     (-> base
-                                         (assoc :catalog catalog
-                                                :key     (dotted-key group :total))
-                                         (with-score (nil-safe-sum (map (comp :score val) entries)))))
-                                   ;; grand total
-                                   [(-> base
-                                        (assoc :catalog catalog
-                                               :key     (dotted-key :total))
-                                        (with-score (:total result)))])]
-                 event)]
+        events (mapcat (fn [[catalog result]] (node->events base catalog [] result))
+                       [[:library library] [:universe universe] [:metabot metabot]])]
     ;; No short-circuiting - even if they are failures, attempt the rest.
     (reduce (fn [all-ok? event]
               (and (analytics/track-event! :snowplow/data_complexity event) all-ok?))
             ;; Since events cannot be empty, we don't need to worry about returning a vacuous true.
             true
             events)))
+
+(defn republish-score!
+  "Re-emit an already-computed `score` map to Snowplow without recomputing — for retrying a publish
+  that failed after the snapshot was already persisted. Returns the score carrying
+  `::snowplow-published?` metadata, mirroring [[complexity-scores]] so callers share the
+  `maybe-advance-last-fingerprint!` gate."
+  [score]
+  (with-meta score
+             {::snowplow-published? (boolean (try
+                                               (emit-snowplow! score)
+                                               (catch Throwable t
+                                                 (log/warn t "Failed to re-publish cached complexity score to Snowplow"))))}))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
@@ -440,6 +529,7 @@
                  universe-score
                  (score-catalog metabot-entities embedder))
      :meta     (cond-> {:formula-version   formula-version
+                        :format-version    format-version
                         :synonym-threshold synonym-similarity-threshold
                         :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
@@ -462,10 +552,11 @@
 
   Returns a map of the shape:
 
-      {:library  {:total n :components {...}}
-       :universe {:total n :components {...}}
-       :metabot  {:total n :components {...}}
+      {:library  {:score n :components {...}}
+       :universe {:score n :components {...}}
+       :metabot  {:score n :components {...}}
        :meta     {:formula-version 1
+                  :format-version 1
                   :synonym-threshold 0.80
                   :embedding-model {:provider ..., :model-name ..., :model-dimensions ...}
                   :text-variant :names-split}}
@@ -506,6 +597,7 @@
                             :universe universe-score
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
+                                               :format-version    format-version
                                                :synonym-threshold synonym-similarity-threshold}
                                         embedding-model-meta (assoc :embedding-model embedding-model-meta)
                                         text-variant         (assoc :text-variant    text-variant))}

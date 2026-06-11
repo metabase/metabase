@@ -1,0 +1,103 @@
+import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
+import { Link } from "react-router";
+import { push } from "react-router-redux";
+import { t } from "ttag";
+
+import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
+import {
+  PaneHeader,
+  PaneHeaderInput,
+} from "metabase/data-studio/common/components/PaneHeader";
+import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
+import { ActionIcon, FixedSizeIcon, Menu } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
+import type { Workspace } from "metabase-types/api";
+
+import { DeleteWorkspaceModal } from "../../../components/DeleteWorkspaceModal";
+
+export type WorkspaceHeaderProps = {
+  workspace: Workspace;
+  actions?: ReactNode;
+};
+
+export function WorkspaceHeader({ workspace, actions }: WorkspaceHeaderProps) {
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const handleNameChange = async (newName: string) => {
+    const { error } = await updateWorkspace({
+      id: workspace.id,
+      name: newName,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update workspace name`);
+    } else {
+      sendSuccessToast(t`Workspace name updated`);
+    }
+  };
+
+  return (
+    <PaneHeader
+      title={
+        <PaneHeaderInput
+          data-testid="workspace-name-input"
+          initialValue={workspace.name}
+          onChange={handleNameChange}
+        />
+      }
+      breadcrumbs={
+        <DataStudioBreadcrumbs>
+          <Link key="workspace-list" to={Urls.workspaces()}>
+            {t`Workspaces`}
+          </Link>
+          {workspace.name}
+        </DataStudioBreadcrumbs>
+      }
+      menu={<WorkspaceHeaderMenu workspace={workspace} />}
+      actions={actions}
+      py={0}
+    />
+  );
+}
+
+type WorkspaceHeaderMenuProps = {
+  workspace: Workspace;
+};
+
+function WorkspaceHeaderMenu({ workspace }: WorkspaceHeaderMenuProps) {
+  const dispatch = useDispatch();
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
+
+  return (
+    <>
+      <Menu>
+        <Menu.Target>
+          <ActionIcon size="sm" aria-label={t`Workspace actions`}>
+            <FixedSizeIcon name="ellipsis" aria-hidden />
+          </ActionIcon>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="trash" aria-hidden />}
+            onClick={openModal}
+          >
+            {t`Delete`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      <DeleteWorkspaceModal
+        workspace={workspace}
+        opened={modalOpened}
+        onDelete={() => {
+          closeModal();
+          dispatch(push(Urls.workspaces()));
+        }}
+        onClose={closeModal}
+      />
+    </>
+  );
+}

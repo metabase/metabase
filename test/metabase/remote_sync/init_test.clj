@@ -24,10 +24,8 @@
       (let [hydrated-cards (t2/hydrate [card-in-remote card-in-normal card-no-coll] :is_remote_synced)]
         (testing "card in remote-synced collection has is_remote_synced = true"
           (is (true? (:is_remote_synced (first hydrated-cards)))))
-
         (testing "card in normal collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (second hydrated-cards)))))
-
         (testing "card without collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (nth hydrated-cards 2)))))))))
 
@@ -45,7 +43,6 @@
       (let [hydrated-dashboards (t2/hydrate [dash-in-remote dash-in-normal] :is_remote_synced)]
         (testing "dashboard in remote-synced collection has is_remote_synced = true"
           (is (true? (:is_remote_synced (first hydrated-dashboards)))))
-
         (testing "dashboard in normal collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (second hydrated-dashboards)))))))))
 
@@ -65,11 +62,9 @@
         (testing "multiple cards in remote-synced collection are correctly hydrated"
           (is (true? (:is_remote_synced (first hydrated-cards))))
           (is (true? (:is_remote_synced (second hydrated-cards)))))
-
         (testing "multiple cards in normal collection are correctly hydrated"
           (is (false? (:is_remote_synced (nth hydrated-cards 2))))
           (is (false? (:is_remote_synced (nth hydrated-cards 3)))))
-
         (testing "card without collection is correctly hydrated"
           (is (false? (:is_remote_synced (nth hydrated-cards 4)))))))))
 

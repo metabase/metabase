@@ -271,8 +271,8 @@
      (fn [mp]
        (let [products (lib.metadata/table mp (mt/id :products))]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
-           (with-redefs [deps.dependency-status/mark-stale!
-                         (fn [_ _] (throw (ex-info "Simulated DB failure" {})))]
+           (mt/with-dynamic-fn-redefs [deps.dependency-status/mark-stale!
+                                       (fn [_ _] (throw (ex-info "Simulated DB failure" {})))]
              ;; Should not throw — the error is caught and logged
              (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*}))
            ;; Entity should NOT be stale (mark-stale! failed)
@@ -698,8 +698,8 @@
                                                   :analyzed_entity_type :card
                                                   :analyzed_entity_id card-id))))
            (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
-             (with-redefs [deps.findings/mark-immediate-dependents-stale!
-                           (fn [_ _] (throw (ex-info "Simulated failure" {})))]
+             (mt/with-dynamic-fn-redefs [deps.findings/mark-immediate-dependents-stale!
+                                         (fn [_ _] (throw (ex-info "Simulated failure" {})))]
                ;; analyze-and-propagate! wraps in a transaction, so the upsert should be rolled back
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Simulated failure"
                                      (#'deps.findings/analyze-and-propagate! card)))))
@@ -718,13 +718,13 @@
                                            :to_entity_type :card :to_entity_id parent-id}]
          (deps.findings/upsert-analysis! parent)
          (deps.findings/upsert-analysis! child)
-           ;; Event marks entity stale in analysis_finding
+         ;; Event marks entity stale in analysis_finding
          (events/publish-event! :event/card-update {:object parent :previous-object parent :user-id api/*current-user-id*})
          (testing "Parent card should be marked stale"
            (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
                                         :analyzed_entity_id parent-id))))
-           ;; Run entity-check job to process stale entities
+         ;; Run entity-check job to process stale entities
          (#'task.entity-check/check-entities!)
          (testing "Parent should be re-analyzed"
            (is (false? (t2/select-one-fn :stale :model/AnalysisFinding

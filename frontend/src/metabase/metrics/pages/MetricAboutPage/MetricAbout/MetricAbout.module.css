@@ -5,30 +5,26 @@
 .chartContainer {
   display: flex;
   flex-direction: column;
-  cursor: pointer;
-  transition: box-shadow 200ms ease;
-  border-radius: var(--default-border-radius) 0 0 var(--default-border-radius);
+  position: relative;
+}
 
-  &:hover {
-    box-shadow: var(--mantine-shadow-md);
-  }
+.exploreButtonOverlay {
+  position: absolute;
+  top: var(--mantine-spacing-xl);
+  right: var(--mantine-spacing-xl);
+  z-index: 1;
 }
 
 .descriptionSection {
-  background-color: var(--mb-color-background-primary);
-  border: 1px solid var(--mb-color-border);
-  border-left: none;
-  border-top-right-radius: var(--default-border-radius);
-  border-bottom-right-radius: var(--default-border-radius);
   overflow: auto;
 }
 
 .visualizationPanel {
   background-color: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
-  border-top-left-radius: var(--default-border-radius);
-  border-bottom-left-radius: var(--default-border-radius);
+  border-radius: var(--default-border-radius);
   overflow: hidden;
+  /* keeps the embedded visualization non-interactive (no tooltips/hover) */
   pointer-events: none;
 }
 

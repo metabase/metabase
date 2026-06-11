@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
@@ -8,11 +7,11 @@ import "react-resizable/css/styles.css";
 
 import noResultsSource from "assets/img/no_results.svg";
 import { useUpdateSettingsMutation } from "metabase/api";
-import CS from "metabase/css/core/index.css";
-import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-setup/components/Authentication/AuthenticationSection";
+import { useSetting } from "metabase/common/hooks";
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
+import { isSiteUrlMatchingCurrentOrigin } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-site-url-matching-current-origin";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { closeModal } from "metabase/redux/ui";
@@ -26,6 +25,7 @@ import {
   Image,
   Modal,
   Stack,
+  Text,
 } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
@@ -34,6 +34,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
+import { SdkIframeEmbedSiteUrlMismatchError } from "./SdkIframeEmbedSiteUrlMismatchError";
 
 export const SdkIframeEmbedSetupContent = () => {
   const dispatch = useDispatch();
@@ -79,6 +80,9 @@ export const SdkIframeEmbedSetupContent = () => {
   const isMissingResource =
     isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
 
+  const siteUrl = useSetting("site-url");
+  const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
+
   const nextStepButton = match(currentStep)
     .with("get-code", () => (
       <Button
@@ -118,18 +122,7 @@ export const SdkIframeEmbedSetupContent = () => {
         <Box className={S.Sidebar} component="aside">
           <Stack className={S.SidebarContent} gap="md">
             <Stack gap="md" flex={1}>
-              <AuthenticationSection />
-
-              <Stack
-                gap="md"
-                flex={1}
-                opacity={allowPreviewAndNavigation ? 1 : 0.5}
-                className={cx(
-                  !allowPreviewAndNavigation && CS.pointerEventsNone,
-                )}
-              >
-                <StepContent />
-              </Stack>
+              <StepContent />
             </Stack>
           </Stack>
 
@@ -156,11 +149,25 @@ export const SdkIframeEmbedSetupContent = () => {
           <SdkIframeGuestEmbedStatusBar />
 
           {allowPreviewAndNavigation && !isMissingResource ? (
-            <SdkIframeEmbedPreview />
+            isSiteUrlMismatched ? (
+              <SdkIframeEmbedSiteUrlMismatchError siteUrl={siteUrl} />
+            ) : (
+              <SdkIframeEmbedPreview />
+            )
           ) : (
             <Card h="100%">
               <Flex h="100%" align="center" justify="center">
-                <Image w={120} h={120} src={noResultsSource} alt="No results" />
+                <Stack align="center" gap="md">
+                  <Image
+                    w={120}
+                    h={120}
+                    src={noResultsSource}
+                    alt="No results"
+                  />
+                  <Text c="text-secondary">
+                    {t`Preview will appear when you select what to embed`}
+                  </Text>
+                </Stack>
               </Flex>
             </Card>
           )}

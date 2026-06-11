@@ -28,6 +28,7 @@ import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
 import {
   COLUMN_SHOW_TOTALS,
+  COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
@@ -183,7 +184,10 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     ]);
 
     const pivoted = useMemo(() => {
-      if (data == null || !data.cols.some(isPivotGroupColumn)) {
+      if (
+        data == null ||
+        (!data.cols.some(isPivotGroupColumn) && !settings[COLUMN_SPLIT_SETTING])
+      ) {
         return null;
       }
 

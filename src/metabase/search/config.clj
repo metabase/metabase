@@ -7,6 +7,7 @@
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
 (def ^:dynamic *db-max-results*
@@ -75,25 +76,38 @@
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
-(def static-weights
-  "Strength of the various scorers."
-  {:default
-   {:pinned              0
-    :bookmarked          1
-    :recency             1
-    :user-recency        5
-    :dashboard           0
-    :model               2
-    :official-collection 1
-    :verified            1
-    :view-count          2
-    :text                5
-    :mine                1
-    :exact               5
-    :prefix              0
-    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
-    :rrf                 500}
-   :command-palette
+(def static-default-weights
+  "Base scorer weights that every search inherits.
+  Each context layers its overrides on top (see [[static-context-weights]] and [[weights]])."
+  {:pinned              0
+   :bookmarked          1
+   :recency             1
+   :user-recency        5
+   :dashboard           0
+   :model               2
+   :view-count          2
+   :text                5
+   :mine                1
+   ;; An exact (case-insensitive) name match is the strongest single intent signal: :exact (100) overpowers
+   ;; any one curation tier (the :data-picker boosts: :library 80, :official-collection / :verified 35 each).
+   ;; Base text/recency scorers (0–5) only break ties within a tier.
+   :exact               100
+   :prefix              0
+   ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
+   :official-collection 1
+   :verified            1
+   ;; :library is a data-layer curation signal relevant only when picking a data source, so it is off by
+   ;; default; the :data-picker context opts in, at a curation-tier level that an exact match can overpower.
+   :library             0
+   ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
+   :rrf                 500
+   ;; Maps the backend's cosine distance to a [0, 1] score: 1 = identical vector, 0 = maximally distant or keyword-only hit.
+   :semantic-distance   10})
+
+(def static-context-weights
+  "Per-context scorer overrides, keyed by [[normalized-contexts]].
+  Merged onto [[static-default-weights]] for that context (see [[weights]])."
+  {:global
    {:prefix               5
     :model/collection     1
     :model/dashboard      1
@@ -107,7 +121,45 @@
    {:model/table    1
     :model/dataset  1
     :model/metric   1
-    :model/question 0}})
+    :model/question 0}
+   :data-picker
+   ;; Boost curated items when picking a data source, but keep them curation-tier signals that an exact
+   ;; name match (:exact 100) can overpower. :library outweighs :official-collection and :verified even
+   ;; combined (70), so library membership trumps those badges here.
+   {:library             80
+    :official-collection 35
+    :verified            35}
+   ;; TODO: lift :data-layer up to :default. It's a structural signal (every visible warehouse
+   ;; table gets `data_layer "final"`), so the +33 boost flips orderings across every search
+   ;; surface and breaks e2e specs that pin specific top results. To make progress:
+   ;;
+   ;; - Update the e2e snapshot in `e2e/snapshot-creators/default.cy.snap.js` so the sample-DB
+   ;;   tables aren't all at `final` (mark non-essential ones `internal`/`hidden`), or
+   ;; - Rewrite the brittle assertions to not depend on a specific top result.
+   ;;
+   ;; Affected specs (broken by an earlier lift attempt):
+   ;;
+   ;; - `search.cy.spec.js`
+   ;; - `models.cy.spec.js`
+   ;; - `documents.cy.spec.ts`
+   ;; - `document-links.cy.spec.ts`
+   ;; - `custom-viz.cy.spec.ts`
+   ;; - `search-snowplow.cy.spec.js`
+   :metabot
+   {:data-layer          33
+    :data-layer/final    1     ; ≈ 33
+    :data-layer/internal 0.3   ; ≈ 10
+    :data-layer/hidden   0.03  ; ≈ 1
+    }})
+
+(def known-rankers
+  "Scorer keys the weights API accepts as overrides: the union across [[static-default-weights]] and every
+  [[static-context-weights]] profile.
+  Namespaced scorer params (e.g. `:model/dashboard`) collapse to their namespace (`:model`)."
+  (into #{}
+        (map #(if (namespace %) (keyword (namespace %)) %))
+        (concat (keys static-default-weights)
+                (mapcat keys (vals static-context-weights)))))
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
@@ -166,20 +218,44 @@
     :display-type            {:type :list, :field "display_type"}}))
 
 (def ^:private filter-defaults-by-context
-  {:default         {:archived               false
-                     ;; keys will typically those in [[filters]], but this is an atypical filter.
-                     ;; we plan to generify it, by precalculating it on the index.
-                     :filter-items-in-personal-collection "all"}
-   :search-app      {:filter-items-in-personal-collection "exclude-others"}
-   :command-palette {:filter-items-in-personal-collection "exclude-others"}})
+  ;; Keyed by [[normalized-contexts]] plus a `:default` base; the broad-search surfaces share `:global`.
+  {:default {:archived                            false
+             ;; keys will typically those in [[filters]], but this is an atypical filter.
+             ;; we plan to generify it, by precalculating it on the index.
+             :filter-items-in-personal-collection "all"}
+   :global  {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
-  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
-  [engine context filter-key]
+  "Get the default value for the given filter in the given context."
+  [_engine context filter-key]
   (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
-    (if (= engine :search.engine/in-place)
-      (fetch :default)
-      (or (fetch context) (fetch :default)))))
+    (or (fetch context) (fetch :default))))
+
+(declare normalized-context)
+
+(defn- normalize-override-keys
+  "Re-key persisted weight overrides ([[search.settings/experimental-search-weight-overrides]]) by
+  [[normalized-context]], merging overrides whose alias has since collapsed onto the surviving context.
+  Legacy flat `{scorer weight}` overrides fold into the `:default` base, losing to an explicit `:default`."
+  [overrides]
+  (let [;; legacy overrides (pre-#50338) were a flat {scorer weight} map with no context layer, so they
+        ;; applied to every context; these are the entries whose value is a bare weight, not a per-context map
+        legacy (into {} (remove (comp map? val)) overrides)
+        nested (reduce-kv (fn [acc context weight-overrides]
+                            (let [normalized (normalized-context context)]
+                              (update acc normalized
+                                      ;; when an alias and its normalized context both carry overrides the
+                                      ;; normalized one wins -- it's what the weights API writes today
+                                      (if (= context normalized)
+                                        #(merge % weight-overrides)
+                                        #(merge weight-overrides %)))))
+                          {}
+                          ;; sorted so the winner is deterministic when several aliases collapse to one
+                          ;; normalized context (the normalized key still wins; among aliases the lowest-sorted)
+                          (into (sorted-map) (filter (comp map? val)) overrides))]
+    (cond-> nested
+      ;; :default feeds every context, so folding the flat weights there preserves their global reach
+      (seq legacy) (update :default #(merge legacy %)))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
@@ -188,13 +264,13 @@
    (weights {}))
   ([{request-overrides :weights, :keys [context]}]
    (let [context          (or context :default)
-         system-overrides (search.settings/experimental-search-weight-overrides)]
+         system-overrides (normalize-override-keys (search.settings/experimental-search-weight-overrides))]
      (if (= :all context)
-       (merge-with merge static-weights system-overrides)
-       (merge (get static-weights :default)
+       (merge-with merge (assoc static-context-weights :default static-default-weights) system-overrides)
+       (merge static-default-weights
               ;; Not sure which of the next two should have precedence, arguments for both "¯\_(ツ)_/¯"
               (get system-overrides :default)
-              (get static-weights context)
+              (get static-context-weights context)
               (get system-overrides context)
               request-overrides)))))
 
@@ -226,6 +302,83 @@
   "Schema for searchable models"
   (into [:enum] all-models))
 
+(def vector-search-strategies
+  "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
+  so the OSS search API param and the EE semantic-search setting validation share one definition.
+  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  separate `case` (with an `:hnsw` default) and must be updated by hand when adding a strategy."
+  [:hnsw :brute-force])
+
+(def ^:private ui-contexts
+  "Search `context` values issued by the frontend, one per UI surface.
+  Selects ranking weights ([[static-context-weights]]) and filter defaults ([[filter-defaults-by-context]]).
+  Keep in sync with the frontend `SearchContext` type (frontend/src/metabase-types/api/search.ts).
+  Give every value a comment naming the surface that issues it."
+  [:search-bar          ; the global navbar search typeahead
+   :search-app          ; the full-page search results app
+   :command-palette     ; the ⌘K command palette
+   :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
+   :data-picker         ; picking a data source (table/model/metric) while building a query
+   :type-filter         ; the search type-filter dropdown's available-models lookup
+   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
+   :browse              ; the Browse models / Browse metrics pages
+   :embedding-setup     ; embedding/SDK setup and preview resource selection
+   :document            ; entity references embedded in documents
+   :library             ; the data-studio Library page (EE)
+   :dependencies        ; the dependency-graph entry search (EE)
+   :model-migration])   ; the migrate-models admin page (EE)
+
+(def ^:private non-ui-contexts
+  "Search `context` values for non-frontend callers.
+  Excluded from the frontend `SearchContext` type so the frontend cannot use them."
+  [:api       ; programmatic / third-party API access
+   :metabot]) ; Metabot / agent API searches; accepted over HTTP too, for debugging and reproduction
+
+(def ^:private contexts
+  "All valid search request `context` values: [[ui-contexts]] plus [[non-ui-contexts]]."
+  (into ui-contexts non-ui-contexts))
+
+(def Context
+  "Malli enum for the search request `context` query parameter, over every value in [[contexts]].
+  The `:decode/string keyword` hook coerces the query-string value (e.g. \"search-app\") to a keyword."
+  (into [:enum {:decode/string keyword}] contexts))
+
+(def context->normalized-context
+  "Collapses search `context` values that should rank and filter alike onto a shared normalized context.
+  Only genuine remappings appear here; an unlisted context normalizes to itself and inherits `:default`.
+  Add an entry to make a surface share another's ranking/filter profile; omit it to keep the surface's own."
+  ;; TODO (Chris 2026-06-08) -- the nav search bar is deliberately left off `:global` for now so it keeps
+  ;; the default filters/weights; decide whether any of its behaviour should be DRYed up with the other
+  ;; broad-search surfaces.
+  {:search-app      :global
+   :command-palette :global
+   :type-filter     :global})
+
+(assert (every? (set contexts) (keys context->normalized-context))
+        "context->normalized-context keys must be valid contexts")
+
+(def normalized-contexts
+  "Context values [[normalized-context]] can return: the remap targets plus every un-remapped context.
+  [[static-context-weights]] and [[filter-defaults-by-context]] are keyed by these (each also has a
+  `:default` base entry)."
+  (into (set (vals context->normalized-context))
+        (remove (set (keys context->normalized-context)))
+        contexts))
+
+(def NormalizedContext
+  "Malli enum schema for a normalized search context (see [[normalized-contexts]])."
+  (into [:enum] (sort normalized-contexts)))
+
+(defn normalized-context
+  "Normalize a search `context` for weight and filter-default lookup.
+  Contexts that should behave alike collapse to a shared value; all others map to themselves.
+  Also used by the `/api/search/weights` endpoints so stored/read override keys agree with search."
+  [context]
+  (get context->normalized-context context context))
+
+(assert (every? (partial mr/validate NormalizedContext) (keys static-context-weights))
+        "static-context-weights must be keyed by normalized contexts")
+
 (def SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query."
   [:map {:closed true}
@@ -243,11 +396,13 @@
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
    [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
-
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
    [:search-engine      {:optional true} keyword?]
+   ;; Semantic-engine vector-search strategy (:hnsw or :brute-force). When absent, the engine uses its
+   ;; configured default setting.
+   [:vector-search-strategy {:optional true} [:maybe keyword?]]
    [:search-string      {:optional true} [:maybe ms/NonBlankString]]
    [:weights            {:optional true} [:maybe [:map-of :keyword number?]]]
    ;;

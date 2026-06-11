@@ -32,7 +32,7 @@ const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 const CUSTOM_SCHEMA = "custom_schema";
 
-describe("scenarios > admin > transforms", () => {
+describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -50,9 +50,6 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
-      "checkTransformDependencies",
-    );
   });
 
   afterEach(() => {
@@ -195,7 +192,23 @@ describe("scenarios > admin > transforms", () => {
         cy.log("Select database");
         H.popover().findByText(DB_NAME).click();
 
+        cy.log("open the editor search panel with Cmd/Ctrl+F (metabase#73290)");
+        H.PythonEditor.focus();
+        cy.realPress([H.metaKey, "f"]);
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("be.visible");
+
         getPythonDataPicker().findByText("Select a table…").click();
+
+        cy.log(
+          "the editor search panel must not paint over the modal (metabase#73290)",
+        );
+        H.entityPickerModal().should("be.visible");
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("not.be.visible");
+
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {
@@ -346,10 +359,10 @@ describe("scenarios > admin > transforms", () => {
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
       const EXPECTED_QUERY = `SELECT
-  "Schema Q"."Animals"."name" AS "name",
-  "Schema Q"."Animals"."score" AS "score"
+  "Schema A"."Animals"."name" AS "name",
+  "Schema A"."Animals"."score" AS "score"
 FROM
-  "Schema Q"."Animals"
+  "Schema A"."Animals"
 LIMIT
   5`;
 
@@ -2626,6 +2639,20 @@ LIMIT
       cy.findByTestId("transform-history-list")
         .findByText(/reverted to an earlier version/)
         .should("be.visible");
+
+      cy.log("Surface backend error when a revert fails (UXW-310)");
+      cy.intercept("POST", "/api/revision/revert", {
+        statusCode: 500,
+        body: { message: "Cannot revert: missing transform" },
+      }).as("failedRevert");
+
+      cy.findByTestId("transform-history-list")
+        .findAllByTestId("question-revert-button")
+        .first()
+        .click();
+      cy.wait("@failedRevert");
+
+      H.undoToast().should("contain.text", "Cannot revert: missing transform");
     });
   });
 
@@ -2695,10 +2722,10 @@ LIMIT
       cy.log("'Change target' button is not displayed");
       cy.findByRole("button", { name: /Change target/ }).should("not.exist");
 
-      cy.log("'Only process new and changed data' switch is not displayed");
-      cy.findByRole("switch", {
-        name: /Only process new and changed data/,
-      }).should("be.disabled");
+      cy.log("'Only process new data' switch is not displayed");
+      cy.findByRole("switch", { name: /Only process new data/ }).should(
+        "be.disabled",
+      );
 
       cy.log("visiting edit mode url directly redirects to view-only mode");
       cy.visit("/data-studio/transforms/1/edit");
@@ -3766,26 +3793,15 @@ describe("scenarios > admin > transforms", () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("should not pick the only database when it is disabled in SQL editor", () => {
+  it("should show a message when no supported databases are available", () => {
     cy.log("create a new transform");
     visitTransformListPage();
-    cy.button("Create a transform").click();
-    H.popover().findByText("SQL query").click();
-
-    cy.findByTestId("gui-builder-data")
-      .findByText("Select a database")
-      .should("be.visible");
-  });
-
-  it("should not pick the only database when it is disabled in Python editor", () => {
-    cy.log("create a new transform");
-    visitTransformListPage();
-    cy.button("Create a transform").click();
-    H.popover().findByText("Python script").click();
-
-    cy.findByTestId("python-transform-top-bar")
-      .findByText("Select a database")
-      .should("be.visible");
+    cy.findByRole("heading", {
+      name: "No compatible database connection",
+    }).should("exist");
+    cy.findByRole("link", { name: "View your database connections" }).should(
+      "exist",
+    );
   });
 });
 
@@ -4161,13 +4177,13 @@ function checkSortingOrder(transformNames: string[]) {
 
 describe("scenarios > data studio > transforms > permissions > oss", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
   });
 
   it(
     "should be able to enable transforms in OSS without upsell gem icon",
-    { tags: "@OSS" },
+    { tags: ["@OSS", "@external"] },
     () => {
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
@@ -4226,62 +4242,70 @@ describe("scenarios > data studio > transforms > permissions > oss", () => {
   );
 });
 
-describe("scenarios > data studio > transforms > permissions > pro-self-hosted", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should have transforms available in self-hosted pro without upsell gem icon", () => {
-    H.activateToken("pro-self-hosted").then(() => {
-      cy.log("ensure that transform permissions are not shown");
-      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
-
-      //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should(
-        "be.visible",
-      );
-      //Ensure transform permissions are not displayed
-      cy.findByRole("columnheader", { name: /Transforms/ }).should("not.exist");
-
-      cy.log("Visit data studio page");
-      cy.visit("/data-studio");
-      H.DataStudio.nav().should("be.visible");
-
-      cy.log("Verify Transforms menu item is visible");
-      H.DataStudio.nav().findByText("Transforms").should("be.visible");
-
-      cy.log("Verify no upsell gem icon is displayed in Transforms menu item");
-      H.DataStudio.nav()
-        .findByText("Transforms")
-        .closest("a")
-        .within(() => {
-          cy.findByTestId("upsell-gem").should("not.exist");
-        });
-
-      cy.log("Verify transforms page is accessible");
-      H.DataStudio.nav().findByText("Transforms").click();
-      H.DataStudio.Transforms.enableTransformPage()
-        .findByRole("button", { name: "Enable transforms" })
-        .click();
-      H.DataStudio.Transforms.list().should("be.visible");
-
-      cy.log("Verify can create transforms in pro-self-hosted");
-      cy.button("Create a transform").should("be.visible");
-
-      cy.log("transform permissions should now be visible");
-      H.goToAdmin();
-      H.appBar().findByRole("link", { name: "Permissions" }).click();
-      cy.findByRole("menuitem", { name: "All Users" }).click();
-
-      //Check that a known header is present
-      cy.findByRole("columnheader", { name: "Database name" }).should(
-        "be.visible",
-      );
-      //Ensure transform permissions are displayed
-      cy.findByRole("columnheader", { name: /Transforms/ })
-        .scrollIntoView()
-        .should("be.visible");
+describe(
+  "scenarios > data studio > transforms > permissions > pro-self-hosted",
+  { tags: ["@external"] },
+  () => {
+    beforeEach(() => {
+      H.restore("postgres-writable");
+      cy.signInAsAdmin();
     });
-  });
-});
+
+    it("should have transforms available in self-hosted pro without upsell gem icon", () => {
+      H.activateToken("pro-self-hosted").then(() => {
+        cy.log("ensure that transform permissions are not shown");
+        cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
+
+        //Check that a known header is present
+        cy.findByRole("columnheader", { name: "Database name" }).should(
+          "be.visible",
+        );
+        //Ensure transform permissions are not displayed
+        cy.findByRole("columnheader", { name: /Transforms/ }).should(
+          "not.exist",
+        );
+
+        cy.log("Visit data studio page");
+        cy.visit("/data-studio");
+        H.DataStudio.nav().should("be.visible");
+
+        cy.log("Verify Transforms menu item is visible");
+        H.DataStudio.nav().findByText("Transforms").should("be.visible");
+
+        cy.log(
+          "Verify no upsell gem icon is displayed in Transforms menu item",
+        );
+        H.DataStudio.nav()
+          .findByText("Transforms")
+          .closest("a")
+          .within(() => {
+            cy.findByTestId("upsell-gem").should("not.exist");
+          });
+
+        cy.log("Verify transforms page is accessible");
+        H.DataStudio.nav().findByText("Transforms").click();
+        H.DataStudio.Transforms.enableTransformPage()
+          .findByRole("button", { name: "Enable transforms" })
+          .click();
+        H.DataStudio.Transforms.list().should("be.visible");
+
+        cy.log("Verify can create transforms in pro-self-hosted");
+        cy.button("Create a transform").should("be.visible");
+
+        cy.log("transform permissions should now be visible");
+        H.goToAdmin();
+        H.appBar().findByRole("link", { name: "Permissions" }).click();
+        cy.findByRole("menuitem", { name: "All Users" }).click();
+
+        //Check that a known header is present
+        cy.findByRole("columnheader", { name: "Database name" }).should(
+          "be.visible",
+        );
+        //Ensure transform permissions are displayed
+        cy.findByRole("columnheader", { name: /Transforms/ })
+          .scrollIntoView()
+          .should("be.visible");
+      });
+    });
+  },
+);

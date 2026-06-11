@@ -4,10 +4,10 @@ import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
-import { isDimension } from "metabase-lib/v1/types/utils/isa";
+import { isDimension, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 export function isPivotGroupColumn(col) {
-  return col.name === "pivot-grouping";
+  return col?.name === "pivot-grouping";
 }
 
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
@@ -153,7 +153,7 @@ function removeStaleAndAddNewColumns(columnSplit, columns) {
       continue;
     }
 
-    if (isDimension(column)) {
+    if (isDimension(column) || !isNumeric(column)) {
       nextColumnSplit.rows = nextColumnSplit.rows ?? [];
       nextColumnSplit.rows.push(columnName);
     } else {
@@ -166,7 +166,7 @@ function removeStaleAndAddNewColumns(columnSplit, columns) {
 }
 
 // This is the pivot function used in the normal table visualization.
-export function pivot(data, normalCol, pivotCol, cellCol) {
+export function pivot(data, normalCol, pivotCol, cellCol, settings) {
   const { pivotValues, normalValues } = distinctValuesSorted(
     data.rows,
     pivotCol,
@@ -200,6 +200,13 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     sourceRows[normalColIdx][pivotColIdx] = j;
   }
 
+  // Use the pivot column's full visualization settings (date_style, time_style, etc.)
+  // when formatting headers so units like hour-of-day render as just the hour.
+  const pivotColumn = data.cols[pivotCol];
+  const pivotColumnSettings = settings?.column?.(pivotColumn) ?? {
+    column: pivotColumn,
+  };
+
   // provide some column metadata to maintain consistency
   const cols = pivotValues.map(function (value, idx) {
     if (idx === 0) {
@@ -210,11 +217,11 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
         ...data.cols[cellCol],
         // `name` must be the same for conditional formatting, but put the
         // formatted pivotted value in the `display_name`
-        display_name: formatValue(value, { column: data.cols[pivotCol] }) || "",
+        display_name: formatValue(value, pivotColumnSettings) || "",
         // for onVisualizationClick:
         _dimension: {
           value: value,
-          column: data.cols[pivotCol],
+          column: pivotColumn,
         },
       };
     }

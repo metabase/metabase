@@ -166,6 +166,7 @@ function LinkVizInner({
                   forceEntitySelect
                   onEntitySelect={handleEntitySelect}
                   models={MODELS_TO_SEARCH}
+                  context="entity-picker"
                 />
               </SearchResultsContainer>
             )

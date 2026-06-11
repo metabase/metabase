@@ -7,6 +7,7 @@ import type { GroupId, IconName } from "metabase-types/api";
 import {
   DataPermission,
   DataPermissionValue,
+  type PermissionEntityId,
 } from "metabase-types/api/permissions";
 
 export { DataPermission, DataPermissionValue };
@@ -53,23 +54,6 @@ export function parseDataRouteParams(raw: RawDataRouteParams): DataRouteParams {
   };
 }
 
-export type DatabaseEntityId = {
-  databaseId: number;
-};
-
-export type SchemaEntityId = DatabaseEntityId & {
-  schemaName: string | undefined;
-};
-
-export type TableEntityId = SchemaEntityId & {
-  tableId: number;
-};
-
-export type EntityId = DatabaseEntityId &
-  Partial<Omit<TableEntityId, "databaseId">>;
-
-export type EntityWithGroupId = EntityId & { groupId: number };
-
 export enum DataPermissionType {
   ACCESS = "access",
   NATIVE = "native",
@@ -77,6 +61,7 @@ export enum DataPermissionType {
   DOWNLOAD = "download",
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
+  WORKSPACES = "workspaces",
   COLLECTIONS = "collections",
 }
 
@@ -96,10 +81,6 @@ export type PermissionsGraphDiff = {
   groups: Record<number | string, GroupPermissionsDiff>;
 };
 
-export type PermissionSubject = "schemas" | "tables" | "fields";
-
-export type SpecialGroupType = "admin" | "analyst" | "external" | null;
-
 export interface PermissionOption {
   label: string;
   value: DataPermissionValue;
@@ -112,7 +93,7 @@ export interface PermissionAction {
   icon: IconName;
   iconColor: ColorName;
   actionCreator: (
-    entityId: EntityId | undefined,
+    entityId: PermissionEntityId | undefined,
     id: number,
     view: "database" | "group",
   ) => ThunkDispatch<State, unknown, UnknownAction>;
@@ -126,7 +107,7 @@ export interface PermissionConfirmationProps {
 }
 
 type PostActionFunction = (
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   groupId: GroupId,
   view: "database" | "group",
   value: DataPermissionValue,
@@ -170,7 +151,7 @@ export interface PermissionEditorEntity {
   name: string;
   icon?: ReactElement;
   hint?: ReactNode;
-  entityId?: EntityId;
+  entityId?: PermissionEntityId;
   permissions?: PermissionSectionConfig[];
   canSelect?: boolean;
   callout?: string;

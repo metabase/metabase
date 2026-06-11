@@ -137,3 +137,12 @@ export type CreateBranchResponse = {
   status: string;
   message: string;
 };
+
+export type TestRemoteSyncConnectionRequest = {
+  "remote-sync-url"?: string | null;
+  "remote-sync-token"?: string | null;
+};
+
+export type TestRemoteSyncConnectionResponse = {
+  status: "success";
+};
