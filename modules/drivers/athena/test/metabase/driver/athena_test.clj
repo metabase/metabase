@@ -58,6 +58,70 @@
              {:name "ts", :base-type :type/Text, :database-type "STRING", :database-position 1}}
            (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" upper-case-schema-columns)))))
 
+;; the partition section format comes from Hive's DESCRIBE formatter; see
+;; `PARTITION_TRANSFORM_SPEC_SCHEMA` in
+;; https://github.com/apache/hive/blob/1cb455bbb6753e548e1435f4345b4e0d4644bf9f/ql/src/java/org/apache/hadoop/hive/ql/ddl/table/info/desc/DescTableDesc.java#L43
+(def ^:private iceberg-partitioned-schema
+  "DESCRIBE output for an Iceberg table partitioned by `identity(weather_id)` and
+  `identity(temporal_key)`. Unlike Hive tables, where the partition section repeats the columns
+  with their real types, Iceberg lists the partition transform (e.g. `identity`) in the type
+  column."
+  [{:_col0 "weather_id\tstring\t"}
+   {:_col0 "subcounty_id\tstring\t"}
+   {:_col0 "weight\tfloat\t"}
+   {:_col0 "unused_index\tint\t"}
+   {:_col0 "temporal_key\tstring\t"}
+   {:_col0 "# Partition Transform Information\t\t"}
+   {:_col0 "# col_name\ttransform_type\t"}
+   {:_col0 "weather_id\tidentity\t"}
+   {:_col0 "temporal_key\tidentity\t"}])
+
+(def ^:private hive-partitioned-schema
+  "The same table as a Hive-style partitioned table: the partition section repeats the partition
+  columns with their real types."
+  [{:_col0 "weather_id\tstring\t"}
+   {:_col0 "subcounty_id\tstring\t"}
+   {:_col0 "weight\tfloat\t"}
+   {:_col0 "unused_index\tint\t"}
+   {:_col0 "temporal_key\tstring\t"}
+   {:_col0 "# Partition Information\t\t"}
+   {:_col0 "# col_name\tdata_type\tcomment"}
+   {:_col0 "weather_id\tstring\t"}
+   {:_col0 "temporal_key\tstring\t"}])
+
+(deftest ^:parallel describe-iceberg-partitioned-table-test
+  (let [expected-fields #{{:name "weather_id", :base-type :type/Text, :database-type "string", :database-position 0}
+                          {:name "subcounty_id", :base-type :type/Text, :database-type "string", :database-position 1}
+                          {:name "weight", :base-type :type/Float, :database-type "float", :database-position 2}
+                          {:name "unused_index", :base-type :type/Integer, :database-type "int", :database-position 3}
+                          {:name "temporal_key", :base-type :type/Text, :database-type "string", :database-position 4}}]
+    (testing "Iceberg partition transform rows in DESCRIBE output shouldn't create duplicate Fields (#75579)"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly iceberg-partitioned-schema)]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
+    (testing "partition columns repeated Hive-style with their real types are only synced once"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly hive-partitioned-schema)]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
+    (testing "repeated partition rows are dropped even if the partition section marker is missing"
+      (mt/with-dynamic-fn-redefs [athena/run-query (constantly [{:_col0 "weather_id\tstring\t"}
+                                                                {:_col0 "subcounty_id\tstring\t"}
+                                                                {:_col0 "weight\tfloat\t"}
+                                                                {:_col0 "unused_index\tint\t"}
+                                                                {:_col0 "temporal_key\tstring\t"}
+                                                                {:_col0 "weather_id\tidentity\t"}
+                                                                {:_col0 "temporal_key\tidentity\t"}])]
+        (is (= expected-fields
+               (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))))
+
+(deftest ^:parallel describe-unknown-database-type-test
+  (testing "unknown database types should fall back to :type/* instead of a nil base type (#75579)"
+    (mt/with-dynamic-fn-redefs [athena/run-query (constantly [{:_col0 "id\tint\t"}
+                                                              {:_col0 "hll\thyperloglog\t"}])]
+      (is (= #{{:name "id", :base-type :type/Integer, :database-type "int", :database-position 0}
+               {:name "hll", :base-type :type/*, :database-type "hyperloglog", :database-position 1}}
+             (#'athena/describe-table-fields-with-nested-fields "test" "test" "test"))))))
+
 (deftest ^:parallel describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena
     (is (= #{{:name "id",          :base-type :type/Integer, :database-type "int",    :database-position 0}
