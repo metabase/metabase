@@ -155,6 +155,7 @@ type SetupOptions = {
   pauseUpdateResponse?: boolean;
   deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
+  metabotSettingsUpdateResponse?: number | { status: number; body?: unknown };
   responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
   updateResponse?: MetabotSettingsResponse;
   renderAsModal?: boolean;
@@ -185,6 +186,7 @@ async function setup({
   pauseUpdateResponse = false,
   deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
+  metabotSettingsUpdateResponse,
   responses,
   updateResponse = {
     value: "anthropic/claude-sonnet-4-5",
@@ -326,6 +328,10 @@ async function setup({
   }
 
   fetchMock.put("path:/api/metabot/settings", (call) => {
+    if (metabotSettingsUpdateResponse !== undefined) {
+      return metabotSettingsUpdateResponse;
+    }
+
     if (pauseUpdateResponse) {
       return new Promise(() => undefined);
     }
@@ -362,21 +368,22 @@ async function setup({
       });
     }
 
-    if (body.provider === "bedrock" && body.credentials) {
+    if (body.provider === "bedrock" && "credentials" in body) {
       const mask = (value: string | null | undefined) =>
         value ? `**********${String(value).slice(-2)}` : undefined;
 
+      // `credentials: null` is an explicit clear — the backend wipes all the saved key material.
       settingsDefinitions["llm-bedrock-access-key-id"] =
         createMockSettingDefinition({
           ...settingsDefinitions["llm-bedrock-access-key-id"],
           key: "llm-bedrock-access-key-id",
-          value: mask(body.credentials["access-key-id"]),
+          value: mask(body.credentials?.["access-key-id"]),
         });
       settingsDefinitions["llm-bedrock-secret-access-key"] =
         createMockSettingDefinition({
           ...settingsDefinitions["llm-bedrock-secret-access-key"],
           key: "llm-bedrock-secret-access-key",
-          value: mask(body.credentials["secret-access-key"]),
+          value: mask(body.credentials?.["secret-access-key"]),
         });
     }
 
@@ -1864,7 +1871,7 @@ describe("AIProviderSettingsSection", () => {
       expect(screen.getByText("OpenAI")).toBeInTheDocument();
     });
 
-    it("disconnects Bedrock by clearing the provider and AWS credential settings", async () => {
+    it("disconnects Bedrock by clearing the credentials before the provider setting", async () => {
       await setup({
         savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
         apiKeyValues: { bedrock: "**********LE" },
@@ -1875,20 +1882,72 @@ describe("AIProviderSettingsSection", () => {
 
       await waitFor(() => {
         expect(
-          fetchMock.callHistory.called("path:/api/setting", {
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
             method: "PUT",
-            body: {
-              "llm-metabot-provider": null,
-              "llm-bedrock-access-key-id": null,
-              "llm-bedrock-secret-access-key": null,
-              "llm-bedrock-session-token": null,
-            },
+            body: { provider: "bedrock", credentials: null },
           }),
         ).toBe(true);
       });
 
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
+
+      const callHistory = fetchMock.callHistory.calls();
+      const [credentialsRequest] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+      const [providerRequest] = fetchMock.callHistory.calls(
+        "path:/api/setting",
+        { method: "PUT" },
+      );
+
+      if (!credentialsRequest || !providerRequest) {
+        throw new Error("Expected credentials and provider requests to exist");
+      }
+
+      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
+        callHistory.indexOf(providerRequest),
+      );
+
       expect(
         await screen.findByText("Connect to an AI provider"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not clear the provider setting if clearing the Bedrock credentials fails", async () => {
+      const { store } = await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+        metabotSettingsUpdateResponse: { status: 500 },
+      });
+
+      await screen.findByLabelText("Access key ID");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          store
+            .getState()
+            .undo.some(
+              (toast) => toast.message === "Unable to save provider settings.",
+            ),
+        ).toBe(true);
+      });
+
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/setting")
+          .some((call) => call.request?.method === "PUT"),
+      ).toBe(false);
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
       ).toBeInTheDocument();
     });
   });
