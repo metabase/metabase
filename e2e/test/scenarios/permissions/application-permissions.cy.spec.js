@@ -69,7 +69,7 @@ describe("scenarios > admin > permissions > application", () => {
 
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.tableInteractive().should("be.visible");
-        H.sharingMenuButton().should("be.disabled");
+        H.sharingMenuButton().should("not.exist");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {

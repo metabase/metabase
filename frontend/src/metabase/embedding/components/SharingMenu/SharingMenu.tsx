@@ -35,7 +35,7 @@ export const SharingButton = forwardRef(function _SharingButton(
     onClick,
     disabled,
   }: {
-    tooltip?: string;
+    tooltip?: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
   },
@@ -47,7 +47,8 @@ export const SharingButton = forwardRef(function _SharingButton(
       icon="share"
       data-testid="sharing-menu-button"
       tooltipLabel={tooltip ?? t`Sharing`}
-      aria-label={tooltip ?? t`Sharing`}
+      // aria-label must be a string, so non-string tooltips fall back to the default
+      aria-label={typeof tooltip === "string" ? tooltip : t`Sharing`}
       onClick={onClick}
       disabled={disabled}
     />

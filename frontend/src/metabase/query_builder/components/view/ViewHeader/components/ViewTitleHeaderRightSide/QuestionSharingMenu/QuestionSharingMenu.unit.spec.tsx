@@ -90,64 +90,104 @@ describe("QuestionSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it('should show an "Enable" link if public sharing is disabled', async () => {
+      it("should hide the public link option if public sharing is disabled", async () => {
         await setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Public link")).toBeInTheDocument();
-        expect(screen.getByText("Enable")).toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+        expect(screen.queryByText("Enable")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
       // note: if public sharing is disabled, the dashboard object provided by the backend should not have a UUID
     });
 
     describe("non-admins", () => {
-      it('should show a "Public link" menu item if there is a public link for the question', async () => {
+      it('should turn the share button into a "Copy link" action when a public link exists', async () => {
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
-        await openMenu();
-        expect(screen.getByText("Public link")).toBeInTheDocument();
+        const button = screen.getByTestId("sharing-menu-button");
+        expect(button).toBeEnabled();
+        expect(button).toHaveAttribute("aria-label", "Copy link");
       });
 
-      it('should show an "Ask your admin to create a public link" menu item if there is no public link for the question', async () => {
+      it("clicking the share button copies the public link without opening a popover", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
+        await setupQuestionSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+        });
+
+        await userEvent.click(screen.getByTestId("sharing-menu-button"));
+
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          "http://localhost:3000/public/question/1337bad801",
+        );
+        expect(
+          screen.queryByTestId("public-link-popover-content"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("shows a 'Link copied to clipboard!' tooltip after copying", async () => {
+        await setupQuestionSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+        });
+
+        const button = screen.getByTestId("sharing-menu-button");
+        await userEvent.click(button);
+        await userEvent.hover(button);
+
+        expect(
+          await screen.findByText("Link copied to clipboard!"),
+        ).toBeInTheDocument();
+      });
+
+      it("should hide the share button entirely when there is no public link", async () => {
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
         });
-        await openMenu();
         expect(
-          screen.getByText("Ask your admin to create a public link"),
-        ).toBeInTheDocument();
+          screen.queryByTestId("sharing-menu-button"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
       });
     });
   });
 
   describe("embedding", () => {
     describe("non-admins", () => {
-      it("should not show the 'Embed' menu item if embedding is enabled", async () => {
+      it("should never expose the 'Embed' option if embedding is enabled", async () => {
         await setupQuestionSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: true,
+          hasPublicLink: true,
+          isPublicSharingEnabled: true,
         });
-        await openMenu();
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
 
-      it("should not show the 'Embed' menu item if embedding is disabled", async () => {
+      it("should never expose the 'Embed' option if embedding is disabled", async () => {
         await setupQuestionSharingMenu({
           isAdmin: false,
           isEmbeddingEnabled: false,
+          hasPublicLink: true,
+          isPublicSharingEnabled: true,
         });
-        await openMenu();
         expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
     });

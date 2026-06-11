@@ -71,11 +71,17 @@ export const PublicLinkPopover = ({
           data-testid="public-link-popover-content"
           mih={getMinDropdownHeight()}
         >
-          <Title c="text-secondary" order={4}>{t`Public link`}</Title>
+          <Title
+            order={4}
+            c="text-primary"
+            fz="md"
+            fw={700}
+            lh="1.5rem"
+          >{t`Public link`}</Title>
           <Text
             color="text-secondary"
             size="sm"
-            mb="xs"
+            mb="sm"
           >{t`Anyone can view this if you give them the link.`}</Text>
           <PublicLinkCopyPanel
             loading={loading}

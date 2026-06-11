@@ -7,74 +7,69 @@ import { setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   describe("non-admins", () => {
-    describe("alerts permission disabled", () => {
-      it('should show a "Public link" button item if public sharing is enabled and the user lacks alerts permissions', async () => {
-        setupQuestionSharingMenu({
-          canManageSubscriptions: false,
-          isPublicSharingEnabled: true,
-          hasPublicLink: true,
-          isEnterprise: true,
-        });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
+    it('turns the share button into a "Copy link" action when a public link exists', async () => {
+      setupQuestionSharingMenu({
+        canManageSubscriptions: false,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+        isEnterprise: true,
+      });
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-        expect(sharingButton).toBeEnabled();
-        expect(sharingButton).toHaveAttribute("aria-label", "Public link");
+      expect(sharingButton).toBeEnabled();
+      expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+    });
+
+    it("clicking the share button copies the public link directly instead of opening a popover", async () => {
+      jest.mocked(navigator.clipboard.writeText).mockClear();
+      setupQuestionSharingMenu({
+        canManageSubscriptions: false,
+        isPublicSharingEnabled: true,
+        hasPublicLink: true,
+        isEnterprise: true,
       });
 
-      it("clicking the sharing button should open the public link popover", async () => {
-        setupQuestionSharingMenu({
-          canManageSubscriptions: false,
-          isPublicSharingEnabled: true,
-          hasPublicLink: true,
-          isEnterprise: true,
-        });
+      await userEvent.click(screen.getByTestId("sharing-menu-button"));
 
-        await userEvent.click(screen.getByTestId("sharing-menu-button"));
-
-        // popover content mounts asynchronously after the click
-        expect(
-          await screen.findByTestId("public-link-popover-content"),
-        ).toBeInTheDocument();
-        const input = screen.getByTestId("public-link-input");
-        expect(input).toHaveDisplayValue(
+      await waitFor(() =>
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
           "http://localhost:3000/public/question/1337bad801",
-        );
+        ),
+      );
+      expect(
+        screen.queryByTestId("public-link-popover-content"),
+      ).not.toBeInTheDocument();
+    });
 
-        // the input drops its loading placeholder once the link-loading
-        // effect resolves
-        await waitFor(() => expect(input).not.toHaveAttribute("placeholder"));
+    it("hides the share button without an admin prompt when public sharing is disabled", async () => {
+      setupQuestionSharingMenu({
+        isPublicSharingEnabled: false,
+        hasPublicLink: true,
+        canManageSubscriptions: false,
+        isEnterprise: true,
       });
 
-      it("should show a 'ask your admin to create a public link' tooltip if public sharing is disabled", async () => {
-        setupQuestionSharingMenu({
-          isPublicSharingEnabled: false,
-          hasPublicLink: true,
-          canManageSubscriptions: false,
-          isEnterprise: true,
-        });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
+      expect(
+        screen.queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Ask your admin to create a public link"),
+      ).not.toBeInTheDocument();
+    });
 
-        expect(sharingButton).toBeDisabled();
-        expect(sharingButton).toHaveAttribute(
-          "aria-label",
-          "Ask your admin to create a public link",
-        );
+    it("hides the share button without an admin prompt when there is no public link", async () => {
+      setupQuestionSharingMenu({
+        isPublicSharingEnabled: true,
+        canManageSubscriptions: false,
+        hasPublicLink: false,
       });
 
-      it("should show a 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
-        setupQuestionSharingMenu({
-          isPublicSharingEnabled: true,
-          canManageSubscriptions: false,
-          hasPublicLink: false,
-        });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
-
-        expect(sharingButton).toBeDisabled();
-        expect(sharingButton).toHaveAttribute(
-          "aria-label",
-          "Ask your admin to create a public link",
-        );
-      });
+      expect(
+        screen.queryByTestId("sharing-menu-button"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Ask your admin to create a public link"),
+      ).not.toBeInTheDocument();
     });
   });
 

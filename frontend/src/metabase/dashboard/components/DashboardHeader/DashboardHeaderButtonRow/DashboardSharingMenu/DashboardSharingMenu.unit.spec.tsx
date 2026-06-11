@@ -1,4 +1,6 @@
-import { screen } from "__support__/ui";
+import userEvent from "@testing-library/user-event";
+
+import { screen, waitFor } from "__support__/ui";
 
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
@@ -97,58 +99,84 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it('should show an "Enable" link if public sharing is disabled', async () => {
+      it("should hide the public link option if public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Public link")).toBeInTheDocument();
-        expect(screen.getByText("Enable")).toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
+        expect(screen.queryByText("Enable")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
+        expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+        expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
       // note: if public sharing is disabled, the dashboard object provided by the backend should not have a UUID
     });
 
     describe("non-admins", () => {
-      it('should show a "Public link" menu item if public sharing is enabled and a public link exists already', async () => {
+      it('should show a "Copy link" menu item if a public link exists already', async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
         await openMenu();
-        expect(screen.getByText("Public link")).toBeInTheDocument();
+        expect(screen.getByText("Copy link")).toBeInTheDocument();
+        expect(screen.queryByText("Public link")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
       });
 
-      it("should not show a 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
+      it("should copy the public link directly when clicking 'Copy link'", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isPublicSharingEnabled: true,
+          hasPublicLink: true,
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/public/dashboard/1337bad801",
+          ),
+        );
+      });
+
+      it("should only show the PDF export option when public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: false,
           hasPublicLink: true,
         });
         await openMenu();
+        expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
         expect(
-          screen.getByText("Ask your admin to create a public link"),
-        ).toBeInTheDocument();
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
       });
 
-      it("should show a 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
+      it("should only show the PDF export option when there is no existing public link", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
         });
         await openMenu();
+        expect(screen.getByText("Export as PDF")).toBeInTheDocument();
+        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
         expect(
-          screen.getByText("Ask your admin to create a public link"),
-        ).toBeInTheDocument();
+          screen.queryByText("Ask your admin to create a public link"),
+        ).not.toBeInTheDocument();
       });
     });
   });

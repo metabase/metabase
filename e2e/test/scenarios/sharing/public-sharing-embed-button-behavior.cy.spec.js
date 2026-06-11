@@ -47,8 +47,13 @@ const { H } = cy;
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu().findByText(/embed/i).should("not.exist");
+          if (resource === "question") {
+            // No public link: the share button is hidden, so there's no embed.
+            H.sharingMenuButton().should("not.exist");
+          } else {
+            H.openSharingMenu();
+            H.sharingMenu().findByText(/embed/i).should("not.exist");
+          }
         });
       });
     });
@@ -83,28 +88,35 @@ const { H } = cy;
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
+          it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            if (resource === "question") {
+              // No public link: the share button is hidden entirely.
+              H.sharingMenuButton().should("not.exist");
+            } else {
+              // No public link: the menu only offers the PDF export.
+              H.openSharingMenu();
+              H.sharingMenu().within(() => {
+                cy.findByText("Export as PDF").should("be.visible");
+                cy.findByText("Ask your admin to create a public link").should(
+                  "not.exist",
+                );
+                cy.findByText(/public link/i).should("not.exist");
+                cy.findByText("Copy link").should("not.exist");
+                cy.findByText("Embed").should("not.exist");
+              });
+            }
           });
 
-          it(`should show the public link button if the ${resource} has a public link`, () => {
+          it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
             cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
-              visitResource(resource, id);
             });
-
-            H.openSharingMenu(/public link/i);
-
-            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
             cy.signInAsNormalUser();
 
@@ -112,12 +124,28 @@ const { H } = cy;
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Public link");
-
-            assertValidPublicLink({
-              resource,
-              shouldHaveRemoveLink: false,
+            cy.window().then((win) => {
+              cy.stub(win.navigator.clipboard, "writeText")
+                .as("copyLink")
+                .resolves();
             });
+
+            if (resource === "question") {
+              // The share button copies directly and shows a tooltip.
+              H.sharingMenuButton()
+                .should("be.enabled")
+                .and("have.attr", "aria-label", "Copy link")
+                .click();
+              H.sharingMenuButton().realHover();
+              H.tooltip().findByText("Link copied to clipboard!");
+            } else {
+              // The menu item flips to "Copied!" in place.
+              H.openSharingMenu("Copy link");
+              H.sharingMenu().findByText("Copied!").should("be.visible");
+            }
+
+            cy.get("@copyLink").should("have.been.called");
+            cy.findByTestId("public-link-popover-content").should("not.exist");
           });
         });
       });
@@ -129,7 +157,7 @@ const { H } = cy;
         });
 
         describe("when user is admin", () => {
-          it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
+          it(`should hide the public link option for ${resource} and allow the user to access the embed modal`, () => {
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
@@ -137,8 +165,8 @@ const { H } = cy;
             H.openSharingMenu();
 
             H.sharingMenu().within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByText("Enable").should("be.visible");
+              cy.findByText(/public link/i).should("not.exist");
+              cy.findByText("Enable").should("not.exist");
             });
 
             cy.findByTestId("embed-menu-embed-modal-item").click();
@@ -146,17 +174,26 @@ const { H } = cy;
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled button for ${resource}`, () => {
+          it(`should not prompt a non-admin to create a public link for ${resource}`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            if (resource === "question") {
+              // No public link: the share button is hidden entirely.
+              H.sharingMenuButton().should("not.exist");
+            } else {
+              H.openSharingMenu();
+              H.sharingMenu().within(() => {
+                cy.findByText("Export as PDF").should("be.visible");
+                cy.findByText("Ask your admin to create a public link").should(
+                  "not.exist",
+                );
+                cy.findByText("Copy link").should("not.exist");
+              });
+            }
           });
         });
       });

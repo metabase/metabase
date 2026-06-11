@@ -148,14 +148,13 @@ export async function setupQuestionSharingMenu({
     { storeInitialState: state },
   );
 
-  // QuestionSharingMenu eagerly mounts QuestionPublicLinkPopover, whose
-  // useAsync hook flips its loading state shortly after mount. Wait for the
-  // sharing menu button to settle so that async update stays wrapped in act.
-  // Some scenarios (models, archived questions) render nothing at all, so we
-  // only wait when the button is expected to appear.
+  // Only the admin menu eagerly mounts QuestionPublicLinkPopover, whose useAsync
+  // hook flips its loading state shortly after mount; wait for the button so that
+  // async update stays wrapped in act. Non-admin menus render synchronously, and
+  // model/archived questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
-  if (!isModel && !isArchived) {
+  if (isAdmin && !isModel && !isArchived) {
     await screen.findByTestId("sharing-menu-button");
   }
 }

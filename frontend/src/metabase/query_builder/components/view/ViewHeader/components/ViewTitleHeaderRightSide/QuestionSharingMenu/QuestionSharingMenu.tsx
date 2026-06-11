@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { useSetting } from "metabase/common/hooks";
 import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {
@@ -11,34 +10,24 @@ import {
 import type { QuestionSharingModalType } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
+import { trackPublicLinkCopied } from "metabase/embedding/lib/analytics";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import {
-  canManageSubscriptions as canManageSubscriptionsSelector,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
-import { Box, Flex } from "metabase/ui";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Box, CopyButton, Flex, Icon, Text } from "metabase/ui";
+import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
   const dispatch = useDispatch();
-  const { modalType, setModalType } = useSharingModal<QuestionSharingModalType>(
-    {
-      resource: question.card(),
-      resourceType: "question",
-    },
-  );
-  const hasPublicLink = !!question?.publicUUID?.();
+  const isAdmin = useSelector(getUserIsAdmin);
   const isModel = question.type() === "model";
   const isArchived = question.isArchived();
-  const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const isAdmin = useSelector(getUserIsAdmin);
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
-  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   if (isModel || isArchived || isAnalytics) {
     return null;
@@ -59,41 +48,26 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
     );
   }
 
-  if (
-    !isAdmin &&
-    (!isPublicSharingEnabled || !hasPublicLink) &&
-    !canManageSubscriptions
-  ) {
-    return (
-      <SharingButton
-        tooltip={t`Ask your admin to create a public link`}
-        disabled
-      />
-    );
-  }
+  return isAdmin ? (
+    <AdminQuestionSharingMenu question={question} />
+  ) : (
+    <NonAdminQuestionSharingMenu question={question} />
+  );
+}
 
-  if (!isAdmin && hasPublicLink && !canManageSubscriptions) {
-    return (
-      <Flex>
-        <SharingButton
-          tooltip={t`Public link`}
-          onClick={() => setModalType("question-public-link")}
-        />
-        <QuestionPublicLinkPopover
-          question={question}
-          target={<Box h="2rem" />}
-          isOpen={modalType === "question-public-link"}
-          onClose={() => setModalType(null)}
-        />
-      </Flex>
-    );
-  }
+function AdminQuestionSharingMenu({ question }: { question: Question }) {
+  const { modalType, setModalType } = useSharingModal<QuestionSharingModalType>(
+    {
+      resource: question.card(),
+      resourceType: "question",
+    },
+  );
 
   return (
     <Flex>
       <SharingMenu>
         <PublicLinkMenuItem
-          hasPublicLink={hasPublicLink}
+          hasPublicLink={Boolean(question.publicUUID?.())}
           onClick={() => setModalType("question-public-link")}
         />
         <EmbedMenuItem
@@ -107,5 +81,41 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
         onClose={() => setModalType(null)}
       />
     </Flex>
+  );
+}
+
+// Non-admins can't create public links. When one already exists the share
+// button copies it directly; otherwise there's nothing to share, so it's hidden.
+function NonAdminQuestionSharingMenu({ question }: { question: Question }) {
+  const publicUuid = question.publicUUID?.();
+
+  if (!publicUuid) {
+    return null;
+  }
+
+  const url = getPublicQuestionUrl({ uuid: publicUuid });
+  return (
+    <CopyButton value={url} timeout={2000}>
+      {({ copied, copy }) => (
+        <SharingButton
+          tooltip={
+            copied ? (
+              <Flex gap="sm" align="center">
+                <Icon name="verified_round" size={16} />
+                <Text fz="md" lh="sm" c="inherit">
+                  {t`Link copied to clipboard!`}
+                </Text>
+              </Flex>
+            ) : (
+              t`Copy link`
+            )
+          }
+          onClick={() => {
+            copy();
+            trackPublicLinkCopied({ artifact: "question", format: "html" });
+          }}
+        />
+      )}
+    </CopyButton>
   );
 }
