@@ -2,7 +2,7 @@
   "/api/typed-schemas endpoints."
   (:require
    [clojure.string :as str]
-   [metabase.actions.models :as actions.models]
+   [metabase.actions.core :as actions]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
@@ -285,7 +285,7 @@
   parent model's already-rendered column schemas, passed through to
   implicit actions for response-row typing."
   [model-id model-columns]
-  (let [actions (actions.models/select-actions
+  (let [actions (actions/select-actions
                  nil
                  :model_id model-id
                  :archived false
