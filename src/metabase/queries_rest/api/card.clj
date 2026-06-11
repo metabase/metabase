@@ -570,8 +570,10 @@
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
-    ;; check that we have permissions to run the query that we're trying to save
-    (query-perms/check-run-permissions-for-query query)
+    ;; check that we have permissions to run the query that we're trying to save.
+    ;; Strip :query-permissions/perms first -- it is populated internally by the QP
+    ;; middleware, so any value already on the incoming query is dropped here.
+    (query-perms/check-run-permissions-for-query (dissoc query :query-permissions/perms))
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
@@ -611,7 +613,7 @@
   [card-before-updates :- ::queries.schema/card
    card-updates        :- ::queries.schema/card]
   (when (api/column-will-change? :dataset_query card-before-updates card-updates)
-    (query-perms/check-run-permissions-for-query (:dataset_query card-updates))))
+    (query-perms/check-run-permissions-for-query (dissoc (:dataset_query card-updates) :query-permissions/perms))))
 
 (defn- check-allowed-to-change-embedding
   "You must be a superuser to change the value of `enable_embedding`, `embedding_type` or `embedding_params`. Embedding must be
