@@ -95,5 +95,10 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
       "graph.metrics": ["COLUMN_2", "COLUMN_4"],
       "graph.dimensions": ["COLUMN_1", "COLUMN_3"],
     });
+
+    expect(initialState.preloadedDatasets).toEqual({
+      [firstCard.id]: rawSeries[0],
+      [secondCard.id]: rawSeries[1],
+    });
   });
 });

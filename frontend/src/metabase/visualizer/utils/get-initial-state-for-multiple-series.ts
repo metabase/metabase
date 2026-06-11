@@ -1,4 +1,4 @@
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import type { VisualizerVizDefinitionWithColumnsAndPreloadedDatasets } from "metabase/redux/store/visualizer";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Card,
@@ -63,7 +63,7 @@ function mapColumnVizSettings(
 function processColumnsForDataSource(
   dataSource: VisualizerDataSource,
   columns: DatasetColumn[],
-  state: VisualizerVizDefinitionWithColumnsAndFallbacks,
+  state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets,
 ): ColumnInfo[] {
   const columnInfos: ColumnInfo[] = [];
 
@@ -111,12 +111,12 @@ function processColumnsForDataSource(
 export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
   const mainCard = rawSeries[0].card;
 
-  const state: VisualizerVizDefinitionWithColumnsAndFallbacks = {
+  const state: VisualizerVizDefinitionWithColumnsAndPreloadedDatasets = {
     display: mainCard.display,
     columns: [],
     columnValuesMapping: {},
     settings: {},
-    datasetFallbacks: rawSeries.reduce(
+    preloadedDatasets: rawSeries.reduce(
       (acc, s) => {
         acc[s.card.id] = s as unknown as Dataset;
         return acc;

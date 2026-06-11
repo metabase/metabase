@@ -198,22 +198,36 @@
     (driver/sync-in-context (driver.u/database->driver database) database
                             f)))
 
-;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
-;; list of exception classes (like, driver-specific exceptions)
+(defonce ^:private transient-exception-hierarchy
+  (make-hierarchy))
+
+(defn register-transient-exception
+  "Register exception `klass` as a transient connection/environment-level failure — one that is expected to clear on a
+  later sync. [[transient-exception?]] then returns true for `klass` and its subclasses, so sync aborts and retries
+  the whole run later rather than treating the failure as permanent. Drivers may register driver-specific connection
+  exceptions this way."
+  [klass]
+  (alter-var-root #'transient-exception-hierarchy derive klass ::transient-exception))
+
 (doseq [klass [java.net.ConnectException
                java.net.NoRouteToHostException
                java.net.UnknownHostException
                com.mchange.v2.resourcepool.CannotAcquireResourceException
                javax.net.ssl.SSLHandshakeException]]
-  (derive klass ::exception-class-not-to-retry))
+  (register-transient-exception klass))
 
 (def ^:dynamic *log-exceptions-and-continue?*
   "Whether to log exceptions during a sync step and proceed with the rest of the sync process. This is the default
   behavior. You can disable this for debugging or test purposes."
   true)
 
-(defn- do-not-retry-exception? [e]
-  (or (isa? (class e) ::exception-class-not-to-retry)
+(defn transient-exception?
+  "True if `e` (or any of its causes) is a connection/environment-level failure — database unreachable, connection
+  pool exhausted, SSL handshake failure, and similar — rather than a failure that says anything about the data being
+  synced. Such failures are expected to clear on a later sync and should not be treated as a permanent failure of the
+  entity being synced. Register additional classes with [[register-transient-exception]]."
+  [e]
+  (or (isa? transient-exception-hierarchy (class e) ::transient-exception)
       (some-> (ex-cause e) recur)))
 
 (defn do-with-error-handling
@@ -225,7 +239,7 @@
    (try
      (f)
      (catch Throwable e
-       (if (and *log-exceptions-and-continue?* (not (do-not-retry-exception? e)))
+       (if (and *log-exceptions-and-continue?* (not (transient-exception? e)))
          (do
            (log/warn e message)
            e)
@@ -235,9 +249,8 @@
   "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
   Pass a `message` to help provide information about what failed for the log message.
 
-  The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
-  against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
-  recoverable for this sync run."
+  Exceptions classified as transient (see [[transient-exception?]]) are not swallowed: the sync is aborted, as the
+  database could not be reached and the failure is expected to clear on a later sync."
   {:style/indent 1}
   [message & body]
   `(do-with-error-handling ~message (^:once fn* [] ~@body)))
@@ -673,7 +686,7 @@
   "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"
   [step-results]
   (when-let [caught-exception (:throwable step-results)]
-    (do-not-retry-exception? caught-exception)))
+    (transient-exception? caught-exception)))
 
 (mu/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
