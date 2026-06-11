@@ -92,7 +92,6 @@
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
-           metabase.actions.models
            metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
@@ -2518,8 +2517,7 @@
   typed-schemas
   {:team "Embedding"
    :api  #{metabase.typed-schemas.api}
-   :uses #{actions
-           api
+   :uses #{api
            collections
            lib
            lib-be
