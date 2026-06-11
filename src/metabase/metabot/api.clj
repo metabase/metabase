@@ -338,16 +338,18 @@
     (or (non-blank-string model)
         (metabot.settings/default-model-for-provider provider))))
 
-(def ^:private invalid-api-key-statuses
-  #{401 403})
-
 (defn- invalid-credentials-error?
-  "Whether a provider api-error means the credentials were rejected (or missing)."
+  "Whether a provider api-error is a client-side 4xx we should surface rather than treat as an
+  outage. Covers rejected or missing credentials (401/403) and a request the provider refused
+  outright (e.g. a custom base URL pointing at the wrong surface, which 400s). `rethrow-api-error!`
+  tags these with `:status`; other callers throw with `:status-code`. Provider 5xx and network
+  failures are left to propagate as 500s so outages aren't reported as credential problems."
   [error]
-  (let [status (or (:status (ex-data error))
-                   (:status-code (ex-data error)))]
-    (and (:api-error (ex-data error))
-         (contains? invalid-api-key-statuses status))))
+  (let [{:keys [api-error status status-code]} (ex-data error)
+        status (or status status-code)]
+    (and api-error
+         (number? status)
+         (<= 400 status 499))))
 
 (defn- title-case-token
   [token]
@@ -530,6 +532,17 @@
   (when region
     (setting/set! :llm-bedrock-region region)))
 
+(defn- check-not-env-shadowed!
+  "Throw a 400 when `setting-key` is controlled by an env var. Writes to env-shadowed settings
+  persist to the app DB but the env var wins on every read, so they silently do nothing — reject
+  them up front instead."
+  [setting-key]
+  (when (some? (setting/env-var-value setting-key))
+    (throw (ex-info (tru "This setting is set by the {0} environment variable and cannot be changed via the API."
+                         (setting/env-var-name setting-key))
+                    {:status-code 400
+                     :setting     setting-key}))))
+
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
   [provider credentials]
@@ -559,6 +572,14 @@
 
                             :else
                             nil)
+        ;; Reject writes to env-shadowed settings before verifying or persisting anything: they'd
+        ;; write a DB row the env var silently wins over. Guard the api-key setting for API-key
+        ;; providers (Bedrock's per-field credential settings are left to the credentials path) and
+        ;; the provider/model setting whenever a provider/model write would happen.
+        _                 (when (and credentials (not= provider "bedrock"))
+                            (check-not-env-shadowed! (provider-api-key-setting-key provider)))
+        _                 (when model
+                            (check-not-env-shadowed! :llm-metabot-provider))
         ;; The model listing validates the request credentials before anything is saved.
         response          (-> (settings-response provider credentials)
                               throw-credentials-error!)]
