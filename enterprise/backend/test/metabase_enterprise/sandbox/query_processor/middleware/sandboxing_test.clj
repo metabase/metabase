@@ -1745,6 +1745,53 @@
             (is (= :completed (:status result)))
             (is (= 3 (count (mt/rows result))))))))))
 
+(deftest ^:parallel project-only-columns-from-original-table-preserves-nested-fields-test
+  (testing "Sandbox column projection must keep nested fields whose `:name` is path-joined after preprocessing (#75305)"
+    ;; For nested fields (e.g. Mongo object children), `lib/returned-columns` on a preprocessed sandbox query produces
+    ;; `:name` like `"parent.child.leaf"` while `lib.metadata/fields` returns the raw leaf `:name`. Matching only by
+    ;; `:name` would drop nested columns and wrap the sandbox in an extra stage that omits them — making the columns
+    ;; vanish for sandboxed users.
+    ;;
+    ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
+    ;; another table (`orders.total`) — that one *must* still be filtered out.
+    (let [mp            (lib.tu/mock-metadata-provider
+                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                          :tables   [{:id 100 :name "customers" :db-id 1}
+                                     {:id 200 :name "orders" :db-id 1}]
+                          :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
+                                      :semantic-type :type/PK}
+                                     {:id 1002 :name "name" :base-type :type/Text :table-id 100}
+                                     {:id 1100 :name "tier_and_details" :base-type :type/Dictionary :table-id 100}
+                                     {:id 1200 :name "u1" :base-type :type/Dictionary :table-id 100
+                                      :nfc-path ["tier_and_details"] :parent-id 1100}
+                                     {:id 1201 :name "id" :base-type :type/Text :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 1202 :name "active" :base-type :type/Boolean :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 2002 :name "customer_id" :base-type :type/Integer :table-id 200
+                                      :fk-target-field-id 1001 :semantic-type :type/FK}
+                                     {:id 2003 :name "total" :base-type :type/Float :table-id 200}]})
+          base          (lib/query mp (lib.metadata/table mp 100))
+          join          (-> (lib/join-clause (lib.metadata/table mp 200)
+                                             [(lib/= (lib.metadata/field mp 1001)
+                                                     (lib.metadata/field mp 2002))])
+                            (lib/with-join-fields [(lib.metadata/field mp 2003)]))
+          ;; This append-stage / preprocess / drop-stage dance matches what `sandboxing/preprocess-query` does
+          ;; internally: an extra trailing stage carries `:lib/stage-metadata` through preprocessing (legacy MBQL
+          ;; round-tripping otherwise loses it), and we discard that stage afterward to get back the original shape
+          ;; with metadata preserved.
+          sandbox-query (-> (lib/join base join)
+                            lib/append-stage
+                            qp.preprocess/preprocess
+                            lib/drop-stage)]
+      (testing "preprocessing produces path-joined `:name`s for nested fields (sanity check)"
+        (is (contains? (set (map :name (lib/returned-columns sandbox-query)))
+                       "tier_and_details.u1.id")))
+      (testing "nested customers fields are preserved; the joined orders.total column is still filtered out"
+        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query 100)]
+          (is (= #{1001 1002 1100 1200 1201 1202}
+                 (set (map :id (lib/returned-columns result))))))))))
+
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
