@@ -460,7 +460,8 @@
         (impl/export! (source.p/snapshot mock) (new-task!) "edit")
         ;; diverge the DB from the repo, then import the repo back over it
         (t2/update! :model/Card card-a {:description "local divergence"})
-        (impl/import! (source.p/snapshot mock) (new-task!) :force? true)
+        (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true)))
+            "import succeeds")
         (is (= "edited via incremental" (t2/select-one-fn :description :model/Card :id card-a))
             "import restored the description the incremental export wrote")))))
 
@@ -474,7 +475,8 @@
           (impl/export! (source.p/snapshot mock) (new-task!) "rename")
           ;; rename back locally, then import the repo
           (t2/update! :model/Card card-a {:name "Card A"})
-          (impl/import! (source.p/snapshot mock) (new-task!) :force? true)
+          (is (= :success (:status (impl/import! (source.p/snapshot mock) (new-task!) :force? true)))
+              "import succeeds")
           (is (= "Renamed A" (t2/select-one-fn :name :model/Card :id card-a))
               "import applied the renamed name from the repo")
           (is (= 1 (t2/count :model/Card :entity_id a-eid))

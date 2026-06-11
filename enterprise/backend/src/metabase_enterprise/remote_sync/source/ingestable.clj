@@ -71,8 +71,17 @@
     (letfn [(progress-callback [item _]
               (when item
                 (let [current-calls (swap! calls inc)]
-                  (t2/with-connection [_conn (app-db/app-db)]
-                    (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize))))))]
+                  ;; Progress reporting must never abort the ingestion it tracks. The update runs on a
+                  ;; separate connection, which on some app DBs can contend with the in-flight load (e.g.
+                  ;; a MySQL lock-wait timeout), so swallow DB failures and keep going — but still honor a
+                  ;; cancellation signal, which `update-progress!` raises to stop the task.
+                  (try
+                    (t2/with-connection [_conn (app-db/app-db)]
+                      (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize)))
+                    (catch Exception e
+                      (if (:cancelled? (ex-data e))
+                        (throw e)
+                        (log/warn (u/strip-error e "Failed to report import progress; continuing"))))))))]
       (->CallbackIngestable ingestable progress-callback))))
 
 ;; Wraps another Ingestable and filters the `list-files` content to only content that has the specified
