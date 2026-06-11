@@ -459,14 +459,25 @@
       (is (nil? (usage-error config 'query-processor 'metabase.lib.schema.foo))
           "with both lib and lib.schema in :uses, the access works"))))
 
-(deftest ^:parallel usage-error-uses-any-allows-anything-test
-  (testing "`:uses :any` allows any module reference (subject to :api), regardless of nesting"
+(deftest ^:parallel usage-error-uses-any-namability-test
+  (testing "`:uses :any` allows any *namable* module reference (subject to :api); namability is enforced
+            at require time for `:any` callers since the config-level test only covers set-valued `:uses`"
     (let [config {:metabase/modules {'lib        {:api  :any}
                                      'lib.schema {:api  :any}
                                      'caller     {:uses :any
                                                   :api  :any}}}]
-      (is (nil? (usage-error config 'caller 'metabase.lib.schema.foo)))
-      (is (nil? (usage-error config 'caller 'metabase.lib.core))))))
+      (testing "top-level modules are always namable"
+        (is (nil? (usage-error config 'caller 'metabase.lib.core))))
+      (testing "a nested child not in its parent's :module-exports is private to its subtree"
+        (is (some? (usage-error config 'caller 'metabase.lib.schema.foo))))
+      (testing "exporting the child makes it namable from anywhere"
+        (is (nil? (usage-error (assoc-in config [:metabase/modules 'lib :module-exports] #{'lib.schema})
+                               'caller
+                               'metabase.lib.schema.foo))))
+      (testing "same-subtree callers may name private children"
+        (is (nil? (usage-error (assoc-in config [:metabase/modules 'lib.other] {:uses :any, :api :any})
+                               'lib.other
+                               'metabase.lib.schema.foo)))))))
 
 ;;;; -------------------------------------------------------------------------
 ;;;; `enterprise/X` shorthand: EE module as a nested child of OSS X
