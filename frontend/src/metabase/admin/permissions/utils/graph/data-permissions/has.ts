@@ -1,18 +1,16 @@
 import _ from "underscore";
 
-import type {
-  DatabaseEntityId,
-  EntityWithGroupId,
-  SchemaEntityId,
-} from "metabase/admin/permissions/types";
 import { isSchemaEntityId } from "metabase/admin/permissions/utils/data-entity-id";
 import type {
   ConcreteTableId,
   DataPermission,
   DataPermissionValue,
+  DatabaseEntityId,
   DatabasePermissions,
+  EntityWithGroupId,
   GroupPermissions,
   GroupsPermissions,
+  SchemaEntityId,
 } from "metabase-types/api";
 
 import {

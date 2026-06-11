@@ -14,7 +14,8 @@
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -168,6 +169,31 @@
                   ;; same wording modulo the echoed portable FK (which the caller supplied either way)
                   (is (= (str/replace msg #"\[.*?\]" "[FK]")
                          (str/replace never-existed #"\[.*?\]" "[FK]"))))))))))))
+
+(deftest import-table-fk-inactive-after-cache-warmed-test
+  (testing "a table cached while active, then marked inactive, must NOT resolve via the stale cache"
+    ;; The dangerous case the app-DB-existence check guards against: the cached metadata provider
+    ;; warms its by-name cache with the `:active true` row, then the table is marked inactive
+    ;; (deleted / re-uploaded upload). The cache still surfaces the stale active row, so
+    ;; `table-candidates` MUST consult the app DB for existence — find the inactive row — and treat
+    ;; it as a 0-candidate miss rather than falling back to the stale cache.
+    (mt/with-temp [:model/Database db    {:name (str "Uploads " (random-uuid)) :engine :h2}
+                   :model/Table    gone  {:name   "metabot2_cafef00dbabe01" :schema "PUBLIC"
+                                          :db_id  (:id db)                   :active true}]
+      (let [mp (lib-be/application-database-metadata-provider (:id db))
+            r  (resolve.mp/import-resolver mp)
+            by-name #(lib.metadata.protocols/metadatas
+                      mp {:lib/type :metadata/table :name #{"metabot2_cafef00dbabe01"}})]
+        (testing "warm the provider's by-name cache while the table is still active"
+          (is (= [true] (mapv :active (by-name))))
+          (is (= (:id gone) (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))
+        (t2/update! :model/Table (:id gone) {:active false})
+        (testing "the cache still surfaces the stale ACTIVE row by name"
+          (is (= [true] (mapv :active (by-name)))))
+        (testing "...but import-table-fk misses: the app DB sees the inactive row, no stale-cache fallback"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo #"No table found matching portable FK"
+               (resolve/import-table-fk r [(:name db) "PUBLIC" "metabot2_cafef00dbabe01"]))))))))
 
 (deftest matching-tables-via-provider-drops-inactive-test
   (testing "matching-tables-via-provider filters the inactive rows the provider surfaces by name"

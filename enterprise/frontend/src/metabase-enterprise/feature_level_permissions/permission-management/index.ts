@@ -1,14 +1,12 @@
-import type {
-  EntityId,
-  PermissionSectionConfig,
-  PermissionSubject,
-  SpecialGroupType,
-} from "metabase/admin/permissions/types";
+import type { PermissionSectionConfig } from "metabase/admin/permissions/types";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,
   Group,
   GroupsPermissions,
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
 } from "metabase-types/api";
 
 import { buildDataModelPermission } from "./data-model-permission";
@@ -29,7 +27,7 @@ export const getFeatureLevelDataPermissions = ({
   showTransformPermissions = false,
   showWorkspacesPermissions = false,
 }: {
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   groupId: number;
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;

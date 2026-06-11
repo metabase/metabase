@@ -26,8 +26,9 @@
   - 4: Disable naive sql validation
   - 5: Added source entity tracking in analysis_finding_error table
   - 6: Removed validate prefix from error_type in analysis_finding_error
-  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)"
-  7)
+  - 7: Only mark inactive (not missing) field refs in :fields as soft (GHY-3157)
+  - 8: Flag MBQL queries whose source-table is missing/inactive (e.g. dropped during sync)"
+  8)
 
 (defn- error->finding-error-row
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.

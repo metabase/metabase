@@ -50,7 +50,6 @@ export const PublicApi = {
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
   document: GET(`/api/public/document/:uuid`),
-  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {
@@ -71,16 +70,6 @@ export const ParameterApi = {
 export const ModerationReviewApi = {
   create: POST("/api/moderation-review"),
   update: PUT("/api/moderation-review/:id"),
-};
-
-export const PulseApi = {
-  list: GET("/api/pulse"),
-  create: POST("/api/pulse"),
-  get: GET("/api/pulse/:pulseId"),
-  update: PUT("/api/pulse/:id"),
-  test: POST("/api/pulse/test"),
-  form_input: GET("/api/pulse/form_input"),
-  unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
 /// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions

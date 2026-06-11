@@ -2,7 +2,6 @@ import { forwardRef, useState } from "react";
 
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -50,15 +49,6 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
   ) {
     const [modalType, setModalType] = useState<MetricModalType>();
     const isRunnable = Lib.canRun(question.query(), "metric");
-    const {
-      checkData,
-      isConfirmationShown,
-      handleInitialSave,
-      handleSaveAfterConfirmation,
-      handleCloseConfirmation,
-    } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-      onSave,
-    });
 
     const handleCreate = (question: Question) => {
       return onCreate(question.setDefaultDisplay());
@@ -69,7 +59,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     };
 
     const handleSave = async (question: Question) => {
-      await handleInitialSave(question.setDefaultDisplay());
+      await onSave(question.setDefaultDisplay());
     };
 
     const handleConfirmCancel = () => {
@@ -94,7 +84,6 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
-          isConfirmationShown={isConfirmationShown}
           onCreate={handleCreateStart}
           onSave={handleSave}
           onCancel={handleCancelStart}
@@ -133,14 +122,6 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
             opened
             onConfirm={handleConfirmCancel}
             onClose={handleModalClose}
-          />
-        )}
-        {isConfirmationShown && checkData != null && (
-          <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-            checkData={checkData}
-            opened
-            onSave={handleSaveAfterConfirmation}
-            onClose={handleCloseConfirmation}
           />
         )}
       </Flex>

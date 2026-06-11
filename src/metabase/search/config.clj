@@ -231,21 +231,27 @@
 
 (defn- normalize-override-keys
   "Re-key persisted weight overrides ([[search.settings/experimental-search-weight-overrides]]) by
-  [[normalized-context]], so an override saved under a context that has since been collapsed (e.g.
-  `:command-palette` -> `:global`) is still applied.
-  When a raw alias and its normalized context both carry overrides, the normalized one wins -- it's
-  what the weights API writes today."
+  [[normalized-context]], merging overrides whose alias has since collapsed onto the surviving context.
+  Legacy flat `{scorer weight}` overrides fold into the `:default` base, losing to an explicit `:default`."
   [overrides]
-  (reduce-kv (fn [acc context weight-overrides]
-               (let [normalized (normalized-context context)]
-                 (update acc normalized
-                         (if (= context normalized)
-                           #(merge % weight-overrides)
-                           #(merge weight-overrides %)))))
-             {}
-             ;; sorted so the winner is deterministic when several aliases collapse to one normalized
-             ;; context (the normalized key still wins; among aliases the lowest-sorted one does)
-             (into (sorted-map) overrides)))
+  (let [;; legacy overrides (pre-#50338) were a flat {scorer weight} map with no context layer, so they
+        ;; applied to every context; these are the entries whose value is a bare weight, not a per-context map
+        legacy (into {} (remove (comp map? val)) overrides)
+        nested (reduce-kv (fn [acc context weight-overrides]
+                            (let [normalized (normalized-context context)]
+                              (update acc normalized
+                                      ;; when an alias and its normalized context both carry overrides the
+                                      ;; normalized one wins -- it's what the weights API writes today
+                                      (if (= context normalized)
+                                        #(merge % weight-overrides)
+                                        #(merge weight-overrides %)))))
+                          {}
+                          ;; sorted so the winner is deterministic when several aliases collapse to one
+                          ;; normalized context (the normalized key still wins; among aliases the lowest-sorted)
+                          (into (sorted-map) (filter (comp map? val)) overrides))]
+    (cond-> nested
+      ;; :default feeds every context, so folding the flat weights there preserves their global reach
+      (seq legacy) (update :default #(merge legacy %)))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights
@@ -310,6 +316,7 @@
    :entity-picker       ; the entity-picker modal (cards, dashboards, collections, …)
    :data-picker         ; picking a data source (table/model/metric) while building a query
    :type-filter         ; the search type-filter dropdown's available-models lookup
+   :basic-actions       ; the command palette's basic-actions "do any models exist?" gate (New action), not a user search
    :browse              ; the Browse models / Browse metrics pages
    :embedding-setup     ; embedding/SDK setup and preview resource selection
    :document            ; entity references embedded in documents
@@ -335,8 +342,7 @@
 (def context->normalized-context
   "Collapses search `context` values that should rank and filter alike onto a shared normalized context.
   Only genuine remappings appear here; an unlisted context normalizes to itself and inherits `:default`.
-  The full-page search app, command palette, and type-filter lookup share `:global`, as opposed to the
-  scoped `:data-picker` / `:entity-picker` contexts."
+  Add an entry to make a surface share another's ranking/filter profile; omit it to keep the surface's own."
   ;; TODO (Chris 2026-06-08) -- the nav search bar is deliberately left off `:global` for now so it keeps
   ;; the default filters/weights; decide whether any of its behaviour should be DRYed up with the other
   ;; broad-search surfaces.
