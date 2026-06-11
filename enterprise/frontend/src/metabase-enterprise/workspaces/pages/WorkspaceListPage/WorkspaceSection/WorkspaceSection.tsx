@@ -57,7 +57,7 @@ function WorkspaceSectionEmptyState({
   return (
     <Card p="xl" shadow="none" withBorder>
       <Stack p="sm" align="center">
-        <Text c="text-secondary" ta="center" maw="25rem">
+        <Text c="text-secondary" ta="center" maw="40rem">
           {t`Workspaces isolate transformed tables into a separate schema so you can build and test changes before syncing them back to production.`}
         </Text>
         <NewWorkspaceButton databases={databases} primary />

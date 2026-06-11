@@ -58,11 +58,6 @@
        (boolean (setting/with-database database
                   (ws.settings/database-enable-workspaces)))))
 
-(defn eligible-databases
-  "Return all Databases eligible for workspaces. See [[database-eligible-for-workspaces?]]."
-  []
-  (into [] (filter database-eligible-for-workspaces?) (t2/select :model/Database)))
-
 (defn database-input-schemas
   "The distinct non-blank schema names of `database`'s active tables, sorted.
    Empty for schemaless drivers (e.g. MySQL)."

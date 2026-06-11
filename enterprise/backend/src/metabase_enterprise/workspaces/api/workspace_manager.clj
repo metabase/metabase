@@ -22,7 +22,8 @@
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
-   [:name ms/NonBlankString]])
+   [:name         ms/NonBlankString]
+   [:database_ids [:sequential {:min 1} ::lib.schema.id/database]]])
 
 (def ^:private UpdateWorkspaceParams
   [:map {:closed true}
@@ -123,7 +124,8 @@
   (present-workspace (api/check-404 (ws/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
-  "Create a new Workspace (name only, no databases)."
+  "Create a new Workspace attached to the given databases (each must be eligible
+   for workspaces) and provision it (blocking)."
   [_route-params _query-params params :- CreateWorkspaceParams]
   (api/create-check :model/Workspace params)
   (present-workspace

@@ -53,13 +53,24 @@
       (ws/create-workspace! {:name "B" :creator_id (mt/user->id :crowberto)})
       (is (>= (count (ws/list-workspaces)) 2)))))
 
-(deftest create-workspace-provisions-eligible-databases-test
-  (testing "create-workspace! attaches and provisions eligible databases"
+(deftest create-workspace-provisions-databases-test
+  (testing "create-workspace! attaches and provisions the given databases"
     (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
                                                 :details  {}
                                                 :settings {:database-enable-workspaces true}}
-                   :model/Table _ {:db_id db-id :schema "public" :active true}]
+                   :model/Table _ {:db_id db-id :schema "public" :active true}
+                   :model/Database {ineligible-id :id} {:engine :postgres :details {}}]
       (mt/with-model-cleanup [:model/Workspace]
+        (testing "an ineligible database is rejected"
+          (is (thrown-with-msg? ExceptionInfo #"Workspaces are not enabled for this database"
+                                (ws/create-workspace! {:name         "Nope"
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :database_ids [ineligible-id]}))))
+        (testing "a missing database is rejected"
+          (is (thrown-with-msg? ExceptionInfo #"Database not found"
+                                (ws/create-workspace! {:name         "Nope"
+                                                       :creator_id   (mt/user->id :crowberto)
+                                                       :database_ids [Integer/MAX_VALUE]}))))
         (testing "provisioning failure rolls back the workspace and its database rows"
           (let [failing-provisioner (reify provisioning/Provisioner
                                       (init!    [_ _ _ _]   (throw (ex-info "boom" {})))
@@ -67,15 +78,18 @@
                                       (destroy! [_ _ _ _]   nil))]
             (with-redefs [provisioning/dispatching-provisioner failing-provisioner]
               (is (thrown-with-msg? ExceptionInfo #"boom"
-                                    (ws/create-workspace! {:name       "Boom"
-                                                           :creator_id (mt/user->id :crowberto)}))))
+                                    (ws/create-workspace! {:name         "Boom"
+                                                           :creator_id   (mt/user->id :crowberto)
+                                                           :database_ids [db-id]}))))
             (is (not (t2/exists? :model/Workspace :name "Boom"))
                 "the failed create must not leave a Workspace row behind")
             (is (not (t2/exists? :model/WorkspaceDatabase :database_id db-id))
                 "the failed create must not leave WorkspaceDatabase rows behind")))
         (testing "success: the attached database comes back :provisioned"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]
-            (let [ws (ws/create-workspace! {:name "Provisioned" :creator_id (mt/user->id :crowberto)})]
+            (let [ws (ws/create-workspace! {:name         "Provisioned"
+                                            :creator_id   (mt/user->id :crowberto)
+                                            :database_ids [db-id]})]
               (is (=? [{:database_id   db-id
                         :input_schemas ["public"]
                         :status        :provisioned}]

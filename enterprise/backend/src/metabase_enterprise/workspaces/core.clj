@@ -174,6 +174,16 @@
       (throw (ex-info "Workspace not found"
                       {:status-code 404 :workspace_id workspace-id}))))
 
+(defn- assert-database-exists [database-id]
+  (or (t2/select-one :model/Database :id database-id)
+      (throw (ex-info "Database not found"
+                      {:status-code 404 :database_id database-id}))))
+
+(defn- assert-database-eligible-for-workspaces [database]
+  (when-not (workspace-database/database-eligible-for-workspaces? database)
+    (throw (ex-info "Workspaces are not enabled for this database"
+                    {:status-code 400 :database_id (:id database)}))))
+
 ;;; ------------------------------------- Manager-side reads --------------------------------------------------
 
 (defn get-workspace
@@ -190,16 +200,20 @@
 ;;; ------------------------------------- Manager-side writes -------------------------------------------------
 
 (defn create-workspace!
-  "Create a new Workspace, attach every eligible database (see
-   [[workspace-database/database-eligible-for-workspaces?]]) with all of its known
-   schemas as `input_schemas`, and provision each database (blocking). Everything
-   runs in a single transaction, so a provisioning failure rolls back the workspace
-   and its database rows. Returns the created workspace, hydrated."
-  [{:keys [name creator_id]}]
-  (let [databases (mapv (fn [database]
-                          {:database_id   (:id database)
-                           :input_schemas (workspace-database/database-input-schemas database)})
-                        (workspace-database/eligible-databases))]
+  "Create a new Workspace, attach the databases with ids `database_ids` — each must
+   exist (404) and be eligible for workspaces (400, see
+   [[workspace-database/database-eligible-for-workspaces?]]) — with all of their
+   known schemas as
+   `input_schemas`, and provision each database (blocking). Everything runs in a
+   single transaction, so a provisioning failure rolls back the workspace and its
+   database rows. Returns the created workspace, hydrated."
+  [{:keys [name creator_id database_ids]}]
+  (let [databases (mapv (fn [db-id]
+                          (let [database (assert-database-exists db-id)]
+                            (assert-database-eligible-for-workspaces database)
+                            {:database_id   db-id
+                             :input_schemas (workspace-database/database-input-schemas database)}))
+                        database_ids)]
     (t2/with-transaction [_conn]
       (let [ws (workspace/create-workspace! {:name       name
                                              :creator_id creator_id

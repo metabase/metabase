@@ -21,10 +21,11 @@ export function NewWorkspaceButton({
 }: NewWorkspaceButtonProps) {
   const [opened, { open, close }] = useDisclosure(false);
 
-  const hasEligibleDatabase = databases.some(
+  const eligibleDatabases = databases.filter(
     (database) =>
       hasFeature(database, "workspace") && hasWorkspacesEnabled(database),
   );
+  const hasEligibleDatabase = eligibleDatabases.length > 0;
 
   return (
     <>
@@ -43,7 +44,12 @@ export function NewWorkspaceButton({
           {primary ? t`Create a workspace` : t`New`}
         </Button>
       </Tooltip>
-      <NewWorkspaceModal opened={opened} onCreate={close} onClose={close} />
+      <NewWorkspaceModal
+        databases={eligibleDatabases}
+        opened={opened}
+        onCreate={close}
+        onClose={close}
+      />
     </>
   );
 }

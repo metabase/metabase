@@ -29,6 +29,7 @@ export type Workspace = {
 
 export type CreateWorkspaceRequest = {
   name: string;
+  database_ids: DatabaseId[];
 };
 
 export type UpdateWorkspaceRequest = {

@@ -17,6 +17,7 @@ import type {
 } from "metabase-types/api";
 
 import { InstanceSection } from "./InstanceSection";
+import { WorkspaceEmptyState } from "./WorkspaceEmptyState";
 import { WorkspaceSection } from "./WorkspaceSection";
 
 export function WorkspaceListPage() {
@@ -78,14 +79,18 @@ function WorkspaceListPageBody({
         }
         py={0}
       />
-      <Stack gap="3.5rem">
-        <WorkspaceSection
-          workspaces={workspaces}
-          instances={instances}
-          databases={databases}
-        />
-        <InstanceSection instances={instances} />
-      </Stack>
+      {workspaces.length === 0 && instances.length === 0 ? (
+        <WorkspaceEmptyState databases={databases} />
+      ) : (
+        <Stack gap="3.5rem">
+          <WorkspaceSection
+            workspaces={workspaces}
+            instances={instances}
+            databases={databases}
+          />
+          <InstanceSection instances={instances} />
+        </Stack>
+      )}
     </PageContainer>
   );
 }
