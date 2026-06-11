@@ -251,6 +251,11 @@
       (and use-verified-content? (seq curated-conds))
       (update :where conj (into [:or] curated-conds))
 
+      ;; Setting on but no curation features active → nothing is curated, so return nothing rather than
+      ;; falling through unfiltered to uncurated cards.
+      (and use-verified-content? (empty? curated-conds))
+      (update :where conj [:= [:inline 1] [:inline 0]])
+
       (integer? limit)
       (assoc :limit limit))))
 

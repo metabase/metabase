@@ -223,6 +223,19 @@
                   (is (every? verified-ids (take 2 ordered-ids)))
                   (is (every? unverified-ids (drop 2 ordered-ids))))))))))))
 
+(deftest metabot-verified-content-no-feature-test
+  (testing "use_verified_content=true with no curation features active returns nothing, rather than falling
+            through unfiltered to uncurated content"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Collection metabot-coll {:name "mb coll"}
+                     :model/Card _model  {:type :model  :collection_id (:id metabot-coll)}
+                     :model/Card _metric {:type :metric :collection_id (:id metabot-coll)}
+                     :model/Metabot metabot {:name "verified metabot"
+                                             :collection_id (:id metabot-coll)
+                                             :use_verified_content true}]
+        (is (empty? (mt/with-test-user :crowberto
+                      (metabot.tools.util/get-metrics-and-models (:id metabot)))))))))
+
 (deftest get-table-filters-inactive-test
   (testing "get-table only returns active tables"
     (mt/with-temp [:model/Database {db-id :id} {}
