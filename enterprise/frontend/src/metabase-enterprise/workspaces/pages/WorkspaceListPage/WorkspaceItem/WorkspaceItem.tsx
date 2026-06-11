@@ -121,7 +121,7 @@ function WorkspaceInstanceInfo({ instance }: WorkspaceInstanceInfoProps) {
   return (
     <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name="external" aria-hidden />
+        <FixedSizeIcon name="link" aria-hidden />
         {instance != null ? (
           <Anchor
             component={Link}
