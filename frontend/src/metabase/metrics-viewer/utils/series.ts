@@ -614,7 +614,7 @@ export function buildDimensionItemsFromDefinitions(
 
       items.push({
         type: "expression",
-        id: slot.entityIndex,
+        entityIndex: slot.entityIndex,
         colors: expressionColors,
         label,
         icon,
@@ -686,8 +686,8 @@ function buildStandaloneDimensionItem(
     );
 
     return {
-      id: slot.slotIndex,
       type: "metric",
+      slotIndex: slot.slotIndex,
       label: dimensionInfo.longDisplayName,
       icon: getDimensionIcon(projectionDimension),
       colors: entryColors,
@@ -700,8 +700,8 @@ function buildStandaloneDimensionItem(
   }
 
   return {
-    id: slot.slotIndex,
     type: "metric",
+    slotIndex: slot.slotIndex,
     label: undefined,
     icon: undefined,
     colors: entryColors,
@@ -777,7 +777,7 @@ function buildExpressionMetricSources(
             return undefined;
           }
           const token = entity.tokens[slot.tokenPosition];
-          return token?.type === "metric" ? token.count : undefined;
+          return token?.type === "metric" ? token.occurrenceCount : undefined;
         })(),
         colors: entryColors,
         currentDimension,

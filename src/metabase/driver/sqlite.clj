@@ -207,7 +207,7 @@
 
 (defmethod sql.qp/date [:sqlite :second]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:%M:%S" expr))
     (->datetime (strftime "%Y-%m-%d %H:%M:%S" expr))))
 
@@ -217,7 +217,7 @@
 
 (defmethod sql.qp/date [:sqlite :minute]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:%M" expr))
     (->datetime (strftime "%Y-%m-%d %H:%M" expr))))
 
@@ -227,7 +227,7 @@
 
 (defmethod sql.qp/date [:sqlite :hour]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:00" expr))
     (->datetime (strftime "%Y-%m-%d %H:00" expr))))
 

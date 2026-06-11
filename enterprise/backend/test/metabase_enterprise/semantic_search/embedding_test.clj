@@ -57,6 +57,19 @@
     (mt/with-temporary-setting-values [ee-embedding-model-dimensions 768]
       (is (= 768 (:vector-dimensions (embedding/get-configured-model)))))))
 
+(deftest prefix-search-query-test
+  (let [arctic {:provider "ai-service" :model-name "Snowflake/snowflake-arctic-embed-l-v2.0" :vector-dimensions 1024}
+        openai {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 1536}]
+    (mt/with-temporary-setting-values [ee-embedding-query-prefix nil]
+      (testing "arctic-family models get the `query: ` prefix by default"
+        (is (= "query: hello" (embedding/prefix-search-query arctic "hello"))))
+      (testing "models without a known family default are left unprefixed"
+        (is (= "hello" (embedding/prefix-search-query openai "hello")))))
+    (testing "the setting overrides the model-family default, verbatim"
+      (mt/with-temporary-setting-values [ee-embedding-query-prefix "search_query: "]
+        (is (= "search_query: hello" (embedding/prefix-search-query arctic "hello")))
+        (is (= "search_query: hello" (embedding/prefix-search-query openai "hello")))))))
+
 (deftest test-openai-provider-validation
   (testing "OpenAIProvider throws when API key not configured"
     (let [embedding-model {:provider "openai"
