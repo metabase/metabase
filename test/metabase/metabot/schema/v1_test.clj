@@ -39,6 +39,21 @@
 (deftest ^:parallel user-message-validates-test
   (is (nil? (mr/explain ::schema.v1/user-message {:role "user" :content "Do we have orders data?"}))))
 
+(deftest ^:parallel unknown-entry-type-test
+  (testing "unknown ai-service :_type fails"
+    (is (not (mr/validate ::schema.v1/ai-service-entry
+                          {:role "assistant" :_type "NO_SUCH" :content "hi"}))))
+  (testing "unknown native :type fails"
+    (is (not (mr/validate ::schema.v1/native-entry
+                          {:type "no-such" :text "hi"}))))
+  (testing "entries with a stray key fail the closed maps"
+    (is (not (mr/validate ::schema.v1/ai-service-entry
+                          {:role "assistant" :_type "TEXT" :content "hi" :stray "x"})))
+    (is (not (mr/validate ::schema.v1/native-entry
+                          {:type "text" :id "t1" :text "hi" :stray "x"})))
+    (is (not (mr/validate ::schema.v1/user-message
+                          {:role "user" :content "hi" :stray "x"})))))
+
 (deftest ^:parallel message-data-test
   (testing "assistant placeholder rows are empty"
     (is (mr/validate ::schema.v1/message-data [])))
@@ -63,7 +78,8 @@
                    "metabase/metabot/aisdkstream3.txt"
                    "metabase/metabot/aisdkstream4.txt"]]
     (testing fixture
-      (let [messages (metabot.u/aisdk->messages "assistant" (-> (io/resource fixture) io/reader line-seq))
+      (let [messages (with-open [r (io/reader (io/resource fixture))]
+                       (metabot.u/aisdk->messages "assistant" (line-seq r)))
             ;; the schema describes the at-rest shape, so simulate the `mi/transform-json` write +
             ;; read cycle: keyword values become strings, keys stay keywords
             at-rest  (-> messages json/encode json/decode+kw)]

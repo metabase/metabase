@@ -66,6 +66,24 @@
 (deftest ^:parallel parts-validate-test
   (is (nil? (mr/explain [:sequential ::schema.v2/ui-message-part] ui-message-parts))))
 
+(deftest ^:parallel aisdk-runtime-validator-equivalence-test
+  (testing "at-rest parts are open maps: the upstream validator strips undeclared keys rather than rejecting"
+    (is (mr/validate ::schema.v2/ui-message-part
+                     {:type "text" :text "hi" :somethingExtra 1})))
+  (testing "wire chunks are closed maps: the upstream validator rejects undeclared keys"
+    (is (not (mr/validate ::schema.v2/ui-message-chunk
+                          {:type "text-start" :id "t1" :somethingExtra 1}))))
+  (testing "untyped fields like :input and :output may be absent entirely"
+    (is (mr/validate ::schema.v2/ui-message-part
+                     {:type "tool-search" :toolCallId "tc1" :state "output-available"})))
+  (testing "forbidden fields reject any present value, keeping tool states mutually exclusive"
+    (is (not (mr/validate ::schema.v2/ui-message-part
+                          {:type "tool-search" :toolCallId "tc1" :state "output-available"
+                           :errorText "boom"})))
+    (is (not (mr/validate ::schema.v2/ui-message-part
+                          {:type "tool-search" :toolCallId "tc1" :state "input-available"
+                           :input {} :approval {:id "a1"}})))))
+
 (deftest ^:parallel tool-approval-shape-test
   (testing "approval-requested approvals carry only an id"
     (let [part {:type "tool-search" :toolCallId "tc1" :state "approval-requested"

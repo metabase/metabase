@@ -7,11 +7,6 @@
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::data-type
-  "Known data part types."
-  [:enum "adhoc_viz" "code_edit" "debug_log" "navigate_to" "state" "static_viz"
-   "todo_list" "transform_suggestion"])
-
 (mr/def ::ai-service-entry
   "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`
   (See https://github.com/vercel/ai, ai@4, packages/ui-utils/src/data-stream-parts.ts).
@@ -33,7 +28,7 @@
                       [:content :string]]]
    ["DATA"           [:map {:closed true}
                       [:_type [:= "DATA"]]
-                      [:type ::data-type]
+                      [:type :string]
                       [:version [:= 1]]
                       [:value :any]]]
    ["TOOL_CALL"      [:map {:closed true}
@@ -78,7 +73,7 @@
                    [:duration-ms {:optional true} [:maybe number?]]]]
    ["data"        [:map {:closed true}
                    [:type [:= "data"]]
-                   [:data-type ::data-type]
+                   [:data-type :string]
                    [:version {:optional true} [:= 1]]
                    [:data :any]]]
    ["error"       [:or
