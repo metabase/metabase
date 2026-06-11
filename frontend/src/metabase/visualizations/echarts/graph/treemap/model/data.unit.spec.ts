@@ -414,16 +414,26 @@ describe("getTreemapData (2-level)", () => {
 describe("getTreemapNodePath", () => {
   const tree: TreemapTree = [
     {
-      rawName: "West",
-      displayName: "West",
+      rawName: "Legumes",
+      displayName: "Legumes",
       value: 30,
       rowIndices: [],
       children: [
-        { rawName: "US", displayName: "US", value: 20, rowIndices: [] },
-        { rawName: "CA", displayName: "CA", value: 10, rowIndices: [] },
+        {
+          rawName: "Chickpeas",
+          displayName: "Chickpeas",
+          value: 20,
+          rowIndices: [],
+        },
+        {
+          rawName: "Lentils",
+          displayName: "Lentils",
+          value: 10,
+          rowIndices: [],
+        },
       ],
     },
-    { rawName: "East", displayName: "East", value: 5, rowIndices: [] },
+    { rawName: "Grains", displayName: "Grains", value: 5, rowIndices: [] },
   ];
 
   it("resolves a top-level node id to a single-node path", () => {
@@ -440,6 +450,6 @@ describe("getTreemapNodePath", () => {
   it("returns null for an out-of-range segment", () => {
     expect(getTreemapNodePath(tree, "5")).toBeNull();
     expect(getTreemapNodePath(tree, "0-9")).toBeNull();
-    expect(getTreemapNodePath(tree, "1-0")).toBeNull(); // East has no children
+    expect(getTreemapNodePath(tree, "1-0")).toBeNull(); // Grains has no children
   });
 });

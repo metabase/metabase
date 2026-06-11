@@ -12,34 +12,34 @@ const formatValue = (value: number) => `$${value}`;
 
 const twoLevelTree: TreemapTree = [
   {
-    rawName: "Phones",
-    displayName: "Phones",
+    rawName: "Legumes",
+    displayName: "Legumes",
     value: 60,
     rowIndices: [0, 1],
     children: [
       {
-        rawName: "iPhone",
-        displayName: "iPhone",
+        rawName: "Chickpeas",
+        displayName: "Chickpeas",
         value: 40,
         rowIndices: [0],
       },
       {
-        rawName: "Xiaomi",
-        displayName: "Xiaomi",
+        rawName: "Lentils",
+        displayName: "Lentils",
         value: 20,
         rowIndices: [1],
       },
     ],
   },
   {
-    rawName: "Watches",
-    displayName: "Watches",
+    rawName: "Soy",
+    displayName: "Soy",
     value: 40,
     rowIndices: [2],
     children: [
       {
-        rawName: "Garmin",
-        displayName: "Garmin",
+        rawName: "Tempeh",
+        displayName: "Tempeh",
         value: 40,
         rowIndices: [2],
       },
@@ -48,13 +48,18 @@ const twoLevelTree: TreemapTree = [
 ];
 
 const oneLevelTree: TreemapTree = [
-  { rawName: "iPhone", displayName: "iPhone", value: 75, rowIndices: [0] },
-  { rawName: "Xiaomi", displayName: "Xiaomi", value: 25, rowIndices: [1] },
+  {
+    rawName: "Chickpeas",
+    displayName: "Chickpeas",
+    value: 75,
+    rowIndices: [0],
+  },
+  { rawName: "Lentils", displayName: "Lentils", value: 25, rowIndices: [1] },
 ];
 
 const colors = {
-  Phones: "#509ee3",
-  Watches: "#88bf4d",
+  Legumes: "#509ee3",
+  Soy: "#88bf4d",
 };
 
 describe("getTreemapLegendModel", () => {
@@ -63,11 +68,11 @@ describe("getTreemapLegendModel", () => {
       const { rows } = getTreemapLegendModel(twoLevelTree, colors, formatValue);
 
       expect(rows.map((row) => [row.type, row.name, row.indent])).toEqual([
-        ["parent", "Phones", false],
-        ["leaf", "iPhone", true],
-        ["leaf", "Xiaomi", true],
-        ["parent", "Watches", false],
-        ["leaf", "Garmin", true],
+        ["parent", "Legumes", false],
+        ["leaf", "Chickpeas", true],
+        ["leaf", "Lentils", true],
+        ["parent", "Soy", false],
+        ["leaf", "Tempeh", true],
         ["total", "Total", true],
       ]);
       expect(rows[0].color).toBe("#509ee3");
@@ -124,8 +129,8 @@ describe("getTreemapLegendModel", () => {
       const { rows } = getTreemapLegendModel(oneLevelTree, {}, formatValue);
 
       expect(rows.map((row) => [row.type, row.name, row.indent])).toEqual([
-        ["leaf", "iPhone", false],
-        ["leaf", "Xiaomi", false],
+        ["leaf", "Chickpeas", false],
+        ["leaf", "Lentils", false],
         ["total", "Total", false],
       ]);
       expect(rows.every((row) => row.color === undefined)).toBe(true);

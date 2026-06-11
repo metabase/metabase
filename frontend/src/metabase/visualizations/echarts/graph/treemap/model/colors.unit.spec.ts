@@ -42,20 +42,20 @@ describe("getTreemapColors", () => {
   it("keys only top-level groupings, not sub-grouping children", () => {
     const tree: TreemapTree = [
       {
-        rawName: "Europe",
-        displayName: "Europe",
+        rawName: "Legumes",
+        displayName: "Legumes",
         value: 30,
         rowIndices: [0, 1],
         children: [
           {
-            rawName: "Sweden",
-            displayName: "Sweden",
+            rawName: "Chickpeas",
+            displayName: "Chickpeas",
             value: 20,
             rowIndices: [0],
           },
           {
-            rawName: "Germany",
-            displayName: "Germany",
+            rawName: "Lentils",
+            displayName: "Lentils",
             value: 10,
             rowIndices: [1],
           },
@@ -65,9 +65,9 @@ describe("getTreemapColors", () => {
 
     const colors = getTreemapColors(tree);
 
-    expect(Object.keys(colors)).toEqual(["Europe"]);
-    expect(colors).not.toHaveProperty("Sweden");
-    expect(colors).not.toHaveProperty("Germany");
+    expect(Object.keys(colors)).toEqual(["Legumes"]);
+    expect(colors).not.toHaveProperty("Chickpeas");
+    expect(colors).not.toHaveProperty("Lentils");
   });
 
   it("stringifies non-string rawNames into keys", () => {

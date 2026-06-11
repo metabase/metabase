@@ -19,15 +19,20 @@ const renderingContext: RenderingContext = {
 
 const TWO_LEVEL_TREE: TreemapTree = [
   {
-    rawName: "Europe",
-    displayName: "Europe",
+    rawName: "Legumes",
+    displayName: "Legumes",
     value: 30,
     rowIndices: [0, 1],
     children: [
-      { rawName: "Sweden", displayName: "Sweden", value: 20, rowIndices: [0] },
       {
-        rawName: "Germany",
-        displayName: "Germany",
+        rawName: "Chickpeas",
+        displayName: "Chickpeas",
+        value: 20,
+        rowIndices: [0],
+      },
+      {
+        rawName: "Lentils",
+        displayName: "Lentils",
         value: 10,
         rowIndices: [1],
       },
@@ -217,7 +222,7 @@ describe("getTreemapChartOption within-group borders", () => {
     // the leaf children on top with gaps, so the within-group gaps show this
     // color — which matches the header chip tint, not the full group hue.
     expect(node.itemStyle?.borderColor).toBe(node.upperLabel?.backgroundColor);
-    expect(node.itemStyle?.borderColor).not.toBe(colors["Europe"]);
+    expect(node.itemStyle?.borderColor).not.toBe(colors["Legumes"]);
   });
 
   it("makes the between-group separators transparent (canvas-colored, for dark mode)", () => {
@@ -613,9 +618,9 @@ describe("getTreemapChartOption group header", () => {
     // invisible. Instead it's an opaque blend of the group hue toward white,
     // which reads as a translucent band and is lighter than the pure hue.
     expect(Color(headerBg).alpha()).toBe(1);
-    expect(Color(headerBg).hex()).not.toBe(Color(colors["Europe"]).hex());
+    expect(Color(headerBg).hex()).not.toBe(Color(colors["Legumes"]).hex());
     expect(Color(headerBg).luminosity()).toBeGreaterThan(
-      Color(colors["Europe"]).luminosity(),
+      Color(colors["Legumes"]).luminosity(),
     );
   });
 
@@ -653,35 +658,40 @@ describe("getTreemapChartOption group header", () => {
 });
 
 describe("getTreemapChartOption group header value + percentage", () => {
-  // Europe = 30, Asia = 70 → grand total 100, so Europe's header share is 30%.
+  // Legumes = 30, Grains = 70 → grand total 100, so Legumes's header share is 30%.
   const tree: TreemapTree = [
     {
-      rawName: "Europe",
-      displayName: "Europe",
+      rawName: "Legumes",
+      displayName: "Legumes",
       value: 30,
       rowIndices: [0, 1],
       children: [
         {
-          rawName: "Sweden",
-          displayName: "Sweden",
+          rawName: "Chickpeas",
+          displayName: "Chickpeas",
           value: 20,
           rowIndices: [0],
         },
         {
-          rawName: "Germany",
-          displayName: "Germany",
+          rawName: "Lentils",
+          displayName: "Lentils",
           value: 10,
           rowIndices: [1],
         },
       ],
     },
     {
-      rawName: "Asia",
-      displayName: "Asia",
+      rawName: "Grains",
+      displayName: "Grains",
       value: 70,
       rowIndices: [2],
       children: [
-        { rawName: "China", displayName: "China", value: 70, rowIndices: [2] },
+        {
+          rawName: "Quinoa",
+          displayName: "Quinoa",
+          value: 70,
+          rowIndices: [2],
+        },
       ],
     },
   ];
@@ -698,7 +708,7 @@ describe("getTreemapChartOption group header value + percentage", () => {
     });
 
     expect(series.data[0].upperLabel?.formatter).toBe(
-      `{name|Europe}{value|$30}{pct|${formatPercent(0.3)}}`,
+      `{name|Legumes}{value|$30}{pct|${formatPercent(0.3)}}`,
     );
     // Name column is sized to the measured width; the cluster fonts match the
     // header (value bold, percent regular).

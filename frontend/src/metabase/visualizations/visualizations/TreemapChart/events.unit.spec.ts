@@ -28,13 +28,13 @@ import {
 } from "./events";
 
 const groupingCol = createMockColumn({
-  name: "Region",
-  display_name: "Region",
+  name: "Category",
+  display_name: "Category",
   base_type: "type/Text",
 });
 const subGroupingCol = createMockColumn({
-  name: "Country",
-  display_name: "Country",
+  name: "Product",
+  display_name: "Product",
   base_type: "type/Text",
 });
 const valueCol = createMockColumn({
@@ -60,20 +60,30 @@ const treemapColumns2: TreemapChartColumns = {
 // One root, two leaves.
 const tree2: TreemapTree = [
   {
-    rawName: "West",
-    displayName: "West",
+    rawName: "Legumes",
+    displayName: "Legumes",
     value: 30,
     rowIndices: [0, 1],
     children: [
-      { rawName: "US", displayName: "US", value: 20, rowIndices: [0] },
-      { rawName: "CA", displayName: "CA", value: 10, rowIndices: [1] },
+      {
+        rawName: "Chickpeas",
+        displayName: "Chickpeas",
+        value: 20,
+        rowIndices: [0],
+      },
+      {
+        rawName: "Lentils",
+        displayName: "Lentils",
+        value: 10,
+        rowIndices: [1],
+      },
     ],
   },
 ];
 // Two roots, no children.
 const tree1: TreemapTree = [
-  { rawName: "West", displayName: "West", value: 30, rowIndices: [0] },
-  { rawName: "East", displayName: "East", value: 15, rowIndices: [1] },
+  { rawName: "Legumes", displayName: "Legumes", value: 30, rowIndices: [0] },
+  { rawName: "Grains", displayName: "Grains", value: 15, rowIndices: [1] },
 ];
 
 const settings = {} as ComputedVisualizationSettings;
@@ -84,8 +94,8 @@ const rawSeries1 = [
     data: createMockDatasetData({
       cols: cols1,
       rows: [
-        ["West", 30],
-        ["East", 15],
+        ["Legumes", 30],
+        ["Grains", 15],
       ],
     }),
   },
@@ -96,8 +106,8 @@ const rawSeries2 = [
     data: createMockDatasetData({
       cols: cols2,
       rows: [
-        ["West", "US", 20],
-        ["West", "CA", 10],
+        ["Legumes", "Chickpeas", 20],
+        ["Legumes", "Lentils", 10],
       ],
     }),
   },
@@ -218,7 +228,7 @@ describe("getTreemapEventHandlers", () => {
     expect(clickData.value).toBe(15);
     expect(clickData.column).toBe(valueCol);
     expect(clickData.dimensions).toEqual([
-      { column: groupingCol, value: "East" },
+      { column: groupingCol, value: "Grains" },
     ]);
   });
 
@@ -242,8 +252,8 @@ describe("getTreemapEventHandlers", () => {
     expect(clickData.value).toBe(10);
     expect(clickData.column).toBe(valueCol);
     expect(clickData.dimensions).toEqual([
-      { column: groupingCol, value: "West" },
-      { column: subGroupingCol, value: "CA" },
+      { column: groupingCol, value: "Legumes" },
+      { column: subGroupingCol, value: "Lentils" },
     ]);
   });
 
@@ -431,8 +441,8 @@ describe("getTreemapClickData", () => {
     });
 
     expect(clickData?.data).toEqual([
-      { col: groupingCol, value: "West", key: "Region" },
-      { col: subGroupingCol, value: "CA", key: "Country" },
+      { col: groupingCol, value: "Legumes", key: "Category" },
+      { col: subGroupingCol, value: "Lentils", key: "Product" },
       { col: valueCol, value: 10, key: "Sales" },
     ]);
   });

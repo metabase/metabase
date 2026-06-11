@@ -19,7 +19,7 @@ const model: TreemapLegendModel = {
   rows: [
     {
       type: "parent",
-      name: "Phones",
+      name: "Legumes",
       valueLabel: "$60",
       percentLabel: "60.00 %",
       color: "#509ee3",
@@ -28,7 +28,7 @@ const model: TreemapLegendModel = {
     },
     {
       type: "leaf",
-      name: "iPhone",
+      name: "Chickpeas",
       valueLabel: "$40",
       percentLabel: "40.00 %",
       indent: true,
@@ -58,10 +58,10 @@ describe("TreemapLegend", () => {
   it("renders every row's name, value, and percent", () => {
     setup();
 
-    expect(screen.getByText("Phones")).toBeInTheDocument();
+    expect(screen.getByText("Legumes")).toBeInTheDocument();
     expect(screen.getByText("$60")).toBeInTheDocument();
     expect(screen.getByText("60.00 %")).toBeInTheDocument();
-    expect(screen.getByText("iPhone")).toBeInTheDocument();
+    expect(screen.getByText("Chickpeas")).toBeInTheDocument();
     expect(screen.getByText("Total")).toBeInTheDocument();
     expect(screen.getByText("100 %")).toBeInTheDocument();
   });
@@ -69,10 +69,10 @@ describe("TreemapLegend", () => {
   it("bolds parent and total rows but not leaf rows", () => {
     setup();
 
-    const [phones, iphone, total] = screen.getAllByTestId("legend-name");
-    expect(phones).toHaveAttribute("font-weight", "700");
+    const [legumes, chickpeas, total] = screen.getAllByTestId("legend-name");
+    expect(legumes).toHaveAttribute("font-weight", "700");
     expect(total).toHaveAttribute("font-weight", "700");
-    expect(iphone).toHaveAttribute("font-weight", "400");
+    expect(chickpeas).toHaveAttribute("font-weight", "400");
   });
 
   it("draws a color dot only for rows with a color, and one separator line", () => {

@@ -207,9 +207,9 @@ describe("getTreemapParentLabelLayouts", () => {
   }
 
   const labels: Record<string, string> = {
-    "0": "Africa",
-    "1": "Oceania",
-    "2": "US",
+    "0": "Quinoa",
+    "1": "Lentils",
+    "2": "PB",
   };
   const config = {
     measureTextWidth,
@@ -218,15 +218,15 @@ describe("getTreemapParentLabelLayouts", () => {
   };
 
   it("shows the text when the chip fits the full label", () => {
-    // "Africa" prefix "Afr" = 18px; available = 200 - 24 = 176px.
+    // "Quinoa" prefix "Qui" = 18px; available = 200 - 24 = 176px.
     expect(getTreemapParentLabelLayouts([group("0", 200)], config)).toEqual({
       "0": { showText: true, showValuePercent: false },
     });
   });
 
   it("keeps the text (for ECharts to truncate) when only a readable prefix fits", () => {
-    // available = 60 - 24 = 36px: too narrow for full "Oceania" (42px) but wide
-    // enough for the 3-char prefix "Oce" (18px), so the text stays and ECharts
+    // available = 60 - 24 = 36px: too narrow for full "Lentils" (42px) but wide
+    // enough for the 3-char prefix "Len" (18px), so the text stays and ECharts
     // ellipsis-truncates it rather than hiding it.
     expect(getTreemapParentLabelLayouts([group("1", 60)], config)).toEqual({
       "1": { showText: true, showValuePercent: false },
@@ -234,21 +234,21 @@ describe("getTreemapParentLabelLayouts", () => {
   });
 
   it("hides the text when the chip is too narrow for even a readable prefix", () => {
-    // available = 30 - 24 = 6px: not even the 3-char prefix "Oce" (18px) fits.
+    // available = 30 - 24 = 6px: not even the 3-char prefix "Len" (18px) fits.
     expect(getTreemapParentLabelLayouts([group("1", 30)], config)).toEqual({
       "1": { showText: false, showValuePercent: false },
     });
   });
 
   it("shows the text when the readable prefix fits exactly", () => {
-    // available = 42 - 24 = 18px == prefix "Afr" (18px).
+    // available = 42 - 24 = 18px == prefix "Qui" (18px).
     expect(getTreemapParentLabelLayouts([group("0", 42)], config)).toEqual({
       "0": { showText: true, showValuePercent: false },
     });
   });
 
   it("measures the whole label when it is shorter than the prefix length", () => {
-    // "US" (2 chars) < minVisibleChars; measure it whole = 12px. available =
+    // "PB" (2 chars) < minVisibleChars; measure it whole = 12px. available =
     // 30 - 24 = 6px → doesn't fit, so hide.
     expect(getTreemapParentLabelLayouts([group("2", 30)], config)).toEqual({
       "2": { showText: false, showValuePercent: false },
@@ -256,7 +256,7 @@ describe("getTreemapParentLabelLayouts", () => {
   });
 
   it("respects a custom minVisibleChars", () => {
-    // available = 60 - 24 = 36px. With minVisibleChars 7 the whole "Oceania"
+    // available = 60 - 24 = 36px. With minVisibleChars 7 the whole "Lentils"
     // (42px) must fit → hidden, unlike the default-3 case above.
     expect(
       getTreemapParentLabelLayouts([group("1", 60)], {
@@ -283,7 +283,7 @@ describe("getTreemapParentLabelLayouts", () => {
   });
 
   describe("value + percentage cluster", () => {
-    // "Afr" prefix = 18px, gap defaults to HEADER_VALUE_PERCENT_GAP (8px).
+    // "Qui" prefix = 18px, gap defaults to HEADER_VALUE_PERCENT_GAP (8px).
     it("shows the value+% when the prefix, gap, and cluster all fit the chip", () => {
       // available = 200 - 24 = 176px; 18 + 8 + 100 = 126 ≤ 176 → both fit.
       // nameColumnWidth = available - gap - cluster = 176 - 8 - 100 = 68.

@@ -25,18 +25,18 @@ describe("TreemapBreadcrumb", () => {
     const onBackClick = jest.fn();
     renderWithProviders(
       <TreemapBreadcrumb
-        groupLabel="Phones"
+        groupLabel="Legumes"
         value="$2,100,000"
         percent="100%"
         onBackClick={onBackClick}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Phones" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Legumes" })).toBeInTheDocument();
     expect(screen.getByText("$2,100,000")).toBeInTheDocument();
     expect(screen.queryByText("Total")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Phones" }));
+    await userEvent.click(screen.getByRole("button", { name: "Legumes" }));
     expect(onBackClick).toHaveBeenCalledTimes(1);
   });
 });

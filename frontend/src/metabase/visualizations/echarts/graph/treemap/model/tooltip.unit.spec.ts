@@ -14,16 +14,26 @@ const formatValue = (value: number) => `$${value}`;
 
 const TWO_LEVEL: TreemapTree = [
   {
-    rawName: "Phones",
-    displayName: "Phones",
+    rawName: "Legumes",
+    displayName: "Legumes",
     value: 30,
     rowIndices: [0, 1],
     children: [
-      { rawName: "iPhone", displayName: "iPhone", value: 20, rowIndices: [0] },
-      { rawName: "Pixel", displayName: "Pixel", value: 10, rowIndices: [1] },
+      {
+        rawName: "Chickpeas",
+        displayName: "Chickpeas",
+        value: 20,
+        rowIndices: [0],
+      },
+      {
+        rawName: "Lentils",
+        displayName: "Lentils",
+        value: 10,
+        rowIndices: [1],
+      },
     ],
   },
-  { rawName: "Tablets", displayName: "Tablets", value: 70, rowIndices: [2] },
+  { rawName: "Grains", displayName: "Grains", value: 70, rowIndices: [2] },
 ];
 
 describe("getTreemapNodeId", () => {
@@ -78,7 +88,7 @@ describe("getTreemapTooltipContext", () => {
         "Category",
       );
 
-      expect(context?.header).toBe("Phones");
+      expect(context?.header).toBe("Legumes");
       expect(context?.siblings).toBe(TWO_LEVEL[0].children);
       expect(context?.focusedNode).toBe(TWO_LEVEL[0].children?.[1]);
       expect(context?.parentNode).toBe(TWO_LEVEL[0]);
@@ -96,7 +106,7 @@ describe("getTreemapTooltipContext", () => {
 
 describe("getTreemapTooltipModel", () => {
   const getColor = (node: TreemapNode) =>
-    ({ Phones: "#aaaaaa", Tablets: "#bbbbbb" })[node.displayName];
+    ({ Legumes: "#aaaaaa", Grains: "#bbbbbb" })[node.displayName];
 
   it("builds one row per sibling with name, formatted value, and percent of total, sorted by value descending", () => {
     const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
@@ -104,17 +114,17 @@ describe("getTreemapTooltipModel", () => {
 
     expect(model.header).toBe("Category");
     expect(model.rows).toHaveLength(2);
-    // Rows are ordered by the measure, largest first — Tablets ($70) before
-    // Phones ($30) — regardless of the tree's source order. The hovered group
-    // (Phones) stays flagged as focused wherever it lands.
+    // Rows are ordered by the measure, largest first — Grains ($70) before
+    // Legumes ($30) — regardless of the tree's source order. The hovered group
+    // (Legumes) stays flagged as focused wherever it lands.
     expect(model.rows[0]).toMatchObject({
-      name: "Tablets",
+      name: "Grains",
       isFocused: false,
       markerColorClass: getMarkerColorClass("#bbbbbb"),
       values: ["$70", formatPercent(0.7)],
     });
     expect(model.rows[1]).toMatchObject({
-      name: "Phones",
+      name: "Legumes",
       isFocused: true,
       markerColorClass: getMarkerColorClass("#aaaaaa"),
       values: ["$30", formatPercent(0.3)],
@@ -124,40 +134,40 @@ describe("getTreemapTooltipModel", () => {
   it("sorts the sub-group breakdown by value descending when drilled in", () => {
     const tree: TreemapTree = [
       {
-        rawName: "Phones",
-        displayName: "Phones",
+        rawName: "Legumes",
+        displayName: "Legumes",
         value: 60,
         rowIndices: [0, 1, 2],
         children: [
           {
-            rawName: "Pixel",
-            displayName: "Pixel",
+            rawName: "Lentils",
+            displayName: "Lentils",
             value: 10,
             rowIndices: [0],
           },
           {
-            rawName: "iPhone",
-            displayName: "iPhone",
+            rawName: "Chickpeas",
+            displayName: "Chickpeas",
             value: 35,
             rowIndices: [1],
           },
           {
-            rawName: "Galaxy",
-            displayName: "Galaxy",
+            rawName: "Edamame",
+            displayName: "Edamame",
             value: 15,
             rowIndices: [2],
           },
         ],
       },
     ];
-    // Drilled into group "0" (Phones), hovering its first sub-group.
+    // Drilled into group "0" (Legumes), hovering its first sub-group.
     const context = getTreemapTooltipContext(tree, "0-0", "0")!;
     const model = getTreemapTooltipModel(context, () => undefined, formatValue);
 
     expect(model.rows.map((row) => row.name)).toEqual([
-      "iPhone",
-      "Galaxy",
-      "Pixel",
+      "Chickpeas",
+      "Edamame",
+      "Lentils",
     ]);
   });
 

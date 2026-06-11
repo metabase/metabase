@@ -61,9 +61,9 @@ describe("static TreemapChart", () => {
     render(
       <TreemapChart
         rawSeries={makeRawSeries([
-          ["Phones", "iPhone", 60],
-          ["Phones", "Xiaomi", 20],
-          ["Watches", "Garmin", 20],
+          ["Legumes", "Chickpeas", 60],
+          ["Legumes", "Lentils", 20],
+          ["Soy", "Tempeh", 20],
         ])}
         settings={settings}
         renderingContext={getRenderingContext()}
@@ -75,11 +75,11 @@ describe("static TreemapChart", () => {
       .getAllByTestId("legend-name")
       .map((node) => node.textContent);
     expect(legendNames).toEqual([
-      "Phones",
-      "iPhone",
-      "Xiaomi",
-      "Watches",
-      "Garmin",
+      "Legumes",
+      "Chickpeas",
+      "Lentils",
+      "Soy",
+      "Tempeh",
       "Total",
     ]);
     // 2-level legend: one color dot per top-level group.
@@ -90,8 +90,8 @@ describe("static TreemapChart", () => {
     render(
       <TreemapChart
         rawSeries={makeRawSeries([
-          ["Phones", null, 80],
-          ["Watches", null, 20],
+          ["Legumes", null, 80],
+          ["Soy", null, 20],
         ])}
         settings={
           {
@@ -107,7 +107,7 @@ describe("static TreemapChart", () => {
     const legendNames = screen
       .getAllByTestId("legend-name")
       .map((node) => node.textContent);
-    expect(legendNames).toEqual(["Phones", "Watches", "Total"]);
+    expect(legendNames).toEqual(["Legumes", "Soy", "Total"]);
     expect(screen.queryByTestId("legend-dot")).not.toBeInTheDocument();
   });
 
@@ -115,9 +115,9 @@ describe("static TreemapChart", () => {
     const view = toStaticMarkup(
       <TreemapChart
         rawSeries={makeRawSeries([
-          ["Phones", "iPhone", 60],
-          ["Phones", "Xiaomi", 20],
-          ["Watches", "Garmin", 20],
+          ["Legumes", "Chickpeas", 60],
+          ["Legumes", "Lentils", 20],
+          ["Soy", "Tempeh", 20],
         ])}
         settings={settings}
         renderingContext={getRenderingContext()}
