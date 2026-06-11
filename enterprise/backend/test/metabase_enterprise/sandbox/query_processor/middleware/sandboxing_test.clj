@@ -1715,6 +1715,93 @@
             (mt/with-premium-features #{}
               (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (qp.preprocess/preprocess query))))))))))
 
+(deftest sandboxed-implicit-join-omits-hidden-columns-test
+  (testing "Implicit joins to a native-GTAP-sandboxed table must not project columns the GTAP omits (#73339)"
+    ;; Native GTAP that drops ADDRESS from People. With an FK remapping Orders.user_id → People.name,
+    ;; the add-remaps middleware causes an implicit join into the sandboxed People table even though
+    ;; the user's Orders query references no People columns. The projection for that join must not
+    ;; reference ADDRESS, or the DB errors with: Column "__mb_source.ADDRESS" not found.
+    (met/with-gtaps! {:gtaps {:people {:query (lib/native-query (mt/metadata-provider)
+                                                                "SELECT ID, EMAIL, NAME, CITY, STATE FROM PEOPLE")}
+                              ;; Empty GTAP just to grant the sandbox group create-queries on Orders.
+                              :orders {}}
+                      :attributes {}}
+      (let [mp           (lib.tu/remap-metadata-provider (mt/metadata-provider)
+                                                         (mt/id :orders :user_id)
+                                                         (mt/id :people :name))
+            base         (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            fieldable    (lib/fieldable-columns base)
+            orders-id    (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "ID"})
+            orders-total (lib.tu.notebook/find-col-with-spec base fieldable
+                                                             {:display-name "Orders"} {:display-name "Total"})
+            ;; Plain Orders query — no People columns referenced. The implicit join into People
+            ;; comes from the FK remapping above, mirroring what the FE sends when "visiting" a table.
+            query        (-> base
+                             (lib/with-fields [orders-id orders-total])
+                             (lib/order-by orders-id :asc)
+                             (lib/limit 3))]
+        (testing "Preprocessed query does not project the dropped ADDRESS column"
+          (let [preprocessed (qp.preprocess/preprocess query)
+                address-id   (mt/id :people :address)
+                field-refs   (filter #(and (vector? %)
+                                           (= :field (first %))
+                                           (= address-id (nth % 2 nil)))
+                                     (tree-seq coll? seq preprocessed))]
+            (is (empty? field-refs)
+                "preprocessed query should not contain any field ref to people.address")))
+        (testing "Query executes successfully"
+          (let [result (qp/process-query query)]
+            (is (= :completed (:status result)))
+            (is (= 3 (count (mt/rows result))))))))))
+
+(deftest ^:parallel project-only-columns-from-original-table-preserves-nested-fields-test
+  (testing "Sandbox column projection must keep nested fields whose `:name` is path-joined after preprocessing (#75305)"
+    ;; For nested fields (e.g. Mongo object children), `lib/returned-columns` on a preprocessed sandbox query produces
+    ;; `:name` like `"parent.child.leaf"` while `lib.metadata/fields` returns the raw leaf `:name`. Matching only by
+    ;; `:name` would drop nested columns and wrap the sandbox in an extra stage that omits them — making the columns
+    ;; vanish for sandboxed users.
+    ;;
+    ;; To guard against a fix that simply disables the filter, the sandbox query below also joins in a column from
+    ;; another table (`orders.total`) — that one *must* still be filtered out.
+    (let [mp            (lib.tu/mock-metadata-provider
+                         {:database {:id 1 :name "db" :dialect :h2 :engine :h2}
+                          :tables   [{:id 100 :name "customers" :db-id 1}
+                                     {:id 200 :name "orders" :db-id 1}]
+                          :fields   [{:id 1001 :name "id" :base-type :type/Integer :table-id 100
+                                      :semantic-type :type/PK}
+                                     {:id 1002 :name "name" :base-type :type/Text :table-id 100}
+                                     {:id 1100 :name "tier_and_details" :base-type :type/Dictionary :table-id 100}
+                                     {:id 1200 :name "u1" :base-type :type/Dictionary :table-id 100
+                                      :nfc-path ["tier_and_details"] :parent-id 1100}
+                                     {:id 1201 :name "id" :base-type :type/Text :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 1202 :name "active" :base-type :type/Boolean :table-id 100
+                                      :nfc-path ["tier_and_details" "u1"] :parent-id 1200}
+                                     {:id 2002 :name "customer_id" :base-type :type/Integer :table-id 200
+                                      :fk-target-field-id 1001 :semantic-type :type/FK}
+                                     {:id 2003 :name "total" :base-type :type/Float :table-id 200}]})
+          base          (lib/query mp (lib.metadata/table mp 100))
+          join          (-> (lib/join-clause (lib.metadata/table mp 200)
+                                             [(lib/= (lib.metadata/field mp 1001)
+                                                     (lib.metadata/field mp 2002))])
+                            (lib/with-join-fields [(lib.metadata/field mp 2003)]))
+          ;; This append-stage / preprocess / drop-stage dance matches what `sandboxing/preprocess-query` does
+          ;; internally: an extra trailing stage carries `:lib/stage-metadata` through preprocessing (legacy MBQL
+          ;; round-tripping otherwise loses it), and we discard that stage afterward to get back the original shape
+          ;; with metadata preserved.
+          sandbox-query (-> (lib/join base join)
+                            lib/append-stage
+                            qp.preprocess/preprocess
+                            lib/drop-stage)]
+      (testing "preprocessing produces path-joined `:name`s for nested fields (sanity check)"
+        (is (contains? (set (map :name (lib/returned-columns sandbox-query)))
+                       "tier_and_details.u1.id")))
+      (testing "nested customers fields are preserved; the joined orders.total column is still filtered out"
+        (let [result (#'sandboxing/project-only-columns-from-original-table mp sandbox-query 100)]
+          (is (= #{1001 1002 1100 1200 1201 1202}
+                 (set (map :id (lib/returned-columns result))))))))))
+
 (deftest sandboxing-throws-on-ee-without-token
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
