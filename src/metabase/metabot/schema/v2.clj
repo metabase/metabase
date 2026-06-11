@@ -1,24 +1,19 @@
 (ns metabase.metabot.schema.v2
-  "Schemas for the v2 message formats, ported from AI SDK v6's `UIMessageChunk` (wire/SSE)
-  and `UIMessage`/`UIMessagePart` (at-rest) definitions. Validates keywordized values (post
-  JSON decode).
+  "Schemas for the v2 `metabot_message.data` storage and over the wire message format.
 
-  Deliberate divergences from upstream:
-
-  - fields that are `z.unknown()` upstream (`:input`, `:output`, `:data`, `:messageMetadata`)
-    are required keys here unless the TypeScript type marks the value `| undefined`
-  - maps are closed; upstream's `validateUIMessages` schema ignores unknown keys on at-rest
-    parts
-
-  Derived (ported from TypeScript/Zod to Malli) from the Vercel AI SDK, used under the
-  Apache License 2.0, © 2023 Vercel, Inc.:
-
+  These schemas strictly reimplement Vercel AI SDK v6's message formats:
     - UIMessageChunk (wire):    packages/ai/src/ui-message-stream/ui-message-chunks.ts
     - UIMessage/part (at-rest): packages/ai/src/ui/ui-messages.ts and
                                 packages/ai/src/ui/validate-ui-messages.ts
 
+  Apache License 2.0, © 2023 Vercel, Inc.
   Upstream: https://github.com/vercel/ai (pinned to ai@6.0.37)
-  License:  https://github.com/vercel/ai/blob/ai%406.0.37/LICENSE"
+  License:  https://github.com/vercel/ai/blob/ai%406.0.37/LICENSE
+
+  There are two deliberate divergences from upstream:
+  - fields that were `z.unknown()` upstream (`:input`, `:output`, `:data`, `:messageMetadata`)
+    are required keys here unless the TypeScript type marks the value `| undefined`
+  - maps are closed while the upstream schema ignores unknown keys on at-rest parts"
   (:require
    [clojure.string :as str]
    [metabase.util.malli.registry :as mr]))
