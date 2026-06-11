@@ -1,18 +1,24 @@
 import { t } from "ttag";
 
 import { Card, Group, Stack, Text, Title } from "metabase/ui";
-import type { Database, Workspace } from "metabase-types/api";
+import type {
+  Database,
+  Workspace,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
 import { NewWorkspaceButton } from "../NewWorkspaceButton";
 import { WorkspaceItem } from "../WorkspaceItem";
 
 export type WorkspaceSectionProps = {
   workspaces: Workspace[];
+  instances: WorkspaceInstance[];
   databases: Database[];
 };
 
 export function WorkspaceSection({
   workspaces,
+  instances,
   databases,
 }: WorkspaceSectionProps) {
   const hasWorkspaces = workspaces.length > 0;
@@ -25,7 +31,14 @@ export function WorkspaceSection({
       </Group>
       {hasWorkspaces ? (
         workspaces.map((workspace) => (
-          <WorkspaceItem key={workspace.id} workspace={workspace} />
+          <WorkspaceItem
+            key={workspace.id}
+            workspace={workspace}
+            instance={instances.find(
+              (instance) => instance.workspace_id === workspace.id,
+            )}
+            instances={instances}
+          />
         ))
       ) : (
         <WorkspaceSectionEmptyState databases={databases} />

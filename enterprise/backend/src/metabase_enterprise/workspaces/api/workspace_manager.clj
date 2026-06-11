@@ -194,6 +194,42 @@
   (t2/delete! :model/WorkspaceInstance :id id)
   {:id id :deleted true})
 
+;;; ------------------------------------------- Deployment -----------------------------------------------------
+;;;
+;;; Binding a workspace to a dev instance. For now this just sets/clears
+;;; `workspace_instance.workspace_id`.
+
+(api.macros/defendpoint :post "/:id/deployment" :- WorkspaceResponse
+  "Provision the workspace onto a free dev instance: binds the instance to the workspace.
+   409 if the instance is already bound or the workspace is already provisioned."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [workspace_instance_id]} :- [:map {:closed true}
+                                       [:workspace_instance_id ms/PositiveInt]]]
+  (api/write-check :model/Workspace id)
+  (let [instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id workspace_instance_id))]
+    (when (some? (:workspace_id instance))
+      (throw (ex-info "Instance is already bound to a workspace"
+                      {:status-code 409 :workspace_instance_id workspace_instance_id})))
+    (when (t2/exists? :model/WorkspaceInstance :workspace_id id)
+      (throw (ex-info "Workspace is already provisioned"
+                      {:status-code 409 :workspace_id id})))
+    (t2/update! :model/WorkspaceInstance :id workspace_instance_id {:workspace_id id}))
+  (present-workspace (api/check-404 (ws/get-workspace id))))
+
+(api.macros/defendpoint :delete "/:id/deployment/:instance-id" :- WorkspaceResponse
+  "Unprovision the workspace: frees the bound dev instance."
+  [{:keys [id instance-id]} :- [:map
+                                [:id ms/PositiveInt]
+                                [:instance-id ms/PositiveInt]]]
+  (api/write-check :model/Workspace id)
+  (let [instance (api/check-404 (t2/select-one :model/WorkspaceInstance :id instance-id))]
+    (when-not (= id (:workspace_id instance))
+      (throw (ex-info "Instance is not bound to this workspace"
+                      {:status-code 400 :workspace_id id :workspace_instance_id instance-id})))
+    (t2/update! :model/WorkspaceInstance :id instance-id {:workspace_id nil}))
+  (present-workspace (api/check-404 (ws/get-workspace id))))
+
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"

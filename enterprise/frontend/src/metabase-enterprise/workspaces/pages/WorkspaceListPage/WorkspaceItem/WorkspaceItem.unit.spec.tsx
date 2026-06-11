@@ -13,7 +13,7 @@ import { WorkspaceItem } from "./WorkspaceItem";
 const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
 function setup({ workspace = WORKSPACE } = {}) {
-  renderWithProviders(<WorkspaceItem workspace={workspace} />);
+  renderWithProviders(<WorkspaceItem workspace={workspace} instances={[]} />);
 }
 
 describe("WorkspaceItem", () => {

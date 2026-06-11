@@ -4,6 +4,7 @@ import type {
   UpdateWorkspaceInstanceRequest,
   UpdateWorkspaceRequest,
   Workspace,
+  WorkspaceDeploymentRequest,
   WorkspaceId,
   WorkspaceInstance,
   WorkspaceInstanceId,
@@ -105,6 +106,39 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           idTag("workspace-instance", id),
         ]),
     }),
+    setupWorkspaceDeployment: builder.mutation<
+      Workspace,
+      WorkspaceDeploymentRequest
+    >({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/ee/workspace-manager/${id}/deployment`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id, workspace_instance_id }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", id),
+          listTag("workspace-instance"),
+          idTag("workspace-instance", workspace_instance_id),
+        ]),
+    }),
+    resetWorkspaceDeployment: builder.mutation<
+      Workspace,
+      WorkspaceDeploymentRequest
+    >({
+      query: ({ id, workspace_instance_id }) => ({
+        method: "DELETE",
+        url: `/api/ee/workspace-manager/${id}/deployment/${workspace_instance_id}`,
+      }),
+      invalidatesTags: (_, error, { id, workspace_instance_id }) =>
+        invalidateTags(error, [
+          listTag("workspace"),
+          idTag("workspace", id),
+          listTag("workspace-instance"),
+          idTag("workspace-instance", workspace_instance_id),
+        ]),
+    }),
   }),
 });
 
@@ -117,4 +151,6 @@ export const {
   useCreateWorkspaceInstanceMutation,
   useUpdateWorkspaceInstanceMutation,
   useDeleteWorkspaceInstanceMutation,
+  useSetupWorkspaceDeploymentMutation,
+  useResetWorkspaceDeploymentMutation,
 } = workspaceApi;

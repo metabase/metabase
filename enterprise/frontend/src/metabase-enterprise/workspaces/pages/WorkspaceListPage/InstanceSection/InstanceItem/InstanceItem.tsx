@@ -32,26 +32,21 @@ export function InstanceItem({ instance }: InstanceItemProps) {
       withBorder
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Anchor
-          component={Link}
-          to={instance.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          c="inherit"
-          underline="never"
-        >
-          <Stack gap="sm">
-            <Box fw="bold" fz="1rem">
-              {instance.name}
-            </Box>
-            <Box c="text-secondary">
-              <Group gap="xs" wrap="nowrap">
-                <FixedSizeIcon name="external" aria-hidden />
-                {instance.url}
-              </Group>
-            </Box>
-          </Stack>
-        </Anchor>
+        <Stack gap="sm">
+          <Box fw="bold" fz="1rem" lh="1rem">
+            {instance.name}
+          </Box>
+          <Anchor
+            component={Link}
+            to={instance.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            c="text-primary"
+            lh="1rem"
+          >
+            {instance.url}
+          </Anchor>
+        </Stack>
         <InstanceMenu instance={instance} />
       </Group>
     </Card>
@@ -85,7 +80,6 @@ function InstanceMenu({ instance }: InstanceMenuProps) {
           </Menu.Item>
           <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
-            disabled={instance.workspace_id != null}
             onClick={openDelete}
           >
             {t`Remove`}

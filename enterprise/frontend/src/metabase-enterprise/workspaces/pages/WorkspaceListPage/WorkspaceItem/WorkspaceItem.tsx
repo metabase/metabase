@@ -1,30 +1,45 @@
 import { useDisclosure } from "@mantine/hooks";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import {
   ActionIcon,
+  Anchor,
   Box,
   Card,
   FixedSizeIcon,
   Group,
   Menu,
   Stack,
+  Tooltip,
 } from "metabase/ui";
 import { getRelativeTime } from "metabase/utils/time-dayjs";
 import { getUserName } from "metabase/utils/user";
-import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
+import type {
+  Workspace,
+  WorkspaceDatabase,
+  WorkspaceInstance,
+} from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
+import { ProvisionWorkspaceModal } from "../ProvisionWorkspaceModal";
 import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
+import { UnprovisionWorkspaceModal } from "../UnprovisionWorkspaceModal";
 
 const CONFIG_FILENAME = "config.yml";
 
 export type WorkspaceItemProps = {
   workspace: Workspace;
+  instance?: WorkspaceInstance;
+  instances: WorkspaceInstance[];
 };
 
-export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
+export function WorkspaceItem({
+  workspace,
+  instance,
+  instances,
+}: WorkspaceItemProps) {
   return (
     <Card
       role="region"
@@ -36,7 +51,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap="sm">
-          <Box fw="bold" fz="1rem">
+          <Box fw="bold" fz="1rem" lh="1rem">
             {workspace.name}
           </Box>
           <WorkspaceCreatorInfo workspace={workspace} />
@@ -46,8 +61,13 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
               workspaceDatabase={workspaceDatabase}
             />
           ))}
+          <WorkspaceInstanceInfo instance={instance} />
         </Stack>
-        <WorkspaceMenu workspace={workspace} />
+        <WorkspaceMenu
+          workspace={workspace}
+          instance={instance}
+          instances={instances}
+        />
       </Group>
     </Card>
   );
@@ -62,7 +82,7 @@ function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
   const timeAgo = getRelativeTime(workspace.created_at);
 
   return (
-    <Box c="text-secondary">
+    <Box c="text-secondary" lh="1rem">
       {creator != null
         ? t`Created by ${getUserName(creator)} ${timeAgo}`
         : t`Created ${timeAgo}`}
@@ -84,7 +104,7 @@ function WorkspaceDatabaseItem({
   }
 
   return (
-    <Box c="text-secondary">
+    <Box c="text-secondary" lh="1rem">
       <Group gap="xs" wrap="nowrap">
         <FixedSizeIcon name="database" aria-hidden />
         {database.name}
@@ -93,15 +113,56 @@ function WorkspaceDatabaseItem({
   );
 }
 
-type WorkspaceMenuProps = {
-  workspace: Workspace;
+type WorkspaceInstanceInfoProps = {
+  instance?: WorkspaceInstance;
 };
 
-function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
+function WorkspaceInstanceInfo({ instance }: WorkspaceInstanceInfoProps) {
+  return (
+    <Box c="text-secondary" lh="1rem">
+      <Group gap="xs" wrap="nowrap">
+        <FixedSizeIcon name="workspace" aria-hidden />
+        {instance != null ? (
+          <Anchor
+            component={Link}
+            to={instance.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            c="text-primary"
+            lh="1rem"
+          >
+            {instance.name}
+          </Anchor>
+        ) : (
+          t`Not provisioned`
+        )}
+      </Group>
+    </Box>
+  );
+}
+
+type WorkspaceMenuProps = {
+  workspace: Workspace;
+  instance?: WorkspaceInstance;
+  instances: WorkspaceInstance[];
+};
+
+function WorkspaceMenu({ workspace, instance, instances }: WorkspaceMenuProps) {
+  const [isProvisionOpen, { open: openProvision, close: closeProvision }] =
+    useDisclosure(false);
+  const [
+    isUnprovisionOpen,
+    { open: openUnprovision, close: closeUnprovision },
+  ] = useDisclosure(false);
   const [isRenameOpen, { open: openRename, close: closeRename }] =
     useDisclosure(false);
   const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
     useDisclosure(false);
+
+  const isProvisioned = instance != null;
+  const hasFreeInstance = instances.some(
+    (workspaceInstance) => workspaceInstance.workspace_id == null,
+  );
 
   return (
     <>
@@ -112,6 +173,34 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
+          {!isProvisioned && (
+            <Tooltip
+              label={t`You need a free developer instance to provision this workspace.`}
+              disabled={hasFreeInstance}
+            >
+              <Menu.Item
+                leftSection={<FixedSizeIcon name="workspace" aria-hidden />}
+                disabled={!hasFreeInstance}
+                onClick={openProvision}
+              >
+                {t`Provision`}
+              </Menu.Item>
+            </Tooltip>
+          )}
+          {isProvisioned && (
+            <Menu.Item
+              leftSection={<FixedSizeIcon name="workspace" aria-hidden />}
+              onClick={openUnprovision}
+            >
+              {t`Unprovision`}
+            </Menu.Item>
+          )}
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
+            onClick={openRename}
+          >
+            {t`Rename`}
+          </Menu.Item>
           <Menu.Item
             component="a"
             href={`/api/ee/workspace-manager/${workspace.id}/config`}
@@ -124,12 +213,6 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
             {t`Download ${CONFIG_FILENAME}`}
           </Menu.Item>
           <Menu.Item
-            leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
-            onClick={openRename}
-          >
-            {t`Rename`}
-          </Menu.Item>
-          <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
             onClick={openDelete}
           >
@@ -137,6 +220,22 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      <ProvisionWorkspaceModal
+        workspace={workspace}
+        instances={instances}
+        opened={isProvisionOpen}
+        onProvision={closeProvision}
+        onClose={closeProvision}
+      />
+      {instance != null && (
+        <UnprovisionWorkspaceModal
+          workspace={workspace}
+          instance={instance}
+          opened={isUnprovisionOpen}
+          onUnprovision={closeUnprovision}
+          onClose={closeUnprovision}
+        />
+      )}
       <RenameWorkspaceModal
         workspace={workspace}
         opened={isRenameOpen}

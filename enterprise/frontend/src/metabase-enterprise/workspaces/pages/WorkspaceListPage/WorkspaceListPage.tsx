@@ -79,7 +79,11 @@ function WorkspaceListPageBody({
         py={0}
       />
       <Stack gap="3.5rem">
-        <WorkspaceSection workspaces={workspaces} databases={databases} />
+        <WorkspaceSection
+          workspaces={workspaces}
+          instances={instances}
+          databases={databases}
+        />
         <InstanceSection instances={instances} />
       </Stack>
     </PageContainer>
