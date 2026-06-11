@@ -1127,7 +1127,8 @@
               ;; GUCs from `vector-session-settings` apply on the same connection. Falls back to the plain
               ;; datasource path for the default strategy with instrumentation off.
               raw-results (run-in-vector-session!
-                           db search-context
+                           db
+                           search-context
                            (fn [conn]
                              (let [results (tracing/with-span :search "search.semantic.db-query"
                                              {:search/query-length (count search-string)}
