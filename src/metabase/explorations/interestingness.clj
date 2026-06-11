@@ -25,10 +25,12 @@
     :day-of-month :day-of-year :week-of-year :minute-of-hour})
 
 (defn exploration-query->lib-query
-  "Lib query built from the exploration query's `:dataset_query`."
+  "Lib query built from the exploration query's `:dataset_query`. The database comes from the
+  row's own `:database_id` snapshot column (frozen alongside `:dataset_query` at plan time),
+  so building the metadata provider costs no extra query and doesn't parse the MBQL."
   [exploration-query]
   (let [dq (:dataset_query exploration-query)
-        mp (lib-be/application-database-metadata-provider (:database dq))]
+        mp (lib-be/application-database-metadata-provider (:database_id exploration-query))]
     (lib/query mp dq)))
 
 (defn exploration-query->lib-cols

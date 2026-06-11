@@ -81,6 +81,7 @@
         q (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                  {:exploration_thread_id thread-id
                                                   :card_id               card-id
+                                                  :database_id           (mt/id)
                                                   :group_id              group-id
                                                   :dimension_id          "d1"
                                                   :dataset_query         (count-by-month-query)
@@ -140,6 +141,7 @@
                          {:exploration_thread_id (:id thread)
                           :group_id              group-id
                           :card_id               (:id card)
+                          :database_id           (mt/id)
                           :dimension_id          "d1"
                           :dataset_query         (count-query)
                           :status                "pending"

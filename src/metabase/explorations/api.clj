@@ -939,7 +939,7 @@
 
       (do
         (queries/assert-can-view-cached-result! {:id            (:id q)
-                                                 :database_id   (:database (:dataset_query q))
+                                                 :database_id   (:database_id q)
                                                  :dataset_query (:dataset_query q)})
         {:status 409
          :body   (select-keys q [:id :status :error_message :started_at :finished_at])}))))

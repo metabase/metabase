@@ -198,7 +198,7 @@
   [query breakoutable-cols target]
   (try
     (some? (lib/find-matching-column
-            query -1 (lib/normalize :metabase.lib.schema.ref/ref target) breakoutable-cols))
+            query -1 (metrics/normalize-target-ref target) breakoutable-cols))
     (catch Exception e
       (log/debugf e "Dimension target %s not resolvable, dropping" (pr-str target))
       false)))

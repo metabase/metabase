@@ -2136,6 +2136,7 @@
                            (:id (first (t2/insert-returning-instances! :model/ExplorationQuery
                                                                        {:exploration_thread_id (:id thread)
                                                                         :card_id               (:id card)
+                                                                        :database_id           (:database_id card)
                                                                         :group_id              group-id
                                                                         :dimension_id          (str "d" i)
                                                                         :dataset_query         (:dataset_query card)

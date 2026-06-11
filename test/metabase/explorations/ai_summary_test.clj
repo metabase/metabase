@@ -127,6 +127,7 @@
                       {:exploration_thread_id thread-id
                        :group_id              group-id
                        :card_id               (:id card)
+                       :database_id           (mt/id)
                        :dimension_id          "d1"
                        :dataset_query         oq
                        :status                "done"
@@ -236,6 +237,7 @@
                                  :model/ExplorationQuery
                                  {:exploration_thread_id (:id t)
                                   :card_id               (:id card)
+                                  :database_id           (mt/id)
                                   :group_id              (:id grp)
                                   :name                  "Revenue by Month"
                                   :dimension_id          "d1"

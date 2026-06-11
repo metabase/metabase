@@ -204,7 +204,8 @@
 
    :model/ExplorationQuery
    (fn [_] (default-timestamped
-            {:query_type "default"
+            {:database_id (data/id)
+             :query_type "default"
              :status "pending"}))
 
    :model/Field

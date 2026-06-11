@@ -98,6 +98,7 @@
   [thread-id metric-by-key plan]
   (let [rows (vec
               (for [item   plan
+                    :let   [metric (get metric-by-key [(:group_id item) (:metric_id item)])]
                     recipe (try
                              (materialize-item metric-by-key item)
                              (catch Throwable e
@@ -107,6 +108,7 @@
                 {:exploration_thread_id thread-id
                  :group_id              (:group_id item)
                  :card_id               (:metric_id item)
+                 :database_id           (:database_id (:card metric))
                  :segment_id            (:segment_id recipe)
                  :dimension_id          (:dimension_id item)
                  :query_type            (:query_type recipe)
