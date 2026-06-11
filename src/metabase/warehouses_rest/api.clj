@@ -1103,7 +1103,10 @@
     (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (t2/select-one :model/Database :id id))
-        _                               (when (:is_sample existing-database)
+        ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
+        ;; table editing), so the guard is lifted when test endpoints are enabled
+        _                               (when (and (:is_sample existing-database)
+                                                   (not (config/config-bool :mb-enable-test-endpoints)))
                                           (throw (ex-info (tru "The sample database cannot be edited.")
                                                           {:status-code 400})))
         _                               (when write_data_details

@@ -673,7 +673,12 @@
                    (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                          {:name "New Name"})))
       (testing "the row is unchanged"
-        (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id)))))))
+        (is (= "Sample Database" (t2/select-one-fn :name :model/Database :id db-id))))
+      (testing "the guard is lifted when test endpoints are enabled (e2e tests edit the sample database)"
+        (mt/with-temp-env-var-value! [mb-enable-test-endpoints "true"]
+          (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
+                                {:name "New Name"})
+          (is (= "New Name" (t2/select-one-fn :name :model/Database :id db-id))))))))
 
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
