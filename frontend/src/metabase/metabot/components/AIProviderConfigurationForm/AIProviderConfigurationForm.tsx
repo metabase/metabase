@@ -218,6 +218,7 @@ export function AIProviderConfigurationForm({
   }, [isModal, connectedProvider]);
 
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
+  const [updateMetabotSettings] = useUpdateMetabotSettingsMutation();
   const disconnectHandlerRef = useRef<(() => Promise<void>) | null>(null);
 
   const { details: providerApiKeyDetails } = useAdminSettings([
@@ -242,21 +243,26 @@ export function AIProviderConfigurationForm({
       "llm-metabot-provider": null,
     };
 
-    if (connectedProvider !== "metabase") {
+    if (connectedProvider !== "metabase" && connectedProvider !== "bedrock") {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
 
       if (!apiKeySetting?.is_env_setting) {
         settingsToClear[apiKeySettingKey] = null;
       }
-
-      if (connectedProvider === "bedrock") {
-        settingsToClear["llm-bedrock-secret-access-key"] = null;
-        settingsToClear["llm-bedrock-session-token"] = null;
-      }
     }
 
     try {
+      if (connectedProvider === "bedrock") {
+        // Bedrock key material spans several settings; an explicit `credentials: null`
+        // clears them all in one call. It runs before the provider is deselected so a
+        // failure can't leave saved keys behind.
+        await updateMetabotSettings({
+          provider: "bedrock",
+          credentials: null,
+        }).unwrap();
+      }
+
       const response = await updateSettings(settingsToClear);
 
       if (response.error) {
@@ -287,6 +293,7 @@ export function AIProviderConfigurationForm({
     connectedProvider,
     disconnectHandlerRef,
     providerApiKeyDetails,
+    updateMetabotSettings,
     updateSettings,
     sendToast,
   ]);
