@@ -12,6 +12,8 @@
   truncated at `semantic-search-results-limit` before re-ranking, and permission checks drop candidates
   after), naive :hnsw misses everything under an anti-correlated filter, and the iterative strategies fix
   filter-driven misses but not limit truncation or permission under-fetch.
+  Under a half-selective filter naive :hnsw also under-fetches at the SQL stage before the permission drop
+  cuts again -- the two losses compound for the post-filtering strategy only.
 
   The matrix cells assert exact values and orderings, not thresholds.
   Embeddings sit at exact distinct distances from the probe (no ties), the heap is populated in a fixed
@@ -115,6 +117,8 @@
 (defn- make-dataset
   "Build the deterministic banded dataset.
   Returns {:docs [...], :embeddings {text -> vec}, :id->distance {id -> d}, :id->band {id -> band}}.
+  The creator alternates with id parity (odd -> crowberto, even -> rasta), so a `created-by` filter is
+  half-selective in every band.
   Doc names share no stem with [[probe-text]], so the keyword side of the hybrid query never matches and the
   RRF rank reduces to the pure semantic (distance) rank."
   [{:keys [seed restricted-collection-id]}]
@@ -137,7 +141,7 @@
                              :searchable_text name
                              :embeddable_text name
                              :created_at      #t "2025-01-01T12:00:00Z"
-                             :creator_id      (mt/user->id :rasta)
+                             :creator_id      (mt/user->id (if (odd? id) :crowberto :rasta))
                              :archived        false
                              :pinned          (boolean pinned)
                              :verified        (boolean verified)
@@ -181,7 +185,14 @@
           (is (= (band-ids ds :rare) (set (exact-ids ds :verified))))
           (is (empty? (filter (band-ids ds :decoy) (exact-ids ds (constantly true))))))
         (testing "at least a full pool of accessible docs lies within the cutoff"
-          (is (<= 20 (count (remove (band-ids ds :restricted) (exact-ids ds (constantly true)))))))))))
+          (is (<= 20 (count (remove (band-ids ds :restricted) (exact-ids ds (constantly true)))))))
+        (testing "creator parity makes a created-by filter half-selective: 10 odd-id docs in the top-20, and
+                  the nearest 20 odd-id docs are 4 restricted + 16 core"
+          (is (= 10 (count (filter odd? top-20))))
+          (let [odd-top-20 (take 20 (exact-ids ds (comp odd? :id)))]
+            (is (= 20 (count odd-top-20)))
+            (is (= 4 (count (filter (band-ids ds :restricted) odd-top-20))))
+            (is (= 16 (count (filter (band-ids ds :core) odd-top-20))))))))))
 
 ;;;; fixture
 
@@ -408,9 +419,11 @@
   (do-with-matrix-fixture!
    (fn [_ds]
      (semantic.tu/with-only-semantic-weights
-       (let [run! (fn [variant user]
+       (let [run! (fn [variant user & {:as extra-ctx}]
                     (mt/with-test-user user
-                      (let [{:keys [results raw-count]} (query-results! variant {:current-user-id (mt/user->id user)})]
+                      (let [{:keys [results raw-count]} (query-results! variant
+                                                                        (merge {:current-user-id (mt/user->id user)}
+                                                                               extra-ctx))]
                         {:raw-count raw-count :returned (count results)})))]
          (testing "exact variants: the restricted band fills 8 of the 20 pool slots, then gets dropped"
            (doseq [variant [:no-index :brute-force]]
@@ -422,7 +435,22 @@
              (testing variant
                (is (= {:raw-count 20 :returned 12} (run! variant :rasta))))))
          (testing "an admin sees the full pool, pinning the loss on permissions rather than retrieval"
-           (is (= {:raw-count 20 :returned 20} (run! :hnsw :crowberto)))))))))
+           (is (= {:raw-count 20 :returned 20} (run! :hnsw :crowberto))))
+         ;; The half-selective created-by filter (odd ids -> crowberto) keeps 10 of the exact top-20
+         ;; (4 restricted + 6 core). Naive :hnsw post-filters that fixed pool, so it arrives at the
+         ;; permission check already halved; filter-first and iterative scans refill to a full pool of 20
+         ;; (4 restricted + 16 core). Structural, not graph luck: the forced top-20 is exact at this scale.
+         ;; (At scale, graph approximation can shift this either way -- missing nearby restricted docs
+         ;; lessens the permission drop, missing nearby permitted docs worsens it -- so only the SQL-stage
+         ;; effect is pinned here.)
+         (testing "a half-selective filter compounds with permissions for the post-filtering strategy only"
+           (let [created-by [(mt/user->id :crowberto)]]
+             (testing "naive :hnsw under-fetches at the SQL stage, then again at the permission stage"
+               (is (= {:raw-count 10 :returned 6} (run! :hnsw :rasta :created-by created-by))))
+             (testing "filter-first and iterative variants under-fetch only at the permission stage"
+               (doseq [variant [:brute-force :hnsw-iterative-relaxed :hnsw-iterative-strict]]
+                 (testing variant
+                   (is (= {:raw-count 20 :returned 16} (run! variant :rasta :created-by created-by)))))))))))))
 
 ;;;; graph approximation: a 32-d densely packed dataset where HNSW genuinely misses
 
