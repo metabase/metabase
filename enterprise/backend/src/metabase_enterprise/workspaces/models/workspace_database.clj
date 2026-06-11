@@ -1,8 +1,11 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -34,6 +37,30 @@
 (defmethod mi/can-create? :model/WorkspaceDatabase
   [_model _instance]
   api/*is-superuser?*)
+
+;;; --------------------------------------- Database eligibility ---------------------------------------
+
+(defn database-eligible-for-workspaces?
+  "True iff `database`'s driver supports the `:workspace` feature and the
+   `database-enable-workspaces` database-local setting is enabled for it."
+  [database]
+  (and (driver.u/supports? (:engine database) :workspace database)
+       (boolean (setting/with-database database
+                  (ws.settings/database-enable-workspaces)))))
+
+(defn eligible-databases
+  "Return all Databases eligible for workspaces. See [[database-eligible-for-workspaces?]]."
+  []
+  (into [] (filter database-eligible-for-workspaces?) (t2/select :model/Database)))
+
+(defn database-input-schemas
+  "The distinct non-blank schema names of `database`'s active tables, sorted.
+   Empty for schemaless drivers (e.g. MySQL)."
+  [database]
+  (->> (t2/select-fn-set :schema :model/Table :db_id (:id database) :active true)
+       (remove #(or (nil? %) (= % "")))
+       sort
+       vec))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

@@ -28,25 +28,3 @@ export type Workspace = {
 export type CreateWorkspaceRequest = {
   name: string;
 };
-
-export type UpdateWorkspaceRequest = {
-  id: WorkspaceId;
-  name?: string;
-};
-
-export type CreateWorkspaceDatabaseRequest = {
-  id: WorkspaceId;
-  database_id: DatabaseId;
-  input_schemas: string[];
-};
-
-export type UpdateWorkspaceDatabaseRequest = {
-  id: WorkspaceId;
-  database_id: DatabaseId;
-  input_schemas: string[];
-};
-
-export type DeleteWorkspaceDatabaseRequest = {
-  id: WorkspaceId;
-  database_id: DatabaseId;
-};

@@ -5,34 +5,20 @@
    `:model/Workspace` and `:model/WorkspaceDatabase` (see `mi/can-read?`/`can-write?`/`can-create?`)."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.serialization.core :as serialization]
-   [metabase-enterprise.serialization.schema :as serialization.schema]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.server.streaming-response :as sr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(comment serialization.schema/keep-me)
 
 ;;; ----------------------------------------------- Schemas ----------------------------------------------------
 
 (def ^:private WorkspaceStatus
   [:enum {:decode/api keyword}
    :unprovisioned :provisioning :provisioned :deprovisioning])
-
-(def ^:private AddDatabaseParams
-  [:map {:closed true}
-   [:database_id   ::lib.schema.id/database]
-   [:input_schemas [:sequential ms/NonBlankString]]])
-
-(def ^:private UpdateDatabaseParams
-  [:map {:closed true}
-   [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private CreateWorkspaceParams
   [:map {:closed true}
@@ -132,39 +118,6 @@
   (ws/delete-workspace! id)
   {:id id :deleted true})
 
-;;; ---------------------------------------- Database sub-endpoints --------------------------------------------
-
-(api.macros/defendpoint :post "/:id/database" :- WorkspaceResponse
-  "Add a database to a workspace and provision it immediately (blocking)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   _query-params
-   params :- AddDatabaseParams]
-  (api/create-check :model/WorkspaceDatabase params)
-  (present-workspace
-   (ws/add-database! id (:database_id params) (:input_schemas params))))
-
-(api.macros/defendpoint :put "/:id/database/:db-id" :- WorkspaceResponse
-  "Update a database's input namespaces. Deprovisions the old config and reprovisions
-   with the new one (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]
-   _query-params
-   params :- UpdateDatabaseParams]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/update-database! id db-id (:input_schemas params))))
-
-(api.macros/defendpoint :delete "/:id/database/:db-id"
-  :- WorkspaceResponse
-  "Deprovision and remove a database from a workspace (blocking)."
-  [{:keys [id db-id]} :- [:map [:id ms/PositiveInt] [:db-id ms/PositiveInt]]]
-  (api/write-check (api/check-404 (t2/select-one :model/WorkspaceDatabase
-                                                 :workspace_id id
-                                                 :database_id db-id)))
-  (present-workspace
-   (ws/remove-database! id db-id)))
-
 ;;; ------------------------------------------- Config download --------------------------------------------------
 
 (api.macros/defendpoint :get "/:id/config"
@@ -181,36 +134,3 @@
      :headers {"Content-Type"        "application/x-yaml"
                "Content-Disposition" "attachment; filename=\"config.yml\""}
      :body    (ws.config/config->yaml config)}))
-
-;;; ----------------------------------------- Metadata export --------------------------------------------------
-
-(defn- workspace-metadata-filters
-  "Derive the `:database-ids` and `:schema-ids` filter values from a hydrated workspace.
-   `:schema-ids` is a `{db-id [\"schema\" ...]}` map matching the metadata export schema."
-  [{:keys [databases]}]
-  {:database-ids (mapv :database_id databases)
-   :schema-ids   (into {}
-                       (map (fn [{:keys [database_id input_schemas]}]
-                              [database_id (vec input_schemas)]))
-                       databases)})
-
-(api.macros/defendpoint :get "/:id/metadata/export"
-  :- (sr/streaming-response-schema ::serialization.schema/export-metadata-response)
-  "Stream the warehouse metadata (databases, tables, fields) for the workspace's databases,
-  scoped to each database's `:input` namespaces. Same flag semantics as
-  `/api/ee/serialization/metadata/export` — sections must be opted into via the
-  `with-databases` / `with-tables` / `with-fields` query parameters."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   query-params
-   :- [:map
-       [:with-databases {:default false} [:maybe :boolean]]
-       [:with-tables    {:default false} [:maybe :boolean]]
-       [:with-fields    {:default false} [:maybe :boolean]]]]
-  (api/read-check :model/Workspace id)
-  (let [workspace (api/check-404 (ws/get-workspace id))
-        opts      (merge query-params
-                         (workspace-metadata-filters workspace)
-                         {:user-info {:user-id       api/*current-user-id*
-                                      :is-superuser? api/*is-superuser?*}})]
-    (sr/streaming-response {:content-type "application/json; charset=utf-8"} [os _]
-      (serialization/export-metadata! os opts))))

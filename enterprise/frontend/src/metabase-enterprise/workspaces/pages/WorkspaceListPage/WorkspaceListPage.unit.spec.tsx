@@ -3,27 +3,15 @@ import { Route } from "react-router";
 
 import {
   setupCreateWorkspaceEndpoint,
-  setupDatabasesEndpoints,
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/urls";
 import type { Workspace } from "metabase-types/api";
-import {
-  createMockDatabase,
-  createMockWorkspace,
-} from "metabase-types/api/mocks";
+import { createMockWorkspace } from "metabase-types/api/mocks";
 
 import { WorkspaceListPage } from "./WorkspaceListPage";
 
-const POSTGRES = createMockDatabase({
-  id: 10,
-  name: "Postgres",
-  features: ["workspace"],
-});
-
 function setup({ workspaces = [] as Workspace[] } = {}) {
-  setupDatabasesEndpoints([POSTGRES]);
   setupListWorkspacesEndpoint(workspaces);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
@@ -49,12 +37,14 @@ describe("WorkspaceListPage", () => {
     ).not.toHaveLength(0);
   });
 
-  it("when not empty, each workspace card links to its workspace page", async () => {
+  it("when not empty, renders a card with a menu for each workspace", async () => {
     const workspace = createMockWorkspace({ id: 42, name: "Existing" });
     setup({ workspaces: [workspace] });
 
+    const item = await screen.findByRole("region", { name: "Existing" });
+    expect(item).toBeInTheDocument();
     expect(
-      await screen.findByRole("region", { name: "Existing" }),
-    ).toHaveAttribute("href", Urls.workspace(workspace.id));
+      screen.getByRole("button", { name: "Workspace options" }),
+    ).toBeInTheDocument();
   });
 });
