@@ -30,3 +30,8 @@ export type Workspace = {
 export type CreateWorkspaceRequest = {
   name: string;
 };
+
+export type UpdateWorkspaceRequest = {
+  id: WorkspaceId;
+  name?: string;
+};

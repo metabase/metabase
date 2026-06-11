@@ -60,6 +60,20 @@ describe("WorkspaceItem", () => {
     expect(downloadItem).toHaveAttribute("download", "config.yml");
   });
 
+  it("opens the rename modal from the menu", async () => {
+    setup();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Workspace options" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Rename" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Rename this workspace?" }),
+    ).toBeInTheDocument();
+  });
+
   it("opens the delete modal from the menu", async () => {
     setup();
     await userEvent.click(

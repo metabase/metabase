@@ -15,6 +15,7 @@ import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
 import { DeleteWorkspaceModal } from "../DeleteWorkspaceModal";
+import { RenameWorkspaceModal } from "../RenameWorkspaceModal";
 
 const CONFIG_FILENAME = "config.yml";
 
@@ -33,7 +34,7 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
       withBorder
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack>
+        <Stack gap="sm">
           <Title order={4}>{workspace.name}</Title>
           {workspace.databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
@@ -76,6 +77,8 @@ type WorkspaceMenuProps = {
 };
 
 function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
+  const [isRenameOpen, { open: openRename, close: closeRename }] =
+    useDisclosure(false);
   const [isDeleteOpen, { open: openDelete, close: closeDelete }] =
     useDisclosure(false);
 
@@ -100,6 +103,12 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
             {t`Download ${CONFIG_FILENAME}`}
           </Menu.Item>
           <Menu.Item
+            leftSection={<FixedSizeIcon name="pencil" aria-hidden />}
+            onClick={openRename}
+          >
+            {t`Rename`}
+          </Menu.Item>
+          <Menu.Item
             leftSection={<FixedSizeIcon name="trash" aria-hidden />}
             onClick={openDelete}
           >
@@ -107,6 +116,12 @@ function WorkspaceMenu({ workspace }: WorkspaceMenuProps) {
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
+      <RenameWorkspaceModal
+        workspace={workspace}
+        opened={isRenameOpen}
+        onRename={closeRename}
+        onClose={closeRename}
+      />
       <DeleteWorkspaceModal
         workspace={workspace}
         opened={isDeleteOpen}

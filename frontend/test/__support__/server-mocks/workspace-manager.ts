@@ -12,6 +12,10 @@ export function setupCreateWorkspaceEndpoint(workspace: Workspace) {
   fetchMock.post(BASE_URL, workspace);
 }
 
+export function setupUpdateWorkspaceEndpoint(workspace: Workspace) {
+  fetchMock.put(`${BASE_URL}/${workspace.id}`, workspace);
+}
+
 export function setupDeleteWorkspaceEndpoint(workspaceId: WorkspaceId) {
   fetchMock.delete(`${BASE_URL}/${workspaceId}`, {
     id: workspaceId,
