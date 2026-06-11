@@ -106,3 +106,105 @@ Candidates worth looking at:
 - under every slicing (per-module, namespace-weighted, source-weighted,
   top-level): still 1190
 - the giant component is untouched; the sadness persists
+
+## Update 2026-06-11: SCC analysis — measuring the blob and scoring the cuts
+
+The metrics above are all transitive-closure measures, which are step functions
+over the giant strongly-connected component: they cannot move until the
+component actually fragments, which is why ten snapshots showed a flat median.
+New tooling in `dev.module-scc` (Tarjan SCC, condensation, cut scoring,
+predicted blast radius) measures the component itself. Numbers below are from
+the `nested-modules-07-metrics` worktree (178 declared modules, 1243 test
+files; the pegged median here is 1236, not 1190, because the test-file count
+grew since the snapshots).
+
+### The blob, quantified
+
+- **One giant SCC of 94 modules.** Only two other non-trivial SCCs exist:
+  `{segments xrays}` and `{api-routes cloud-migration cmd}`. Everything else is
+  cycle-free.
+- `num-modules-in-cycles` (47) badly undercounts this — it only sees direct
+  mutual edges. Half the blob participates in no 2-cycle but is still locked in
+  by longer loops. SCC membership is the honest count.
+- New continuous metrics now in `repo-metrics` / the per-module CSV:
+  `largest-scc-size` (94), `sum-squared-scc-sizes` (8929 — Σ|C|², moves every
+  time a cut shaves members off the blob even when the largest size doesn't),
+  `scc-size` and `in-largest-scc?` per module.
+
+### Cut scoring: make-it-pure-upstream
+
+`upstream-cut-impacts` simulates the carving experiment for each blob member:
+sever all of its out-edges that stay inside the SCC (i.e. invert its
+back-references so it becomes a pure upstream module) and recompute. Top
+candidates:
+
+| module | back-edges to sever | new largest SCC | modules freed |
+|---|---:|---:|---:|
+| `settings` | 7 | 82 | 12 |
+| `util` | **3** | 86 | 8 |
+| `server` | 21 | 86 | 8 |
+| `queries` | 28 | 90 | 4 |
+| `enterprise/sso` | 12 | 90 | 4 |
+| `driver` | 19 | 91 | 3 |
+
+### Predicted blast radius per scenario
+
+`predicted-test-blast-radius` applies the same module-granularity rule the
+selective-CI helpers use, so it reproduces today's numbers on the real graph
+(median 1236) and predicts a carve's payoff on a cut graph:
+
+| carve | new largest SCC | median tests | mean tests |
+|---|---:|---:|---:|
+| (baseline) | 94 | 1236 | 688 |
+| `util` | 86 | 1037 | 584 |
+| `settings` | 82 | 1032 | 586 |
+| `settings`+`util` | 82 | 1032 | 582 |
+| `settings`+`util`+`server` | 74 | 1008 | 532 |
+| + `queries` | 70 | **87** | 512 |
+| + `driver` (instead) | 70 | **90** | 496 |
+| `settings`+`util`+`server`+`queries`+`driver` | 66 | **60** | 477 |
+
+The cliff is real and it has an address: `{settings, util, server}` plus
+either of `{queries, driver}` collapses the median from ~1200 to ~90. Below
+the cliff the *mean* still falls steadily (688 → 532), so progress is
+measurable the whole way — use the mean and `sum-squared-scc-sizes` as the
+experiment's tracking metrics, and expect the median to move only at the end.
+
+### The first two carves are small
+
+The module-level edges hide how cheap the first steps are. Requires that
+would need inverting:
+
+**`util` (3 edges, 7 requires)** — frees 8 modules, median → 1037:
+
+- `util → classloader`: `metabase.util.i18n.impl`, `metabase.util.quick-task`
+  require `metabase.classloader.core`
+- `util → settings`: `metabase.util.date-2`, `metabase.util.retry`,
+  `metabase.util.time.impl` require `metabase.settings.core`
+- `util → system`: `metabase.util.embed`, `metabase.util.markdown` require
+  `metabase.system.core`
+
+All of a piece: util code reading settings/system state instead of taking it
+as arguments. Pure-module hygiene, not architecture.
+
+**`settings` (carved after util, ~7 requires)** — frees 12 modules,
+median → 1032. Every remaining back-edge originates in
+`metabase.settings.models.setting`(+`.cache`), one require each:
+`metabase.api.common`, `metabase.app-db.core` (×2), `metabase.events.core`,
+`metabase.models.serialization`, `metabase.premium-features.core`, and a
+feature-gated `requiring-resolve` into
+`metabase-enterprise.advanced-permissions.common` (a `defenterprise`
+candidate). Carving util first matters: it removes `settings → util` (12
+requires) from the must-sever list, since util is no longer in the blob.
+
+Some of these aren't "bad" edges (settings legitimately persists via app-db);
+the list is the menu of cycle participants, and each gets inverted (event,
+protocol, defenterprise) or consciously accepted. But ~14 require-level
+changes for median 1236 → 1032 and blob 94 → 82 is a far smaller experiment
+than 'carve a module behind one `:api`' suggested.
+
+### Sad no more (conditionally)
+
+The blast-radius problem is no longer 'splitting didn't help' — it's a ranked
+work list with predicted payoffs and a known cliff. The sadness was a
+measurement artifact of watching a step function.

@@ -3,6 +3,7 @@
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [dev.deps-graph :as deps-graph]
+   [dev.module-scc :as module-scc]
    [flatland.ordered.map :as ordered-map]
    [metabase.util :as u]))
 
@@ -96,7 +97,9 @@
         module->sources          (merge (zipmap modules' (repeat (sorted-set)))
                                         (module->source-files deps))
         all-source-files         (into (sorted-set) (comp (filter :module) (map :filename)) deps)
-        all-test-files           (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod all-source-files)]
+        all-test-files           (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod all-source-files)
+        sccs                     (module-scc/strongly-connected-components direct-deps-graph)
+        module->scc              (into {} (for [component sccs, m component] [m component]))]
     {:prefix->mod              prefix->mod
      :modules                  modules'
      :direct-deps-graph        direct-deps-graph
@@ -108,69 +111,75 @@
      :module->nses             module->nses
      :module->sources          module->sources
      :all-source-files         all-source-files
-     :all-test-files           all-test-files}))
+     :all-test-files           all-test-files
+     :sccs                     sccs
+     :module->scc              module->scc}))
 
 (defn- metrics*
   [deps config {:keys [prefix->mod modules direct-deps-graph module->paths transitive-deps-graph
                        direct-dependents-graph transitive-dependents circular-deps-graph
-                       module->nses module->sources all-source-files all-test-files]}]
-  (into []
-        (map (fn [module]
-               (let [direct-deps               (get direct-deps-graph module)
-                     transitive-deps           (get transitive-deps-graph module)
-                     direct-dependents         (get direct-dependents-graph module)
-                     downstream-modules        (get transitive-dependents module)
-                     circular-deps             (get circular-deps-graph module)
-                     dependency-depths         (map (comp inc count) (vals (get module->paths module)))
-                     source-files              (get module->sources module)
-                     downstream-source-files   (into (sorted-set)
-                                                     (mapcat #(get module->sources %))
-                                                     downstream-modules)
-                     affected-source-files     (into source-files downstream-source-files)
-                     affected-test-files       (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod source-files)
-                     derived-api-namespaces    (deps-graph/externally-used-namespaces-ignoring-friends deps config module)
-                     declared-api              (declared-api-namespaces config module)
-                     unexpected-api-namespaces (set/difference derived-api-namespaces
-                                                               (canonical-api-namespaces module))
-                     undeclared-api-namespaces (if (= declared-api :any)
-                                                 (sorted-set)
-                                                 (set/difference derived-api-namespaces declared-api))
-                     declared-friends          (into (sorted-set) (get-in config [module :friends]))
-                     declared-uses             (declared-direct-uses config module)]
-                 (ordered-map/ordered-map
-                  :module module
-                  :num-direct-deps (count direct-deps)
-                  :num-transitive-deps (count transitive-deps)
-                  :num-direct-dependents (count direct-dependents)
-                  :num-transitive-dependents (count downstream-modules)
-                  :max-dependency-depth (reduce max 0 dependency-depths)
-                  :avg-dependency-path-length (safe-ratio (reduce + 0 dependency-depths)
-                                                          (count dependency-depths))
-                  :num-circular-dependencies (count circular-deps)
-                  :leaf? (empty? direct-deps)
-                  :root? (empty? direct-dependents)
-                  :num-namespaces (count (get module->nses module))
-                  :num-externally-used-namespaces (count derived-api-namespaces)
-                  :num-declared-api-namespaces (if (= declared-api :any)
-                                                 :any
-                                                 (count declared-api))
-                  :num-derived-api-namespaces (count derived-api-namespaces)
-                  :num-unexpected-api-namespaces (count unexpected-api-namespaces)
-                  :num-undeclared-api-namespaces (count undeclared-api-namespaces)
-                  :num-declared-friends (count declared-friends)
-                  :num-direct-uses (if (= declared-uses :any)
-                                     :any
-                                     (count declared-uses))
-                  :num-source-files (count source-files)
-                  :num-downstream-modules-affected (count downstream-modules)
-                  :num-downstream-source-files-affected (count downstream-source-files)
-                  :num-affected-source-files (count affected-source-files)
-                  :num-test-files-affected (count affected-test-files)
-                  :percent-of-repo-source-files-affected (safe-ratio (count affected-source-files)
-                                                                     (count all-source-files))
-                  :percent-of-repo-test-files-affected (safe-ratio (count affected-test-files)
-                                                                   (count all-test-files))))))
-        modules))
+                       module->nses module->sources all-source-files all-test-files
+                       sccs module->scc]}]
+  (let [largest-scc (apply max-key count sccs)]
+    (into []
+          (map (fn [module]
+                 (let [direct-deps               (get direct-deps-graph module)
+                       transitive-deps           (get transitive-deps-graph module)
+                       direct-dependents         (get direct-dependents-graph module)
+                       downstream-modules        (get transitive-dependents module)
+                       circular-deps             (get circular-deps-graph module)
+                       dependency-depths         (map (comp inc count) (vals (get module->paths module)))
+                       source-files              (get module->sources module)
+                       downstream-source-files   (into (sorted-set)
+                                                       (mapcat #(get module->sources %))
+                                                       downstream-modules)
+                       affected-source-files     (into source-files downstream-source-files)
+                       affected-test-files       (deps-graph/source-filenames->relevant-test-filenames deps config prefix->mod source-files)
+                       derived-api-namespaces    (deps-graph/externally-used-namespaces-ignoring-friends deps config module)
+                       declared-api              (declared-api-namespaces config module)
+                       unexpected-api-namespaces (set/difference derived-api-namespaces
+                                                                 (canonical-api-namespaces module))
+                       undeclared-api-namespaces (if (= declared-api :any)
+                                                   (sorted-set)
+                                                   (set/difference derived-api-namespaces declared-api))
+                       declared-friends          (into (sorted-set) (get-in config [module :friends]))
+                       declared-uses             (declared-direct-uses config module)]
+                   (ordered-map/ordered-map
+                    :module module
+                    :num-direct-deps (count direct-deps)
+                    :num-transitive-deps (count transitive-deps)
+                    :num-direct-dependents (count direct-dependents)
+                    :num-transitive-dependents (count downstream-modules)
+                    :max-dependency-depth (reduce max 0 dependency-depths)
+                    :avg-dependency-path-length (safe-ratio (reduce + 0 dependency-depths)
+                                                            (count dependency-depths))
+                    :num-circular-dependencies (count circular-deps)
+                    :scc-size (count (get module->scc module #{module}))
+                    :in-largest-scc? (contains? largest-scc module)
+                    :leaf? (empty? direct-deps)
+                    :root? (empty? direct-dependents)
+                    :num-namespaces (count (get module->nses module))
+                    :num-externally-used-namespaces (count derived-api-namespaces)
+                    :num-declared-api-namespaces (if (= declared-api :any)
+                                                   :any
+                                                   (count declared-api))
+                    :num-derived-api-namespaces (count derived-api-namespaces)
+                    :num-unexpected-api-namespaces (count unexpected-api-namespaces)
+                    :num-undeclared-api-namespaces (count undeclared-api-namespaces)
+                    :num-declared-friends (count declared-friends)
+                    :num-direct-uses (if (= declared-uses :any)
+                                       :any
+                                       (count declared-uses))
+                    :num-source-files (count source-files)
+                    :num-downstream-modules-affected (count downstream-modules)
+                    :num-downstream-source-files-affected (count downstream-source-files)
+                    :num-affected-source-files (count affected-source-files)
+                    :num-test-files-affected (count affected-test-files)
+                    :percent-of-repo-source-files-affected (safe-ratio (count affected-source-files)
+                                                                       (count all-source-files))
+                    :percent-of-repo-test-files-affected (safe-ratio (count affected-test-files)
+                                                                     (count all-test-files))))))
+          modules)))
 
 (defn metrics
   ([]
@@ -209,6 +218,11 @@
       :num-root-modules (count (filter :root? module-metrics))
       :num-modules-in-cycles (count (filter seq (vals (:circular-deps-graph ctx))))
       :num-circular-edges (quot (reduce + 0 (map count (vals (:circular-deps-graph ctx)))) 2)
+      :num-nontrivial-sccs (count (filter #(> (count %) 1) (:sccs ctx)))
+      :largest-scc-size (count (apply max-key count (:sccs ctx)))
+      ;; Σ|C|² over SCCs — the continuous fragmentation score. Unlike largest-scc-size or the pegged
+      ;; tests-rerun median, this moves every time a cut shaves members off the giant component.
+      :sum-squared-scc-sizes (reduce + (map #(let [n (count %)] (* n n)) (:sccs ctx)))
       :num-source-files (count (:all-source-files ctx))
       :num-test-files (count (:all-test-files ctx))
       :avg-tests-rerun-per-changed-source-file
@@ -233,6 +247,8 @@
              :max-dependency-depth
              :avg-dependency-path-length
              :num-circular-dependencies
+             :scc-size
+             :in-largest-scc?
              :leaf?
              :root?
              :num-namespaces
