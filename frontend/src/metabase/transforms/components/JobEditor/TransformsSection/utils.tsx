@@ -1,31 +1,34 @@
 import { t } from "ttag";
 
 import type { TreeTableColumnDef } from "metabase/ui";
-import { Ellipsified, Flex, Icon, Text } from "metabase/ui";
+import { Ellipsified, Flex, Icon } from "metabase/ui";
 import type { Transform } from "metabase-types/api";
 
-export function isUnscheduledDependency(transform: Transform) {
+function isUnscheduledDependency(transform: Transform) {
   return transform.dependency === true && transform.scheduled === false;
 }
 
-function FreshnessNote({ transform }: { transform: Transform }) {
+function getFreshnessNoteText(transform: Transform): string | null {
   if (!transform.dependency) {
     return null;
   }
-  if (isUnscheduledDependency(transform)) {
-    return (
-      <Flex align="center" c="warning" flex="0 0 auto" gap="xs">
-        <Icon name="warning" size={12} />
-        <Text c="warning" size="sm">
-          {t`Will not be re-run because it doesn't have a schedule`}
-        </Text>
-      </Flex>
-    );
+  return isUnscheduledDependency(transform)
+    ? t`Will not be re-run because it doesn't have a schedule`
+    : t`Will only re-run if it is stale according to its own schedule`;
+}
+
+function FreshnessNote({ transform }: { transform: Transform }) {
+  const note = getFreshnessNoteText(transform);
+  if (note == null) {
+    return null;
   }
   return (
-    <Text c="text-secondary" flex="0 0 auto" size="sm">
-      {t`Will only re-run if it is stale according to its own schedule`}
-    </Text>
+    <Flex align="center" c="text-secondary" fz="sm" gap="xs" miw={0}>
+      {isUnscheduledDependency(transform) && (
+        <Icon c="warning" name="warning" size={12} />
+      )}
+      <Ellipsified>{note}</Ellipsified>
+    </Flex>
   );
 }
 
@@ -37,13 +40,8 @@ function getTransformColumn(): TreeTableColumnDef<Transform> {
     maxAutoWidth: 520,
     enableSorting: true,
     accessorFn: (transform) => transform.name,
-    cell: ({ getValue, row }) => {
-      return (
-        <Flex align="center" gap="sm" miw={0}>
-          <Ellipsified>{String(getValue())}</Ellipsified>
-          <FreshnessNote transform={row.original} />
-        </Flex>
-      );
+    cell: ({ getValue }) => {
+      return <Ellipsified>{String(getValue())}</Ellipsified>;
     },
   };
 }
@@ -62,6 +60,19 @@ function getTargetColumn(): TreeTableColumnDef<Transform> {
   };
 }
 
+function getFreshnessNoteColumn(): TreeTableColumnDef<Transform> {
+  return {
+    id: "freshness-note",
+    header: t`Notes`,
+    width: "auto",
+    maxAutoWidth: 520,
+    accessorFn: getFreshnessNoteText,
+    cell: ({ row }) => {
+      return <FreshnessNote transform={row.original} />;
+    },
+  };
+}
+
 export function getColumns(): TreeTableColumnDef<Transform>[] {
-  return [getTransformColumn(), getTargetColumn()];
+  return [getTransformColumn(), getTargetColumn(), getFreshnessNoteColumn()];
 }
