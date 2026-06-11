@@ -295,6 +295,25 @@
   [honeysql-form]
   (some-> honeysql-form type-info type-info->db-type))
 
+(defn effective-type
+  "Returns the Metabase effective type from the type-info of `honeysql-form` if present,
+   falling back to `:base-type`. Returns `nil` if neither is set."
+  [honeysql-form]
+  (let [info (type-info honeysql-form)]
+    (or (:effective-type info) (:base-type info))))
+
+(defn database-or-effective-type-isa?
+  "Returns true if `honeysql-form`'s known `database-type` (case-insensitive) equals `db-type`, OR — when no
+  `database-type` is attached — if its [[effective-type]] descends from `effective-type-supertype`. Useful in driver
+  bucketing code that special-cases columns by their warehouse type and needs to fall back when the column reached
+  the driver from a nested query (so the database-type was lost) but its Metabase effective type is still known."
+  [honeysql-form db-type effective-type-supertype]
+  (let [dbt (database-type honeysql-form)]
+    (if dbt
+      (= (u/lower-case-en dbt) (u/lower-case-en (name db-type)))
+      (when effective-type-supertype
+        (isa? (effective-type honeysql-form) effective-type-supertype)))))
+
 (defn is-of-type?
   "Is `honeysql-form` a typed form with `db-type`?
   Where `db-type` could be a string or a regex.

@@ -87,6 +87,14 @@
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
                  (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
 
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the TIME-only format "
+                "string and not produce a DATETIME-with-date format")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["STR_TO_DATE(DATE_FORMAT(CAST(`test_col` AS datetime), '%H'), '%H')"]
+             (sql.qp/format-honeysql :mysql (sql.qp/date :mysql :hour expr)))))))
+
 (deftest date-test
   ;; make sure stuff at least compiles. Even if the result probably isn't as concise as it could be.
   ;; See [[metabase.query-processor.date-time-zone-functions-test/extract-week-tests]] for something that tests
