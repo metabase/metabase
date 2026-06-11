@@ -193,8 +193,10 @@
 (defmethod build-optional-filter-query [:curated "table"]
   [_filter model query curated?]
   (assert (true? curated?) "filter for non-curated content is not supported")
-  ;; Mirror collections.curation/curated? for tables: authoritative tables count unconditionally; published
-  ;; tables count only at the `final` layer and only when the :library feature is present.
+  ;; Approximate collections.curation/curated? for tables: authoritative tables count unconditionally;
+  ;; published tables count only at the `final` layer. Unlike curated? (feature-ungated, since the precomputed
+  ;; column is only written while a feature is active), this live in-place filter gates the published branch
+  ;; on the current :library feature, matching the card-like in-place filters above.
   (let [authoritative   [:= (search.config/column-with-model-alias model :data_authority) "authoritative"]
         published-final (when (premium-features/has-feature? :library)
                           [:and
