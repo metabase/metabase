@@ -3,8 +3,11 @@
    [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.setup :as qp.setup]))
+   [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,6 +54,52 @@
         (f {:type :internal})
         (is (nil? @observed-after-close)
             "a closed chan should poll nil — the timer must not have written ::timeout to it")))))
+
+;; not ^:parallel: relies on (System/gc), which pauses the whole JVM and would distort parallel siblings' timing.
+(deftest completed-query-releases-metadata-provider-test
+  (testing "metadata providers must be GC-able once their QP invocation completes (#75748)"
+    ;; Regression guard for #75748: the query-timeout timer originally (#74776) spawned an `a/go` block, which
+    ;; conveyed the thread's dynamic binding frame — including the bound metadata provider and everything it had
+    ;; cached — into a parked handler on an `a/timeout` channel. That channel lives in core.async's static timer
+    ;; queue (https://github.com/clojure/core.async/blob/master/src/main/clojure/clojure/core/async/impl/timers.clj)
+    ;; for the full *query-timeout-ms* regardless of when the query completes, so every QP invocation pinned
+    ;; ~1MB until the deadline; under sustained call rates this OOMed instances. Whatever the timer's
+    ;; implementation, it must not retain the binding frame, and must release anything it does retain as soon as
+    ;; the query completes.
+    (let [capture!  (fn []
+                      ;; fresh wrapper per invocation so each provider's reachability is independently trackable
+                      ;; (the underlying mock is a global and would never be collectable)
+                      (let [mp (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider)
+                            wr (java.lang.ref.WeakReference. mp)]
+                        (qp.store/with-metadata-provider mp
+                          (let [f (#'qp.setup/do-with-canceled-chan
+                                   (fn [_query]
+                                     ;; realistic duration: ensures the timer go-block parks before we complete, as
+                                     ;; it would for any real query. Sub-ms bodies race go-block dispatch and make
+                                     ;; retention nondeterministic.
+                                     (Thread/sleep 50)
+                                     ::done))]
+                            (f {:type :internal})))
+                        wr))
+          wrs       (vec (repeatedly 5 capture!))
+          ;; unrelated to the timer: the single most recently bound provider can stay reachable through what is
+          ;; likely a stack-slot/register GC root (not fully diagnosed). Claim that slot with a throwaway provider
+          ;; so it cannot hold any of the five we count.
+          _         (qp.store/with-metadata-provider
+                      (lib.metadata.cached-provider/cached-metadata-provider meta/metadata-provider)
+                      ::nothing)
+          alive     (fn []
+                      (count (keep #(.get ^java.lang.ref.WeakReference %) wrs)))]
+      ;; a single System/gc can be lazy about clearing weak refs; retry briefly until they clear or we give up.
+      ;; (Relies on explicit GC being honored — this would fail spuriously under -XX:+DisableExplicitGC, which our
+      ;; CI does not set.)
+      (loop [n 0]
+        (when (and (pos? (alive)) (< n 20))
+          (System/gc)
+          (Thread/sleep 50)
+          (recur (inc n))))
+      (is (zero? (alive))
+          "completed QP invocations still pin their metadata providers via the query-timeout timer"))))
 
 (deftest ^:parallel canceled-chan-timer-does-not-consume-external-cancel-signal-test
   (testing "Timer must not consume the cancel signal when callers bind a regular (a/chan)"
