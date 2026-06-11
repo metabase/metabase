@@ -301,7 +301,7 @@
 (def ^:private metabot-settings-response-schema
   [:map
    [:value [:maybe :string]]
-   [:api-key-error {:optional true} [:maybe :string]]
+   [:credentials-error {:optional true} [:maybe :string]]
    [:models [:sequential llm-model-response-schema]]])
 
 (def ^:private bedrock-credentials-schema
@@ -341,10 +341,8 @@
 (def ^:private invalid-api-key-statuses
   #{401 403})
 
-(defn- invalid-api-key-error?
-  "Whether a provider api-error means the credentials were rejected (or missing).
-  Named for the `api-key-error` response field it feeds, which carries credential errors for every provider, including
-  ones like Bedrock whose credentials are not a single API key."
+(defn- invalid-credentials-error?
+  "Whether a provider api-error means the credentials were rejected (or missing)."
   [error]
   (let [status (or (:status (ex-data error))
                    (:status-code (ex-data error)))]
@@ -438,9 +436,9 @@
                      provider
                      (:models (metabot.self/list-models provider {:credentials credentials})))}
            (catch clojure.lang.ExceptionInfo e
-             (if (invalid-api-key-error? e)
+             (if (invalid-credentials-error? e)
                {:models []
-                :api-key-error (.getMessage e)}
+                :credentials-error (.getMessage e)}
                (throw e))))
          {:models []})))))
 
@@ -460,10 +458,10 @@
   []
   (provider-util/provider-and-model->outer-provider (metabot.settings/llm-metabot-provider)))
 
-(defn- throw-api-key-error!
+(defn- throw-credentials-error!
   [response]
-  (when-let [api-key-error (:api-key-error response)]
-    (throw (ex-info api-key-error
+  (when-let [credentials-error (:credentials-error response)]
+    (throw (ex-info credentials-error
                     {:status-code 400
                      :api-error true})))
   response)
@@ -563,7 +561,7 @@
                             nil)
         ;; The model listing validates the request credentials before anything is saved.
         response          (-> (settings-response provider credentials)
-                              throw-api-key-error!)]
+                              throw-credentials-error!)]
     (when credentials
       (save-credentials! provider credentials))
     (when model
