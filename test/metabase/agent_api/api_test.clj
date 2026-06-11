@@ -312,25 +312,6 @@
                      (str (mt/user-http-request :rasta :post 400 "agent/v1/execute"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
 
-(defn- orders-query
-  "Create a query for the orders table with the given options."
-  [& {:keys [order-by limit]}]
-  (let [mp (mt/metadata-provider)
-        base (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-    (cond-> base
-      order-by (lib/order-by order-by)
-      limit    (lib/limit limit))))
-
-(defn- orders-field-ref
-  "Create a field reference for a column in the orders table."
-  [column-name]
-  (lib.metadata/field (mt/metadata-provider) (mt/id :orders column-name)))
-
-(defn- evaluate-external-query-to-live-query
-  "Mock the evaluation function for the test."
-  [body]
-  (orders-query :limit (:limit body)))
-
 (deftest get-metric-field-values-test
   (ensure-fresh-field-values! (mt/id :orders :quantity))
   (mt/with-temp [:model/Card metric {:name          "Test Metric"
@@ -475,37 +456,35 @@
                                   {:table_id (mt/id :orders)
                                    :limit    1000})))))
 
-(deftest combined-query-accepts-resolved-handle-test
-  (testing "`/v2/query` executes a base64 `:query` string (a resolved query_handle) directly,
-            skipping the representations pipeline"
-    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:query (orders-query
-                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
-                                                        :limit    5)})]
+(deftest combined-query-accepts-encoded-query-test
+  (testing "`/v1/query` executes a base64 `:query` string from /v1/construct-query directly,
+            skipping query construction"
+    (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id (mt/id :orders)
+                                                :limit    5})]
       (is (=? {:status             "completed"
                :row_count          5
                :continuation_token nil?
                :data               {:cols sequential?
                                     :rows (fn [rows] (= 5 (count rows)))}}
-              (mt/user-http-request :rasta :post 202 "agent/v2/query"
+              (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                     {:query (:query construct-resp)})))))
-  (testing "Pagination works on the resolved-handle path: the per-query :limit drives the
+  (testing "Pagination works on the encoded-query path: the per-query :limit drives the
             continuation_token across pages"
     (let [page-size      200
           total-rows     250
-          construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                               {:query (orders-query
-                                                        :order-by [["asc" {} (orders-field-ref "ID")]]
-                                                        :limit    total-rows)})
-          page1          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+          construct-resp (mt/user-http-request :rasta :post 200 "agent/v1/construct-query"
+                                               {:table_id (mt/id :orders)
+                                                :limit    total-rows})
+          page1          (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                                {:query (:query construct-resp)})
-          page2          (mt/user-http-request :rasta :post 202 "agent/v2/query"
+          page2          (mt/user-http-request :rasta :post 202 "agent/v1/query"
                                                {:continuation_token (:continuation_token page1)})]
       (is (=? {:row_count page-size :continuation_token string?} page1))
       (is (=? {:row_count (- total-rows page-size) :continuation_token nil?} page2)))))
 
 (deftest combined-query-rejects-native-handle-test
-  (testing "`/v2/query` rejects a base64 native query with 400 — `agent:query` must not run raw SQL,
+  (testing "`/v1/query` rejects a base64 native query with 400 — `agent:query` must not run raw SQL,
             same scope split `/v1/execute` enforces — in both the legacy and MBQL 5 native forms"
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
@@ -523,38 +502,38 @@
                          :query    {:source-query {:native "select 1"}}}]]]
       (testing label
         (is (re-find #"Native queries are not supported"
-                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/query"
                                                 {:query (u/encode-base64 (json/encode q))}))))))))
 
 (deftest combined-query-rejects-malformed-payload-test
-  (testing "`/v2/query` returns 400 (not 500) when a base64 `:query` isn't a valid JSON object"
+  (testing "`/v1/query` returns 400 (not 500) when a base64 `:query` isn't a valid JSON object"
     (doseq [[label q] [["not valid base64/JSON"        "@@@not-base64@@@"]
                        ["valid base64 of a non-object" (u/encode-base64 (json/encode 5))]]]
       (testing label
         (is (re-find #"Invalid request"
-                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query" {:query q})))))))
-  (testing "`/v2/query` returns 400 (not 500) for a JSON object that isn't a serialized MBQL query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/query" {:query q})))))))
+  (testing "`/v1/query` returns 400 (not 500) for a JSON object that isn't a serialized MBQL query"
     (doseq [[label q] [["non-sequential :stages" {:stages 1}]
                        ["missing :stages"        {:lib/type "mbql/query"}]
                        ["non-map stage"          {:stages [1]}]
                        ["malformed :type"        {:type 1 :stages 1}]]]
       (testing label
         (is (re-find #"expected a serialized MBQL query"
-                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/query"
                                                 {:query (u/encode-base64 (json/encode q))})))))))
-  (testing "`/v2/query` returns 400 (not 500) for an invalid present last-stage :limit"
+  (testing "`/v1/query` returns 400 (not 500) for an invalid present last-stage :limit"
     (doseq [[label limit] [["string"   "lots"]
                            ["zero"     0]
                            ["negative" -5]
                            ["boolean"  false]]]
       (testing label
         (is (re-find #":limit must be a positive integer"
-                     (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                     (str (mt/user-http-request :rasta :post 400 "agent/v1/query"
                                                 {:query (u/encode-base64
                                                          (json/encode {:stages [{:limit limit}]}))})))))))
-  (testing "`/v2/query` returns 400 for a malformed continuation_token"
+  (testing "`/v1/query` returns 400 for a malformed continuation_token"
     (is (re-find #"Invalid request"
-                 (str (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                 (str (mt/user-http-request :rasta :post 400 "agent/v1/query"
                                             {:continuation_token "@@@not-base64@@@"}))))))
 
 (defn- make-continuation-token [pagination]

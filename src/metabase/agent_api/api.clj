@@ -564,17 +564,6 @@
   "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
   [:or ::construct-query-table-request ::construct-query-metric-request])
 
-(mr/def ::query-request
-  "Request schema for /v1/query. Accepts construct params (table_id or metric_id) or a continuation_token."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (:metric_id m)          :metric
-                         :else                   :table))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:table        ::construct-query-table-request]
-   [:metric       ::construct-query-metric-request]])
-
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
@@ -638,8 +627,8 @@
 
 (defn- decode-base64-json-map
   "Decode a base64-encoded JSON object to a Clojure map, returning a 400 (not a 500) on malformed input.
-   The query_handle and continuation-token payloads are client-reachable, so garbage in must surface as
-   a clean 400 rather than a decode exception that bubbles up as a 500."
+   The base64 `:query` and continuation-token payloads are client-reachable, so garbage in must surface
+   as a clean 400 rather than a decode exception that bubbles up as a 500."
   [encoded]
   (let [decoded (try
                   (-> encoded u/decode-base64 json/decode+kw)
@@ -678,8 +667,8 @@
 
 (defn- serialized-query-limit
   "Read the last-stage :limit from a serialized MBQL 5 query map — the `lib/current-limit`
-   equivalent for the plain-map form carried by a query_handle (already resolved, so we read it
-   off the map rather than rehydrating a live query)."
+   equivalent for the plain-map form carried by a base64 `:query` payload (we read it off the
+   map rather than rehydrating a live query)."
   [query-map]
   (get-in query-map [:stages (dec (count (:stages query-map))) :limit]))
 
@@ -701,14 +690,6 @@
   [page total-limit rows-returned items]
   (and (= rows-returned items)
        (< (rows-before-page (inc page)) total-limit)))
-
-(defn- build-query-for-execution
-  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :total-limit <int>}.
-   The query is stripped of lib metadata so it can be serialized into a continuation token."
-  [body]
-  (let [total-limit (total-row-limit body)
-        query       (construct-query* (assoc body :limit total-limit))]
-    {:query (lib/prepare-for-serialization query) :total-limit total-limit}))
 
 (defn- apply-page-to-query
   "Set `:page` on the last stage of a serialized pMBQL query map. Operates on the
@@ -738,17 +719,15 @@
                        :max-results-bare-rows page-size}))
 
 (mr/def ::query-request
-  "Request body for /v2/query, one of three shapes:
+  "Request body for /v1/query, one of three shapes:
     - `{:continuation_token <string>}` from a prior response (pagination);
-    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64
-      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run
-      through the representations pipeline;
-    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as
-      /v2/construct-query.
+    - `{:query <base64-string>}` — an encoded query returned by /v1/construct-query; it's decoded
+      and executed directly (like /v1/execute) rather than re-run through query construction;
+    - construct params (table_id or metric_id + filters, aggregations, etc.), same shape as
+      /v1/construct-query.
 
-  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a
-  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`
-  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400."
+  The `:continuation` and `:handle` branches are closed maps: extra top-level keys (e.g. sending
+  `:query` and `:continuation_token` simultaneously) are rejected with a 400."
   [:multi {:dispatch (fn [m]
                        (cond
                          (:continuation_token m) :continuation
@@ -781,9 +760,9 @@
 (defn- reject-native-query!
   "Throw a 400 if `query-map` is a native query.
 
-  `/v2/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
-  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (a
-  query_handle, a continuation token) could carry a native query — legacy top-level `:type :native`
+  `/v1/query` and `/v1/execute` are gated by the MBQL-execution scopes (`agent:query` /
+  `agent:query:execute`), not `agent:sql:execute`. The opaque base64 payloads they accept (an
+  encoded `:query`, a continuation token) could carry a native query — legacy top-level `:type :native`
   or an MBQL 5 native stage; allowing either would let a token without the SQL-execution scope run
   raw SQL, defeating the scope split and bypassing the execute-sql kill switch. Force native
   execution onto `/v1/execute-sql`, which is correctly scoped."
@@ -793,7 +772,7 @@
                     {:status-code 400 :query-map query-map}))))
 
 (defn- validate-serialized-query!
-  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (query_handle or token).
+  "Sanity-check a decoded MBQL query map from a client-reachable base64 payload (`:query` or token).
    Require `:stages` to be a non-empty sequence of maps, and the last-stage `:limit` (if present) an
    integer; otherwise `serialized-query-limit`, `clamp-total-limit`, and `apply-page-to-query` would
    throw on the malformed shape and surface a 500 instead of a clean 400.
@@ -814,7 +793,7 @@
   "Re-validate query permissions on the continuation-token path.
 
   The token body is client-supplied and could in principle name a different source table than
-  the one the fresh `/v2/query` call was authorized against (a user's data perms can also
+  the one the fresh `/v1/query` call was authorized against (a user's data perms can also
   change between pages). The QP middleware would catch this at execution time, but running
   the explicit `api/query-check` first gives a cleaner 403 and avoids spinning up the
   streaming response just to abort."
@@ -824,16 +803,16 @@
       (api/query-check :model/Table table-id))))
 
 (defn- initial-page-state
-  "Normalize the three /v2/query entry points into a single {:query :total-limit :page} shape.
+  "Normalize the three /v1/query entry points into a single {:query :total-limit :page} shape.
 
    - A continuation token carries the query + pagination state from a prior response (and
      re-validates query permissions, since the token is client-supplied and per-user permissions
      can change between pages).
-   - A base64 `:query` string is a query_handle the MCP layer already resolved to its stored MBQL;
-     it's decoded and executed directly (like /v1/execute), skipping the representations pipeline.
-     Permissions are enforced by the QP at execution time, as on /v1/execute.
-   - A fresh request body is evaluated through the representations pipeline and the total-row budget
-     is derived from the resolved query's `:limit`."
+   - A base64 `:query` string is an encoded query returned by /v1/construct-query; it's decoded
+     and executed directly (like /v1/execute), skipping query construction. Permissions are
+     enforced by the QP at execution time, as on /v1/execute.
+   - A fresh request body (table_id/metric_id + construct params) is run through query
+     construction and the total-row budget is derived from the resolved query's `:limit`."
   [body]
   (cond
     (:continuation_token body)
@@ -859,20 +838,24 @@
   :- (streaming-response/streaming-response-schema ::query-response)
   "Query a Metabase table or metric, or continue paginating a previous query.
 
-  Accepts either construct params (table_id/metric_id + filters, aggregations, etc.)
-  or a continuation_token from a previous response. Returns results with column metadata
-  and an optional continuation_token for fetching the next page."
+  Accepts construct params (table_id/metric_id + filters, aggregations, etc.), a base64-encoded
+  query returned by /v1/construct-query, or a continuation_token from a previous response.
+  Returns results with column metadata and an optional continuation_token for fetching the
+  next page."
   {:scope "agent:query"
    :tool  {:name "query"
            :title "Query Tables and Metrics"
-           :description (str "Execute a Metabase query and return results with column "
-                             "metadata. If more rows are available, the response includes a "
-                             "continuation_token — pass it back to get the next page.\n\n"
-                             "Provide one of: a `query_handle` returned by construct_query "
-                             "(preferred when you have one); a `{\"query\": <object>}` body "
-                             "(same shape as construct_query; see the `construct_notebook_query` "
-                             "tool for the format reference); or a `{\"continuation_token\": "
-                             "\"...\"}` from a previous response.")
+           :description (str "Query a Metabase table or metric. Returns results with column metadata. "
+                             "If more rows are available, the response includes a continuation_token — "
+                             "pass it back to get the next page.\n\n"
+                             "For table queries: provide table_id. "
+                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
+                             "For metric queries: provide metric_id. "
+                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
+                             "For pagination: provide only continuation_token from a previous response.\n\n"
+                             "Alternatively, pass the opaque `query` string returned by construct_query "
+                             "to execute it directly.\n\n"
+                             "Provide exactly one of table_id, metric_id, query, or continuation_token.")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
