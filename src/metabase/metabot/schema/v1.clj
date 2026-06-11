@@ -9,8 +9,8 @@
 
 (mr/def ::data-type
   "Known data part types."
-  [:enum "adhoc_viz" "code_edit" "navigate_to" "state" "static_viz" "todo_list"
-   "transform_suggestion"])
+  [:enum "adhoc_viz" "code_edit" "debug_log" "navigate_to" "state" "static_viz"
+   "todo_list" "transform_suggestion"])
 
 (mr/def ::ai-service-entry
   "An entry written by the external ai-service, derived from an AI SDK v4 `DataStreamPart`

@@ -29,6 +29,7 @@
    {:type "tool-output" :id "tc1"
     :result {:output "rows" :instructions "..." :resources [] :data-parts []}}
    {:type "data" :data-type "navigate_to" :version 1 :data "/question/1"}
+   {:type "data" :data-type "debug_log" :version 1 :data [{:iteration 0 :request {} :response []}]}
    {:type "error" :error {:message "boom"}}
    {:type "error" :errorText "Overloaded"}])
 
