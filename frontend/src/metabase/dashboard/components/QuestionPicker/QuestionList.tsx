@@ -191,8 +191,11 @@ export function QuestionList({
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
           dashboardId={dashboardId ?? undefined}
-          onSave={(visualization) => {
-            dispatch(
+          onSave={async (visualization) => {
+            // Await the dispatch before closing: the thunk commits the new
+            // dashcard (and its series) only after fetching the referenced
+            // cards, so closing early can race a subsequent dashboard save.
+            await dispatch(
               addCardWithVisualization({ visualization, tabId: selectedTabId }),
             );
             setVisualizerModalCardId(null);

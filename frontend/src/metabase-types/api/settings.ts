@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 
-import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { CurrencyStyle } from "metabase/utils/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
+import type { SdkIframeEmbedSetupTheme } from "./embedding-theme";
 import type { GroupId } from "./group";
 import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
 import type { NotificationRecipient } from "./notification";
@@ -668,10 +668,12 @@ export type UserSettings = {
   "show-updated-permission-modal": boolean;
   "show-updated-permission-banner": boolean;
   "trial-banner-dismissal-timestamp"?: string | null;
-  "sdk-iframe-embed-setup-settings"?: Pick<
-    SdkIframeEmbedSetupSettings,
-    "theme" | "useExistingUserSession"
-  > | null;
+  // The persisted subset of the embed setup wizard's
+  // `SdkIframeEmbedSetupSettings` state.
+  "sdk-iframe-embed-setup-settings"?: {
+    theme?: SdkIframeEmbedSetupTheme;
+    useExistingUserSession?: boolean;
+  } | null;
   "color-scheme"?: string;
 };
 

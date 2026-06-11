@@ -16,6 +16,9 @@
     (into {} (map (juxt :path :content) new-files))
     "written-files-version")
 
+  (apply-changes! [_ _message _upserts _delete-paths]
+    "written-files-version")
+
   (version [_]
     "mock-version"))
 
@@ -96,67 +99,12 @@
       (is (nil? (source.p/read-file wrapped-snap "databases/db1.yaml"))
           "Should return nil for file not matching any pattern"))))
 
-(deftest wrapping-source-write-files-single-filter-test
-  (testing "WrappingSource filters write-files! based on path-filters"
-    (let [written-files (atom [])
-          mock-snap (reify source.p/SourceSnapshot
-                      (list-files [_]
-                        [])
-                      (read-file [_ _path]
-                        nil)
-                      (write-files! [_ _message files]
-                        (reset! written-files files)
-                        nil)
-                      (version [_]
-                        "mock-version"))
-          wrapped-snap (source/->WrappingSnapshot mock-snap [#"collections/.*"])
-          files-to-write [{:path "collections/foo.yaml" :content "foo-content"}
-                          {:path "collections/bar.yaml" :content "bar-content"}
-                          {:path "databases/db1.yaml" :content "db1-content"}]]
-      (source.p/write-files! wrapped-snap "test commit" files-to-write)
-      (is (= [{:path "collections/foo.yaml" :content "foo-content"}
-              {:path "collections/bar.yaml" :content "bar-content"}]
-             @written-files)
-          "Should only write files matching the filter"))))
-
-(deftest wrapping-source-write-files-multiple-filters-test
-  (testing "WrappingSource write-files! with multiple filters"
-    (let [written-files (atom [])
-          mock-snap (reify source.p/SourceSnapshot
-                      (list-files [_]
-                        [])
-                      (read-file [_ _path]
-                        nil)
-                      (write-files! [_ _message files]
-                        (reset! written-files files)
-                        nil)
-                      (version [_]
-                        "mock-version"))
-          wrapped-snap (source/->WrappingSnapshot mock-snap [#"collections/.*" #"dashboards/.*"])
-          files-to-write [{:path "collections/foo.yaml" :content "foo-content"}
-                          {:path "databases/db1.yaml" :content "db1-content"}
-                          {:path "dashboards/dash1.yaml" :content "dash1-content"}]]
-      (source.p/write-files! wrapped-snap "test commit" files-to-write)
-      (is (= [{:path "collections/foo.yaml" :content "foo-content"}
-              {:path "dashboards/dash1.yaml" :content "dash1-content"}]
-             @written-files)
-          "Should write files matching any pattern"))))
-
-(deftest wrapping-source-write-files-no-match-test
-  (testing "WrappingSource write-files! with no matching files"
-    (let [written-files (atom [])
-          mock-snapshot (reify source.p/SourceSnapshot
-                          (list-files [_]
-                            [])
-                          (read-file [_this _path]
-                            nil)
-                          (write-files! [_this _message _files]
-                            nil)
-                          (version [_this]
-                            nil))
-          files-to-write [{:path "databases/db1.yaml" :content "db1-content"}
-                          {:path "dashboards/dash1.yaml" :content "dash1-content"}]]
-      (source.p/write-files! mock-snapshot "test commit" files-to-write)
-      (is (= []
-             @written-files)
-          "Should write no files when none match"))))
+(deftest wrapping-source-is-read-only-test
+  (testing "WrappingSnapshot is a read-only ingestion view: write operations throw rather than write"
+    (let [mock-source  (->MockSource {"collections/foo.yaml" "foo-content"})
+          wrapped-snap (source/->WrappingSnapshot (source.p/snapshot mock-source) [#"collections/.*"])
+          file-spec    {:path "collections/foo.yaml" :content "foo-content"}]
+      (is (thrown? UnsupportedOperationException
+                   (source.p/write-files! wrapped-snap "test commit" [file-spec])))
+      (is (thrown? UnsupportedOperationException
+                   (source.p/apply-changes! wrapped-snap "test commit" [file-spec] []))))))

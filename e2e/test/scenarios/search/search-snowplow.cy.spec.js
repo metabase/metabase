@@ -68,13 +68,22 @@ describe("scenarios > search > snowplow", () => {
       cy.visit("/");
       H.commandPaletteSearch("Orders", false);
 
-      //Passing a function to ensure that runtime_milliseconds is populated as a number
+      // Match the full event shape (notably a non-null search_term_hash) so this pins the user's "Orders"
+      // search specifically, and stays a count-of-1 even as more search surfaces start emitting events.
+      // Passing a function also asserts runtime_milliseconds is a number.
       H.expectUnstructuredSnowplowEvent((event) =>
         isMatching(
           {
             event: NEW_SEARCH_QUERY_EVENT_NAME,
             context: "command-palette",
             runtime_milliseconds: P.number,
+            search_engine: P.string,
+            request_id: P.string,
+            offset: null,
+            search_term_hash: P.string,
+            // The raw term is redacted to null on every instance except Metabase's own stats instance
+            // (shouldReportSearchTerm); the salted search_term_hash above is what identifies the query.
+            search_term: null,
           },
           event,
         ),

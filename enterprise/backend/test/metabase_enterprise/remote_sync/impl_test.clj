@@ -167,23 +167,33 @@
 ;; export! tests
 
 (deftest export!-with-no-source-configured-test
-  (testing "export! with no source configured"
+  (testing "export! with no source configured throws"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
-            result (impl/export! nil task-id "Test commit")]
-        (is (= :error (:status result)))
-        (is (re-find #"Remote sync source is not enabled" (:message result)))))))
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Remote sync source is not enabled"
+                              (impl/export! nil task-id "Test commit")))))))
 
 (deftest export!-with-no-remote-synced-collections-test
-  (testing "export! errors when there are no remote-synced collections"
+  (testing "export! is a no-op success when nothing is dirty (no remote-synced content to export)"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
           (mt/with-temporary-setting-values [remote-sync-transforms false]
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
-              (is (= :error (:status result)))
-              (is (= "No remote-syncable content available." (:message result))))))))))
+              (is (= :success (:status result))))))))))
+
+(deftest full-export!-errors-with-no-content-test
+  (testing "full-export! throws when there is no remote-syncable content"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-transforms false]
+            (let [mock-source (test-helpers/create-mock-source)]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                    #"No remote-syncable content available"
+                                    (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant)))))))))))
 
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
@@ -195,20 +205,23 @@
             (is (= :success (:status result)))))))))
 
 (deftest export!-handles-store-failure-test
-  (testing "export! handles store failure"
+  (testing "full-export! surfaces a store failure"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
-          (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)
-                result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
-            (is (= :error (:status result)))
-            (is (re-find #"Failed to export to git repository" (:message result)))))))))
+          (let [mock-source (test-helpers/create-mock-source :fail-mode :store-error)]
+            (is (thrown-with-msg? Exception #"Store failed"
+                                  (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit message" (t/instant))))))))))
 
 (deftest export!-handles-network-errors-during-write-test
-  (testing "export! handles network errors during write"
+  (testing "export! catches a write failure and returns an :error result"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}]
+          ;; A pending create makes the export take the incremental write path; the network error there
+          ;; must surface as an :error result.
+          (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                                               :status "create" :status_changed_at (t/offset-date-time)})
           (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
                 result (impl/export! (source.p/snapshot mock-source) task-id "Test commit message")]
             (is (= :error (:status result)))
@@ -221,6 +234,12 @@
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                      :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+        ;; Pending creates so the export writes the entities (in production these come from events).
+        (t2/insert! :model/RemoteSyncObject
+                    [{:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                      :status "create" :status_changed_at (t/offset-date-time)}
+                     {:model_type "Card" :model_id card-id :model_name "Test Card"
+                      :status "create" :status_changed_at (t/offset-date-time)}])
         (let [mock-main (test-helpers/create-mock-source :branch "test-branch")
               export-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
               export-result (impl/export! (source.p/snapshot mock-main) (:id export-task) "Test export")]
@@ -266,6 +285,24 @@
           (is (not (t2/exists? :model/Collection :id coll2-id)))
           (is (not (t2/exists? :model/Card :id card2-id))))))))
 
+(deftest import!-records-file-path-test
+  (testing "import! records each entity's actual repo file_path on its RemoteSyncObject row, so later
+            renames/deletes resolve the real file and stay on the incremental export fast-path"
+    (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+          coll-path   "collections/main/test_collection_1/test_collection_1.yaml"
+          card-path   "collections/main/test_collection_1/test_card_1.yaml"]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection 1" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                     :model/Card {card-id :id} {:name "Test Card 1" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+        (let [test-files {"test-branch" {coll-path (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                                         card-path (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
+              mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
+              result    (impl/import! (source.p/snapshot mock-main) (:id import-task))]
+          (is (= :success (:status result)))
+          (is (= coll-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))
+              "the collection's row records the file it was imported from")
+          (is (= card-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-id))
+              "the card's row records the file it was imported from"))))))
+
 (deftest error-handling-propagation-through-private-functions-test
   (testing "error handling propagation through private functions"
     (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
@@ -306,7 +343,7 @@
               (mt/with-dynamic-fn-redefs [remote-sync.task/update-progress!
                                           (fn [task-id progress]
                                             (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                (let [result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
                   (is (= :success (:status result)))
                   (is (pos? (count @progress-calls)))
                   (is (= task-id (:task-id (first @progress-calls))))
@@ -738,10 +775,8 @@
                                        :filter [:> [:field 2 nil] 0]}
                           :entity_id "archived-segment-xxxx"
                           :archived true}]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                  result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
@@ -1016,10 +1051,8 @@
                           :table_id table-id
                           :entity_id "archived-measure-xxxx"
                           :archived true}]
-            (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
-                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                  result (#'impl/full-export! (source.p/snapshot mock-source) task-id "Test commit" (t/instant))]
               (is (= :success (:status result)))
               (let [files-after-export (get @(:files-atom mock-source) "main")
                     file-keys (keys files-after-export)]
@@ -1599,7 +1632,8 @@ serdes/meta:
     (version [_] version)
     (list-files [_] [])
     (read-file [_ _] nil)
-    (write-files! [_ _ _] version)))
+    (write-files! [_ _ _] version)
+    (apply-changes! [_ _ _ _] version)))
 
 (defn- export-test-source
   "A minimal Source whose snapshot-at returns a snapshot at the requested version."
@@ -1711,13 +1745,14 @@ serdes/meta:
             (is (nil? (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-force-overwrites-without-merging-test
-  (testing "force? overwrites the remote wholesale even when it advanced (no merge)"
+  (testing "force? overwrites the remote wholesale (full export) even when it advanced — no merge"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [merged? (atom false)]
         (with-redefs [remote-sync.task/last-version    (constantly "base-B")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})
-                      source/store!                    (fn [_ _ _ _] "forced-version")]
+                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})
+                      ;; force? routes through full-export!, which uses store!'s {:version :entries} result.
+                      source/store!                    (fn [& _] {:version "forced-version" :entries []})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :force? true
                                      :source (export-test-source)
@@ -1727,19 +1762,20 @@ serdes/meta:
             (is (= "forced-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
 
 (deftest export!-no-merge-when-not-diverged-test
-  (testing "when the remote has not advanced, export! takes the plain store path"
+  (testing "when the remote has not advanced, export! takes the normal (non-merge) export path"
     (mt/with-temp [:model/RemoteSyncTask {task-id :id} {:sync_task_type "export"}]
       (let [merged? (atom false)]
-        (with-redefs [remote-sync.task/last-version    (constantly "remote-R") ; equal to snapshot version
+        ;; remote-sync.task/last-version equals the snapshot version, so not diverged. No dirty RemoteSyncObject
+        ;; rows and the snapshot lists no files, so the normal export path is a no-op success — and crucially
+        ;; never reaches the merge path.
+        (with-redefs [remote-sync.task/last-version    (constantly "remote-R")
                       spec/extract-entities-for-export (constantly [{:dummy true}])
-                      source/merge-and-store!          (fn [_ _ _ _ _] (reset! merged? true) {:status :success})
-                      source/store!                    (fn [_ _ _ _] "plain-version")]
+                      source/merge-and-store!          (fn [& _] (reset! merged? true) {:status :success})]
           (let [result (impl/export! (export-test-snapshot "remote-R") task-id "msg"
                                      :source (export-test-source)
                                      :base-snapshot (export-test-snapshot "remote-R"))]
             (is (= :success (:status result)))
-            (is (false? @merged?) "no merge when not diverged")
-            (is (= "plain-version" (:version (t2/select-one :model/RemoteSyncTask :id task-id))))))))))
+            (is (false? @merged?) "no merge when not diverged")))))))
 
 ;;; ------------------------------------- export preflight tests -------------------------------------
 

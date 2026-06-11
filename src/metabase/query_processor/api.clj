@@ -85,9 +85,13 @@
                               (:constraints query))]
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints constraints)
+                                          ;; Use assoc rather than merge so :info comes entirely from the
+                                          ;; server-built map. :info carries :card-id and similar fields the
+                                          ;; server derives, so we replace it rather than combining it with
+                                          ;; whatever was on the incoming query.
                                           (assoc :info info))
                                       rff))
-          (qp/process-query (update query :info merge info) rff))))))
+          (qp/process-query (assoc query :info info) rff))))))
 
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
