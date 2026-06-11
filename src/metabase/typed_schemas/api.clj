@@ -2,6 +2,7 @@
   "/api/typed-schemas endpoints."
   (:require
    [clojure.string :as str]
+   [metabase.actions.models :as actions.models]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
@@ -173,6 +174,145 @@
    :description description
    :verified (when verified true)))
 
+(defn- ->keyword
+  "Coerces strings or keywords into a keyword for uniform type inspection."
+  [v]
+  (cond
+    (keyword? v) v
+    (string? v)  (keyword v)
+    :else        nil))
+
+(defn- param-type->js-type
+  "Maps a Metabase parameter type (`:number`, `:string/=`, `:date/single`,
+  `:=`, `:id`, …) to a JS-level type matching [[js-type]]'s convention.
+  Returns nil for ambiguous types (`:=`, `:id`, `:category`, …) so the
+  caller can fall back to other type sources like a backing template-tag."
+  [param-type]
+  (when-let [k (->keyword param-type)]
+    (let [prefix (or (namespace k) (name k))]
+      (case prefix
+        ("number" "numeric") "number"
+        ("text" "string")    "string"
+        "date"               "Date"
+        "boolean"            "boolean"
+        nil))))
+
+(defn- template-tag-name-from-target
+  "Extracts the template-tag name from a parameter's `:target`.
+  Target shape: `[:variable [:template-tag <name>]]` (with keywords or strings
+  at any position depending on serialization)."
+  [target]
+  (when (sequential? target)
+    (let [[op inner] target]
+      (when (and (or (= op :variable) (= op "variable"))
+                 (sequential? inner))
+        (let [[tag-op tag-name] inner]
+          (when (or (= tag-op :template-tag) (= tag-op "template-tag"))
+            (cond
+              (string? tag-name)  tag-name
+              (keyword? tag-name) (clojure.core/name tag-name)
+              :else               nil)))))))
+
+(defn- query-action-template-tag-types
+  "For a query action, builds `{template-tag-name → tag-type}` from the
+  saved `dataset_query`. Empty for non-query actions and for actions
+  without a native query stage."
+  [{:keys [type dataset_query]}]
+  (when (and (= (->keyword type) :query) dataset_query)
+    (let [stage-tags (some-> dataset_query :stages first :template-tags)
+          native-tags (some-> dataset_query :native :template-tags)
+          tags (or stage-tags native-tags)]
+      (into {}
+            (for [[tag-key tag] tags]
+              [(or (:name tag)
+                   (cond
+                     (string? tag-key)  tag-key
+                     (keyword? tag-key) (clojure.core/name tag-key)
+                     :else              nil))
+               (:type tag)])))))
+
+(defn- action-parameter-schema
+  "Each parameter on an Action. The `:slug` is the key the bundle uses in the
+  execute payload (`execute({ <slug>: value, … })`). For implicit actions the
+  slug is `(slugify column-name)`; for custom (query) actions it's whatever
+  the user assigned."
+  [tag-types
+   {:keys [id slug name display-name type target required]}]
+  (let [resolved-slug (or slug
+                          (some-> id clojure.core/name)
+                          (some-> name u/slugify))
+        resolved-type (or (param-type->js-type type)
+                          (param-type->js-type
+                           (get tag-types
+                                (template-tag-name-from-target target)))
+                          "unknown")]
+    (assoc-some
+     {:slug resolved-slug
+      :displayName (or display-name name resolved-slug)
+      :jsType resolved-type}
+     :required (when required true))))
+
+(defn- action-schema
+  "A pre-existing Metabase action. HTTP actions are filtered upstream because
+  the execute endpoint refuses to run them.
+
+  `model-columns` is the parent model's column-schema list (already rendered
+  by [[column-schema]]). It is NOT re-attached to the action — the action is
+  keyed under its model in the typed schema, so callers can reach the row
+  shape via `schema.models.<m>.columns` directly. The TS helper
+  `ActionResult<TAction, TModel>` threads that into the `row/create`
+  response shape."
+  [_model-columns
+   {:keys [id name description type kind parameters entity_id] :as action}]
+  (let [tag-types (query-action-template-tag-types action)
+        implicit? (= (->keyword type) :implicit)]
+    (assoc-some
+     {:kind       "action"
+      :key        (generated-key name id)
+      :id         id
+      :name       name
+      :type       (some-> type clojure.core/name)
+      :parameters (mapv #(action-parameter-schema tag-types %) parameters)}
+     :description description
+     :entityId entity_id
+     :implicitKind (when implicit?
+                     (some-> kind ->keyword u/qualified-name)))))
+
+(defn- model-actions
+  "Fetches non-archived, non-HTTP actions for a single model and emits each
+  in schema form. Returns nil when the model has no executable actions, so
+  `assoc-some` drops the empty `:actions` field. `model-columns` is the
+  parent model's already-rendered column schemas, passed through to
+  implicit actions for response-row typing."
+  [model-id model-columns]
+  (let [actions (actions.models/select-actions
+                 nil
+                 :model_id model-id
+                 :archived false
+                 :type [:not= "http"])]
+    (when (seq actions)
+      (mapv #(action-schema model-columns %) actions))))
+
+(defn- model-schema
+  "A Metabase model (curated dataset). Shape parallels [[question-schema]] —
+  same id/name/columns/etc. — but with `:kind \"model\"` and an extra
+  `:actions` map of pre-existing actions bound to the model
+  (`action.model_id`)."
+  [{:keys [id name description verified display result-columns portable_entity_id]}]
+  (let [columns (mapv column-schema result-columns)
+        action-schemas (model-actions id columns)]
+    (assoc-some
+     {:kind    "model"
+      :key     (generated-key name id)
+      :id      id
+      :name    name
+      :columns columns}
+     :display display
+     :entityId portable_entity_id
+     :description description
+     :verified (when verified true)
+     :actions (some-> action-schemas not-empty keyed-map))))
+
 (defn- persisted-dimension->column
   [dimension]
   (let [field-id (some-> dimension :sources first :field-id)]
@@ -325,6 +465,10 @@
                            :let [details (question-details card)]
                            :when details]
                        (question-schema details))
+        models       (for [card (select-cards :model database-ids)
+                           :let [details (question-details card)]
+                           :when details]
+                       (model-schema details))
         metrics      (for [card (select-cards :metric database-ids)
                            :let [details (metric-details card)]
                            :when details]
@@ -347,6 +491,7 @@
      :generatedAt   (str (Instant/now))
      :metabase      {:instanceUrl (system/site-url)}
      :questions     (keyed-map questions)
+     :models        (keyed-map models)
      :tables        (keyed-map tables)
      :metrics       (keyed-map metrics))))
 
