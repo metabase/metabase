@@ -77,6 +77,35 @@
     ;; nearest-rank p50 of [1 2] is the lower-middle value, matching dev.module-metrics
     (is (= 1 (:median result)))))
 
+(deftest honest-test-selection-test
+  (let [deps      [{:namespace 'x, :filename "src/x.clj", :deps [{:namespace 'y, :module 'm}]}
+                   {:namespace 'y, :filename "src/y.clj", :deps []}]
+        ;; z-test reaches y only through the shared helper, mimicking the metabase.test pattern
+        test-info '{x-test {:file "test/x_test.clj", :requires #{x}}
+                    y-test {:file "test/y_test.clj", :requires #{y}}
+                    helper {:file "test/helper.clj", :requires #{y}}
+                    z-test {:file "test/z_test.clj", :requires #{helper}}}]
+    (testing "a test is selected for every namespace its own require closure reaches"
+      (let [selection (module-scc/honest-test-selection deps test-info)]
+        (is (= #{"test/x_test.clj"} (selection 'x)))
+        (is (= #{"test/x_test.clj" "test/y_test.clj" "test/helper.clj" "test/z_test.clj"}
+               (selection 'y)))))
+    (testing ":narrow treats the helper as requiring nothing, so nothing selects through (or as) it"
+      (let [selection (module-scc/honest-test-selection deps test-info {:narrow '#{helper}})]
+        (is (= #{"test/x_test.clj" "test/y_test.clj"} (selection 'y)))))))
+
+(deftest expected-tests-per-commit-at-ns-test
+  (let [selection '{x #{"t1" "t2"}, y #{"t2"}}
+        file->ns  '{"src/x.clj" x, "src/y.clj" y}
+        commits   [["src/x.clj" "src/y.clj"]            ; union of x and y selections => 2
+                   ["src/y.clj"]                        ; => 1
+                   ["frontend/app.tsx"]]                ; no parsed ns => skipped
+        result    (module-scc/expected-tests-per-commit-at-ns selection file->ns commits)]
+    (is (= 3 (:num-commits result)))
+    (is (= 1 (:num-commits-skipped result)))
+    (is (= 1 (:median result)))
+    (is (= 2 (:p90 result)))))
+
 (deftest expected-tests-per-commit-percentile-test
   (testing "p90 uses nearest-rank semantics: rank ⌈0.9·10⌉ = 9 of 10, not the maximum"
     (let [m->tests     '{a #{"a1"}, e #{"e1"}}

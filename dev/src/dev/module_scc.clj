@@ -15,8 +15,12 @@
       pure upstream module. This is what 'wrap `app-db`/`settings` behind a narrow seam and invert its
       back-references' looks like at the module-graph level."
   (:require
+   [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
+   [clojure.tools.namespace.file :as ns.file]
+   [clojure.tools.namespace.find :as ns.find]
+   [clojure.tools.namespace.parse :as ns.parse]
    [dev.deps-graph :as deps-graph]))
 
 (set! *warn-on-reflection* true)
@@ -210,6 +214,13 @@
   (when (seq sorted-values)
     (nth sorted-values (max 0 (dec (long (Math/ceil (* p (count sorted-values)))))))))
 
+(defn- count-stats
+  "Mean, median, and p90 (nearest-rank) over an ascending sequence of counts; all nil when empty."
+  [sorted-counts]
+  {:mean   (when (seq sorted-counts) (double (/ (reduce + 0 sorted-counts) (count sorted-counts))))
+   :median (nearest-rank sorted-counts 0.5)
+   :p90    (nearest-rank sorted-counts 0.9)})
+
 (defn- transitive-dependents-graph
   "Map of `module -> set of modules that transitively depend on it` for an adjacency map of direct deps."
   [graph]
@@ -290,11 +301,108 @@
                                                     (into modules (mapcat dependents) modules))))))
                         sort
                         vec)]
-    {:num-commits         (count commits)
-     :num-commits-skipped (- (count commits) (count counts))
-     :mean                (when (seq counts) (double (/ (reduce + 0 counts) (count counts))))
-     :median              (nearest-rank counts 0.5)
-     :p90                 (nearest-rank counts 0.9)}))
+    (assoc (count-stats counts)
+           :num-commits         (count commits)
+           :num-commits-skipped (- (count commits) (count counts)))))
+
+;;;; ------------------------------------------------------------------------------------------------
+;;;; Namespace-granularity test selection
+;;;;
+;;;; The namespace require graph is a DAG — Clojure forbids require cycles — so the module-level SCC
+;;;; and its pegged blast radius do not exist at this granularity at all; they are artifacts of the
+;;;; module partition. The fns here model selective CI at namespace granularity with the
+;;;; methodologically correct rule: a test reruns iff its OWN require closure (test files parsed too)
+;;;; reaches a changed namespace. Measured against 90 days of commits this is worth ~−24% CI spend
+;;;; over the module-granularity rule with no code changes, and exposes `metabase.test`'s require
+;;;; closure as the next binding constraint (see the granularity-experiment planning doc).
+;;;;
+;;;; Caveats: only ns declarations are parsed, so dynamic requires inside test bodies are unseen, and
+;;;; defmethod registration via init chains is not modeled — a production version would keep an
+;;;; always-run floor set (`.init` roots, driver matrices).
+;;;; ------------------------------------------------------------------------------------------------
+
+(defn source-ns-graph
+  "Adjacency map of `source namespace -> set of required namespaces` from parsed `deps` rows."
+  [deps]
+  (into {}
+        (map (fn [{ns-sym :namespace, required :deps}]
+               [ns-sym (into #{} (map :namespace) required)]))
+        deps))
+
+(defn test-ns-info
+  "Parse the test trees (`test/`, `enterprise/backend/test/`) and return a map of
+  `test-ns -> {:file path, :requires #{ns-sym}}`. Files without an `ns` declaration are skipped;
+  unparseable files throw with file context (same policy as the modules-test classpath checks)."
+  []
+  (into {}
+        (keep (fn [^java.io.File f]
+                (when-let [decl (try
+                                  (ns.file/read-file-ns-decl f)
+                                  (catch Throwable e
+                                    (throw (ex-info (str "Failed to read ns declaration from " f)
+                                                    {:file (str f)}
+                                                    e))))]
+                  [(ns.parse/name-from-ns-decl decl)
+                   {:file     (.getPath f)
+                    :requires (set (ns.parse/deps-from-ns-decl decl))}])))
+        (concat (ns.find/find-sources-in-dir (io/file "test"))
+                (ns.find/find-sources-in-dir (io/file "enterprise/backend/test")))))
+
+(defn honest-test-selection
+  "Namespace-granularity selective-CI model: map of `source namespace -> set of test files` that must
+  rerun when that namespace changes, where a test is selected iff its own require closure reaches the
+  namespace. `test-info` comes from [[test-ns-info]].
+
+  The `:narrow` opt takes a set of namespaces to treat as requiring nothing — for measuring
+  hypotheticals such as 'what if `metabase.test` were split into narrow helpers', whose god-closure
+  otherwise puts most of src upstream of nearly every test."
+  ([deps test-info]
+   (honest-test-selection deps test-info nil))
+  ([deps test-info {:keys [narrow]}]
+   (let [src-graph (source-ns-graph deps)
+         combined  (reduce (fn [g n] (assoc g n #{}))
+                           (merge src-graph (update-vals test-info :requires))
+                           narrow)
+         reverse-g (reduce-kv (fn [acc v ws]
+                                (reduce (fn [a w] (update a w (fnil conj #{}) v)) acc ws))
+                              {}
+                              combined)
+         ns->file  (update-vals test-info :file)]
+     (into {}
+           (map (fn [src-ns]
+                  [src-ns (loop [seen #{} frontier (get reverse-g src-ns #{}) hits #{}]
+                            (if-let [v (first frontier)]
+                              (if (seen v)
+                                (recur seen (disj frontier v) hits)
+                                (recur (conj seen v)
+                                       (into (disj frontier v) (remove seen (get reverse-g v)))
+                                       (if-let [file (get ns->file v)]
+                                         (conj hits file)
+                                         hits)))
+                              hits))]))
+           (keys src-graph)))))
+
+(defn selection-summary
+  "Distribution stats over a [[honest-test-selection]] map: how many test files a change to the
+  median/p90 namespace invalidates."
+  [selection]
+  (count-stats (sort (map count (vals selection)))))
+
+(defn expected-tests-per-commit-at-ns
+  "Churn-weighted counterpart of [[selection-summary]]: replay `commits` (from [[commit-file-lists]])
+  and count each commit's selected test files under namespace-granularity selection. `file->ns` maps
+  source filename → namespace (build from parsed deps). Commits touching no parsed source file are
+  excluded from the distribution but reported in `:num-commits-skipped`."
+  [selection file->ns commits]
+  (let [counts (->> commits
+                    (keep (fn [files]
+                            (when-let [nss (not-empty (into #{} (keep file->ns) files))]
+                              (count (transduce (map #(get selection % #{})) into #{} nss)))))
+                    sort
+                    vec)]
+    (assoc (count-stats counts)
+           :num-commits         (count commits)
+           :num-commits-skipped (- (count commits) (count counts)))))
 
 (comment
   (def config*  (deps-graph/kondo-config))
@@ -313,4 +421,15 @@
   ;; predicted payoff of the best carve candidate
   (let [{:keys [module severed-edges]} (first (upstream-cut-impacts graph*))
         graph' (update graph* module #(reduce disj % (map second severed-edges)))]
-    (dissoc (predicted-test-blast-radius graph' m->tests*) :per-module)))
+    (dissoc (predicted-test-blast-radius graph' m->tests*) :per-module))
+
+  ;; namespace-granularity selection: the module SCC doesn't exist at this granularity
+  (def test-info* (test-ns-info))
+  (def selection* (honest-test-selection deps* test-info*))
+  (selection-summary selection*)
+  (expected-tests-per-commit-at-ns selection*
+                                   (into {} (map (juxt :filename :namespace)) deps*)
+                                   (commit-file-lists 90))
+  ;; the 'what if metabase.test were split into narrow helpers' scenario
+  (selection-summary
+   (honest-test-selection deps* test-info* {:narrow '#{metabase.test metabase.test.util metabase.test.data}})))
