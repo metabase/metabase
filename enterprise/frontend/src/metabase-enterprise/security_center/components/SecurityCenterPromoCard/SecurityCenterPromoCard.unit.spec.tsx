@@ -17,6 +17,7 @@ import { SecurityCenterPromoCard } from "./SecurityCenterPromoCard";
 const DISMISSED_KEY = "security-center-promo-dismissed";
 
 interface SetupOpts {
+  isAdmin?: boolean;
   isProSelfHosted?: boolean;
   emailConfigured?: boolean;
   slackConfigured?: boolean;
@@ -24,6 +25,7 @@ interface SetupOpts {
 }
 
 function setup({
+  isAdmin = true,
   isProSelfHosted = true,
   emailConfigured = false,
   slackConfigured = false,
@@ -46,7 +48,7 @@ function setup({
   });
 
   const state = createMockState({
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "token-features": tokenFeatures,
     }),
@@ -91,6 +93,20 @@ describe("SecurityCenterPromoCard", () => {
     expect(
       screen.queryByText(/Stay safe with security alerts/),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not render or fire admin-only requests for non-admin users", async () => {
+    setup({ isAdmin: false });
+
+    await screen.findByText(() => false).catch(() => {});
+    expect(
+      screen.queryByText(/Stay safe with security alerts/),
+    ).not.toBeInTheDocument();
+
+    // Non-admins must not trigger admin-only endpoints.
+    expect(fetchMock.callHistory.called("path:/api/ee/security-center")).toBe(
+      false,
+    );
   });
 
   it("does not render for non-pro-self-hosted plans", async () => {
