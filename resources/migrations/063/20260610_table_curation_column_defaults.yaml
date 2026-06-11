@@ -1,8 +1,5 @@
-## Default metabase_table.data_layer and data_authority consistently across app DBs.
-## Each column had only one defaulting mechanism — data_layer a Clojure before-insert default (DB column
-## NULL), data_authority a DB-level default (no Clojure default) — so values diverged by app DB
-## (data_authority was NULL on MySQL/MariaDB but "unconfigured" on H2/Postgres). The model now sets both;
-## this reasserts the matching DB-level defaults for non-model insert paths.
+## Assert DB-level defaults for metabase_table.data_layer / data_authority so they're consistent across
+## app DBs (data_authority was NULL on MySQL/MariaDB). The model before-insert sets both for model inserts.
 
 databaseChangeLog:
   - changeSet:
