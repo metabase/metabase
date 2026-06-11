@@ -824,6 +824,11 @@
   metabase.util.time-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
+  ;; classloader sits below `util` in the module graph, so it can't use `metabase.util.log` without creating
+  ;; a cycle; it gets to use tools.logging directly.
+  metabase.classloader.impl
+  {:linters {:discouraged-namespace {clojure.tools.logging {:level :off}}}}
+
   source-namespaces
   {:linters
    {:metabase/discourage-millis-duration               {:level :warning}

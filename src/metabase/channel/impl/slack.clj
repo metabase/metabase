@@ -69,7 +69,7 @@
 
 (defn- text->markdown-section
   [text]
-  (let [mrkdwn (markdown/process-markdown text :slack)]
+  (let [mrkdwn (markdown/process-markdown text :slack (system/site-url))]
     (when (not (str/blank? mrkdwn))
       {:type "section"
        :text {:type "mrkdwn"
