@@ -123,10 +123,12 @@
 
 (defsetting semantic-search-vector-strategy
   (deferred-tru
-   (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed) or "
+   (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed), "
         "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
-        "survivors). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the HNSW index "
-        "just-in-time. Individual requests may override this via the `vector_search_strategy` API parameter."))
+        "survivors), or `hnsw-iterative-relaxed`/`hnsw-iterative-strict` (HNSW-index-backed iterative scans "
+        "with inline filters). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the "
+        "HNSW index just-in-time. Individual requests may override this via the `vector_search_strategy` API "
+        "parameter."))
   :type       :keyword
   :default    :brute-force
   :encryption :no

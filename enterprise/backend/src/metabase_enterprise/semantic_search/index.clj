@@ -774,17 +774,22 @@
   any strategy may request `force-index?`. Each knob falls back to its EE setting when unset on the context."
   [search-context]
   ;; Values come from a fixed map or validated positive integers, so they are safe to interpolate (GUC names
-  ;; and values can't be passed as bound parameters).
-  (let [iterative-guc (iterative-strategy->guc (vector-search-strategy search-context))]
+  ;; and values can't be passed as bound parameters). They are clamped to pgvector's GUC ranges (ef_search
+  ;; 1..1000, max_scan_tuples 32-bit) because an out-of-range SET LOCAL raises mid-transaction and would
+  ;; fail the whole search; the API schema enforces the same ranges, the clamp covers the settings path.
+  (let [iterative-guc (iterative-strategy->guc (vector-search-strategy search-context))
+        clamp         (fn [v lo hi] (-> v (max lo) (min hi)))]
     (cond-> []
       iterative-guc
       (conj [(str "SET LOCAL hnsw.iterative_scan = " iterative-guc)]
             [(format "SET LOCAL hnsw.ef_search = %d"
-                     (or (:vector-search-ef-search search-context)
-                         (semantic-settings/semantic-search-ef-search)))]
+                     (clamp (or (:vector-search-ef-search search-context)
+                                (semantic-settings/semantic-search-ef-search))
+                            1 1000))]
             [(format "SET LOCAL hnsw.max_scan_tuples = %d"
-                     (or (:vector-search-max-scan-tuples search-context)
-                         (semantic-settings/semantic-search-max-scan-tuples)))])
+                     (clamp (or (:vector-search-max-scan-tuples search-context)
+                                (semantic-settings/semantic-search-max-scan-tuples))
+                            1 Integer/MAX_VALUE))])
 
       (:vector-search-force-index? search-context)
       (conj ["SET LOCAL enable_seqscan = off"]))))
@@ -1031,15 +1036,18 @@
   node's total execution time."
   [plan table-name]
   (when-let [node (find-scan-node plan table-name)]
-    (let [actual-rows (get node "Actual Rows" 0)
-          removed     (get node "Rows Removed by Filter" 0)
-          loops       (get node "Actual Loops" 1)]
+    ;; EXPLAIN reports per-loop averages, and for a parallel scan (the likely plan for the brute-force
+    ;; baseline) loops = workers: row totals need the multiply, but per-loop "Actual Total Time" already
+    ;; approximates wall clock because the workers run concurrently, so the time must NOT be multiplied
+    (let [loops       (get node "Actual Loops" 1)
+          actual-rows (* (get node "Actual Rows" 0) loops)
+          removed     (* (get node "Rows Removed by Filter" 0) loops)]
       {:node-type              (get node "Node Type")
        :index-name             (get node "Index Name")
        :actual-rows            actual-rows
        :rows-removed-by-filter removed
        :tuples-scanned         (+ actual-rows removed)
-       :inner-ms               (* (get node "Actual Total Time" 0) loops)
+       :inner-ms               (get node "Actual Total Time" 0)
        :shared-hit             (get node "Shared Hit Blocks")
        :shared-read            (get node "Shared Read Blocks")})))
 
@@ -1125,18 +1133,22 @@
                           (map (partial legacy-input-with-score weights (keys scorers))))
               ;; Run the query (and any gated instrumentation) inside a vector session so the iterative-scan
               ;; GUCs from `vector-session-settings` apply on the same connection. Falls back to the plain
-              ;; datasource path for the default strategy with instrumentation off.
-              raw-results (run-in-vector-session!
-                           db
-                           search-context
-                           (fn [conn]
-                             (let [results (tracing/with-span :search "search.semantic.db-query"
-                                             {:search/query-length (count search-string)}
-                                             (into [] xform (reducible-search-query conn query)))]
-                               (when (explain? search-context)
-                                 (record-vector-instrumentation! conn index embedding search-context (count results)))
-                               results)))
-              db-query-time-ms (u/since-ms db-timer)
+              ;; datasource path for the default strategy with instrumentation off. The query duration is
+              ;; captured before the instrumentation runs, so the EXPLAIN re-execution and prefilter count
+              ;; don't inflate the latency signal they exist to analyze.
+              db-query-ms* (volatile! 0.0)
+              raw-results  (run-in-vector-session!
+                            db
+                            search-context
+                            (fn [conn]
+                              (let [results (tracing/with-span :search "search.semantic.db-query"
+                                              {:search/query-length (count search-string)}
+                                              (into [] xform (reducible-search-query conn query)))]
+                                (vreset! db-query-ms* (u/since-ms db-timer))
+                                (when (explain? search-context)
+                                  (record-vector-instrumentation! conn index embedding search-context (count results)))
+                                results)))
+              db-query-time-ms @db-query-ms*
 
               filter-timer (u/start-timer)
               filtered-results (tracing/with-span :search "search.semantic.permission-filter"

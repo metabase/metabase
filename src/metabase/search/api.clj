@@ -179,8 +179,10 @@
    [:model_ancestors                     {:default false} [:maybe :boolean]]
    [:search_engine                       {:optional true} [:maybe string?]]
    [:vector_search_strategy              {:optional true} [:maybe (into [:enum] (map name) search.config/vector-search-strategies)]]
-   [:vector_search_ef_search             {:optional true} [:maybe ms/PositiveInt]]
-   [:vector_search_max_scan_tuples       {:optional true} [:maybe ms/PositiveInt]]
+   ;; bounded to pgvector's GUC ranges so out-of-range values get a 400 instead of erroring the
+   ;; SET LOCAL mid-transaction (a 500)
+   [:vector_search_ef_search             {:optional true} [:maybe [:int {:min 1 :max 1000}]]]
+   [:vector_search_max_scan_tuples       {:optional true} [:maybe [:int {:min 1 :max 2147483647}]]]
    [:vector_search_explain               {:optional true} [:maybe :boolean]]
    [:search_native_query                 {:optional true} [:maybe :boolean]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -274,7 +276,15 @@
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
-  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines
+  - `vector_search_strategy`: for the semantic engine: `hnsw` (approximate index search, default),
+    `brute-force` (exact filter-first search), or `hnsw-iterative-relaxed` / `hnsw-iterative-strict`
+    (index-backed iterative scans with inline filters); ignored by other engines
+  - `vector_search_ef_search`: override pgvector's `hnsw.ef_search` (1-1000) for the iterative strategies;
+    admin only
+  - `vector_search_max_scan_tuples`: override pgvector's `hnsw.max_scan_tuples` for the iterative
+    strategies; admin only
+  - `vector_search_explain`: set to true to record vector-scan instrumentation for this search (expensive);
+    admin only
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
   - `display_type`: search for cards/models with specific display types
@@ -291,6 +301,12 @@
   [_route-params
    query-params :- search-request-schema]
   (api/check-valid-page-params (request/limit) (request/offset))
+  ;; tuning/diagnostic knobs are admin-only: explain re-executes the vector scan and counts the whole index
+  ;; table per request, and the scan-budget knobs let a request inflate its own cost
+  (when (or (:vector_search_ef_search query-params)
+            (:vector_search_max_scan_tuples query-params)
+            (some? (:vector_search_explain query-params)))
+    (api/check-superuser))
   (try
     (u/prog1 (search/search (params->search-context query-params))
       (analytics/inc! :metabase-search/response-ok)
