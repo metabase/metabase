@@ -28,6 +28,7 @@ export type ActionKind = "create" | "update" | "delete" | "bulk" | "sql";
  * Response from a single-row create — the inserted row.
  *
  * @category useAction
+ * @notExported RowValue
  */
 export type ActionResultForCreate = {
   "created-row": Record<string, RowValue>;
@@ -210,6 +211,7 @@ type ActionParamValue<TParam extends { jsType?: SchemaJavaScriptType }> =
  * `TAction` is not a schema entry (e.g. a bare numeric id).
  *
  * @category useAction
+ * @notExported ActionParamValue
  */
 export type ActionParametersFromDataAppSchema<TAction> = TAction extends {
   parameters: readonly ActionParameterSchema[];
