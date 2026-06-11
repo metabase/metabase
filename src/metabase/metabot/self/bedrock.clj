@@ -1,0 +1,272 @@
+(ns metabase.metabot.self.bedrock
+  "Amazon Bedrock LLM provider adapter.
+
+  Talks to the Bedrock \"mantle\" endpoint (`https://bedrock-mantle.{region}.api.aws`), which
+  exposes vendor-compatible API surfaces for models hosted on Bedrock:
+
+    - `GET  /v1/models`              — OpenAI-style catalog of every mantle model
+    - `POST /anthropic/v1/messages`  — Anthropic Messages API, for `anthropic.*` models
+    - `POST /openai/v1/responses`    — OpenAI Responses API, for `openai.*` models
+
+  Because these are the same wire protocols the direct Anthropic/OpenAI adapters speak, this
+  namespace reuses [[claude/claude-request-body]] + [[claude/claude->aisdk-chunks-xf]] and
+  [[openai/openai-request-body]] + [[openai/openai->aisdk-chunks-xf]]; the vendor prefix on the
+  model id (e.g. `anthropic.claude-haiku-4-5`, `openai.gpt-5.5`) selects the API family.
+
+  Requests are authenticated with AWS Signature Version 4 computed from the `llm-bedrock-*` settings:
+  https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
+  (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
+   [buddy.core.mac :as mac]
+   [clj-http.client :as http]
+   [clojure.string :as str]
+   [metabase.llm.settings :as llm]
+   [metabase.metabot.self.claude :as claude]
+   [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
+   [metabase.metabot.self.openai :as openai]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
+   [metabase.util.o11y :refer [with-span]])
+  (:import
+   (java.time ZoneOffset ZonedDateTime)
+   (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
+
+;;; ------------------------------------------ AWS Signature Version 4 ------------------------------------------
+
+(def ^:private ^DateTimeFormatter amz-date-formatter
+  "SigV4 timestamp format (ISO 8601 basic), e.g. `20260609T120000Z`."
+  (.withZone (DateTimeFormatter/ofPattern "yyyyMMdd'T'HHmmss'Z'") ZoneOffset/UTC))
+
+(defn- hmac-sha256 ^bytes [key ^String s]
+  (mac/hash s {:key key :alg :hmac+sha256}))
+
+(defn- sha256-hex ^String [^String s]
+  (codecs/bytes->hex (buddy-hash/sha256 (or s ""))))
+
+(defn- signing-key
+  "Derive the SigV4 signing key: HMAC chain over date, region, and service, rooted at the secret."
+  ^bytes [secret-access-key date-stamp region service]
+  (-> (str "AWS4" secret-access-key)
+      (hmac-sha256 date-stamp)
+      (hmac-sha256 region)
+      (hmac-sha256 service)
+      (hmac-sha256 "aws4_request")))
+
+(defn sigv4-headers
+  "Compute AWS SigV4 request headers for a Bedrock mantle request.
+
+  Returns the map of headers to send: `host`, `x-amz-date`, `authorization`, plus `content-type`
+  and `x-amz-security-token` when given. Every returned header except `authorization` itself is
+  signed, so callers must send them byte-for-byte as returned (additional *unsigned* headers may
+  be added freely).
+
+  `amz-date` (a string in [[amz-date-formatter]] format) is injectable for deterministic tests;
+  it defaults to the current UTC time."
+  [{:keys [access-key-id secret-access-key session-token region service method path body content-type host amz-date]
+    :or   {service "bedrock"}}]
+  (let [amz-date     (or amz-date (.format amz-date-formatter (ZonedDateTime/now ZoneOffset/UTC)))
+        date-stamp   (subs amz-date 0 8)
+        headers      (cond-> (sorted-map "host"       host
+                                         "x-amz-date" amz-date)
+                       content-type  (assoc "content-type" content-type)
+                       session-token (assoc "x-amz-security-token" session-token))
+        signed-names (str/join ";" (keys headers))
+        canonical    (str (u/upper-case-en (name method)) "\n"
+                          path "\n"
+                          ;; canonical query string — mantle requests carry no query params
+                          "\n"
+                          (str/join (map (fn [[k v]] (str k ":" v "\n")) headers))
+                          "\n"
+                          signed-names "\n"
+                          (sha256-hex body))
+        scope        (str date-stamp "/" region "/" service "/aws4_request")
+        to-sign      (str "AWS4-HMAC-SHA256\n" amz-date "\n" scope "\n" (sha256-hex canonical))
+        signature    (-> secret-access-key
+                         (signing-key date-stamp region service)
+                         (hmac-sha256 to-sign)
+                         codecs/bytes->hex)]
+    (assoc headers
+           "authorization" (str "AWS4-HMAC-SHA256 "
+                                "Credential=" access-key-id "/" scope ", "
+                                "SignedHeaders=" signed-names ", "
+                                "Signature=" signature))))
+
+;;; ------------------------------------------------ HTTP plumbing ----------------------------------------------
+
+(defn- invalid-region-ex [region]
+  (ex-info (tru "Invalid AWS Bedrock region {0}" (pr-str region))
+           {:api-error   true
+            :error-code  :invalid-region
+            :status-code 400}))
+
+(defn- validate-region
+  "Throw if region is not a known AWS region.
+  The region becomes a host label in the mantle URL, so anything outside the AWS SDK's
+  known region set is rejected before it can be spliced in. The [[llm/llm-bedrock-region]] setter rejects
+  bad values at write time, but env-var/direct sets bypass that setter — this is the second layer."
+  [region]
+  (when-not (contains? llm/known-aws-regions region)
+    (throw (invalid-region-ex region)))
+  region)
+
+(defn- credentials
+  "AWS credentials and region from the `llm-bedrock-*` settings, or nil when not configured."
+  []
+  (let [access-key-id     (not-empty (llm/llm-bedrock-access-key-id))
+        secret-access-key (not-empty (llm/llm-bedrock-secret-access-key))
+        session-token     (not-empty (llm/llm-bedrock-session-token))
+        region            (-> (or (not-empty (llm/llm-bedrock-region))
+                                  "us-east-1")
+                              validate-region)]
+    (when (and access-key-id secret-access-key)
+      {:access-key-id     access-key-id
+       :secret-access-key secret-access-key
+       :session-token     session-token
+       :region            region})))
+
+(defn- missing-credentials-ex []
+  (ex-info (tru "AWS Bedrock credentials are not configured")
+           {:api-error   true
+            :error-code  :api-key-missing
+            :status-code 403}))
+
+(defn- bedrock-error-msg
+  "Canonical, status-specific Bedrock error message."
+  [res]
+  (let [status (long (:status res 0))]
+    (case status
+      401 (tru "AWS Bedrock rejected our credentials or request signature")
+      403 (tru "AWS Bedrock credentials lack permission for this model or action")
+      404 (tru "AWS Bedrock model or endpoint is unavailable in the configured region")
+      429 (tru "AWS Bedrock has rate limited us")
+      500 (tru "AWS Bedrock is not working but not saying why")
+      (tru "AWS Bedrock API error (HTTP {0})" status))))
+
+(defn- bedrock-request
+  "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
+  `headers` are extra *unsigned* headers (e.g. `anthropic-version`)."
+  [{:keys [method path body as headers]}]
+  (let [{:keys [region] :as creds} (or (credentials) (throw (missing-credentials-ex)))
+        host         (str "bedrock-mantle." region ".api.aws")
+        content-type (when body "application/json")
+        sig-headers  (sigv4-headers (merge creds {:method       method
+                                                  :path         path
+                                                  :body         body
+                                                  :content-type content-type
+                                                  :host         host}))]
+    (http/request (cond-> {:method  method
+                           :url     (str "https://" host path)
+                           :headers (merge headers sig-headers)}
+                    as   (assoc :as as)
+                    body (assoc :body body)))))
+
+;;; ------------------------------------------------ Model listing ----------------------------------------------
+
+(defn- list-all-models
+  "Fetch the full mantle model catalog (`GET /v1/models`), every vendor included."
+  []
+  (try
+    (let [res (bedrock-request {:method :get :path "/v1/models" :as :json})]
+      (get-in res [:body :data]))
+    (catch Exception e
+      (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
+
+(defn- supported-model?
+  "Whether a catalog model is supported by this adapter: Anthropic and OpenAI models only.
+  Excludes `openai.gpt-oss*`, which appear in the catalog but are not invokable through the mantle /openai/v1 routes."
+  [{:keys [id]}]
+  (boolean
+   (and id
+        (or (str/starts-with? id "anthropic.")
+            (and (str/starts-with? id "openai.")
+                 (not (str/starts-with? id "openai.gpt-oss")))))))
+
+(defn list-models
+  "List the Bedrock models supported by this adapter (see [[supported-model?]]).
+  Accepts an (ignored) opts map for signature parity with the other providers' model listers.  Bedrock auth always
+  comes from the `llm-bedrock-*` settings."
+  ([] (list-models {}))
+  ([_opts]
+   {:models (->> (list-all-models)
+                 (filter supported-model?)
+                 (sort-by :id)
+                 (mapv (fn [{:keys [id]}]
+                         {:id id :display_name id})))}))
+
+;;; --------------------------------------------- API family dispatch -------------------------------------------
+
+(def ^:private default-model "anthropic.claude-opus-4-8")
+
+(def ^:private anthropic-version "2023-06-01")
+
+(defn- model->family
+  "Which mantle API family serves `model`, by vendor prefix: `:anthropic` or `:openai`."
+  [model]
+  (cond
+    (str/starts-with? model "anthropic.") :anthropic
+    (str/starts-with? model "openai.")    :openai
+    :else
+    (throw (ex-info (tru "Unsupported Bedrock model {0}. Only anthropic.* and openai.* models are supported." model)
+                    {:api-error  true
+                     :error-code :unsupported-model
+                     :model      model}))))
+
+(defn ->mantle-anthropic-body
+  "Adapt a canonical Anthropic Messages request body for the mantle endpoint.
+
+  Bedrock mantle rejects the top-level `cache_control` key. Content-block-level `cache_control` markers are accepted
+  and left alone."
+  [body]
+  (dissoc body :cache_control))
+
+(mu/defn bedrock-raw
+  "Perform a streaming request to the Bedrock mantle endpoint."
+  [{:keys [model input tools] :as opts
+    :or   {model default-model}} :- core/LLMRequestOpts]
+  (let [opts   (assoc opts :model model)
+        family (model->family model)
+        {:keys [path headers req]}
+        (case family
+          :anthropic {:path    "/anthropic/v1/messages"
+                      :headers {"anthropic-version" anthropic-version}
+                      :req     (->mantle-anthropic-body (claude/claude-request-body opts))}
+          :openai    {:path    "/openai/v1/responses"
+                      :req     (openai/openai-request-body opts)})]
+    (with-span :info {:name       :metabot.bedrock/request
+                      :model      model
+                      :family     family
+                      :msg-count  (count input)
+                      :tool-count (count tools)}
+      (try
+        (let [response (bedrock-request {:method  :post
+                                         :path    path
+                                         :as      :stream
+                                         :headers headers
+                                         :body    (json/encode req)})]
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "bedrock"
+                                     :model    model
+                                     :url      path
+                                     :request  req})))
+        (catch Exception e
+          (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))))
+
+(defn- model->aisdk-chunks-xf
+  "The SSE->AISDK translating transducer for a Bedrock model id.
+  Claude's for `anthropic.*` models, OpenAI's for `openai.*` models."
+  [model]
+  (case (model->family model)
+    :anthropic (claude/claude->aisdk-chunks-xf)
+    :openai    (openai/openai->aisdk-chunks-xf)))
+
+(defn bedrock
+  "Call AWS Bedrock (mantle endpoint), return AISDK stream."
+  [& [{:keys [model] :or {model default-model}} :as args]]
+  (let [raw (apply bedrock-raw args)]
+    (eduction (model->aisdk-chunks-xf model) raw)))

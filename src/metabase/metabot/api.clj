@@ -303,16 +303,25 @@
    [:api-key-error {:optional true} [:maybe :string]]
    [:models [:sequential llm-model-response-schema]]])
 
+(def ^:private bedrock-credentials-schema
+  [:map
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]])
+
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
    [:model {:optional true} [:maybe :string]]
-   [:api-key {:optional true} [:maybe :string]]])
+   [:api-key {:optional true} [:maybe :string]]
+   [:credentials {:optional true} [:maybe bedrock-credentials-schema]]])
 
 (defn- provider-api-key-setting-key
   [provider]
   (case provider
     "anthropic"  :llm-anthropic-api-key
+    "bedrock"    :llm-bedrock-access-key-id
     "openai"     :llm-openai-api-key
     "openrouter" :llm-openrouter-api-key))
 
@@ -359,6 +368,13 @@
                  (map title-case-token)
                  (str/join " ")))))
 
+(defn- bedrock-model-group
+  [{:keys [id]}]
+  (cond
+    (str/starts-with? id "anthropic.") "Anthropic"
+    (str/starts-with? id "openai.")    "OpenAI"
+    :else                              nil))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
   (or (some-> display_name
@@ -373,6 +389,7 @@
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
+    "bedrock"    (assoc model :group (bedrock-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -390,7 +407,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
@@ -455,6 +472,25 @@
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))
 
+(defn- save-bedrock-credentials!
+  "Persist AWS Bedrock credentials from a settings request.
+
+  Blank/omitted access key, secret, and region leave the existing values untouched. The session token pairs with the
+  access key it was issued for, so it is rewritten only when new key material is supplied — that way editing an
+  unrelated field (e.g. region) can't strand a still-valid token, and a key rotation can't leave a stale token behind."
+  [{:keys [access-key-id secret-access-key region session-token]}]
+  (let [new-access-key (non-blank-string access-key-id)
+        new-secret     (non-blank-string secret-access-key)
+        new-region     (non-blank-string region)]
+    (when new-access-key
+      (setting/set! :llm-bedrock-access-key-id new-access-key))
+    (when new-secret
+      (setting/set! :llm-bedrock-secret-access-key new-secret))
+    (when new-region
+      (setting/set! :llm-bedrock-region new-region))
+    (when (or new-access-key new-secret)
+      (setting/set! :llm-bedrock-session-token (non-blank-string session-token)))))
+
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
   "Update the Metabot provider API key and/or model setting and return the refreshed settings payload."
@@ -462,26 +498,30 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider api-key] request-model :model} body
-        current-provider (current-setting-provider)
+  (let [{:keys [provider api-key credentials] request-model :model} body
+        current-provider  (current-setting-provider)
         provider-changed? (not= current-provider provider)
-        model (cond
-                (non-blank-string request-model)
-                (effective-provider-model provider request-model)
+        model             (cond
+                            (non-blank-string request-model)
+                            (effective-provider-model provider request-model)
 
-                provider-changed?
-                (or (effective-provider-model provider request-model)
-                    (metabot.settings/default-model-for-provider provider))
+                            provider-changed?
+                            (or (effective-provider-model provider request-model)
+                                (metabot.settings/default-model-for-provider provider))
 
-                :else
-                nil)
-        response (-> (settings-response provider api-key)
-                     throw-api-key-error!)]
-    (when (contains? body :api-key)
-      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
-    (when model
-      (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (assoc response :value (metabot.settings/llm-metabot-provider))))
+                            :else
+                            nil)]
+    ;; FIXME Bedrock credentials are saved before building the response so the model listing below
+    ;; validates against them.
+    (when (and (= provider "bedrock") credentials)
+      (save-bedrock-credentials! credentials))
+    (let [response (-> (settings-response provider api-key)
+                       throw-api-key-error!)]
+      (when (and (not= provider "bedrock") (contains? body :api-key))
+        (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
+      (when model
+        (setting/set! :llm-metabot-provider (str provider "/" model)))
+      (assoc response :value (metabot.settings/llm-metabot-provider)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."

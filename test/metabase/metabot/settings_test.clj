@@ -217,3 +217,34 @@
          java.lang.UnsupportedOperationException
          #"You cannot set ai-usage-max-retention-days"
          (setting/set! :ai-usage-max-retention-days 30)))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-bedrock-test
+  (testing "accepts valid direct bedrock provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "bedrock/anthropic.claude-haiku-4-5"]
+      (is (= "bedrock/anthropic.claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
+
+(deftest metabot-configured-with-bedrock-credentials-test
+  (testing "returns true when bedrock has both the access key ID and secret access key set"
+    (mt/with-temporary-setting-values [llm-metabot-provider           "bedrock/anthropic.claude-haiku-4-5"
+                                       llm-bedrock-access-key-id      "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key  "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-partial-bedrock-credentials-test
+  (testing "returns false when bedrock has an access key ID but no secret access key"
+    (mt/with-temporary-setting-values [llm-metabot-provider          "bedrock/anthropic.claude-haiku-4-5"
+                                       llm-bedrock-access-key-id     "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-api-key-bedrock-fully-configured-test
+  (testing "returns the access key ID as a presence sentinel when bedrock is fully configured"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id     "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (= "AKIDEXAMPLE" (metabot.settings/configured-provider-api-key "bedrock"))))))
+
+(deftest configured-provider-api-key-bedrock-partial-credentials-test
+  (testing "returns nil when bedrock has an access key ID but no secret access key"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id     "AKIDEXAMPLE"
+                                       llm-bedrock-secret-access-key nil]
+      (is (nil? (metabot.settings/configured-provider-api-key "bedrock"))))))
