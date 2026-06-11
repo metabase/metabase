@@ -1,14 +1,18 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockWorkspace } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockWorkspace,
+  createMockWorkspaceDatabase,
+} from "metabase-types/api/mocks";
 
 import { WorkspaceItem } from "./WorkspaceItem";
 
 const WORKSPACE = createMockWorkspace({ id: 1, name: "My workspace" });
 
-function setup() {
-  renderWithProviders(<WorkspaceItem workspace={WORKSPACE} />);
+function setup({ workspace = WORKSPACE } = {}) {
+  renderWithProviders(<WorkspaceItem workspace={workspace} />);
 }
 
 describe("WorkspaceItem", () => {
@@ -17,6 +21,27 @@ describe("WorkspaceItem", () => {
     expect(
       screen.getByRole("heading", { name: "My workspace" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders only hydrated databases", () => {
+    setup({
+      workspace: createMockWorkspace({
+        id: 1,
+        name: "My workspace",
+        databases: [
+          createMockWorkspaceDatabase({
+            database_id: 10,
+            database: createMockDatabase({ id: 10, name: "Postgres" }),
+          }),
+          createMockWorkspaceDatabase({
+            database_id: 20,
+            database: null,
+          }),
+        ],
+      }),
+    });
+
+    expect(screen.getByText("Postgres")).toBeInTheDocument();
   });
 
   it("offers a config download link in the menu", async () => {

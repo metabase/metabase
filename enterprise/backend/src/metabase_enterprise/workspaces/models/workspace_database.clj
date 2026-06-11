@@ -38,6 +38,16 @@
   [_model _instance]
   api/*is-superuser?*)
 
+(methodical/defmethod t2/batched-hydrate [:model/WorkspaceDatabase :database]
+  [_model k workspace-databases]
+  (mi/instances-with-hydrated-data
+   workspace-databases k
+   (fn []
+     (when-let [ids (seq (distinct (keep :database_id workspace-databases)))]
+       (t2/select-pk->fn identity :model/Database :id [:in ids])))
+   :database_id
+   {:default nil}))
+
 ;;; --------------------------------------- Database eligibility ---------------------------------------
 
 (defn database-eligible-for-workspaces?

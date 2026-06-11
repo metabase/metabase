@@ -54,16 +54,17 @@
    :creator_id))
 
 (defn list-workspaces
-  "Return every Workspace with its `:databases` and `:creator` hydrated."
+  "Return every Workspace with its `:databases` (each with its `:database`) and
+  `:creator` hydrated."
   []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator :databases))
+  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator [:databases :database]))
 
 (defn get-workspace
-  "Return the Workspace with the given id and its `:databases` + `:creator` hydrated,
-  or nil if none exists."
+  "Return the Workspace with the given id and its `:databases` (each with its
+  `:database`) + `:creator` hydrated, or nil if none exists."
   [id]
   (when-let [workspace (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate workspace :creator :databases)))
+    (t2/hydrate workspace :creator [:databases :database])))
 
 (defn get-workspace-by-name
   "Return the Workspace with the given name and its `:databases` + `:creator` hydrated,

@@ -33,7 +33,8 @@
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:output_namespace :string]
-   [:status           WorkspaceStatus]])
+   [:status           WorkspaceStatus]
+   [:database         {:optional true} [:maybe :map]]])
 
 (def ^:private CreatorResponse
   [:map {:closed true}
@@ -64,7 +65,10 @@
 ;;; -------------------------------------------- Presentation --------------------------------------------------
 
 (defn- present-workspace-database [wsd]
-  (select-keys wsd [:database_id :input_schemas :output_namespace :status]))
+  (-> wsd
+      (select-keys [:database_id :input_schemas :output_namespace :status :database])
+      ;; never expose connection credentials
+      (m/update-existing :database #(some-> % (dissoc :details)))))
 
 (defn- present-creator [creator]
   (when creator
