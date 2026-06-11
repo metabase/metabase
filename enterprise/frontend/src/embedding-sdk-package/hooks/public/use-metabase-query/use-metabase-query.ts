@@ -22,6 +22,7 @@ import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
+  CountAggregationSchema,
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
@@ -33,6 +34,8 @@ import type {
   ValueFilterOperatorForDimension,
 } from "./types";
 export type {
+  CountAggregation,
+  CountAggregationSchema,
   MetabaseBreakout,
   MetabaseDimensionFilter,
   MetabaseMetricBreakout,
@@ -40,6 +43,13 @@ export type {
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./types";
+
+export function count(): CountAggregationSchema {
+  return {
+    type: "count",
+    columns: [{ name: "count", displayName: "Count", jsType: "number" }],
+  };
+}
 
 export function filter<
   TDimension,

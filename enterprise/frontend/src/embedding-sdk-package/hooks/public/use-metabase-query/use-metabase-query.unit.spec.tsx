@@ -9,6 +9,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
   breakout,
+  count,
   createMetabaseQuery,
   filter,
   useMetabaseQuery,
@@ -399,6 +400,7 @@ describe("useMetabaseQuery", () => {
       query: {
         "source-table": 1,
         filter: ["=", ["field", 101, {}], "paid"],
+        aggregation: [["count"]],
         breakout: [["field", 103, {}]],
       },
       parameters: [],
@@ -422,6 +424,39 @@ describe("useMetabaseQuery", () => {
       expect(
         JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
       ).toEqual(expectedOrdersQuery);
+    });
+
+    it("builds explicit count aggregations", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [count()],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("supports count aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [{ type: "count" }],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["count"]],
+        },
+      });
     });
   });
 
@@ -479,6 +514,7 @@ describe("useMetabaseQuery", () => {
           query: {
             "source-table": 1,
             filter: ["=", ["field", 101, {}], "paid"],
+            aggregation: [["count"]],
             breakout: [["field", 101, {}]],
           },
           parameters: [],

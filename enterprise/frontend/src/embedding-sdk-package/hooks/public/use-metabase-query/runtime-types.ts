@@ -34,6 +34,7 @@ export type TableQueryRuntime = {
   metric?: never;
   metricId?: never;
   filters?: readonly unknown[];
+  aggregations?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
   enabled?: boolean;
@@ -67,6 +68,10 @@ export type MeasureReferenceRuntime = {
   id: number;
   tableId: number;
   columns?: readonly unknown[];
+};
+
+export type CountAggregationRuntime = {
+  type: "count";
 };
 
 export type MetricReferenceRuntime = {

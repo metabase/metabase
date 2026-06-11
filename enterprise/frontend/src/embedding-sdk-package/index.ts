@@ -33,6 +33,7 @@ export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
 export {
   breakout,
+  count,
   createMetabaseQuery,
   filter,
   useMetabaseQuery,

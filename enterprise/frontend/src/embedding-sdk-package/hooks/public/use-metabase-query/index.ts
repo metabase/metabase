@@ -1,5 +1,6 @@
 export {
   breakout,
+  count,
   createMetabaseQuery,
   filter,
   useMetabaseQuery,

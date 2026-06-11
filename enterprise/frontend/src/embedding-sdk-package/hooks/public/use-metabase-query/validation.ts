@@ -1,5 +1,6 @@
 import {
   getMetricMappedTableIds,
+  isCountAggregation,
   isMeasureSchema,
   isSegmentSchema,
   isTableDimensionFilter,
@@ -107,7 +108,7 @@ function validateGeneratedMeasure({
   measure: unknown;
   context: string;
 }) {
-  if (isMeasureSchema(measure)) {
+  if (isMeasureSchema(measure) || isCountAggregation(measure)) {
     return;
   }
 
