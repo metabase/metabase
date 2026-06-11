@@ -3,29 +3,19 @@
   conversation detail endpoint. One row per successful query-construction
   tool call."
   (:require
-   [clojure.string :as str]
    [metabase.driver.util :as driver.u]
+   [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(defn- tool-part?
-  "True when a stored v2 part is a tool part (`:type \"tool-<name>\"`)."
-  [part]
-  (and (string? (:type part))
-       (str/starts-with? (:type part) "tool-")))
-
-(defn- tool-part-name
-  "Tool name embedded in a v2 tool part's `:type`."
-  [part]
-  (subs (:type part) 5))
-
 (defn- tool-part->structured
-  "Pull `:structured_output` (or its kebab-case alias, written by older
-  versions and surviving migrated rows) out of a persisted v2 tool part's
-  `:output`. Returns nil if the output lacks structured data — that signals a
+  "Pull the structured output out of a v2 tool part's `:output`. New writes
+  canonicalize the key to `:structured_output`; rows migrated from v1 keep
+  their original result map, which may use kebab-case `:structured-output`
+  instead. Returns nil if the output lacks structured data — that signals a
   tool that errored out before validating."
   [part]
   (let [output (:output part)]
@@ -104,11 +94,11 @@
      :tables      []}))
 
 (defn- query-part->row
-  "Build a generated-query row from a stored v2 tool part (merged
-  input/output). Returns nil for tools we don't track or for failed/unresolved
-  calls (errored rows are filtered out at the source — v1 doesn't render them)."
+  "Build a generated-query row from a v2 tool part. Returns nil for tools we
+  don't track or for failed/unresolved calls (errored rows are filtered out at
+  the source — v1 doesn't render them)."
   [{:keys [message-id]} part]
-  (let [tool-name (tool-part-name part)]
+  (let [tool-name (schema.v2/tool-part-name part)]
     (when (and (query-generation-tool? tool-name)
                (successful-tool-part? part))
       (let [structured  (tool-part->structured part)
@@ -123,7 +113,7 @@
   [message]
   (let [ctx {:message-id (:id message)}]
     (into []
-          (comp (filter tool-part?)
+          (comp (filter schema.v2/tool-part?)
                 (keep #(query-part->row ctx %)))
           (:data message))))
 
@@ -135,20 +125,16 @@
   [messages]
   (into [] (mapcat message->generated-queries) messages))
 
-(defn- named-tool-part? [part tool-names]
-  (and (tool-part? part)
-       (if (set? tool-names)
-         (contains? tool-names (tool-part-name part))
-         (= tool-names (tool-part-name part)))))
-
 (defn count-tool-invocations
   "Count v2 tool parts across a seq of `MetabotMessage` instances, regardless
    of how the call resolved. `tool-names` may be a single tool-name string or
    a set of tool-name strings."
   [messages tool-names]
-  (transduce
-   (comp (mapcat :data)
-         (filter #(named-tool-part? % tool-names)))
-   (completing (fn [acc _] (inc acc)))
-   0
-   messages))
+  (let [counted? (if (set? tool-names) tool-names #{tool-names})]
+    (transduce
+     (comp (mapcat :data)
+           (filter schema.v2/tool-part?)
+           (filter (comp counted? schema.v2/tool-part-name)))
+     (completing (fn [acc _] (inc acc)))
+     0
+     messages)))

@@ -2,7 +2,6 @@
   (:require
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.metabot.schema.validate :as validate]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -26,7 +25,7 @@
     (try
       (-> message
           (update :data #(->> (migrate/migrate-v1->v2 %)
-                              (validate/check ::schema.v2/message-data "migrated metabot_message.data")))
+                              (schema.v2/check-message-data "migrated metabot_message.data")))
           (assoc :data_version 2))
       (catch Throwable e
         (log/warn e "Failed to migrate metabot_message data v1->v2 on read" {:id (:id message)})

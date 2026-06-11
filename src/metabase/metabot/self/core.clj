@@ -6,7 +6,6 @@
    [clojure.walk :as walk]
    [metabase.llm.settings :as llm]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.metabot.schema.validate :as validate]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -229,7 +228,7 @@
   writer appends another newline, forming the blank-line event boundary."
   [payload]
   (str "data: "
-       (json/encode (validate/check ::schema.v2/ui-message-chunk "SSE event" payload))
+       (json/encode (schema.v2/check-ui-message-chunk "SSE event" payload))
        "\n"))
 
 (defn- ->message-metadata

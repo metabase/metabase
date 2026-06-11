@@ -9,7 +9,6 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
-   [metabase.metabot.schema.validate :as validate]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.util :as u]
@@ -92,7 +91,7 @@
        (remove #(#{:start :usage :finish :error} (:type %)))
        (filter streaming/persistable-data-part?)
        internal-parts->storable
-       (validate/check ::schema.v2/message-data "metabot_message.data")))
+       (schema.v2/check-message-data "metabot_message.data")))
 
 (defn extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -230,8 +229,8 @@
                                     (assoc :slack_thread_ts slack-thread-ts))))
       (t2/insert! :model/MetabotMessage
                   (cond-> {:conversation_id conversation-id
-                           :data            (validate/check ::schema.v2/message-data "metabot_message.data"
-                                                            [{:type "text" :text (:content user-message)}])
+                           :data            (schema.v2/check-message-data "metabot_message.data"
+                                                                          [{:type "text" :text (:content user-message)}])
                            :data_version    2
                            :role            :user
                            :profile_id      profile-id

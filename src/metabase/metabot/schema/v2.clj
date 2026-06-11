@@ -24,12 +24,26 @@
     This is what keeps the tool-state variants mutually exclusive"
   (:require
    [clojure.string :as str]
+   [malli.error :as me]
+   [metabase.config.core :as config]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
 (defn- data-type? [t] (and (string? t) (str/starts-with? t "data-")))
 (defn- tool-type? [t] (and (string? t) (str/starts-with? t "tool-")))
+
+(defn tool-part?
+  "True when `part` is a tool part — its `:type` is `\"tool-<name>\"`."
+  [part]
+  (tool-type? (:type part)))
+
+(defn tool-part-name
+  "The tool name encoded in a tool part's `:type`:
+  `{:type \"tool-create_sql_query\" ...}` -> `\"create_sql_query\"`."
+  [part]
+  (subs (:type part) (count "tool-")))
 
 (mr/def ::provider-metadata
   [:map-of :keyword [:map-of :keyword :any]])
@@ -407,3 +421,25 @@
   "A whole `metabot_message.data` value in the v2 format: the at-rest projection of a
   message's `UIMessagePart`s. Assistant placeholder rows are `[]`."
   [:sequential ::ui-message-part])
+
+(defn- check
+  [schema context value]
+  (when-let [error (some-> (mr/explain schema value) me/humanize)]
+    (if (or config/is-dev? config/is-test?)
+      (throw (ex-info (str "Invalid " context) {:context context :error error :value value}))
+      (log/warn "Invalid metabot v2 payload" {:context context :error error})))
+  value)
+
+(defn check-message-data
+  "Validate an at-rest `metabot_message.data` value against `::message-data`.
+  On mismatch, throw in dev/test and log a warning in prod. Returns `value`
+  either way, so prod callers proceed with the original value."
+  [context value]
+  (check ::message-data context value))
+
+(defn check-ui-message-chunk
+  "Validate a wire-format stream event against `::ui-message-chunk`. On
+  mismatch, throw in dev/test and log a warning in prod. Returns `value`
+  either way, so prod callers proceed with the original value."
+  [context value]
+  (check ::ui-message-chunk context value))
