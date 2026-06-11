@@ -227,12 +227,15 @@
                             :target       [:field {} 999999999]
                             :table_id     (mt/id :venues)}]
           ;; Replace whatever sync wrote with a minimal pair: one resolvable, one not.
-          (t2/update! :model/Card (:id metric)
-                      {:dimensions         [{:id good-id :name "NAME" :display_name "Good"
-                                             :effective_type :type/Text}
-                                            {:id bad-id  :name "ZZZ"  :display_name "Unresolvable"
-                                             :effective_type :type/Text}]
-                       :dimension_mappings [good-mapping bad-mapping]})
+          ;; Suppress the after-update auto-sync so it can't reconcile our hand-crafted
+          ;; row back to the computed dimensions.
+          (with-redefs [card/*syncing-metric-dimensions* true]
+            (t2/update! :model/Card (:id metric)
+                        {:dimensions         [{:id good-id :name "NAME" :display_name "Good"
+                                               :effective_type :type/Text}
+                                              {:id bad-id  :name "ZZZ"  :display_name "Unresolvable"
+                                               :effective_type :type/Text}]
+                         :dimension_mappings [good-mapping bad-mapping]}))
           (let [response   (mt/user-http-request :rasta :get 200 "exploration/dimensions")
                 the-metric (first (filter #(= (:id metric) (:id %)) (:metrics response)))]
             (is (some? the-metric) "metric should be present in response")

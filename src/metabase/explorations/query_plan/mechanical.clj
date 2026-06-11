@@ -63,7 +63,7 @@
    1. Dim is non-temporal (temporal dims belong to the `temporal-pattern-*`
       variants, not stacked-by-category line series).
    2. Metric Card carries a temporal breakout in its dataset_query
-      (`metric :default-temporal-breakout` set by `metric-and-dim-context`).
+      (`metric :default-temporal-breakout-summary` set by `metric-and-dim-context`).
    3. The dim's *effective* cardinality — bin count for auto-binned numerics,
       raw distinct-count otherwise — is known and ≤ `time-facet-max-cardinality`.
       Using effective cardinality matters here: a numeric dim like `Subtotal`
@@ -73,7 +73,7 @@
   [metric dim]
   (let [eff (qp.mbql/effective-cardinality dim)]
     (and (not (qp.mbql/dim-type-isa? dim :type/Temporal))
-         (:default-temporal-breakout metric)
+         (:default-temporal-breakout-summary metric)
          (some? eff)
          (<= eff time-facet-max-cardinality))))
 

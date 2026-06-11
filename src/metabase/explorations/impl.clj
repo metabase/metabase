@@ -74,7 +74,7 @@
   (when query
     (try
       (->> (lib/returned-columns query)
-           (filter #(= (:lib/source %) :source/aggregations))
+           (filter lib/aggregation-sourced?)
            first
            :name)
       (catch Exception _ nil))))
@@ -154,18 +154,6 @@
           by-id  (u/index-by :id rows)]
       (into [] (keep by-id) card-ids))))
 
-(defn- breakoutable-column-index
-  "O(1) positive-lookup index for [[target-resolvable?]]: the set of `[source-field-id field-id]`
-   identities of `breakoutable-cols`, excluding explicit-join columns (whose disambiguation needs
-   the full matcher). A dimension target whose `[source-field, field-id]` is in this set is
-   definitely breakoutable, letting us skip the (much more expensive) `lib/find-matching-column`
-   for the common case of plain field refs into the main table or an implicitly-joinable table."
-  [breakoutable-cols]
-  (into #{}
-        (comp (remove :metabase.lib.join/join-alias)
-              (map (juxt :fk-field-id :id)))
-        breakoutable-cols))
-
 (defn- simple-table-query?
   "True if `query` is a single-stage query over a base table (the metric's `:table_id`) with no
    explicit joins or expressions. Such a query's breakoutable columns depend only on the source
@@ -203,21 +191,14 @@
    `breakoutable-cols` in the metric's single-stage `query`. Used to silently drop dimensions
    that the Explorations query-generation path can't actually use.
 
-   `query`, `breakoutable-cols`, and `col-index` are built once per metric by the caller and
-   reused across all that metric's dimensions. `col-index` (see [[breakoutable-column-index]]) is
-   a fast positive path; anything it doesn't cover falls back to the authoritative
-   `lib/find-matching-column`. Returns `false` defensively on any normalization/resolution
+   `query` and `breakoutable-cols` are built once per metric by the caller and reused across all
+   that metric's dimensions (possibly shared across same-table metrics, see
+   [[make-breakoutable-resolver]]). Returns `false` defensively on any normalization/resolution
    exception so a bad dim never blocks the rest of the response."
-  [query breakoutable-cols col-index target]
+  [query breakoutable-cols target]
   (try
-    (let [field-ref? (and (vector? target) (= :field (first target)))
-          opts       (when field-ref? (second target))
-          field-id   (when field-ref? (nth target 2 nil))]
-      (or (and (int? field-id)
-               (not (:join-alias opts))
-               (contains? col-index [(:source-field opts) field-id]))
-          (some? (lib/find-matching-column
-                  query -1 (lib/normalize :metabase.lib.schema.ref/ref target) breakoutable-cols))))
+    (some? (lib/find-matching-column
+            query -1 (lib/normalize :metabase.lib.schema.ref/ref target) breakoutable-cols))
     (catch Exception e
       (log/debugf e "Dimension target %s not resolvable, dropping" (pr-str target))
       false)))
@@ -235,11 +216,10 @@
   [metric query breakoutable]
   (if-not (:dataset_query metric)
     metric
-    (let [col-index      (breakoutable-column-index breakoutable)
-          mappings-by-id (u/index-by :dimension_id (:dimension_mappings metric))
+    (let [mappings-by-id (u/index-by :dimension_id (:dimension_mappings metric))
           keep?          (fn [dim]
                            (if-let [target (get-in mappings-by-id [(:id dim) :target])]
-                             (and (some? query) (target-resolvable? query breakoutable col-index target))
+                             (and (some? query) (target-resolvable? query breakoutable target))
                              true))
           kept-dims      (filterv keep? (:dimensions metric))
           kept-ids       (into #{} (map :id) kept-dims)]

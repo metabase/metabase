@@ -24,12 +24,17 @@
   #{:day-of-week :hour-of-day :month-of-year :quarter-of-year
     :day-of-month :day-of-year :week-of-year :minute-of-hour})
 
-(defn exploration-query->lib-cols
-  "Lib columns from the exploration query"
+(defn exploration-query->lib-query
+  "Lib query built from the exploration query's `:dataset_query`."
   [exploration-query]
   (let [dq (:dataset_query exploration-query)
         mp (lib-be/application-database-metadata-provider (:database dq))]
-    (lib/returned-columns (lib/query mp dq))))
+    (lib/query mp dq)))
+
+(defn exploration-query->lib-cols
+  "Lib columns from the exploration query"
+  [exploration-query]
+  (lib/returned-columns (exploration-query->lib-query exploration-query)))
 
 (defn- col-extraction-unit
   "The extraction temporal-unit on a Lib column (e.g. `:day-of-week`), or nil for truncation
@@ -215,24 +220,20 @@
                 (get-in qp-result [:data :rows])))
 
 (defn lib-col->detail
-  "A compact human-readable identifier for a single Lib column. Includes the display name plus any
-  temporal-bucket / binning so that the same logical column at different granularities
-  (e.g. `Created At: Month` vs `Created At: Quarter`) is distinguishable in prompt text. Falls back
-  to the raw column name when no display name is present."
-  [lib-col]
+  "A compact human-readable identifier for a single Lib column of `lib-query`. Uses the `:long`
+  display-name style — which carries the join/FK-source prefix (e.g. `Product → Category`) for
+  joined columns — plus any temporal-bucket / binning so that the same logical column at
+  different granularities (e.g. `Created At: Month` vs `Created At: Quarter`) is distinguishable
+  in prompt text."
+  [lib-query lib-col]
   (when (map? lib-col)
-    (let [name-or-display (col-name lib-col)
+    (let [display-name    (lib/display-name lib-query -1 lib-col :long)
           unit            (lib/raw-temporal-bucket lib-col)
           binning         (lib/binning lib-col)
-          joined?         (#{:source/joins :source/implicitly-joinable} (:lib/source lib-col))
           unit-name       (some-> unit name)
           unit-redundant? (and unit-name
-                               (str/includes? (u/lower-case-en name-or-display)
+                               (str/includes? (u/lower-case-en display-name)
                                               (u/lower-case-en unit-name)))]
-      (cond-> name-or-display
+      (cond-> display-name
         (and unit (not unit-redundant?)) (str ": " unit-name)
-        binning                          (str " (binned)")
-        (and joined?
-             (not (str/includes? name-or-display "→"))
-             (not (str/includes? name-or-display ":")))
-        (str " [joined]")))))
+        binning                          (str " (binned)")))))

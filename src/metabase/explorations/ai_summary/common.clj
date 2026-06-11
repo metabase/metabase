@@ -27,6 +27,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.interestingness :as explorations.interestingness]
+   [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.self :as metabot.self]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
@@ -341,7 +342,8 @@
   (try
     (when (and result-data chart-stats)
       (let [qp-result (deserialize-result result-data)
-            lib-cols  (explorations.interestingness/exploration-query->lib-cols query)
+            lib-q     (explorations.interestingness/exploration-query->lib-query query)
+            lib-cols  (lib/returned-columns lib-q)
             rows      (get-in qp-result [:data :rows])
             cfg       (explorations.interestingness/chart-config query lib-cols rows)]
         (when cfg
@@ -368,8 +370,8 @@
              :cfg                  cfg
              :stats                chart-stats
              :summary-line         (chart-summary-line cfg chart-stats)
-             :dim-detail           (explorations.interestingness/lib-col->detail dim-col)
-             :metric-detail        (explorations.interestingness/lib-col->detail metric-col)
+             :dim-detail           (explorations.interestingness/lib-col->detail lib-q dim-col)
+             :metric-detail        (explorations.interestingness/lib-col->detail lib-q metric-col)
              :metric-description   (some-> metric-description str/trim not-empty)
              :chart-description    (some-> chart-description str/trim not-empty)}))))
     (catch Throwable e

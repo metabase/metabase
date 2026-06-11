@@ -46,22 +46,19 @@
                                      :dataset_query          q})))))
 
 (deftest target-resolvable?-test
-  (testing "target-resolvable? reuses a prebuilt query, breakoutable columns and column index"
+  (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"
     (let [mp           (mt/metadata-provider)
           query        (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           breakoutable (lib/breakoutable-columns query)
-          col-index    (into #{} (map (juxt :fk-field-id :id)) breakoutable)
           total-ref    [:field {} (mt/id :orders :total)]]
-      (testing "a real field ref on the table resolves via the fast index path"
-        (is (true? (explorations.impl/target-resolvable? query breakoutable col-index total-ref))))
-      (testing "a real field ref still resolves via the find-matching-column fallback (empty index)"
-        (is (true? (explorations.impl/target-resolvable? query breakoutable #{} total-ref))))
+      (testing "a real field ref on the table resolves"
+        (is (true? (explorations.impl/target-resolvable? query breakoutable total-ref))))
       (testing "a bogus field ref does not resolve (and does not throw)"
         (is (false? (explorations.impl/target-resolvable?
-                     query breakoutable col-index [:field {} Integer/MAX_VALUE]))))
+                     query breakoutable [:field {} Integer/MAX_VALUE]))))
       (testing "a malformed ref is handled defensively"
         (is (false? (explorations.impl/target-resolvable?
-                     query breakoutable col-index [:not-a-ref {}])))))))
+                     query breakoutable [:not-a-ref {}])))))))
 
 (deftest breakoutable-resolver-memoizes-by-table-test
   (let [mp            (mt/metadata-provider)

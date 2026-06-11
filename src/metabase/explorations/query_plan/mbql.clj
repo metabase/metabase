@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.core :as explorations]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.i18n :refer [tru]]))
@@ -20,20 +21,10 @@
            (:target %))
         dimension-mappings))
 
-(defn- dim->lib-col
-  "Adapt a snapshotted dimension map (snake_case keys per [[metrics.transforms/normalize-dimension]]'s
-  contract — types are already keywords) to the kebab-case Lib `:metadata/column` shape
-  `lib.types.isa` predicates expect."
-  [dim]
-  {:lib/type       :metadata/column
-   :effective-type (:effective_type dim)
-   :base-type      (:base_type dim)
-   :semantic-type  (:semantic_type dim)})
-
 (defn dim-type-isa?
   "True if the dim's snapshot effective_type / base_type / semantic_type derives from `parent`."
   [dim parent]
-  (lib.types.isa/isa? (dim->lib-col dim) parent))
+  (lib-metric/type-isa? dim parent))
 
 (defn default-bucket-for-dim
   "Pick a default temporal bucket or numeric binning for a dimension based on its
@@ -85,29 +76,26 @@
                     default-binning-max-bins)
       nil       (get-in dim [:fingerprint :global :distinct-count]))))
 
-(defn numeric-fingerprint-bounded?
-  "True if `ref-clause` resolves to a column whose `:type/Number` fingerprint has
-  both `:min` and `:max`. False for refs that don't resolve to a real Field
-  (native result columns, expressions), or whose fingerprint is
-  missing/incomplete — those would crash the QP's binning middleware."
+(defn binnable-ref?
+  "True if `ref-clause` can actually be binned on `query` — i.e. lib offers at least one
+  binning strategy for it. Lib only offers strategies when the column resolves to a real
+  Field whose fingerprint has a defined `:min`/`:max` range (and the database supports
+  binning); anything else would crash the QP's binning middleware at preprocess time."
   [query ref-clause]
-  (when-let [col (lib/find-matching-column query -1 ref-clause
-                                           (lib/breakoutable-columns query))]
-    (let [{mn :min mx :max} (get-in col [:fingerprint :type :type/Number])]
-      (and (some? mn) (some? mx)))))
+  (boolean (seq (lib/available-binning-strategies query -1 ref-clause))))
 
 (defn apply-default-bucket
   "Apply a default temporal bucket / numeric binning to the breakout `ref-clause`,
   chosen from the dim's snapshot effective/semantic type. Numeric binning is
-  gated on the underlying column having a usable `:min`/`:max` fingerprint —
-  without it the QP throws at preprocess time. Returns the (possibly unchanged)
-  ref."
+  gated on lib actually offering a binning strategy for the column (see
+  [[binnable-ref?]]) — without that the QP throws at preprocess time. Returns
+  the (possibly unchanged) ref."
   [query ref-clause dim]
   (let [[kind v] (default-bucket-for-dim dim)]
     (case kind
       :temporal (lib/with-temporal-bucket ref-clause v)
       :binning  (cond-> ref-clause
-                  (numeric-fingerprint-bounded? query ref-clause) (lib/with-binning v))
+                  (binnable-ref? query ref-clause) (lib/with-binning v))
       nil       ref-clause)))
 
 (defn normalize-target-ref
@@ -119,10 +107,10 @@
 (defn extract-default-temporal-breakout-col
   "If the metric Card's `dataset_query` carries a temporal breakout (its default
   temporal dimension, e.g. `created_at` bucketed by `:month`), resolve the
-  breakout against the query's visible columns and return `[col raw-unit]`.
-  Returns `nil` if no temporal breakout exists, the column can't be resolved,
-  or column resolution throws. The raw unit may be `nil` if the metric breakout
-  was unbucketed."
+  breakout against the query's visible columns and return
+  `[col raw-unit display-name]`. Returns `nil` if no temporal breakout exists,
+  the column can't be resolved, or column resolution throws. The raw unit may
+  be `nil` if the metric breakout was unbucketed."
   [mp card-dataset-query]
   (try
     (let [base-query (lib/query mp card-dataset-query)
@@ -130,7 +118,7 @@
       (some (fn [bo]
               (when-let [col (lib/find-matching-column bo cols)]
                 (when (lib.types.isa/temporal? col)
-                  [col (lib/raw-temporal-bucket bo)])))
+                  [col (lib/raw-temporal-bucket bo) (lib/display-name base-query col)])))
             (lib/breakouts base-query)))
     (catch Exception _ nil)))
 

@@ -56,7 +56,7 @@
   values (no prefix) — the LLM must echo them back verbatim in `metric_id` /
   `dimension_id` / `segment_id`."
   [{:keys [metric-id name description aggregation result-column-name
-           default-temporal-breakout segments applicable-dims]}]
+           default-temporal-breakout-summary segments applicable-dims]}]
   (let [lines (cond-> [(str "metric_id=" metric-id ": " (or name "(unnamed metric)"))]
                 description
                 (conj (str "  description: " description))
@@ -67,9 +67,9 @@
                 result-column-name
                 (conj (str "  result_column: " result-column-name))
 
-                default-temporal-breakout
-                (conj (str "  default_temporal_breakout: " (:column default-temporal-breakout)
-                           " @ " (or (:unit default-temporal-breakout) "(unbucketed)")))
+                default-temporal-breakout-summary
+                (conj (str "  default_temporal_breakout: " (:column default-temporal-breakout-summary)
+                           " @ " (or (:unit default-temporal-breakout-summary) "(unbucketed)")))
 
                 (seq segments)
                 (into (cons "  segments_available:"
@@ -150,18 +150,18 @@
         enriched-thread-dims (update-vals dim-by-id #(thread-group/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
-    {:metric-id                 (:card_id tm)
-     :card                      card
-     :mp                        mp
-     :applicability             appl
-     :default-temporal-breakout (when default-temp
-                                  {:column (some-> (first default-temp) :display-name)
-                                   :unit   (some-> (second default-temp) name)})
-     :segments                  (segment-blurbs mp dataset-query)
-     :name                      (:name card)
-     :description               (some-> (:description card) str/trim not-empty)
-     :aggregation               (aggregation-summary mp dataset-query)
-     :result-column-name        (metrics/aggregation-column-name (:database_id card) dataset-query)}))
+    {:metric-id                         (:card_id tm)
+     :card                              card
+     :mp                                mp
+     :applicability                     appl
+     :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
+                                          {:column display-name
+                                           :unit   (some-> unit name)})
+     :segments                          (segment-blurbs mp dataset-query)
+     :name                              (:name card)
+     :description                       (some-> (:description card) str/trim not-empty)
+     :aggregation                       (aggregation-summary mp dataset-query)
+     :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)}))
 
 (defn- group-context
   "Per-group entry for [[metric-and-dim-context]]'s `:groups` list. Hydrates this group's
@@ -311,14 +311,14 @@
    :metrics_md    (str/join "\n\n"
                             (map (fn [m]
                                    (format-metric-block
-                                    {:metric-id                 (:metric-id m)
-                                     :name                      (:name m)
-                                     :description               (:description m)
-                                     :aggregation               (:aggregation m)
-                                     :result-column-name        (:result-column-name m)
-                                     :default-temporal-breakout (:default-temporal-breakout m)
-                                     :segments                  (:segments m)
-                                     :applicable-dims           (keys (:applicability m))}))
+                                    {:metric-id                         (:metric-id m)
+                                     :name                              (:name m)
+                                     :description                       (:description m)
+                                     :aggregation                       (:aggregation m)
+                                     :result-column-name                (:result-column-name m)
+                                     :default-temporal-breakout-summary (:default-temporal-breakout-summary m)
+                                     :segments                          (:segments m)
+                                     :applicable-dims                   (keys (:applicability m))}))
                                  metrics))
    :dimensions_md (str/join "\n\n" (map format-dim-block dimensions))})
 

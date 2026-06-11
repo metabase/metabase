@@ -29,17 +29,17 @@
 (defn- metric-with-dims
   "Build a metric-context entry matching `qp.context/metric-and-dim-context`
   shape, just enough for the mechanical planner: id, applicability map,
-  optional `:default-temporal-breakout`, and optional `:segments`."
+  optional `:default-temporal-breakout-summary`, and optional `:segments`."
   ([metric-id dim-map] (metric-with-dims metric-id dim-map false []))
   ([metric-id dim-map metric-temporal?] (metric-with-dims metric-id dim-map metric-temporal? []))
   ([metric-id dim-map metric-temporal? segments]
-   {:metric-id                 metric-id
-    :default-temporal-breakout (when metric-temporal? {:column "created_at" :unit "month"})
-    :segments                  segments
-    :applicability             (into {}
-                                     (map (fn [[did d]]
-                                            [did {:target [:field 1 nil] :dim d}]))
-                                     dim-map)}))
+   {:metric-id                         metric-id
+    :default-temporal-breakout-summary (when metric-temporal? {:column "created_at" :unit "month"})
+    :segments                          segments
+    :applicability                     (into {}
+                                             (map (fn [[did d]]
+                                                    [did {:target [:field 1 nil] :dim d}]))
+                                             dim-map)}))
 
 (defn- plan!
   "Convenience: dispatch the mechanical planner through its protocol on a

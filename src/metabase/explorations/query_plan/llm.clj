@@ -125,7 +125,7 @@
       tdid
       {:from :chosen :target (:target t-appl) :dim t-dim}
 
-      (:default-temporal-breakout metric)
+      (:default-temporal-breakout-summary metric)
       {:from :metric-default}
 
       :else
@@ -171,7 +171,7 @@
         (conj (str "item[" idx "] variant temporal-pattern-hour requires DateTime (date+time); "
                    (pr-str dimension_id) " is date-only"))
 
-        (and (= variant "time-facet") (not (:default-temporal-breakout metric)))
+        (and (= variant "time-facet") (not (:default-temporal-breakout-summary metric)))
         (conj (str "item[" idx "] variant time-facet requires the metric to have a default temporal breakout; M"
                    metric_id " does not"))
 

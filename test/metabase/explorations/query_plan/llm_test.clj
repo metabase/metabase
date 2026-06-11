@@ -60,13 +60,13 @@
   ([metric-id dim-map temporal?]
    (metric-with-dims metric-id dim-map temporal? []))
   ([metric-id dim-map temporal? segments]
-   {:metric-id                 metric-id
-    :default-temporal-breakout (when temporal? {:column "created_at" :unit "month"})
-    :segments                  segments
-    :applicability             (into {}
-                                     (map (fn [[did d]]
-                                            [did {:target [:field 1 nil] :dim d}]))
-                                     dim-map)}))
+   {:metric-id                         metric-id
+    :default-temporal-breakout-summary (when temporal? {:column "created_at" :unit "month"})
+    :segments                          segments
+    :applicability                     (into {}
+                                             (map (fn [[did d]]
+                                                    [did {:target [:field 1 nil] :dim d}]))
+                                             dim-map)}))
 
 ;;; ---------------------------------------------------------------------------
 ;;; extract-plan

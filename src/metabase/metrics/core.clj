@@ -41,7 +41,7 @@
     (let [mp    (lib-be/application-database-metadata-provider database-id)
           query (lib/query mp query-map)
           agg   (->> (lib/returned-columns query)
-                     (filter #(= (:lib/source %) :source/aggregations))
+                     (filter lib/aggregation-sourced?)
                      first)]
       (:name agg))
     (catch Exception _ nil)))

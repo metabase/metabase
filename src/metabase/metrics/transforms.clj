@@ -4,6 +4,7 @@
   (:require
    [clojure.set :as set]
    [metabase.lib-metric.schema :as lib-metric.schema]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]))
 
@@ -42,13 +43,10 @@
       (:sources dim)          (update :sources (fn [srcs] (mapv #(update % :type keyword) srcs))))))
 
 (defn normalize-target-ref
-  "Normalize a target ref after JSON parsing. Converts [\"field\" {...} id] to [:field {...} id]."
-  [[clause-type opts & rest]]
-  (into [(keyword clause-type)
-         (cond-> opts
-           (:base-type opts)      (update :base-type keyword)
-           (:effective-type opts) (update :effective-type keyword))]
-        rest))
+  "Normalize a target ref after JSON parsing, e.g. [\"field\" {...} id] to a well-formed
+   MBQL 5 [:field {...} id] ref, via the ref schema."
+  [target]
+  (lib/normalize :metabase.lib.schema.ref/ref target))
 
 (defn normalize-dimension-mapping
   "Normalize a dimension mapping after JSON parsing: rename legacy kebab-case
