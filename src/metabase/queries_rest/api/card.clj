@@ -1039,6 +1039,7 @@
    _query-params
    {:keys [password]} :- [:map [:password ms/NonBlankString]]]
   (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (public-sharing.api/set-public-link-password! :model/Card card-id password)
   {:status 204, :body nil})
 
@@ -1049,6 +1050,7 @@
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
   (public-sharing.api/delete-public-link-password! :model/Card card-id)
   {:status 204, :body nil})
 

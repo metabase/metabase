@@ -4,7 +4,6 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -20,11 +19,12 @@
     :model/Dashboard "dashboard"))
 
 (defenterprise set-public-link-password!
-  "Validate, encrypt, and store a password on a public link."
+  "Validate and store a password on a public link. Encryption is handled by the model's
+  `:public_link_password` transform, so the plaintext is passed through as-is here."
   :feature :public-link-passwords
   [model id password]
   (validate-password password)
-  (t2/update! model id {:public_link_password (encryption/maybe-encrypt password)}))
+  (t2/update! model id {:public_link_password password}))
 
 (defenterprise get-public-link-password
   "Return the decrypted plaintext password for a public link. Audit-logged."

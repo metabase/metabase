@@ -1214,6 +1214,7 @@
    _query-params
    {:keys [password]} :- [:map [:password ms/NonBlankString]]]
   (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (public-sharing.api/set-public-link-password! :model/Dashboard dashboard-id password)
   {:status 204, :body nil})
 
@@ -1224,6 +1225,7 @@
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (public-sharing.api/delete-public-link-password! :model/Dashboard dashboard-id)
   {:status 204, :body nil})
 
