@@ -1,5 +1,5 @@
 (ns metabase.llm.settings
-  "Settings for LLM integration (API keys, model defaults, provider configuration)."
+  "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
@@ -19,6 +19,11 @@
   [value]
   (when (string? value)
     (not-empty (str/trim value))))
+
+(defn- set-trimmed-string!
+  "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
@@ -136,21 +141,24 @@
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false)
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
 
 (defsetting llm-bedrock-secret-access-key
   (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false)
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
 
 (defsetting llm-bedrock-session-token
   (deferred-tru "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.")
   :sensitive?  true
   :visibility  :settings-manager
   :export?     false
-  :doc         false)
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
 
 (defn- set-bedrock-region!
   [new-value]
@@ -174,8 +182,8 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(boolean (and (some? (llm-bedrock-access-key-id))
-                             (some? (llm-bedrock-secret-access-key))))
+  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
+                             (trimmed-string (llm-bedrock-secret-access-key))))
   :doc        false)
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------

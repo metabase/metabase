@@ -54,8 +54,9 @@
      :ai-proxy?  (provider-util/metabase-provider? s)}))
 
 (defn list-models
-  "List available models for a provider using its configured API key,
-  or an override API key when provided."
+  "List available models for a provider using its configured credentials, or `:credentials` in `opts`.
+  The shape of the credentials map varies by provider: API-key providers take `{:api-key ...}`, while Bedrock takes
+  AWS key material and region (see [[bedrock/list-models]])."
   ([provider]
    ((resolve-model-lister provider)))
   ([provider opts]
