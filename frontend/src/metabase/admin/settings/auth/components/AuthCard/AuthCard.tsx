@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
@@ -160,15 +161,8 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const [opened, setOpened] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setOpened(false);
-  }, []);
-
-  const toggleMenu = useCallback(() => {
-    setOpened((opened) => !opened);
-  }, []);
+  const [opened, { close: closeMenu, open: openMenu, toggle: toggleMenu }] =
+    useDisclosure(false);
 
   const handleChange = useCallback(() => {
     onChange(!isEnabled);
@@ -184,7 +178,7 @@ const AuthCardMenu = ({
     <CardMenu>
       <Menu
         opened={opened}
-        onChange={setOpened}
+        onChange={(opened) => (opened ? openMenu() : closeMenu())}
         position="bottom-end"
         closeOnItemClick={false}
       >
@@ -200,7 +194,7 @@ const AuthCardMenu = ({
         <Menu.Dropdown miw={184}>
           <Menu.Item
             leftSection={
-              <Icon name={isEnabled ? "pause" : "play"} size={16} aria-hidden />
+              <Icon name={isEnabled ? "pause" : "play"} aria-hidden />
             }
             onClick={handleChange}
           >
@@ -208,7 +202,7 @@ const AuthCardMenu = ({
           </Menu.Item>
           {onDeactivate && (
             <Menu.Item
-              leftSection={<Icon name="close" size={16} aria-hidden />}
+              leftSection={<Icon name="close" aria-hidden />}
               onClick={handleDeactivate}
             >
               {t`Deactivate`}

@@ -1,5 +1,5 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useState } from "react";
 
 import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
@@ -38,15 +38,7 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const [menuOpened, setMenuOpened] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setMenuOpened(false);
-  }, []);
-
-  const toggleMenu = useCallback(() => {
-    setMenuOpened((opened) => !opened);
-  }, []);
+  const [menuOpened, menu] = useDisclosure(false);
 
   return (
     <Box className={cx(CS.Grid, S.headerWrapper)}>
@@ -88,7 +80,7 @@ export function ObjectDetailHeader({
           {actionItems.length > 0 && (
             <Menu
               opened={menuOpened}
-              onChange={setMenuOpened}
+              onChange={(opened) => (opened ? menu.open() : menu.close())}
               position="bottom-end"
               closeOnItemClick={false}
             >
@@ -96,7 +88,7 @@ export function ObjectDetailHeader({
                 <div>
                   <EntityMenuTrigger
                     icon="ellipsis"
-                    onClick={toggleMenu}
+                    onClick={menu.toggle}
                     open={menuOpened}
                     triggerProps={{
                       "data-testid": "actions-menu",
@@ -105,15 +97,13 @@ export function ObjectDetailHeader({
                 </div>
               </Menu.Target>
               <Menu.Dropdown miw={184}>
-                {actionItems.map((item, index) => (
+                {actionItems.map((item) => (
                   <Menu.Item
-                    key={item.title ?? index}
-                    leftSection={
-                      <Icon name={item.icon} size={16} aria-hidden />
-                    }
+                    key={item.title}
+                    leftSection={<Icon name={item.icon} aria-hidden />}
                     onClick={() => {
                       item.action();
-                      closeMenu();
+                      menu.close();
                     }}
                   >
                     {item.title}

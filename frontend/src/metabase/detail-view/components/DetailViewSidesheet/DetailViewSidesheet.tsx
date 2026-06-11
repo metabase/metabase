@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -132,15 +132,7 @@ export function DetailViewSidesheet({
     onUpdate: (action) => setActionId(action.id),
   });
 
-  const [actionsMenuOpened, setActionsMenuOpened] = useState(false);
-
-  const closeActionsMenu = useCallback(() => {
-    setActionsMenuOpened(false);
-  }, []);
-
-  const toggleActionsMenu = useCallback(() => {
-    setActionsMenuOpened((opened) => !opened);
-  }, []);
+  const [actionsMenuOpened, actionsMenu] = useDisclosure(false);
 
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
@@ -286,7 +278,9 @@ export function DetailViewSidesheet({
             {actionItems.length > 0 && (
               <Menu
                 opened={actionsMenuOpened}
-                onChange={setActionsMenuOpened}
+                onChange={(opened) =>
+                  opened ? actionsMenu.open() : actionsMenu.close()
+                }
                 position="bottom-end"
                 closeOnItemClick={false}
               >
@@ -302,21 +296,19 @@ export function DetailViewSidesheet({
                         p={0}
                         variant="subtle"
                         w={20}
-                        onClick={toggleActionsMenu}
+                        onClick={actionsMenu.toggle}
                       />
                     </Tooltip>
                   </div>
                 </Menu.Target>
                 <Menu.Dropdown miw={184}>
-                  {actionItems.map((item, index) => (
+                  {actionItems.map((item) => (
                     <Menu.Item
-                      key={item.title ?? index}
-                      leftSection={
-                        <Icon name={item.icon} size={16} aria-hidden />
-                      }
+                      key={item.title}
+                      leftSection={<Icon name={item.icon} aria-hidden />}
                       onClick={() => {
                         item.action();
-                        closeActionsMenu();
+                        actionsMenu.close();
                       }}
                     >
                       {item.title}

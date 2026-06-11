@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -96,41 +97,9 @@ function ModelActionDetails({ model }: Props) {
     });
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
-  const [menuOpened, setMenuOpened] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setMenuOpened(false);
-  }, []);
-
-  const toggleMenu = useCallback(() => {
-    setMenuOpened((opened) => !opened);
-  }, []);
-
-  const menuItems = useMemo(() => {
-    const items: { title: string; icon: "bolt"; action: () => void }[] = [];
-    const hasImplicitActions = implicitActions.length > 0;
-
-    if (hasImplicitActions) {
-      items.push({
-        title: t`Disable basic actions`,
-        icon: "bolt",
-        action: onDeleteImplicitActions,
-      });
-    } else if (supportsImplicitActions) {
-      items.push({
-        title: t`Create basic actions`,
-        icon: "bolt",
-        action: onEnableImplicitActions,
-      });
-    }
-
-    return items;
-  }, [
-    implicitActions,
-    supportsImplicitActions,
-    onEnableImplicitActions,
-    onDeleteImplicitActions,
-  ]);
+  const [menuOpened, menu] = useDisclosure(false);
+  const hasImplicitActions = implicitActions.length > 0;
+  const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -159,11 +128,11 @@ function ModelActionDetails({ model }: Props) {
       {canWrite && (
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
-          {menuItems.length > 0 && (
+          {hasActionsMenu && (
             <ActionMenu>
               <Menu
                 opened={menuOpened}
-                onChange={setMenuOpened}
+                onChange={(opened) => (opened ? menu.open() : menu.close())}
                 position="bottom-end"
                 closeOnItemClick={false}
               >
@@ -172,26 +141,33 @@ function ModelActionDetails({ model }: Props) {
                     <EntityMenuTrigger
                       ariaLabel={t`Actions menu`}
                       icon="ellipsis"
-                      onClick={toggleMenu}
+                      onClick={menu.toggle}
                       open={menuOpened}
                     />
                   </div>
                 </Menu.Target>
                 <Menu.Dropdown miw={184}>
-                  {menuItems.map((item) => (
+                  {hasImplicitActions ? (
                     <Menu.Item
-                      key={item.title}
-                      leftSection={
-                        <Icon name={item.icon} size={16} aria-hidden />
-                      }
+                      leftSection={<Icon name="bolt" aria-hidden />}
                       onClick={() => {
-                        item.action();
-                        closeMenu();
+                        onDeleteImplicitActions();
+                        menu.close();
                       }}
                     >
-                      {item.title}
+                      {t`Disable basic actions`}
                     </Menu.Item>
-                  ))}
+                  ) : (
+                    <Menu.Item
+                      leftSection={<Icon name="bolt" aria-hidden />}
+                      onClick={() => {
+                        onEnableImplicitActions();
+                        menu.close();
+                      }}
+                    >
+                      {t`Create basic actions`}
+                    </Menu.Item>
+                  )}
                 </Menu.Dropdown>
               </Menu>
             </ActionMenu>

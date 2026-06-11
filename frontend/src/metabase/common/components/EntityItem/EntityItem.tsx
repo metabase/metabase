@@ -1,6 +1,7 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { CSSProperties, ReactElement, ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
@@ -165,7 +166,7 @@ function getItemStyle(
 }
 
 function getLeftSection(icon: IconName) {
-  return <Icon name={icon} size={16} aria-hidden />;
+  return <Icon name={icon} aria-hidden />;
 }
 
 function MenuItemTooltip({
@@ -215,15 +216,8 @@ function EntityItemMenu({
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
 
-  const [opened, setOpened] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setOpened(false);
-  }, []);
-
-  const toggleMenu = useCallback(() => {
-    setOpened((opened) => !opened);
-  }, []);
+  const [opened, { close: closeMenu, open: openMenu, toggle: toggleMenu }] =
+    useDisclosure(false);
 
   const actions = useMemo(() => {
     const result: EntityItemMenuAction[] = [];
@@ -339,7 +333,7 @@ function EntityItemMenu({
     <EntityMenuContainer style={{ textAlign: "center" }}>
       <Menu
         opened={opened}
-        onChange={setOpened}
+        onChange={(opened) => (opened ? openMenu() : closeMenu())}
         position="bottom-end"
         closeOnItemClick={false}
       >

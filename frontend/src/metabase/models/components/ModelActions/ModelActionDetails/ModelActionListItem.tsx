@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
@@ -10,11 +10,7 @@ import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type {
-  IconName,
-  WritebackAction,
-  WritebackQueryAction,
-} from "metabase-types/api";
+import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import {
   ActionCardContainer,
@@ -37,19 +33,12 @@ interface Props {
   onArchive: (action: WritebackAction) => void;
 }
 
-type ModelActionMenuItem = {
-  title: string;
-  icon: IconName;
-  link?: string;
-  action?: () => void;
-};
-
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
   const question = Question.create({ dataset_query: action.dataset_query });
   if (!question.isNative()) {
     return (
       <CodeBlock>
-        <Icon name="warning" size={16} tooltip={t`No query found`} />
+        <Icon name="warning" tooltip={t`No query found`} />
       </CodeBlock>
     );
   }
@@ -91,33 +80,7 @@ function ModelActionListItem({
     });
   }, [action, askConfirmation, onArchive]);
 
-  const [menuOpened, setMenuOpened] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setMenuOpened(false);
-  }, []);
-
-  const toggleMenu = useCallback(() => {
-    setMenuOpened((opened) => !opened);
-  }, []);
-
-  const menuItems = useMemo<(ModelActionMenuItem | null)[]>(
-    () => [
-      {
-        title: canEdit ? t`Edit` : t`View`,
-        icon: canEdit ? "pencil" : "eye",
-        link: actionUrl,
-      },
-      canArchive
-        ? {
-            title: t`Archive`,
-            icon: "archive",
-            action: handleArchive,
-          }
-        : null,
-    ],
-    [actionUrl, canEdit, canArchive, handleArchive],
-  );
+  const [menuOpened, menu] = useDisclosure(false);
 
   return (
     <>
@@ -140,7 +103,7 @@ function ModelActionListItem({
         </div>
         <Menu
           opened={menuOpened}
-          onChange={setMenuOpened}
+          onChange={(opened) => (opened ? menu.open() : menu.close())}
           position="bottom-end"
           closeOnItemClick={false}
         >
@@ -148,47 +111,34 @@ function ModelActionListItem({
             <div>
               <EntityMenuTrigger
                 icon="ellipsis"
-                onClick={toggleMenu}
+                onClick={menu.toggle}
                 open={menuOpened}
               />
             </div>
           </Menu.Target>
           <Menu.Dropdown miw={184}>
-            {menuItems.map((item, index) => {
-              if (!item) {
-                return null;
+            <Menu.Item
+              component={RouterLink}
+              data-testid="entity-menu-link"
+              leftSection={
+                <Icon name={canEdit ? "pencil" : "eye"} aria-hidden />
               }
-
-              if (item.link) {
-                return (
-                  <Menu.Item
-                    key={item.title ?? index}
-                    component={RouterLink}
-                    data-testid="entity-menu-link"
-                    leftSection={
-                      <Icon name={item.icon} size={16} aria-hidden />
-                    }
-                    to={item.link}
-                    onClick={closeMenu}
-                  >
-                    {item.title}
-                  </Menu.Item>
-                );
-              }
-
-              return (
-                <Menu.Item
-                  key={item.title ?? index}
-                  leftSection={<Icon name={item.icon} size={16} aria-hidden />}
-                  onClick={() => {
-                    item.action?.();
-                    closeMenu();
-                  }}
-                >
-                  {item.title}
-                </Menu.Item>
-              );
-            })}
+              to={actionUrl}
+              onClick={menu.close}
+            >
+              {canEdit ? t`Edit` : t`View`}
+            </Menu.Item>
+            {canArchive && (
+              <Menu.Item
+                leftSection={<Icon name="archive" aria-hidden />}
+                onClick={() => {
+                  handleArchive();
+                  menu.close();
+                }}
+              >
+                {t`Archive`}
+              </Menu.Item>
+            )}
           </Menu.Dropdown>
         </Menu>
       </ActionHeader>
