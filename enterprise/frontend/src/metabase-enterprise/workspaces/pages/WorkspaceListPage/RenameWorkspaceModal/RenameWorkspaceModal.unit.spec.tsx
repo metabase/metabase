@@ -41,9 +41,10 @@ describe("RenameWorkspaceModal", () => {
     await waitFor(() => {
       expect(onRename).toHaveBeenCalled();
     });
-    expect(
-      await fetchMock.lastCall(`path:/api/ee/workspace-manager/1`)?.json(),
-    ).toEqual({ name: "New name" });
+    const call = fetchMock.callHistory.lastCall(
+      `path:/api/ee/workspace-manager/1`,
+    );
+    expect(await call?.request?.json()).toEqual({ name: "New name" });
   });
 
   it("closes without renaming on Cancel", async () => {

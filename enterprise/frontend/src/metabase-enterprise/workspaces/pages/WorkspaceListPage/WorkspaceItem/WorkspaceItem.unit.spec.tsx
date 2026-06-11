@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   createMockDatabase,
+  createMockUserInfo,
   createMockWorkspace,
   createMockWorkspaceDatabase,
 } from "metabase-types/api/mocks";
@@ -18,9 +19,29 @@ function setup({ workspace = WORKSPACE } = {}) {
 describe("WorkspaceItem", () => {
   it("renders the workspace name", () => {
     setup();
-    expect(
-      screen.getByRole("heading", { name: "My workspace" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("My workspace")).toBeInTheDocument();
+  });
+
+  it("renders the creator info when the creator is hydrated", () => {
+    setup({
+      workspace: createMockWorkspace({
+        name: "My workspace",
+        creator: createMockUserInfo({
+          first_name: "Ada",
+          last_name: "Lovelace",
+        }),
+      }),
+    });
+
+    expect(screen.getByText(/Created by Ada Lovelace/)).toBeInTheDocument();
+  });
+
+  it("renders plain creation info when the creator is missing", () => {
+    setup({
+      workspace: createMockWorkspace({ name: "My workspace", creator: null }),
+    });
+
+    expect(screen.getByText(/^Created /)).toBeInTheDocument();
   });
 
   it("renders only hydrated databases", () => {

@@ -4,7 +4,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { Stack } from "metabase/ui";
+import { Group, Stack, Title } from "metabase/ui";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
@@ -35,18 +35,31 @@ function WorkspaceListPageBody({ workspaces }: WorkspaceListPageBodyProps) {
         breadcrumbs={
           <DataStudioBreadcrumbs>{t`Workspaces`}</DataStudioBreadcrumbs>
         }
-        actions={hasWorkspaces && <NewWorkspaceButton />}
         py={0}
       />
       {hasWorkspaces ? (
-        <Stack data-testid="workspace-list" gap="lg">
-          {workspaces.map((workspace) => (
-            <WorkspaceItem key={workspace.id} workspace={workspace} />
-          ))}
-        </Stack>
+        <WorkspaceSection workspaces={workspaces} />
       ) : (
         <WorkspaceEmptyState />
       )}
     </PageContainer>
+  );
+}
+
+type WorkspaceSectionProps = {
+  workspaces: Workspace[];
+};
+
+function WorkspaceSection({ workspaces }: WorkspaceSectionProps) {
+  return (
+    <Stack data-testid="workspace-list" gap="lg">
+      <Group justify="space-between">
+        <Title order={4}>{t`Active workspaces`}</Title>
+        <NewWorkspaceButton />
+      </Group>
+      {workspaces.map((workspace) => (
+        <WorkspaceItem key={workspace.id} workspace={workspace} />
+      ))}
+    </Stack>
   );
 }

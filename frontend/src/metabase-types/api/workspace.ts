@@ -23,7 +23,7 @@ export type Workspace = {
   created_at: string;
   creator_id: UserId;
 
-  creator?: UserInfo;
+  creator?: UserInfo | null;
   databases: WorkspaceDatabase[];
 };
 

@@ -9,8 +9,9 @@ import {
   Group,
   Menu,
   Stack,
-  Title,
 } from "metabase/ui";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
+import { getUserName } from "metabase/utils/user";
 import type { Workspace, WorkspaceDatabase } from "metabase-types/api";
 
 import { trackWorkspaceConfigDownloaded } from "../../../analytics";
@@ -35,7 +36,10 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
     >
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap="sm">
-          <Title order={4}>{workspace.name}</Title>
+          <Box fw="bold" fz="1rem">
+            {workspace.name}
+          </Box>
+          <WorkspaceCreatorInfo workspace={workspace} />
           {workspace.databases.map((workspaceDatabase) => (
             <WorkspaceDatabaseItem
               key={workspaceDatabase.database_id}
@@ -46,6 +50,23 @@ export function WorkspaceItem({ workspace }: WorkspaceItemProps) {
         <WorkspaceMenu workspace={workspace} />
       </Group>
     </Card>
+  );
+}
+
+type WorkspaceCreatorInfoProps = {
+  workspace: Workspace;
+};
+
+function WorkspaceCreatorInfo({ workspace }: WorkspaceCreatorInfoProps) {
+  const { creator } = workspace;
+  const timeAgo = getRelativeTime(workspace.created_at);
+
+  return (
+    <Box c="text-secondary">
+      {creator != null
+        ? t`Created by ${getUserName(creator)} ${timeAgo}`
+        : t`Created ${timeAgo}`}
+    </Box>
   );
 }
 
