@@ -172,10 +172,8 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  ;; Default both curation columns at the model level so every insert path gets the same value
-  ;; regardless of app DB. `data_layer` and `data_authority` previously relied on different mechanisms
-  ;; (Clojure default vs. a DB-level defaultValue), which left them inconsistent across app DBs — the
-  ;; DB-level defaults are also reasserted in a migration for non-model insert paths.
+  ;; Default both curation columns here so model inserts are consistent across app DBs; a migration
+  ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
                   :data_layer     :internal

@@ -752,8 +752,7 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority] :id table-id)))))
     (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
-      ;; Mirrors non-model insert paths; guards the migration that (re)asserts the column defaults so
-      ;; they're consistent across app DBs (data_authority was NULL on MySQL/MariaDB before this).
+      ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
       (mt/with-temp [:model/Database {db-id :id} {}]
         (t2/query-one {:insert-into :metabase_table
                        :values      [{:name       "raw-insert-probe"
