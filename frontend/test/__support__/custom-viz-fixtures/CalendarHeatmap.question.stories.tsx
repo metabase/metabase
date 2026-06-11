@@ -10,7 +10,7 @@ import { AppColorSchemeProvider } from "metabase/AppColorSchemeProvider";
 import { Api } from "metabase/api";
 // Side-effect import: provides the `#popover-event-target { position: fixed }`
 // rule that ChartTooltip relies on to anchor near the hovered cell.
-import "metabase/common/components/Popover/Popover.module.css";
+import "metabase/common/components/Tooltip/tippy.module.css";
 import {
   PublicOrEmbeddedQuestionView,
   type PublicOrEmbeddedQuestionViewProps,
