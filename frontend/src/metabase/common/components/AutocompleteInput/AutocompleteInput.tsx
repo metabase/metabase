@@ -61,6 +61,10 @@ export const AutocompleteInput = ({
   const handleListMouseDown = (event: React.MouseEvent<HTMLElement>) => {
     if (optionsListRef.current?.contains(event.target as Node)) {
       event.preventDefault();
+      // also stops the native event before it reaches document, where the
+      // click-outside handler of a parent popover would treat a click on the
+      // portaled options list as an outside click and close that popover
+      event.stopPropagation();
     }
   };
 
@@ -76,17 +80,23 @@ export const AutocompleteInput = ({
     onChange(e.target.value);
   };
 
+  const isDropdownOpened = isOpened && filteredOptions.length > 0;
+
   return (
     <Popover
-      opened={isOpened && filteredOptions.length > 0}
+      opened={isDropdownOpened}
       onChange={setIsOpened}
       position="bottom-start"
+      // with roles enabled Popover.Target overrides the input id with its own
+      // generated one, breaking the <label htmlFor> association
+      withRoles={false}
     >
       <Popover.Target>
         <Input
           ref={inputRef}
           role="combobox"
           aria-autocomplete="list"
+          aria-expanded={isDropdownOpened}
           {...rest}
           value={value}
           onClick={() => setIsOpened(true)}
