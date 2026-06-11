@@ -1,28 +1,43 @@
 .ColorButton {
-  border: none;
-  transition: background 300ms;
-  color: var(--notebook-action-button-color);
-  background-color: color-mix(
-    in srgb,
-    var(--notebook-action-button-color),
-    transparent 80%
-  );
-
-  &.secondary {
-    color: var(--mb-color-text-secondary);
-    background-color: var(--mb-color-notebook-step-bg);
-
-    &:hover {
-      background-color: var(--mb-color-notebook-step-bg-hover);
-    }
-  }
-
-  &:hover {
+  &[data-variant="subtle"] {
+    border: none;
+    transition: background 300ms;
+    color: var(--notebook-action-button-color);
     background-color: color-mix(
       in srgb,
       var(--notebook-action-button-color),
-      transparent 35%
+      transparent 80%
     );
-    color: color-mix(in srgb, var(--notebook-action-button-color), black 11.5%);
+
+    &.secondary {
+      color: var(--mb-color-text-secondary);
+      background-color: var(--mb-color-notebook-step-bg);
+
+      &:hover {
+        background-color: var(--mb-color-notebook-step-bg-hover);
+      }
+    }
+
+    &:hover {
+      background-color: color-mix(
+        in srgb,
+        var(--notebook-action-button-color),
+        transparent 35%
+      );
+      color: color-mix(
+        in srgb,
+        var(--notebook-action-button-color),
+        black 11.5%
+      );
+    }
+  }
+}
+
+.verticalInner {
+  flex-direction: column;
+
+  [data-position="left"] {
+    margin-inline-end: 0;
+    margin-block-end: 0.5rem;
   }
 }

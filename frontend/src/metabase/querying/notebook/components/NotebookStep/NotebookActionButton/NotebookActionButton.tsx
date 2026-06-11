@@ -1,8 +1,7 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
 
-import { Button } from "metabase/common/components/Button";
-import { Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
@@ -32,6 +31,7 @@ export function NotebookActionButton({
 
   const button = (
     <Button
+      variant="subtle"
       className={cx(
         S.ColorButton,
         {
@@ -39,10 +39,13 @@ export function NotebookActionButton({
         },
         className,
       )}
-      icon={icon}
-      small={!large}
-      iconVertical={large}
-      iconSize={large ? 20 : 16}
+      classNames={{ inner: large ? S.verticalInner : undefined }}
+      leftSection={
+        icon ? <Icon name={icon} size={large ? 20 : 16} /> : undefined
+      }
+      h={large ? "auto" : "2rem"}
+      p={large ? "0.5rem 0.75rem" : "0.5rem"}
+      miw={large ? "60px" : undefined}
       aria-label={label}
       onClick={onClick}
       style={
