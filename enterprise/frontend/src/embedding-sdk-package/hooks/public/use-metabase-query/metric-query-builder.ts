@@ -12,6 +12,8 @@ import {
   isMetricDimensionFilter,
   isMetricDimensionSchema,
   isSegmentSchema,
+  isTableDimensionFilter,
+  isTableFieldSchema,
   isUnaryOperator,
 } from "./guards";
 import type {
@@ -30,28 +32,12 @@ export function buildMetricDefinition(query: MetricQueryRuntime) {
     expression: ["metric", { "lib/uuid": uuid }, metricId],
   };
 
-  const filters = query.filters?.map((filter): InstanceFilter | null => {
-    if (isSegmentSchema(filter)) {
-      return {
-        "lib/uuid": uuid,
-        filter: ["segment", {}, filter.id],
-      };
-    }
-
-    if (isMetricDimensionFilter(filter)) {
-      return {
-        "lib/uuid": uuid,
-        filter: buildMetricFilterClause(filter),
-      };
-    }
-
-    return null;
+  const filters = query.filters?.map((filter) => {
+    return buildMetricFilter(filter, query, uuid);
   });
 
-  const compactFilters = filters?.filter(Boolean) as InstanceFilter[];
-
-  if (compactFilters?.length) {
-    definition.filters = compactFilters;
+  if (filters?.length) {
+    definition.filters = filters;
   }
 
   if (query.breakouts?.length) {
@@ -61,7 +47,7 @@ export function buildMetricDefinition(query: MetricQueryRuntime) {
         id: metricId,
         "lib/uuid": uuid,
         projection: query.breakouts.map((breakout) => {
-          return buildMetricBreakout(toMetricBreakout(breakout));
+          return buildMetricBreakout(breakout);
         }),
       } satisfies TypedProjection,
     ];
@@ -74,6 +60,39 @@ export function buildMetricDefinition(query: MetricQueryRuntime) {
   }
 
   return definition;
+}
+
+function buildMetricFilter(
+  filter: unknown,
+  query: MetricQueryRuntime,
+  uuid: string,
+): InstanceFilter {
+  if (isSegmentSchema(filter)) {
+    return {
+      "lib/uuid": uuid,
+      filter: ["segment", {}, filter.id],
+    };
+  }
+
+  if (isMetricDimensionFilter(filter)) {
+    return {
+      "lib/uuid": uuid,
+      filter: buildMetricFilterClause(filter),
+    };
+  }
+
+  if (isTableDimensionFilter(filter)) {
+    const dimension = findMetricDimensionForTableField(query, filter.dimension);
+
+    return {
+      "lib/uuid": uuid,
+      filter: buildMetricFilterClause({ ...filter, dimension }),
+    };
+  }
+
+  throw new Error(
+    "Metric query filters must use generated metric dimensions, mapped table fields, or segments.",
+  );
 }
 
 function buildMetricFilterClause(filter: MetricDimensionFilterRuntime) {
@@ -90,6 +109,67 @@ function buildMetricFilterClause(filter: MetricDimensionFilterRuntime) {
   }
 
   return [operator, {}, dimension, ...values];
+}
+
+function findMetricDimensionForTableField(
+  query: MetricQueryRuntime,
+  field: unknown,
+) {
+  const dimensions = getMetricDimensions(query);
+  const dimension = dimensions.find((dimension) => {
+    return (
+      dimension.tableId === getObjectNumber(field, "tableId") &&
+      dimension.name === getObjectString(field, "name")
+    );
+  });
+
+  if (!dimension) {
+    throw new Error(
+      "Metric query table-field filters must match a generated metric dimension for the metric. Use schema.metrics.*.dimensions.* or pass the full generated metric object.",
+    );
+  }
+
+  return dimension;
+}
+
+function getMetricDimensions(query: MetricQueryRuntime) {
+  const metric = query.metric;
+
+  if (
+    typeof metric !== "object" ||
+    metric == null ||
+    !("dimensions" in metric)
+  ) {
+    return [];
+  }
+
+  const dimensions = metric.dimensions;
+
+  if (typeof dimensions !== "object" || dimensions == null) {
+    return [];
+  }
+
+  return Object.values(dimensions).filter(isMetricDimensionSchema);
+}
+
+function getObjectNumber(value: unknown, key: string) {
+  if (typeof value !== "object" || value == null || !(key in value)) {
+    return undefined;
+  }
+
+  const property = (value as Record<string, unknown>)[key];
+
+  return typeof property === "number" ? property : undefined;
+}
+
+function getObjectString(value: unknown, key: string) {
+  if (typeof value !== "object" || value == null || !(key in value)) {
+    return undefined;
+  }
+
+  const property = (value as Record<string, unknown>)[key];
+
+  return typeof property === "string" ? property : undefined;
 }
 
 function buildMetricBreakout(breakout: unknown) {
@@ -111,7 +191,11 @@ function buildMetricDimensionReference(
   return [
     "dimension",
     options,
-    isFieldSchema(dimension) ? dimension.id : dimension,
+    isTableFieldSchema(dimension) && typeof dimension.fieldId === "number"
+      ? dimension.fieldId
+      : isFieldSchema(dimension)
+        ? dimension.id
+        : dimension,
   ];
 }
 
@@ -141,25 +225,6 @@ function normalizeBreakout(breakout: unknown) {
   }
 
   return { dimension: breakout.dimension, options };
-}
-
-function toMetricBreakout(breakout: unknown) {
-  if (isMetricDimensionSchema(breakout)) {
-    return breakout;
-  }
-
-  if (
-    typeof breakout === "object" &&
-    breakout != null &&
-    "dimension" in breakout &&
-    isMetricDimensionSchema(breakout.dimension)
-  ) {
-    return breakout as BreakoutObjectRuntime;
-  }
-
-  throw new Error(
-    "Metric query breakouts must use generated metric dimension objects, not dimension name strings.",
-  );
 }
 
 function isBreakoutObject(value: unknown): value is BreakoutObjectRuntime {

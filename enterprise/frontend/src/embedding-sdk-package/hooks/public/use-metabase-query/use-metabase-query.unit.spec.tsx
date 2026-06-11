@@ -255,6 +255,17 @@ const _validMetricObjectQuery = {
   ],
 } satisfies MetabaseQueryOptions<OrderCountMetric, TestSchema>;
 
+const _validMetricMappedTableBreakoutQuery = {
+  metric: TEST_SCHEMA.metrics.orderValue,
+  measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+  breakouts: [
+    breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
+  ],
+} satisfies MetabaseQueryOptions<
+  TestSchema["metrics"]["orderValue"],
+  TestSchema
+>;
+
 const _invalidMetricBreakoutUnknownBucketQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   breakouts: [
@@ -328,6 +339,13 @@ function useMetricFilterOperatorTypeFixtures() {
         "contains",
         "paid",
       ),
+    ],
+  });
+
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    filters: [
+      filter(TEST_SCHEMA.tables.orders.fields.status, "contains", "paid"),
     ],
   });
 
@@ -519,6 +537,78 @@ describe("useMetabaseQuery", () => {
       });
     });
   });
+
+  it("maps metric table-field filters to generated metric dimensions", async () => {
+    const queryMetricApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryMetric = jest.fn(() => queryMetricApi);
+
+    setup({ queryMetric, component: <MetricTableFieldFilterComponent /> });
+
+    await waitFor(() => {
+      expect(queryMetricApi).toHaveBeenCalledWith({
+        definition: {
+          expression: ["metric", { "lib/uuid": "metric" }, 34],
+          filters: [
+            {
+              "lib/uuid": "metric",
+              filter: ["=", {}, ["dimension", {}, "metric-status"], "paid"],
+            },
+          ],
+        },
+      });
+    });
+  });
+
+  it("queries metrics with measures grouped by mapped table-field breakouts", async () => {
+    const queryMetricApi = jest.fn().mockResolvedValue({
+      rowCount: null,
+      runningTime: null,
+      columns: [],
+      rows: [],
+    });
+    const queryMetric = jest.fn(() => queryMetricApi);
+
+    setup({ queryMetric, component: <MetricMappedTableBreakoutComponent /> });
+
+    await waitFor(() => {
+      expect(queryMetricApi).toHaveBeenCalledWith({
+        definition: {
+          expression: ["metric", { "lib/uuid": "metric" }, 35],
+          projections: [
+            {
+              type: "metric",
+              id: 35,
+              "lib/uuid": "metric",
+              projection: [["dimension", { "temporal-unit": "month" }, 103]],
+            },
+          ],
+          measures: [21],
+        },
+      });
+    });
+  });
+
+  it("raises a runtime error when metric table-field filters cannot be mapped", async () => {
+    const queryMetric = jest.fn();
+
+    setup({
+      queryMetric,
+      component: <MetricTableFieldFilterWithoutMetricObjectComponent />,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("error")).toHaveTextContent(
+        "Metric query table-field filters must match a generated metric dimension",
+      );
+    });
+
+    expect(queryMetric).not.toHaveBeenCalled();
+  });
 });
 
 const TestComponent = () => {
@@ -587,6 +677,40 @@ const MetricMeasuresComponent = () => {
   });
 
   return null;
+};
+
+const MetricTableFieldFilterComponent = () => {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+  });
+
+  return null;
+};
+
+const MetricMappedTableBreakoutComponent = () => {
+  useMetabaseQuery({
+    metric: TEST_SCHEMA.metrics.orderValue,
+    measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+    breakouts: [
+      breakout(TEST_SCHEMA.tables.orders.fields.createdAt, { bucket: "month" }),
+    ],
+  });
+
+  return null;
+};
+
+const MetricTableFieldFilterWithoutMetricObjectComponent = () => {
+  const result = useMetabaseQuery({
+    metricId: TEST_SCHEMA.metrics.orderCount.id,
+    filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
+  } as never);
+
+  return (
+    <div data-testid="error">
+      {result.error instanceof Error ? result.error.message : ""}
+    </div>
+  );
 };
 
 function setup({

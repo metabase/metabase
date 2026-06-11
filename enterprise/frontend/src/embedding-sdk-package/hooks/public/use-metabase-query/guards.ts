@@ -110,6 +110,12 @@ export function isMetricDimensionFilter(
   return isDimensionFilter(value) && isMetricDimensionSchema(value.dimension);
 }
 
+export function isTableDimensionFilter(
+  value: unknown,
+): value is DimensionFilterRuntime & { dimension: FieldSchema } {
+  return isDimensionFilter(value) && isTableFieldSchema(value.dimension);
+}
+
 export function isSegmentSchema(
   value: unknown,
 ): value is SegmentReferenceRuntime {
