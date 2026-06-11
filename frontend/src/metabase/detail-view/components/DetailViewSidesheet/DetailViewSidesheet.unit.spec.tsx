@@ -50,9 +50,11 @@ const table = createMockTable({
 function setup({
   onNextClick = jest.fn(),
   onPreviousClick = jest.fn(),
+  showNav = true,
 }: {
   onNextClick?: jest.Mock;
   onPreviousClick?: jest.Mock;
+  showNav?: boolean;
 } = {}) {
   setupDatabasesEndpoints([database]);
   setupActionsEndpoints([updateAction]);
@@ -66,7 +68,7 @@ function setup({
       row={[1]}
       rowId={1}
       showImplicitActions
-      showNav
+      showNav={showNav}
       table={table}
       tableForeignKeys={[]}
       url="/model/1-model/detail/1"
@@ -81,13 +83,37 @@ function setup({
 }
 
 describe("DetailViewSidesheet", () => {
+  it("navigates rows with arrow keys when keyboard navigation is enabled", () => {
+    const { onNextClick, onPreviousClick } = setup();
+
+    fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
+    expect(onPreviousClick).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(document.documentElement, { key: "ArrowDown" });
+    expect(onNextClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not navigate rows with arrow keys when keyboard navigation is disabled", () => {
+    const { onNextClick, onPreviousClick } = setup({ showNav: false });
+
+    fireEvent.keyDown(document.documentElement, { key: "ArrowUp" });
+    expect(onPreviousClick).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document.documentElement, { key: "ArrowDown" });
+    expect(onNextClick).not.toHaveBeenCalled();
+  });
+
   it("does not navigate rows when using arrow keys immediately after opening the actions menu", async () => {
     const { onNextClick } = setup();
 
+    fireEvent.keyDown(document.documentElement, { key: "ArrowDown" });
+    expect(onNextClick).toHaveBeenCalledTimes(1);
+
     const actionsMenu = await screen.findByTestId("actions-menu");
     fireEvent.click(actionsMenu);
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    const menu = await screen.findByRole("menu");
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
 
-    expect(onNextClick).not.toHaveBeenCalled();
+    expect(onNextClick).toHaveBeenCalledTimes(1);
   });
 });

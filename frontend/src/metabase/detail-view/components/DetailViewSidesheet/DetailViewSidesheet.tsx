@@ -1,5 +1,5 @@
-import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDisclosure, useHotkeys } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -133,26 +133,6 @@ export function DetailViewSidesheet({
   });
 
   const [actionsMenuOpened, actionsMenu] = useDisclosure(false);
-  const actionsMenuOpenedRef = useRef(actionsMenuOpened);
-
-  useEffect(() => {
-    actionsMenuOpenedRef.current = actionsMenuOpened;
-  }, [actionsMenuOpened]);
-
-  const openActionsMenu = useCallback(() => {
-    actionsMenuOpenedRef.current = true;
-    actionsMenu.open();
-  }, [actionsMenu]);
-
-  const closeActionsMenu = useCallback(() => {
-    actionsMenuOpenedRef.current = false;
-    actionsMenu.close();
-  }, [actionsMenu]);
-
-  const toggleActionsMenu = useCallback(() => {
-    actionsMenuOpenedRef.current = !actionsMenuOpenedRef.current;
-    actionsMenu.toggle();
-  }, [actionsMenu]);
 
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
@@ -205,36 +185,29 @@ export function DetailViewSidesheet({
     }
   }, [linkCopied]);
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      if (actionsMenuOpenedRef.current) {
-        return;
-      }
+  const isKeyboardNavigationEnabled =
+    isNavEnabled && !isModalOpen && !actionsMenuOpened;
 
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLElement &&
-        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-          activeElement.isContentEditable);
-
-      if (isNavEnabled && !isInputFocused && !isModalOpen) {
-        if (event.key === "ArrowUp" && onPreviousClick) {
-          event.stopPropagation();
-          onPreviousClick();
+  useHotkeys([
+    [
+      "ArrowUp",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onPreviousClick?.();
         }
-
-        if (event.key === "ArrowDown" && onNextClick) {
-          event.stopPropagation();
-          onNextClick();
+      },
+      { preventDefault: false },
+    ],
+    [
+      "ArrowDown",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onNextClick?.();
         }
-      }
-    },
-    {
-      // Otherwise modals get closed earlier and isModalOpen evaluates to false in the handler.
-      capture: true,
-    },
-  );
+      },
+      { preventDefault: false },
+    ],
+  ]);
 
   if (error || isLoading) {
     return (
@@ -303,7 +276,7 @@ export function DetailViewSidesheet({
               <Menu
                 opened={actionsMenuOpened}
                 onChange={(opened) =>
-                  opened ? openActionsMenu() : closeActionsMenu()
+                  opened ? actionsMenu.open() : actionsMenu.close()
                 }
                 position="bottom-end"
                 closeOnItemClick={false}
@@ -320,7 +293,7 @@ export function DetailViewSidesheet({
                         p={0}
                         variant="subtle"
                         w={20}
-                        onClick={toggleActionsMenu}
+                        onClick={actionsMenu.toggle}
                       />
                     </Tooltip>
                   </div>
@@ -332,7 +305,7 @@ export function DetailViewSidesheet({
                       leftSection={<Icon name={item.icon} aria-hidden />}
                       onClick={() => {
                         item.action();
-                        closeActionsMenu();
+                        actionsMenu.close();
                       }}
                     >
                       {item.title}
