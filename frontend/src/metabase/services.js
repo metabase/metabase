@@ -129,14 +129,3 @@ export const UserApi = {
 export const FrontendErrorsApi = {
   report: POST("/api/frontend-errors"),
 };
-
-export const ActionsApi = {
-  execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET("/api/action/:id/execute"),
-  prefetchDashcardValues: GET(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
-  ),
-  executeDashcardAction: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
-  ),
-};
