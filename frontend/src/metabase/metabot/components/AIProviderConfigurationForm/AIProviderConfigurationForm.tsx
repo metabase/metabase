@@ -571,9 +571,9 @@ const ProviderCredentialsFields = ({
     metabotSettingsQuery.error,
     selectedProvider,
   );
-  const apiKeyError = hasDirtyApiKey
+  const credentialsError = hasDirtyApiKey
     ? undefined
-    : (metabotSettingsQuery.currentData?.["api-key-error"] ?? undefined);
+    : (metabotSettingsQuery.currentData?.["credentials-error"] ?? undefined);
 
   const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
 
@@ -633,7 +633,7 @@ const ProviderCredentialsFields = ({
           selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
         }
         value={displayApiKeyValue}
-        error={apiKeyError}
+        error={credentialsError}
         onChange={handleApiKeyChange}
         disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
         w="100%"
@@ -668,7 +668,7 @@ const ProviderCredentialsFields = ({
           );
         })}
 
-      {!needsApiKey && !apiKeyError && (
+      {!needsApiKey && !credentialsError && (
         <Select
           label={t`Model`}
           placeholder={
