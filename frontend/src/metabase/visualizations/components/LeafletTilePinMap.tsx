@@ -1,7 +1,7 @@
 import L from "leaflet";
 import type { ContextType } from "react";
 
-import { GET } from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -185,20 +185,11 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       const controller = new AbortController();
       tile._fetchCtrl = controller;
 
-      GET(tileUrl, {
-        signal: controller.signal,
-        rawResponse: true,
-      })()
-        .then((response) => response.blob())
-        .then((blob) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            if (typeof reader.result === "string") {
-              tile.src = reader.result;
-            }
-          };
-
-          reader.readAsDataURL(blob);
+      loadImage(tile, tileUrl, controller.signal)
+        .then(() => {
+          if (controller.signal.aborted) {
+            return;
+          }
           done?.(undefined, tile);
         })
         .catch((error: unknown) => {
@@ -219,4 +210,43 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
       return tile;
     };
   };
+}
+
+async function loadImage(
+  img: HTMLImageElement,
+  url: string,
+  signal: AbortSignal,
+) {
+  const response = await api.request({
+    method: "GET",
+    url,
+    signal,
+    rawResponse: true,
+    retry: true,
+  });
+  const blob = await response.blob();
+  const src = await readAsDataURL(blob);
+
+  img.src = src;
+  // img.decode waits for the image to be loaded and throws if it fails
+  await img.decode();
+}
+
+function readAsDataURL(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Cannot read tile"));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Cannot read tile"));
+    };
+
+    reader.readAsDataURL(blob);
+  });
 }
