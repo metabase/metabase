@@ -41,6 +41,9 @@ export const initSdkTracker = (metabaseInstanceUrl: string): void => {
     stateStorageStrategy: "none",
     // Server-side anonymisation: strip IP + network_userid, send the SP-Anonymous header.
     anonymousTracking: { withServerAnonymisation: true },
+    // The proxy endpoint uses `Access-Control-Allow-Origin: *`. Wildcard CORS rejects
+    // credentialed requests, so credentials must be omitted.
+    withCredentials: false,
   });
 };
 
