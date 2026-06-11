@@ -12,17 +12,23 @@ export function setupMockIntersectionObserver() {
   const originalIntersectionObserver = globalThis.IntersectionObserver;
 
   let intersectionCallback: IntersectionObserverCallback | null = null;
+  let observerOptions: IntersectionObserverInit | undefined;
   const observeMock = jest.fn();
   const disconnectMock = jest.fn();
 
   beforeEach(() => {
     intersectionCallback = null;
+    observerOptions = undefined;
     observeMock.mockClear();
     disconnectMock.mockClear();
 
     globalThis.IntersectionObserver = class MockIntersectionObserver implements IntersectionObserver {
-      constructor(callback: IntersectionObserverCallback) {
+      constructor(
+        callback: IntersectionObserverCallback,
+        options?: IntersectionObserverInit,
+      ) {
         intersectionCallback = callback;
+        observerOptions = options;
       }
 
       root: Element | null = null;
@@ -55,5 +61,6 @@ export function setupMockIntersectionObserver() {
     setIntersecting,
     observe: observeMock,
     disconnect: disconnectMock,
+    getObserverOptions: () => observerOptions,
   };
 }

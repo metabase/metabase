@@ -9,24 +9,8 @@ import { useScrollContainer } from "metabase/documents/contexts/ScrollContainerC
 const noopSubscribe = () => () => {};
 
 /**
- * Detects whether a node view element is near the viewport.
- * Uses IntersectionObserver with a 200% rootMargin buffer on all sides.
- *
- * entry === null (initial state before first observation) is treated as
- * out-of-viewport so callers can defer expensive work (e.g. card queries)
- * until IntersectionObserver confirms visibility. Visible nodes briefly
- * show a placeholder for ~1 frame before IO fires its first callback,
- * which is preferable to firing N redundant queries on mount.
- *
- * While printing we force in-viewport so off-screen cards are rendered
- * into the print output instead of staying as skeletons.
- *
- * When an `id` is provided AND a PrefetchQueueProvider is mounted, the
- * node registers with the prefetch coordinator so its data can be
- * preloaded in the background while the user is idle. `shouldLoadData`
- * is true when the node is either in viewport OR has been granted a
- * prefetch ticket — callers use it to gate data fetches without delaying
- * rendering of the actual visualization (gated by `isInViewport`).
+ * Detects whether a node view element is near the viewport (always true while
+ * printing). With an `id`, the node also joins the prefetch queue
  */
 export function useNodeInViewport(id?: string) {
   const scrollContainer = useScrollContainer();
