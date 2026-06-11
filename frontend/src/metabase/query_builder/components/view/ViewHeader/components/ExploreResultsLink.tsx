@@ -14,7 +14,7 @@ export function ExploreResultsLink({ question }: ExploreResultsLinkProps) {
     ? question.composeQuestionAdhoc()
     : undefined;
   const button = (
-    <ViewButton disabled={!query} medium icon="insight" labelBreakpoint="sm">
+    <ViewButton disabled={!query} icon="insight" labelBreakpoint="sm">
       {t`Explore results`}
     </ViewButton>
   );

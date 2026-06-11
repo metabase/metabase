@@ -3,8 +3,9 @@ import _ from "underscore";
 
 import type { ITippyPopoverProps } from "metabase/common/components/Popover/TippyPopover";
 import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
+import { Button } from "metabase/ui";
 
-import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
+import S from "./ControlledPopoverWithTrigger.module.css";
 
 export type ControlledPopoverWithTriggerProps = Omit<
   ITippyPopoverProps,
@@ -73,10 +74,12 @@ export function ControlledPopoverWithTrigger({
       closePopover: onClose,
     })
   ) : (
-    <TriggerButton
+    <Button
+      variant="subtle"
       type="button"
       disabled={disabled}
       className={cx(
+        S.triggerButton,
         triggerClasses,
         visible && triggerClassesOpen,
         !visible && triggerClassesClose,
@@ -86,7 +89,7 @@ export function ControlledPopoverWithTrigger({
       onClick={handleTriggerClick}
     >
       {triggerContent}
-    </TriggerButton>
+    </Button>
   );
 
   const computedPopoverContent = _.isFunction(popoverContent)

@@ -1,0 +1,12 @@
+.triggerButton {
+  &[data-variant="subtle"] {
+    height: auto;
+    padding: 0;
+    color: var(--mb-color-text-primary);
+
+    &:hover {
+      color: var(--mb-color-text-brand);
+      background: transparent;
+    }
+  }
+}
