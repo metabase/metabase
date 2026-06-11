@@ -773,6 +773,7 @@ export const fetchDashboard = createAsyncThunk(
             { id: dashId, dashboard_load_id: dashboardLoadId },
             dispatch,
             dashboardApi.endpoints.getDashboard,
+            { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
             { id: dashId, dashboard_load_id: dashboardLoadId },
