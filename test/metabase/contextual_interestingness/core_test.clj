@@ -174,6 +174,25 @@
         (fn []
           (is (nil? (call {}))))))))
 
+(deftest parse-response-retains-reasoning-test
+  (testing "parse-response surfaces the model's :reasoning field (asked for in the schema, previously dropped)"
+    (let [parsed (#'contextual-interestingness.llm/parse-response
+                  {:score 0.8 :chart_description "c" :reasoning "  directly answers the question  "})]
+      (is (= 0.8 (:score parsed)))
+      (is (= "directly answers the question" (:reasoning parsed))
+          "reasoning should be trimmed and surfaced"))
+    (testing "blank/whitespace reasoning parses to nil"
+      (is (nil? (:reasoning (#'contextual-interestingness.llm/parse-response
+                             {:score 0.3 :chart_description "c" :reasoning "   "})))))))
+
+(deftest score-and-describe-surfaces-reasoning-test
+  (testing "the LLM's reasoning flows all the way through to the public result map"
+    (with-redefs [metabot.self/call-llm-structured
+                  (constantly {:score 0.7 :chart_description "c" :reasoning "because revenue"})]
+      (with-llm-configured!
+        (fn []
+          (is (= "because revenue" (:reasoning (call {})))))))))
+
 (deftest score-and-describe-prompt-describes-chart-not-data-test
   (testing "The describer is told to describe what the chart IS, not narrate the data's shape"
     ;; exercise the prompt builder directly — gate-independent

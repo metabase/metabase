@@ -151,11 +151,18 @@
   "Best-effort interestingness score. Reuses the pre-computed `stats` so we
   don't run the stats pipeline twice. Logs and returns nil on any failure so
   the worker still persists the result row — a scoring bug must never flip a
-  successful query to errored."
+  successful query to errored.
+
+  At `debug` level, logs the full statistical breakdown (non-degeneracy / signal /
+  structure sub-scores + chart-type) so the blended score isn't a black box when
+  diagnosing why a chart did or didn't earn the \"potentially interesting\" marker."
   [exploration-query chart-config stats]
   (try
     (when (and chart-config stats)
-      (interestingness/chart-interestingness chart-config stats))
+      (let [breakdown (interestingness/chart-interestingness chart-config stats)]
+        (log/debugf "Statistical interestingness for ExplorationQuery %d (thread %d): %s"
+                    (:id exploration-query) (:exploration_thread_id exploration-query) (pr-str breakdown))
+        (:score breakdown)))
     (catch Throwable e
       (log/warnf e "Failed to compute interestingness for ExplorationQuery %d"
                  (:id exploration-query))
@@ -330,13 +337,20 @@
           (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
                      (:id exploration-query))
           (request/with-current-user creator-id
-            (some-> (contextual-interestingness/score-and-describe-chart
-                     {:chart-config     chart-config
-                      :card-description card-description
-                      :chart-slicing    (slicing-note exploration-query)
-                      :sql              sql
-                      :context-string   prompt})
-                    (update :metric-description #(or card-description %)))))))
+            (when-let [result (some-> (contextual-interestingness/score-and-describe-chart
+                                       {:chart-config     chart-config
+                                        :card-description card-description
+                                        :chart-slicing    (slicing-note exploration-query)
+                                        :sql              sql
+                                        :context-string   prompt})
+                                      (update :metric-description #(or card-description %)))]
+              (log/debugf "Contextual interestingness for ExplorationQuery %d (thread %d): score=%s reasoning=%s chart-description=%s"
+                          (:id exploration-query)
+                          (:exploration_thread_id exploration-query)
+                          (:score result)
+                          (pr-str (:reasoning result))
+                          (pr-str (:chart-description result)))
+              result)))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
                  (:id exploration-query))

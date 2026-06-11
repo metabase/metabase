@@ -115,15 +115,19 @@ Always return a single object matching the supplied schema. Do not respond with 
   (-> x double (max 0.0) (min 1.0)))
 
 (defn- parse-response
-  "Pull `:score`, `:chart-description`, `:metric-description` out of the LLM response map.
-  Returns nil when `:score` is missing or non-numeric (the response is unusable)."
+  "Pull `:score`, `:chart-description`, `:metric-description`, `:reasoning` out of the LLM
+  response map. `:reasoning` is the model's own one-sentence justification for the score
+  (declared in the schema for debugging) — surfaced here so debug logs / callers can see
+  *why* a chart scored the way it did. Returns nil when `:score` is missing or non-numeric
+  (the response is unusable)."
   [response]
   (when (map? response)
     (let [score (:score response)]
       (when (number? score)
         {:score              (clamp01 score)
          :chart-description  (some-> (:chart_description response) str/trim not-empty)
-         :metric-description (some-> (:metric_description response) str/trim not-empty)}))))
+         :metric-description (some-> (:metric_description response) str/trim not-empty)
+         :reasoning          (some-> (:reasoning response) str/trim not-empty)}))))
 
 (defn llm-call!
   "Single seam for tests to `with-redefs`. Returns the parsed response map, or nil on any
