@@ -2518,7 +2518,8 @@
   typed-schemas
   {:team "Embedding"
    :api  #{metabase.typed-schemas.api}
-   :uses #{api
+   :uses #{actions
+           api
            collections
            lib
            lib-be
