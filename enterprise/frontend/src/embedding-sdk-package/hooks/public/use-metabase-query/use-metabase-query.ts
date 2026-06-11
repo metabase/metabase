@@ -5,7 +5,11 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { StructuredDatasetQuery } from "metabase-types/api";
 
-import type { QuestionSchema, TableSchema } from "../data-schema";
+import type {
+  QuestionSchema,
+  SchemaJavaScriptType,
+  TableSchema,
+} from "../data-schema";
 import { mapQueryData } from "../data-schema";
 
 import {
@@ -23,10 +27,14 @@ import type {
   BetweenFilterOperatorForDimension,
   BreakoutOptionsArgument,
   CountAggregationSchema,
+  FieldAggregationOperator,
+  FieldAggregationSchema,
   FilterOperator,
   MetabaseDimensionFilterForOperator,
   MetabaseQueryOptions,
   MetricReference,
+  NumericAggregationDimension,
+  OrderableAggregationDimension,
   TableQuery,
   UnaryFilterOperatorForDimension,
   UseMetabaseQuery,
@@ -36,6 +44,9 @@ import type {
 export type {
   CountAggregation,
   CountAggregationSchema,
+  FieldAggregation,
+  FieldAggregationOperator,
+  FieldAggregationSchema,
   MetabaseBreakout,
   MetabaseDimensionFilter,
   MetabaseMetricBreakout,
@@ -50,6 +61,105 @@ export function count(): CountAggregationSchema {
     type: "count",
     columns: [{ name: "count", displayName: "Count", jsType: "number" }],
   };
+}
+
+/** @internal */
+export function sum<TDimension>(
+  dimension: NumericAggregationDimension<TDimension>,
+): FieldAggregationSchema<"sum", NumericAggregationDimension<TDimension>> {
+  return fieldAggregation("sum", "Sum", dimension);
+}
+
+/** @internal */
+export function avg<TDimension>(
+  dimension: NumericAggregationDimension<TDimension>,
+): FieldAggregationSchema<"avg", NumericAggregationDimension<TDimension>> {
+  return fieldAggregation("avg", "Average", dimension);
+}
+
+/** @internal */
+export function median<TDimension>(
+  dimension: NumericAggregationDimension<TDimension>,
+): FieldAggregationSchema<"median", NumericAggregationDimension<TDimension>> {
+  return fieldAggregation("median", "Median", dimension);
+}
+
+/** @internal */
+export function distinct<TDimension>(
+  dimension: TDimension,
+): FieldAggregationSchema<"distinct", TDimension> {
+  return fieldAggregation("distinct", "Distinct values", dimension);
+}
+
+/** @internal */
+export function min<TDimension>(
+  dimension: OrderableAggregationDimension<TDimension>,
+): FieldAggregationSchema<"min", OrderableAggregationDimension<TDimension>> {
+  return fieldAggregation("min", "Minimum", dimension);
+}
+
+/** @internal */
+export function max<TDimension>(
+  dimension: OrderableAggregationDimension<TDimension>,
+): FieldAggregationSchema<"max", OrderableAggregationDimension<TDimension>> {
+  return fieldAggregation("max", "Maximum", dimension);
+}
+
+function fieldAggregation<
+  TOperator extends FieldAggregationOperator,
+  TDimension,
+>(
+  type: TOperator,
+  displayName: string,
+  dimension: TDimension,
+): FieldAggregationSchema<TOperator, TDimension> {
+  return {
+    type,
+    dimension,
+    columns: [
+      {
+        name: getFieldAggregationColumnName(type),
+        displayName,
+        jsType: getFieldAggregationColumnJavaScriptType(type, dimension),
+      },
+    ],
+  } as unknown as FieldAggregationSchema<TOperator, TDimension>;
+}
+
+function getFieldAggregationColumnName(type: FieldAggregationOperator): string {
+  return type === "distinct" ? "count" : type;
+}
+
+function getFieldAggregationColumnJavaScriptType(
+  type: FieldAggregationOperator,
+  dimension: unknown,
+): SchemaJavaScriptType {
+  if (type !== "min" && type !== "max") {
+    return "number";
+  }
+
+  if (dimension == null || typeof dimension !== "object") {
+    return "number";
+  }
+
+  const jsType = (dimension as { jsType?: unknown }).jsType;
+
+  if (isOrderableJavaScriptType(jsType)) {
+    return jsType;
+  }
+
+  return "number";
+}
+
+function isOrderableJavaScriptType(
+  value: unknown,
+): value is Exclude<SchemaJavaScriptType, "unknown"> {
+  return (
+    value === "string" ||
+    value === "number" ||
+    value === "boolean" ||
+    value === "Date"
+  );
 }
 
 /** @internal */

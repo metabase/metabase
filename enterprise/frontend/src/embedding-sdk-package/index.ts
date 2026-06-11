@@ -33,10 +33,16 @@ export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
 /** @internal */
 export {
+  avg,
   breakout,
   count,
   createMetabaseQuery,
+  distinct,
   filter,
+  max,
+  median,
+  min,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";

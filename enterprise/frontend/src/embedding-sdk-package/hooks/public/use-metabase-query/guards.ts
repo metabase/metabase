@@ -7,6 +7,7 @@ import type {
 import type {
   CountAggregationRuntime,
   DimensionFilterRuntime,
+  FieldAggregationRuntime,
   ID,
   MeasureReferenceRuntime,
   MetabaseQueryRuntime,
@@ -147,6 +148,23 @@ export function isCountAggregation(
     value != null &&
     "type" in value &&
     value.type === "count"
+  );
+}
+
+export function isFieldAggregation(
+  value: unknown,
+): value is FieldAggregationRuntime {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "type" in value &&
+    "dimension" in value &&
+    (value.type === "sum" ||
+      value.type === "avg" ||
+      value.type === "median" ||
+      value.type === "distinct" ||
+      value.type === "min" ||
+      value.type === "max")
   );
 }
 
