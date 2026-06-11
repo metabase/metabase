@@ -10,6 +10,14 @@
   background-color: var(--mb-color-background-secondary);
 }
 
+.metricPillText {
+  color: inherit;
+}
+
+.disabled {
+  color: var(--mb-color-text-tertiary);
+}
+
 .menuTarget {
   pointer-events: none;
 }

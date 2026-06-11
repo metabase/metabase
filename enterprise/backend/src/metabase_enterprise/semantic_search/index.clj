@@ -872,7 +872,8 @@
             embedding (tracing/with-span :search "search.semantic.embedding"
                         {:search.semantic/provider   (:provider embedding-model)
                          :search.semantic/model-name (:model-name embedding-model)}
-                        (embedding/get-embedding embedding-model search-string
+                        (embedding/get-embedding embedding-model
+                                                 (embedding/prefix-search-query embedding-model search-string)
                                                  {:type :query :record-tokens? true}))
             embedding-time-ms (u/since-ms timer)
 

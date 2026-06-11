@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import type { AdminPathKey, State } from "metabase/redux/store";
+import { getUser } from "metabase/selectors/user";
 import type {
   PermissionSubject,
   SpecialGroupType,
-} from "metabase/admin/permissions/types";
-import type { AdminPathKey, State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
-import type { User } from "metabase-types/api";
+  User,
+} from "metabase-types/api";
 
 const canUserAccessDataModel = (user?: User) =>
   user?.permissions?.can_access_data_model ?? false;

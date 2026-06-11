@@ -70,6 +70,16 @@
       (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
                               (ring.mock/header "X-Forwarded-Proto" "https, http")))
       (is (= "https://mb.example.com" (system/site-url)))))
+  (testing "the alternate HTTPS-indicator headers `u/https?` recognizes also seed the scheme"
+    (doseq [[header value] [["X-Forwarded-Protocol" "https"]
+                            ["X-URL-Scheme"         "https"]
+                            ["X-Forwarded-Ssl"      "on"]
+                            ["Front-End-Https"      "on"]]]
+      (testing header
+        (mt/with-temporary-setting-values [site-url nil]
+          (maybe-set-site-url (-> (mock-request "/" nil "mb.example.com" nil)
+                                  (ring.mock/header header value)))
+          (is (= "https://mb.example.com" (system/site-url)))))))
   (testing "without `X-Forwarded-Proto`, a scheme-less host falls back to http:// (unchanged behavior)"
     (mt/with-temporary-setting-values [site-url nil]
       (maybe-set-site-url (mock-request "/" nil "mb.example.com" nil))

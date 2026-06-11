@@ -216,6 +216,30 @@
             (is (= "success" (:status response)))
             (is (remote-sync.task/successful? completed-task))))))))
 
+(deftest import-creates-audit-log-entry-test
+  (testing "POST /api/ee/remote-sync/import records a remote-sync-import audit log entry (#73335)"
+    ;; :audit-app is needed for events to actually be recorded to the audit log
+    (mt/with-premium-features #{:remote-sync :audit-app}
+      (let [mock-main (test-helpers/create-mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "test-token"
+                                           remote-sync-branch "main"]
+          (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-main)]
+            (let [before            (t2/count :model/AuditLog :topic "remote-sync-import")
+                  {:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})]
+              (wait-for-task-completion task_id)
+              ;; the audit event publishes after the task's ended_at is set, so poll for the row
+              (let [entry (dh/with-retry {:max-retries 10
+                                          :delay-ms 200}
+                            (u/prog1 (t2/select-one :model/AuditLog :topic "remote-sync-import" {:order-by [[:id :desc]]})
+                              (when (<= (t2/count :model/AuditLog :topic "remote-sync-import") before)
+                                (throw (ex-info "Audit log entry not written yet" {})))))]
+                (testing "attributed to the user who triggered it"
+                  (is (= (mt/user->id :crowberto) (:user_id entry))))
+                (testing "branch recorded, no :auto flag for manual imports"
+                  (is (= "main" (get-in entry [:details :branch])))
+                  (is (not (contains? (:details entry) :auto))))))))))))
+
 (deftest import-requires-superuser-test
   (testing "POST /api/ee/remote-sync/import requires superuser permissions"
     (mt/with-temporary-setting-values [remote-sync-enabled true]
@@ -334,8 +358,11 @@
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
-      (mt/with-temp [:model/Collection _ {:is_remote_synced true :name "Test Collection" :location "/"}]
-        (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
+      (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true :name "Test Collection" :location "/"}]
+        ;; A pending create makes the export take the incremental write path, where the error fires.
+        (t2/insert! :model/RemoteSyncObject {:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                                             :status "create" :status_changed_at (t/offset-date-time)})
+        (let [mock-main (test-helpers/create-mock-source :fail-mode :apply-changes-error)]
           (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]

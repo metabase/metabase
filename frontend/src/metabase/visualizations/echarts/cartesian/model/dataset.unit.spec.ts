@@ -42,6 +42,7 @@ import type {
   TimeSeriesXAxisModel,
   XAxisModel,
 } from "./types";
+import { getBarSeriesDataLabelKey } from "./util";
 
 const createMockComputedVisualizationSettings = (
   opts: Partial<ComputedVisualizationSettings> = {},
@@ -509,6 +510,90 @@ describe("dataset transform functions", () => {
           dimensionKey: "A",
           series1: 0,
           series2: 200,
+        },
+      ]);
+    });
+
+    it("should replace bar series zero values with nulls when the series has non-zero values", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 10,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: null,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 10,
+        },
+      ]);
+    });
+
+    it("should preserve bar series zero values when the whole series is zero", () => {
+      const dataset = [
+        {
+          [X_AXIS_DATA_KEY]: "A",
+          series1: 0,
+        },
+        {
+          [X_AXIS_DATA_KEY]: "B",
+          series1: 0,
+        },
+      ];
+
+      const result = applyVisualizationSettingsDataTransformations(
+        dataset,
+        [],
+        xAxisModel,
+        [createMockSeriesModel({ dataKey: "series1" })],
+        [],
+        yAxisScaleTransforms,
+        createMockComputedVisualizationSettings({
+          series: () => ({ display: "bar" }),
+        }),
+      );
+
+      expect(result).toEqual([
+        {
+          [INDEX_KEY]: 0,
+          [X_AXIS_DATA_KEY]: "A",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "A",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
+        },
+        {
+          [INDEX_KEY]: 1,
+          [X_AXIS_DATA_KEY]: "B",
+          [X_AXIS_RAW_VALUE_DATA_KEY]: "B",
+          [getBarSeriesDataLabelKey("series1", "+")]: Number.MIN_VALUE,
+          series1: 0,
         },
       ]);
     });

@@ -1,3 +1,4 @@
+import type { DashboardSubscriptionData } from "metabase/redux/store";
 import type {
   ChannelApiResponse,
   CreateSubscriptionRequest,
@@ -76,6 +77,16 @@ export const subscriptionApi = Api.injectEndpoints({
           idTag("subscription", id),
         ]),
     }),
+    testSubscription: builder.mutation<
+      { ok: boolean },
+      DashboardSubscriptionData
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/pulse/test",
+        body,
+      }),
+    }),
     getChannelInfo: builder.query<ChannelApiResponse, void>({
       query: () => ({
         method: "GET",
@@ -92,5 +103,6 @@ export const {
   useCreateSubscriptionMutation,
   useUpdateSubscriptionMutation,
   useUnsubscribeMutation,
+  useTestSubscriptionMutation,
   useGetChannelInfoQuery,
 } = subscriptionApi;

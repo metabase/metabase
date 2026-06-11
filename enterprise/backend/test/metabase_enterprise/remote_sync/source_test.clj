@@ -26,6 +26,10 @@
       (reset! written-files {:message message :files realized-files}))
     "mock-written-version")
 
+  (apply-changes! [_ message upserts _delete-paths]
+    (reset! written-files {:message message :files (vec upserts)})
+    "mock-written-version")
+
   (version [_]
     "mock-version"))
 
@@ -62,7 +66,7 @@
             mock-source (->MockSource written-files)
             test-entities [(create-test-entity "test-id-1" "entity-one" "Collection")
                            (create-test-entity "test-id-2" "entity-two" "Card")]]
-        (is (= "mock-written-version" (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message")))
+        (is (= "mock-written-version" (:version (source/store! test-entities (source.p/snapshot mock-source) task-id "Test commit message"))))
         (testing "write-files! was called with correct message"
           (is (= "Test commit message" (:message @written-files))))
         (testing "write-files! was called with correct number of files"
