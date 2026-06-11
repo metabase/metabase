@@ -87,7 +87,8 @@ export function TreemapLegend({
             <Text
               data-testid="legend-name"
               x={nameX}
-              verticalAnchor="start"
+              y={TREEMAP_LEGEND_ROW_HEIGHT / 2}
+              verticalAnchor="middle"
               fontSize={TREEMAP_LEGEND_FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-primary")}
@@ -96,8 +97,9 @@ export function TreemapLegend({
             </Text>
             <Text
               x={valueRight}
+              y={TREEMAP_LEGEND_ROW_HEIGHT / 2}
               textAnchor="end"
-              verticalAnchor="start"
+              verticalAnchor="middle"
               fontSize={TREEMAP_LEGEND_FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-primary")}
@@ -106,8 +108,9 @@ export function TreemapLegend({
             </Text>
             <Text
               x={width}
+              y={TREEMAP_LEGEND_ROW_HEIGHT / 2}
               textAnchor="end"
-              verticalAnchor="start"
+              verticalAnchor="middle"
               fontSize={TREEMAP_LEGEND_FONT_SIZE}
               fontWeight={fontWeight}
               fill={getColor("text-secondary")}
