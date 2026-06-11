@@ -559,6 +559,39 @@
 
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
+(defn target-indexes
+  "The indexes declared on a transform `target`, normalized into the structured shape drivers expect. They are
+  stored on the target JSON, so keyword-valued fields (`:kind`, `:style`, `:type`, and each column's `:direction`)
+  come back as strings and must be re-keywordized before a driver can dispatch on them. This is the single
+  declared-indexes read used at every creation seam; it becomes a `metabase_index_request` read later."
+  [target]
+  (mapv (fn [index]
+          (cond-> index
+            (:kind index)    (update :kind keyword)
+            (:style index)   (update :style keyword)
+            (:type index)    (update :type keyword)
+            (:columns index) (update :columns (fn [cols]
+                                                (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
+        (:indexes target)))
+
+(defn- apply-standalone-indexes!
+  "Create the target table's `:standalone` indexes as separate DDL statements, now that the table exists. Each
+  driver's `supported-index-methods` decides which index kinds it applies this way; `:inline` kinds (and inline-only
+  drivers) render inside the table-creation statement and are skipped here, so passing the full index list is safe.
+  Runs synchronously and is required, not best-effort: a failure here propagates and fails the run."
+  [database target]
+  (when-let [indexes (not-empty (target-indexes target))]
+    (let [driver     (:engine database)
+          methods    (driver/supported-index-methods driver database)
+          standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
+      (when (seq standalone)
+        (let [conn-spec (driver/connection-spec driver database)
+              schema    (:schema target)
+              table     (:name target)]
+          (doseq [index standalone]
+            (driver/execute-raw-queries! driver conn-spec
+                                         (driver/compile-create-index driver schema table index))))))))
+
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
 
@@ -581,6 +614,12 @@
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
+    ;; Apply standalone indexes once the table exists. Only on full-create runs: a full `:table` run recreates the
+    ;; table (so indexes must be reinstalled), as does a first/full-reset incremental run. Plain append runs preserve
+    ;; the existing table and its live indexes, so they skip this. No-op for inline-only drivers/kinds.
+    (when (or (= :table (keyword (:type target)))
+              (full-incremental-run? transform))
+      (apply-standalone-indexes! database target))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete
