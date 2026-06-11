@@ -12,7 +12,7 @@ import {
   makePivotAwareQueryRunner,
   publicApi,
 } from "metabase/api";
-import { isAbortError } from "metabase/api/legacy-client";
+import { isAbortError } from "metabase/api/client";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";

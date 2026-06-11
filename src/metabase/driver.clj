@@ -1331,11 +1331,20 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(mr/def ::run-transform-result
+  "Result map returned by every `run-transform!` implementation. Must carry an integer `:rows-affected` (the row count
+  the transform wrote). Open map — implementations may attach extra keys."
+  [:map
+   [:rows-affected :int]])
+
 (defmulti run-transform!
   "Runs a transform.
 
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
-  types."
+  types.
+
+  Implementations must return a map conforming to [[::run-transform-result]] — i.e. containing an integer
+  `:rows-affected`. Define them with `mu/defmethod ... :- ::run-transform-result` so the contract is validated."
   {:added "0.57.0",
    :arglists '([driver
                 {:keys [transform-type conn-spec query output-table] :as _transform-details}

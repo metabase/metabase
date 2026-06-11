@@ -216,7 +216,7 @@ export function useSetArchive() {
         );
       }
 
-      await setArchived(item, archived);
+      await setArchived(item, archived).unwrap();
 
       if (notify) {
         const labels = LABELS[item.model];

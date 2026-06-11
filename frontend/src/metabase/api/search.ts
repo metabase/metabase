@@ -17,7 +17,9 @@ export const searchApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideSearchItemListTags(response?.data ?? [], models),
       onQueryStarted: (args, { queryFulfilled, requestId }) => {
-        if (isTrackedSearchContext(args.context)) {
+        // Only track searches with an actual text query. Query-less requests are filter/available-model
+        // lookups and internal existence probes, not searches the user performed.
+        if (isTrackedSearchContext(args.context) && args.q?.trim()) {
           const start = Date.now();
           return handleQueryFulfilled(queryFulfilled, (data) => {
             const duration = Date.now() - start;
