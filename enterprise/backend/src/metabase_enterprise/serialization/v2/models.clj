@@ -79,6 +79,7 @@
    "ConnectionImpersonation"
    "ContentTranslation"
    "DashboardBookmark"
+   "DataApp"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
