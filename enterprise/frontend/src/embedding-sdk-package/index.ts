@@ -32,13 +32,18 @@ export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
 export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
+  ActionImplicitKind,
   ActionKind,
+  ActionKindFromDataAppSchema,
+  ActionParameterSchema,
+  ActionParametersFromDataAppSchema,
   ActionResultForBulk,
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
   ActionResultForSql,
   ActionResultForUpdate,
+  ActionSchema,
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
@@ -58,6 +63,7 @@ export {
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
 /** @internal */
+export { useMetricQuery } from "./hooks/public/use-metric-query";
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
