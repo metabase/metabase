@@ -23,11 +23,12 @@
    {:id "openai.gpt-oss-120b" :object "model"}
    {:id "deepseek.v3.2" :object "model"}
    {:id "anthropic.claude-opus-4-8" :object "model"}
+   {:id "anthropic.claude-fable-5" :object "model"}
    {:id "openai.gpt-5.4" :object "model"}])
 
 (deftest list-models-filters-to-supported-vendors-test
   (mt/with-dynamic-fn-redefs [bedrock/list-all-models (constantly fake-catalog)]
-    (testing "only anthropic.* and openai.* models survive, gpt-oss excluded, sorted by id"
+    (testing "only anthropic.* and openai.* models survive, gpt-oss and fable excluded, sorted by id"
       (is (= {:models [{:id "anthropic.claude-haiku-4-5" :display_name "anthropic.claude-haiku-4-5"}
                        {:id "anthropic.claude-opus-4-8" :display_name "anthropic.claude-opus-4-8"}
                        {:id "openai.gpt-5.4" :display_name "openai.gpt-5.4"}
@@ -43,12 +44,48 @@
          (bedrock/list-models)))))
 
 (deftest list-models-requires-both-keys-test
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIDEXAMPLE"
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                      llm.settings/llm-bedrock-secret-access-key nil]
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"AWS Bedrock credentials are not configured"
          (bedrock/list-models)))))
+
+(deftest list-models-accepts-credentials-override-test
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                     llm.settings/llm-bedrock-secret-access-key nil]
+    (testing "credentials passed in opts are used without requiring saved settings"
+      (let [captured (atom nil)]
+        (with-redefs [http/request (fn [req] (reset! captured req) {:body {:data fake-catalog}})]
+          (is (=? {:models [{:id "anthropic.claude-haiku-4-5"}
+                            {:id "anthropic.claude-opus-4-8"}
+                            {:id "openai.gpt-5.4"}
+                            {:id "openai.gpt-5.5"}]}
+                  (bedrock/list-models {:credentials {:access-key-id     "AKIAOVERRIDEOVERRID1"
+                                                      :secret-access-key "override-secret"
+                                                      :session-token     "override-token"
+                                                      :region            "eu-west-1"}})))
+          (is (=? {:url     "https://bedrock-mantle.eu-west-1.api.aws/v1/models"
+                   :headers {"Authorization"        #".*Credential=AKIAOVERRIDEOVERRID1/.*"
+                             "X-Amz-Security-Token" "override-token"}}
+                  @captured)))))))
+
+(deftest list-models-credentials-override-must-be-complete-test
+  (testing "an override missing the secret access key throws without falling back to saved settings"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"AWS Bedrock credentials are not configured"
+         (bedrock/list-models {:credentials {:access-key-id "AKIAOVERRIDEOVERRID1"}})))))
+
+(deftest list-models-credentials-override-region-validated-test
+  (testing "a bogus region in override credentials is rejected before the mantle URL is built"
+    (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid AWS Bedrock region \"evil\.example/\?x=\""
+           (bedrock/list-models {:credentials {:access-key-id     "AKIAOVERRIDEOVERRID1"
+                                               :secret-access-key "override-secret"
+                                               :region            "evil.example/?x="}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; API family dispatch
@@ -57,7 +94,7 @@
 (defn- captured-raw-request!
   "Run `bedrock-raw` with HTTP stubbed out and return the clj-http request map it would send."
   [opts]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIDEXAMPLE"
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                      llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                                      llm.settings/llm-bedrock-session-token nil
                                      llm.settings/llm-bedrock-region "us-east-1"]
@@ -77,7 +114,7 @@
                "Host"                 "bedrock-mantle.us-east-1.api.aws"
                "Content-Type"         "application/json"
                "x-amz-content-sha256" #"^[0-9a-f]{64}$"
-               "Authorization"        #"^AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/.*SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date.*"}
+               "Authorization"        #"^AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/.*SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date.*"}
               (:headers req))))
     (testing "body is an Anthropic Messages request without the top-level cache_control mantle rejects"
       (is (=? {:model    "anthropic.claude-haiku-4-5"
@@ -132,7 +169,7 @@
             (.getBytes (str/join (map #(str "data: " (json/encode %) "\n\n") events)) "UTF-8"))})
 
 (defn- aisdk-parts-for! [model events]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIDEXAMPLE"
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                      llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                                      llm.settings/llm-bedrock-region "us-east-1"]
     (with-redefs [debug/capture-stream (fn [r _] r)
@@ -173,7 +210,7 @@
 
 (deftest invalid-region-rejected-before-request-test
   (testing "a bogus region set via env var is rejected before the mantle URL is built"
-    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIDEXAMPLE"
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                        llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
       (mt/with-temp-env-var-value! [mb-llm-bedrock-region "evil.example/?x="]
         (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
@@ -189,7 +226,7 @@
 (defn- list-models-error-message!
   "The translated message `list-models` throws when the HTTP layer fails with `status`/`body`."
   [status body]
-  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIDEXAMPLE"
+  (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id "AKIAIOSFODNN7EXAMPLE"
                                      llm.settings/llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
                                      llm.settings/llm-bedrock-region "us-east-1"]
     (with-redefs [http/request (fn [_] (throw (ex-info "HTTP error" {:status  status
