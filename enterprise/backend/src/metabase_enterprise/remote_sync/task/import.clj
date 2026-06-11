@@ -39,8 +39,13 @@
                 (let [result (impl/import! snapshot task-id)]
                   (impl/handle-task-result! result task-id)
                   (when (= :success (:status result))
-                    (impl/publish-sync-event! :event/remote-sync-import task-id
-                                              {:branch branch :auto true} nil)))))))))))
+                    ;; events/publish-event! rethrows handler exceptions; don't let an audit-log
+                    ;; failure mark an already-successful import as failed
+                    (try
+                      (impl/publish-sync-event! :event/remote-sync-import task-id
+                                                {:branch branch :auto true} nil)
+                      (catch Exception e
+                        (log/error e "Failed to publish remote-sync audit event")))))))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))
