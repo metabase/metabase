@@ -92,10 +92,13 @@ export function chartPathsWithFillColors(colors) {
 
 const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
 const DIAMOND_PATH = "M0 -1L1 0L0 1L-1 0Z";
+
+export function cartesianChartCircles() {
+  return echartsContainer().find(`path[d="${CIRCLE_PATH}"]`);
+}
+
 export function cartesianChartCircle() {
-  return echartsContainer()
-    .find(`path[d="${CIRCLE_PATH}"]`)
-    .should("be.visible");
+  return cartesianChartCircles().should("be.visible");
 }
 
 export function cartesianChartCircleWithColor(color) {
