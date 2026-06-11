@@ -1670,6 +1670,16 @@
             (is (= (t2/select-one-fn :id :model/Dashboard :entity_id (:entity_id dash1))
                    (t2/select-one-fn :dashboard_id :model/Card :entity_id (:entity_id card-2))))))))))
 
+(defn- card-sourced-param
+  "A category parameter whose dropdown values come from `card-id`'s results."
+  [card-id]
+  {:id                   "abc"
+   :type                 "category"
+   :name                 "CATEGORY"
+   :slug                 "category"
+   :values_source_type   "card"
+   :values_source_config {:card_id card-id}})
+
 (deftest self-referencing-parameter-card-test
   (testing "a card whose parameter sources dropdown values from the card itself can be loaded (#73133)"
     (ts/with-dbs [source-db dest-db]
@@ -1677,12 +1687,7 @@
         (let [coll (ts/create! :model/Collection :name "coll")
               card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
               _    (t2/update! :model/Card (:id card)
-                               {:parameters [{:id                   "abc"
-                                              :type                 "category"
-                                              :name                 "CATEGORY"
-                                              :slug                 "category"
-                                              :values_source_type   "card"
-                                              :values_source_config {:card_id (:id card)}}]})
+                               {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
           (testing "loading on top of the existing card"
@@ -1704,21 +1709,17 @@
         (let [coll   (ts/create! :model/Collection :name "coll")
               card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
               card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
-              param  (fn [other-card-id]
-                       [{:id                   "abc"
-                         :type                 "category"
-                         :name                 "CATEGORY"
-                         :slug                 "category"
-                         :values_source_type   "card"
-                         :values_source_config {:card_id other-card-id}}])
-              _      (t2/update! :model/Card (:id card-a) {:parameters (param (:id card-b))})
-              _      (t2/update! :model/Card (:id card-b) {:parameters (param (:id card-a))})
+              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
               ser    (into [] (serdes.extract/extract {:no-settings   true
                                                        :no-data-model false}))]
           (testing "loading on top of the existing cards"
             (is (serdes.load/load-metabase! (ingestion-in-memory ser)))
             (is (= (:id card-b)
                    (-> (t2/select-one :model/Card :entity_id (:entity_id card-a))
+                       :parameters first :values_source_config :card_id)))
+            (is (= (:id card-a)
+                   (-> (t2/select-one :model/Card :entity_id (:entity_id card-b))
                        :parameters first :values_source_config :card_id))))
           (testing "loading into an empty database"
             (ts/with-db dest-db
@@ -1739,12 +1740,7 @@
               card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
               _    (t2/update! :model/Dashboard (:id dash)
-                               {:parameters [{:id                   "abc"
-                                              :type                 "category"
-                                              :name                 "CATEGORY"
-                                              :slug                 "category"
-                                              :values_source_type   "card"
-                                              :values_source_config {:card_id (:id card)}}]})
+                               {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
           (testing "loading on top of the existing dashboard"
