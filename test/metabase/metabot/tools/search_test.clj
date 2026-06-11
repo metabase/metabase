@@ -453,6 +453,18 @@
             (testing "refs whose entity no longer exists are dropped"
               (is (= 3 (count results))))))))))
 
+(deftest entity-refs->search-results-same-card-two-types-test
+  (testing "a card referenced under two type strings hydrates to one record per ref (neither is dropped)"
+    (mt/with-test-user :crowberto
+      (mt/with-temp [:model/Card {c-id :id} {:name "Dual Typed"
+                                             :database_id (mt/id) :table_id (mt/id :orders)
+                                             :dataset_query {:database (mt/id) :type :query
+                                                             :query {:source-table (mt/id :orders)}}}]
+        (let [results (search/entity-refs->search-results
+                       [{:model "model" :id c-id} {:model "metric" :id c-id}])]
+          (is (= #{["model" c-id] ["metric" c-id]}
+                 (set (map (juxt :type :id) results)))))))))
+
 (deftest entity-refs->search-results-respects-read-perms-test
   (testing "hydration drops entities the current user can't read — a curated entry may point at a restricted one"
     (mt/with-non-admin-groups-no-root-collection-perms

@@ -27,11 +27,19 @@
   [[metabase-enterprise.curated-search.task.sync]] schedules it."
   (jobs/key "metabase-enterprise.curated-search.sync.job"))
 
-(defn available?
-  "Whether the curated search mirror can run on this instance: a pgvector store is configured and the
-  license includes semantic search."
+(defn pgvector-configured?
+  "True when a pgvector store is configured (read once at boot from MB_PGVECTOR_DB_URL).
+  The sync task gates scheduling on this rather than [[available?]], so the periodic safety net exists
+  even when the semantic-search feature is turned on after startup (a common onboarding flow)."
   []
-  (and (string? (not-empty semantic.db.datasource/db-url))
+  (string? (not-empty semantic.db.datasource/db-url)))
+
+(defn available?
+  "Whether the curated search mirror can run right now: a pgvector store is configured and the license
+  includes semantic search.
+  The feature check can flip at runtime (token entered post-boot), so callers re-evaluate per use."
+  []
+  (and (pgvector-configured?)
        (premium-features/has-feature? :semantic-search)))
 
 (defenterprise request-sync!

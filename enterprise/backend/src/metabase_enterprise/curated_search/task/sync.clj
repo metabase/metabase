@@ -39,7 +39,10 @@
 (def ^:private ^Duration run-frequency (Duration/parse "PT30S"))
 
 (defmethod task/init! ::CuratedSearchEntrySync [_]
-  (when (curated-search.core/available?)
+  ;; Gate scheduling on pgvector being configured (boot-fixed), NOT on available? — the job body
+  ;; self-gates on the feature flag, so scheduling here lets the periodic safety net (and the
+  ;; write-path trigger's target job) exist even when the license is enabled after startup.
+  (when (curated-search.core/pgvector-configured?)
     (let [job     (jobs/build
                    (jobs/of-type CuratedSearchEntrySync)
                    (jobs/store-durably)

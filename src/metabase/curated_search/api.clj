@@ -70,7 +70,7 @@
    _query-params
    {:keys [search_prompt usage_instructions entity verified]}
    :- [:map
-       [:search_prompt      :string]
+       [:search_prompt      ms/NonBlankString]
        [:usage_instructions {:optional true} [:maybe :string]]
        [:entity             EntityRef]
        [:verified           {:optional true} [:maybe :boolean]]]]
@@ -91,7 +91,7 @@
    ;; null can clear the nullable usage_instructions. The non-nullable fields reject null in the schema.
    {:keys [search_prompt usage_instructions entity verified] :as body}
    :- [:map
-       [:search_prompt      {:optional true} :string]
+       [:search_prompt      {:optional true} ms/NonBlankString]
        [:usage_instructions {:optional true} [:maybe :string]]
        [:entity             {:optional true} EntityRef]
        [:verified           {:optional true} :boolean]]]

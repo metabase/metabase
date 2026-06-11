@@ -50,6 +50,16 @@
             (mirror/request-sync!)
             (is (= [curated-search.core/sync-job-key] @triggered))))))))
 
+(deftest pgvector-configured-decoupled-from-feature-test
+  (testing "scheduling gates on pgvector config, independent of the feature flag, so a license enabled after boot still gets the periodic sync"
+    ;; db-url is read directly as a var, so with-redefs (not with-dynamic-fn-redefs) is required here.
+    (with-redefs [semantic.db.datasource/db-url "jdbc:postgresql://stub"]
+      (mt/with-premium-features #{}
+        (is (true? (curated-search.core/pgvector-configured?)))
+        (is (false? (curated-search.core/available?))))
+      (mt/with-premium-features #{:semantic-search}
+        (is (true? (curated-search.core/available?)))))))
+
 (deftest ^:sequential verified-boost-applies-before-limit-test
   (testing "the SQL LIMIT ranks by blended score: a verified row slightly farther by raw distance still wins top-1"
     (when semantic.db.datasource/db-url

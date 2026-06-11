@@ -323,32 +323,36 @@
        :description     (:description t)})))
 
 (defn- card-refs->results
-  "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`)."
+  "Build post-processed search-result records for card-backed refs (`{:id .. :type \"model\"|\"metric\"|\"question\"}`).
+  Emits one record per ref, so the same card registered under two type strings yields a record for each
+  (rather than collapsing to one and silently dropping the other)."
   [refs]
-  (let [ids       (map :id refs)
-        id->type  (into {} (map (juxt :id :type)) refs)
+  (let [ids       (distinct (map :id refs))
         ;; only surface cards the current user can read (collection perms) — see table-refs->results
-        cards     (when (seq ids)
-                    (filter mi/can-read?
-                            (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
-                                       :id [:in ids])))
-        coll-ids  (->> cards (keep :collection_id) distinct)
+        id->card  (when (seq ids)
+                    (into {} (map (juxt :id identity))
+                          (filter mi/can-read?
+                                  (t2/select [:model/Card :id :name :description :database_id :collection_id :card_schema]
+                                             :id [:in ids]))))
+        coll-ids  (->> (vals id->card) (keep :collection_id) distinct)
         id->coll  (when (seq coll-ids)
                     (into {} (map (juxt :id identity))
                           (t2/select [:model/Collection :id :name :authority_level] :id [:in coll-ids])))
+        ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
         verified  (when (seq ids)
                     (t2/select-fn-set :moderated_item_id :model/ModerationReview
                                       :moderated_item_id [:in ids] :moderated_item_type "card"
                                       :most_recent true :status "verified"))]
-    (for [c cards]
+    (for [{:keys [id type]} refs
+          :let [c (id->card id)]
+          :when c]
       (let [coll (get id->coll (:collection_id c))]
-        {:id          (:id c)
-         :type        (id->type (:id c))
+        {:id          id
+         :type        type
          :name        (:name c)
          :description (:description c)
          :database_id (:database_id c)
-         ;; verified is already a set (t2/select-fn-set), possibly nil when there were no ids
-         :verified    (contains? verified (:id c))
+         :verified    (contains? verified id)
          :collection  (when coll (select-keys coll [:id :name :authority_level]))}))))
 
 (defn ref-model->entity-type

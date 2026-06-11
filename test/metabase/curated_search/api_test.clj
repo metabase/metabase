@@ -76,6 +76,9 @@
     (mt/user-http-request :crowberto :post 400 "curated-search/"
                           {:search_prompt "find users"
                            :entity        {:model "garbage" :id 1}}))
+  (testing "a blank search_prompt is rejected"
+    (mt/user-http-request :crowberto :post 400 "curated-search/"
+                          {:search_prompt "   " :entity {:model "table" :id 1}}))
   (testing "non-superuser gets 403"
     (mt/user-http-request :rasta :post 403 "curated-search/"
                           {:search_prompt "find orders" :entity {:model "table" :id 1}})))
@@ -105,6 +108,9 @@
                             {:entity nil})
       (mt/user-http-request :crowberto :put 400 (str "curated-search/" (:id entry))
                             {:verified nil}))
+    (testing "a blank search_prompt is rejected"
+      (mt/user-http-request :crowberto :put 400 (str "curated-search/" (:id entry))
+                            {:search_prompt "  "}))
     (testing "returns 404 for unknown id"
       (mt/user-http-request :crowberto :put 404 "curated-search/0" {:search_prompt "x"}))
     (testing "non-superuser gets 403"
