@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
@@ -25,6 +26,7 @@ export interface ExplorationTreeHeading {
   explorationId?: ExplorationId;
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
+  lastActivityAt?: string;
 }
 
 export interface ExplorationTreeQueryGroup {
@@ -72,6 +74,9 @@ export function getExplorationSidebarTree(
         explorationId: exploration.id,
         thread,
         status: getExplorationQueryGroupStatus(thread.queries ?? []),
+        lastActivityAt: latestTimestamp(
+          (thread.queries ?? []).map((query) => query.finished_at),
+        ),
       },
       children: getExplorationQueryTree(thread),
     };
@@ -84,10 +89,57 @@ export function getExplorationSidebarTree(
     data: {
       type: "heading",
       status: getDocumentsHeadingStatus(documentNodes),
+      lastActivityAt: latestTimestamp(
+        (exploration.threads ?? []).flatMap((thread) =>
+          (thread.documents ?? []).map((document) => document.updated_at),
+        ),
+      ),
     },
     children: documentNodes,
   });
   return tree;
+}
+
+function latestTimestamp(
+  values: (string | null | undefined)[],
+): string | undefined {
+  let latest: string | undefined;
+  for (const value of values) {
+    if (value != null && (latest == null || value > latest)) {
+      latest = value;
+    }
+  }
+  return latest;
+}
+
+/** Compact "time ago" for sidebar headings: `now`, `5m`, `3h`, `2d`, `4w`, `6mo`, `1y`. */
+export function getCompactRelativeTime(timestamp: string): string {
+  const now = dayjs();
+  const then = dayjs(timestamp);
+  const minutes = now.diff(then, "minute");
+  if (minutes < 1) {
+    return t`now`;
+  }
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  const hours = now.diff(then, "hour");
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+  const days = now.diff(then, "day");
+  if (days < 7) {
+    return `${days}d`;
+  }
+  const weeks = now.diff(then, "week");
+  if (weeks < 4) {
+    return `${weeks}w`;
+  }
+  const months = now.diff(then, "month");
+  if (months < 12) {
+    return `${months}mo`;
+  }
+  return `${now.diff(then, "year")}y`;
 }
 
 function getDocumentsHeadingStatus(

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
@@ -160,13 +161,15 @@ describe("ExplorationSidebar", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a warning icon for error queries", () => {
+  it("shows a red error marker for error queries, with the error message in its tooltip", async () => {
     setup({ queries: [errorQuery] });
 
     const row = getRow("Revenue by source");
-    expect(
-      within(row).getByLabelText("Failed to generate"),
-    ).toBeInTheDocument();
+    const marker = within(row).getByTestId("exploration-error-marker");
+    expect(marker).toBeInTheDocument();
+
+    await userEvent.hover(marker);
+    expect(await screen.findByText("Database timed out")).toBeInTheDocument();
   });
 
   it("keeps a manually collapsed heading collapsed when the tree reloads", async () => {
@@ -422,6 +425,62 @@ describe("ExplorationSidebar", () => {
     });
   });
 
+  describe("heading last-activity label", () => {
+    it("shows the compact time since the newest query run on the thread heading", () => {
+      setup({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Revenue by plan",
+            status: "done",
+            finished_at: dayjs().subtract(2, "day").toISOString(),
+          }),
+        ],
+        groups: [
+          {
+            id: "metric:revenue",
+            parent_group_id: null,
+            position: 0,
+            type: "auto",
+            display_type: "sidebar",
+            name: "Revenue",
+            query_ids: [],
+          },
+          {
+            id: "leaf:1",
+            parent_group_id: "metric:revenue",
+            position: 0,
+            type: "auto",
+            display_type: "singleton",
+            name: "Revenue by plan",
+            query_ids: [1],
+          },
+        ],
+      });
+
+      const heading = screen.getByRole("group", {
+        name: /Initial investigation/,
+      });
+      expect(within(heading).getByText("2d")).toBeInTheDocument();
+    });
+
+    it("shows the compact time since the newest document update on the Findings heading", () => {
+      setup({
+        queries: [],
+        documents: [
+          createExplorationDocument({
+            id: 1,
+            name: "AI Summary",
+            updated_at: dayjs().subtract(5, "hour").toISOString(),
+          }),
+        ],
+      });
+
+      const findings = screen.getByRole("group", { name: /Findings/ });
+      expect(within(findings).getByText("5h")).toBeInTheDocument();
+    });
+  });
+
   describe("heading status inherited from descendant queries", () => {
     const HEADING = "metric:revenue";
     const headingGroups = [
@@ -470,7 +529,7 @@ describe("ExplorationSidebar", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows an error icon once all are settled and one or more errored", () => {
+    it("shows no status icon when settled with an errored child (loading-only)", () => {
       setup({
         queries: [
           createQuery({ id: 1, name: "Leaf A", status: "done" }),
@@ -485,10 +544,8 @@ describe("ExplorationSidebar", () => {
         selectedEntityId: { type: "group", id: "leaf:a" },
       });
 
+      // The heading never surfaces an error icon — only loading.
       const row = headingRow();
-      expect(
-        within(row).getByLabelText("Failed to generate"),
-      ).toBeInTheDocument();
       expect(within(row).queryByLabelText("Loading…")).not.toBeInTheDocument();
     });
 

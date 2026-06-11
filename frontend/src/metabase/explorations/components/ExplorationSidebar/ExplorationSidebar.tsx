@@ -8,6 +8,7 @@ import {
   useRestartExplorationMutation,
   useUpdateExplorationMutation,
 } from "metabase/api/exploration";
+import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { EditableText } from "metabase/common/components/EditableText";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { Tree, useTree } from "metabase/common/components/tree";
@@ -36,6 +37,8 @@ import {
   Loader,
   Menu,
   Stack,
+  Text,
+  Tooltip,
 } from "metabase/ui";
 import type {
   Exploration,
@@ -54,6 +57,7 @@ import {
   type ExplorationTreeItem,
   type ExplorationTreeNode,
   flattenTree,
+  getCompactRelativeTime,
 } from "./utils";
 
 interface ExplorationSidebarProps {
@@ -297,6 +301,20 @@ function ExplorationTreeHeading({
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {item.name}
       </Ellipsified>
+      {item.data?.lastActivityAt && (
+        <Tooltip label={getFormattedTime(item.data.lastActivityAt)}>
+          <Text
+            size="md"
+            c="text-secondary"
+            lh="1rem"
+            flex="none"
+            fw={500}
+            ta="right"
+          >
+            {getCompactRelativeTime(item.data.lastActivityAt)}
+          </Text>
+        </Tooltip>
+      )}
       <ExplorationThreadMenu item={item} canWrite={canWrite} />
     </Box>
   );
@@ -447,6 +465,16 @@ function ExplorationTreeItem({
   const iconProps =
     typeof item.icon === "string" ? { name: item.icon } : item.icon;
 
+  const groupData = item.data.type === "group" ? item.data : null;
+  const isError = groupData?.status === "error";
+  const errorMessage = isError
+    ? groupData.queries.find((query) => query.status === "error")?.error_message
+    : null;
+  const isInteresting =
+    !isError &&
+    (groupData?.interestingness_score ?? 0) >
+      QUERY_INTERESTINGNESS_SCORE_THRESHOLD;
+
   return (
     <ForwardRefLink
       ref={itemRef}
@@ -467,11 +495,8 @@ function ExplorationTreeItem({
       <Ellipsified flex={1} size="md" lh="1.5rem">
         {item.name}
       </Ellipsified>
-      {item.data?.type === "group" &&
-        (item.data.interestingness_score ?? 0) >
-          QUERY_INTERESTINGNESS_SCORE_THRESHOLD && (
-          <PotentiallyInterestingMarker />
-        )}
+      {isError && <ExplorationErrorMarker message={errorMessage} />}
+      {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );
 }
@@ -483,9 +508,6 @@ function ExplorationHeadingStatusIcon({
 }) {
   if (status === "running" || status === "pending") {
     return <Loader size="xs" aria-label={t`Loading…`} />;
-  }
-  if (status === "error") {
-    return <Icon name="warning" c="error" aria-label={t`Failed to generate`} />;
   }
   if (status === "canceled") {
     return (
@@ -505,13 +527,29 @@ function ExplorationTreeItemIcon({
   if (status === "running" || status === "pending") {
     return <Loader size="xs" aria-label={t`Loading…`} />;
   }
-  if (status === "error") {
-    return <Icon name="warning" c="error" aria-label={t`Failed to generate`} />;
-  }
   if (status === "canceled") {
     return (
       <Icon name="octagon_alert" c="icon-primary" aria-label={t`Stopped`} />
     );
   }
+  if (status === "error") {
+    return <Icon {...iconProps} c="text-secondary" aria-hidden />;
+  }
   return <Icon {...iconProps} c="text-secondary" aria-label={t`Ready`} />;
+}
+
+function ExplorationErrorMarker({ message }: { message?: string | null }) {
+  return (
+    <Tooltip label={message || t`Failed to generate`}>
+      <Box
+        aria-label={t`Failed to generate`}
+        data-testid="exploration-error-marker"
+        w="0.375rem"
+        h="0.375rem"
+        bg="feedback-negative"
+        bdrs="50%"
+        flex="none"
+      />
+    </Tooltip>
+  );
 }

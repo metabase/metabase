@@ -1,3 +1,5 @@
+import dayjs from "dayjs";
+
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
   createExploration,
@@ -9,7 +11,11 @@ import {
 import type { ExplorationQueryStatus } from "metabase-types/api";
 
 import type { ExplorationTreeNode, ExplorationTreeQueryGroup } from "./utils";
-import { getExplorationSidebarTree, pickInitialSidebarEntity } from "./utils";
+import {
+  getCompactRelativeTime,
+  getExplorationSidebarTree,
+  pickInitialSidebarEntity,
+} from "./utils";
 
 function getMetricHeadings(tree: ReturnType<typeof getExplorationSidebarTree>) {
   return tree[0]?.children ?? [];
@@ -376,5 +382,91 @@ describe("getExplorationSidebarTree Findings heading status", () => {
       },
     });
     expect(findingsStatus(tree)).toBe("done");
+  });
+});
+
+describe("getExplorationSidebarTree last-activity timestamps", () => {
+  function headingData(node: ITreeNodeItem<ExplorationTreeNode> | undefined) {
+    return node?.data?.type === "heading" ? node.data : undefined;
+  }
+
+  it("derives the thread heading's last activity from the newest query finished_at", () => {
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        queries: [
+          createQuery({
+            id: 1,
+            name: "Q1",
+            status: "done",
+            finished_at: "2026-04-28T10:00:00Z",
+          }),
+          createQuery({
+            id: 2,
+            name: "Q2",
+            status: "done",
+            finished_at: "2026-04-30T12:00:00Z",
+          }),
+          createQuery({ id: 3, name: "Q3", status: "pending" }),
+        ],
+      }),
+    );
+
+    expect(headingData(tree[0])?.lastActivityAt).toBe("2026-04-30T12:00:00Z");
+  });
+
+  it("derives the Findings heading's last activity from the newest document updated_at", () => {
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        documents: [
+          createExplorationDocument({
+            id: 1,
+            name: "Scratchpad",
+            updated_at: "2026-04-29T08:00:00Z",
+          }),
+          createExplorationDocument({
+            id: 2,
+            name: "AI Summary",
+            updated_at: "2026-05-01T09:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    const findings = tree.find((node) => node.id === "documents");
+    expect(headingData(findings)?.lastActivityAt).toBe("2026-05-01T09:00:00Z");
+  });
+
+  it("leaves last activity undefined when no query has finished", () => {
+    const tree = getExplorationSidebarTree(
+      createExploration({
+        queries: [createQuery({ id: 1, name: "Q1", status: "pending" })],
+      }),
+    );
+
+    expect(headingData(tree[0])?.lastActivityAt).toBeUndefined();
+  });
+});
+
+describe("getCompactRelativeTime", () => {
+  it("formats recent timestamps compactly", () => {
+    expect(getCompactRelativeTime(dayjs().toISOString())).toBe("now");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(2, "minute").toISOString()),
+    ).toBe("2m");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(5, "hour").toISOString()),
+    ).toBe("5h");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(3, "day").toISOString()),
+    ).toBe("3d");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(2, "week").toISOString()),
+    ).toBe("2w");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(3, "month").toISOString()),
+    ).toBe("3mo");
+    expect(
+      getCompactRelativeTime(dayjs().subtract(2, "year").toISOString()),
+    ).toBe("2y");
   });
 });
