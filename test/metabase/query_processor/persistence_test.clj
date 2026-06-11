@@ -10,6 +10,7 @@
    [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.test :as qp]
@@ -181,3 +182,48 @@
               (is (= {"Doohickey" 3976, "Gadget" 4939,
                       "Gizmo"     4784, "Widget" 5061}
                      (->> results :data :rows (into {})))))))))))
+
+(deftest sql-qp-independent-persisted-lookup-test
+  (testing "SQL QP looks up the persisted cache rather than using an inline :persisted-info/native from the query map"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (mt/with-temp [:model/Card model {:type          :model
+                                            :database_id   (mt/id)
+                                            :query_type    :query
+                                            :dataset_query (mt/mbql-query products)}]
+            (persist-models!)
+            (let [inline-sql "SELECT 'INLINE' AS marker"
+                  query     {:database (mt/id)
+                             :type     :query
+                             :query    {:source-table          (str "card__" (:id model))
+                                        :persisted-info/native inline-sql
+                                        :limit                 1}}
+                  results   (qp/process-query query)
+                  native-sql (-> results :data :native_form :query)
+                  persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+              (testing "Uses the persisted cache, not the inline SQL from the query map"
+                (is (str/includes? native-sql persisted-schema))
+                (is (not (str/includes? native-sql "INLINE")))))))))))
+
+(deftest resolve-persisted-source-sql-test
+  (testing "resolve-persisted-source-sql returns persisted SQL for a valid persisted card"
+    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+      (mt/dataset test-data
+        (mt/with-persistence-enabled! [persist-models!]
+          (mt/with-temp [:model/Card model {:type          :model
+                                            :database_id   (mt/id)
+                                            :query_type    :query
+                                            :dataset_query (mt/mbql-query products)}]
+            (persist-models!)
+            (mt/with-metadata-provider (mt/id)
+              (let [source-query     {:qp/stage-is-from-source-card (:id model)
+                                      :source-table                 (mt/id :products)}
+                    result           (#'sql.qp/resolve-persisted-source-sql source-query)
+                    persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
+                (testing "Returns SQL pointing to the persisted cache table"
+                  (is (some? result))
+                  (is (str/includes? result persisted-schema)))
+                (testing "Returns nil when card-id is not present"
+                  (is (nil? (#'sql.qp/resolve-persisted-source-sql
+                             {:source-table (mt/id :products)}))))))))))))
