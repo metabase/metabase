@@ -6,6 +6,7 @@ import type {
   DatabaseId,
   DatabaseXray,
   GetXrayDashboardQueryMetadataRequest,
+  GetXrayDashboardRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -17,6 +18,14 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const automagicDashboardsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
+    getXrayDashboard: builder.query<Dashboard, GetXrayDashboardRequest>({
+      query: ({ subPath, ...params }) => ({
+        method: "GET",
+        // `subPath` is embedded raw so its slashes stay as path separators.
+        url: `/api/automagic-dashboards/${subPath}`,
+        params,
+      }),
+    }),
     getXrayDashboardQueryMetadata: builder.query<
       DashboardQueryMetadata,
       GetXrayDashboardQueryMetadataRequest
@@ -62,4 +71,5 @@ export const {
   useGetXrayDashboardQueryMetadataQuery,
   useListDatabaseXraysQuery,
   useLazyGetXrayDashboardForModelQuery,
+  useLazyGetXrayDashboardQuery,
 } = automagicDashboardsApi;
