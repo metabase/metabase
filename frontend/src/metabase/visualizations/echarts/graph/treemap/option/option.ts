@@ -13,7 +13,11 @@ import {
 } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
 import { hasChildren } from "../model/tree";
-import type { TreemapSeriesNode, TreemapTree } from "../model/types";
+import type {
+  TreemapNode,
+  TreemapSeriesNode,
+  TreemapTree,
+} from "../model/types";
 import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
@@ -125,69 +129,148 @@ function toSeriesData(
   const formatShare = (value: number) =>
     formatPercent(total === 0 ? 0 : value / total);
 
-  return tree.map((node, rootIndex) => {
-    const groupColor = colors[getTreemapNodeKey(node)];
-    const groupTint = getGroupHeaderBgTint(groupColor, headerTintTarget);
-    const groupId = getTreemapNodeId(rootIndex);
-
-    const upperLabel = getUpperLabel({
-      groupTint,
-      hasChildren: hasChildren(node),
-      layout: parentLabelLayout[groupId],
-      displayName: node.displayName,
-      valueLabel: formatValue(node.value),
-      percentLabel: formatShare(node.value),
-      renderingContext,
-    });
-
-    const itemStyle = getItemStyle({
-      groupColor,
-      groupTint,
-      hasChildren: hasChildren(node),
+  return tree.map((node, rootIndex) =>
+    toGroupSeriesNode({
+      node,
+      rootIndex,
+      colors,
+      headerTintTarget,
       isDrilled,
-    });
+      showLeafLabels,
+      labelLayout,
+      parentLabelLayout,
+      formatValue,
+      formatShare,
+      renderingContext,
+    }),
+  );
+}
 
-    return {
-      id: groupId,
-      name: node.displayName,
-      value: node.value,
-      rawName: node.rawName,
-      rowIndices: node.rowIndices,
-      itemStyle,
-      ...(!hasChildren(node)
-        ? getLabelOverride({
-            id: groupId,
-            value: node.value,
-            displayName: node.displayName,
-            showLeafLabels,
-            labelLayout,
-            formatValue,
-            formatShare,
-          })
-        : {}),
-      upperLabel,
-      ...(hasChildren(node)
-        ? {
-            children: node.children.map((leaf, leafIndex) => ({
-              id: getTreemapNodeId(rootIndex, leafIndex),
-              name: leaf.displayName,
-              value: leaf.value,
-              rawName: leaf.rawName,
-              rowIndices: leaf.rowIndices,
-              ...getLabelOverride({
-                id: getTreemapNodeId(rootIndex, leafIndex),
-                value: leaf.value,
-                displayName: leaf.displayName,
-                showLeafLabels,
-                labelLayout,
-                formatValue,
-                formatShare,
-              }),
-            })),
-          }
-        : {}),
-    };
+function toGroupSeriesNode({
+  node,
+  rootIndex,
+  colors,
+  headerTintTarget,
+  isDrilled,
+  showLeafLabels,
+  labelLayout,
+  parentLabelLayout,
+  formatValue,
+  formatShare,
+  renderingContext,
+}: {
+  node: TreemapNode;
+  rootIndex: number;
+  colors: Record<string, string>;
+  headerTintTarget: string;
+  isDrilled: boolean;
+  showLeafLabels: boolean;
+  labelLayout: Record<string, TreemapLabelLayout>;
+  parentLabelLayout: Record<string, TreemapParentLabelLayout>;
+  formatValue: (value: number) => string;
+  formatShare: (value: number) => string;
+  renderingContext: RenderingContext;
+}): TreemapSeriesNode {
+  const groupColor = colors[getTreemapNodeKey(node)];
+  const groupTint = getGroupHeaderBgTint(groupColor, headerTintTarget);
+  const groupId = getTreemapNodeId(rootIndex);
+  const nodeHasChildren = hasChildren(node);
+  const valueLabel = formatValue(node.value);
+  const percentLabel = formatShare(node.value);
+
+  const upperLabel = getUpperLabel({
+    groupTint,
+    hasChildren: nodeHasChildren,
+    layout: parentLabelLayout[groupId],
+    displayName: node.displayName,
+    valueLabel,
+    percentLabel,
+    renderingContext,
   });
+
+  const itemStyle = getItemStyle({
+    groupColor,
+    groupTint,
+    hasChildren: nodeHasChildren,
+    isDrilled,
+  });
+
+  const groupNode: TreemapSeriesNode = {
+    id: groupId,
+    name: node.displayName,
+    value: node.value,
+    rawName: node.rawName,
+    rowIndices: node.rowIndices,
+    itemStyle,
+    upperLabel,
+  };
+
+  if (!nodeHasChildren) {
+    return {
+      ...groupNode,
+      ...getLabelOverride({
+        id: groupId,
+        value: node.value,
+        displayName: node.displayName,
+        showLeafLabels,
+        labelLayout,
+        formatValue,
+        formatShare,
+      }),
+    };
+  }
+
+  return {
+    ...groupNode,
+    children: node.children.map((leaf, leafIndex) =>
+      toLeafSeriesNode({
+        leaf,
+        rootIndex,
+        leafIndex,
+        showLeafLabels,
+        labelLayout,
+        formatValue,
+        formatShare,
+      }),
+    ),
+  };
+}
+
+function toLeafSeriesNode({
+  leaf,
+  rootIndex,
+  leafIndex,
+  showLeafLabels,
+  labelLayout,
+  formatValue,
+  formatShare,
+}: {
+  leaf: TreemapNode;
+  rootIndex: number;
+  leafIndex: number;
+  showLeafLabels: boolean;
+  labelLayout: Record<string, TreemapLabelLayout>;
+  formatValue: (value: number) => string;
+  formatShare: (value: number) => string;
+}): TreemapSeriesNode {
+  const leafId = getTreemapNodeId(rootIndex, leafIndex);
+
+  return {
+    id: leafId,
+    name: leaf.displayName,
+    value: leaf.value,
+    rawName: leaf.rawName,
+    rowIndices: leaf.rowIndices,
+    ...getLabelOverride({
+      id: leafId,
+      value: leaf.value,
+      displayName: leaf.displayName,
+      showLeafLabels,
+      labelLayout,
+      formatValue,
+      formatShare,
+    }),
+  };
 }
 
 function getLabelOverride({
@@ -355,16 +438,14 @@ function getUpperLabel({
     layout?.showValuePercent &&
     layout.nameColumnWidth != null
   ) {
-    return {
-      ...getRichUpperLabel({
-        groupTint,
-        displayName,
-        valueLabel,
-        percentLabel,
-        nameColumnWidth: layout.nameColumnWidth,
-        renderingContext,
-      }),
-    };
+    return getRichUpperLabel({
+      groupTint,
+      displayName,
+      valueLabel,
+      percentLabel,
+      nameColumnWidth: layout.nameColumnWidth,
+      renderingContext,
+    });
   }
 
   const color =
