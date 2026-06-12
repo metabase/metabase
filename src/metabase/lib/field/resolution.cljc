@@ -264,7 +264,10 @@
                                              ;; match
                                              (:id col) (filter #(= (:id %) (:id col)))))]
             ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
-            ;; with different bucketing units) are returned. If there's only one match then use ID for resolution.
+            ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
+            ;; very old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2`
+            ;; rather than `Products__ID` so, matching on it is not as reliable to ID, which has been around since the
+            ;; dawn of human history.
             (when-some [col (let [resolution-key (if (and (:id col)
                                                           (= (count card-cols) 1))
                                                    :id
