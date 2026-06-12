@@ -403,6 +403,10 @@
   [_]
   [:id :name :archived :created_at :updated_at :collection_id :creator_id])
 
+(defmethod columns-for-model "exploration"
+  [_]
+  [:id :name :archived :created_at :updated_at :collection_id :creator_id])
+
 (defmethod columns-for-model "transform"
   [_]
   [:id :name :created_at :updated_at])
@@ -584,6 +588,11 @@
                               [:= :bookmark.user_id (:current-user-id search-ctx)]])
       ;; documents in Explorations are never searchable
       (sql.helpers/where [:= nil :document.exploration_thread_id])
+      (add-collection-join-and-where-clauses model search-ctx)))
+
+(defmethod search-query-for-model "exploration"
+  [model search-ctx]
+  (-> (base-query-for-model "exploration" search-ctx)
       (add-collection-join-and-where-clauses model search-ctx)))
 
 (defmethod search-query-for-model "transform"

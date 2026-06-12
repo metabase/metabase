@@ -7,6 +7,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -153,6 +156,28 @@
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
         (is (= "d1" (:dimension_id reread)))
         (is (= 1 (-> reread :dataset_query :database)))))))
+
+(deftest exploration-is-searchable-test
+  (testing "an exploration is indexed and returned from the default search"
+    (when (search/supports-index?)
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Collection  coll {}
+                       :model/Exploration e {:name "searchable-research" :collection_id (:id coll)}]
+          (letfn [(research-hits [user]
+                    (->> (search.tu/search-results "searchable-research"
+                                                   {:search-engine   "appdb"
+                                                    :current-user-id (mt/user->id user)})
+                         (filter (comp #{"searchable-research"} :name))
+                         (mapv (juxt :model :id))))]
+            (search.ingestion/update!
+             (#'search.ingestion/query->documents
+              (#'search.ingestion/spec-index-reducible "exploration" [:= :this.id (:id e)]))
+             [])
+            (testing "a user who can read the collection finds it"
+              (is (= [["exploration" (:id e)]] (research-hits :crowberto))))
+            (testing "a user without collection perms does not"
+              (mt/with-non-admin-groups-no-collection-perms coll
+                (is (= [] (research-hits :rasta)))))))))))
 
 (deftest hydrate-threads-on-exploration-test
   (mt/with-temp [:model/User u {}
