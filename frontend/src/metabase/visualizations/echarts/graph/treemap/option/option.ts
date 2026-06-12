@@ -58,7 +58,7 @@ export function getTreemapChartOption({
 } {
   const hasNestedChildren = tree.some(hasChildren);
 
-  const groupUpperLabel = getGroupUpperLabel({
+  const groupUpperLabel = getUpperLabelDefault({
     showParentLabels,
     isDrilled,
     renderingContext,
@@ -81,13 +81,7 @@ export function getTreemapChartOption({
     roam: false,
     emphasis: { disabled: true }, // We're adding custom hover effect to be able to highlight the whole group.
     breadcrumb: { show: false },
-    label: {
-      ...TREEMAP_CHART_STYLE.nodeLabels,
-      show: showLeafLabels,
-      overflow: "break",
-      lineOverflow: "truncate",
-      rich: getRichLeafLabel(renderingContext),
-    },
+    label: getTileLabelDefault({ showLeafLabels, renderingContext }),
     upperLabel: { show: false },
     top: 0,
     left: 0,
@@ -176,7 +170,7 @@ function toGroupSeriesNode({
   const valueLabel = formatValue(node.value);
   const percentLabel = formatShare(node.value);
 
-  const upperLabel = getUpperLabel({
+  const upperLabel = getUpperLabelOverride({
     groupTint,
     hasChildren: nodeHasChildren,
     layout: parentLabelLayout[groupId],
@@ -206,7 +200,7 @@ function toGroupSeriesNode({
   if (!nodeHasChildren) {
     return {
       ...groupNode,
-      ...getLabelOverride({
+      ...getTileLabelOverride({
         id: groupId,
         value: node.value,
         displayName: node.displayName,
@@ -259,7 +253,7 @@ function toLeafSeriesNode({
     value: leaf.value,
     rawName: leaf.rawName,
     rowIndices: leaf.rowIndices,
-    ...getLabelOverride({
+    ...getTileLabelOverride({
       id: leafId,
       value: leaf.value,
       displayName: leaf.displayName,
@@ -271,7 +265,52 @@ function toLeafSeriesNode({
   };
 }
 
-function getLabelOverride({
+const formatters = {
+  getLeafFormatter(
+    name: string,
+    valueLabel: string,
+    percentLabel: string,
+  ): string {
+    return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
+  },
+};
+
+function getItemStyle({
+  groupColor,
+  groupTint,
+  hasChildren,
+  isDrilled,
+}: {
+  groupColor: string | undefined;
+  groupTint: string | undefined;
+  hasChildren: boolean;
+  isDrilled: boolean;
+}) {
+  return {
+    color: groupColor,
+    ...(hasChildren
+      ? { borderColor: isDrilled ? "transparent" : groupTint }
+      : {}),
+  };
+}
+
+function getTileLabelDefault({
+  showLeafLabels,
+  renderingContext,
+}: {
+  showLeafLabels: boolean;
+  renderingContext: RenderingContext;
+}): NonNullable<TreemapChartSeriesOption["label"]> {
+  return {
+    ...TREEMAP_CHART_STYLE.nodeLabels,
+    show: showLeafLabels,
+    overflow: "break",
+    lineOverflow: "truncate",
+    rich: getRichLeafLabel(renderingContext),
+  };
+}
+
+function getTileLabelOverride({
   id,
   value,
   displayName,
@@ -312,36 +351,7 @@ function getLabelOverride({
     .otherwise(() => ({ label: { show: true, width: layout.width } }));
 }
 
-const formatters = {
-  getLeafFormatter(
-    name: string,
-    valueLabel: string,
-    percentLabel: string,
-  ): string {
-    return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
-  },
-};
-
-function getItemStyle({
-  groupColor,
-  groupTint,
-  hasChildren,
-  isDrilled,
-}: {
-  groupColor: string | undefined;
-  groupTint: string | undefined;
-  hasChildren: boolean;
-  isDrilled: boolean;
-}) {
-  return {
-    color: groupColor,
-    ...(hasChildren
-      ? { borderColor: isDrilled ? "transparent" : groupTint }
-      : {}),
-  };
-}
-
-function getGroupUpperLabel({
+function getUpperLabelDefault({
   showParentLabels,
   isDrilled,
   renderingContext,
@@ -361,7 +371,7 @@ function getGroupUpperLabel({
   };
 }
 
-function getUpperLabel({
+function getUpperLabelOverride({
   groupTint,
   hasChildren,
   layout,
