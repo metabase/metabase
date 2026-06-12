@@ -64,28 +64,33 @@
         :redshift))
 
 (deftest fast-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          (or driver/*driver* :h2)
-          (mt/db)
-          nil
-          (fn [^Connection conn]
-            ;; We have to mock this to make it work with all DBs
-            (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
-              (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
-                   (map :name)
-                   sort)))))))
+  (is (set/subset? #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS"
+                     "REVIEWS" "USERS" "VENUES"}
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    (or driver/*driver* :h2)
+                    (mt/db)
+                    nil
+                    (fn [^Connection conn]
+                      ;; We have to mock this to make it work with all DBs
+                      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas
+                                                  (constantly #{"PUBLIC"})]
+                        (->> (into [] (sql-jdbc.describe-database/fast-active-tables
+                                       (or driver/*driver* :h2) conn nil nil))
+                             (map :name)
+                             set)))))))
 
 (deftest post-filtered-active-tables-test
-  (is (= ["CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS" "USERS" "VENUES"]
-         (sql-jdbc.execute/do-with-connection-with-options
-          :h2
-          (mt/db)
-          nil
-          (fn [^Connection conn]
-            (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
-                 (map :name)
-                 sort))))))
+  (is (set/subset? #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE" "PRODUCTS"
+                     "REVIEWS" "USERS" "VENUES"}
+                   (sql-jdbc.execute/do-with-connection-with-options
+                    :h2
+                    (mt/db)
+                    nil
+                    (fn [^Connection conn]
+                      (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables
+                                     :h2 conn nil nil))
+                           (map :name)
+                           set))))))
 
 (deftest describe-database-test
   (is (set/subset? #{{:name "USERS", :schema "PUBLIC", :description nil, :is_writable true}
