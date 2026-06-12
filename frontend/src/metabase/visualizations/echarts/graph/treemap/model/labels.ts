@@ -248,14 +248,6 @@ export function getTreemapParentLabelLayouts(
   return layouts;
 }
 
-/** A treemap tile's rendered rectangle (pixels, relative to the chart canvas). */
-export interface TreemapRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 export function shouldShowParentLabels(
   gridSize: VisualizationGridSize | undefined,
   settings: VisualizationProps["settings"],

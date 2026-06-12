@@ -1,8 +1,8 @@
 import type { EChartsType } from "echarts/core";
 
-import type { TreemapRect } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import type {
   TreemapChartColumns,
+  TreemapRect,
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { TREEMAP_HOVER_OVERLAY_FILL } from "metabase/visualizations/echarts/graph/treemap/style";
