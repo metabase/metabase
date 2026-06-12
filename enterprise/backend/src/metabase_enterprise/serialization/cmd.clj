@@ -94,6 +94,25 @@
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     imported))
 
+(defn v2-dump-internal!
+  "Core serialization export logic. Extracts entities matching `opts` and writes
+  them as YAML files to `path`. Returns a report map with `:seen` and `:errors`.
+
+  Unlike [[v2-dump!]], this does not check for a premium token, set up the app DB,
+  or fire analytics events. Intended for internal callers like the analytics-dev
+  export pipeline."
+  [path {:keys [collection-ids] :as opts}]
+  (let [f (io/file path)]
+    (.mkdirs f)
+    (when-not (.canWrite f)
+      (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
+  (let [opts (cond-> opts
+               (seq collection-ids)
+               (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))]
+    (serdes/with-cache
+      (-> (v2.extract/extract opts)
+          (v2.storage/store! (v2.storage.files/file-writer path))))))
+
 (defn v2-dump!
   "Exports Metabase app data to directory at path"
   [path {:keys [collection-ids] :as opts}]
@@ -101,23 +120,13 @@
   (mdb/setup-db! :create-sample-content? false)
   (check-premium-token!)
   (t2/select :model/User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
-  (let [f (io/file path)]
-    (.mkdirs f)
-    (when-not (.canWrite f)
-      (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
   (let [start  (System/nanoTime)
-        err    (atom nil)
-        opts   (cond-> opts
-                 (seq collection-ids)
-                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
-        report (try
-                 (serdes/with-cache
-                   (-> (v2.extract/extract opts)
-                       (v2.storage/store! (v2.storage.files/file-writer path))))
-                 ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
-                 ;; nothing would listen to it currently
-                 (catch Exception e
-                   (reset! err e)))]
+        {:keys [report err]} (try
+                               {:report (v2-dump-internal! path opts)}
+                               ;; we could publish :event/serdes-dump to go with :event/serdes-load above, but
+                               ;; nothing would listen to it currently
+                               (catch Exception e
+                                 {:err e}))]
     (analytics/track-event! :snowplow/serialization
                             {:event           :serialization
                              :direction       "export"
@@ -132,14 +141,14 @@
                              :settings        (not (:no-settings opts))
                              :field_values    (boolean (:include-field-values opts))
                              :secrets         (boolean (:include-database-secrets opts))
-                             :success         (nil? @err)
-                             :error_message   (when @err
-                                                (u/strip-error @err nil))})
-    (when @err
+                             :success         (nil? err)
+                             :error_message   (when err
+                                                (u/strip-error err nil))})
+    (when err
       (if (:full-stacktrace opts)
-        (log/error @err "Error during serialization export")
-        (log/error (u/strip-error @err "Error during serialization export")))
-      (throw (ex-info (ex-message @err) {:cmd/exit true})))
+        (log/error err "Error during serialization export")
+        (log/error (u/strip-error err "Error during serialization export")))
+      (throw (ex-info (ex-message err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
 

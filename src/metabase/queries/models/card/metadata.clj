@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
@@ -224,7 +225,14 @@ saved later when it is ready."
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
 
-         ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
+         (and mi/*deserializing?*
+              (= (:type card) :model)
+              metadata
+              (not (= (:type query) :native)))
+         (do (log/debug "Deserializing model: re-inferring result_metadata with stripped YAML as overrides")
+             (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))
+
+         ;; changing the metadata => use that metadata, but replace any placeholder idents in it.
          (or (and (not-empty changes) (contains? changes :result_metadata))
              (and (empty? changes) metadata))
          (do

@@ -37,10 +37,15 @@
 (defmethod ig/init-key ::db-server
   [_ {::keys [port]}]
   (let [pg          (start! port)
-        actual-port (.getPort pg)]
-    {::pg               pg
-     ::port             actual-port
-     ::jdbc-url         (format "jdbc:postgresql://localhost:%d/postgres?user=postgres" actual-port)}))
+        actual-port (.getPort pg)
+        db-name "postgres"
+        username "postgres"]
+    {::pg       pg
+     ::host     "localhost"
+     ::port     actual-port
+     ::db-name  db-name
+     ::user     username
+     ::jdbc-url (.getJdbcUrl pg username db-name)}))
 
 (defmethod ig/halt-key! ::db-server
   [_ {::keys [pg]}]

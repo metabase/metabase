@@ -23,5 +23,6 @@
   model-name]
  [metabase.audit-app.settings
   analytics-dev-mode
+  analytics-dev-mode!
   last-analytics-checksum
   last-analytics-checksum!])

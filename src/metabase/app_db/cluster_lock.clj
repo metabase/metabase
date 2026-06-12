@@ -23,6 +23,7 @@
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.memoize :as memo]
    [metabase.util.retry :as retry]
    [toucan2.core :as t2])
   (:import
@@ -64,14 +65,24 @@
                  " LOCK IN SHARE MODE"
                  " FOR SHARE")))
 
-(def ^:private base-lock-sql
-  (delay
-    (first (mdb.query/compile {:select [:lock.lock_name]
-                               :from [[:metabase_cluster_lock :lock]]
-                               :where [:= :lock.lock_name [:raw "?"]]}))))
+(let [impl* (memo/lru
+             (fn lock-sql* ^String [_db-type mode]
+               (str (first (mdb.query/compile {:select [:lock.lock_name]
+                                               :from   [[:metabase_cluster_lock :lock]]
+                                               :where  [:= :lock.lock_name [:raw "?"]]}))
+                    (lock-clause mode)))
+             :lru/threshold 6)]
+  (defn- lock-sql
+    "This is implicitly a function of db-type since [[compile]] depends on
+     [[metabase.app-db.format/formatter]]. We use db-type as a memoization key,
+     rather than using the value directly.
 
-(defn- lock-sql ^String [mode]
-  (str @base-lock-sql (lock-clause mode)))
+     We don't expect db-type to change during the application lifetime but it could
+     change during tests. Memoizing by db-type allows this to work smoothly in such cases.
+
+     :lru/threshold 6 = 3 db types x 2 lock modes"
+    [mode]
+    (impl* (mdb.connection/db-type) mode)))
 
 (defn- prepare-statement
   "Create a prepared statement to acquire a lock row in the given mode."

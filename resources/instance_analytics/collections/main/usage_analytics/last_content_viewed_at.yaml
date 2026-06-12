@@ -25,46 +25,6 @@ dataset_query:
     source-card: P6Ityjj7igswKh4NgZZjz
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
-result_metadata:
-- active: true
-  base_type: type/Text
-  database_type: text
-  display_name: Entity Qualified ID
-  effective_type: type/Text
-  field_ref:
-  - field
-  - entity_qualified_id
-  - {base-type: type/Text}
-  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
-  id: [Internal Metabase Database, public, v_view_log, entity_qualified_id]
-  name: entity_qualified_id
-  position: 5
-  semantic_type: type/FK
-  source: breakout
-  table_id: [Internal Metabase Database, public, v_view_log]
-  visibility_type: normal
-  lib/breakout?: true
-  lib/card-id: 120
-  lib/deduplicated-name: entity_qualified_id
-  lib/desired-column-alias: entity_qualified_id
-  lib/external-remap: {field-id: 1508, id: 36, name: Entity Qualified ID, lib/type: metadata.column.remapping/external}
-  lib/from-model?: true
-  lib/original-display-name: Entity Qualified ID
-  lib/original-name: entity_qualified_id
-  lib/source: source/previous-stage
-  lib/source-column-alias: entity_qualified_id
-- base_type: type/DateTimeWithLocalTZ
-  display_name: 'Max of Timestamp: Minute'
-  effective_type: type/DateTimeWithLocalTZ
-  field_ref: [aggregation, 0]
-  name: max
-  semantic_type: type/CreationTimestamp
-  source: aggregation
-  lib/deduplicated-name: max
-  lib/desired-column-alias: max
-  lib/original-name: max
-  lib/source: source/aggregations
-  lib/source-column-alias: max
 visualization_settings: {column_settings: null, table.cell_column: max}
 card_schema: 23
 serdes/meta:

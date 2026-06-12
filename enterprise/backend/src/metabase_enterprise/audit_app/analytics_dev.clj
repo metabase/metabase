@@ -14,6 +14,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
+   [metabase-enterprise.serialization.cmd :as serialization.cmd]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
@@ -69,14 +70,14 @@
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
       (let [db (t2/insert-returning-instance! :model/Database
-                                              {:name canonical-db-name
-                                               :description "Development database for analytics views and content"
-                                               :engine (name db-type)
-                                               :details {:is-audit-dev true}
-                                               :is_audit false ; Important: not an audit DB
-                                               :is_full_sync true
-                                               :is_on_demand false
-                                               :creator_id user-id
+                                              {:name             canonical-db-name
+                                               :description      "Development database for analytics views and content"
+                                               :engine           (name db-type)
+                                               :details          {:is-audit-dev true}
+                                               :is_audit         false                   ; Important: not an audit DB
+                                               :is_full_sync     true
+                                               :is_on_demand     false
+                                               :creator_id       user-id
                                                :auto_run_queries true})]
         (log/info "Created analytics dev database:" (:id db))
         (sync/sync-database! db {:scan :schema})
@@ -194,11 +195,11 @@
         temp-path (.toFile temp-dir)]
     (log/info "Exporting dev collection" collection-id "to" temp-path)
     (try
-      (let [opts {:targets (serialization/make-targets-of-type "Collection" [collection-id])
-                  :no-settings true :no-transforms true
-                  :include-field-values true}
-            report (serdes/with-cache (serialization/store! (serialization/extract opts)
-                                                            (serialization/file-writer (.getPath temp-path))))]
+      (let [report (serialization.cmd/v2-dump-internal!
+                    (.getPath temp-path)
+                    {:collection-ids [collection-id]
+                     :no-settings    true
+                     :no-transforms  true})]
         (log/info "Export complete:" (count (:seen report)) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
