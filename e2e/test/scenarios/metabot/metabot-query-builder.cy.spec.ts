@@ -81,7 +81,7 @@ describe("Metabot Query Builder", () => {
     // go to new button and click "AI exploration"
     H.newButton("AI exploration").click();
     cy.url().should("include", "/question/ask");
-    H.metabotChatSidebar().should("not.be.visible");
+    cy.findByTestId("metabot-chat").should("not.exist");
 
     const questionHash = H.adhocQuestionHash(allOrdersQuestion);
     H.mockMetabotResponse({
