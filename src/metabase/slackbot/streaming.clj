@@ -187,7 +187,7 @@
                          {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
                           :capabilities               capabilities
                           :slack_channel_id           channel-id}
-                         {:metabot-id metabot.config/slackbot-metabot-id})
+                         {:metabot-id metabot.config/internal-metabot-id})
         ;; Persist a placeholder assistant row up front so its `created_at` pins
         ;; turn ordering before any retry can sneak in earlier-timestamped rows.
         ;; `:user-id` stamps the author on both rows so participation-based
