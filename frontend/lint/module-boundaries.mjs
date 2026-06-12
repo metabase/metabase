@@ -153,6 +153,7 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
