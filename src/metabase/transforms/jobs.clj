@@ -270,23 +270,31 @@
 
 (defn- run-coordinator-loop!
   "Dispatch ready transforms; then each round sweep the in-flight workers and refill freed slots —
-  until nothing is in flight."
+  until nothing is in flight. On an abnormal exit (exception or interrupt) the in-flight workers are
+  canceled before rethrowing, so they don't keep writing under a run that is about to be failed."
   [init-state {:keys [run-gone? timeout-ms] :as ctx}]
-  (loop [st (dispatch-ready! init-state ctx)]
-    (cond
-      (not (busy? st))
-      st
+  (let [last-st (volatile! init-state)
+        step!   (fn [st] (vreset! last-st st) st)]
+    (try
+      (loop [st (step! (dispatch-ready! init-state ctx))]
+        (cond
+          (not (busy? st))
+          st
 
-      (run-gone?)
-      (do (cancel-in-flight! st)
-          (assoc st :aborted? true))
+          (run-gone?)
+          (do (cancel-in-flight! st)
+              (assoc st :aborted? true))
 
-      :else
-      (let [st (-> st
-                   (sweep-workers! timeout-ms)
-                   (dispatch-ready! ctx))]
-        (Thread/sleep 250)
-        (recur st)))))
+          :else
+          (let [st (-> st
+                       (sweep-workers! timeout-ms)
+                       (dispatch-ready! ctx)
+                       step!)]
+            (Thread/sleep 250)
+            (recur st))))
+      (catch Throwable t
+        (cancel-in-flight! @last-st)
+        (throw t)))))
 
 (defn- app-db-now
   []
