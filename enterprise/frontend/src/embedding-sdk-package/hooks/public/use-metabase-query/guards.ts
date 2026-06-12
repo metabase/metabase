@@ -100,6 +100,18 @@ export function getMetricMappedTableIds(
   return isMetricReference(query.metric) ? query.metric.mappedTableIds : null;
 }
 
+export function getMetricDatabaseId(query: MetricQueryRuntime): ID | null {
+  return isMetricReference(query.metric) && query.metric.databaseId != null
+    ? query.metric.databaseId
+    : null;
+}
+
+export function getMetricSourceTableId(query: MetricQueryRuntime): ID | null {
+  return isMetricReference(query.metric) && query.metric.sourceTableId != null
+    ? query.metric.sourceTableId
+    : null;
+}
+
 export function isDimensionFilter(
   value: unknown,
 ): value is DimensionFilterRuntime {

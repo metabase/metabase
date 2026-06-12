@@ -96,10 +96,13 @@ const TEST_SCHEMA = {
   metrics: {
     orderCount: {
       id: 34,
+      databaseId: 1,
+      sourceTableId: 1,
       columns: [{ name: "count", displayName: "Count", jsType: "number" }],
       dimensions: {
         createdAt: {
           id: "metric-created-at",
+          fieldId: 103,
           metricId: 34,
           tableId: 1,
           name: "created_at",
@@ -108,6 +111,7 @@ const TEST_SCHEMA = {
         },
         status: {
           id: "metric-status",
+          fieldId: 101,
           metricId: 34,
           tableId: 1,
           name: "status",
@@ -116,6 +120,7 @@ const TEST_SCHEMA = {
         },
         amount: {
           id: "metric-amount",
+          fieldId: 102,
           metricId: 34,
           tableId: 1,
           name: "amount",
@@ -127,10 +132,13 @@ const TEST_SCHEMA = {
     },
     orderValue: {
       id: 35,
+      databaseId: 1,
+      sourceTableId: 1,
       columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
       dimensions: {
         amount: {
           id: "metric-order-value-amount",
+          fieldId: 102,
           metricId: 35,
           tableId: 1,
           name: "amount",
@@ -552,6 +560,53 @@ describe("useMetabaseQuery", () => {
         },
       });
     });
+
+    it("builds a complete dataset query from a generated metric schema", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, {
+              bucket: "month",
+            }),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [
+            ["metric", 34],
+            ["measure", {}, 21],
+          ],
+          filter: ["=", ["field", 101, {}], "paid"],
+          breakout: [["field", 103, { "temporal-unit": "month" }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("memoizes a complete dataset query from a generated metric schema", () => {
+      render(<MetricQueryObjectComponent />);
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
+    });
   });
 
   it("raises a runtime error when metric segments are not from mapped tables", async () => {
@@ -776,6 +831,15 @@ const MetabaseQueryObjectComponent = () => {
     table: TEST_SCHEMA.tables.orders,
     filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
+const MetricQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
   });
 
   return <div data-testid="query-object">{JSON.stringify(query)}</div>;
