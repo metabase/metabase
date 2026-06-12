@@ -13,8 +13,6 @@
    {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/referenced-entity-ids]
   (when (seq table)
     (lib.metadata/bulk-metadata metadata-providerable :metadata/table table)
-    ;; also warm the columns of all the referenced Tables in one call, since query processing will almost certainly
-    ;; want to list the fields of each of them
     (lib.metadata.protocols/metadatas (lib.metadata.util/->metadata-provider metadata-providerable)
                                       {:lib/type :metadata/column, :table-ids (set table)}))
   (when (seq card)
