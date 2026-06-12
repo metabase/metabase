@@ -295,15 +295,39 @@
                   :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
+(defn- interactive-embedding-origins
+  "The configured interactive-embedding app origins, when interactive embedding is
+   enabled; otherwise nil."
+  []
+  (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
+       (setting/get-value-of-type :string :embedding-app-origins-interactive)))
+
+(defn- frame-ancestors-value
+  "The `frame-ancestors` CSP source-list for a given framing `mode`:
+   `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
+   iframe), or `:none` (no framing, unless interactive embedding is configured)."
+  [mode]
+  (case mode
+    :any  "*"
+    :self "'self'"
+    (or (interactive-embedding-origins) "'none'")))
+
 (defn- content-security-policy-header-with-frame-ancestors
-  [allow-iframes? nonce]
+  [frame-ancestors-mode nonce]
   (update (content-security-policy-header nonce)
           "Content-Security-Policy"
-          #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
-                                                  (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-                                                                    (setting/get-value-of-type :string :embedding-app-origins-interactive))]
-                                                    eao
-                                                    "'none'")))))
+          #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
+
+(defn- x-frame-options-header
+  "Legacy `X-Frame-Options` companion to the CSP `frame-ancestors` (for browsers
+   that don't honor the latter). Omitted for `:any` (open embedding)."
+  [mode]
+  (case mode
+    :any  nil
+    :self {"X-Frame-Options" "SAMEORIGIN"}
+    {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
+                         (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
+                         "DENY")}))
 
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
@@ -389,20 +413,19 @@
         "Access-Control-Max-Age"  "60"}))))
 
 (defn security-headers
-  "Fetch a map of security headers that should be added to a response based on the passed options."
-  [& {:keys [origin nonce allow-iframes? allow-cache?]
-      :or   {allow-iframes? false, allow-cache? false}}]
+  "Fetch a map of security headers that should be added to a response based on the passed options.
+   `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
+   `:self` (same-origin only), or `:none` (default — no framing unless interactive
+   embedding is configured)."
+  [& {:keys [origin nonce frame-ancestors allow-cache?]
+      :or   {frame-ancestors :none, allow-cache? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
-   (when-not allow-iframes?
-     ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
-     {"X-Frame-Options"                 (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
-                                                          (setting/get-value-of-type :string :embedding-app-origins-interactive))]
-                                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
-                                          "DENY")})
+   ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
+   (x-frame-options-header frame-ancestors)
    {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
@@ -424,10 +447,17 @@
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
-                 :origin         (get (:headers request) "origin")
-                 :nonce          (:nonce request)
-                 :allow-iframes? ((some-fn request/public? request/embed?) request)
-                 :allow-cache?   (request/cacheable? request))
+                 :origin           (get (:headers request) "origin")
+                 :nonce            (:nonce request)
+                 ;; The internal data-app iframe is only ever framed by the
+                 ;; same-origin Metabase app, so restrict it to `'self'` rather
+                 ;; than the open embedding `*`. Check it before the broader
+                 ;; `embed?`, which `/embed/data-app/...` also matches.
+                 :frame-ancestors  (cond
+                                     (request/data-app? request)                       :self
+                                     ((some-fn request/public? request/embed?) request) :any
+                                     :else                                              :none)
+                 :allow-cache?     (request/cacheable? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
