@@ -92,20 +92,17 @@
     (keyword (get-in dashcard [:visualization_settings :visualization :display]))
     nil))
 
-(defn- col-of-type? [col sem-type]
-  (isa? (some-> (:semantic_type col) keyword) sem-type))
-
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
   [cols]
-  (and (some #(col-of-type? % :type/Latitude) cols)
-       (some #(col-of-type? % :type/Longitude) cols)))
+  (and (some #(render.util/col-of-type? % :type/Latitude) cols)
+       (some #(render.util/col-of-type? % :type/Longitude) cols)))
 
 (defn- binned-lat-lng-columns?
   "True when both a Latitude and a Longitude column are binned (a grid map, per the frontend default)."
   [cols]
-  (and (some #(and (col-of-type? % :type/Latitude) (get-in % [:binning_info :bin_width])) cols)
-       (some #(and (col-of-type? % :type/Longitude) (get-in % [:binning_info :bin_width])) cols)))
+  (and (some #(and (render.util/col-of-type? % :type/Latitude) (get-in % [:binning_info :bin_width])) cols)
+       (some #(and (render.util/col-of-type? % :type/Longitude) (get-in % [:binning_info :bin_width])) cols)))
 
 (defn- effective-map-type
   "Resolve the effective `map.type` the way the frontend's getDefault does: an explicit setting, else
@@ -120,11 +117,13 @@
         (case display-type
           :pin_map           "pin"
           (:state :country)  "region"
-          (cond
-            (not (or (and (setting "map.latitude_column") (setting "map.longitude_column"))
-                     (has-lat-lng-columns? cols)))  "region"
-            (binned-lat-lng-columns? cols)          "grid"
-            :else                                   "pin")))))
+          (if (or (and (setting "map.latitude_column")
+                       (setting "map.longitude_column"))
+                  (has-lat-lng-columns? cols))
+            (if (binned-lat-lng-columns? cols)
+              "grid"
+              "pin")
+            "region")))))
 
 (defn- region-map?
   "True when `card` is a region (choropleth) map whose region we can render statically. Mirrors the
@@ -134,7 +133,9 @@
   [display-type card maybe-dashcard data]
   (and (#{:map :state :country} display-type)
        (= "region" (effective-map-type display-type card maybe-dashcard data))
-       (some? (body/region-map-region-key display-type card maybe-dashcard data))))
+       ;; `boolean`, not `some?`: region-map-region-key returns logical false (not always nil) for
+       ;; unresolvable regions.
+       (boolean (body/region-map-region-key display-type card maybe-dashcard data))))
 
 (defn- pin-map?
   "True when `card` is a pin map: the legacy `:pin_map` display, or a `:map` whose effective map type is

@@ -460,26 +460,28 @@
   "Resolve the region key for a region map, mirroring the frontend `map.region` default: an explicit
   `map.region` setting, else a legacy `:state`/`:country` display, else inferred from a State/Country
   column. Returns the key only when it names a region we know about (built-in or a user-defined custom
-  map); otherwise nil, so non-region maps fall through to the table fallback. Note this does not fetch —
-  it just checks the region is defined; the actual GeoJSON load happens at render time."
+  map); logical false otherwise, so non-region maps fall through to the table fallback. Note this does
+  not fetch — it just checks the region is defined; the actual GeoJSON load happens at render time."
   [display-type card dashcard {:keys [cols]}]
-  (letfn [(any-col-type? [t] (some #(isa? (some-> (:semantic_type %) keyword) t) cols))]
-    ;; Merge (dashcard overrides card) rather than `or`: a dashcard usually has an empty-but-present
-    ;; :visualization_settings that would otherwise shadow the card's map.region.
-    (let [viz-settings (render.util/merged-viz-settings card dashcard)
-          region-key   (or (render.util/viz-setting viz-settings "map.region")
-                           (case display-type :state "us_states" :country "world_countries" nil)
-                           (cond
-                             (any-col-type? :type/State)   "us_states"
-                             (any-col-type? :type/Country) "world_countries"))]
-      (when (and region-key (contains? (geojson.settings/custom-geojson) (keyword region-key)))
-        region-key))))
+  ;; Merge (dashcard overrides card) rather than `or`: a dashcard usually has an empty-but-present
+  ;; :visualization_settings that would otherwise shadow the card's map.region.
+  (let [viz-settings (render.util/merged-viz-settings card dashcard)
+        region-key   (or (render.util/viz-setting viz-settings "map.region")
+                         (case display-type :state "us_states" :country "world_countries" nil)
+                         (cond
+                           (some #(render.util/col-of-type? % :type/State) cols)   "us_states"
+                           (some #(render.util/col-of-type? % :type/Country) cols) "world_countries"))]
+    (and (contains? (geojson.settings/custom-geojson) (keyword region-key))
+         region-key)))
 
 (defn- javascript-visualization->rendered-part
   "Turn the `{:type :svg/:html :content ...}` result of [[js.svg/*javascript-visualization*]] into a RenderedPartCard.
   SVG results are rasterized to a PNG `<img>`; HTML results are embedded as-is."
   [render-type {rendered-type :type content :content}]
   (case rendered-type
+    :html
+    {:content [:div content] :attachments nil}
+
     :svg
     (let [image-bundle (image-bundle/make-image-bundle
                         render-type
@@ -491,9 +493,7 @@
        :content
        [:div
         [:img {:style (style/style {:display :block :width :100%})
-               :src   (:image-src image-bundle)}]]})
-    :html
-    {:content [:div content] :attachments nil}))
+               :src   (:image-src image-bundle)}]]})))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -545,13 +545,21 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- number-at
+  "The value of `row` at `idx` when it's a number, else nil."
+  [row idx]
+  (let [v (nth row idx nil)]
+    (when (number? v)
+      v)))
+
 (defn- coordinate-col-index
   "Resolve a coordinate column's index, mirroring the frontend default: the named column if the setting is
   present, else the first column with semantic type `sem-type` (`:type/Latitude` / `:type/Longitude`)."
   [cols col-name sem-type]
   (or (when col-name (first (get-col-by-name cols col-name)))
       (first (keep-indexed (fn [i col]
-                             (when (isa? (some-> (:semantic_type col) keyword) sem-type) i))
+                             (when (render.util/col-of-type? col sem-type)
+                               i))
                            cols))))
 
 (defn- metric-col-index
@@ -570,8 +578,14 @@
   "The bin width (degrees) for a binned coordinate column, or an inferred fallback from the row values."
   [col idx rows]
   (or (get-in col [:binning_info :bin_width])
-      (let [vs (sort (distinct (keep (fn [row] (let [v (nth row idx nil)] (when (number? v) v))) rows)))]
-        (some->> (map - (rest vs) vs) (filter pos?) seq (apply min)))))
+      (let [vs (->> rows
+                    (keep #(number-at % idx))
+                    distinct
+                    sort)]
+        (some->> (map - (rest vs) vs)
+                 (filter pos?)
+                 seq
+                 (apply min)))))
 
 (mu/defmethod render :pin_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
@@ -581,14 +595,13 @@
         lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
         points       (when (and lat-idx lon-idx)
                        (for [row   rows
-                             :let  [lat (nth row lat-idx nil)
-                                    lon (nth row lon-idx nil)]
-                             :when (and (number? lat) (number? lon))]
-                         [lat lon]))
-        png          (when (seq points)
-                       (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
-                                                    :pin-type (setting "map.pin_type")}))]
-    (if png
+                             :let  [lat (number-at row lat-idx)
+                                    lon (number-at row lon-idx)]
+                             :when (and lat lon)]
+                         [lat lon]))]
+    (if-let [png (when (seq points)
+                   (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
+                                                :pin-type (setting "map.pin_type")}))]
       (png->rendered-part render-type png)
       ;; No usable coordinates (mismatched columns, all nil, etc.) or the render failed — degrade to a
       ;; table of the data.
@@ -605,15 +618,16 @@
         lon-bin      (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
         cells        (when (and lat-idx lon-idx lat-bin lon-bin)
                        (for [row   rows
-                             :let  [lat (nth row lat-idx nil)
-                                    lon (nth row lon-idx nil)]
-                             :when (and (number? lat) (number? lon))]
-                         {:lat lat :lon lon :lat-bin lat-bin :lon-bin lon-bin
-                          :metric (when metric-idx
-                                    (let [m (nth row metric-idx nil)] (when (number? m) m)))}))
-        png          (when (seq cells)
-                       (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
-    (if png
+                             :let  [lat (number-at row lat-idx)
+                                    lon (number-at row lon-idx)]
+                             :when (and lat lon)]
+                         {:lat     lat
+                          :lon     lon
+                          :lat-bin lat-bin
+                          :lon-bin lon-bin
+                          :metric  (when metric-idx (number-at row metric-idx))}))]
+    (if-let [png (when (seq cells)
+                   (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
       (png->rendered-part render-type png)
       ;; No usable cells or the render failed — degrade to a table of the data.
       (render :table render-type timezone-id card dashcard data))))

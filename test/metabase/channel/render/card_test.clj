@@ -158,23 +158,25 @@
                 (card {"map.latitude_column" "lat" "map.longitude_column" "lon"}) nil pin+state)))))))
 
 (deftest ^:parallel detect-pulse-chart-type-grid-map-test
-  (let [binned   [{:name "lat" :semantic_type :type/Latitude :binning_info {:bin_width 1.0}}
-                  {:name "lon" :semantic_type :type/Longitude :binning_info {:bin_width 1.0}}
-                  {:name "n" :base_type :type/Integer}]
-        unbinned [{:name "lat" :semantic_type :type/Latitude}
-                  {:name "lon" :semantic_type :type/Longitude}
-                  {:name "n" :base_type :type/Integer}]
-        data     (fn [cols] {:cols cols :rows [[37.0 -122.0 5]]})
-        card     (fn [settings] {:display :map :visualization_settings settings})]
+  (let [card {:display :map :visualization_settings {}}
+        data {:cols [{:name "lat" :semantic_type :type/Latitude :binning_info {:bin_width 1.0}}
+                     {:name "lon" :semantic_type :type/Longitude :binning_info {:bin_width 1.0}}
+                     {:name "n" :base_type :type/Integer}]
+              :rows [[37.0 -122.0 5]]}]
     (testing "binned lat/long maps route to :grid_map (map.type unset)"
-      (is (= :grid_map (channel.render/detect-pulse-chart-type (card {}) nil (data binned))))
-      (testing "and in a dashboard subscription with empty dashcard settings"
-        (is (= :grid_map (channel.render/detect-pulse-chart-type
-                          (card {}) {:visualization_settings {}} (data binned))))))
+      (is (= :grid_map (channel.render/detect-pulse-chart-type card nil data))))
+    (testing "binned lat/long routes to :grid_map in a dashboard subscription with empty dashcard settings"
+      (is (= :grid_map (channel.render/detect-pulse-chart-type card {:visualization_settings {}} data)))))
+  (let [card {:display :map :visualization_settings {}}
+        data {:cols [{:name "lat" :semantic_type :type/Latitude}
+                     {:name "lon" :semantic_type :type/Longitude}
+                     {:name "n" :base_type :type/Integer}]
+              :rows [[37.0 -122.0 5]]}]
     (testing "explicit map.type grid"
-      (is (= :grid_map (channel.render/detect-pulse-chart-type (card {"map.type" "grid"}) nil (data unbinned)))))
+      (is (= :grid_map (channel.render/detect-pulse-chart-type
+                        (assoc card :visualization_settings {"map.type" "grid"}) nil data))))
     (testing "unbinned lat/long is a pin map, not a grid map"
-      (is (= :pin_map (channel.render/detect-pulse-chart-type (card {}) nil (data unbinned)))))))
+      (is (= :pin_map (channel.render/detect-pulse-chart-type card nil data))))))
 
 (deftest ^:parallel detect-pulse-chart-type-pivot-test
   (testing "pivot cards route to :pivot"

@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.geojson.settings :as geojson.settings]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -75,7 +76,7 @@
 (def ^:private custom-geojson-cache-ttl-ms
   "User-defined custom maps are fetched over the network, so their GeoJSON is cached — but only briefly,
   since the remote contents can change underneath us."
-  (* 60 60 1000)) ; 1 hour
+  (u/hours->ms 1))
 
 (defn- fetch-geojson-data*
   [url]

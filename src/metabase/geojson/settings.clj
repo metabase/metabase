@@ -147,7 +147,11 @@
 (def ^:private read-classpath-geojson
   ;; Built-in GeoJSON files are static, so reading + parsing them once is safe to cache forever. The stored
   ;; `url` (e.g. "app/assets/...") is a web path served out of resources/frontend_client, so resolve it there.
-  (memoize (fn [url] (some-> (io/resource (str "frontend_client/" url)) slurp json/decode))))
+  (memoize (fn [url]
+             (some-> (str "frontend_client/" url)
+                     io/resource
+                     slurp
+                     json/decode))))
 
 (defn builtin-region-geojson
   "For a built-in region key (e.g. \"us_states\"), return the parsed GeoJSON `:data` along with its
@@ -155,6 +159,7 @@
   keys. Used by static (email/Slack) rendering to embed GeoJSON without an HTTP round-trip."
   [region-key]
   (when-let [{:keys [url region_key region_name builtin]} (get (builtin-geojson) (keyword region-key))]
-    (when (and builtin url)
-      (when-let [data (read-classpath-geojson url)]
-        {:data data :region_key region_key :region_name region_name}))))
+    (when-let [data (and builtin url (read-classpath-geojson url))]
+      {:data        data
+       :region_key  region_key
+       :region_name region_name})))

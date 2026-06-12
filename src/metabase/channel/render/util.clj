@@ -51,6 +51,11 @@
   [viz-settings k]
   (or (get viz-settings k) (get viz-settings (keyword k))))
 
+(defn col-of-type?
+  "Whether result column `col`'s semantic type derives from `sem-type` (e.g. `:type/Latitude`)."
+  [col sem-type]
+  (isa? (some-> (:semantic_type col) keyword) sem-type))
+
 (defn is-scalar-funnel?
   "Check if the visualization is a scalar funnel.
    Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"
