@@ -1,13 +1,16 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
-import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
-import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
+import { useSetting } from "metabase/common/hooks";
 import {
-  SharingButton,
-  SharingMenu,
-} from "metabase/embedding/components/SharingMenu/SharingMenu";
+  AdminSharingMenu,
+  CopyLinkButton,
+  EmbedButton,
+} from "metabase/embedding/components/SharingMenu/AdminSharingMenu";
+import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
+import { SharingButton } from "metabase/embedding/components/SharingMenu/SharingMenu";
 import type { QuestionSharingModalType } from "metabase/embedding/components/SharingMenu/types";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
@@ -16,8 +19,11 @@ import { MODAL_TYPES } from "metabase/querying/constants";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, CopyButton, Flex } from "metabase/ui";
-import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
+import { Box, CopyButton, Flex, Group, Menu, Stack } from "metabase/ui";
+import {
+  publicQuestion as getPublicQuestionUrl,
+  question as getQuestionUrl,
+} from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { QuestionPublicLinkPopover } from "../../../../sidebars/QuestionInfoSidebar/QuestionPublicLinkPopover/QuestionPublicLinkPopover";
@@ -56,6 +62,18 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   );
 }
 
+// Copies the app link. Building the question URL converts the whole query,
+// so don't redo it per render.
+function CopyQuestionLinkButton({ question }: { question: Question }) {
+  const siteUrl = useSetting("site-url");
+  const url = useMemo(
+    () => `${siteUrl}${getQuestionUrl(question)}`,
+    [siteUrl, question],
+  );
+
+  return <CopyLinkButton url={url} />;
+}
+
 function AdminQuestionSharingMenu({ question }: { question: Question }) {
   const { modalType, setModalType } = useSharingModal<QuestionSharingModalType>(
     {
@@ -63,24 +81,37 @@ function AdminQuestionSharingMenu({ question }: { question: Question }) {
       resourceType: "question",
     },
   );
+  const isPublicSharingEnabled = useSetting("enable-public-sharing");
 
   return (
     <Flex>
-      <SharingMenu>
-        <PublicLinkMenuItem
-          hasPublicLink={Boolean(question.publicUUID?.())}
-          onClick={() => setModalType("question-public-link")}
+      <AdminSharingMenu>
+        <Group p="lg" gap="md" wrap="nowrap">
+          <CopyQuestionLinkButton question={question} />
+          <EmbedButton
+            onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
+          />
+        </Group>
+        {isPublicSharingEnabled && (
+          <>
+            <Menu.Divider />
+            <Stack p="md" gap="sm">
+              <PublicLinkMenuItem
+                hasPublicLink={Boolean(question.publicUUID?.())}
+                onClick={() => setModalType("question-public-link")}
+              />
+            </Stack>
+          </>
+        )}
+      </AdminSharingMenu>
+      {modalType === "question-public-link" && (
+        <QuestionPublicLinkPopover
+          question={question}
+          target={<Box h="2rem" />}
+          isOpen
+          onClose={() => setModalType(null)}
         />
-        <EmbedMenuItem
-          onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
-        />
-      </SharingMenu>
-      <QuestionPublicLinkPopover
-        question={question}
-        target={<Box h="2rem" />}
-        isOpen={modalType === "question-public-link"}
-        onClose={() => setModalType(null)}
-      />
+      )}
     </Flex>
   );
 }
@@ -100,6 +131,7 @@ function NonAdminQuestionSharingMenu({ question }: { question: Question }) {
       {({ copied, copy }) => (
         <SharingButton
           tooltip={copied ? <LinkCopiedTooltipLabel /> : t`Copy link`}
+          aria-label={t`Copy link`}
           onClick={() => {
             copy();
             trackPublicLinkCopied({ artifact: "question", format: "html" });

@@ -5,13 +5,13 @@ import { screen, waitFor } from "__support__/ui";
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
 describe("DashboardSharingMenu", () => {
-  it("should have a 'sharing' tooltip by default", () => {
+  it("should have a 'share' tooltip by default", () => {
     setupDashboardSharingMenu({
       isAdmin: true,
     });
     expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
       "aria-label",
-      "Sharing",
+      "Share",
     );
   });
 
@@ -114,11 +114,59 @@ describe("DashboardSharingMenu", () => {
         expect(screen.getByText("Embed")).toBeInTheDocument();
       });
 
+      it("should copy the dashboard app link when clicking the 'Copy link' button", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isPublicSharingEnabled: true,
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/dashboard/1-my-cool-dashboard",
+          ),
+        );
+      });
+
+      it("should include the selected tab in the copied app link for multi-tab dashboards", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          dashboard: {
+            tabs: [
+              { id: 1, name: "First Tab" },
+              { id: 2, name: "Second Tab" },
+            ] as any,
+          },
+          dashboardState: { selectedTabId: 2 },
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/dashboard/1-my-cool-dashboard?tab=2",
+          ),
+        );
+      });
+
+      it("should close the menu when opening the embed flow", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmbeddingEnabled: true,
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Embed"));
+        await waitFor(() =>
+          expect(screen.queryByTestId("sharing-menu")).not.toBeInTheDocument(),
+        );
+      });
+
       // note: if public sharing is disabled, the dashboard object provided by the backend should not have a UUID
     });
 
     describe("non-admins", () => {
-      it('should show a "Copy link" menu item if a public link exists already', async () => {
+      it('should show a "Copy link" menu item without any public link or embed options when a public link exists', async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -126,6 +174,7 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         expect(screen.getByText("Copy link")).toBeInTheDocument();
+        expect(screen.getByText("Export as PDF")).toBeInTheDocument();
         expect(screen.queryByText("Public link")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
@@ -135,7 +184,7 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should copy the public link directly when clicking 'Copy link'", async () => {
+      it("should copy the public link when clicking 'Copy link'", async () => {
         jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: false,
@@ -165,7 +214,7 @@ describe("DashboardSharingMenu", () => {
         ).toBeInTheDocument();
       });
 
-      it("should only show the PDF export option when public sharing is disabled", async () => {
+      it("should only show the PDF export when public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: false,
@@ -179,7 +228,7 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should only show the PDF export option when there is no existing public link", async () => {
+      it("should only show the PDF export when there is no public link", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -188,9 +237,6 @@ describe("DashboardSharingMenu", () => {
         await openMenu();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
         expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
-        expect(
-          screen.queryByText("Ask your admin to create a public link"),
-        ).not.toBeInTheDocument();
       });
     });
   });

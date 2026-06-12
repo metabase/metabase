@@ -148,10 +148,9 @@ export async function setupQuestionSharingMenu({
     { storeInitialState: state },
   );
 
-  // Only the admin menu eagerly mounts QuestionPublicLinkPopover, whose useAsync
-  // hook flips its loading state shortly after mount; wait for the button so that
-  // async update stays wrapped in act. Non-admin menus render synchronously, and
-  // model/archived questions render nothing at all.
+  // Wait for the admin menu button to settle so async endpoint mocks resolve
+  // inside act. Non-admin menus render synchronously, and model/archived
+  // questions render nothing at all.
   const isModel = questionOverrides.type === "model";
   const isArchived = questionOverrides.archived === true;
   if (isAdmin && !isModel && !isArchived) {

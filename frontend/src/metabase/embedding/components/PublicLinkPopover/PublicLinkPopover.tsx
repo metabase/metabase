@@ -47,14 +47,6 @@ export const PublicLinkPopover = ({
     deletePublicLink();
   };
 
-  const getMinDropdownHeight = () => {
-    if (isAdmin || extensions.length > 0) {
-      return "10rem";
-    }
-
-    return "auto";
-  };
-
   return (
     <Popover
       opened={isOpen}
@@ -65,12 +57,7 @@ export const PublicLinkPopover = ({
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>
       <Popover.Dropdown>
-        <Box
-          p="lg"
-          w="28rem"
-          data-testid="public-link-popover-content"
-          mih={getMinDropdownHeight()}
-        >
+        <Box p="lg" w="28rem" data-testid="public-link-popover-content">
           <Title
             order={4}
             c="text-primary"

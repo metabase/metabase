@@ -970,7 +970,7 @@ describe("issue 16108", () => {
     cy.icon("download").realHover();
     H.tooltip().findByText("Download results");
     H.sharingMenuButton().realHover();
-    H.tooltip().findByText("Sharing");
+    H.tooltip().findByText("Share");
   });
 });
 

@@ -12,13 +12,13 @@ describe("QuestionSharingMenu", () => {
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
   });
 
-  it("should have a 'sharing' tooltip by default", async () => {
+  it("should have a 'share' tooltip by default", async () => {
     await setupQuestionSharingMenu({
       isAdmin: true,
     });
     expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
       "aria-label",
-      "Sharing",
+      "Share",
     );
   });
 

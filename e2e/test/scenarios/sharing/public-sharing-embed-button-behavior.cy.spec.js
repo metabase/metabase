@@ -30,7 +30,7 @@ const { H } = cy;
 
           H.openSharingMenu();
           H.sharingMenu()
-            .findByRole("menuitem", { name: "Embed" })
+            .findByRole("button", { name: "Embed" })
             .should("be.visible")
             .and("be.enabled")
             .click();
@@ -95,22 +95,7 @@ const { H } = cy;
               visitResource(resource, id);
             });
 
-            if (resource === "question") {
-              // No public link: the share button is hidden entirely.
-              H.sharingMenuButton().should("not.exist");
-            } else {
-              // No public link: the menu only offers the PDF export.
-              H.openSharingMenu();
-              H.sharingMenu().within(() => {
-                cy.findByText("Export as PDF").should("be.visible");
-                cy.findByText("Ask your admin to create a public link").should(
-                  "not.exist",
-                );
-                cy.findByText(/public link/i).should("not.exist");
-                cy.findByText("Copy link").should("not.exist");
-                cy.findByText("Embed").should("not.exist");
-              });
-            }
+            assertNonAdminCannotCreatePublicLink(resource);
           });
 
           it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
@@ -131,7 +116,7 @@ const { H } = cy;
             });
 
             if (resource === "question") {
-              // The share button copies directly and shows a tooltip.
+              // The share button copies the public link directly.
               H.sharingMenuButton()
                 .should("be.enabled")
                 .and("have.attr", "aria-label", "Copy link")
@@ -139,12 +124,16 @@ const { H } = cy;
               H.sharingMenuButton().realHover();
               H.tooltip().findByText("Link copied to clipboard!");
             } else {
-              // The menu item shows a confirmation tooltip in place.
+              // The menu item copies the public link.
               H.openSharingMenu("Copy link");
               H.tooltip().findByText("Link copied to clipboard!");
             }
 
-            cy.get("@copyLink").should("have.been.called");
+            cy.get("@copyLink").should((stub) => {
+              expect(stub.firstCall.args[0]).to.match(
+                new RegExp(`/public/${resource}/`),
+              );
+            });
             cy.findByTestId("public-link-popover-content").should("not.exist");
           });
         });
@@ -169,7 +158,7 @@ const { H } = cy;
               cy.findByText("Enable").should("not.exist");
             });
 
-            cy.findByTestId("embed-menu-embed-modal-item").click();
+            H.sharingMenu().findByRole("button", { name: "Embed" }).click();
           });
         });
 
@@ -181,19 +170,7 @@ const { H } = cy;
               visitResource(resource, id);
             });
 
-            if (resource === "question") {
-              // No public link: the share button is hidden entirely.
-              H.sharingMenuButton().should("not.exist");
-            } else {
-              H.openSharingMenu();
-              H.sharingMenu().within(() => {
-                cy.findByText("Export as PDF").should("be.visible");
-                cy.findByText("Ask your admin to create a public link").should(
-                  "not.exist",
-                );
-                cy.findByText("Copy link").should("not.exist");
-              });
-            }
+            assertNonAdminCannotCreatePublicLink(resource);
           });
         });
       });
@@ -1053,6 +1030,22 @@ function visitResource(resource, id) {
 
   if (resource === "dashboard") {
     H.visitDashboard(id);
+  }
+}
+
+function assertNonAdminCannotCreatePublicLink(resource) {
+  if (resource === "question") {
+    // No public link: the share button is hidden entirely.
+    H.sharingMenuButton().should("not.exist");
+  } else {
+    // No public link: dashboards keep only the PDF export.
+    H.openSharingMenu();
+    H.sharingMenu().within(() => {
+      cy.findByText("Export as PDF").should("be.visible");
+      cy.findByText("Copy link").should("not.exist");
+      cy.findByText("Embed").should("not.exist");
+      cy.findByText(/public link/i).should("not.exist");
+    });
   }
 }
 
