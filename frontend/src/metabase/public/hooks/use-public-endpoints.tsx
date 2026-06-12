@@ -20,17 +20,18 @@ export const usePublicEndpoints = ({
   // Register synchronously during render rather than from the `useMount` below:
   // the dashboard fetcher lives in a child whose effect fires before this
   // parent's effects, so a `useMount` registration would miss the first embed
-  // request. The call is idempotent.
-  if (isEmbed) {
+  // request. Order matters — the embed override must be registered before the
+  // preview rewrite so it runs first. Both registrations are idempotent.
+  if (isPublic) {
+    overrideRequestsForPublicOrStaticEmbeds("public");
+  } else if (isEmbed) {
+    overrideRequestsForPublicOrStaticEmbeds("static");
     setupEmbedPreviewRewrite();
   }
 
   useMount(() => {
-    if (isPublic) {
-      overrideRequestsForPublicOrStaticEmbeds("public");
-    } else if (token) {
+    if (!isPublic && token) {
       PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-      overrideRequestsForPublicOrStaticEmbeds("static");
     }
   });
 };

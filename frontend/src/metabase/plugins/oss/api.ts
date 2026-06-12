@@ -1,15 +1,7 @@
-import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
+import { clearOnBeforeRequestHandlers } from "metabase/api/client/middleware";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 const getDefaultPluginApi = () => ({
-  onBeforeRequestHandlers: {
-    overrideRequestsForPublicEmbeds: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
-    overrideRequestsForStaticEmbeds: async (
-      _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
-  },
   getRemappedCardParameterValueUrl: (
     cardId: CardId | string | undefined,
     parameterId: ParameterId,
@@ -29,4 +21,7 @@ export const PLUGIN_API = getDefaultPluginApi();
  */
 export function reinitialize() {
   Object.assign(PLUGIN_API, getDefaultPluginApi());
+  // Request handlers are registered by feature init flows (embeds, SDK auth,
+  // …), so resetting plugins must also drop them from the shared registry.
+  clearOnBeforeRequestHandlers();
 }

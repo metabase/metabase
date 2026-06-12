@@ -1,9 +1,11 @@
 import { merge } from "icepick";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
+import {
+  type OnBeforeRequestHandlerConfig,
+  registerOnBeforeRequestHandler,
+} from "metabase/api/client";
 import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { isJWT } from "metabase/utils/jwt";
@@ -13,11 +15,13 @@ import { getOrRefreshGuestSession } from "./auth";
 export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
   "sdk/token/INIT_GUEST_EMBED",
   async (authConfig: MetabaseAuthConfig, { dispatch }) => {
-    overrideRequestsForGuestEmbeds();
-
     if (authConfig.isGuest && authConfig.guestEmbedProviderUri) {
       // Replaces the request token with the newly refreshed guest embed token.
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshGuestSessionHandler =
+      // Registered before the embed override (below) so the token is refreshed
+      // before the override's URL `:tag` substitution reads it — handlers run in
+      // registration order.
+      registerOnBeforeRequestHandler(
+        "sdk-guest-session-refresh",
         async (config: OnBeforeRequestHandlerConfig) => {
           const newToken = await dispatch(
             getOrRefreshGuestSession(authConfig),
@@ -67,8 +71,11 @@ export const initGuestEmbed = createAsyncThunk<void, MetabaseAuthConfig>(
               });
             }
           }
-        };
+        },
+      );
     }
+
+    overrideRequestsForGuestEmbeds();
 
     await dispatch(refreshSiteSettings());
   },

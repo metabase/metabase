@@ -1,4 +1,7 @@
-import { api } from "metabase/api/client";
+import {
+  clearOnBeforeRequestHandlers,
+  getOnBeforeRequestHandlerNames,
+} from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
 
 import {
@@ -16,6 +19,7 @@ const mockIsEmbedPreview = jest.mocked(isEmbedPreview);
 
 afterEach(() => {
   mockIsEmbedPreview.mockReset();
+  clearOnBeforeRequestHandlers();
 });
 
 describe("matchUrlPattern", () => {
@@ -154,21 +158,18 @@ describe("setupEmbedPreviewRewrite", () => {
   // The embed route registers `usePublicEndpoints` on a parent of the dashboard
   // fetcher, and React runs child effects before parent effects, so this must be
   // called synchronously (not from an effect) to catch the first embed request.
-  it("registers rewriteEmbedPreviewUrl on the shared client, idempotently", () => {
-    const before = api.beforeRequestHandlers.filter(
-      (handler) => handler === rewriteEmbedPreviewUrl,
-    ).length;
+  it("registers the preview rewrite on the shared client, idempotently", () => {
+    const countPreviewHandlers = () =>
+      getOnBeforeRequestHandlerNames().filter(
+        (name) => name === "embed-preview-rewrite",
+      ).length;
 
-    expect(before).toBe(0);
+    expect(countPreviewHandlers()).toBe(0);
 
     setupEmbedPreviewRewrite();
     setupEmbedPreviewRewrite();
 
-    const after = api.beforeRequestHandlers.filter(
-      (handler) => handler === rewriteEmbedPreviewUrl,
-    ).length;
-
-    expect(after).toBe(1);
+    expect(countPreviewHandlers()).toBe(1);
   });
 });
 

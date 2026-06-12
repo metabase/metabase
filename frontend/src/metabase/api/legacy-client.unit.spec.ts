@@ -1,12 +1,15 @@
 import fetchMock from "fetch-mock";
 
-import { api } from "./client";
+import {
+  clearOnBeforeRequestHandlers,
+  registerOnBeforeRequestHandler,
+} from "./client";
 import { GET, POST } from "./legacy-client";
 
 describe("legacy-client", () => {
   afterEach(() => {
     fetchMock.removeRoutes().clearHistory();
-    api.beforeRequestHandlers = [];
+    clearOnBeforeRequestHandlers();
   });
 
   it("substitutes URL :tags from rawData and routes the remainder to the JSON body for POST", async () => {
@@ -69,7 +72,7 @@ describe("legacy-client", () => {
     // (body-shaped) `token` field of the bag — not just from URL params.
     fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-    api.beforeRequestHandlers.push(async (config) => {
+    registerOnBeforeRequestHandler("embed-override", async (config) => {
       if (config.url === "/api/card/:cardId/query") {
         return {
           ...config,

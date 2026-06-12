@@ -1,6 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { ApiClient } from "./client";
+import {
+  clearOnBeforeRequestHandlers,
+  registerOnBeforeRequestHandler,
+} from "./middleware";
 
 describe("api", () => {
   describe("request (RTK entry point)", () => {
@@ -12,6 +16,7 @@ describe("api", () => {
 
     afterEach(() => {
       fetchMock.removeRoutes().clearHistory();
+      clearOnBeforeRequestHandlers();
     });
 
     it("`:tag*` substitutes a multi-segment value without URL-encoding the slashes", async () => {
@@ -164,7 +169,7 @@ describe("api", () => {
       // from the body field — not just from URL params.
       fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-      apiInstance.beforeRequestHandlers.push(async (config) => {
+      registerOnBeforeRequestHandler("embed-override", async (config) => {
         if (config.url === "/api/card/:cardId/query") {
           return {
             ...config,

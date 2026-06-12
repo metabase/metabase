@@ -16,7 +16,11 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
-import { type OnBeforeRequestHandlerConfig, api } from "metabase/api/client";
+import {
+  type OnBeforeRequestHandlerConfig,
+  api,
+  registerOnBeforeRequestHandler,
+} from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   EMBEDDING_SDK_CONFIG,
@@ -118,16 +122,16 @@ export const useInitDataInternal = ({
   // For the React SDK, send the host page URL as the embed referrer in a
   // header on every request. The EAJS iframe registers its own handler in
   // SdkIframeEmbedRoute.tsx using the value received via postMessage.
-  if (
-    !isEmbeddingEajs() &&
-    !api.beforeRequestHandlers.includes(reactSdkEmbedReferrerHandler)
-  ) {
-    api.beforeRequestHandlers.push(reactSdkEmbedReferrerHandler);
+  // Registration is idempotent (keyed by name).
+  if (!isEmbeddingEajs()) {
+    registerOnBeforeRequestHandler(
+      "react-sdk-embed-referrer",
+      reactSdkEmbedReferrerHandler,
+    );
   }
 
-  // Dedupe by handler identity (matches the `beforeRequestHandlers` pattern
-  // above) rather than total listener count — other code can register its own
-  // `responseError` listeners without disabling ours.
+  // Dedupe by handler identity rather than total listener count — other code
+  // can register its own `responseError` listeners without disabling ours.
   if (!api.listeners("responseError").includes(sdkResponseErrorHandler)) {
     api.on("responseError", sdkResponseErrorHandler);
   }

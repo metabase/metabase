@@ -11,9 +11,8 @@ import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
 import {
-  type OnBeforeRequestHandler,
   type OnBeforeRequestHandlerConfig,
-  apiRequestManipulationMiddleware,
+  applyOnBeforeRequestHandlers,
 } from "./middleware";
 import type {
   EventMap,
@@ -36,8 +35,6 @@ export class ApiClient extends EventEmitter<EventMap> {
   apiKey = "";
   sessionToken: string | undefined;
   requestClient: RequestClientInfo | undefined;
-
-  beforeRequestHandlers: OnBeforeRequestHandler[] = [];
 
   private buildUrl(
     template: string,
@@ -99,20 +96,17 @@ export class ApiClient extends EventEmitter<EventMap> {
   }
 
   private async _resolveOptions(options: OnBeforeRequestHandlerConfig) {
-    const middlewareResult = await apiRequestManipulationMiddleware(
-      this.beforeRequestHandlers,
-      {
-        ...options,
-        // `headers` is optional on the public API, but handlers may merge into
-        // it, so always hand the pipeline a real object to spread into.
-        headers: options.headers ?? {},
-        // This will transform arrays to objects with numeric keys
-        // we shouldn't be using top level-arrays in the API.
-        // Both bags are defensively copied so middleware can safely mutate them.
-        data: { ...options.data },
-        body: options.body ? { ...options.body } : undefined,
-      },
-    );
+    const middlewareResult = await applyOnBeforeRequestHandlers({
+      ...options,
+      // `headers` is optional on the public API, but handlers may merge into
+      // it, so always hand the pipeline a real object to spread into.
+      headers: options.headers ?? {},
+      // This will transform arrays to objects with numeric keys
+      // we shouldn't be using top level-arrays in the API.
+      // Both bags are defensively copied so middleware can safely mutate them.
+      data: { ...options.data },
+      body: options.body ? { ...options.body } : undefined,
+    });
 
     return {
       ...middlewareResult,

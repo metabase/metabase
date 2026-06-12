@@ -2,14 +2,10 @@ import { sessionPropertiesPath } from "metabase/api";
 import {
   type OnBeforeRequestHandlerConfig,
   type RequestMethod,
-  api,
+  registerOnBeforeRequestHandler,
 } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
-import {
-  PLUGIN_API,
-  PLUGIN_CONTENT_TRANSLATION,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 type EmbedType = "guest" | "static" | "public";
@@ -245,51 +241,48 @@ export const rewriteEmbedPreviewUrl = async ({
 };
 
 /**
- * Registers the embed-preview rewrite on the shared client. It runs after the
- * embed override handlers, so it covers both the override-produced
- * `/api/embed/...` urls and the embed endpoints called directly (e.g.
- * `EmbedApi`, `embedApi`).
+ * Registers the embed-preview rewrite on the shared client. It must run *after*
+ * the embed override handler, so the embed flows register it after
+ * `embed-request-override` — the registry runs handlers in registration order.
+ * This covers both the override-produced `/api/embed/...` urls and the embed
+ * endpoints called directly (e.g. `EmbedApi`, `embedApi`).
  *
- * Idempotent, so call sites can register it at the earliest safe moment without
- * worrying about duplicates. For public/static embeds it must run *before* the
- * dashboard fetcher's effect (see `usePublicEndpoints`): React runs child
- * effects before parent effects, so registering from a parent `useMount` would
- * miss the very first embed request (the dashboard load).
+ * Idempotent (keyed by name), so call sites can register it at the earliest safe
+ * moment without worrying about duplicates. For public/static embeds it must run
+ * *before* the dashboard fetcher's effect (see `usePublicEndpoints`): React runs
+ * child effects before parent effects, so registering from a parent `useMount`
+ * would miss the very first embed request (the dashboard load).
  */
 export const setupEmbedPreviewRewrite = () => {
-  if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
-    api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
-  }
+  registerOnBeforeRequestHandler(
+    "embed-preview-rewrite",
+    rewriteEmbedPreviewUrl,
+  );
 };
 
 /**
- * Registers a request interceptor that transforms standard API requests
- * into guest embeds API requests.
+ * Registers a request interceptor that transforms standard API requests into
+ * guest embeds API requests. The override is registered before the preview
+ * rewrite so it runs first (see `setupEmbedPreviewRewrite`).
  */
 export const overrideRequestsForGuestEmbeds = () => {
   setupRemappingUrls("guest");
+  registerOnBeforeRequestHandler("embed-request-override", (data) =>
+    overrideRequests({ ...data, embedType: "guest" }),
+  );
   setupEmbedPreviewRewrite();
-
-  PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
-    (data) =>
-      overrideRequests({
-        ...data,
-        embedType: "guest",
-      });
 };
 
 /**
- * Registers a request interceptor that transforms standard API requests
- * into public or static embeds API requests.
+ * Registers a request interceptor that transforms standard API requests into
+ * public or static embeds API requests. Callers that also need the preview
+ * rewrite must register it after this (see `usePublicEndpoints`).
  */
 export const overrideRequestsForPublicOrStaticEmbeds = (
   embedType: "static" | "public",
 ) => {
   setupRemappingUrls(embedType);
-
-  PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds = (data) =>
-    overrideRequests({
-      ...data,
-      embedType,
-    });
+  registerOnBeforeRequestHandler("embed-request-override", (data) =>
+    overrideRequests({ ...data, embedType }),
+  );
 };

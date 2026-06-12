@@ -1,5 +1,3 @@
-import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-
 import type { RequestMethod } from "./method";
 
 export type OnBeforeRequestHandlerConfig = {
@@ -21,30 +19,66 @@ export type OnBeforeRequestHandler = (
   data: OnBeforeRequestHandlerConfig,
 ) => Promise<void | Partial<OnBeforeRequestHandlerConfig>>;
 
-export async function apiRequestManipulationMiddleware(
-  beforeRequestHandlers: OnBeforeRequestHandler[],
+type RegisteredHandler = {
+  name: string;
+  handler: OnBeforeRequestHandler;
+};
+
+// The single source of truth for request-manipulation handlers. Handlers run in
+// registration order (see `applyOnBeforeRequestHandlers`), so callers register
+// in dependency order — there is no separate priority mechanism. A feature
+// registers its handlers from its own init flow rather than this module
+// hardcoding which handlers exist, so nothing here needs to know about embeds,
+// the SDK, or any other consumer.
+const registeredHandlers: RegisteredHandler[] = [];
+
+/**
+ * Register a request handler under a stable `name`.
+ *
+ * Re-registering an existing `name` replaces the handler in place, keeping its
+ * position in the run order. This lets a flow that rebuilds its handler on
+ * re-init — e.g. the SDK session refresh, which closes over a fresh
+ * `dispatch`/`authConfig` each time — swap in the latest version without
+ * duplicating or reordering. The `name` doubles as a debug label for tracing
+ * why an endpoint was rewritten.
+ */
+export function registerOnBeforeRequestHandler(
+  name: string,
+  handler: OnBeforeRequestHandler,
+) {
+  const existing = registeredHandlers.find((entry) => entry.name === name);
+  if (existing) {
+    existing.handler = handler;
+    return;
+  }
+  registeredHandlers.push({ name, handler });
+}
+
+/** Names of the registered handlers, in run order. For debugging and tests. */
+export function getOnBeforeRequestHandlerNames(): string[] {
+  return registeredHandlers.map((entry) => entry.name);
+}
+
+/** Drop all registered handlers. Used by tests and the plugin reinitialize. */
+export function clearOnBeforeRequestHandlers() {
+  registeredHandlers.length = 0;
+}
+
+/**
+ * Run every registered handler over the request config, in registration order.
+ * Each handler sees the result of the previous one and may return a partial
+ * override that is merged in.
+ */
+export async function applyOnBeforeRequestHandlers(
   requestConfig: OnBeforeRequestHandlerConfig,
 ): Promise<OnBeforeRequestHandlerConfig> {
-  // Handlers order is important.
-  // Handlers are executed in order and each handler uses the data returned by a previous handler.
-  const handlers = [
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
-      .getOrRefreshGuestSessionHandler,
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds,
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
-    PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
-    ...beforeRequestHandlers,
-  ];
-
   let result = requestConfig;
-  for (const handler of handlers) {
+  for (const { handler } of registeredHandlers) {
     const next = await handler(result);
     if (next) {
       result = merge(result, next);
     }
   }
-
   return result;
 }
 

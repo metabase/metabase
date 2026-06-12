@@ -28,7 +28,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { api } from "metabase/api/client";
+import { api, registerOnBeforeRequestHandler } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
@@ -37,7 +37,6 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -97,15 +96,14 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
       // Set up the refresh handler so API calls can renew the token later.
-      PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-        async () => {
-          const session = await dispatch(
-            getOrRefreshSession(authConfig),
-          ).unwrap();
-          if (session?.id) {
-            api.sessionToken = session.id;
-          }
-        };
+      registerOnBeforeRequestHandler("sdk-session-refresh", async () => {
+        const session = await dispatch(
+          getOrRefreshSession(authConfig),
+        ).unwrap();
+        if (session?.id) {
+          api.sessionToken = session.id;
+        }
+      });
 
       return;
     }
@@ -131,15 +129,12 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
     // SSO setup
-    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-      async () => {
-        const session = await dispatch(
-          getOrRefreshSession(authConfig),
-        ).unwrap();
-        if (session?.id) {
-          api.sessionToken = session.id;
-        }
-      };
+    registerOnBeforeRequestHandler("sdk-session-refresh", async () => {
+      const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
+      if (session?.id) {
+        api.sessionToken = session.id;
+      }
+    });
     try {
       // verify that the session is actually valid before proceeding
       await dispatch(getOrRefreshSession(authConfig)).unwrap();
