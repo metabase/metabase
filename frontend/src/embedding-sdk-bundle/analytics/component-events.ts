@@ -6,10 +6,10 @@ import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
 
-// Default matches the BE setting (:default true in analytics/settings.clj).
 export function useIsTrackingEnabled(): boolean {
+  // Default false so we don't fire events during the settings-load window for users who opted out.
   return useSdkSelector(
-    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? true,
+    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? false,
   );
 }
 
