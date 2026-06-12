@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.sync :as data-apps.sync]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
@@ -249,6 +250,19 @@
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
 
+(defn- materialize-data-apps!
+  "After a successful content import, materialize data apps from the same
+   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
+   paths), so they ride this import rather than having their own sync. Adapts the
+   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+  [^SourceSnapshot snapshot]
+  ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
+  ;; bytes on its side, keeping all Java interop out of this namespace.
+  (data-apps.sync/sync-from-snapshot!
+   {:read-file  (fn [path] (source.p/read-file snapshot path))
+    :list-files (fn [] (source.p/list-files snapshot))
+    :sha        (source.p/version snapshot)}))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -390,37 +404,45 @@
   (let [sync-timestamp (t/instant)]
     (if snapshot
       (try
-        (if merge?
-          (import-merged! snapshot base-snapshot task-id sync-timestamp)
-          (let [snapshot-version (source.p/version snapshot)
-                last-imported-version (remote-sync.task/last-version)
-                first-import? (nil? last-imported-version)
-                path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
-                base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
-            (cond
-              (and first-import? (not force?) (seq conflicts))
-              (u/prog1 {:status :conflict
-                        :version (source.p/version snapshot)
-                        :conflicts summary  ; Keep backward compatibility: return set of category names
-                        :conflict-details conflicts  ; New: detailed conflict info
-                        :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
-                (log/infof (:message <>)))
+        (let [result (if merge?
+                       (import-merged! snapshot base-snapshot task-id sync-timestamp)
+                       (let [snapshot-version (source.p/version snapshot)
+                             last-imported-version (remote-sync.task/last-version)
+                             first-import? (nil? last-imported-version)
+                             path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+                             base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+                             {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
+                         (cond
+                           (and first-import? (not force?) (seq conflicts))
+                           (u/prog1 {:status :conflict
+                                     :version (source.p/version snapshot)
+                                     :conflicts summary  ; Keep backward compatibility: return set of category names
+                                     :conflict-details conflicts  ; New: detailed conflict info
+                                     :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+                             (log/infof (:message <>)))
 
-              (and (not force?) (= last-imported-version snapshot-version))
-              (u/prog1 {:status :success
-                        :version (source.p/version snapshot)
-                        :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
-                (log/infof (:message <>)))
+                           (and (not force?) (= last-imported-version snapshot-version))
+                           (u/prog1 {:status :success
+                                     :version (source.p/version snapshot)
+                                     :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
+                             (log/infof (:message <>)))
 
-              :else
-              (do
-                (load-snapshot! snapshot task-id sync-timestamp
-                                :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))
-                (log/info "Successfully reloaded entities from git repository")
-                {:status :success
-                 :version (source.p/version snapshot)
-                 :message "Successfully reloaded from git repository"}))))
+                           :else
+                           (do
+                             (load-snapshot! snapshot task-id sync-timestamp
+                                             :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))
+                             (log/info "Successfully reloaded entities from git repository")
+                             {:status :success
+                              :version (source.p/version snapshot)
+                              :message "Successfully reloaded from git repository"}))))]
+          ;; Data apps ride the pull: re-materialize from the REAL source snapshot
+          ;; (the repo file tree under `data_apps/`), not the synthetic merged
+          ;; snapshot `load-snapshot!` sees. Only when the import actually applied —
+          ;; a merge `:conflict` touches nothing — and `sync-from-snapshot!` opens
+          ;; its own transaction and never throws, so it can't break the result.
+          (when (= :success (:status result))
+            (materialize-data-apps! snapshot))
+          result)
         (catch Exception e
           (handle-import-exception e snapshot))
         (finally
