@@ -1,8 +1,7 @@
 import { sessionPropertiesPath } from "metabase/api";
-import {
-  type OnBeforeRequestHandlerConfig,
-  type RequestMethod,
-  api,
+import type {
+  OnBeforeRequestHandlerConfig,
+  RequestMethod,
 } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
 import {
@@ -245,20 +244,18 @@ export const rewriteEmbedPreviewUrl = async ({
 };
 
 /**
- * Registers the embed-preview rewrite on the shared client. It runs after the
- * embed override handlers, so it covers both the override-produced
- * `/api/embed/...` urls and the embed endpoints called directly.
+ * Installs the embed-preview rewrite into its plugin slot. It runs after the
+ * embed override handlers (see the pipeline in `middleware.ts`), so it covers
+ * both the override-produced `/api/embed/...` urls and the embed endpoints
+ * called directly (e.g. `EmbedApi`, `embedApi`).
  *
- * Idempotent, so call sites can register it at the earliest safe moment without
- * worrying about duplicates. For public/static embeds it must run *before* the
- * dashboard fetcher's effect (see `usePublicEndpoints`): React runs child
- * effects before parent effects, so registering from a parent `useMount` would
- * miss the very first embed request (the dashboard load).
+ * The slot's position in the pipeline is fixed, so this only needs to run before
+ * the first embed request — assigning the same handler again is a harmless
+ * no-op.
  */
 export const setupEmbedPreviewRewrite = () => {
-  if (!api.beforeRequestHandlers.includes(rewriteEmbedPreviewUrl)) {
-    api.beforeRequestHandlers.push(rewriteEmbedPreviewUrl);
-  }
+  PLUGIN_API.onBeforeRequestHandlers.rewriteEmbedPreviewUrl =
+    rewriteEmbedPreviewUrl;
 };
 
 /**

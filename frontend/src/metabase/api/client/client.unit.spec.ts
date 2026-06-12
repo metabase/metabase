@@ -1,5 +1,7 @@
 import fetchMock from "fetch-mock";
 
+import { PLUGIN_API, reinitialize } from "metabase/plugins";
+
 import { ApiClient } from "./client";
 
 describe("api", () => {
@@ -12,6 +14,8 @@ describe("api", () => {
 
     afterEach(() => {
       fetchMock.removeRoutes().clearHistory();
+      // Reset any plugin request handlers installed by a test.
+      reinitialize();
     });
 
     it("substitutes :tag URL placeholders from `params`", async () => {
@@ -145,16 +149,17 @@ describe("api", () => {
       // from the body field — not just from URL params.
       fetchMock.get("path:/api/embed/card/SOME_JWT/query", { rows: [] });
 
-      apiInstance.beforeRequestHandlers.push(async (config) => {
-        if (config.url === "/api/card/:cardId/query") {
-          return {
-            ...config,
-            method: "GET" as const,
-            url: "/api/embed/card/:token/query",
-          };
-        }
-        return config;
-      });
+      PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds =
+        async (config) => {
+          if (config.url === "/api/card/:cardId/query") {
+            return {
+              ...config,
+              method: "GET" as const,
+              url: "/api/embed/card/:token/query",
+            };
+          }
+          return config;
+        };
 
       await apiInstance.request({
         method: "POST",

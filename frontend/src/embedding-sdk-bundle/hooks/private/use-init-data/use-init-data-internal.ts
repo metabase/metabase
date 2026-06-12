@@ -22,6 +22,7 @@ import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import registerVisualizations from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler = async (
@@ -115,18 +116,15 @@ export const useInitDataInternal = ({
   }
 
   // For the React SDK, send the host page URL as the embed referrer in a
-  // header on every request. The EAJS iframe registers its own handler in
+  // header on every request. The EAJS iframe installs its own handler in
   // SdkIframeEmbedRoute.tsx using the value received via postMessage.
-  if (
-    !isEmbeddingEajs() &&
-    !api.beforeRequestHandlers.includes(reactSdkEmbedReferrerHandler)
-  ) {
-    api.beforeRequestHandlers.push(reactSdkEmbedReferrerHandler);
+  if (!isEmbeddingEajs()) {
+    PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.reactSdkEmbedReferrer =
+      reactSdkEmbedReferrerHandler;
   }
 
-  // Dedupe by handler identity (matches the `beforeRequestHandlers` pattern
-  // above) rather than total listener count — other code can register its own
-  // `responseError` listeners without disabling ours.
+  // Dedupe by handler identity rather than total listener count — other code
+  // can register its own `responseError` listeners without disabling ours.
   if (!api.listeners("responseError").includes(sdkResponseErrorHandler)) {
     api.on("responseError", sdkResponseErrorHandler);
   }

@@ -6,9 +6,9 @@ const getDefaultPluginApi = () => ({
     overrideRequestsForPublicEmbeds: async (
       _data: OnBeforeRequestHandlerConfig,
     ): Promise<OnBeforeRequestHandlerConfig | void> => {},
-    overrideRequestsForStaticEmbeds: async (
+    rewriteEmbedPreviewUrl: async (
       _data: OnBeforeRequestHandlerConfig,
-    ): Promise<OnBeforeRequestHandlerConfig | void> => {},
+    ): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
   },
   getRemappedCardParameterValueUrl: (
     cardId: CardId | string | undefined,

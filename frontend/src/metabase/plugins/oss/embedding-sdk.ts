@@ -10,6 +10,9 @@ const getDefaultPluginEmbeddingSdk = () => ({
     overrideRequestsForGuestEmbeds: async (
       _data: OnBeforeRequestHandlerConfig,
     ): Promise<OnBeforeRequestHandlerConfig | void> => {},
+    reactSdkEmbedReferrer: async (
+      _data: OnBeforeRequestHandlerConfig,
+    ): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
   },
 });
 
