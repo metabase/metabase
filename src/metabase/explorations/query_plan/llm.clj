@@ -1,6 +1,12 @@
 (ns metabase.explorations.query-plan.llm
   "LLM-driven implementation of `metabase.explorations.query-plan.planner/QueryPlanner`.
 
+  NOTE: this planner is a POC and is NOT used in production — the
+  `metabase.explorations.query-plan.mechanical` planner is the one that runs.
+  It's kept here as a research toggle (reachable via the
+  `explorations-query-planner` setting) while we evaluate whether an LLM can
+  plan better charts than the mechanical heuristics.
+
   Owns: the JSON schema for the structured tool response, the prompt
   template binding, the per-item and plan-wide validators, the
   `run-with-repair` invocation, the repair prompt, the LLM-specific
