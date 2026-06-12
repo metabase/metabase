@@ -11,7 +11,7 @@ Keep the semantic layer and presentation layer separate.
 
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
-- Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react`.
+- Use `useMetabaseQuery`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
@@ -50,7 +50,7 @@ import {
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,
-} from "@metabase/embedding-sdk-react";
+} from "@metabase/embedding-sdk-react/data-app";
 import schema from "../metabase.data";
 
 const lifetimeValueMetric = schema.metrics.customerLifetimeValue;
@@ -146,7 +146,7 @@ Measures must come from tables in the metric's `mappedTableIds`.
 
 Use Metabase's SDK `InteractiveQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a table-backed semantic query with `useMetabaseQueryObject`, then pass the query object to `InteractiveQuestion`.
 
-Current prototype constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. If the desired view is metric-backed but can be expressed from a generated table plus measures, filters, and breakouts, prefer that table-backed `InteractiveQuestion` query. Use `useMetabaseQuery` and custom rendering for metrics only when there is no table-backed equivalent or the UI needs direct row data.
+Current constraint: `useMetabaseQueryObject` is for table-backed queries. Do not pass `metric` or `metricId` to `useMetabaseQueryObject`. If the desired view is metric-backed but can be expressed from a generated table plus measures, filters, and breakouts, prefer that table-backed `InteractiveQuestion` query. Use `useMetabaseQuery` and custom rendering for metrics only when there is no table-backed equivalent or the UI needs direct row data.
 
 Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
 
@@ -178,7 +178,7 @@ import {
   InteractiveQuestion,
   breakout,
   useMetabaseQueryObject,
-} from "@metabase/embedding-sdk-react";
+} from "@metabase/embedding-sdk-react/data-app";
 
 const dailyRevenue = schema.tables.dailyStoreRevenue;
 
@@ -278,38 +278,6 @@ const { data } = useMetabaseQuery<DailyRevenue>({
 - Do not multiply by 100, add `%`, bucket into health/risk labels, or invent interpretation for ambiguous fields without evidence. Prefer omitting the field over guessing.
 - If a ratio is needed, derive it explicitly from returned numerator and denominator fields with clear labels. If the source value is an amount, format it as an amount.
 - Empty results are distinct from loading. After `isLoading` is false, render a clear empty state instead of leaving a skeleton or blank KPI.
-
-## Important: TypeScript Checks
-
-After changing queries, generated-schema usage, or React components that consume Metabase data, run the app's TypeScript check before finalizing. This is mandatory. Visual testing does not catch schema type errors.
-
-Use the fastest type-only check available:
-
-1. Prefer the app's existing typecheck script when present:
-
-```bash
-npm run typecheck
-```
-
-2. If no typecheck script exists, run TypeScript directly:
-
-```bash
-./node_modules/.bin/tsc --noEmit
-```
-
-Do not use a full build as the default query/type validation step. Builds are slower and often include bundling, asset generation, and unrelated production checks.
-
-Do not skip this check because the app rendered, because browser automation passed, or because the change looks small.
-
-Fix one query error at a time.
-
-Common patterns:
-
-- `filter(...)` overload error: operator does not match dimension type. Use `contains` for strings, `>`/`between` for numbers or dates.
-- `bucket` error: dimension is not a date. Remove `bucket` or choose a date dimension.
-- `dimension.id`, `dimension.name`, `metricId`, or `tableId` mismatch: field/dimension came from the wrong table or metric. Use dimensions from the same metric, or fields from the queried table.
-- Segment/measure `tableId` mismatch: choose a segment/measure from the queried table or from a table in the metric's `mappedTableIds`.
-- Runtime SQL error like `timestamp with time zone > integer`: TypeScript accepted the operator, but the value type is wrong. Use date values for date dimensions, numbers for number dimensions, strings for string dimensions.
 
 ## Presentation Guidance
 

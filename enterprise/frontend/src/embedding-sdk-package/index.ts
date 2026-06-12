@@ -31,6 +31,7 @@ export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
 export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
+/** @internal */
 export {
   breakout,
   createMetabaseQuery,
@@ -56,11 +57,12 @@ export type {
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
+/** @internal */
 export type {
+  MetabaseBreakout,
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
-
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 

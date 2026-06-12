@@ -41,9 +41,15 @@ export type SdkQuestionId =
 
 /**
  * A table-backed ad hoc question query.
+ *
+ * @notExported StructuredDatasetQuery
  */
 export type SdkQuestionQuery = StructuredDatasetQuery;
 
+/**
+ * @notExported SdkQuestionQuery
+ * @notExported StructuredDatasetQuery
+ */
 export type SdkQuestionEntityPublicProps =
   | {
       /**

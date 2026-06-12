@@ -36,7 +36,10 @@ const config = {
 
   devtool: false,
 
-  entry: "./index.ts",
+  entry: {
+    main: "./index.ts",
+    "data-app": "./data-app.ts",
+  },
 
   output: {
     path: BUILD_PATH + "/dist",
@@ -79,7 +82,7 @@ const config = {
       ...getBuildInfoValues({ version: getSdkPackageVersionFromPackageJson() }),
     }),
     new rspack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1,
+      maxChunks: 2,
     }),
     new rspack.BannerPlugin(getBannerOptions(SDK_PACKAGE_BANNER)),
   ].filter(Boolean),

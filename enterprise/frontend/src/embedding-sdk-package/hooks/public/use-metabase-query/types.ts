@@ -219,6 +219,7 @@ type MetabaseDimensionFilterForDimension<TDimension> =
       }
     : never;
 
+/** @notExported FilterOperatorForDimension */
 export type MetabaseDimensionFilterForOperator<
   TDimension,
   TOperator extends FilterOperatorForDimension<TDimension>,
@@ -251,6 +252,10 @@ type NonDateBucketDimension<TDimension> = TDimension extends unknown
     : never
   : never;
 
+/**
+ * @notExported BreakoutBinning
+ * @notExported DateBucketDimension
+ */
 export type BreakoutOptionsArgument<TDimension> = [
   DateBucketDimension<TDimension>,
 ] extends [never]
@@ -281,6 +286,11 @@ type MetabaseBreakoutObjectForDimension<TDimension> =
           binning?: BreakoutBinning;
         });
 
+/**
+ * @notExported DimensionInput
+ * @notExported DimensionValues
+ * @notExported MetabaseBreakoutForDimension
+ */
 export type MetabaseBreakout<TEntity = unknown> = [
   DimensionValues<TEntity>,
 ] extends [never]
@@ -297,6 +307,11 @@ export type MetabaseBreakout<TEntity = unknown> = [
         }
   : MetabaseBreakoutForDimension<DimensionValues<TEntity>>;
 
+/**
+ * @notExported DimensionInput
+ * @notExported DimensionValues
+ * @notExported MetabaseDimensionFilterForDimension
+ */
 export type MetabaseDimensionFilter<TEntity = unknown> = [
   DimensionValues<TEntity>,
 ] extends [never]
@@ -382,6 +397,8 @@ export type MetricQuery<TMetric> = {
 };
 
 /**
+ * @internal
+ * @notExported MeasureReference
  * @notExported QuestionQuery
  * @notExported TableQuery
  * @notExported MetricQuery
@@ -446,6 +463,11 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
   : TEntity;
 
+/**
+ * @internal
+ * @notExported InferQuerySchema
+ * @notExported QueryData
+ */
 export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   data: QueryData<InferQuerySchema<TEntity, TQuery>> | null;
   isLoading: boolean;
@@ -453,6 +475,12 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
   refetch: () => Promise<void>;
 };
 
+/**
+ * @internal
+ * @notExported QueryEntity
+ * @notExported QuestionSchema
+ * @notExported TableSchema
+ */
 export type UseMetabaseQuery = <
   TEntity extends QuestionSchema | TableSchema | MetricReference | undefined =
     undefined,
