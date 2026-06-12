@@ -610,16 +610,17 @@
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
+    ;; Apply standalone indexes once the table exists, before sync so the synced metadata sees them. Only on
+    ;; full-create runs: a full `:table` run recreates the table (so indexes must be reinstalled), as does a
+    ;; first/full-reset incremental run. Plain append runs preserve the existing table and its live indexes, so they
+    ;; skip this. No-op for inline-only drivers/kinds.
+    (when (or (= :table (keyword (:type target)))
+              (full-incremental-run? transform))
+      (apply-standalone-indexes! database target))
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
-    ;; Apply standalone indexes once the table exists. Only on full-create runs: a full `:table` run recreates the
-    ;; table (so indexes must be reinstalled), as does a first/full-reset incremental run. Plain append runs preserve
-    ;; the existing table and its live indexes, so they skip this. No-op for inline-only drivers/kinds.
-    (when (or (= :table (keyword (:type target)))
-              (full-incremental-run? transform))
-      (apply-standalone-indexes! database target))
     ;; Publish event after sync so the table exists in AppDB.
     (when publish-events?
       (events/publish-event! :event/transform-run-complete
