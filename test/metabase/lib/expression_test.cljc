@@ -673,18 +673,19 @@
         [:datetime-diff created-at created-at :hour]
         total
         [:+ total subtotal]))
+    (testing "aggregations with unaggregated refs are rejected with an understandable error message"
+      (are [expr] (= {:message  "Fields in custom aggregations must be wrapped with a function like Sum."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:+ [:sum total] subtotal]
+        [:+ [:sum total] [:floor subtotal]]))
     (testing "aggregations that contain an aggregation function are accepted"
       (are [expr] (nil? (diagnose-expr expr))
         [:sum total]
         [:+ [:sum total] [:sum subtotal]]
         [:+ [:sum total] 4]
         [:+ [:sum total] [:floor [:sum subtotal]]]
-        [:+ [:sum total] [:count]]
-        ;; This is allowed by the BE but rejected by the FE
-        [:+ [:sum total] subtotal]
-        ;; TODO(rileythomp, 2026-06-12): This is allowed by the BE and FE
-        ;; but it should be rejected as it results in an error.
-        [:+ [:sum total] [:floor subtotal]]))))
+        [:+ [:sum total] [:count]]))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))

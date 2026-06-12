@@ -152,6 +152,39 @@
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])
 
+(defn- has-unaggregated-ref?
+  "Checks if `x` contains a column reference that is not wrapped in an aggregation
+  function, e.g. the `[:field 2]` in `[:+ [:sum [:field 1]] [:field 2]]`."
+  [x]
+  (when (vector? x)
+    (let [[tag _opts & args] x]
+      (cond
+        (#{:field :expression} tag)
+        true
+
+        (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        false
+
+        ;; case/if conditions can reference unaggregated refs, we
+        ;; only need to check the result branches are aggregated
+        (#{:case :if} tag)
+        (let [[pairs default] args]
+          (boolean (or (some (fn [[_cond expr]] (has-unaggregated-ref? expr)) pairs)
+                       (has-unaggregated-ref? default))))
+
+        :else
+        (boolean (some has-unaggregated-ref? args))))))
+
+(mr/def ::aggregation-with-no-unnaggregated-refs
+  "Stricter variant of ::aggregation used for query builder verification. Not enforced
+  on whole queries, so saved questions with unaggregated fields keep working."
+  [:and
+   [:ref ::aggregation]
+   [:fn
+    {:error/message #(i18n/tru "Fields in custom aggregations must be wrapped with a function like Sum.")
+     :error/friendly true}
+    (complement has-unaggregated-ref?)]])
+
 (def aggregation-operators
   "The list of available aggregation operator.
   The order of operators is relevant for the front end."
