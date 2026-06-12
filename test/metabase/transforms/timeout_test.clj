@@ -27,16 +27,18 @@
         (prometheus/clear! :metabase-transforms/timeout-detection-latency-ms)
         (mt/with-temp [:model/Transform    {old-transform-id :id}   {}
                        :model/Transform    {fresh-transform-id :id} {}
-                       :model/TransformRun {old-run-id :id}         {:transform_id old-transform-id
-                                                                     :status       :started
-                                                                     :is_active    true
-                                                                     :run_method   :manual
-                                                                     :start_time   (minutes-ago 30)}
-                       :model/TransformRun {fresh-run-id :id}       {:transform_id fresh-transform-id
-                                                                     :status       :started
-                                                                     :is_active    true
-                                                                     :run_method   :manual
-                                                                     :start_time   (minutes-ago 1)}]
+                       :model/TransformRun {old-run-id :id}         {:transform_id   old-transform-id
+                                                                     :status         :started
+                                                                     :is_active      true
+                                                                     :run_method     :manual
+                                                                     :start_time     (minutes-ago 30)
+                                                                     :last_heartbeat (minutes-ago 30)}
+                       :model/TransformRun {fresh-run-id :id}       {:transform_id   fresh-transform-id
+                                                                     :status         :started
+                                                                     :is_active      true
+                                                                     :run_method     :manual
+                                                                     :start_time     (minutes-ago 1)
+                                                                     :last_heartbeat (minutes-ago 1)}]
           (let [timed-out (transform-run/timeout-old-runs! 5 :minute)]
             (testing "only the stale run is timed out"
               (is (= 1 (count timed-out)))
@@ -66,11 +68,12 @@
           (mt/with-dynamic-fn-redefs [analytics/inc!     (fn [metric & _] (swap! inc-calls conj metric))
                                       analytics/observe! (fn [metric & _] (swap! observe-calls conj metric))]
             (mt/with-temp [:model/Transform    {transform-id :id} {}
-                           :model/TransformRun _ {:transform_id transform-id
-                                                  :status       :started
-                                                  :is_active    true
-                                                  :run_method   :manual
-                                                  :start_time   (minutes-ago 1)}]
+                           :model/TransformRun _ {:transform_id   transform-id
+                                                  :status         :started
+                                                  :is_active      true
+                                                  :run_method     :manual
+                                                  :start_time     (minutes-ago 1)
+                                                  :last_heartbeat (minutes-ago 1)}]
               (is (empty? (transform-run/timeout-old-runs! 5 :minute)))
               (is (not-any? #{:metabase-transforms/timeouts-total} @inc-calls)
                   "sweeper did not increment :metabase-transforms/timeouts-total")
@@ -79,11 +82,12 @@
       (testing "single-run timeout-run! bumps counter and publishes audit event"
         (prometheus/clear! :metabase-transforms/timeouts-total)
         (mt/with-temp [:model/Transform    {transform-id :id} {}
-                       :model/TransformRun {run-id :id}       {:transform_id transform-id
-                                                               :status       :started
-                                                               :is_active    true
-                                                               :run_method   :manual
-                                                               :start_time   (minutes-ago 1)}]
+                       :model/TransformRun {run-id :id}       {:transform_id   transform-id
+                                                               :status         :started
+                                                               :is_active      true
+                                                               :run_method     :manual
+                                                               :start_time     (minutes-ago 1)
+                                                               :last_heartbeat (minutes-ago 1)}]
           (transform-run/timeout-run! run-id)
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id run-id)))
           (is (== 1 (mt/metric-value system
@@ -98,16 +102,17 @@
         (prometheus/clear! :metabase-transforms/timeout-detection-latency-ms)
         (mt/with-temp [:model/TransformJob    {job-id :id}        {:name     "timeout-test-job"
                                                                    :schedule "0 0 * * * ? *"}
-                       :model/TransformJobRun {old-run-id :id}    {:job_id     job-id
-                                                                   :status     :started
-                                                                   :is_active  true
-                                                                   :run_method :manual
-                                                                   :updated_at (minutes-ago 30)}
-                       :model/TransformJobRun {fresh-run-id :id}  {:job_id     job-id
-                                                                   :status     :started
-                                                                   :is_active  true
-                                                                   :run_method :manual
-                                                                   :updated_at (minutes-ago 1)}]
+                       :model/TransformJobRun {old-run-id :id}    {:job_id         job-id
+                                                                   :status         :started
+                                                                   :is_active      true
+                                                                   :run_method     :manual
+                                                                   :updated_at     (minutes-ago 30)
+                                                                   :last_heartbeat (minutes-ago 30)}
+                       :model/TransformJobRun {fresh-run-id :id}  {:job_id         job-id
+                                                                   :status         :started
+                                                                   :is_active      true
+                                                                   :run_method     :manual
+                                                                   :last_heartbeat (minutes-ago 1)}]
           (let [timed-out (transforms.job-run/reap-orphaned-runs! 5)]
             (is (= 1 (count timed-out)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformJobRun :id old-run-id)))
