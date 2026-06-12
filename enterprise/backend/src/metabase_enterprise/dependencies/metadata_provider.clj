@@ -134,7 +134,7 @@
     ;; should be ignored.
     {[:metadata/card id] (delay (let [temp (merge (when id
                                                     (-> (inner-mp mp)
-                                                        (lib.metadata/card id)))
+                                                        (lib.metadata.protocols/card id)))
                                                   updates)
                                       result-metadata (or (:result-metadata updates)
                                                           (and (.returned-columns-fn mp)
