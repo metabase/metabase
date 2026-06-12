@@ -3076,7 +3076,8 @@
                     :model/Sandbox
                     :model/Segment
                     :model/Table
-                    :model/Transform}}
+                    :model/Transform
+                    :model/TransformRun}}
 
   enterprise/email
   {:team "UX West"
