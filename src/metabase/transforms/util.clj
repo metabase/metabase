@@ -119,56 +119,56 @@
   - `:ex-message-fn` change how caught exceptions are presented to the user in run logs, by default the same as clojure.core/ex-message"
   [run-id transform driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message-fn] :or {ex-message-fn ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
-  (let [cancel-chan       (a/promise-chan)
-        transform-timeout (transforms.settings/transform-timeout)
-        source-range-params  (transforms-base.u/get-source-range-params transform)
-        transform-timeout-ms (u/minutes->ms transform-timeout)
-        full-incremental?    (transforms-base.u/full-incremental-run? transform)
-        ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
-        ;; rows-affected count can be trusted. On drivers that declare
-        ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
-        ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
-        ;; count is accurate even on those drivers.
-        reliable-row-count?  (or (driver.u/supports? driver :transforms/accurate-rows-affected
-                                                     {:lib/type :metadata/database :id db-id})
-                                 (not full-incremental?))]
+  (let [cancel-chan          (a/promise-chan)
+        transform-timeout    (transforms.settings/transform-timeout)
+        transform-timeout-ms (u/minutes->ms transform-timeout)]
     (canceling/with-cancelation [run-id cancel-chan transform-timeout]
       (try
-        (when (and (not (str/blank? output-schema))
-                   (not (driver/schema-exists? driver db-id output-schema)))
-          (driver/create-schema-if-needed! driver conn-spec output-schema))
-        (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-        (when-let [{:keys [rows-available] :as srp} source-range-params]
-          (tracing/add-span-attrs! :tasks
-                                   (cond-> (transforms-base.u/checkpoint-span-attrs srp)
-                                     (and reliable-row-count? rows-available)
-                                     (assoc :transform/rows-available rows-available))))
-        (let [ret (driver.conn/with-transform-connection
-                    ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
-                    ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
-                    ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
-                    (binding [qp.pipeline/*canceled-chan*          cancel-chan
-                              driver.settings/*query-timeout-ms*   transform-timeout-ms
-                              ;; Match the query timeout so a single slow socket read (or a driver that waits for
-                              ;; the full server-side query) does not get killed before the transform's own deadline.
-                              driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
-                      (run-transform! cancel-chan source-range-params)))]
-          (transforms-base.u/save-watermark! (:id transform) source-range-params)
-          (transform-run/succeed-started-run! run-id)
-          ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
-          ;; fail-started-run! after succeed-started-run! has already fired.
-          (when reliable-row-count?
-            (try
-              (when-some [rows-available (:rows-available source-range-params)]
-                (when-some [rp (:rows-affected (:result ret))]
-                  (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
-                  (transforms.instrumentation/record-incremental-rows!
-                   rows-available
-                   rp
-                   full-incremental?)))
-              (catch Throwable t
-                (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
-          ret)
+        (let [source-range-params (transforms-base.u/get-source-range-params transform)
+              full-incremental?   (transforms-base.u/full-incremental-run? transform)
+              ;; Efficiency metrics (rows-available / rows-processed) are only meaningful when this run's
+              ;; rows-affected count can be trusted. On drivers that declare
+              ;; `:transforms/accurate-rows-affected` false, a full-rebuild (CTAS) run reports a bogus
+              ;; count, so we skip emitting efficiency metrics for those runs entirely. The INSERT path's
+              ;; count is accurate even on those drivers.
+              reliable-row-count? (or (driver.u/supports? driver :transforms/accurate-rows-affected
+                                                          {:lib/type :metadata/database :id db-id})
+                                      (not full-incremental?))]
+          (when (and (not (str/blank? output-schema))
+                     (not (driver/schema-exists? driver db-id output-schema)))
+            (driver/create-schema-if-needed! driver conn-spec output-schema))
+          (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
+          (when-let [{:keys [rows-available] :as srp} source-range-params]
+            (tracing/add-span-attrs! :tasks
+                                     (cond-> (transforms-base.u/checkpoint-span-attrs srp)
+                                       (and reliable-row-count? rows-available)
+                                       (assoc :transform/rows-available rows-available))))
+          (let [ret (driver.conn/with-transform-connection
+                      ;; Route through the `:transform` JDBC pool, whose `unreturnedConnectionTimeout` will be set
+                      ;; from the `*query-timeout-ms*` binding below at pool-creation time. This keeps the default
+                      ;; pool's leak-detector at `MB_DB_QUERY_TIMEOUT_MINUTES` for all non-transform traffic.
+                      (binding [qp.pipeline/*canceled-chan*          cancel-chan
+                                driver.settings/*query-timeout-ms*   transform-timeout-ms
+                                ;; Match the query timeout so a single slow socket read (or a driver that waits for
+                                ;; the full server-side query) does not get killed before the transform's own deadline.
+                                driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
+                        (run-transform! cancel-chan source-range-params)))]
+            (transforms-base.u/save-watermark! (:id transform) source-range-params)
+            (transform-run/succeed-started-run! run-id)
+            ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
+            ;; fail-started-run! after succeed-started-run! has already fired.
+            (when reliable-row-count?
+              (try
+                (when-some [rows-available (:rows-available source-range-params)]
+                  (when-some [rp (:rows-affected (:result ret))]
+                    (tracing/add-span-attrs! :tasks {:transform/rows-processed rp})
+                    (transforms.instrumentation/record-incremental-rows!
+                     rows-available
+                     rp
+                     full-incremental?)))
+                (catch Throwable t
+                  (log/warnf t "Failed to emit incremental-rows metric for transform %s" (:id transform)))))
+            ret))
         (catch Throwable t
           (if (:timeout (ex-data t))
             (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
