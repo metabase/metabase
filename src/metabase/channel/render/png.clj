@@ -44,12 +44,17 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
-(defn- redraw-at-scale
+(defn- scale-px
+  "`px` scaled by `scale`, rounded to the nearest whole pixel."
+  ^long [px scale]
+  (Math/round (* (double px) (double scale))))
+
+(defn- redraw-at-scale!
   "Re-render the already-laid-out boxes of `graphics-engine` into a fresh image `scale`x the device size
   of `base`, for crisp supersampled output. Returns the new [[BufferedImage]]."
-  ^java.awt.image.BufferedImage [^GraphicsEngine graphics-engine ^java.awt.image.BufferedImage base ^double scale]
-  (let [big (BufferedImage. (int (Math/round (* (.getWidth base) scale)))
-                            (int (Math/round (* (.getHeight base) scale)))
+  ^java.awt.image.BufferedImage [^GraphicsEngine graphics-engine ^java.awt.image.BufferedImage base scale]
+  (let [big (BufferedImage. (scale-px (.getWidth base) scale)
+                            (scale-px (.getHeight base) scale)
                             BufferedImage/TYPE_INT_ARGB)]
     (.setImage graphics-engine big)
     (.redrawBoxes graphics-engine)
@@ -89,8 +94,8 @@
                                 (int (.getMaximalWidth viewport)))
              image         (if (= 1.0 scale)
                              base
-                             (redraw-at-scale graphics-engine base scale))
-             crop-width    (int (Math/round (* content-width scale)))]
+                             (redraw-at-scale! graphics-engine base scale))
+             crop-width    (scale-px content-width scale)]
          ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
          (if (< crop-width (.getWidth image))
            (.getSubimage image 0 0 crop-width (.getHeight image))

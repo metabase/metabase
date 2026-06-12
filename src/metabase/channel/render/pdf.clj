@@ -50,7 +50,7 @@
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.http :as u.http]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [trun]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -1423,8 +1423,8 @@
 
 (def ^:private table-supersample
   "Supersampling factor for table rasters: laid out at logical size but rendered to this many times
-  more device pixels for crisp text at the same on-page size. Mirrors [[chart-supersample]]."
-  2.0)
+  more device pixels for crisp text at the same on-page size. Shares [[chart-supersample]]'s magnitude."
+  chart-supersample)
 
 (def ^:private table-footer-px
   "Logical-pixel height of the `N rows` footer row at the bottom of a table image."
@@ -1440,6 +1440,15 @@
   "CSS form of [[table-frame-color]] for the in-image footer divider (`border-top` above the `N rows` row)."
   (format "#%06X" (bit-and (.getRGB ^Color table-frame-color) 0xFFFFFF)))
 
+(def ^:private table-css
+  "CSS appended to the inner `<table>` so it fits the card frame: fill the width, no border/radius/
+  margin of its own (the native frame and per-cell dividers remain)."
+  ";width:100%;box-sizing:border-box;border:none;border-radius:0;margin:0;")
+
+(def ^:private header-divider-css
+  "CSS appended to a header cell for the divider after it, matching the body cells' dividers."
+  (format ";border-right:1px solid %s;" table-border-color))
+
 (defn- element?
   "Whether `form` is a Hiccup element with tag `tag`, i.e. `[tag ...]`."
   [form tag]
@@ -1452,54 +1461,64 @@
   [tr]
   (some (fn [el] (or (th-cell? el) (and (seq? el) (some th-cell? el)))) tr))
 
+(defn- append-style
+  "Append `css` to the `:style` of Hiccup element `el`'s attrs map."
+  [el css]
+  (update-in el [1 :style] str css))
+
 (defn- add-header-dividers
   "Add a `border-right` to each header cell but the last, matching the body (the renderer leaves
   header cells border-less). They arrive spliced in a nested seq, so flatten the row first."
   [tr]
-  (let [items   (vec (mapcat (fn [el] (if (seq? el) el [el])) tr))
+  (let [items   (into [] (mapcat (fn [el] (if (seq? el) el [el]))) tr)
         last-th (->> items (keep-indexed (fn [i el] (when (th-cell? el) i))) last)]
-    (vec (map-indexed
-          (fn [i el]
-            (if (and (th-cell? el) (map? (second el)) (not= i last-th))
-              (update-in el [1 :style] str (format ";border-right:1px solid %s;" table-border-color))
-              el))
-          items))))
+    (into []
+          (map-indexed (fn [i el]
+                         (cond-> el
+                           (and (th-cell? el) (map? (second el)) (not= i last-th))
+                           (append-style header-divider-css))))
+          items)))
+
+(defn- restyle-form
+  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]]; header rows get per-cell
+  dividers. Everything else passes through."
+  [form]
+  (cond
+    (and (element? form :table) (map? (second form)))
+    (append-style form table-css)
+
+    (and (element? form :tr) (header-row? form))
+    (add-header-dividers form)
+
+    :else form))
 
 (defn- restyle-table
   "Restyle the inner `<table>` to fit the card frame: fill the width, drop its own border/radius/margin
   (the native frame and per-cell dividers remain), and add header dividers to match the body."
   [content]
-  (walk/postwalk
-   (fn [form]
-     (cond
-       (and (element? form :table) (map? (second form)))
-       (update-in form [1 :style] str ";width:100%;box-sizing:border-box;border:none;border-radius:0;margin:0;")
+  (walk/postwalk restyle-form content))
 
-       (and (element? form :tr) (header-row? form))
-       (add-header-dividers form)
+(def ^:private table-footer-css
+  "Style of the `N rows` footer row at the bottom of a table image."
+  (format (str "height:%1$dpx;line-height:%1$dpx;box-sizing:border-box;"
+               "font-size:12.5px;text-align:right;padding-right:16px;"
+               "color:#696E7B;border-top:1px solid %2$s")
+          table-footer-px table-border-color))
 
-       :else form))
-   content))
-
-(defn- table-body-image
-  "Render a table card body to a [[BufferedImage]] sized to the `px-w` x `px-h` cell (logical pixels):
+(defn- table-body-png
+  "Render a table card body to PNG bytes sized to the `px-w` x `px-h` cell (logical pixels):
   width-filled, height-capped, with a row-count footer, supersampled at [[table-supersample]]x."
-  ^BufferedImage [timezone {:keys [card dashcard result]} px-w px-h n-rows]
+  ^bytes [timezone {:keys [card dashcard result]} px-w px-h]
   (let [;; Render directly, not via render-pulse-card: its <p>/.pulse-body margins escape CSSBox's
         ;; height clip and push the image past the cell. body/render gives the bare table.
         info     (body/render :table :inline timezone card dashcard (:data result))
+        n-rows   (count (get-in result [:data :rows]))
         clip-css (format "max-height:%dpx;overflow:hidden" (max 0 (- (long px-h) table-footer-px 2)))
         ;; the frame is stroked natively in draw-table-card!, so this wrapper has no border
-        wrapped  (assoc info :content
-                        [:div
-                         [:div {:style clip-css} (restyle-table (:content info))]
-                         [:div {:style (format (str "height:%1$dpx;line-height:%1$dpx;box-sizing:border-box;"
-                                                    "font-size:12.5px;text-align:right;padding-right:16px;"
-                                                    "color:#696E7B;border-top:1px solid %2$s")
-                                               table-footer-px table-border-color)}
-                          (tru "{0} rows" (format "%,d" (long n-rows)))]])
-        bytes    (png/render-html-to-png wrapped px-w {:channel.render/scale table-supersample})]
-    (ImageIO/read (ByteArrayInputStream. bytes))))
+        content  [:div
+                  [:div {:style clip-css} (restyle-table (:content info))]
+                  [:div {:style table-footer-css} (trun "{0} row" "{0} rows" n-rows)]]]
+    (png/render-html-to-png (assoc info :content content) px-w {:channel.render/scale table-supersample})))
 
 (defn- move-to! [^PDPageContentStream cs x y] (.moveTo cs (float x) (float y)))
 (defn- line-to! [^PDPageContentStream cs x y] (.lineTo cs (float x) (float y)))
@@ -1509,43 +1528,64 @@
   [^PDPageContentStream cs x1 y1 x2 y2 x3 y3]
   (.curveTo cs (float x1) (float y1) (float x2) (float y2) (float x3) (float y3)))
 
+(def ^:private bezier-circle-kappa
+  "Control-point distance, as a fraction of the radius, at which a cubic Bézier best approximates a
+  quarter circle."
+  0.5523)
+
+(defn- corner-to!
+  "Append a quarter-circle corner around the rectangle corner `[ax ay]`: a cubic Bézier from the
+  current point (`r` before the corner along incoming-edge direction `[dx1 dy1]`) to the point `r`
+  past it along outgoing-edge direction `[dx2 dy2]`, with control points `c` short of the corner."
+  [cs r c ax ay dx1 dy1 dx2 dy2]
+  (let [r  (double r)
+        rc (- r (double c))]
+    (curve-to! cs
+               (- ax (* rc dx1)) (- ay (* rc dy1))
+               (+ ax (* rc dx2)) (+ ay (* rc dy2))
+               (+ ax (* r  dx2)) (+ ay (* r  dy2)))))
+
 (defn- stroke-round-rect!
   "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
   at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
-  quarter-circle cubic Béziers (control distance = r * kappa)."
+  quarter-circle cubic Béziers (see [[corner-to!]])."
   [^PDPageContentStream cs ^Color color line-w r x top-y w h]
   (let [l  (double x)
         t  (double top-y)
         rt (+ l (double w))
         b  (- t (double h))
         r  (min (double r) (/ (double w) 2.0) (/ (double h) 2.0))
-        c  (* r 0.5523)]
+        c  (* r bezier-circle-kappa)]
     (.setStrokingColor cs color)
     (.setLineWidth cs (float line-w))
-    (move-to!  cs (+ l r) t)
-    (line-to!  cs (- rt r) t)                                       ; top edge
-    (curve-to! cs (+ (- rt r) c) t   rt (- t (- r c))   rt (- t r)) ; TR
-    (line-to!  cs rt (+ b r))                                       ; right edge
-    (curve-to! cs rt (- (+ b r) c)   (- rt (- r c)) b   (- rt r) b) ; BR
-    (line-to!  cs (+ l r) b)                                        ; bottom edge
-    (curve-to! cs (- (+ l r) c) b    l (- (+ b r) c)    l (+ b r))  ; BL
-    (line-to!  cs l (- t r))                                        ; left edge
-    (curve-to! cs l (+ (- t r) c)    (- (+ l r) c) t    (+ l r) t)  ; TL
+    (move-to!   cs (+ l r) t)
+    (line-to!   cs (- rt r) t)               ; top edge
+    (corner-to! cs r c rt t   1  0   0 -1)   ; TR
+    (line-to!   cs rt (+ b r))               ; right edge
+    (corner-to! cs r c rt b   0 -1  -1  0)   ; BR
+    (line-to!   cs (+ l r) b)                ; bottom edge
+    (corner-to! cs r c l  b  -1  0   0  1)   ; BL
+    (line-to!   cs l (- t r))                ; left edge
+    (corner-to! cs r c l  t   0  1   1  0)   ; TL
     (.stroke cs)
     (.setStrokingColor cs Color/BLACK)
     (.setLineWidth cs (float 1.0))))
+
+(defn- supersampled-px->pt
+  "Points spanned on the page by `px` device pixels of a [[table-supersample]]-rastered image."
+  ^double [px]
+  (px->pt (/ (double px) table-supersample)))
 
 (defn- draw-table-card!
   "Draw the table card body fitted to `[x, body-top]` x `cell-w` x `body-h`, with the card's outer
   frame stroked natively around the image."
   [^PDDocument doc ^PDPageContentStream cs timezone part x body-top cell-w body-h]
-  (let [n-rows (count (get-in part [:result :data :rows]))
-        img    (table-body-image timezone part (pt->px cell-w) (pt->px body-h) n-rows)
+  (let [img (PDImageXObject/createFromByteArray
+             doc (table-body-png timezone part (pt->px cell-w) (pt->px body-h)) "table")
         ;; image is at table-supersample x logical pixels -> divide back to points
-        dw     (px->pt (/ (.getWidth img) table-supersample))
-        dh     (px->pt (/ (.getHeight img) table-supersample))]
-    (.drawImage cs (LosslessFactory/createFromImage doc img)
-                (float x) (float (- (double body-top) dh)) (float dw) (float dh))
+        dw  (supersampled-px->pt (.getWidth img))
+        dh  (supersampled-px->pt (.getHeight img))]
+    (.drawImage cs img (float x) (float (- (double body-top) dh)) (float dw) (float dh))
     (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
 
 (defn- render-card-cell!
@@ -1587,17 +1627,19 @@
       ;; in debug mode render charts transparently, so the red box behind them shows through the
       ;; whitespace ECharts/visx leave inside the image.
       (binding [js.svg/*svg-background-color* (if *debug-boxes* nil js.svg/*svg-background-color*)]
-        (cond
+        (b/cond
+          :let [png (when fill? (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
+
           ;; rectangular charts (and wide pies): fill the body area exactly
-          fill?
-          (when-let [png (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h))]
-            (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                        (float x) (float (- body-top body-h)) (float cell-w) (float body-h)))
+          png
+          (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
+                      (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
 
           table?
           (draw-table-card! doc cs timezone part x body-top cell-w body-h)
 
-          ;; other types: title-less body PNG, fit preserving aspect
+          ;; other types (and charts whose render produced no SVG): title-less body PNG,
+          ;; fit preserving aspect
           :else
           (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
             (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h)))))))

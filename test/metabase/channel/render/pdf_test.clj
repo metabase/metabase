@@ -6,11 +6,15 @@
   flaky. The SSRF-safe image-fetch defenses now live in `metabase.util.http` (see
   `metabase.util.http-test`)."
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.channel.render.pdf :as pdf]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs])
   (:import
+   (java.awt.image BufferedImage)
+   (javax.imageio ImageIO)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
@@ -349,3 +353,57 @@
             (binding [pdf/*width-cache* cache]
               (is (= (* 2.0 (width "Hello world" 10.0))
                      (width "Hello world" 20.0))))))))))
+
+;; --------------------------------------------------------------------------------------------
+;; Tables: restyling the email table hiccup to fit the PDF card frame
+;; --------------------------------------------------------------------------------------------
+
+(defn- divider?
+  "Whether a restyled header cell carries the border-right divider."
+  [th]
+  (str/includes? (get-in th [1 :style] "") "border-right"))
+
+(deftest ^:parallel restyle-table-test
+  (let [th    (fn [label] [:th {:style "color: #949AAB;"} label])
+        ;; render-table-head splices the header cells into the :tr as a seq, like `for` output
+        table [:table {:style "border: 1px solid #F0F0F0; border-radius: 6px; margin: 16px;"}
+               [:thead [:tr {} (list (th "a") (th "b") (th "c"))]]
+               [:tbody [:tr {} [:td {:style "x"} "1"]]]]
+        [_ attrs [_ [_ _ th-a th-b th-c]] tbody] (#'pdf/restyle-table table)]
+    (testing "the <table> fills its frame and drops its own border/radius/margin"
+      (is (str/includes? (:style attrs) "width:100%"))
+      (is (str/includes? (:style attrs) "border:none")))
+    (testing "header cells get a divider, except the last"
+      (is (divider? th-a))
+      (is (divider? th-b))
+      (is (not (divider? th-c))))
+    (testing "body rows pass through untouched"
+      (is (= [:tbody [:tr {} [:td {:style "x"} "1"]]] tbody)))))
+
+(deftest ^:parallel add-header-dividers-test
+  (testing "spliced seqs are flattened and all header cells but the last get the divider"
+    (let [[_ _ a b] (#'pdf/add-header-dividers
+                     [:tr {} (list [:th {:style ""} "a"] [:th {:style ""} "b"])])]
+      (is (divider? a))
+      (is (not (divider? b)))))
+  (testing "a th without an attrs map is left alone"
+    (let [tr [:tr {} [:th "bare"] [:th {:style ""} "last"]]]
+      (is (= tr (#'pdf/add-header-dividers tr))))))
+
+;; not ^:parallel: exercises the real CSSBox HTML rendering path
+(deftest table-body-png-sizing-test
+  (let [data               {:cols [{:name         "n"
+                                    :display_name "N"
+                                    :base_type    :type/Integer}]
+                            :rows (mapv vector (range 50))}
+        part               {:card     {}
+                            :dashcard nil
+                            :result   {:data data}}
+        px-w               400
+        px-h               300
+        ss                 (long @#'pdf/table-supersample)
+        ^BufferedImage img (ImageIO/read (io/input-stream (#'pdf/table-body-png nil part px-w px-h)))]
+    (testing "width fills the cell at the supersampled scale"
+      (is (<= (* ss (- px-w 8)) (.getWidth img) (* ss px-w))))
+    (testing "height is capped to the cell even though 50 rows don't fit"
+      (is (<= 1 (.getHeight img) (* ss px-h))))))
