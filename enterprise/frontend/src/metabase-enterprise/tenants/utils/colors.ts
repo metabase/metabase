@@ -4,7 +4,7 @@ import type { Tenant } from "metabase-types/api";
 const groupColorPalette = [
   color("error"),
   color("accent2"),
-  color("brand"),
+  color("core-brand"),
   color("accent4"),
   color("accent1"),
 ];

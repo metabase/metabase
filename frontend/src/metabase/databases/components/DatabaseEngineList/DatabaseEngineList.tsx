@@ -155,7 +155,7 @@ const DatabaseLogo = ({ db }: { db: string }) => {
       {logo ? (
         <img src={logo} width="100%" />
       ) : (
-        <Icon name="database" c="brand" />
+        <Icon name="database" c="core-brand" />
       )}
     </Center>
   );
