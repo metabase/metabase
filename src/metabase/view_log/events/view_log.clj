@@ -2,6 +2,7 @@
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
    [java-time.api :as t]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.audit-app.core :as audit]
@@ -103,7 +104,9 @@
     {:name "record-view!"}
     (when (premium-features/log-enabled?)
       (doseq [view (u/one-or-many view-or-views)]
-        (grouper/submit! @record-view-queue view)))))
+        (grouper/submit! @record-view-queue (-> view
+                                                (assoc :timestamp (t/offset-date-time))
+                                                analytics/include-sdk-info))))))
 
 (defn generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
