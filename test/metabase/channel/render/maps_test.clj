@@ -5,6 +5,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.maps :as maps])
   (:import
+   (java.awt Color)
    (java.awt.image BufferedImage)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (javax.imageio ImageIO)))
@@ -50,9 +51,9 @@
 
 (deftest ^:parallel grid-color-endpoints-test
   (testing "the grid color scale runs green (low) to red (high)"
-    (let [grid-color @#'maps/grid-color
-          low        (grid-color 0.0 0.0 10.0)
-          high       (grid-color 10.0 0.0 10.0)]
+    (let [grid-color  @#'maps/grid-color
+          ^Color low  (grid-color 0.0 0.0 10.0)
+          ^Color high (grid-color 10.0 0.0 10.0)]
       (is (> (.getGreen low) (.getRed low)) "low end is greenish")
       (is (> (.getRed high) (.getGreen high)) "high end is reddish"))))
 
