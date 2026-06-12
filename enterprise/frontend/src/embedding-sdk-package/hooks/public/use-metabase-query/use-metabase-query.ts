@@ -295,12 +295,12 @@ const useMetabaseQueryImpl = <
           return;
         }
 
-        const result = await queryDataset(reduxStore)({
-          datasetQuery:
-            getTableDatabaseId(currentQuery) == null
-              ? buildTableDatasetQuery(currentQuery)
-              : createMetabaseQuery(currentQuery),
-        });
+        const datasetQuery =
+          getTableDatabaseId(currentQuery) == null
+            ? buildTableDatasetQuery(currentQuery)
+            : createMetabaseQuery(currentQuery);
+
+        const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
         return;
