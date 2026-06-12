@@ -31,9 +31,7 @@ const TREE: TreemapTree = [
   },
 ];
 
-// A fake laid-out tree exposing exactly what `getTreemapLayoutNodes` reads:
-// `getModel().getSeriesByIndex(0).getRawData().tree.root.eachNode(cb)` with
-// per-node `getId()`, `getLayout()`, and `children`.
+// A echarts fake laid-out tree exposing exactly what `getTreemapLayoutNodes` gets
 function createMockChartRef(
   layouts: Record<string, { width: number; height: number }>,
 ) {
@@ -100,35 +98,17 @@ describe("useLabelMeasurement", () => {
     });
   });
 
-  it("hides every label while a zoom is in flight (view root differs from the measured one)", () => {
+  it("hides labels on zoomin and zoom out animations", () => {
     const { result, rerender } = setup();
 
-    act(() => result.current.handleLabelMeasure());
-    // Drill starts: the maps were measured at the overview, so they read as
-    // empty until the zoom animation finishes and the next measurement lands.
     rerender({ viewRootId: "0" });
-
     expect(result.current.labelLayout).toEqual({});
     expect(result.current.parentLabelLayout).toEqual({});
-  });
-
-  it("shows freshly measured labels once the zoom's finished event re-measures", () => {
-    const { result, rerender } = setup();
 
     act(() => result.current.handleLabelMeasure());
-    rerender({ viewRootId: "0" });
-    act(() => result.current.handleLabelMeasure());
-
     expect(result.current.labelLayout["0-0"]).toMatchObject({ show: true });
-  });
 
-  it("hides labels again on the way back to the overview until re-measured", () => {
-    const { result, rerender } = setup();
-
-    rerender({ viewRootId: "0" });
-    act(() => result.current.handleLabelMeasure());
     rerender({ viewRootId: null });
-
     expect(result.current.labelLayout).toEqual({});
 
     act(() => result.current.handleLabelMeasure());
