@@ -50,9 +50,9 @@
 
 (defn heartbeat-and-reconcile-runs!
   "Per-node tick: heartbeat the runs this process is executing (those registered in `connections`),
-  then signal cancel for any that another path (timeout sweeper, reaper, force-cancel) has already
-  moved to a terminal state, so the local work stops promptly instead of running to its own deadline.
-  Only the owning node holds the run's `cancel-chan`, so each node reconciles its own runs."
+  then signal cancel for any that another path (timeout sweeper, reaper, force-cancel) already
+  terminated, so the local work stops promptly. Each node reconciles its own runs — only the
+  owning node holds a run's `cancel-chan`."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
                                 :active     [:is_active true]

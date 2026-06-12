@@ -29,9 +29,10 @@
 (defn execute!
   "Run `transform` and sync its target table.
 
-  This is executing synchronously, but supports observing the start: once the beginning of the
-  execution has been booked in the database, `:on-start` is called with the transform run id and
-  `:start-promise` is delivered `[:started run-id]`."
+  Executes synchronously, but the start is observable: once the run row is booked in the database,
+  `:on-start` is called with the transform run id and `:start-promise` (if any) is delivered
+  `[:started run-id]`. A throw before that point delivers the throwable to the promise instead, so
+  callers awaiting the start never hang."
   ([transform]
    (execute! transform nil))
   ([transform {:keys [start-promise on-start] :as opts}]

@@ -146,9 +146,8 @@
 (defn- submit-transform!
   "Run `transform` on its own thread; returns a future yielding a `::status` completion map.
   `started-run-id` is a promise the worker delivers its transform run id to once `execute!` has
-  created it, so the coordinator can cancel exactly that run (see [[cancel-worker!]]). A worker
-  starts at most one run: the `:already-running` retry loop only re-enters after a start that
-  *failed*, i.e. before the run id was delivered."
+  created it — at most once, since the `:already-running` retry only re-enters after a failed
+  start — so [[cancel-worker!]] can target exactly that run."
   [run-id run-method user-id started-run-id transform]
   (future
     (try
@@ -273,8 +272,8 @@
   (atom {}))
 
 (defn- heartbeat-and-reconcile-runs!
-  "Stamp a heartbeat on every job run this process is coordinating, then flag any that another path
-  (reaper, force-fail) has already moved to a terminal state, so its coordinator aborts."
+  "Stamp a heartbeat on every job run this process is coordinating, then deliver the `gone` promise
+  of any that another path (reaper, force-fail) already terminated, so its coordinator aborts."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformJobRun
                                 :active     [:is_active true]
