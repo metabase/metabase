@@ -32,6 +32,7 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CollectionItem,
   SchemaName,
@@ -324,7 +325,7 @@ function DatabaseItemList({
     schemasArePickable &&
     parent.model === "database" &&
     schemas?.length === 1 &&
-    schemas[0] === "";
+    isNamelessSchema(schemas[0]);
 
   useEffect(() => {
     if (shouldAutoSelectNamelessSchema) {

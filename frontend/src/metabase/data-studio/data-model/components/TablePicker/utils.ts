@@ -1,7 +1,7 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { getSchemaId } from "./bulk-selection.utils";
-import { UNNAMED_SCHEMA_NAME } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,
