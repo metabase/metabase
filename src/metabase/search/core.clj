@@ -37,6 +37,7 @@
   searchable-value-trim-sql]
  [search.spec
   spec
+  specifications
   define-spec]
  [search.util
   collapse-id
