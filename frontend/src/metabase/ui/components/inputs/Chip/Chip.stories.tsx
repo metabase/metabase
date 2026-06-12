@@ -39,9 +39,7 @@ const SIZES = ["sm", "md"] as const;
 const COLUMNS: {
   variant: (typeof VARIANTS)[number];
   size: (typeof SIZES)[number];
-}[] = VARIANTS.flatMap((variant) =>
-  SIZES.map((size) => ({ variant, size })),
-);
+}[] = VARIANTS.flatMap((variant) => SIZES.map((size) => ({ variant, size })));
 
 // The interactive states from the Figma spec. `Hover` and `Pressed` rows have
 // their state forced by `storybook-addon-pseudo-states` (see
