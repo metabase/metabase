@@ -25,13 +25,8 @@ export type ToggleReactionRequest = CreateReactionRequest &
     currentUser: Pick<BaseUser, "id" | "common_name">;
   };
 
-// Comment mutations patch the cached list directly in `onQueryStarted` instead
-// of relying on the tag-driven refetch alone: with RTK's default "delayed"
-// invalidation behavior, that refetch is postponed until every in-flight query
-// on the shared Api instance settles, so on pages with long-running queries
-// (e.g. document card data on a slow warehouse) mutations would appear to do
-// nothing for minutes. The tags are kept so the list still reconciles with the
-// server once a refetch does run.
+// Update the cached comments manually, because RTK won't refetch it while
+// another query is still running
 export const commentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listComments: builder.query<
