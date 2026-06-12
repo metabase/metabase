@@ -8,12 +8,6 @@ export function getEmbedBase() {
   return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";
 }
 
-export const ActivityApi = {
-  most_recently_viewed_dashboard: GET(
-    "/api/activity/most_recently_viewed_dashboard",
-  ),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
