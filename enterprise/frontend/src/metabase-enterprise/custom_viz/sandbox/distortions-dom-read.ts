@@ -1,3 +1,4 @@
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { CustomVizPluginId } from "metabase-types/api";
 
 // DOM scoping: every Node crossing the membrane is filtered. Nodes inside
@@ -129,8 +130,12 @@ function makeDecoyNode(pluginId: CustomVizPluginId, node: Node): Node {
   if (decoy === node) {
     return node;
   }
-  console.error(
-    `[plugin ${pluginId}] swapped out-of-scope ${describeNode(node)} with decoy`,
-  );
+
+  if (!isEmbeddingSdk()) {
+    // we don't want to spam the host app with errors
+    console.error(
+      `[plugin ${pluginId}] swapped out-of-scope ${describeNode(node)} with decoy`,
+    );
+  }
   return decoy;
 }
