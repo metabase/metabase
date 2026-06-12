@@ -38,7 +38,7 @@
             tables-by-db))))
 
 (defn- route-metadata-by-table
-  "Route a metadata request to the appropriate database provider(s) based on its `:table-id` set."
+  "Route a metadata request to the appropriate database provider(s) based on its `:table-ids` set."
   [table->db-fn db-provider-fn {table-ids :table-ids, :as metadata-spec}]
   (when (seq table-ids)
     (into []
