@@ -26,10 +26,7 @@ import {
   CustomVisualizationsFormPage,
   CustomVisualizationsManagePage,
 } from "./settings/components/SettingsPages/CustomVisualizationsSettingsPage";
-import {
-  DataAppsFormPage,
-  DataAppsManagePage,
-} from "./settings/components/SettingsPages/DataAppsSettingsPage";
+import { DataAppsManagePage } from "./settings/components/SettingsPages/DataAppsSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -111,7 +108,6 @@ export const getSettingsRoutes = (
       </Route>
       <Route path="data-apps" component={IsAdmin}>
         <IndexRoute component={DataAppsManagePage} />
-        <Route path="new" component={DataAppsFormPage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />
       <Route

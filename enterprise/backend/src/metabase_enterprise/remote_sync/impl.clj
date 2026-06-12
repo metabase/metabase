@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.sync :as data-apps.sync]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -243,6 +244,19 @@
   [pre-task-branch]
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
+
+(defn- materialize-data-apps!
+  "After a successful content import, materialize data apps from the same
+   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
+   paths), so they ride this import rather than having their own sync. Adapts the
+   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+  [^SourceSnapshot snapshot]
+  ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
+  ;; bytes on its side, keeping all Java interop out of this namespace.
+  (data-apps.sync/sync-from-snapshot!
+   {:read-file  (fn [path] (source.p/read-file snapshot path))
+    :list-files (fn [] (source.p/list-files snapshot))
+    :sha        (source.p/version snapshot)}))
 
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
@@ -527,52 +541,60 @@
             ;; already-configured instance must not silently delete unsynced transforms). The get-conflicts tree scan
             ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with
             ;; force-deletion? true skips it entirely).
-            blocking-conflicts (delay
-                                 (let [conflicts (delay (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
-                                                                       first-import?))]
-                                   (cond-> []
-                                     (and first-import? (not force?))
-                                     (into (:first-import-conflicts @conflicts))
+            blocking-conflicts    (delay
+                                     (let [conflicts (delay (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
+                                                                           first-import?))]
+                                       (cond-> []
+                                         (and first-import? (not force?))
+                                         (into (:first-import-conflicts @conflicts))
 
-                                     (not force-deletion?)
-                                     (into (:deletion-conflicts @conflicts)))))
-            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))]
-        (cond
-          merge?
-          (import-merged! snapshot base-snapshot task-id sync-timestamp)
+                                         (not force-deletion?)
+                                         (into (:deletion-conflicts @conflicts)))))
+            incremental-plan      (delay (incremental-import-plan snapshot last-imported-version))
+            result                (cond
+                                    merge?
+                                    (import-merged! snapshot base-snapshot task-id sync-timestamp)
 
-          ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted
-          (and (not force?) (= last-imported-version snapshot-version))
-          (do
-            (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pull-skipped"}})
+                                    ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted
+                                    (and (not force?) (= last-imported-version snapshot-version))
+                                    (do
+                                      (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
+                                      {:status :success
+                                       :version snapshot-version
+                                       :outcome {:kind "pull-skipped"}})
 
-          ;; Incremental fast-path: not forced, no local drift, and the change is incrementally loadable.
-          ;; Touches only changed files, so it can't wholesale-delete unsynced transforms — no conflict scan,
-          ;; and only the cheap O(changes) diff is computed (never the full-tree get-conflicts read).
-          (and (not force?) (not (remote-sync.object/dirty?)) (not= incremental-not-possible @incremental-plan))
-          (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
+                                    ;; Incremental fast-path: not forced, no local drift, and the change is
+                                    ;; incrementally loadable. Touches only changed files, so it can't
+                                    ;; wholesale-delete unsynced transforms — no conflict scan, and only the
+                                    ;; cheap O(changes) diff is computed (never the full-tree get-conflicts read).
+                                    (and (not force?) (not (remote-sync.object/dirty?)) (not= incremental-not-possible @incremental-plan))
+                                    (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
-          (seq @blocking-conflicts)
-          (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
-            (log/info message)
-            {:status :conflict
-             :version snapshot-version
-             :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
-             :conflict-details @blocking-conflicts
-             :message message})
+                                    (seq @blocking-conflicts)
+                                    (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+                                      (log/info message)
+                                      {:status           :conflict
+                                       :version          snapshot-version
+                                       ;; Backward compat: set of category names
+                                       :conflicts        (into #{} (map :category) @blocking-conflicts)
+                                       :conflict-details @blocking-conflicts
+                                       :message          message})
 
-          ;; No blocking conflicts: do the full reload.
-          :else
-          (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
-            (log/info "Successfully reloaded entities from git repository")
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pulled"
-                       :count (pulled-change-count imported-data)
-                       :branch (settings/remote-sync-branch)}})))
+                                    ;; No blocking conflicts: do the full reload.
+                                    :else
+                                    (let [imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+                                      (log/info "Successfully reloaded entities from git repository")
+                                      {:status :success
+                                       :version snapshot-version
+                                       :outcome {:kind "pulled"
+                                                 :count (pulled-change-count imported-data)
+                                                 :branch (settings/remote-sync-branch)}}))]
+        ;; Data apps ride the pull: re-materialize from the real source snapshot
+        ;; (the repo file tree under `data_apps/`), not the synthetic merged
+        ;; snapshot `load-snapshot!` sees.
+        (when (= :success (:status result))
+          (materialize-data-apps! snapshot))
+        result)
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
         ;; return a user-friendly :error result.
@@ -581,7 +603,7 @@
           (do
             (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
-            {:status :error
+            {:status  :error
              :message (source-error-message e)
              :version (source.p/version snapshot)
              :details {:error-type (type e)}})))
