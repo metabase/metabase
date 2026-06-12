@@ -786,9 +786,11 @@
   data-apps
   {:team "Gadget"
    :api  #{metabase.data-apps.api
-           metabase.data-apps.init}
+           metabase.data-apps.init
+           metabase.data-apps.sync}
    :uses #{api
            models
+           settings
            util}}
 
   data-studio
@@ -3439,6 +3441,7 @@
            api
            app-db
            collections
+           data-apps
            events
            models
            premium-features

@@ -31,7 +31,9 @@
 
 (def non-blob-columns
   "Columns to select for normal data-app metadata reads, excluding the raw bundle blob."
-  [:id :name :display_name :bundle_hash :creator_id :created_at :updated_at])
+  [:id :name :display_name :bundle_path :enabled
+   :bundle_hash :last_synced_sha :last_synced_at :sync_error
+   :created_at :updated_at])
 
 (defn select-one-non-blob
   "Like `t2/select-one` on `:model/DataApp`, but excludes the bundle blob."

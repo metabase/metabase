@@ -1,87 +1,64 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useSetDataAppEnabledMutation } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
-import { ActionIcon, Box, Flex, Icon, Menu } from "metabase/ui";
+import { useToast } from "metabase/common/hooks";
+import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppSummary } from "./DataAppSummary";
-import { ReplaceDataAppBundleModal } from "./ReplaceDataAppBundleModal";
 
 type Props = {
   app: DataApp;
-  onDelete: (name: string) => Promise<void> | void;
 };
 
-export function DataAppListItem({ app, onDelete }: Props) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isReplaceOpen, setIsReplaceOpen] = useState(false);
+export function DataAppListItem({ app }: Props) {
+  const [setEnabled, { isLoading }] = useSetDataAppEnabledMutation();
+  const [sendToast] = useToast();
 
-  const handleConfirmDelete = useCallback(async () => {
-    setIsDeleting(true);
-    try {
-      await onDelete(app.name);
-      setIsConfirmOpen(false);
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [app.name, onDelete]);
+  // Optimistic local state so the toggle flips immediately instead of snapping
+  // back until the list refetch lands; re-synced whenever the server value changes.
+  const [enabled, setLocalEnabled] = useState(app.enabled);
+  useEffect(() => {
+    setLocalEnabled(app.enabled);
+  }, [app.enabled]);
+
+  const handleToggle = useCallback(
+    async (next: boolean) => {
+      setLocalEnabled(next);
+      try {
+        await setEnabled({ name: app.name, enabled: next }).unwrap();
+      } catch {
+        setLocalEnabled(!next);
+        sendToast({ message: t`Failed to update this app`, icon: "warning" });
+      }
+    },
+    [app.name, setEnabled, sendToast],
+  );
 
   return (
     <Flex justify="space-between" align="center" gap="md" p="md">
       <DataAppSummary app={app} />
 
-      <Box flex="0 0 auto">
-        <Menu>
-          <Menu.Target>
-            <ActionIcon
-              aria-label={t`Data app actions`}
-              variant="subtle"
-              loading={isDeleting}
-            >
-              <Icon name="ellipsis" />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Item
-              component={Link}
-              to={`/data-app/${encodeURIComponent(app.name)}`}
-              leftSection={<Icon name="external" />}
-            >
-              {t`Open`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="upload" />}
-              onClick={() => setIsReplaceOpen(true)}
-            >
-              {t`Replace bundle`}
-            </Menu.Item>
-            <Menu.Item
-              leftSection={<Icon name="trash" />}
-              color="error"
-              onClick={() => setIsConfirmOpen(true)}
-            >
-              {t`Remove`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-        <ReplaceDataAppBundleModal
-          app={app}
-          opened={isReplaceOpen}
-          onClose={() => setIsReplaceOpen(false)}
+      <Group flex="0 0 auto" gap="md" wrap="nowrap">
+        <Switch
+          aria-label={t`Enable ${app.display_name}`}
+          checked={enabled}
+          disabled={isLoading}
+          onChange={(event) => handleToggle(event.currentTarget.checked)}
+          size="sm"
         />
-        <ConfirmModal
-          opened={isConfirmOpen}
-          title={t`Remove this data app?`}
-          message={t`Any link pointing at /data-app/${app.name} will stop working.`}
-          confirmButtonText={t`Remove`}
-          confirmButtonProps={{ disabled: isDeleting }}
-          onClose={() => setIsConfirmOpen(false)}
-          onConfirm={handleConfirmDelete}
-        />
-      </Box>
+        <Button
+          component={Link}
+          to={`/data-app/${encodeURIComponent(app.name)}`}
+          leftSection={<Icon name="external" />}
+          variant="subtle"
+          disabled={!enabled}
+        >
+          {t`Open`}
+        </Button>
+      </Group>
     </Flex>
   );
 }
