@@ -4,9 +4,8 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSnippetMutation } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
-import { Ellipsified, Flex, Icon } from "metabase/ui";
+import { Button, Ellipsified, Flex, Icon } from "metabase/ui";
 
 import SnippetRowS from "./SnippetRow.module.css";
 
@@ -99,14 +98,15 @@ export function SnippetRow({
           {canWrite && (
             <Button
               className={SnippetRowS.SnippetButton}
+              variant="subtle"
+              leftSection={
+                <Icon name={snippet.archived ? "unarchive" : "pencil"} />
+              }
               onClick={
                 snippet.archived
                   ? () => updateSnippet({ id: snippet.id, archived: false })
                   : () => setModalSnippet(snippet)
               }
-              borderless
-              medium
-              icon={snippet.archived ? "unarchive" : "pencil"}
             >
               {snippet.archived ? t`Unarchive` : t`Edit`}
             </Button>

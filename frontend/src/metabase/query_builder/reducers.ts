@@ -623,114 +623,115 @@ export const selectedTimelineEventIds = createReducer<number[]>(
 
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
-  builder
-    .addCase(RESET_QB, () => null)
-    .addCase(CLOSE_QB, () => null)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(INITIALIZE_QB, (state, action) =>
-      action.payload ? action.payload.card : null,
-    )
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(SOFT_RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(SET_CARD_AND_RUN, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_CREATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_UPDATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(UPDATE_QUESTION, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(QUERY_COMPLETED, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        display: action.payload.card.display,
-        result_metadata: action.payload.card.result_metadata,
-        visualization_settings: action.payload.card.visualization_settings,
+  builder.addCase(RESET_QB, () => null);
+  builder.addCase(CLOSE_QB, () => null);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: {
+        card: Card;
       };
-    })
-    .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        public_uuid: action.payload.uuid,
+    }
+  >(INITIALIZE_QB, (state, action) =>
+    action.payload ? action.payload.card : null,
+  );
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: Card;
+    }
+  >(SOFT_RELOAD_CARD, (state, action) => action.payload);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: Card;
+    }
+  >(RELOAD_CARD, (state, action) => action.payload);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: {
+        card: Card;
       };
-    })
-    .addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
-      if (!state) {
-        return state;
-      }
+    }
+  >(SET_CARD_AND_RUN, (state, action) => action.payload.card);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: Card;
+    }
+  >(API_CREATE_QUESTION, (state, action) => action.payload);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: Card;
+    }
+  >(API_UPDATE_QUESTION, (state, action) => action.payload);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: {
+        card: Card;
+      };
+    }
+  >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: {
+        card: Card;
+      };
+    }
+  >(UPDATE_QUESTION, (state, action) => action.payload.card);
+  builder.addCase<
+    string,
+    {
+      type: string;
+      payload: {
+        card: Card;
+      };
+    }
+  >(QUERY_COMPLETED, (state, action) => {
+    if (!state) {
+      return state;
+    }
+    return {
+      ...state,
+      display: action.payload.card.display,
+      result_metadata: action.payload.card.result_metadata,
+      visualization_settings: action.payload.card.visualization_settings,
+    };
+  });
+  builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
+    if (!state) {
+      return state;
+    }
+    return {
+      ...state,
+      public_uuid: action.payload.uuid,
+    };
+  });
+  builder.addMatcher(deleteCardPublicLink.matchFulfilled, (state) => {
+    if (!state) {
+      return state;
+    }
 
-      return {
-        ...state,
-        public_uuid: null,
-      };
-    })
-    .addMatcher(updateCardEnableEmbedding.matchFulfilled, (state, action) => {
+    return {
+      ...state,
+      public_uuid: null,
+    };
+  });
+  builder.addMatcher(
+    updateCardEnableEmbedding.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -738,8 +739,11 @@ export const card = createReducer<Card | null>(null, (builder) => {
         ...state,
         enable_embedding: action.payload.enable_embedding,
       };
-    })
-    .addMatcher(updateCardEmbeddingParams.matchFulfilled, (state, action) => {
+    },
+  );
+  builder.addMatcher(
+    updateCardEmbeddingParams.matchFulfilled,
+    (state, action) => {
       if (!state) {
         return state;
       }
@@ -749,5 +753,6 @@ export const card = createReducer<Card | null>(null, (builder) => {
         embedding_params: action.payload.embedding_params,
         initially_published_at: action.payload.initially_published_at,
       };
-    });
+    },
+  );
 });

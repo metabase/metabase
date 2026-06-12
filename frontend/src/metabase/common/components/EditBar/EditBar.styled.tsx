@@ -20,7 +20,9 @@ export const Root = styled(FullWidthContainer, {
   background-color: ${(props) =>
     alpha(props.admin ? "accent7" : "brand", 0.85)};
 
-  .${ButtonsS.Button} {
+  /* metabase/ui Button: subtle = secondary (cancel), filled = primary (save) */
+  .${ButtonsS.Button}, button[data-variant="subtle"],
+  button[data-variant="filled"] {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${() => alpha("background-primary", 0.1)};
     border: none;
@@ -28,12 +30,13 @@ export const Root = styled(FullWidthContainer, {
     margin-left: 0.75em;
   }
 
-  .${ButtonsS.ButtonPrimary} {
+  .${ButtonsS.ButtonPrimary}, button[data-variant="filled"] {
     color: ${(props) => color(props.admin ? "text-primary" : "brand")};
     background-color: var(--mb-color-background-primary);
   }
 
-  .${ButtonsS.Button}:hover {
+  .${ButtonsS.Button}:hover, button[data-variant="subtle"]:hover,
+  button[data-variant="filled"]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
   }

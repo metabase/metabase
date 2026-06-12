@@ -61,11 +61,15 @@
   overflow: hidden;
 }
 
-.CloseIconButton {
+.CloseIconButton[data-variant="subtle"] {
   color: var(--mb-color-text-primary-inverse);
   background-color: transparent;
   border: none;
-  padding: 0.25rem !important;
+  padding: 0.25rem;
+  width: auto;
+  height: auto;
+  min-width: auto;
+  min-height: auto;
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
