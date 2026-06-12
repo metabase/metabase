@@ -79,6 +79,32 @@
           (is (= (str "ALLOW-FROM " (first embedding-app-origins))
                  (x-frame-options-header))))))))
 
+(defn- headers-for-uri
+  "Run the security-headers middleware for a request to `uri` and return its headers."
+  [uri]
+  (let [handler (mw.security/add-security-headers
+                 (fn [_request respond _raise] (respond {:status 200 :headers {} :body "ok"})))]
+    (:headers (handler {:uri uri :headers {}} identity identity))))
+
+(defn- frame-ancestors-for [uri]
+  (->> (str/split (get (headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % "frame-ancestors "))
+       first))
+
+(deftest data-app-frame-ancestors-test
+  (testing "the internal data-app iframe is framable only by the same-origin host"
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/data-app/sales")))
+    (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/data-app/sales/sub/route")))
+    (is (= "SAMEORIGIN" (get (headers-for-uri "/embed/data-app/sales") "X-Frame-Options"))))
+  (testing "other /embed and /public pages keep open framing (unchanged)"
+    (doseq [uri ["/embed/dashboard/abc" "/public/question/abc"]]
+      (is (= "frame-ancestors *" (frame-ancestors-for uri)))
+      (is (nil? (get (headers-for-uri uri) "X-Frame-Options")))))
+  (testing "the top-level /data-app page itself is not framable"
+    (mt/with-temporary-setting-values [enable-embedding-interactive false]
+      (is (= "frame-ancestors 'none'" (frame-ancestors-for "/data-app/sales")))
+      (is (= "DENY" (get (headers-for-uri "/data-app/sales") "X-Frame-Options"))))))
+
 (deftest nonce-test
   (testing "The nonce in the CSP header should match the nonce in the HTML from a index.html request"
     (let [nonceJSON (atom nil)
