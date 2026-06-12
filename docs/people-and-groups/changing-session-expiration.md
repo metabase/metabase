@@ -12,7 +12,9 @@ Clearing browser cookies or cache manually ends a session immediately, regardles
 
 ## Set the absolute session limit with `MAX_SESSION_AGE`
 
-`MAX_SESSION_AGE` controls the maximum number of minutes a session can live from the time of login. A person with hundreds of tabs open who hasn't rebooted in months will get logged out two weeks after their last login (even if they had checked the **Remember me** box on the login page).
+MAX_SESSION_AGE controls the maximum number of minutes a session can live from the time of login. A person with hundreds of tabs open who hasn't rebooted in months will get logged out once MAX_SESSION_AGE is reached (even if they had checked the **Remember me** box on the login page).
+
+
 
 The default value is 14 days. To set a custom value, use the environment variable (in minutes):
 
@@ -29,7 +31,7 @@ This setting applies equally to everyone regardless of their browser behavior or
 
 `MB_SESSION_TIMEOUT` controls how long a session can be inactive before it ends. Someone who opens Metabase in the morning, uses it for an hour, and then spends the rest of the day in other tools will be logged out once the inactivity window closes.
 
-> **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab.
+> **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab. Scheduled alerts and dashboard subscriptions are server-side operations and do not reset the inactivity timer.
 
 To configure session time out, go to **Admin** > **Authentication** > **Overview**, or set an environment variable:
 
