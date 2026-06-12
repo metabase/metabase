@@ -54,7 +54,9 @@ const { H } = cy;
               "aria-label",
               "Copy link",
             );
-          } else {
+          }
+
+          if (resource === "dashboard") {
             H.openSharingMenu();
             H.sharingMenu().findByText(/embed/i).should("not.exist");
           }
@@ -1030,7 +1032,9 @@ function assertNonAdminCannotCreatePublicLink(resource) {
   if (resource === "question") {
     // No public link: the share button copies the app link directly, no menu.
     H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
-  } else {
+  }
+
+  if (resource === "dashboard") {
     // No public link: dashboards keep the app link copy and the PDF export.
     H.openSharingMenu();
     H.sharingMenu().within(() => {

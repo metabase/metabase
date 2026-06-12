@@ -1,19 +1,14 @@
-import React, { type Ref, forwardRef } from "react";
+import React from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { Menu, type MenuProps } from "metabase/ui";
+import { Menu } from "metabase/ui";
 
-export function SharingMenu({
-  children,
-  ...menuProps
-}: {
-  children: React.ReactNode;
-} & MenuProps) {
+export function SharingMenu({ children }: { children: React.ReactNode }) {
   const hasNoChildren = !children || !React.Children.count(children);
 
   return (
-    <Menu withinPortal position="bottom-end" {...menuProps}>
+    <Menu withinPortal position="bottom-end">
       <Menu.Target>
         <ToolbarButton
           icon="share"
@@ -28,21 +23,17 @@ export function SharingMenu({
   );
 }
 
-export const SharingButton = forwardRef(function _SharingButton(
-  {
-    tooltip,
-    "aria-label": ariaLabel,
-    onClick,
-  }: {
-    tooltip?: React.ReactNode;
-    "aria-label"?: string;
-    onClick?: () => void;
-  },
-  ref: Ref<HTMLButtonElement>,
-) {
+export function SharingButton({
+  tooltip,
+  "aria-label": ariaLabel,
+  onClick,
+}: {
+  tooltip?: React.ReactNode;
+  "aria-label"?: string;
+  onClick?: () => void;
+}) {
   return (
     <ToolbarButton
-      ref={ref}
       icon="share"
       data-testid="sharing-menu-button"
       tooltipLabel={tooltip ?? t`Share`}
@@ -54,4 +45,4 @@ export const SharingButton = forwardRef(function _SharingButton(
       onClick={onClick}
     />
   );
-});
+}

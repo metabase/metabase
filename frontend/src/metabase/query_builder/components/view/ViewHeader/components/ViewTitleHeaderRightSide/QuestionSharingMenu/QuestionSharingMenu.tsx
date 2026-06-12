@@ -5,6 +5,7 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { LinkCopiedTooltipLabel } from "metabase/embedding/components/SharingMenu/LinkCopiedTooltipLabel";
 import {
+  COPY_TIMEOUT_MS,
   CopyLinkMenuItem,
   CopyPublicLinkMenuItem,
 } from "metabase/embedding/components/SharingMenu/MenuItems/CopyLinkMenuItem";
@@ -140,7 +141,7 @@ function CopyQuestionLinkButton({ question }: { question: Question }) {
   const url = useQuestionAppUrl(question);
 
   return (
-    <CopyButton value={url} timeout={2000}>
+    <CopyButton value={url} timeout={COPY_TIMEOUT_MS}>
       {({ copied, copy }) => (
         <SharingButton
           tooltip={copied ? <LinkCopiedTooltipLabel /> : t`Copy link`}

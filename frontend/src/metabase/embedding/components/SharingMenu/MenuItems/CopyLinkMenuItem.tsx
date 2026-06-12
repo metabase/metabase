@@ -5,6 +5,9 @@ import type { IconName } from "metabase-types/api";
 
 import { LinkCopiedTooltipLabel } from "../LinkCopiedTooltipLabel";
 
+// how long the copied-confirmation feedback stays visible
+export const COPY_TIMEOUT_MS = 2000;
+
 function CopyMenuItem({
   url,
   icon,
@@ -19,7 +22,7 @@ function CopyMenuItem({
   onCopied?: () => void;
 }) {
   return (
-    <CopyButton value={url} timeout={2000}>
+    <CopyButton value={url} timeout={COPY_TIMEOUT_MS}>
       {({ copied, copy }) => (
         <Tooltip
           label={<LinkCopiedTooltipLabel message={copiedMessage} />}

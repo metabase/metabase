@@ -6,6 +6,10 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
+  beforeEach(() => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+  });
+
   describe("non-admins", () => {
     it("shows a sharing menu with both copy options when a public link exists", async () => {
       setupQuestionSharingMenu({
@@ -24,7 +28,6 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the public link from the menu instead of opening a popover", async () => {
-      jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
@@ -46,7 +49,6 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when public sharing is disabled", async () => {
-      jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
@@ -67,7 +69,6 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when there is no public link", async () => {
-      jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,

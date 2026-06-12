@@ -5,6 +5,10 @@ import { screen, waitFor } from "__support__/ui";
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
 describe("DashboardSharingMenu", () => {
+  beforeEach(() => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+  });
+
   it("should have a 'share' tooltip by default", () => {
     setupDashboardSharingMenu({
       isAdmin: true,
@@ -115,7 +119,6 @@ describe("DashboardSharingMenu", () => {
       });
 
       it("should copy the dashboard app link when clicking the 'Copy link' button", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: true,
@@ -130,7 +133,6 @@ describe("DashboardSharingMenu", () => {
       });
 
       it("should include the selected tab in the copied app link for multi-tab dashboards", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: true,
           dashboard: {
@@ -186,7 +188,6 @@ describe("DashboardSharingMenu", () => {
       });
 
       it("should copy the app link when clicking 'Copy link'", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -205,7 +206,6 @@ describe("DashboardSharingMenu", () => {
       });
 
       it("should copy the public link when clicking 'Copy public link'", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,

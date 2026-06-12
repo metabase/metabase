@@ -5,6 +5,10 @@ import { screen, waitFor } from "__support__/ui";
 import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu", () => {
+  beforeEach(() => {
+    jest.mocked(navigator.clipboard.writeText).mockClear();
+  });
+
   it("should not render anything if the question is a model", async () => {
     await setupQuestionSharingMenu({
       question: { type: "model" },
@@ -125,7 +129,6 @@ describe("QuestionSharingMenu", () => {
       });
 
       it("should copy the app link from the menu", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -144,7 +147,6 @@ describe("QuestionSharingMenu", () => {
       });
 
       it("should copy the public link from the menu", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -163,7 +165,6 @@ describe("QuestionSharingMenu", () => {
       });
 
       it("should copy the app link directly when there is no public link", async () => {
-        jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,

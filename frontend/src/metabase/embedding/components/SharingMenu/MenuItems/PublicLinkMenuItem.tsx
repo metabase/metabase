@@ -11,7 +11,6 @@ export function PublicLinkMenuItem({
 }) {
   return (
     <Menu.Item
-      data-testid="embed-menu-public-link-item"
       leftSection={<Icon name="globe" aria-hidden />}
       onClick={onClick}
     >
