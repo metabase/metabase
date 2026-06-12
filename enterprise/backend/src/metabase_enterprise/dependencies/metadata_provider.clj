@@ -56,13 +56,24 @@
         (into entities (lib.metadata.protocols/metadatas delegate metadata-spec))
         (m/distinct-by :id entities))
 
-      ;; For columns, return overrides if they're present.
+      ;; For columns, return overrides if they're present. `:card-id` and `:table-id` are sets of ids; entities with
+      ;; overrides use the overridden columns, the rest are delegated.
       (= metadata-type :metadata/column)
-      (if-let [overridden-columns (cond
-                                    card-id  (get-in overrides [::card-columns  card-id])
-                                    table-id (get-in overrides [::table-columns table-id]))]
-        @overridden-columns
-        (lib.metadata.protocols/metadatas delegate metadata-spec))
+      (let [[override-k spec-k ids] (cond
+                                      card-id  [::card-columns  :card-id  card-id]
+                                      table-id [::table-columns :table-id table-id])
+            ids                     (cond-> ids (int? ids) hash-set)
+            id->overridden          (when override-k
+                                      (into {}
+                                            (keep (fn [id]
+                                                    (when-let [columns (get-in overrides [override-k id])]
+                                                      [id columns])))
+                                            ids))
+            missing-ids             (set (remove id->overridden ids))]
+        (concat (mapcat (comp deref val) id->overridden)
+                (when (or (nil? override-k) (seq missing-ids))
+                  (lib.metadata.protocols/metadatas delegate (cond-> metadata-spec
+                                                               override-k (assoc spec-k missing-ids))))))
 
       :else (throw (ex-info "Unknown :lib/metadata type for OverridingMetadataProvider" metadata-spec)))))
 
