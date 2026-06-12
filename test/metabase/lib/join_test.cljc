@@ -42,7 +42,6 @@
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :joins        [{:lib/type    :mbql/join
-
                                        :alias       "Categories"
                                        :stages      [{:lib/type     :mbql.stage/mbql
                                                       :source-table (meta/id :categories)}]
@@ -162,36 +161,36 @@
             (lib/join-clause (meta/table-metadata :orders)))))
   (testing "Should allow specifying the join strategy when creating a join clause"
     (is (= [:left-join :right-join :inner-join]
-           (let [query             (lib.tu/query-with-join)
-                 product-table     (meta/table-metadata :products)
-                 products-id       (meta/id :products :id)
+           (let [query (lib.tu/query-with-join)
+                 product-table (meta/table-metadata :products)
+                 products-id (meta/id :products :id)
                  orders-product-id (meta/id :orders :product-id)
-                 join-conditions   [(lib/= orders-product-id products-id)]
-                 join-strategies   (lib/available-join-strategies query)]
+                 join-conditions [(lib/= orders-product-id products-id)]
+                 join-strategies (lib/available-join-strategies query)]
              (into [] (comp
                        (map #(lib/join-clause product-table join-conditions %))
                        (map :strategy))
                    join-strategies)))))
   (testing "source-card"
-    (let [query                 {:lib/type     :mbql/query
-                                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
-                                 :database     (meta/id)
-                                 :stages       [{:lib/type    :mbql.stage/mbql
-                                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
-          product-card          (:products (lib.tu/mock-cards))
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+          product-card (:products (lib.tu/mock-cards))
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
-          [products-id]         (lib/join-condition-rhs-columns query product-card (lib/ref orders-product-id) nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-card (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
               (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
-    (let [query                 {:lib/type     :mbql/query
-                                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
-                                 :database     (meta/id)
-                                 :stages       [{:lib/type    :mbql.stage/mbql
-                                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
-          product-table         (meta/table-metadata :products)
+    (let [query {:lib/type :mbql/query
+                 :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
+                 :database (meta/id)
+                 :stages [{:lib/type :mbql.stage/mbql
+                           :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+          product-table (meta/table-metadata :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
-          [products-id]         (lib/join-condition-rhs-columns query product-table (lib/ref orders-product-id) nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-table (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
               (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
 
@@ -375,11 +374,11 @@
               :name                    "USER_ID"
               :lib/source              :source/joins
               :lib/source-column-alias "USER_ID"
-              :lib/join-alias          "checkins_by_user"}
+              :lib/join-alias    "checkins_by_user"}
              {:name                    "count"
               :lib/source              :source/joins
               :lib/source-column-alias "count"
-              :lib/join-alias          "checkins_by_user"}]
+              :lib/join-alias    "checkins_by_user"}]
             (lib.join/join-returned-columns-relative-to-parent-stage query -1 join)))
     (is (=? (-> (lib.metadata/card metadata-provider 1)
                 (update :dataset-query lib.schema.util/remove-lib-uuids))
