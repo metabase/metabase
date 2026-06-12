@@ -5,7 +5,7 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
-  (:refer-clojure :exclude [every? empty? get-in])
+  (:refer-clojure :exclude [every? empty? get-in not-empty])
   (:require
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
@@ -24,7 +24,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in]]
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -50,12 +50,14 @@
   [query-executions]
   (tracing/with-span :db-app "db-app.save-query-execution" {}
     (log/tracef "Saving %d QueryExecutions" (count query-executions))
-    (doseq [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution} query-executions
-            :when (not (:cache_hit query-execution))]
+    (when-let [entries (not-empty
+                        (for [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution} query-executions
+                              :when (and (not (:cache_hit query-execution)) query-hash running-time)]
+                          {:query query, :query-hash query-hash, :execution-time-ms running-time}))]
       (try
-        (query/save-query-and-update-average-execution-time! query query-hash running-time)
+        (query/save-queries-and-update-average-execution-times! entries)
         (catch Throwable e
-          (log/error e "Error updating query average execution time"))))
+          (log/error e "Error updating query average execution times"))))
     (try
       (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
         (when (seq no-context)

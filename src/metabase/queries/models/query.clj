@@ -1,6 +1,7 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -63,29 +64,80 @@
                        {:query_hash query-hash}
                        {:average_execution_time avg-execution-time})))))
 
-(defn- record-new-query-entry!
-  "Record a query and its execution time for a `query` with `query-hash` that's not already present in the DB.
-  `execution-time-ms` is used as a starting point."
-  [query ^bytes query-hash ^Integer execution-time-ms]
-  (first (t2/insert-returning-instances! :model/Query
-                                         :query                  query
-                                         :query_hash             query-hash
-                                         :average_execution_time execution-time-ms)))
+(defn- rolling-average-coefficients
+  "Collapse applying the rolling-average formula (`new-avg = 0.9 * avg + 0.1 * t`) once per execution time into a
+  single linear equation `new-avg = c0 * avg + c1`."
+  [execution-times-ms]
+  (reduce (fn [[c0 c1] t]
+            [(* 0.9 c0) (+ (* 0.9 c1) (* 0.1 t))])
+          [1.0 0.0]
+          execution-times-ms))
 
-(defn save-query-and-update-average-execution-time!
-  "Update the recorded average execution time (or insert a new record if needed) for `query` with `query-hash`."
-  [query ^bytes query-hash ^Integer execution-time-ms]
-  {:pre [(bytes? query-hash)]}
-  (or
-   ;; if there's already a matching Query update the rolling average
-   (update-rolling-average-execution-time! query query-hash execution-time-ms)
-   ;; otherwise try adding a new entry. If for some reason there was a race condition and a Query entry was added in
-   ;; the meantime we'll try updating that existing record
-   (try (record-new-query-entry! query query-hash execution-time-ms)
-        (catch Throwable e
-          (or (update-rolling-average-execution-time! query query-hash execution-time-ms)
-              ;; rethrow e if updating an existing average execution time failed
-              (throw e))))))
+(defn- initial-average-execution-time
+  "Average execution time for a new Query entry: the first execution time, with any subsequent ones folded in the same
+  way consecutive [[update-rolling-average-execution-time!]] calls would."
+  ^long [execution-times-ms]
+  (reduce (fn [avg t]
+            (Math/round (+ (* 0.9 (double avg)) (* 0.1 (double t)))))
+          (long (first execution-times-ms))
+          (rest execution-times-ms)))
+
+(defn- save-queries-and-update-average-execution-times!*
+  [entries remaining-attempts]
+  (when (seq entries)
+    ;; group by the hex representation since byte arrays don't have value-based equality
+    (let [hex->entries  (group-by #(codecs/bytes->hex (:query-hash %)) entries)
+          existing-rows (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
+                                   :from   [(t2/table-name :model/Query)]
+                                   :where  [:in :query_hash (map (comp :query-hash first val) hex->entries)]})
+          ;; mysql returns 0/1 instead of booleans
+          hex->legacy?  (into {} (map (juxt #(codecs/bytes->hex (:query_hash %))
+                                            (comp boolean #{true 1} :missing_query)))
+                              existing-rows)
+          {batchable false, legacy true} (group-by (comp hex->legacy? key)
+                                                   (filter (comp #(contains? hex->legacy? %) key) hex->entries))
+          new-groups    (vals (remove (comp #(contains? hex->legacy? %) key) hex->entries))]
+      ;; one atomic UPDATE for all existing rows
+      (when-let [hash+exprs (not-empty
+                             (for [[_hex group] batchable
+                                   :let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]]
+                               [(:query-hash (first group))
+                                (h2x/cast (int-casting-type)
+                                          (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
+                                                            [:inline c1])
+                                                     [:inline 0]))]))]
+        (t2/query {:update (t2/table-name :model/Query)
+                   :set    {:average_execution_time (into [:case]
+                                                          (mapcat (fn [[query-hash expr]]
+                                                                    [[:= :query_hash query-hash] expr]))
+                                                          hash+exprs)}
+                   :where  [:in :query_hash (map first hash+exprs)]}))
+      ;; pre-0.31.0 rows whose `query` still needs backfilling: rare legacy path, handle individually
+      (doseq [[_hex group] legacy
+              {:keys [query query-hash execution-time-ms]} group]
+        (update-rolling-average-execution-time! query query-hash execution-time-ms))
+      ;; one multi-row INSERT for hashes we haven't seen before. If some other instance beat us to inserting any of
+      ;; them, retry: the next attempt will see the conflicting rows as existing and fold them into the batched
+      ;; UPDATE instead.
+      (when (seq new-groups)
+        (try
+          (t2/insert! :model/Query (for [group new-groups]
+                                     {:query                  (:query (first group))
+                                      :query_hash             (:query-hash (first group))
+                                      :average_execution_time (initial-average-execution-time
+                                                               (map :execution-time-ms group))}))
+          (catch Throwable e
+            (if (pos? remaining-attempts)
+              (save-queries-and-update-average-execution-times!* (apply concat new-groups) (dec remaining-attempts))
+              (throw e))))))))
+
+(defn save-queries-and-update-average-execution-times!
+  "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,
+  `:query-hash`, and `:execution-time-ms` keys, using a fixed number of statements rather than several per entry.
+  Multiple entries for the same hash are folded into a single atomic update equivalent to applying the rolling-average
+  formula once per entry, in order."
+  [entries]
+  (save-queries-and-update-average-execution-times!* entries 2))
 
 (mr/def ::database-and-table-ids
   [:map
