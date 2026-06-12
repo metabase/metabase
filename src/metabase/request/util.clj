@@ -39,6 +39,13 @@
   [{:keys [uri]}]
   (re-matches #"^/embed/.*$" uri))
 
+(defn data-app?
+  "Is this ring request the internal data-app iframe entrypoint (`/embed/data-app/...`)?
+   It is only ever framed by the same-origin Metabase app, so it gets
+   `frame-ancestors 'self'` rather than the open embedding `*`."
+  [{:keys [uri]}]
+  (re-matches #"^/embed/data-app/.*$" uri))
+
 (defn cacheable?
   "Can the ring request be permanently cached?"
   [{:keys [request-method uri], :as _request}]
