@@ -149,6 +149,9 @@ export function buildAllFieldsMetricGroups({
           name: sourceDataById[slot.sourceId]?.name ?? slot.sourceId,
           colors: sourceColors[slot.entityIndex],
           isExpressionToken: slot.tokenPosition != null,
+          ...(slot.occurrenceCount != null
+            ? { occurrenceCount: slot.occurrenceCount }
+            : {}),
           sections: mergeSectionsByName(scopedSections),
         };
       })

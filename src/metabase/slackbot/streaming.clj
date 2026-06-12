@@ -205,6 +205,11 @@
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         thread-history  (thread->history thread bot-user-id conversation-id)
         history         (into (vec thread-history) extra-history)
+        context         (metabot.context/create-context
+                         {:current_time_with_timezone (str (java.time.OffsetDateTime/now))
+                          :capabilities               capabilities
+                          :slack_channel_id           channel-id}
+                         {:metabot-id metabot.config/internal-metabot-id})
         messages        (conj (vec history) request-message)
         parts-atom      (atom [])
         ;; Sibling capture for throwables that escape the agent loop's own

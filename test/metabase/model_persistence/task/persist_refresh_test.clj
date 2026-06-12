@@ -4,7 +4,10 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.channel.email.messages :as messages]
+   [metabase.channel.init]
    [metabase.driver.connection :as driver.conn]
+   [metabase.events.core :as events]
    [metabase.model-persistence.init]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -17,7 +20,8 @@
 
 (set! *warn-on-reflection* true)
 
-(comment metabase.model-persistence.init/keep-me)
+(comment metabase.channel.init/keep-me
+         metabase.model-persistence.init/keep-me)
 
 (p/defprotocol+ ^:private GetSchedule
   (^:private schedule-string [_]))
@@ -135,11 +139,11 @@
                                                        (throw (ex-info "simulated error" {})))
                                                      (original-update! model id update))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"simulated error"
-                                    (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher))))
+                                    (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil))))
             (testing "the PersistedInfo is left in the `refreshing` state"
               (is (= "refreshing" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))
             (testing "but a subsequent refresh run will refresh the table"
-              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
               (is (= "persisted" (t2/select-one-fn :state :model/PersistedInfo :id (u/the-id persisted-info)))))))))))
 
 (deftest task-establishes-no-write-connection-context-test
@@ -163,7 +167,7 @@
                               (reset! seen @#'driver.conn/*connection-type*)
                               {:state :success})
                             (unpersist! [_ _database _persisted-info]))]
-            (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher)
+            (#'task.persist-refresh/refresh-tables! (u/the-id db) refresher nil)
             (is (= :default @seen))))
         (testing "unpersist! receives :default"
           (let [seen      (atom ::unset)
@@ -192,7 +196,7 @@
                                  (swap! card-ids conj (:id card))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (testing "Does not refresh archived cards or cards no longer models."
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
@@ -211,7 +215,7 @@
                                    (throw (ex-info "DBs are risky" {:ka :boom})))
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
-          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+          (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher nil)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
@@ -298,3 +302,41 @@
                                                      (fn []
                                                        {:error-details ["some-error"]}))
           (is (true? @email-sent)))))))
+
+(deftest persisted-model-refresh-error-event-accepts-quartz-trigger-test
+  (with-redefs [messages/send-persistent-model-error-email! (fn [& _] nil)]
+    (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger {:id 1} "0 0 0/8 * * ? *")]
+      (is (identical?
+           trigger
+           (:trigger (events/publish-event!
+                      :event/persisted-model-refresh-error
+                      {:database-id     1
+                       :persisted-infos [{:id       1
+                                          :error    "boom"
+                                          :database {:id 1}
+                                          :card     {:collection nil}}]
+                       :trigger         trigger})))))))
+
+(deftest publish-refresh-error-event-sends-admin-email-test
+  (mt/with-fake-inbox
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (mt/with-temp [:model/Database       db             {:settings {:persist-models-enabled true}}
+                     :model/Card           model          {:type :model :database_id (u/the-id db)}
+                     :model/PersistedInfo  persisted-info {:card_id     (u/the-id model)
+                                                           :database_id (u/the-id db)
+                                                           :state       "persisted"}]
+        (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger db "0 0 0/8 * * ? *")]
+          (#'task.persist-refresh/save-task-history!
+           "persist-refresh" (u/the-id db)
+           (fn []
+             {:success       0
+              :error         1
+              :trigger       trigger
+              :error-details [{:persisted-info-id (u/the-id persisted-info)
+                               :error             "simulated refresh failure"}]})))
+        (let [msgs (get @mt/inbox "crowberto@metabase.com")
+              body (-> msgs first :body first :content str)]
+          (is (= 1 (count msgs)))
+          (is (re-find #"Model cache refresh failed" (str (:subject (first msgs)))))
+          (is (re-find #"Last run trigger" body))
+          (is (re-find #"Scheduled" body)))))))

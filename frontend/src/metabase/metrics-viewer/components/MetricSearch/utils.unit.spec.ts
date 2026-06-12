@@ -63,7 +63,7 @@ describe("cleanupParens", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -177,7 +177,7 @@ describe("buildExpressionText", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -232,7 +232,7 @@ describe("parseFullText — numeric literal parsing", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -399,7 +399,7 @@ describe("parseFullText — negative numbers", () => {
   const metric = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -580,7 +580,7 @@ describe("parseFullText — metric names with commas", () => {
   const m = (sourceId: MetricSourceId): ExpressionSubToken => ({
     type: "metric",
     sourceId,
-    count: 1,
+    occurrenceCount: 1,
   });
   const op = (o: "+" | "-" | "*" | "/"): ExpressionSubToken => ({
     type: "operator",
@@ -1639,9 +1639,9 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "Revenue + Costs",
         tokens: [
-          { type: "metric", sourceId: "metric:1" as const, count: 1 },
+          { type: "metric", sourceId: "metric:1" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
-          { type: "metric", sourceId: "metric:2" as const, count: 1 },
+          { type: "metric", sourceId: "metric:2" as const, occurrenceCount: 1 },
         ],
       },
     ];
@@ -1691,7 +1691,7 @@ describe("buildFullTextWithIdentities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3" as const, count: 1 },
+          { type: "metric", sourceId: "metric:3" as const, occurrenceCount: 1 },
           { type: "operator", op: "+" as const },
           { type: "constant", value: 456 },
         ],
@@ -1746,7 +1746,7 @@ describe("parseFullText with identities", () => {
         type: "expression",
         name: "123 + 456",
         tokens: [
-          { type: "metric", sourceId: "metric:3", count: 1 },
+          { type: "metric", sourceId: "metric:3", occurrenceCount: 1 },
           { type: "operator", op: "+" },
           { type: "constant", value: 456 },
         ],

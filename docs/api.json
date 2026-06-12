@@ -1347,27 +1347,6 @@
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
       },
-      "metabase-enterprise.dependencies.api.broken-cards-response" : {
-        "type" : "object",
-        "properties" : {
-          "bad_cards" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.queries.schema.card"
-            }
-          },
-          "bad_transforms" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.transform"
-            }
-          },
-          "success" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "success" ]
-      },
       "metabase-enterprise.dependencies.api.broken-dependent-entity" : {
         "description" : "Entity returned by /graph/broken endpoint - includes errors but no dependents_count.",
         "type" : "object",
@@ -1385,96 +1364,6 @@
           }
         },
         "required" : [ "id", "type", "data" ]
-      },
-      "metabase-enterprise.dependencies.api.card-body" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
       },
       "metabase-enterprise.dependencies.api.card-entity" : {
         "type" : "object",
@@ -1865,42 +1754,6 @@
           }
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
-      },
-      "metabase-enterprise.dependencies.api.transform-body" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "oneOf" : [ {
-              "type" : "object",
-              "properties" : {
-                "query" : {
-                  "$ref" : "#/components/schemas/metabase.queries.schema.query"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "target" : {
-            "oneOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id" ]
       },
       "metabase-enterprise.dependencies.api.transform-entity" : {
         "type" : "object",
@@ -3848,6 +3701,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -3876,7 +3732,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "collection_id", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
       },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
@@ -3935,6 +3791,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -3958,7 +3817,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "id", "name", "url", "display", "collection_id", "description" ]
+        "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
       },
       "metabase.agent-api.api.dashcard-mutation" : {
         "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
@@ -4082,7 +3941,7 @@
         "required" : [ "database_id", "sql" ]
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
+        "description" : "Request body for /v2/query, one of three shapes:\n    - `{:continuation_token <string>}` from a prior response (pagination);\n    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64\n      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run\n      through the representations pipeline;\n    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as\n      /v2/construct-query.\n\n  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a\n  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`\n  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -4092,6 +3951,16 @@
             }
           },
           "required" : [ "continuation_token" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "query" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "query" ],
           "additionalProperties" : false
         }, {
           "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
@@ -4337,6 +4206,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -4362,7 +4234,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "collection_id", "description", "archived", "dashcard_ids" ]
+        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
       },
       "metabase.agent-api.api.update-question-request" : {
         "description" : "Patch shape for `update_question`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer).",
@@ -4440,6 +4312,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -4460,7 +4335,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "display", "collection_id", "description", "archived" ]
+        "required" : [ "id", "name", "display", "collection_id", "collection_path", "description", "archived" ]
       },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "description" : "value must be an array of valid results column metadata maps.",
@@ -5532,7 +5407,7 @@
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.WidgetType"
           }
         },
-        "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+        "required" : [ "type", "name", "display-name", "dimension" ]
       },
       "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
         "type" : "object",
@@ -7810,7 +7685,7 @@
               } ]
             }
           },
-          "required" : [ "base_type", "display_name", "name" ]
+          "required" : [ "display_name", "name" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -8721,11 +8596,6 @@
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase.lib.schema.id.collection" : {
-        "description" : "Valid Collection ID",
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "type" : "integer",
@@ -8976,7 +8846,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.join.strategy"
             }
           },
-          "required" : [ "lib/type", "stages", "conditions", "alias" ]
+          "required" : [ "stages", "conditions", "alias" ]
         }, {
           "allOf" : [ ]
         }, {
@@ -9792,7 +9662,7 @@
               } ]
             }
           },
-          "required" : [ "lib/type", "name", "base-type" ]
+          "required" : [ "name" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
@@ -10372,7 +10242,7 @@
                 } ]
               }
             },
-            "required" : [ "lib/type", "name", "base-type" ]
+            "required" : [ "name" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
@@ -10415,7 +10285,7 @@
             "const" : "metadata/results"
           }
         },
-        "required" : [ "lib/type", "columns" ]
+        "required" : [ "columns" ]
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -10674,7 +10544,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
             }
           },
-          "required" : [ "lib/type", "stages" ]
+          "required" : [ "stages" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
         }, {
@@ -11345,7 +11215,7 @@
       },
       "metabase.lib.schema.validate.validate-error-type" : {
         "type" : "string",
-        "enum" : [ "missing-column", "missing-table-alias", "duplicate-column", "syntax-error", "validation-exception-error" ]
+        "enum" : [ "missing-column", "missing-table-alias", "missing-table", "missing-card", "duplicate-column", "syntax-error", "validation-exception-error" ]
       },
       "metabase.logger.api.log-level" : {
         "type" : "string",
@@ -13512,102 +13382,6 @@
         "type" : "string",
         "enum" : [ "static-list", "card" ]
       },
-      "metabase.queries.schema..card.result-metadata" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
-        }
-      },
-      "metabase.queries.schema.card" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema..card.result-metadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
       "metabase.queries.schema.card-type" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
       },
@@ -13663,7 +13437,7 @@
                 "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
               }
             },
-            "required" : [ "lib/type", "lib/metadata", "stages" ]
+            "required" : [ "lib/metadata", "stages" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
           }, {
@@ -14129,10 +13903,6 @@
         },
         "required" : [ "type" ]
       },
-      "metabase.transforms.schema.id" : {
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
@@ -14191,31 +13961,6 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.append-config"
         } ]
-      },
-      "metabase.transforms.schema.transform" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.id"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
-          },
-          "target" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
-          }
-        },
-        "required" : [ "id", "name", "source", "target" ]
       },
       "metabase.transforms.schema.transform-source" : {
         "oneOf" : [ {
@@ -14882,7 +14627,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -14989,7 +14734,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15175,7 +14920,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15513,7 +15258,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -16753,7 +16498,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : [ "root" ],
             "type" : "array",
@@ -16794,7 +16539,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -16803,7 +16548,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -17027,7 +16772,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "f",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -17555,7 +17300,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "ignore_cache" ]
+                "required" : [ ]
               }
             }
           }
@@ -17622,7 +17367,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -18510,7 +18255,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18522,7 +18267,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18546,7 +18291,7 @@
         }, {
           "in" : "query",
           "name" : "personal-only",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18675,7 +18420,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18687,7 +18432,7 @@
         }, {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18833,7 +18578,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18845,7 +18590,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18869,7 +18614,7 @@
         }, {
           "in" : "query",
           "name" : "include_library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19030,7 +18775,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19042,7 +18787,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19054,7 +18799,7 @@
         }, {
           "in" : "query",
           "name" : "include-library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19092,7 +18837,7 @@
         }, {
           "in" : "query",
           "name" : "shallow",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19244,7 +18989,7 @@
                     } ]
                   }
                 },
-                "required" : [ "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -19353,7 +19098,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19365,7 +19110,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19424,7 +19169,7 @@
         }, {
           "in" : "query",
           "name" : "show_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -20247,7 +19992,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -20486,7 +20231,7 @@
                     } ]
                   }
                 },
-                "required" : [ "is_deep_copy" ]
+                "required" : [ ]
               }
             }
           }
@@ -21414,7 +21159,7 @@
         }, {
           "in" : "query",
           "name" : "include_analytics",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21426,7 +21171,7 @@
         }, {
           "in" : "query",
           "name" : "saved",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21438,7 +21183,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21450,7 +21195,7 @@
         }, {
           "in" : "query",
           "name" : "exclude_uneditable_details",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21462,7 +21207,7 @@
         }, {
           "in" : "query",
           "name" : "include_only_uploadable",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21612,7 +21357,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "engine", "details", "is_full_sync", "is_on_demand", "connection_source" ]
+                "required" : [ "name", "engine", "details" ]
               }
             }
           }
@@ -22184,7 +21929,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22196,7 +21941,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22208,7 +21953,7 @@
         }, {
           "in" : "query",
           "name" : "remove_inactive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22220,7 +21965,7 @@
         }, {
           "in" : "query",
           "name" : "skip_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22290,7 +22035,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22302,7 +22047,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22384,7 +22129,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22396,7 +22141,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22470,7 +22215,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22482,7 +22227,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22849,7 +22594,7 @@
                     } ]
                   }
                 },
-                "required" : [ "database", "pretty" ]
+                "required" : [ "database" ]
               }
             }
           }
@@ -23149,7 +22894,7 @@
                     "properties" : { }
                   }
                 },
-                "required" : [ "query", "visualization_settings", "format_rows", "pivot_results" ]
+                "required" : [ "query" ]
               }
             }
           }
@@ -23660,7 +23405,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -24003,7 +23748,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -24015,7 +23760,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -26203,7 +25948,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force-recalculation",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -26624,131 +26369,11 @@
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
-    "/api/ee/dependencies/check-card" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-card",
-        "summary" : "POST /api/ee/dependencies/check-card",
-        "description" : "Check a proposed edit to a card, and return the cards/transforms this edit will break.\n\n  `broken-cards-response` ensures the stable response order.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-snippet" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-snippet",
-        "summary" : "POST /api/ee/dependencies/check-snippet",
-        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "content" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
-                  },
-                  "name" : {
-                    "description" : "snippet names cannot include '}' or start with spaces"
-                  }
-                },
-                "required" : [ "id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-transform" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-transform",
-        "summary" : "POST /api/ee/dependencies/check-transform",
-        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
     "/api/ee/dependencies/graph" : {
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph",
         "summary" : "GET /api/ee/dependencies/graph",
-        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
+        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -26764,13 +26389,6 @@
           "required" : false,
           "schema" : {
             "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -26798,7 +26416,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-breaking",
         "summary" : "GET /api/ee/dependencies/graph/breaking",
-        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -26835,13 +26453,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27013,7 +26624,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-dependents",
         "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
+        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -27059,13 +26670,6 @@
                 "enum" : [ "question", "metric", "model" ]
               }
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27133,7 +26737,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-unreferenced",
         "summary" : "GET /api/ee/dependencies/graph/unreferenced",
-        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -27170,13 +26774,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -30606,7 +30203,7 @@
         }, {
           "in" : "query",
           "name" : "all_collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30614,7 +30211,7 @@
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30622,7 +30219,7 @@
         }, {
           "in" : "query",
           "name" : "data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30630,7 +30227,7 @@
         }, {
           "in" : "query",
           "name" : "field_values",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30638,7 +30235,7 @@
         }, {
           "in" : "query",
           "name" : "database_secrets",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30646,7 +30243,7 @@
         }, {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30654,7 +30251,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30682,7 +30279,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30690,7 +30287,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30698,7 +30295,7 @@
         }, {
           "in" : "query",
           "name" : "reindex",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30756,7 +30353,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30768,7 +30365,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30780,7 +30377,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30925,7 +30522,7 @@
         }, {
           "in" : "query",
           "name" : "is_recursive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30933,7 +30530,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -30942,7 +30539,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -31225,7 +30822,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -33192,7 +32789,7 @@
         }, {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33204,7 +32801,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33216,7 +32813,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -34018,7 +33615,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34026,7 +33623,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34158,7 +33755,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34166,7 +33763,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34610,7 +34207,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -38418,7 +38015,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -38816,7 +38413,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "last_send",
             "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-column"
@@ -38824,7 +38421,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "desc",
             "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-direction"
@@ -39248,7 +38845,7 @@
                     } ]
                   }
                 },
-                "required" : [ "synchronous?" ]
+                "required" : [ ]
               }
             }
           }
@@ -39396,7 +38993,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39408,7 +39005,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39730,7 +39327,7 @@
                     "minimum" : 1
                   }
                 },
-                "required" : [ "group_id", "user_id", "is_group_manager" ]
+                "required" : [ "group_id", "user_id" ]
               }
             }
           }
@@ -41103,7 +40700,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41111,7 +40708,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41308,7 +40905,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41694,7 +41291,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41731,7 +41328,7 @@
         }, {
           "in" : "query",
           "name" : "maxheight",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 800,
             "type" : "integer",
@@ -41740,7 +41337,7 @@
         }, {
           "in" : "query",
           "name" : "maxwidth",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 1024,
             "type" : "integer",
@@ -42037,7 +41634,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42062,7 +41659,7 @@
         }, {
           "in" : "query",
           "name" : "creator_or_recipient",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42160,7 +41757,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42261,7 +41858,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty", "disable_links" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42470,7 +42067,7 @@
                     } ]
                   }
                 },
-                "required" : [ "skip_if_empty", "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -42631,7 +42228,7 @@
       "get" : {
         "operationId" : "get-api-search",
         "summary" : "GET /api/search",
-        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filters_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
+        "description" : "Search for items in Metabase.\n  For the list of supported models, check [[metabase.search.config/all-models]].\n\n  `context` identifies the surface issuing the search; it selects the ranking weights and filter defaults.\n  It defaults to `api`, the value for programmatic callers.\n\n  Filters:\n  - `archived`: set to true to search archived items only, default is false\n  - `table_db_id`: search for tables, cards, and models of a certain DB\n  - `models`: only search for items of specific models. If not provided, search for all models\n  - `filter_items_in_personal_collection`: only search for items in personal collections\n  - `created_at`: search for items created at a specific timestamp\n  - `created_by`: search for items created by a specific user\n  - `last_edited_at`: search for items last edited at a specific timestamp\n  - `last_edited_by`: search for items last edited by a specific user\n  - `search_native_query`: set to true to search the content of native queries\n  - `vector_search_strategy`: for the semantic engine, `hnsw` (approximate index search, default) or `brute-force` (exact filter-first search); ignored by other engines\n  - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)\n  - `ids`: search for items with those ids, works iff single value passed to `models`\n  - `display_type`: search for cards/models with specific display types\n  - `non_temporal_dim_ids`: search for cards/metrics/datasets with this exact set of non temporal dimension field IDs (requires appdb engine)\n  - `has_temporal_dim`: set to true for cards/metrics/datasets with 1 or more temporal dimensions (requires appdb engine)\n\n  Note that not all item types support all filters, and the results will include only models that support the provided\n  filters. For example:\n\n  - The `created-by` filter supports dashboards, models, actions, and cards.\n  - The `verified` filter supports models and cards.\n\n  A search query that has both filters applied will only return models and cards.",
         "parameters" : [ {
           "in" : "query",
           "name" : "q",
@@ -42648,16 +42245,14 @@
           "name" : "context",
           "required" : false,
           "schema" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
+            "default" : "api",
+            "type" : "string",
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
           }
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42793,7 +42388,7 @@
         }, {
           "in" : "query",
           "name" : "model_ancestors",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42877,7 +42472,7 @@
         }, {
           "in" : "query",
           "name" : "include_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42889,7 +42484,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42984,7 +42579,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -43010,7 +42605,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -44764,7 +44359,7 @@
         }, {
           "in" : "query",
           "name" : "include_sensitive_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44776,7 +44371,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44788,7 +44383,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45494,7 +45089,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -45792,7 +45387,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45844,7 +45439,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45892,7 +45487,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "false",
             "type" : "boolean"
@@ -47020,7 +46615,7 @@
                     "enum" : [ "cron/raw", "cron/builder" ]
                   }
                 },
-                "required" : [ "name", "schedule", "ui_display_type" ]
+                "required" : [ "name", "schedule" ]
               }
             }
           }
@@ -47663,7 +47258,7 @@
       "post" : {
         "operationId" : "post-api-transform-job-job-id-run",
         "summary" : "POST /api/transform-job/{job-id}/run",
-        "description" : "Run a transform job manually.",
+        "description" : "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`\n  to force-refresh the whole plan.",
         "parameters" : [ {
           "in" : "path",
           "name" : "job-id",
@@ -47700,6 +47295,22 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_all" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ ]
+              }
+            }
           }
         },
         "tags" : [ "/api/transform-job" ]
@@ -47739,6 +47350,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "scheduled" : {
+                        "type" : "boolean"
                       },
                       "id" : {
                         "type" : "integer",
@@ -47805,6 +47419,9 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
+                      "dependency" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -49977,7 +49594,7 @@
         }, {
           "in" : "query",
           "name" : "include_deactivated",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {

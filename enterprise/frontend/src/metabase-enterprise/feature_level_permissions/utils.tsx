@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
+import type { AdminPathKey, State } from "metabase/redux/store";
+import { getUser } from "metabase/selectors/user";
 import type {
   PermissionSubject,
   SpecialGroupType,
-} from "metabase/admin/permissions/types";
-import type { AdminPathKey, State } from "metabase/redux/store";
-import { getUser } from "metabase/selectors/user";
-import type { User } from "metabase-types/api";
+  User,
+} from "metabase-types/api";
 
 const canUserAccessDataModel = (user?: User) =>
   user?.permissions?.can_access_data_model ?? false;
@@ -38,13 +38,11 @@ export const getDataColumns = ({
   groupType,
   isExternal,
   showTransformPermissions = false,
-  showWorkspacesPermissions = false,
 }: {
   subject: PermissionSubject;
   groupType?: SpecialGroupType;
   isExternal?: boolean;
   showTransformPermissions?: boolean;
-  showWorkspacesPermissions?: boolean;
 }) => {
   const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
     {
@@ -77,22 +75,6 @@ export const getDataColumns = ({
                   style={{ textDecoration: "underline" }}
                 >{t`Data Analysts group`}</Link>
               )} to use transforms.`,
-      });
-    }
-
-    if (showWorkspacesPermissions) {
-      allSubjectsColumns.push({
-        name: t`Workspaces`,
-        hint:
-          groupType === "analyst" || groupType === "admin"
-            ? null
-            : jt`Users must also be a member of the ${(
-                <Link
-                  key="link"
-                  to="/admin/people"
-                  style={{ textDecoration: "underline" }}
-                >{t`Data Analysts group`}</Link>
-              )} to use workspaces.`,
       });
     }
   }

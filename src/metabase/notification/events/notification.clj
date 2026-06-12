@@ -18,7 +18,7 @@
                                   :event/comment-created
                                   :event/support-access-grant-created
                                   :event/transform-failed
-                                  :event/transform-job-failed})
+                                  :event/transform-failure-digest})
 
 (def ^:private hydrate-transformer
   (mtx/transformer
