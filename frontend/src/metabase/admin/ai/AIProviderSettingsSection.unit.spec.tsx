@@ -67,6 +67,11 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
       },
     ],
   },
+  azure: {
+    // Azure has no model dropdown — deployment names are free text.
+    value: "azure/anthropic/claude-sonnet-4-5",
+    models: [],
+  },
   bedrock: {
     value: "bedrock/anthropic.claude-haiku-4-5",
     models: [
@@ -115,6 +120,8 @@ type MetabotSettingsApiResponse =
 type MetabotSettingKey =
   | "llm-metabot-provider"
   | "llm-anthropic-api-key"
+  | "llm-azure-api-key"
+  | "llm-azure-api-base-url"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
   | "llm-bedrock-access-key-id"
@@ -203,6 +210,7 @@ async function setup({
 
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
+    azure: null,
     bedrock: null,
     openai: null,
     openrouter: null,
@@ -248,6 +256,17 @@ async function setup({
       value: mergedApiKeyValues.anthropic ?? undefined,
       is_env_setting: apiKeySettingIsEnv,
       env_name: apiKeySettingIsEnv ? apiKeySettingEnvName : undefined,
+    }),
+    "llm-azure-api-key": createMockSettingDefinition({
+      key: "llm-azure-api-key",
+      value: mergedApiKeyValues.azure ?? undefined,
+    }),
+    // The base URL is configured whenever the Azure API key is — they are saved together.
+    "llm-azure-api-base-url": createMockSettingDefinition({
+      key: "llm-azure-api-base-url",
+      value: mergedApiKeyValues.azure
+        ? "https://my-resource.services.ai.azure.com/anthropic"
+        : undefined,
     }),
     "llm-openai-api-key": createMockSettingDefinition({
       key: "llm-openai-api-key",
@@ -1746,6 +1765,205 @@ describe("AIProviderSettingsSection", () => {
             (toast) => toast.message === "Unable to save provider settings.",
           ),
       ).toBe(true);
+    });
+  });
+
+  describe("Microsoft Azure", () => {
+    it("shows Microsoft Azure as selectable in the provider dropdown", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await userEvent.click(screen.getByLabelText("Provider"));
+
+      const azureOption = await screen.findByRole("option", {
+        name: "Microsoft Azure",
+      });
+      expect(azureOption).toBeInTheDocument();
+      expect(azureOption).not.toHaveAttribute("data-combobox-disabled");
+    });
+
+    it("shows the Azure fields without a model dropdown when selected", async () => {
+      await setup({ savedProviderValue: null, isConfigured: false });
+
+      await selectProvider("Microsoft Azure");
+
+      expect(
+        await screen.findByLabelText("Model provider"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Base URL")).toBeInTheDocument();
+      expect(screen.getByLabelText("API key")).toBeInTheDocument();
+      expect(screen.getByLabelText("Deployment name")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+    });
+
+    it("connects Azure by sending the composed model and the credentials object", async () => {
+      await setup({
+        savedProviderValue: null,
+        isConfigured: false,
+        updateResponse: {
+          value: "azure/openai/my-deployment",
+          models: [],
+        },
+      });
+
+      await selectProvider("Microsoft Azure");
+
+      const connectButton = screen.getByRole("button", { name: "Connect" });
+      expect(connectButton).toBeDisabled();
+
+      await userEvent.click(await screen.findByLabelText("Model provider"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "OpenAI" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("Base URL"),
+        "https://my-resource.services.ai.azure.com/openai",
+      );
+      await userEvent.type(screen.getByLabelText("API key"), "azure-key");
+      await userEvent.type(
+        screen.getByLabelText("Deployment name"),
+        "my-deployment",
+      );
+
+      expect(connectButton).toBeEnabled();
+      await userEvent.click(connectButton);
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "azure",
+          model: "openai/my-deployment",
+          credentials: {
+            "api-key": "azure-key",
+            "base-url": "https://my-resource.services.ai.azure.com/openai",
+          },
+        }),
+      );
+    });
+
+    it("shows the saved family, base URL, and deployment for a connected Azure provider", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+      });
+
+      expect(await screen.findByLabelText("Model provider")).toHaveValue(
+        "Anthropic",
+      );
+      expect(screen.getByLabelText("Base URL")).toHaveValue(
+        "https://my-resource.services.ai.azure.com/anthropic",
+      );
+      expect(screen.getByLabelText("Deployment name")).toHaveValue(
+        "claude-sonnet-4-5",
+      );
+      expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
+
+    it("sends untouched Azure credential fields as null when editing only the deployment", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+        updateResponse: {
+          value: "azure/anthropic/renamed-deployment",
+          models: [],
+        },
+      });
+
+      const deploymentInput = await screen.findByLabelText("Deployment name");
+      await userEvent.clear(deploymentInput);
+      await userEvent.type(deploymentInput, "renamed-deployment");
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // The untouched key and base URL round-trip as displayed values in the form, but must be
+      // sent as null so the backend keeps the real saved values.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "azure",
+          model: "anthropic/renamed-deployment",
+          credentials: {
+            "api-key": null,
+            "base-url": null,
+          },
+        }),
+      );
+    });
+
+    it("disconnects Azure by clearing the credentials before the provider setting", async () => {
+      await setup({
+        savedProviderValue: "azure/anthropic/claude-sonnet-4-5",
+        apiKeyValues: { azure: "**********ey" },
+      });
+
+      await screen.findByLabelText("Deployment name");
+      await confirmDisconnectProvider();
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+            body: { provider: "azure", credentials: null },
+          }),
+        ).toBe(true);
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/setting", {
+            method: "PUT",
+            body: { "llm-metabot-provider": null },
+          }),
+        ).toBe(true);
+      });
+
+      const callHistory = fetchMock.callHistory.calls();
+      const [credentialsRequest] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+      const [providerRequest] = fetchMock.callHistory.calls(
+        "path:/api/setting",
+        { method: "PUT" },
+      );
+
+      if (!credentialsRequest || !providerRequest) {
+        throw new Error("Expected credentials and provider requests to exist");
+      }
+
+      expect(callHistory.indexOf(credentialsRequest)).toBeLessThan(
+        callHistory.indexOf(providerRequest),
+      );
+
+      expect(
+        await screen.findByText("Connect to an AI provider"),
+      ).toBeInTheDocument();
     });
   });
 

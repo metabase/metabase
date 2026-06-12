@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { MetabotProvider } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";
@@ -39,6 +41,15 @@ export function getProviderOptions(
       apiKey: {
         placeholder: "sk-ant-api03-...",
         addKeyUrl: "https://console.anthropic.com/settings/keys",
+      },
+    },
+    azure: {
+      value: "azure",
+      label: "Microsoft Azure",
+      apiKey: {
+        // Azure data-plane keys have no recognizable prefix
+        placeholder: t`Enter your Azure API key`,
+        addKeyUrl: "https://ai.azure.com",
       },
     },
     bedrock: {
@@ -89,6 +100,7 @@ export function isApiKeyMetabotProvider(
 export function isAvailableProvider(provider: MetabotProvider): boolean {
   return (
     provider === "anthropic" ||
+    provider === "azure" ||
     provider === "bedrock" ||
     provider === "metabase"
   );
@@ -97,15 +109,27 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
   | "llm-anthropic-api-key"
+  | "llm-azure-api-key"
   | "llm-bedrock-access-key-id"
   | "llm-openai-api-key"
   | "llm-openrouter-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
+  azure: "llm-azure-api-key",
   bedrock: "llm-bedrock-access-key-id",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };
+
+export const AZURE_MODEL_FAMILIES = [
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openai", label: "OpenAI" },
+] as const;
+
+export function parseAzureModel(model: string | undefined) {
+  const [family, deployment] = model?.split(/\/(.+)/, 2) ?? [];
+  return { family, deployment };
+}
 
 export function parseProviderAndModel(value: string | null | undefined) {
   if (!value) {

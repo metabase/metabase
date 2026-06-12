@@ -47,8 +47,10 @@ import type {
 
 import {
   API_KEY_SETTING_BY_PROVIDER,
+  AZURE_MODEL_FAMILIES,
   getProviderOptions,
   isAvailableProvider,
+  parseAzureModel,
   parseProviderAndModel,
 } from "./utils";
 
@@ -77,6 +79,81 @@ const UNTOUCHED_BEDROCK_VALUES: Record<BedrockExtraField, string | null> = {
   region: null,
   sessionToken: null,
 };
+
+type AzureExtraField = "family" | "baseUrl" | "deployment";
+
+const UNTOUCHED_AZURE_VALUES: Record<AzureExtraField, string | null> = {
+  family: null,
+  baseUrl: null,
+  deployment: null,
+};
+
+// Azure has no model dropdown and no default model: every value the connect request
+// needs must be present before the button does anything.
+const isAzureConnectReady = (
+  values: Record<AzureExtraField, string>,
+  apiKeyValue: string,
+) =>
+  Boolean(
+    values.family &&
+    values.baseUrl.trim() &&
+    values.deployment.trim() &&
+    apiKeyValue.trim(),
+  );
+
+const AzureConnectionFields = ({
+  values,
+  baseUrlEnvSettingName,
+  disabled,
+  onChange,
+}: {
+  values: Record<AzureExtraField, string>;
+  baseUrlEnvSettingName: string | undefined;
+  disabled: boolean;
+  onChange: (field: AzureExtraField, value: string | null) => void;
+}) => (
+  <>
+    <Select
+      label={t`Model provider`}
+      description={t`Whether your deployment serves an Anthropic or an OpenAI model.`}
+      placeholder={t`Select a model provider`}
+      data={[...AZURE_MODEL_FAMILIES]}
+      value={values.family || null}
+      onChange={(value) => onChange("family", value)}
+      disabled={disabled}
+    />
+    <TextInput
+      label={t`Base URL`}
+      description={t`The full URL of your Azure resource's model-provider surface, including the provider segment.`}
+      placeholder="https://<resource>.services.ai.azure.com/openai"
+      value={values.baseUrl}
+      onChange={(event) => onChange("baseUrl", event.target.value)}
+      disabled={disabled || !!baseUrlEnvSettingName}
+      w="100%"
+    />
+    {baseUrlEnvSettingName && <SetByEnvVar varName={baseUrlEnvSettingName} />}
+  </>
+);
+
+const AzureDeploymentField = ({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  onChange: (field: AzureExtraField, value: string | null) => void;
+}) => (
+  <TextInput
+    label={t`Deployment name`}
+    description={t`The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.`}
+    placeholder={t`Enter your Azure deployment name`}
+    value={value}
+    onChange={(event) => onChange("deployment", event.target.value)}
+    disabled={disabled}
+    w="100%"
+  />
+);
 
 function getBedrockFieldCopy(field: BedrockExtraField): {
   label: string;
@@ -223,6 +300,7 @@ export function AIProviderConfigurationForm({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-azure-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
     "llm-bedrock-access-key-id",
@@ -243,7 +321,11 @@ export function AIProviderConfigurationForm({
       "llm-metabot-provider": null,
     };
 
-    if (connectedProvider !== "metabase" && connectedProvider !== "bedrock") {
+    if (
+      connectedProvider !== "metabase" &&
+      connectedProvider !== "bedrock" &&
+      connectedProvider !== "azure"
+    ) {
       const apiKeySettingKey = API_KEY_SETTING_BY_PROVIDER[connectedProvider];
       const apiKeySetting = providerApiKeyDetails[apiKeySettingKey];
 
@@ -253,12 +335,12 @@ export function AIProviderConfigurationForm({
     }
 
     try {
-      if (connectedProvider === "bedrock") {
-        // Bedrock key material spans several settings; an explicit `credentials: null`
-        // clears them all in one call. It runs before the provider is deselected so a
-        // failure can't leave saved keys behind.
+      if (connectedProvider === "bedrock" || connectedProvider === "azure") {
+        // Bedrock and Azure key material spans several settings; an explicit
+        // `credentials: null` clears them all in one call. It runs before the provider
+        // is deselected so a failure can't leave saved keys behind.
         await updateMetabotSettings({
-          provider: "bedrock",
+          provider: connectedProvider,
           credentials: null,
         }).unwrap();
       }
@@ -475,11 +557,15 @@ const ProviderCredentialsFields = ({
   isEnvSetting: boolean;
 }) => {
   const isBedrock = selectedProvider === "bedrock";
+  const isAzure = selectedProvider === "azure";
   const [model, setModel] = useState<string | undefined>(connectedModel);
   const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
   const [bedrockLocalValues, setBedrockLocalValues] = useState<
     Record<BedrockExtraField, string | null>
   >(UNTOUCHED_BEDROCK_VALUES);
+  const [azureLocalValues, setAzureLocalValues] = useState<
+    Record<AzureExtraField, string | null>
+  >(UNTOUCHED_AZURE_VALUES);
   const [sendToast] = useToast();
 
   useEffect(() => {
@@ -491,6 +577,8 @@ const ProviderCredentialsFields = ({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
+    "llm-azure-api-key",
+    "llm-azure-api-base-url",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
     "llm-bedrock-access-key-id",
@@ -516,6 +604,22 @@ const ProviderCredentialsFields = ({
     ]),
   ) as Record<BedrockExtraField, string>;
 
+  const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
+
+  // The family and deployment name are carried by the saved provider/model value rather
+  // than their own settings; the base URL falls back to its saved setting like Bedrock's
+  // extra fields.
+  const savedAzureModel = parseAzureModel(
+    isAzure && isCurrentConfigured ? connectedModel : undefined,
+  );
+  const azureBaseUrlSetting = providerApiKeyDetails["llm-azure-api-base-url"];
+  const displayAzureValues: Record<AzureExtraField, string> = {
+    family: azureLocalValues.family ?? savedAzureModel.family ?? "",
+    baseUrl:
+      azureLocalValues.baseUrl ?? String(azureBaseUrlSetting?.value ?? ""),
+    deployment: azureLocalValues.deployment ?? savedAzureModel.deployment ?? "",
+  };
+
   const onConnect = async () => {
     if (isBedrock) {
       await updateMetabotSettings({
@@ -527,6 +631,15 @@ const ProviderCredentialsFields = ({
           "session-token": bedrockLocalValues.sessionToken || null,
         },
       }).unwrap();
+    } else if (isAzure) {
+      await updateMetabotSettings({
+        provider: selectedProvider,
+        model: `${displayAzureValues.family}/${displayAzureValues.deployment}`,
+        credentials: {
+          "api-key": apiKeyLocalValue || null,
+          "base-url": azureLocalValues.baseUrl || null,
+        },
+      }).unwrap();
     } else {
       await updateMetabotSettings({
         provider: selectedProvider,
@@ -536,13 +649,22 @@ const ProviderCredentialsFields = ({
 
     setApiKeyLocalValue(null);
     setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
+    setAzureLocalValues(UNTOUCHED_AZURE_VALUES);
   };
 
   const hasDirtyApiKey = apiKeyLocalValue !== null;
   const hasDirtyBedrockCredentials =
     isBedrock && Object.values(bedrockLocalValues).some((v) => v !== null);
+  const hasDirtyAzureValues =
+    isAzure && Object.values(azureLocalValues).some((v) => v !== null);
+  const isAzureFormComplete =
+    !isAzure || isAzureConnectReady(displayAzureValues, displayApiKeyValue);
   const connectHandler =
-    !isCurrentConfigured || hasDirtyApiKey || hasDirtyBedrockCredentials
+    (!isCurrentConfigured ||
+      hasDirtyApiKey ||
+      hasDirtyBedrockCredentials ||
+      hasDirtyAzureValues) &&
+    isAzureFormComplete
       ? onConnect
       : null;
 
@@ -559,7 +681,8 @@ const ProviderCredentialsFields = ({
     {
       provider: selectedProvider,
     },
-    { skip: needsApiKey },
+    // Azure has no model dropdown to populate — deployment names are free text.
+    { skip: needsApiKey || isAzure },
   );
 
   const modelOptions = useMemo(
@@ -575,11 +698,10 @@ const ProviderCredentialsFields = ({
     ? undefined
     : (metabotSettingsQuery.currentData?.["credentials-error"] ?? undefined);
 
-  const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
-
   useEffect(() => {
     setApiKeyLocalValue(null);
     setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
+    setAzureLocalValues(UNTOUCHED_AZURE_VALUES);
   }, [selectedProvider, selectedApiKeySetting?.value]);
 
   const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -593,6 +715,16 @@ const ProviderCredentialsFields = ({
         [field]: event.target.value,
       }));
     };
+
+  const handleAzureFieldChange = (
+    field: AzureExtraField,
+    value: string | null,
+  ) => {
+    setAzureLocalValues((values) => ({
+      ...values,
+      [field]: value,
+    }));
+  };
 
   const handleModelChange = async (value: string) => {
     setModel(value);
@@ -614,8 +746,21 @@ const ProviderCredentialsFields = ({
 
   const selectedProviderDetails = getProviderOptions(true)[selectedProvider];
 
+  const azureBaseUrlEnvSettingName = azureBaseUrlSetting?.is_env_setting
+    ? azureBaseUrlSetting.env_name
+    : undefined;
+
   return (
     <>
+      {isAzure && (
+        <AzureConnectionFields
+          values={displayAzureValues}
+          baseUrlEnvSettingName={azureBaseUrlEnvSettingName}
+          disabled={isMutating || isEnvSetting}
+          onChange={handleAzureFieldChange}
+        />
+      )}
+
       <TextInput
         key={selectedProvider}
         label={isBedrock ? t`Access key ID` : t`API key`}
@@ -643,6 +788,14 @@ const ProviderCredentialsFields = ({
         <SetByEnvVar varName={apiKeyEnvSettingName} />
       ) : null}
 
+      {isAzure && (
+        <AzureDeploymentField
+          value={displayAzureValues.deployment}
+          disabled={isMutating || isEnvSetting}
+          onChange={handleAzureFieldChange}
+        />
+      )}
+
       {isBedrock &&
         BEDROCK_EXTRA_FIELDS.map(({ key, settingKey, password }) => {
           const { label, description, placeholder } = getBedrockFieldCopy(key);
@@ -668,7 +821,7 @@ const ProviderCredentialsFields = ({
           );
         })}
 
-      {!needsApiKey && !credentialsError && (
+      {!isAzure && !needsApiKey && !credentialsError && (
         <Select
           label={t`Model`}
           placeholder={
