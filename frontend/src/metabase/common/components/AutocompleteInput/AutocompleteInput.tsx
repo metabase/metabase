@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useMemo, useRef } from "react";
 
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
@@ -46,7 +47,7 @@ export const AutocompleteInput = ({
 }: AutocompleteInputProps) => {
   const optionsListRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLDivElement | null>(null);
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, { open, close }] = useDisclosure(false);
   const filteredOptions = useMemo(() => {
     return filterOptions(String(value), options);
   }, [value, options, filterOptions]);
@@ -85,7 +86,7 @@ export const AutocompleteInput = ({
   return (
     <Popover
       opened={isDropdownOpened}
-      onChange={setIsOpened}
+      onClose={close}
       position="bottom-start"
       // with roles enabled Popover.Target overrides the input id with its own
       // generated one, breaking the <label htmlFor> association
@@ -99,29 +100,29 @@ export const AutocompleteInput = ({
           aria-expanded={isDropdownOpened}
           {...rest}
           value={value}
-          onClick={() => setIsOpened(true)}
+          onClick={open}
           onFocus={(evt) => {
             onFocus?.(evt);
-            setIsOpened(true);
+            open();
           }}
           onChange={(evt) => {
             handleChange(evt);
-            setIsOpened(true);
+            open();
           }}
           onBlur={(evt) => {
             onBlur?.(evt);
-            setIsOpened(false);
+            close();
           }}
           onKeyDown={(evt) => {
             if (evt.key === "Escape") {
-              setIsOpened(false);
+              close();
             }
           }}
         />
       </Popover.Target>
       <Popover.Dropdown
         // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={() => setIsOpened(false)}
+        setupSequencedCloseHandler={close}
       >
         <OptionsList ref={optionsListRef} onMouseDown={handleListMouseDown}>
           {filteredOptions.map((item, index) => (
@@ -132,7 +133,7 @@ export const AutocompleteInput = ({
               name={item}
               onSelect={(item) => {
                 handleOptionSelect(String(item));
-                setIsOpened(false);
+                close();
               }}
             >
               {item}

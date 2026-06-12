@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { ChangeEvent } from "react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
@@ -32,17 +33,12 @@ export function FieldSettingsPopover({
   fieldSettings,
   onChange,
 }: FieldSettingsPopoverProps) {
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, { close, toggle }] = useDisclosure(false);
 
   return (
-    <Popover
-      opened={isOpened}
-      onChange={setIsOpened}
-      position="bottom-end"
-      trapFocus
-    >
+    <Popover opened={isOpened} onClose={close} position="bottom-end" trapFocus>
       <Popover.Target>
-        <UnstyledButton onClick={() => setIsOpened((opened) => !opened)}>
+        <UnstyledButton onClick={toggle}>
           <SettingsTriggerIcon
             name="gear"
             size={16}
@@ -53,7 +49,7 @@ export function FieldSettingsPopover({
       </Popover.Target>
       <Popover.Dropdown
         // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={() => setIsOpened(false)}
+        setupSequencedCloseHandler={close}
         maw={400}
       >
         <FormCreatorPopoverBody
