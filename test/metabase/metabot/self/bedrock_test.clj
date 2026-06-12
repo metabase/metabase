@@ -88,6 +88,32 @@
                                                :region            "evil.example/?x="}}))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; AI proxy (unsupported)
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest list-models-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for AWS Bedrock"
+             (bedrock/list-models {:ai-proxy? true})))))))
+
+(deftest bedrock-raw-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     nil
+                                       llm.settings/llm-bedrock-secret-access-key nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for AWS Bedrock"
+             (bedrock/bedrock-raw {:model     "anthropic.claude-haiku-4-5"
+                                   :input     [{:role :user :content "hi"}]
+                                   :ai-proxy? true})))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; API family dispatch
 ;;; ──────────────────────────────────────────────────────────────────
 

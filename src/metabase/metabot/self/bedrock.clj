@@ -16,7 +16,6 @@
   Requests are authenticated with AWS Signature Version 4 computed from the `llm-bedrock-*` settings:
   https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv-create-signed-request.html"
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.claude :as claude]
@@ -114,6 +113,11 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for AWS Bedrock")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- ensure-credentials
   "Validate a Bedrock credentials map, falling back to [[settings-credentials]] when nil.
   Throws when the access key pair is incomplete or the region is unknown; the region defaults to us-east-1."
@@ -138,18 +142,25 @@
 (defn- bedrock-request
   "Perform a SigV4-signed HTTP request against the Bedrock mantle endpoint.
   `headers` are extra *unsigned* headers (e.g. `anthropic-version`). `credentials` is an optional
-  AWS credentials map; when nil, the `llm-bedrock-*` settings are used."
-  [{:keys [method path body as headers credentials]}]
+  AWS credentials map; when nil, the `llm-bedrock-*` settings are used. `ai-proxy?` is accepted
+  for parity with the other provider adapters but is not supported: throws when true."
+  [{:keys [method path body as headers credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
   (let [{:keys [region] :as creds} (ensure-credentials credentials)
-        url          (str "https://bedrock-mantle." region ".api.aws" path)
+        base-url     (str "https://bedrock-mantle." region ".api.aws")
         content-type (when body "application/json")
         sig-headers  (signed-headers (merge creds {:method       method
-                                                   :url          url
+                                                   :url          (str base-url path)
                                                    :body         body
-                                                   :content-type content-type}))]
-    (http/request (cond-> {:method  method
-                           :url     url
-                           :headers (merge headers sig-headers)}
+                                                   :content-type content-type}))
+        auth         (core/resolve-auth "bedrock" "AWS Bedrock"
+                                        {:url base-url :headers sig-headers}
+                                        ai-proxy?)]
+    (core/request auth
+                  (cond-> {:method  method
+                           :url     path
+                           :headers headers}
                     as   (assoc :as as)
                     body (assoc :body body)))))
 
@@ -157,9 +168,13 @@
 
 (defn- list-all-models
   "Fetch the full mantle model catalog (`GET /v1/models`), every vendor included."
-  [credentials]
+  [{:keys [credentials ai-proxy?]}]
   (try
-    (let [res (bedrock-request {:method :get :path "/v1/models" :as :json :credentials credentials})]
+    (let [res (bedrock-request {:method      :get
+                                :path        "/v1/models"
+                                :as          :json
+                                :credentials credentials
+                                :ai-proxy?   ai-proxy?})]
       (get-in res [:body :data]))
     (catch Exception e
       (core/rethrow-api-error! "bedrock" bedrock-error-msg e))))
@@ -179,10 +194,11 @@
 (defn list-models
   "List the Bedrock models supported by this adapter (see [[supported-model?]]).
   No-arg uses the `llm-bedrock-*` settings. The opts map supports `:credentials`, a map of `:access-key-id`,
-  `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`."
+  `:secret-access-key`, `:region`, and (for temporary credentials) `:session-token`, plus `:ai-proxy?`,
+  which is not supported for Bedrock and throws when true."
   ([] (list-models {}))
-  ([{:keys [credentials]}]
-   {:models (->> (list-all-models credentials)
+  ([opts]
+   {:models (->> (list-all-models opts)
                  (filter supported-model?)
                  (sort-by :id)
                  (mapv (fn [{:keys [id]}]
@@ -215,8 +231,9 @@
   (dissoc body :cache_control))
 
 (mu/defn bedrock-raw
-  "Perform a streaming request to the Bedrock mantle endpoint."
-  [{:keys [model input tools] :as opts
+  "Perform a streaming request to the Bedrock mantle endpoint.
+  `:ai-proxy?` is not supported for Bedrock and throws when true."
+  [{:keys [model input tools ai-proxy?] :as opts
     :or   {model default-model}} :- core/LLMRequestOpts]
   (let [opts   (assoc opts :model model)
         family (model->family model)
@@ -233,11 +250,12 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [response (bedrock-request {:method  :post
-                                         :path    path
-                                         :as      :stream
-                                         :headers headers
-                                         :body    (json/encode req)})]
+        (let [response (bedrock-request {:method    :post
+                                         :path      path
+                                         :as        :stream
+                                         :headers   headers
+                                         :body      (json/encode req)
+                                         :ai-proxy? ai-proxy?})]
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "bedrock"
                                      :model    model
