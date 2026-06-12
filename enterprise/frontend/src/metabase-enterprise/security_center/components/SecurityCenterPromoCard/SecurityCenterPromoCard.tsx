@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -34,9 +35,9 @@ export function SecurityCenterPromoCard() {
   const tokenFeatures = useSetting("token-features");
   const plan = getPlan(tokenFeatures);
   const { data: channelInfo, isLoading: isChannelInfoLoading } =
-    useGetChannelInfoQuery(undefined, { skip: !isAdmin });
+    useGetChannelInfoQuery(isAdmin ? undefined : skipToken);
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
-    useListSecurityAdvisoriesQuery(undefined, { skip: !isAdmin });
+    useListSecurityAdvisoriesQuery(isAdmin ? undefined : skipToken);
   const { dismissed, dismiss } = useDismissed();
 
   // The promo links to /admin/security-center, so only admins should see it.
