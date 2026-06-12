@@ -18,16 +18,21 @@
    [metabase.util :as u]))
 
 (deftest ^:parallel feature-flags-test
-  (testing "Redshift inlines hints into the CTAS and does not create them post-hoc"
-    (is (true? (driver/database-supports? :redshift :index/inline-on-ctas nil)))
-    (is (false? (driver/database-supports? :redshift :index/post-ctas-create nil)))))
+  (testing "Redshift inlines indexes into the table-creation statement and does not create them afterwards"
+    (is (true? (driver/database-supports? :redshift :index/inline-create nil)))
+    (is (false? (driver/database-supports? :redshift :index/standalone-create nil)))))
+
+(deftest ^:parallel supported-index-methods-test
+  (testing "Redshift advertises the sortkey as an inline index method"
+    (is (= {:sortkey {:lifecycle :inline}}
+           (driver/supported-index-methods :redshift nil)))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
 ;; A sortkey is inlined at table creation, and a transform target is created two ways: the CTAS for SQL transforms
 ;; (`compile-transform`) and the `CREATE TABLE` for Python transforms (`create-table!`). Each case below drives BOTH
-;; seams with the same hint, so the same `SORTKEY` clause must appear at both (and the no-hint case must add nothing
-;; to either: the CTAS delegates to the base, the CREATE TABLE stays upload-safe).
+;; seams with the same index, so the same `SORTKEY` clause must appear at both (and the no-sortkey case must add
+;; nothing to either: the CTAS delegates to the base, the CREATE TABLE stays upload-safe).
 (def ^:private inline-columns
   [["a" "INTEGER"] ["b" "INTEGER"]])
 
@@ -47,7 +52,7 @@
     :indexes      [{:kind :sortkey :columns [{:name "a"}]}]
     :ctas         "CREATE TABLE \"public\".\"events\" COMPOUND SORTKEY (\"a\") AS SELECT 1"
     :create-table "CREATE TABLE \"public\".\"events\" (\"a\" INTEGER, \"b\" INTEGER) COMPOUND SORTKEY (\"a\")"}
-   {:label        "no sortkey hint -> no inline clause at either seam"
+   {:label        "no sortkey -> no inline clause at either seam"
     :table        :events
     :indexes      []
     :ctas         "CREATE TABLE \"events\" AS SELECT 1"
@@ -83,7 +88,7 @@
        :style   (if (some (comp neg? :sortkey) rows) :interleaved :compound)})))
 
 (def ^:private live-cases
-  "Each case drives one sortkey hint through both live seams and asserts the `sortkey-info` the physical table reports.
+  "Each case drives one sortkey through both live seams and asserts the `sortkey-info` the physical table reports.
   Add a row to exercise a new style or column shape end-to-end against a real Redshift."
   [{:label    "compound single-column sortkey"
     :indexes  [{:kind :sortkey :columns [{:name "a"}]}]

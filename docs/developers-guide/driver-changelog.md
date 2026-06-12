@@ -42,11 +42,10 @@ title: Driver interface changelog
 - Added `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]`. Refreshes table
   statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
-- Added the `:index/inline-on-ctas` driver feature flag, for drivers that inline an index hint into the CTAS statement
-  itself (e.g. Redshift `SORTKEY`) rather than creating it afterwards. Such drivers implement
-  `metabase.driver/supported-index-methods` and render the hint in `metabase.driver/compile-transform`. Redshift
-  supports it and inlines sortkeys; its `compile-transform` reads the hints from the `:indexes` key of the transform
-  details.
+- Added the `:index/inline-create` driver feature flag, for drivers that inline an index into the table-creation
+  statement itself (e.g. Redshift `SORTKEY`) rather than creating it afterwards. Such drivers render the index in
+  `metabase.driver/compile-transform`, reading it from the `:indexes` key of the transform details. Redshift supports
+  it.
 
 ## Metabase 0.62.0
 

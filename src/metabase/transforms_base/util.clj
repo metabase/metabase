@@ -520,8 +520,8 @@
    [:name :keyword]
    [:columns [:sequential ::column-definition]]
    [:primary-key {:optional true} [:sequential :string]]
-   ;; Inline index hints to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
-   ;; drivers that don't inline anything ignore it. Populated from a transform's desired hints by the manager.
+   ;; Inline indexes to apply at table creation (e.g. a Redshift sortkey). Passed through to `create-table!`;
+   ;; drivers that don't inline anything ignore it. Populated from a transform's declared indexes by the manager.
    [:indexes {:optional true} [:sequential :map]]])
 
 (mu/defn create-table-from-schema!
