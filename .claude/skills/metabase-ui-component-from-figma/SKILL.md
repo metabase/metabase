@@ -205,7 +205,7 @@ Per `docs/developers-guide/frontend.md` ("Colors"): every color must be a **sema
 
 The same discipline applies to **dimensional** values — radius, spacing/padding/gap, elevation/shadow, and typography (font size, line-height, weight). Prefer the codebase's existing scale variable over a literal: `--mantine-radius-*`, `--mantine-spacing-*`, `--mantine-shadow-*`, and the Mantine font tokens.
 
-But Figma's scales don't always line up with the codebase's. When a Figma value **has no matching step** in the corresponding scale — e.g. Figma `radius/md = 12px` while `--mantine-radius-md` is `8px`, or a Figma `xxxs`/`xs` spacing step with no Mantine equivalent — **don't silently bake in a literal.** Flag it to the user the same way you flag primitive colors: name the property, the Figma value, and the nearest codebase token, so it can be resolved with design / the scale owners (align the value, or add a scale step). Only fall back to a literal if the user confirms it's an accepted one-off, and leave a short comment in the code explaining why.
+But Figma's scales don't always line up with the codebase's. When a Figma value **has no matching step** in the corresponding scale — e.g. Figma `radius/md = 12px` while `--mantine-radius-md` is `8px`, or a Figma `xxxs` spacing step with no Mantine equivalent — **don't silently bake in a literal.** Flag it to the user the same way you flag primitive colors: name the property, the Figma value, and the nearest codebase token, so it can be resolved with design / the scale owners (align the value, or add a scale step). Only fall back to a literal if the user confirms it's an accepted one-off, and leave a short comment in the code explaining why.
 
 ### Mantine implementation notes (reference)
 
