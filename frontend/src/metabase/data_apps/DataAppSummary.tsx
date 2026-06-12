@@ -10,6 +10,28 @@ type Props = {
   app: DataApp;
 };
 
+function SyncStatus({ app }: Props) {
+  if (app.sync_error) {
+    return (
+      <Text size="sm" c="error" title={app.sync_error}>
+        {t`Sync failed`}
+      </Text>
+    );
+  }
+  if (app.last_synced_sha) {
+    return (
+      <Text size="sm" c="text-tertiary">
+        {t`Synced ${app.last_synced_sha.slice(0, 7)}`}
+      </Text>
+    );
+  }
+  return (
+    <Text size="sm" c="text-tertiary">
+      {t`Not synced yet`}
+    </Text>
+  );
+}
+
 export function DataAppSummary({ app }: Props) {
   return (
     <Group align="flex-start" flex="1" wrap="nowrap">
@@ -20,16 +42,14 @@ export function DataAppSummary({ app }: Props) {
             {app.display_name}
           </Text>
         </Link>
-        <Group gap="xs">
+        <Group gap="xs" align="center">
           <Text size="sm" c="text-tertiary" ff="monospace">
             {`/data-app/${app.name}`}
           </Text>
           <Text size="sm" c="text-tertiary">
             &bull;
           </Text>
-          <Text size="sm" c="text-tertiary">
-            {t`Bundle: ${app.bundle_hash.slice(0, 8)}`}
-          </Text>
+          <SyncStatus app={app} />
         </Group>
       </Stack>
     </Group>
