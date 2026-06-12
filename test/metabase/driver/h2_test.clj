@@ -1,4 +1,4 @@
-(ns metabase.driver.h2-test
+(ns ^:mb/driver-tests metabase.driver.h2-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.h2-test]}}}}}}
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -22,38 +22,18 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.datasets :as mtd]
-   [metabase.test.data.env :as tx.env]
-   [metabase.test.data.interface :as tx]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;; temporary hack to run all tests against both the old :h2 and new mbql5 :h2
-;; remove this once :h2 does mbql5 by default!
-(defn- test-driver [driver thunk]
-  (when (contains? (tx.env/test-drivers) driver)
-    (testing (str "\n" driver "\n")
-      (driver/with-driver (tx/the-driver-with-test-extensions driver)
-        (thunk))
-      ;; the above is the original definition of test-driver, but we add in
-      ;; this clause to avoid having to rewrite all the tests below twice:
-      (when (= driver :h2)
-        (driver/with-driver (tx/the-driver-with-test-extensions :h2-mbql5)
-          (thunk))))))
+;; drop this once h2 is mbql5-compliant by default
+(def ^:dynamic *driver* :h2)
 
-(use-fixtures :each (fn [f]
-                      ;; NB: because of test parallelism, this *will* affect other non-h2
-                      ;; tests, but the check above in the test-driver function will
-                      ;; prevent it from actually doing anything different in those tests.
-                      ;; The kondo ignore is the exemption: this `with-redefs` is
-                      ;; parallel-safe by construction (the redef target is a no-op
-                      ;; identity for h2, and the inner conditional in `test-driver`
-                      ;; prevents it from affecting non-h2 tests).
-                      #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-                      (with-redefs [mtd/-test-driver test-driver]
-                        (f))))
+(use-fixtures :each (fn [thunk]
+                      (thunk)
+                      (binding [*driver* :h2-mbql5]
+                        (thunk))))
 
 (deftest ^:parallel parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -134,7 +114,7 @@
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
 (deftest ^:parallel db-default-timezone-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (is (= (t/zone-id "Z")
            (-> (driver/db-default-timezone :h2 (mt/db))
                t/zone-id
@@ -178,7 +158,7 @@
            (sql.qp/add-interval-honeysql-form :h2 (sql.qp/current-datetime-honeysql-form :h2) 100.0 :second)))))
 
 (deftest ^:parallel clob-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (testing "Make sure we properly handle rows that come back as `org.h2.jdbc.JdbcClob`"
       (let [results (qp/process-query (mt/native-query {:query "SELECT cast('Conchúr Tihomir' AS clob) AS name;"}))]
         (testing "rows"
@@ -194,7 +174,7 @@
                   (mt/cols results))))))))
 
 (deftest ^:parallel native-query-date-trunc-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
       (is (=? [{:display_name "D"
                 :base_type    :type/Date
@@ -233,7 +213,7 @@
       (str/replace #"PUBLIC\." "")))
 
 (deftest ^:parallel do-not-cast-to-date-if-column-is-already-a-date-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (testing "Don't wrap Field in date() if it's already a DATE (#11502)"
       (mt/dataset attempted-murders
         (let [query (mt/mbql-query attempts
@@ -246,7 +226,7 @@
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
 (deftest ^:parallel do-not-cast-to-date-binned-by-week-to-datetime
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (testing "Don't cast date binned by week"
       (mt/dataset attempted-murders
         (let [query (mt/mbql-query attempts
@@ -256,7 +236,7 @@
           (is (not (re-find #"CAST\([^)]+\s+AS\s+datetime\)" compiled))))))))
 
 (deftest ^:parallel check-action-commands-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     #_{:clj-kondo/ignore [:equals-true]}
     (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
@@ -383,7 +363,7 @@
       "CALL LINK_SCHEMA('LK','org.h2.Driver','jdbc:h2:mem:t','sa','','PUBLIC')")))
 
 (deftest disallowed-commands-in-action-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should not be able to execute query actions with disallowed commands"
         (let [sql "select * from categories; update categories set name = 'stomp';
@@ -399,7 +379,7 @@
                                           (format "action/%s/execute" action-id))))))))))
 
 (deftest disallowed-commands-in-action-test-2
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Should be able to execute query actions with allowed commands"
         (let [sql "update categories set name = 'stomp' where id = 1; update categories set name = 'stomp' where id = 2;"]
@@ -413,14 +393,14 @@
                                           (format "action/%s/execute" action-id))))))))))
 
 (deftest ^:parallel syncable-schemas-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/db))))))))
 
 (deftest syncable-audit-db-test
-  (mt/test-driver :h2
+  (mt/test-driver *driver*
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
             original-audit-db    (t2/select-one :model/Database :is_audit true)]

@@ -612,7 +612,7 @@ describe("buildDimensionItemsFromDefinitions", () => {
           {
             type: "metric",
             sourceId: revenueSourceId,
-            count: 1,
+            occurrenceCount: 1,
           },
           {
             type: "operator",
@@ -621,7 +621,7 @@ describe("buildDimensionItemsFromDefinitions", () => {
           {
             type: "metric",
             sourceId: geoSourceId,
-            count: 1,
+            occurrenceCount: 1,
           },
         ],
       },

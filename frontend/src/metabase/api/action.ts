@@ -1,9 +1,15 @@
 import _ from "underscore";
 
 import type {
+  ActionExecutionResult,
   CreateActionRequest,
+  ExecuteActionRequest,
+  ExecuteDashcardActionRequest,
   GetActionRequest,
   ListActionsRequest,
+  ParametersForActionExecution,
+  PrefetchActionValuesRequest,
+  PrefetchDashcardValuesRequest,
   UpdateActionRequest,
   WritebackAction,
   WritebackActionId,
@@ -131,6 +137,52 @@ export const actionApi = Api.injectEndpoints({
           idTag("action", id),
         ]),
     }),
+    executeAction: builder.mutation<
+      ActionExecutionResult,
+      ExecuteActionRequest
+    >({
+      query: ({ id, parameters }) => ({
+        method: "POST",
+        url: `/api/action/${id}/execute`,
+        body: { parameters },
+      }),
+    }),
+    prefetchActionValues: builder.query<
+      ParametersForActionExecution,
+      PrefetchActionValuesRequest
+    >({
+      query: ({ id, parameters }) => ({
+        method: "GET",
+        url: `/api/action/${id}/execute`,
+        params: { parameters: JSON.stringify(parameters) },
+      }),
+      // Prefetch is an imperative fetch-and-discard with row-specific params
+      // that rarely repeat, so there's nothing to gain from caching entries.
+      keepUnusedDataFor: 0,
+    }),
+    executeDashcardAction: builder.mutation<
+      ActionExecutionResult,
+      ExecuteDashcardActionRequest
+    >({
+      query: ({ dashboardId, dashcardId, modelId, parameters }) => ({
+        method: "POST",
+        url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
+        body: { modelId, parameters },
+      }),
+    }),
+    prefetchDashcardValues: builder.query<
+      ParametersForActionExecution,
+      PrefetchDashcardValuesRequest
+    >({
+      query: ({ dashboardId, dashcardId, parameters }) => ({
+        method: "GET",
+        url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/execute`,
+        params: { parameters: JSON.stringify(parameters) },
+      }),
+      // Prefetch is an imperative fetch-and-discard with per-dashcard params
+      // that rarely repeat, so there's nothing to gain from caching entries.
+      keepUnusedDataFor: 0,
+    }),
   }),
 });
 
@@ -143,9 +195,14 @@ export const {
   useDeleteActionMutation,
   useCreateActionPublicLinkMutation,
   useDeleteActionPublicLinkMutation,
+  useExecuteActionMutation,
   endpoints: {
     listPublicActions,
     deleteActionPublicLink,
     createActionPublicLink,
+    executeAction,
+    prefetchActionValues,
+    executeDashcardAction,
+    prefetchDashcardValues,
   },
 } = actionApi;

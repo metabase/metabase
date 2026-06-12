@@ -1016,9 +1016,9 @@ describe("url-serialization", () => {
           type: "expression",
           name: "test",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "+" },
-            { type: "metric", sourceId: "metric:2", count: 1 },
+            { type: "metric", sourceId: "metric:2", occurrenceCount: 1 },
           ],
         },
       ]);
@@ -1102,7 +1102,7 @@ describe("url-serialization", () => {
           type: "expression",
           name: "Total",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "+" },
             { type: "constant", value: 10 },
           ],
@@ -1136,7 +1136,7 @@ describe("url-serialization", () => {
           type: "expression",
           name: "Total",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "*" },
             { type: "constant", value: 2 },
           ],

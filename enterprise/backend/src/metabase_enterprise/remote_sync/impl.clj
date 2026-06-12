@@ -16,6 +16,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -748,6 +749,18 @@
                 true))))]
     (when (and proceed? (= (:status result) :success))
       (invalidate-remote-changes-cache!))))
+
+(defn publish-sync-event!
+  "Publishes an audit-log event for a completed remote-sync task. Call after the task result has been
+  handled so the task row already has its version set. `details` is the audit-log details map
+  (e.g. `{:branch \"main\"}`, plus `:auto true` for system-triggered syncs); `user-id` is nil for
+  system-triggered syncs."
+  [topic task-id details user-id]
+  (let [task (t2/select-one :model/RemoteSyncTask task-id)]
+    (events/publish-event! topic
+                           {:object  task
+                            :details details
+                            :user-id user-id})))
 
 (defn- run-async!
   "Executes a remote sync task asynchronously in a virtual thread.
