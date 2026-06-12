@@ -203,7 +203,8 @@
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
       (-> (t2/select-one :model/TransformJob :id job-id)
-          (t2/hydrate :tag_ids :last_run)))))
+          (t2/hydrate :tag_ids :last_run)
+          (update :last_run transforms-base.u/present-run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
@@ -242,7 +243,8 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
-      (t2/hydrate :tag_ids :last_run)))
+      (t2/hydrate :tag_ids :last_run)
+      (update :last_run transforms-base.u/present-run)))
 
 (defn- add-next-run
   [{id :id :as job}]
