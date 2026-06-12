@@ -1,10 +1,16 @@
 import { getGuestEmbedFilteredParameters } from "embedding-sdk-bundle/lib/get-guest-embed-filtered-parameters";
 import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { runQuestionQuery } from "metabase/querying/run-query";
 import type { Dispatch } from "metabase/redux/store";
-import { getSensibleDisplays } from "metabase/visualizations";
+import { isNotNull } from "metabase/utils/types";
+import visualizations, { getSensibleDisplays } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
-import type { DatasetData, ParameterValuesMap } from "metabase-types/api";
+import type {
+  DatasetData,
+  ParameterValuesMap,
+  QueryVisualizationDisplayType,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 interface RunQuestionQueryParams {
@@ -15,6 +21,7 @@ interface RunQuestionQueryParams {
   parameterValues?: ParameterValuesMap;
   signal?: AbortSignal;
   dispatch: Dispatch;
+  initialVisualization?: QueryVisualizationDisplayType;
 }
 
 export async function runQuestionQuerySdk(
@@ -28,6 +35,7 @@ export async function runQuestionQuerySdk(
     parameterValues,
     signal,
     dispatch,
+    initialVisualization,
   } = params;
 
   if (question.isSaved()) {
@@ -50,6 +58,28 @@ export async function runQuestionQuerySdk(
       parameterValues,
     );
 
+    const display = question.display();
+
+    // We try to load both the `initialVisualization` override (if provided) and
+    // the saved question's current display in case the override fails to load
+    // or is not enabled
+    const customVizToLoad = [
+      ...new Set(
+        [display, initialVisualization].filter(
+          PLUGIN_CUSTOM_VIZ.isCustomVizDisplay,
+        ),
+      ),
+    ];
+
+    const customVizPromise = Promise.all(
+      customVizToLoad.map((customDisplay) =>
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPluginForDisplay(
+          dispatch,
+          customDisplay,
+        ),
+      ),
+    );
+
     queryResults = await runQuestionQuery(question, {
       dispatch,
       signal,
@@ -63,6 +93,25 @@ export async function runQuestionQuerySdk(
       }),
     });
 
+    // Check the load results, not the `visualizations` map: the map is global
+    // to the page and may still hold a registration from a previous mount
+    // with a different allowlist.
+    const loadedDisplays = new Set((await customVizPromise).filter(isNotNull));
+    const loadedCustomVizDisplay = loadedDisplays.has(display) ? display : null;
+
+    // The `initialVisualization` override only applies when the requested
+    // visualization exists and is allowed; otherwise the question's own
+    // display is kept.
+    let initialDisplay: QueryVisualizationDisplayType | null = null;
+    if (initialVisualization) {
+      const isAvailable = PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(
+        initialVisualization,
+      )
+        ? loadedDisplays.has(initialVisualization)
+        : visualizations.has(initialVisualization);
+      initialDisplay = isAvailable ? initialVisualization : null;
+    }
+
     // Default values for rows/cols are needed because the `data` is missing in the case of Guest Embed
     const [{ data = isGuestEmbed ? { rows: [], cols: [] } : undefined }] =
       queryResults;
@@ -70,12 +119,35 @@ export async function runQuestionQuerySdk(
     // `data` may be a partial (guest embed) or absent (error result); the
     // viz helpers tolerate it, matching the prior untyped behavior.
     const datasetData = data as DatasetData;
-    const sensibleDisplays = getSensibleDisplays(datasetData);
-    question = question.maybeResetDisplay(
-      datasetData,
-      sensibleDisplays,
-      undefined,
-    );
+
+    if (initialDisplay) {
+      // Mirrors picking the visualization from the chart type dropdown:
+      // lock the display so it isn't auto-reset based on the data shape.
+      question = question.setDisplay(initialDisplay).lockDisplay();
+    } else {
+      // Exclude custom displays that didn't load this run: the global
+      // `visualizations` map may hold a stale registration from a previous
+      // mount with a different allowlist, and `getSensibleDisplays` treats
+      // every registered display as sensible when the data has <= 1 row.
+      const sensibleDisplays = getSensibleDisplays(datasetData).filter(
+        (sensibleDisplay) =>
+          !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(sensibleDisplay) ||
+          loadedDisplays.has(sensibleDisplay),
+      );
+      // Custom viz plugins don't implement `isSensible`, so even a loaded one
+      // would be reset away by `maybeResetDisplay` — treat it as sensible.
+      if (
+        loadedCustomVizDisplay &&
+        !sensibleDisplays.includes(loadedCustomVizDisplay)
+      ) {
+        sensibleDisplays.push(loadedCustomVizDisplay);
+      }
+      question = question.maybeResetDisplay(
+        datasetData,
+        sensibleDisplays,
+        undefined,
+      );
+    }
   }
 
   return { question, queryResults };

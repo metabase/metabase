@@ -62,6 +62,7 @@ export type BaseSdkQuestionProps = SdkQuestionIdProps & {
     | "targetCollection"
     | "initialCollection"
     | "onRun"
+    | "initialVisualization"
   >;
 
 /**
@@ -157,6 +158,7 @@ export const _SdkQuestion = ({
   withChartTypeSelector = true,
   withEditorButton = true,
   onVisualizationChange,
+  initialVisualization,
 }: SdkQuestionProps): JSX.Element | null => {
   const drillThroughQuestionProps: DrillThroughQuestionProps = {
     height,
@@ -212,6 +214,7 @@ export const _SdkQuestion = ({
         navigateToNewCard={navigateToNewCard}
         onDrillThrough={onDrillThrough}
         onVisualizationChange={onVisualizationChange}
+        initialVisualization={initialVisualization}
       >
         {children ?? (
           <SdkQuestionDefaultView
