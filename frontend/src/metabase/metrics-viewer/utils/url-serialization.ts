@@ -252,7 +252,7 @@ function deserializeSubToken(
     return {
       type: "metric",
       sourceId: token.sourceId as MetricSourceId,
-      count: 0,
+      occurrenceCount: 0,
       serializedDefinitionInfo: hasInfo
         ? {
             filters: token.filters,

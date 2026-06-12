@@ -1,4 +1,4 @@
-import { isTrackedSearchContext } from "metabase/search/analytics";
+import { isTrackedSearchContext } from "metabase/common/search/analytics";
 import type { SearchRequest, SearchResponse } from "metabase-types/api";
 
 import { trackSearchRequest } from "./analytics";
