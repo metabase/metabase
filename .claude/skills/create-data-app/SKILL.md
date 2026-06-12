@@ -1,13 +1,15 @@
 ---
 name: create-data-app
-description: Scaffold a new Metabase data-app development project by cloning the `data-app-template` GitHub repo. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
+description: Scaffold a new Metabase data-app into the connected remote-sync repository's `data_apps/<app>/` directory from the `data-app-template`. Use when the user asks to start, create, scaffold, or set up a data-app from scratch.
 ---
 
 # Create a Metabase Data App
 
-A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `npm run build` producing a single `dist/index.js` to upload via Admin → Data apps.
+A Metabase **data-app** is a single JS bundle that the host loads inside a Near Membrane sandbox and renders inside its own React tree. The scaffold is a Vite + React + TypeScript project: source under `src/`, a dev server with HMR that previews the app against a real Metabase via the Embedding SDK, and `npm run build` producing a single `dist/index.js`.
 
-**The scaffold itself lives in a separate GitHub repo: [`metabase/data-app-template`](https://github.com/metabase/data-app-template).** This skill clones that template and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — clone the template instead.
+**Data apps are served from Git, not uploaded.** A single repository is connected to Metabase via remote-sync (Admin → Settings → Remote sync). Each app lives in its own directory `data_apps/<app>/` inside that repo — its source, a `data_app.yml` (name/slug/path), and the committed built bundle at the `path` its `data_app.yml` declares (`dist/index.js` by default). On each remote-sync import Metabase materializes one app per directory and serves it at `/data-app/<slug>`. So this skill always scaffolds **into the connected repo's `data_apps/<app>/` directory**, never as a standalone project.
+
+**The scaffold itself lives in a separate GitHub repo: [`metabase/data-app-template`](https://github.com/metabase/data-app-template).** This skill copies that template into the app directory and then guides the agent through the customization + first-app-content steps — it never generates project files from scratch. If you find yourself writing `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/index.tsx`, or `src/dev.tsx` by hand, stop — copy the template instead.
 
 ## When to invoke this skill
 
@@ -15,15 +17,24 @@ A Metabase **data-app** is a single JS bundle that the host loads inside a Near 
 - "I want to build a data app" / any vague intent to author a data app
 - Starting a fresh agent task that will produce a data-app bundle.
 
-### Detecting an existing project
+## Step 1 — Locate the remote-sync repository
 
-Before cloning, look for an existing data-app project. Surface signs (one of):
-`src/index.tsx`, `vite.config.ts` with `name: "__dataAppFactory__"`, or
-`package.json` depending on `@metabase/embedding-sdk-react` with a `vite build`
-script.
+Data apps live inside the Git repository connected to Metabase via remote-sync. Find it before scaffolding:
 
-If any surface sign is present, verify the project matches the current
-`data-app-template`. Check **all** of:
+- Ask: **"Do you already have a Git repository connected to this Metabase via remote-sync?"**
+  - **Yes** → ask for its local path.
+  - **No** → ask the user to **create one** (a plain Git repo they will connect under Admin → Settings → Remote sync) and share its path. The skill does **not** create or connect the repo — the user owns that.
+- Verify the path exists and is a Git working tree (it has a `.git`). This repo is the working directory for every step below.
+
+## Step 2 — Name the app and create its directory
+
+1. Settle on the app's **slug** before scaffolding — it's the directory name *and* the `/data-app/<slug>` URL. Lowercase letters, numbers, and single dashes (`[a-z0-9]+(?:-[a-z0-9]+)*`). If the purpose isn't clear yet, ask a one-line "what's this app for?" and propose a slug; confirm it.
+2. Ensure `<repo>/data_apps/` exists; create it if missing.
+3. Create `<repo>/data_apps/<slug>/`. **If it already exists**, treat it as an existing project (see below) — never overwrite without confirmation.
+
+### Detecting an existing app
+
+If `<repo>/data_apps/<slug>/` already holds a project, verify it matches the current `data-app-template`. Check **all** of:
 
 1. `vite.config.ts` externals include `"react"`, `"react/jsx-runtime"`,
    `"@metabase/embedding-sdk-react"`, `"@metabase/embedding-sdk-react/data-app"`
@@ -32,43 +43,47 @@ If any surface sign is present, verify the project matches the current
 2. `src/index.tsx`'s factory returns `{ component, theme }` (no args).
 3. `src/dev.tsx` wraps in the SDK's `<MetabaseProvider authConfig={…}>`.
 
-**All checks pass** → template-shaped. Ask: "Extend this one, or scaffold fresh
-elsewhere?" If extend → skip the clone step, edit `src/`. If fresh → ask for a
-target path, clone there.
+**All checks pass** → template-shaped. Ask: "Extend this app, or scaffold a new one under a different slug?" If extend → skip the copy step, edit `src/`. If new → pick a different slug and restart at Step 2.
 
-**Any check fails** → not template-shaped (older scaffold or drift). **Stop.**
-Tell the user the structure differs from the current template, extending it
-risks breaking the bundle contract, and ask whether to (1) migrate it, (2)
-scaffold fresh and port the code over, or (3) proceed anyway at their risk.
-Wait for the answer.
+**Any check fails** → not template-shaped (older scaffold or drift). **Stop.** Tell the user the structure differs from the current template, extending it risks breaking the bundle contract, and ask whether to (1) migrate it, (2) scaffold fresh under a new slug and port the code over, or (3) proceed anyway at their risk. Wait for the answer.
 
 Never overwrite existing files without explicit confirmation.
 
-## Step 1 — Clone the template
+## Step 3 — Copy the template into the app directory
 
-Source: `metabase/data-app-template`. Any GitHub remote created should
-be **private**.
+Copy [`metabase/data-app-template`](https://github.com/metabase/data-app-template) into the app directory with **`degit` — files only, no nested `.git`, no separate remote** — so the app becomes part of the remote-sync repo:
 
-- **Empty CWD** → clone in-place via `degit` (no name to ask for, no remote
-  created — user can add one later). Make an initial git commit afterwards.
-- **Non-empty CWD** → ask the user for a target directory name (e.g.
-  `sales-app`). Prefer `gh repo create --template … --private --clone` so a
-  private GitHub remote is wired up at the same time. Fall back to `degit` (no
-  remote) if `gh` isn't available.
+```bash
+npx degit metabase/data-app-template <repo>/data_apps/<slug>
+```
 
-## Step 2 — Customize
+Do **not** use `gh repo create --template` or `git clone` here — a data app is a *subdirectory* of the remote-sync repo, not its own repository. Everything below runs **inside `<repo>/data_apps/<slug>/`**.
 
-Once the template is on disk:
+## Step 4 — Customize
 
-1. Edit `package.json` `name` to match the project folder.
+Once the template is in `<repo>/data_apps/<slug>/` (run everything below from that directory):
+
+1. Edit `package.json` `name` to match the slug.
 2. Pin `@metabase/embedding-sdk-react` (the template ships with `*`). The version is always `0.<metabase-major>.<patch>` — the leading `0.` is permanent and the minor matches your Metabase major. So Metabase 63 → `"^0.63.0"`, Metabase 52 → `"^0.52.0"`. **Not** `63.0.0`, `1.52.0`, or any `1.x`/`63.x` — those don't exist. If unsure, use `"latest"`. Floor is `0.63.0` (earlier versions lack the data-app contract surface).
 3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
 4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
-5. **Strip the lockfile-ignoring block from `.gitignore`.** The template ignores `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb` plus the leading comment block (the chunk between `# Lockfiles —` and `bun.lockb`). The block has to go so the downstream project commits its lockfile for reproducible installs. **Verify with `git status`** — the lockfile your package manager just generated must now appear as a new untracked file. If it doesn't, the block is still in `.gitignore`; remove it and re-check. Do **not** skip this step or defer it to "later"; agents have repeatedly forgotten and shipped projects with no committed lockfile.
+5. **Fix `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
+   - **Lockfile** — strip the lockfile-ignoring block (the chunk between `# Lockfiles —` and `bun.lockb`, covering `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb`) so the project commits its lockfile for reproducible installs.
+   - **The built bundle** — Metabase serves the file at the `path` declared in `data_app.yml` (the template builds to `dist/index.js`, the default `path`) straight from the committed Git tree, so **that file must be committed**. If the template's `.gitignore` ignores `dist/` (or wherever your build outputs), remove that line.
+   **Verify with `git status`** — after `npm install` + a build, both the generated lockfile and the built bundle (the file `path` points at) must appear as untracked/committable files. If either doesn't, the relevant `.gitignore` line is still there; remove it and re-check. Do **not** skip this — agents have repeatedly shipped projects with no committed lockfile or an un-synced bundle.
 6. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
 7. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
+8. **Edit `data_app.yml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
 
-## Step 3 — Pull the typed schema
+   ```yaml
+   name: Sales App        # display name shown in the admin UI
+   slug: sales            # URL identity → /data-app/sales (match the directory name)
+   path: ./dist/index.js  # bundle path, relative to this app's directory — leave as-is unless you change the build output
+   ```
+
+   Commit it alongside the built bundle (the file `path` points at).
+
+## Step 5 — Pull the typed schema
 
 Generate `src/metabase.data.ts` by invoking the
 [`metabase-semantic-schema-data-apps`](../metabase-semantic-schema-data-apps/SKILL.md)
@@ -77,9 +92,9 @@ skill. It prompts the user for an API key, hits
 
 The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<d>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
 
-This step is mandatory before Step 4 — the schema is the catalog you'll check the user's brief against, and the agent needs it loaded into context before discussing what the app should do.
+This step is mandatory before Step 6 — the schema is the catalog you'll check the user's brief against, and the agent needs it loaded into context before discussing what the app should do.
 
-## Step 4 — Confirm what the app should do
+## Step 6 — Confirm what the app should do
 
 Before writing a single component, confirm the app's scope with the user **and check it against the schema you just pulled**. If they haven't described the screens, data, or flow, ask first:
 
@@ -91,9 +106,9 @@ Before writing a single component, confirm the app's scope with the user **and c
 **Schema-matching rule.** Every entity the user references should map to something in `src/metabase.data.ts`:
 
 - **Match exists** → confirm what you found by name. Example: "Your schema has `schema.questions.overview_revenue` and `schema.tables.customers` with the `lifetime_value` measure — is that what you want me to use?"
-- **Topic doesn't match** → don't fabricate. Push back: explain the schema doesn't expose anything for that topic, and ask whether to (1) add it upstream in the Metabase semantic layer first and re-run Step 3, (2) pick a different topic that's already curated, or (3) ship the app without that part. **Don't invent mock data. Don't create new questions from inside the app.** The schema is curated upstream; the app is presentation only.
+- **Topic doesn't match** → don't fabricate. Push back: explain the schema doesn't expose anything for that topic, and ask whether to (1) add it upstream in the Metabase semantic layer first and re-run Step 5, (2) pick a different topic that's already curated, or (3) ship the app without that part. **Don't invent mock data. Don't create new questions from inside the app.** The schema is curated upstream; the app is presentation only.
 
-## Step 5 — Write the actual app
+## Step 7 — Write the actual app
 
 Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
 
@@ -127,7 +142,7 @@ export default function CustomerCard({ customer }: { customer: Customer }) {
 
 ### 2. Structure from the start
 
-Default project layout (see Step 4 for the principle — don't dump everything into `App.tsx`):
+Default project layout (see Step 6 for the principle — don't dump everything into `App.tsx`):
 
 ```
 src/
@@ -262,15 +277,20 @@ SDK components do NOT auto-fit their parent. Always pass explicit dimensions:
 
 Without `height`/`width`, the SDK component renders at its intrinsic size and overflows.
 
-## Upload to Metabase
+## Sync to Metabase
 
-1. `npm run build` → produces `dist/index.js`.
-2. Open Metabase → Admin → Data apps → **Add**.
-3. Pick a short `name` (used in `/data-app/<name>` URL) and a display name.
-4. Upload `dist/index.js`.
-5. The data app is now reachable at `/data-app/<name>`.
+Data apps are delivered by Git, not uploaded — you commit the app directory and Metabase pulls it on its next remote-sync import.
 
-To replace: delete the data app, upload again. Per-app replace endpoint isn't wired yet.
+1. `npm run build` → produces the bundle at your `data_app.yml` `path` (the template builds to `dist/index.js`).
+2. From the **repo root**, commit the app directory — its `data_app.yml`, the built bundle (the file `path` points at), the source, and the lockfile — and **push**:
+   ```bash
+   git add data_apps/<slug>
+   git commit -m "Add <slug> data app"
+   git push
+   ```
+3. The app appears in Metabase on the next remote-sync import — a manual **Pull changes** (Admin → Data apps / Remote sync), the auto-import poll, or a restart — reachable at `/data-app/<slug>`.
+
+**To update:** commit a new build and pull again. **To remove:** delete `data_apps/<slug>/`, commit, and pull — Metabase prunes apps whose directory is gone from the repo.
 
 ## Common pitfalls
 
