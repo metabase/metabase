@@ -42,11 +42,7 @@ export function orderByClause(
 }
 
 function isOrderByClause(clause: unknown): clause is OrderByClause {
-  return (
-    Array.isArray(clause) &&
-    clause.length >= 2 &&
-    (clause[0] === "asc" || clause[0] === "desc")
-  );
+  return typeof clause === "object" && clause != null;
 }
 
 export function changeDirection(query: Query, clause: OrderByClause): Query {

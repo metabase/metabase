@@ -98,14 +98,7 @@ function isMetadataProvider(provider: unknown): provider is MetadataProvider {
 }
 
 function isColumnGroup(value: unknown): value is ColumnGroup {
-  return (
-    typeof value === "object" &&
-    value != null &&
-    "type" in value &&
-    value.type === "column-group" &&
-    "columns" in value &&
-    Array.isArray(value.columns)
-  );
+  return typeof value === "object" && value != null;
 }
 
 function isColumnGroupArray(value: unknown): value is ColumnGroup[] {

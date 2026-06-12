@@ -136,7 +136,8 @@
   [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
 
 (mr/def ::string-filter-options
-  [:map [:case-sensitive {:optional true} :boolean]])
+  ;; camelCase key: this schema describes the JS object emitted by cljs-options->js-options in lib-metric.js.
+  [:map [:caseSensitive {:optional true} :boolean]])
 
 (mr/def ::number-filter-operator
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
@@ -160,7 +161,8 @@
   [:enum :is-null :not-null :> :< :between])
 
 (mr/def ::time-interval-options
-  [:map [:include-current {:optional true} :boolean]])
+  ;; camelCase key: this schema describes the JS object emitted by cljs-options->js-options in lib-metric.js.
+  [:map [:includeCurrent {:optional true} :boolean]])
 
 (mr/def ::number-filter-value
   :metabase.lib.schema.filter/number-filter-value)

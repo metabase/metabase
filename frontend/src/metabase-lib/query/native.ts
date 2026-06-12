@@ -48,20 +48,11 @@ export function templateTags(query: Query): TemplateTags | null {
   return tags;
 }
 
+// Intentionally shallow: tags can legitimately be incomplete at runtime (e.g. a
+// dimension tag before its id/display-name are filled in), and rejecting them here
+// would silently discard the whole tag map.
 function isTemplateTags(tags: unknown): tags is TemplateTags {
-  if (typeof tags !== "object" || tags == null) {
-    return false;
-  }
-
-  return Object.values(tags).every(
-    (tag) =>
-      typeof tag === "object" &&
-      tag != null &&
-      "id" in tag &&
-      "name" in tag &&
-      "display-name" in tag &&
-      "type" in tag,
-  );
+  return typeof tags === "object" && tags != null;
 }
 
 export function hasWritePermission(query: Query): boolean {

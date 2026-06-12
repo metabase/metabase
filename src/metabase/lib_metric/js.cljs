@@ -448,9 +448,10 @@
             (js-keys js-options))))
 
 (defn- cljs-options->js-options
-  "Convert CLJS options map to JS object with camelCase keys."
+  "Convert CLJS options map to JS object with camelCase keys. An empty options map converts to an empty JS object,
+  not nil: filter-parts schemas declare `:options` as a required object, so consumers expect it to be present."
   [cljs-options]
-  (when (seq cljs-options)
+  (when cljs-options
     (let [result #js {}]
       (doseq [[k v] cljs-options]
         (gobject/set result (cljs-key->js-key k) v))

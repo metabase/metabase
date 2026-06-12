@@ -266,7 +266,7 @@ export function stringFilterParts(
   }
   return {
     ...parts,
-    options: { caseSensitive: parts.options["case-sensitive"] },
+    options: { caseSensitive: parts.options.caseSensitive },
   };
 }
 
@@ -364,7 +364,7 @@ export function relativeDateFilterParts(
     ...parts,
     unit,
     offsetUnit,
-    options: { includeCurrent: parts.options["include-current"] },
+    options: { includeCurrent: parts.options.includeCurrent },
   };
 }
 

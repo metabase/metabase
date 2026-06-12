@@ -48,27 +48,39 @@ export function expressionableColumns(
   return ML.expressionable_columns(query, stageIndex, expressionIndex) || [];
 }
 
+// Aggregation, filter, and join-condition clauses always destructure into a parts
+// object. A bare expression clause can also be a literal (e.g. a standalone string
+// expression), which expression_parts returns as-is.
+export function expressionParts(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | FilterClause | JoinCondition,
+): ExpressionParts;
 export function expressionParts(
   query: Query,
   stageIndex: number,
   clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
-): ExpressionParts {
+): ExpressionParts | ExpressionArg;
+export function expressionParts(
+  query: Query,
+  stageIndex: number,
+  clause: AggregationClause | ExpressionClause | FilterClause | JoinCondition,
+): ExpressionParts | ExpressionArg {
   const parts = ML.expression_parts(query, stageIndex, clause);
-  if (!isExpressionParts(parts)) {
-    throw new TypeError("Expected expression_parts to return expression parts");
+  if (!isExpressionPartsLike(parts)) {
+    throw new TypeError("Expected expression_parts to return a value");
   }
   return parts;
 }
 
-function isExpressionParts(parts: unknown): parts is ExpressionParts {
-  return (
-    typeof parts === "object" &&
-    parts != null &&
-    "operator" in parts &&
-    typeof parts.operator === "string" &&
-    "args" in parts &&
-    Array.isArray(parts.args)
-  );
+// Intentionally shallow: expression_parts returns a parts object for function
+// clauses, a bare literal for literal expressions, and opaque metadata values for
+// unresolved references ("[Unknown Field]" etc.), which the expression formatter
+// renders downstream. Only null/undefined indicates a bug.
+function isExpressionPartsLike(
+  parts: unknown,
+): parts is ExpressionParts | ExpressionArg {
+  return parts != null;
 }
 
 export function expressionClause(
