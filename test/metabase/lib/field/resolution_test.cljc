@@ -14,7 +14,9 @@
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.metadata.result-metadata-test]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -1689,7 +1691,7 @@
 
 (deftest ^:parallel resolve-in-implicit-join-should-use-source-field-join-alias-test
   (testing "resolve-field-ref should use :source-field-join-alias to disambiguate implicit joins through different explicit joins"
-    ;; Two-stage query. Stage 0 has orders with an explicit join to orders ("Orders"),
+    ;; Two-stage query. Stage 0 has orders with an explicit join to orders ("Orders")
     ;; plus two implicitly-joinable products.category columns (one from the base table's
     ;; product-id, one from the "Orders" join's product-id). We add both as fields, then
     ;; append a stage. resolve-field-ref in stage 1 should use :source-field-join-alias
@@ -1744,7 +1746,7 @@
                 (:lib/desired-column-alias stage-0-join-cat))
           "the two stage-0 category columns should have different desired aliases")
       ;; resolve-field-ref should pick the previous-stage column whose :fk-join-alias matches.
-      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias
       ;; so it reveals which column was actually resolved.
       (testing "ref with :source-field-join-alias should resolve to the column with matching :fk-join-alias"
         (is (= (:lib/desired-column-alias stage-0-join-cat)
@@ -1813,7 +1815,7 @@
                 (:lib/desired-column-alias stage-1-renamed-cat))
           "the two stage-1 category columns should have different desired aliases")
       ;; resolve-field-ref should use :source-field-name to pick the correct column.
-      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias
       ;; so it reveals which column was actually resolved.
       (testing "ref with :source-field-name should resolve to the column with matching :fk-field-name"
         (is (= (:lib/desired-column-alias stage-1-renamed-cat)
@@ -1859,3 +1861,70 @@
           field-ref (lib/ref (m/find-first #(= (:name %) "nested_col") (lib/fieldable-columns query)))]
       (is (=? {:name "nested_col"}
               (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel resolve-old-model-metadata-correctly-test
+  (testing "Resolve fields from old model metadata (saved in ~55 or older) that is missing modern lib keys correctly (#65532)"
+    (let [mp    (as-> meta/metadata-provider $mp
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [(let [query    (-> (-> (lib/query $mp (lib.metadata/table $mp (meta/id :orders)))
+                                                   (lib/with-fields [(lib.metadata/field $mp (meta/id :orders :id))]))
+                                               (lib/join (-> (lib/join-clause (lib.metadata/table $mp (meta/id :products)))
+                                                             (lib/with-join-fields [(lib.metadata/field $mp (meta/id :products :id))]))))
+                                  ;; simulate metadata as saved by 55
+                                  metadata (into []
+                                                 (keep (fn [col]
+                                                         (-> col
+                                                             (assoc :name (:lib/deduplicated-name col))
+                                                             (dissoc :lib/source-column-alias
+                                                                     :lib/desired-column-alias
+                                                                     :lib/deduplicated-name
+                                                                     :lib/original-name)
+                                                             (cond->
+                                                              (= (:display-name col) "Products → ID")
+                                                               (assoc :display-name "[RENAMED]")))))
+                                                 (lib.metadata.result-metadata/returned-columns query))]
+                              {:id              1
+                               :type            :model
+                               :dataset-query   query
+                               :result-metadata metadata})]})
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id             2
+                             :dataset-query  (lib/query $mp (lib.metadata/card $mp 1))
+                             :source-card-id 1}]}))
+          query (lib/normalize
+                 ::lib.schema/query
+                 {:database     (meta/id)
+                  :lib/type     :mbql/query
+                  :lib/metadata mp
+                  :stages       [(-> (lib/query-stage (:dataset-query (lib.metadata/card mp 1)) 0)
+                                     (assoc :qp/stage-is-from-source-card 1))
+                                 (-> (lib/query-stage (:dataset-query (lib.metadata/card mp 2)) 0)
+                                     (dissoc :source-card)
+                                     (assoc :qp/stage-had-source-card     1
+                                            :qp/stage-is-from-source-card 2))]})]
+      (is (=? {:base-type                 :type/BigInteger
+               :display-name              "[RENAMED]"
+               :id                        (meta/id :products :id)
+               :semantic-type             :type/PK
+               :table-id                  (meta/id :products)
+               :visibility-type           :normal
+               :lib/card-id               1
+               :lib/from-model?           true
+               :lib/original-display-name "[RENAMED]"
+               :lib/original-join-alias   "Products"
+               :lib/original-name         "ID_2"
+               :lib/type                  :metadata/column}
+              (lib/metadata query -1
+                            (#'lib.field.resolution/additional-metadata-from-source-card
+                             query
+                             -1
+                             (lib/normalize
+                              ::lib.schema.metadata/column
+                              {:lib/type                :metadata/column
+                               :lib/source              :source/previous-stage
+                               :id                      (meta/id :products :id)
+                               :name                    "Products__ID"
+                               :lib/source-column-alias "Products__ID"
+                               :base-type               :type/Integer}))))))))
