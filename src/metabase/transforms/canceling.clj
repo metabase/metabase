@@ -80,7 +80,7 @@
        (try
          ~@body
          (finally
-           (future-cancel timeout-handle#)
+           (some-> timeout-handle# future-cancel)
            (chan-end-run! run-id#))))))
 
 (defn- request-latency-ms
