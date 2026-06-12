@@ -298,8 +298,7 @@ class TagEditorParamInner extends Component<
 
   setTableId = (tableId: TableId | undefined) => {
     const { tag, setTemplateTag } = this.props;
-    const numericTableId =
-      typeof tableId === "number" ? tableId : undefined;
+    const numericTableId = typeof tableId === "number" ? tableId : undefined;
     if (tag["table-id"] !== numericTableId) {
       setTemplateTag({ ...tag, "table-id": numericTableId });
     }
