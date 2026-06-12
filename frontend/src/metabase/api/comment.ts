@@ -7,6 +7,7 @@ import {
   provideUserListTags,
 } from "metabase/api/tags";
 import type {
+  BaseUser,
   Comment,
   CommentId,
   CreateCommentRequest,
@@ -17,6 +18,20 @@ import type {
   UpdateCommentRequest,
 } from "metabase-types/api";
 
+export type DeleteCommentRequest = { id: CommentId } & ListCommentsRequest;
+
+export type ToggleReactionRequest = CreateReactionRequest &
+  ListCommentsRequest & {
+    currentUser: Pick<BaseUser, "id" | "common_name">;
+  };
+
+// Comment mutations patch the cached list directly in `onQueryStarted` instead
+// of relying on the tag-driven refetch alone: with RTK's default "delayed"
+// invalidation behavior, that refetch is postponed until every in-flight query
+// on the shared Api instance settles, so on pages with long-running queries
+// (e.g. document card data on a slow warehouse) mutations would appear to do
+// nothing for minutes. The tags are kept so the list still reconciles with the
+// server once a refetch does run.
 export const commentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     listComments: builder.query<
@@ -40,6 +55,25 @@ export const commentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("comment")]),
+      async onQueryStarted(_request, { dispatch, queryFulfilled }) {
+        try {
+          const { data: comment } = await queryFulfilled;
+          dispatch(
+            commentApi.util.updateQueryData(
+              "listComments",
+              {
+                target_type: comment.target_type,
+                target_id: comment.target_id,
+              },
+              (draft) => {
+                draft.comments.push(comment);
+              },
+            ),
+          );
+        } catch {
+          // the caller reports the error; there is nothing to patch
+        }
+      },
     }),
 
     updateComment: builder.mutation<Comment, UpdateCommentRequest>({
@@ -50,20 +84,72 @@ export const commentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
+      async onQueryStarted(_request, { dispatch, queryFulfilled }) {
+        try {
+          const { data: comment } = await queryFulfilled;
+          dispatch(
+            commentApi.util.updateQueryData(
+              "listComments",
+              {
+                target_type: comment.target_type,
+                target_id: comment.target_id,
+              },
+              (draft) => {
+                const index = draft.comments.findIndex(
+                  ({ id }) => id === comment.id,
+                );
+                if (index !== -1) {
+                  draft.comments[index] = comment;
+                }
+              },
+            ),
+          );
+        } catch {
+          console.error("Failed to update cached comment:", _request);
+        }
+      },
     }),
 
-    deleteComment: builder.mutation<void, CommentId>({
-      query: (id) => ({
+    deleteComment: builder.mutation<void, DeleteCommentRequest>({
+      query: ({ id }) => ({
         method: "DELETE",
         url: `/api/comment/${id}`,
       }),
-      invalidatesTags: (_, error, id) =>
+      invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
+      async onQueryStarted(
+        { id, target_type, target_id },
+        { dispatch, queryFulfilled },
+      ) {
+        try {
+          await queryFulfilled;
+          dispatch(
+            commentApi.util.updateQueryData(
+              "listComments",
+              { target_type, target_id },
+              (draft) => {
+                const comment = draft.comments.find(
+                  (comment) => comment.id === id,
+                );
+                if (comment) {
+                  comment.deleted_at = new Date().toISOString();
+                }
+              },
+            ),
+          );
+        } catch {
+          console.error("Failed to delete cached comment:", {
+            id,
+            target_type,
+            target_id,
+          });
+        }
+      },
     }),
 
     toggleReaction: builder.mutation<
       { reacted: boolean },
-      CreateReactionRequest
+      ToggleReactionRequest
     >({
       query: ({ id, emoji }) => ({
         method: "POST",
@@ -72,6 +158,73 @@ export const commentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [idTag("comment", id), listTag("comment")]),
+      async onQueryStarted(
+        { id, emoji, target_type, target_id, currentUser },
+        { dispatch, queryFulfilled },
+      ) {
+        // unlike the pessimistic patches above, reactions toggle optimistically
+        // (before the response) and roll back on error
+        const patch = dispatch(
+          commentApi.util.updateQueryData(
+            "listComments",
+            { target_type, target_id },
+            (draft) => {
+              const comment = draft.comments.find(
+                (comment) => comment.id === id,
+              );
+              if (!comment) {
+                return;
+              }
+
+              const reaction = comment.reactions.find(
+                (reaction) => reaction.emoji === emoji,
+              );
+              const hasReacted = reaction?.users.some(
+                (user) => user.id === currentUser.id,
+              );
+
+              if (reaction && hasReacted) {
+                reaction.users = reaction.users.filter(
+                  (user) => user.id !== currentUser.id,
+                );
+                reaction.count -= 1;
+                if (reaction.count <= 0) {
+                  comment.reactions = comment.reactions.filter(
+                    ({ emoji }) => emoji !== reaction.emoji,
+                  );
+                }
+              } else if (reaction) {
+                reaction.users.push({
+                  id: currentUser.id,
+                  name: currentUser.common_name,
+                });
+                reaction.count += 1;
+              } else {
+                comment.reactions.push({
+                  emoji,
+                  count: 1,
+                  users: [
+                    { id: currentUser.id, name: currentUser.common_name },
+                  ],
+                });
+              }
+            },
+          ),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patch.undo();
+          console.error("Failed to toggle reaction on cached comment:", {
+            id,
+            emoji,
+            target_type,
+            target_id,
+            currentUser,
+          });
+        }
+      },
     }),
 
     listMentions: builder.query<

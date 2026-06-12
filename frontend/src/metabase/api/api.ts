@@ -53,12 +53,6 @@ export const Api = createApi({
   tagTypes: TAG_TYPES,
   baseQuery,
   endpoints: () => ({}),
-  // RTK 2.x defaults to "delayed", which postpones tag invalidation until ALL
-  // in-flight queries of this instance settle. Long-running queries (e.g.
-  // document card data on a slow warehouse) would freeze every
-  // invalidation-driven refetch in the app, so mutations like posting a
-  // comment appeared to do nothing.
-  invalidationBehavior: "immediately",
 });
 
 export { skipToken };
