@@ -8,7 +8,7 @@ import S from "./ThemeCard.module.css";
 
 export function getThemeColors(colors?: Partial<MetabaseColors>): string[] {
   return [
-    colors?.brand ?? "var(--mb-color-brand)",
+    colors?.brand ?? "var(--mb-color-core-brand)",
     colors?.["text-primary"] ?? "var(--mb-color-text-primary)",
     colors?.background ?? "var(--mb-color-background)",
   ];

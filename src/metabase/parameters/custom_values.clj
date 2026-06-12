@@ -16,7 +16,6 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -75,45 +74,48 @@
    ;; remapped label for a single selected value)
    [:exact-value {:optional true} :any]])
 
-(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :keys [id], :as _card} :- [:and
-                                                     :metabase.queries.schema/card
-                                                     [:map
-                                                      [:id ::lib.schema.id/card]]]
-   field-ref                                    :- [:or :mbql.clause/field :mbql.clause/expression]
-   {:keys [query-string label-field exact-value] :as _opts} :- [:maybe ::values-from-card-query.options]]
+(defn- card-query
+  [{query :dataset_query, :keys [id], :as _card}]
   (when (seq query)
-    ;; start a new query using this Card as a starting point
-    (let [query (lib/query query (lib.metadata/card query id))]
-      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
-                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
-                                                id))]
-        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
-                                               id
-                                               (pr-str field-ref)
-                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
-          (let [label-column   (when label-field
-                                 (or (lib/find-matching-column query -1 label-field visible-columns)
-                                     (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
-                                                id
-                                                (pr-str label-field))))
-                search-column   (or label-column value-column)
-                value-textual?  (lib.types.isa/string? value-column)
-                search-textual? (lib.types.isa/string? search-column)
-                nonempty        ((if value-textual? lib/not-empty lib/not-null) value-column)
-                query-filter    (cond
-                                  (some? exact-value) (lib/= value-column exact-value)
-                                  query-string        (if search-textual?
-                                                        (lib/ignore-case (lib/contains search-column query-string))
-                                                        (lib/= search-column query-string)))]
-            (-> query
-                (lib/limit *max-rows*)
-                (lib/filter nonempty)
-                (cond-> query-filter (lib/filter query-filter))
-                (lib/breakout value-column)
-                ;; add the label as a second breakout so each row is a [value label] pair
-                (cond-> label-column (lib/breakout label-column)))))))))
+    (lib/query query (lib.metadata/card query id))))
+
+(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
+  [{:keys [id], :as card} :- [:and
+                              :metabase.queries.schema/card
+                              [:map
+                               [:id ::lib.schema.id/card]]]
+   field-ref              :- [:or :mbql.clause/field :mbql.clause/expression]
+   {:keys [query-string label-field exact-value] :as _opts} :- [:maybe ::values-from-card-query.options]]
+  (when-let [query (card-query card)]
+    (when-let [visible-columns (or (not-empty (lib/visible-columns query))
+                                   (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
+                                              id))]
+      (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
+                                  (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
+                                             id
+                                             (pr-str field-ref)
+                                             (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+        (let [label-column   (when label-field
+                               (or (lib/find-matching-column query -1 label-field visible-columns)
+                                   (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
+                                              id
+                                              (pr-str label-field))))
+              search-column   (or label-column value-column)
+              value-textual?  (lib.types.isa/string? value-column)
+              search-textual? (lib.types.isa/string? search-column)
+              nonempty        ((if value-textual? lib/not-empty lib/not-null) value-column)
+              query-filter    (cond
+                                (some? exact-value) (lib/= value-column exact-value)
+                                query-string        (if search-textual?
+                                                      (lib/ignore-case (lib/contains search-column query-string))
+                                                      (lib/= search-column query-string)))]
+          (-> query
+              (lib/limit *max-rows*)
+              (lib/filter nonempty)
+              (cond-> query-filter (lib/filter query-filter))
+              (lib/breakout value-column)
+              ;; add the label as a second breakout so each row is a [value label] pair
+              (cond-> label-column (lib/breakout label-column))))))))
 
 (defn- result->rows
   "Extract rows from a QP result, dropping values for any display columns the QP injected for
@@ -171,9 +173,9 @@
   [card value-field]
   (boolean
    (and (not (:archived card))
-        ;; existing usage -- do not use this in new code
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (some? (qp.util/field->field-info value-field (:result_metadata card))))))
+        (when-let [query (card-query card)]
+          (some? (lib/find-matching-column query -1 (lib/->mbql5 value-field)
+                                           (lib/visible-columns query)))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 

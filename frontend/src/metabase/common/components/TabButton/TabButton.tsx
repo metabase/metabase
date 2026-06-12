@@ -202,7 +202,7 @@ export interface RenameableTabButtonProps extends Omit<
 
 // These styles need to be here instead of .styled to avoid circular dependency
 const getBorderStyle = () => css`
-  box-shadow: 0px 0px 2px 1px var(--mb-color-brand);
+  box-shadow: 0px 0px 2px 1px var(--mb-color-core-brand);
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{
   isRenaming: boolean;

@@ -27,8 +27,7 @@
    :perms/download-results      :download
    :perms/manage-table-metadata :data-model
    :perms/manage-database       :details
-   :perms/transforms            :transforms
-   :perms/workspaces            :workspaces})
+   :perms/transforms            :transforms})
 
 (def ^:private ->api-vals
   {:perms/view-data             {:unrestricted           :unrestricted
@@ -42,8 +41,7 @@
                                  :no                nil}
    :perms/manage-table-metadata {:yes :all :no nil}
    :perms/manage-database       {:yes :yes :no :no}
-   :perms/transforms            {:yes :yes :no :no}
-   :perms/workspaces            {:yes :yes :no :no}})
+   :perms/transforms            {:yes :yes :no :no}})
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment the permissions graph with active connection impersonation policies. OSS implementation returns graph as-is."
@@ -123,8 +121,7 @@
    :download       {:schemas :full}
    :data-model     {:schemas :all}
    :details        :yes
-   :transforms     :yes
-   :workspaces     :yes})
+   :transforms     :yes})
 
 (def ^:private data-analyst-perms
   "Data Analysts have implicit manage-table-metadata permission for all databases."
@@ -315,8 +312,7 @@
    :data-model     {:all  :yes
                     :none :no}
    :details        {:yes :yes :no :no}
-   :transforms     {:yes :yes :no :no}
-   :workspaces     {:yes :yes :no :no}})
+   :transforms     {:yes :yes :no :no}})
 
 (def ^:private api-key->perm-type
   {:view-data      :perms/view-data
@@ -324,8 +320,7 @@
    :download       :perms/download-results
    :data-model     :perms/manage-table-metadata
    :details        :perms/manage-database
-   :transforms     :perms/transforms
-   :workspaces     :perms/workspaces})
+   :transforms     :perms/transforms})
 
 (defn- resolve-api-value
   "Translates an API permission value for a single [group-id db-id api-key] into a map of
@@ -366,16 +361,12 @@
                 #(merge % {nil {:perm_value :no :schema_name nil}})))
 
     (and (= perm-type :perms/view-data) (not= db-value :unrestricted))
-    (-> (update [group-id db-id :perms/transforms]
-                #(merge % {nil {:perm_value :no :schema_name nil}}))
-        (update [group-id db-id :perms/workspaces]
-                #(merge % {nil {:perm_value :no :schema_name nil}})))
+    (update [group-id db-id :perms/transforms]
+            #(merge % {nil {:perm_value :no :schema_name nil}}))
 
     (and (= perm-type :perms/create-queries) (not= db-value :query-builder-and-native))
-    (-> (update [group-id db-id :perms/transforms]
-                #(merge % {nil {:perm_value :no :schema_name nil}}))
-        (update [group-id db-id :perms/workspaces]
-                #(merge % {nil {:perm_value :no :schema_name nil}})))))
+    (update [group-id db-id :perms/transforms]
+            #(merge % {nil {:perm_value :no :schema_name nil}}))))
 
 (defn- add-implications:table-level
   [desired group-id db-id perm-type table-entries]
@@ -431,7 +422,7 @@
    {}
    (for [[group-id group-changes] graph
          [db-id db-changes] group-changes
-         api-key [:details :data-model :download :transforms :workspaces :create-queries :view-data]
+         api-key [:details :data-model :download :transforms :create-queries :view-data]
          :let [api-value (get db-changes api-key)]
          :when api-value]
      [group-id db-id api-key api-value])))

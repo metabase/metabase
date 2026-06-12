@@ -26,7 +26,7 @@
 
 .Button:focus-visible {
   border-color: var(--mb-color-background-primary);
-  outline: 1px solid var(--mb-color-brand);
+  outline: 1px solid var(--mb-color-core-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -59,19 +59,19 @@
 
 .ButtonPrimary {
   color: var(--mb-color-text-primary-inverse);
-  background: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .ButtonPrimary:hover {
   color: var(--mb-color-text-primary-inverse);
-  border-color: var(--mb-color-brand);
-  background-color: var(--mb-color-brand-hover);
+  border-color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-core-brand-hover);
 }
 
 .ButtonPrimary:focus-visible {
   border-color: var(--mb-color-background-primary);
-  outline-color: var(--mb-color-brand);
+  outline-color: var(--mb-color-core-brand);
 }
 
 .ButtonWarning {
@@ -114,7 +114,7 @@
 
 .ButtonBorderless:focus-visible {
   border-color: var(--mb-color-background-primary);
-  outline-color: var(--mb-color-brand);
+  outline-color: var(--mb-color-core-brand);
 }
 
 .ButtonOnlyIcon {
@@ -126,7 +126,7 @@
 
 .ButtonOnlyIcon:focus-visible {
   border: none;
-  outline-color: var(--mb-color-brand);
+  outline-color: var(--mb-color-core-brand);
 }
 
 .ButtonGroup {
@@ -162,12 +162,12 @@
 
 .ButtonGroupBrand .Button {
   border-color: white;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background-tertiary);
 }
 
 .ButtonGroupBrand .ButtonActive {
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
   color: white;
 }
 

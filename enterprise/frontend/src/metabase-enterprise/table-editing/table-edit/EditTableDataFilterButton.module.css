@@ -5,10 +5,10 @@
     transition: background 300ms linear;
 
     &:hover {
-      color: var(--mb-color-filter);
+      color: var(--mb-color-core-filter);
       background-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 10%,
+        var(--mb-color-core-filter) 10%,
         var(--mb-color-white)
       );
     }
@@ -23,7 +23,7 @@
     &:hover {
       background-color: color-mix(
         in srgb,
-        var(--mb-color-filter) 10%,
+        var(--mb-color-core-filter) 10%,
         var(--mb-color-white)
       );
     }
@@ -32,7 +32,7 @@
     &[data-expanded="true"] {
       .FilterCountChip {
         color: var(--mb-color-text-selected);
-        background-color: var(--mb-color-filter);
+        background-color: var(--mb-color-core-filter);
       }
     }
   }
@@ -46,7 +46,7 @@
   color: var(--mb-color-text-primary);
   background-color: color-mix(
     in srgb,
-    var(--mb-color-filter) 15%,
+    var(--mb-color-core-filter) 15%,
     var(--mb-color-white)
   );
 }

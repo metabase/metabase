@@ -15,7 +15,7 @@
 .NodeListItemLink {
   border-radius: 8px;
   align-items: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   overflow-wrap: anywhere;
   word-break: break-word;

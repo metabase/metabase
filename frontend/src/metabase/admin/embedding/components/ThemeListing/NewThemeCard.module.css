@@ -9,7 +9,7 @@
 }
 
 .card:hover {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background-hover);
 }
 

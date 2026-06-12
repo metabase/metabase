@@ -468,6 +468,21 @@
                    :breakout    [$tips.source.username]
                    :limit       4}))))))))
 
+(deftest ^:parallel breakoutable-columns-disambiguates-same-named-nested-fields-test
+  (testing "Nested fields with the same leaf name at different paths get path-qualified display names (#33698)"
+    (mt/test-driver :mongo
+      (mt/dataset geographical-tips
+        (let [mp       (mt/metadata-provider)
+              query    (lib/query mp (lib.metadata/table mp (mt/id :tips)))
+              displays (into #{} (map #(lib/display-name query %))
+                             (lib/breakoutable-columns query))]
+          (testing "root-level vs nested same-name collision"
+            (is (contains? displays "URL"))
+            (is (contains? displays "Source: URL")))
+          (testing "sibling subdocument same-name collision"
+            (is (contains? displays "Source: Categories"))
+            (is (contains? displays "Venue: Categories"))))))))
+
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset all-null-columns
   [["bird_species"

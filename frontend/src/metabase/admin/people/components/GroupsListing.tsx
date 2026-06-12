@@ -187,7 +187,7 @@ function EditingGroupRow({
   const textIsValid = group.name && group.name.length;
 
   return (
-    <Box component="tr" bd="1px solid var(--mb-color-brand)">
+    <Box component="tr" bd="1px solid var(--mb-color-core-brand)">
       <td>
         <Input
           fz="lg"
@@ -271,7 +271,7 @@ function GroupRow({
             user={{ name: getGroupNameLocalized(group) }}
             bg={backgroundColor}
           />
-          <Box component="span" fw={700} c="brand">
+          <Box component="span" fw={700} c="core-brand">
             {getGroupNameLocalized(group)}
           </Box>
         </Flex>
@@ -548,7 +548,7 @@ export const GroupsListing = (props: GroupsListingProps) => {
         closeButtonText={null}
         withCloseButton={false}
         confirmButtonText={t`Ok`}
-        confirmButtonProps={{ color: "brand" }}
+        confirmButtonProps={{ color: "core-brand" }}
         data-testid="alert-modal"
       />
     </AdminPaneLayout>

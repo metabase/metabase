@@ -38,7 +38,6 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as api.pivots]
-   [metabase.query-processor.util :as qp.util]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -308,16 +307,18 @@
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
-        (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
-                                {:request-options {:headers {"x-metabase-client" client-string
-                                                             "x-metabase-client-version" version-string}}}))
+        (mt/with-temporary-setting-values [synchronous-batch-updates true]
+          (mt/with-premium-features #{:audit-app}
+            (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
+                                  {:request-options {:headers {"x-metabase-client" client-string
+                                                               "x-metabase-client-version" version-string}}})))
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (deftest embedding-sdk-info-saves-query-execution-test
   (testing "GET /api/card with embedding headers set"
-    (binding [qp.util/*execute-async?* false]
+    ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          ;; This query is just to make sure the card actually runs a query, otherwise
                                          ;; there won't be a QueryExecution record to check!

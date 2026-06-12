@@ -4,7 +4,7 @@
 }
 
 .active {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--mb-color-core-brand) !important;
 }
 
 .card {
@@ -20,13 +20,13 @@
     }
 
     .grabber {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 }
 
 .icon {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .label {

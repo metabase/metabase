@@ -20,7 +20,7 @@
 }
 
 .DatasetsListItem:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 
   .InfoIcon {
     display: unset;
@@ -35,14 +35,14 @@
   }
 
   .AddButton[data-variant="inverse"] {
-    --button-color: var(--mb-color-brand);
+    --button-color: var(--mb-color-core-brand);
   }
 }
 
 .DatasetsListItemSelected,
 .DatasetsListItemSelected:hover {
   color: var(--mb-color-text-primary-inverse);
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 }
 
 .DatasetsListItemActions {
