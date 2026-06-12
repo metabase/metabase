@@ -5,9 +5,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
+import { getIsHosted } from "metabase/selectors/settings";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   Button,
   Center,

@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -17,34 +16,27 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import * as Urls from "metabase/urls";
-import type { Workspace } from "metabase-types/api";
+import type { Database } from "metabase-types/api";
 
 import { trackWorkspaceSetupButtonClicked } from "../../../analytics";
-import { canManageWorkspaceInstance } from "../../../selectors";
-import { NewWorkspaceModal } from "../NewWorkspaceModal";
+import { NewWorkspaceButton } from "../NewWorkspaceButton";
 import { SetupWorkspaceModal } from "../SetupWorkspaceModal";
 
 import S from "./WorkspaceEmptyState.module.css";
 
-export function WorkspaceEmptyState() {
-  const [isCreateOpen, { open: openCreate, close: closeCreate }] =
-    useDisclosure(false);
+export type WorkspaceEmptyStateProps = {
+  databases: Database[];
+};
+
+export function WorkspaceEmptyState({ databases }: WorkspaceEmptyStateProps) {
   const [isSetupOpen, { open: openSetup, close: closeSetup }] =
     useDisclosure(false);
-  const dispatch = useDispatch();
-  const canManageInstance = useSelector(canManageWorkspaceInstance);
   const applicationName = useSelector(getApplicationName);
 
   const { url: fileBasedDevDocsUrl, showMetabaseLinks: showFileBasedDevLink } =
     useDocsUrl("ai/file-based-development");
   const { url: remoteSyncDocsUrl, showMetabaseLinks: showRemoteSyncLink } =
     useDocsUrl("installation-and-operation/remote-sync");
-
-  const handleCreate = (workspace: Workspace) => {
-    closeCreate();
-    dispatch(push(Urls.workspace(workspace.id)));
-  };
 
   const handleSetupClick = () => {
     trackWorkspaceSetupButtonClicked();
@@ -63,19 +55,14 @@ export function WorkspaceEmptyState() {
             {t`While in a workspace, ${applicationName} will remap tables created by transforms to an isolated schema, letting you test and build on top of these tables. When you're ready, use remote sync to pull your changes into your production ${applicationName}.`}
           </Text>
           <Text mb="lg">
-            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}
-            {canManageInstance &&
-              ` ${t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}`}
+            {t`If this is your production instance, create and download a workspace config here to use in a development instance.`}{" "}
+            {t`If you're using this ${applicationName} instance for development, you can upload a workspace config file to put this instance into that workspace.`}
           </Text>
           <Group gap="md">
-            <Button variant="filled" onClick={openCreate}>
-              {t`Create a workspace`}
+            <NewWorkspaceButton databases={databases} primary />
+            <Button variant="default" onClick={handleSetupClick}>
+              {t`Upload a workspace config`}
             </Button>
-            {canManageInstance && (
-              <Button variant="default" onClick={handleSetupClick}>
-                {t`Upload a workspace config`}
-              </Button>
-            )}
           </Group>
           {(showFileBasedDevLink || showRemoteSyncLink) && (
             <>
@@ -100,11 +87,6 @@ export function WorkspaceEmptyState() {
           )}
         </Box>
       </Card>
-      <NewWorkspaceModal
-        opened={isCreateOpen}
-        onCreate={handleCreate}
-        onClose={closeCreate}
-      />
       <SetupWorkspaceModal opened={isSetupOpen} onClose={closeSetup} />
     </>
   );

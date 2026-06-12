@@ -233,13 +233,9 @@ export function MetricPill({
               </Menu.Item>
             </>
           )}
-          {metric.sourceType === "metric" &&
-            dimensions.size > 0 &&
-            definition && <Menu.Divider role="separator" />}
           {metric.sourceType === "metric" && (
             <Menu.Item
-              leftSection={<Icon name="info" />}
-              rightSection={<Icon name="external" />}
+              leftSection={<Icon name="home" />}
               component={ForwardRefLink}
               to={Urls.metricQuestionUrl({
                 id: metric.id,

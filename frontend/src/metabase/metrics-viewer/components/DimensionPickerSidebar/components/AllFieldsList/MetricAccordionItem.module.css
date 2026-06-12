@@ -5,7 +5,7 @@
 
 .metricAccordionControl {
   align-items: center;
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background-secondary);
   border-radius: 0.5rem;
   color: var(--mb-color-text-primary);
   display: flex;
@@ -27,4 +27,8 @@
 
 .metricAccordionPanel {
   padding: 1rem;
+}
+
+.occurrenceCountBadge {
+  box-shadow: 0 0 0 1px var(--mb-color-border);
 }

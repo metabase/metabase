@@ -17,7 +17,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import type { MetabaseFontFamily } from "metabase/ui/fonts";
+import type { MetabaseFontFamily } from "metabase/utils/fonts";
 
 import { ColorSwatchCard } from "./ColorSwatchCard";
 import {

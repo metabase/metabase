@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { pick } from "underscore";
 
 import { skipToken, useSearchQuery } from "metabase/api";
-import { trackSearchClick } from "metabase/search/analytics";
+import { trackSearchClick } from "metabase/common/search/analytics";
 import { Stack } from "metabase/ui";
 import {
   SEARCH_MODELS,

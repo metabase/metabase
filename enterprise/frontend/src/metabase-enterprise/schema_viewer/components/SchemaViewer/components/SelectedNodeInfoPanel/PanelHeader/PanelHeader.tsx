@@ -39,7 +39,7 @@ export function PanelHeader({
   const breadcrumbs = getBreadcrumbs(node, database);
   const metadataUrl = Urls.dataStudioData({
     databaseId: node.data.db_id,
-    schemaName: node.data.schema ?? undefined,
+    schemaName: node.data.schema ?? "",
     tableId: node.data.table_id,
   });
 
