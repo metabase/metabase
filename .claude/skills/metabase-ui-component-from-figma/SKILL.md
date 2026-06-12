@@ -201,6 +201,12 @@ Per `docs/developers-guide/frontend.md` ("Colors"): every color must be a **sema
 
 **Guardrail:** if `get_variable_defs` returns a **primitive ramp** (e.g. `Orion-Alpha/10`, `Ocean/60` — a ramp + number, not a role) bound directly to a property, do **not** translate it to a ramp, hardcode hex, or `color-mix` your way to it. **Stop and flag it to the user** with the specific property/state — it's a design-side gap (bind to a semantic token, or add one). Resume once the spec exposes a semantic token.
 
+### Non-color tokens — flag scale mismatches too
+
+The same discipline applies to **dimensional** values — radius, spacing/padding/gap, elevation/shadow, and typography (font size, line-height, weight). Prefer the codebase's existing scale variable over a literal: `--mantine-radius-*`, `--mantine-spacing-*`, `--mantine-shadow-*`, and the Mantine font tokens.
+
+But Figma's scales don't always line up with the codebase's. When a Figma value **has no matching step** in the corresponding scale — e.g. Figma `radius/md = 12px` while `--mantine-radius-md` is `8px`, or a Figma `xxxs`/`xs` spacing step with no Mantine equivalent — **don't silently bake in a literal.** Flag it to the user the same way you flag primitive colors: name the property, the Figma value, and the nearest codebase token, so it can be resolved with design / the scale owners (align the value, or add a scale step). Only fall back to a literal if the user confirms it's an accepted one-off, and leave a short comment in the code explaining why.
+
 ### Mantine implementation notes (reference)
 
 General gotchas when extending Mantine components — adapt per component:
@@ -232,7 +238,7 @@ Only after sign-off:
 - [ ] Linear issue fetched; Figma node/fileKey + `gitBranchName` extracted; on the right branch; mode (update vs create) decided.
 - [ ] **Update:** usage + blast radius in `local/<TICKET>-<component>-usage-findings.md`; behavior locked with unit tests **if** the component has custom interactive logic (skip for thin Mantine wrappers / pure restyles). **Create:** component scaffolded with its public surface and barrel exports.
 - [ ] Storybook showcase matrix built from the component's full state space (theme excluded — global toggle drives light/dark), single panel, hover/pressed forced via `storybook-addon-pseudo-states`, controls scoped per story; lint + type-check pass. (Update mode: built before styling, **component styles untouched**. Create mode: built after the component is implemented in Phase 4.)
-- [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives — flag gaps to the user).
+- [ ] Figma desktop MCP available; exact tokens extracted and mapped to semantic `--mb-color-*` (NO `color-mix`, NO primitives) and to existing scale vars for radius/spacing/elevation/type — any color *or* dimensional value with no matching token/scale step flagged to the user, not baked in as a literal.
 - [ ] Component styled; stylelint + eslint(+CSS modules) + type-check pass.
 - [ ] Iterated with the user until satisfied.
 - [ ] Committed (when asked); call sites migrated/verified (update) or export wired (create); findings doc handed back.
