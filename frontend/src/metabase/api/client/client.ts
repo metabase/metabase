@@ -2,10 +2,6 @@
 import EventEmitter from "events";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import type {
-  OnBeforeRequestHandler,
-  OnBeforeRequestHandlerConfig,
-} from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
@@ -14,7 +10,11 @@ import { addAntiCsrfToken, updateAntiCsrfToken } from "./csrf";
 import { NetworkError, isRetriableError } from "./errors";
 import { getLocaleHeader } from "./locale";
 import { type RequestMethod, isRequestMethod } from "./method";
-import { apiRequestManipulationMiddleware } from "./middleware";
+import {
+  type OnBeforeRequestHandler,
+  type OnBeforeRequestHandlerConfig,
+  apiRequestManipulationMiddleware,
+} from "./middleware";
 import type {
   EventMap,
   RequestClientInfo,

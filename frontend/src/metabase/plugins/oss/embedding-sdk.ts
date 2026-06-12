@@ -1,4 +1,4 @@
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
+import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,

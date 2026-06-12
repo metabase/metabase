@@ -20,11 +20,10 @@ import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/d
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { createSnowplowTracker } from "metabase/analytics";
-import { api } from "metabase/api/client";
+import { type OnBeforeRequestHandlerConfig, api } from "metabase/api/client";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
