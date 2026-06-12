@@ -1,11 +1,11 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse.index-test
   "Tests for the ClickHouse index driver methods (Index Manager). ClickHouse exercises both lifecycles in one driver:
   the inline ORDER BY at both creation seams (the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`)
-  and the post-CTAS data-skipping index (`compile-create-index`, which is multi-statement).
+  and the standalone data-skipping index (`compile-create-index`, which is multi-statement).
 
   The rendering/capability checks are pure and need no connection. `order-by-inlined-live-test` and
   `skip-index-live-test` run the seams against a real ClickHouse and read the result back out of `system.tables`
-  (the sorting key) and `system.data_skipping_indices` (the skip index), so the hints are verified to actually take
+  (the sorting key) and `system.data_skipping_indices` (the skip index), so the indexes are verified to actually take
   effect on the physical table, not just to render."
   (:require
    [clojure.java.jdbc :as jdbc]
@@ -17,8 +17,14 @@
 
 (deftest ^:parallel feature-flags-test
   (testing "ClickHouse advertises both index lifecycles"
-    (is (true? (driver/database-supports? :clickhouse :index/inline-on-ctas nil)))
-    (is (true? (driver/database-supports? :clickhouse :index/post-ctas-create nil)))))
+    (is (true? (driver/database-supports? :clickhouse :index/inline-create nil)))
+    (is (true? (driver/database-supports? :clickhouse :index/standalone-create nil)))))
+
+(deftest ^:parallel supported-index-methods-test
+  (testing "ClickHouse advertises the inline order-by and the standalone skip-index"
+    (is (= {:order-by   {:lifecycle :inline}
+            :skip-index {:lifecycle :standalone}}
+           (driver/supported-index-methods :clickhouse nil)))))
 
 ;;; --- inline ORDER BY at both creation seams ---
 
@@ -28,11 +34,11 @@
 (def ^:private order-by-cases
   ;; The table/column identifiers come from the shared `:sql-jdbc` renderer (double-quoted); the ORDER BY columns are
   ;; rendered with ClickHouse `quote-name` (backticks), matching the driver's pre-existing ORDER BY rendering.
-  [{:label        "order-by hint sets the MergeTree sorting key"
+  [{:label        "order-by index sets the MergeTree sorting key"
     :indexes      [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]
     :ctas         "CREATE TABLE `events` ORDER BY (`a`, `b`) AS SELECT 1"
     :create-table "CREATE TABLE \"events\" (\"a\" Int64, \"b\" Int64)\nENGINE = MergeTree\nORDER BY (`a`, `b`)\nSETTINGS replicated_deduplication_window = 0"}
-   {:label        "no order-by hint -> empty ORDER BY () (unsorted)"
+   {:label        "no order-by index -> empty ORDER BY () (unsorted)"
     :indexes      []
     :ctas         "CREATE TABLE `events` ORDER BY () AS SELECT 1"
     :create-table "CREATE TABLE \"events\" (\"a\" Int64, \"b\" Int64)\nENGINE = MergeTree\nORDER BY ()\nSETTINGS replicated_deduplication_window = 0"}])
@@ -49,7 +55,7 @@
         (is (= create-table
                (#'clickhouse/create-table!-sql :clickhouse :events order-by-columns {:indexes indexes})))))))
 
-;;; --- post-CTAS data-skipping index ---
+;;; --- standalone data-skipping index ---
 
 (deftest ^:parallel compile-create-index-test
   (testing "a skip-index renders ADD INDEX + MATERIALIZE INDEX (backfill existing parts)"
@@ -61,7 +67,13 @@
     (is (= [["ALTER TABLE `public`.`events` ADD INDEX `idx_ab` (`a`, `b`) TYPE set(100) GRANULARITY 1"]
             ["ALTER TABLE `public`.`events` MATERIALIZE INDEX `idx_ab`"]]
            (driver/compile-create-index :clickhouse "public" "events"
-                                        {:name "idx_ab" :columns [{:name "a"} {:name "b"}] :type :set :type-args [100]})))))
+                                        {:name "idx_ab" :columns [{:name "a"} {:name "b"}] :type :set :type-args [100]}))))
+  (testing ":if-not-exists renders ADD INDEX IF NOT EXISTS"
+    (is (= [["ALTER TABLE `events` ADD INDEX IF NOT EXISTS `idx_a` (`a`) TYPE minmax GRANULARITY 4"]
+            ["ALTER TABLE `events` MATERIALIZE INDEX `idx_a`"]]
+           (driver/compile-create-index :clickhouse nil "events"
+                                        {:name "idx_a" :columns [{:name "a"}] :type :minmax :granularity 4
+                                         :if-not-exists true})))))
 
 ;;; --------------------------------------- Live execute path ----------------------------------------
 
@@ -88,11 +100,11 @@
     {:name name :type type :expr expr :granularity (long granularity)}))
 
 (def ^:private live-order-by-cases
-  "Each case drives one ORDER BY hint through both live seams and asserts the sorting key the physical table reports."
-  [{:label "order-by hint sets the MergeTree sorting key" :slug "hint"
+  "Each case drives one ORDER BY index through both live seams and asserts the sorting key the physical table reports."
+  [{:label "order-by index sets the MergeTree sorting key" :slug "idx"
     :indexes  [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]
     :expected "a, b"}
-   {:label "no order-by hint -> empty ORDER BY () (unsorted table)" :slug "nohint"
+   {:label "no order-by index -> empty ORDER BY () (unsorted table)" :slug "noidx"
     :indexes  []
     :expected ""}])
 
@@ -127,7 +139,7 @@
                     (finally (drop! crt-table))))))))))))
 
 (deftest ^:synchronized skip-index-live-test
-  (testing "the post-CTAS path runs ADD INDEX + MATERIALIZE INDEX and the data-skipping index actually exists"
+  (testing "the standalone-create path runs ADD INDEX + MATERIALIZE INDEX and the data-skipping index actually exists"
     (mt/test-driver :clickhouse
       (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
             conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
@@ -139,7 +151,7 @@
           (try
             (driver/create-table! :clickhouse (:id db) (keyword table) order-by-columns {})
             (is (nil? (only-skip-index conn-spec "default" table))
-                "index absent before the post-CTAS step")
+                "index absent before the standalone-create step")
             (testing "ADD INDEX + MATERIALIZE INDEX create the index with the expected type, columns, and granularity"
               (driver/execute-raw-queries! :clickhouse conn-spec
                                            (driver/compile-create-index :clickhouse nil table index))

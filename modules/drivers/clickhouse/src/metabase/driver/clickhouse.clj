@@ -57,8 +57,8 @@
                               :expressions/text                 true
                               ;; ClickHouse uses both index lifecycles: ORDER BY is inlined into the MergeTree engine
                               ;; clause at creation, while data-skipping indexes are added as separate statements after.
-                              :index/inline-on-ctas             true
-                              :index/post-ctas-create           true
+                              :index/inline-create              true
+                              :index/standalone-create          true
                               :left-join                        (not driver-api/is-test?)
                               :metadata/key-constraints         false
                               :now                              true
@@ -270,19 +270,19 @@
 
 (defmethod driver/supported-index-methods :clickhouse
   [_driver _database]
-  {:order-by   {:lifecycle :ctas-inline}
-   :skip-index {:lifecycle :post-ctas}})
+  {:order-by   {:lifecycle :inline}
+   :skip-index {:lifecycle :standalone}})
 
 (defn- order-by-columns
-  "Columns for the MergeTree ORDER BY: the inline `:order-by` hint's columns when present, else the primary key (the
+  "Columns for the MergeTree ORDER BY: the inline `:order-by` index's columns when present, else the primary key (the
   existing behavior). Returns a seq of column-name strings."
   [{:keys [primary-key indexes]}]
   (or (some->> indexes (filter (comp #{:order-by} :kind)) first :columns (map :name) seq)
       primary-key))
 
 (defn- order-by-clause
-  "Render `ORDER BY (...)` for the given table opts. MergeTree requires an ORDER BY; with no hint and no primary key
-  it is the empty tuple `ORDER BY ()` (an unsorted table)."
+  "Render `ORDER BY (...)` for the given table opts. MergeTree requires an ORDER BY; with no order-by index and no
+  primary key it is the empty tuple `ORDER BY ()` (an unsorted table)."
   [opts]
   (format "ORDER BY (%s)" (str/join ", " (map quote-name (order-by-columns opts)))))
 
@@ -293,14 +293,15 @@
     (name type)))
 
 (defmethod driver/compile-create-index :clickhouse
-  [_driver schema table {index-name :name, :keys [columns type type-args granularity]}]
+  [_driver schema table {index-name :name, :keys [columns type type-args granularity if-not-exists]}]
   ;; A data-skipping index needs two statements: ADD INDEX registers it (metadata only, applies to new parts), then
   ;; MATERIALIZE INDEX backfills it over the existing parts.
-  (let [target (quote-name (if (not-empty schema) (keyword schema table) (keyword table)))
+  (let [target (quote-name (if (seq schema) (keyword schema table) (keyword table)))
         idx    (quote-name index-name)
         expr   (str/join ", " (map (comp quote-name :name) columns))]
-    [[(format "ALTER TABLE %s ADD INDEX %s (%s) TYPE %s GRANULARITY %d"
-              target idx expr (skip-index-type-sql type type-args) (or granularity 1))]
+    [[(format "ALTER TABLE %s ADD INDEX %s%s (%s) TYPE %s GRANULARITY %d"
+              target (if if-not-exists "IF NOT EXISTS " "") idx expr
+              (skip-index-type-sql type type-args) (or granularity 1))]
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
 
 (defn- create-table!-sql
@@ -417,7 +418,7 @@
 (defmethod driver/compile-transform :clickhouse
   [driver {:keys [query output-table indexes]}]
   (let [{sql-query :query sql-params :params} query
-        ;; MergeTree requires an ORDER BY. With an inline `:order-by` hint we use its columns as the sorting key;
+        ;; MergeTree requires an ORDER BY. With an inline `:order-by` index we use its columns as the sorting key;
         ;; otherwise it stays the empty tuple `ORDER BY ()` (an unsorted table).
         pieces [(sql.qp/format-honeysql driver {:create-table output-table})
                 (sql.qp/format-honeysql driver {:raw (order-by-clause {:indexes indexes})})
