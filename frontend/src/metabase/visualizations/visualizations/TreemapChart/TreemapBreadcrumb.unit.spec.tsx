@@ -5,19 +5,17 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 
 describe("TreemapBreadcrumb", () => {
-  it("shows 'Total' with the value and percentage at the overview", () => {
+  it("shows 'Total' with the value at the overview", () => {
     renderWithProviders(
       <TreemapBreadcrumb
         groupLabel={null}
         value="$11,576,000"
-        percent="100%"
         onBackClick={jest.fn()}
       />,
     );
 
     expect(screen.getByText("Total")).toBeInTheDocument();
     expect(screen.getByText("$11,576,000")).toBeInTheDocument();
-    expect(screen.getByText("100%")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -27,7 +25,6 @@ describe("TreemapBreadcrumb", () => {
       <TreemapBreadcrumb
         groupLabel="Legumes"
         value="$2,100,000"
-        percent="100%"
         onBackClick={onBackClick}
       />,
     );

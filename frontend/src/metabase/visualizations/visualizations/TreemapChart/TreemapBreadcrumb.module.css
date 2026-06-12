@@ -1,10 +1,9 @@
 .breadcrumb {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 2rem 1rem 2rem;
-  background-color: var(--mb-color-background);
-  border-bottom: 1px solid var(--mb-color-border);
+  justify-content: flex-start;
+  gap: 0.5rem;
+  padding: 28px 2rem 0 2rem;
   font-size: var(--mantine-font-size-sm);
   line-height: 1rem;
   white-space: nowrap;
@@ -34,10 +33,4 @@
   font-weight: 700;
   font-size: 14px;
   color: var(--mb-color-text-primary);
-}
-
-.percent {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--mb-color-text-secondary);
 }

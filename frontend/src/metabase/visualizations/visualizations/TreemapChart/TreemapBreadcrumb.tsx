@@ -7,14 +7,12 @@ import S from "./TreemapBreadcrumb.module.css";
 interface TreemapBreadcrumbProps {
   groupLabel: string | null;
   value: string;
-  percent: string;
   onBackClick: () => void;
 }
 
 export function TreemapBreadcrumb({
   groupLabel,
   value,
-  percent,
   onBackClick,
 }: TreemapBreadcrumbProps) {
   return (
@@ -34,7 +32,6 @@ export function TreemapBreadcrumb({
       )}
       <div className={S.values}>
         <span className={S.value}>{value}</span>
-        <span className={S.percent}>{percent}</span>
       </div>
     </Box>
   );

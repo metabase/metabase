@@ -1,7 +1,6 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -201,7 +200,6 @@ export const TreemapChart = ({
         <TreemapBreadcrumb
           groupLabel={breadcrumb.groupLabel}
           value={formatters.value(breadcrumb.value)}
-          percent={formatPercent(1)}
           onBackClick={handleBreadcrumbBack}
         />
       )}
