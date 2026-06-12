@@ -73,7 +73,7 @@
                          (pos-int? table-id))
                     (first (lib.metadata.protocols/metadatas
                             (lib.metadata/->metadata-provider metadata-providerable)
-                            {:lib/type :metadata/column, :table-id #{table-id}, :name #{id-or-name}})))]
+                            {:lib/type :metadata/column, :table-ids #{table-id}, :name #{id-or-name}})))]
     (-> col
         (assoc :lib/source                :source/table-defaults
                :lib/source-column-alias   (:name col)

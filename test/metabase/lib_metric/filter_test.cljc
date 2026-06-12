@@ -823,7 +823,7 @@
   (let [wanted (or id #{1 2})]
     (filterv #(contains? wanted (:id %)) [seg-source-metric-1 seg-source-metric-2])))
 
-(defn- seg-segment-fetcher [{table-ids :table-id}]
+(defn- seg-segment-fetcher [{table-ids :table-ids}]
   (into []
         (mapcat (fn [table-id]
                   (case table-id

@@ -46,12 +46,22 @@
     :unsigned
     :integer))
 
+(def ^:private smoothing-factor
+  "The weight of the latest execution time in the exponential rolling average formula:
+
+    new-average = decay-factor * average + smoothing-factor * execution-time"
+  0.1)
+
+(def ^:private decay-factor
+  "The weight of the previous average in the exponential rolling average formula, see [[smoothing-factor]]."
+  (- 1.0 smoothing-factor))
+
 (defn- update-rolling-average-execution-time!
   "Update the rolling average execution time for query with `query-hash`. Returns `true` if a record was updated,
    or `false` if no matching records were found."
   ^Boolean [query ^bytes query-hash ^Integer execution-time-ms]
-  (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline 0.9] :average_execution_time)
-                                                                          [:inline (* 0.1 execution-time-ms)])
+  (let [avg-execution-time (h2x/cast (int-casting-type) (h2x/round (h2x/+ (h2x/* [:inline decay-factor] :average_execution_time)
+                                                                          [:inline (* smoothing-factor execution-time-ms)])
                                                                    [:inline 0]))]
     (or
      ;; if it DOES NOT have a query (yet) set that. In 0.31.0 we added the query.query column, and it gets set for all
@@ -67,11 +77,11 @@
                        {:average_execution_time avg-execution-time})))))
 
 (defn- rolling-average-coefficients
-  "Collapse applying the rolling-average formula (`new-avg = 0.9 * avg + 0.1 * t`) once per execution time into a
-  single linear equation `new-avg = c0 * avg + c1`."
+  "Collapse applying the rolling-average formula (see [[smoothing-factor]]) once per execution time into a single
+  linear equation `new-average = c0 * average + c1`."
   [execution-times-ms]
   (reduce (fn [[c0 c1] t]
-            [(* 0.9 c0) (+ (* 0.9 c1) (* 0.1 t))])
+            [(* decay-factor c0) (+ (* decay-factor c1) (* smoothing-factor t))])
           [1.0 0.0]
           execution-times-ms))
 
@@ -80,7 +90,7 @@
   way consecutive [[update-rolling-average-execution-time!]] calls would."
   ^long [execution-times-ms]
   (reduce (fn [avg t]
-            (Math/round (+ (* 0.9 (double avg)) (* 0.1 (double t)))))
+            (Math/round (+ (* decay-factor (double avg)) (* smoothing-factor (double t)))))
           (long (first execution-times-ms))
           (rest execution-times-ms)))
 
@@ -130,16 +140,18 @@
   `:needs-query-backfill` (for rows predating 0.31.0 whose `query` column was never set); hashes without a row are
   absent from the map."
   [query-hashes]
-  (into {}
-        (map (fn [{:keys [query_hash missing_query]}]
-               [(hash-key query_hash)
-                ;; mysql returns 0/1 instead of booleans
-                (if (contains? #{true 1} missing_query)
-                  :needs-query-backfill
-                  :up-to-date)]))
-        (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
-                   :from   [(t2/table-name :model/Query)]
-                   :where  [:in :query_hash query-hashes]})))
+  (if (empty? query-hashes)
+    {}
+    (into {}
+          (map (fn [{:keys [query_hash missing_query]}]
+                 [(hash-key query_hash)
+                  ;; mysql returns 0/1 instead of booleans
+                  (if (contains? #{true 1} missing_query)
+                    :needs-query-backfill
+                    :up-to-date)]))
+          (t2/reducible-query {:select [:query_hash [[:= :query nil] :missing_query]]
+                               :from   [(t2/table-name :model/Query)]
+                               :where  [:in :query_hash query-hashes]}))))
 
 (defn save-queries-and-update-average-execution-times!
   "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,

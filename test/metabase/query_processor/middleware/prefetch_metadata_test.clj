@@ -98,12 +98,10 @@
       (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
         (let [query (-> (lib/query mp (lib.metadata/card mp (:id card)))
                         (lib/limit 1))]
-          ;; two more calls than for a plain table query: resolving the source card fetches the Card, and the Card's
-          ;; column references are bulk-loaded by ID (which is also how their Tables are discovered)
           ;; the baseline calls, plus:
-          ;; - fetch the source Card
-          ;; - fetch the Fields referenced by the Card's query by id in bulk (also used to discover their Tables)
-          (is (<= (preprocess-app-db-call-count query) 8)))))))
+          ;; - one bulk fetch of the referenced Cards; resolving the source card afterwards hits the cache, and the
+          ;;   card's table and columns are folded into the baseline bulk loads
+          (is (<= (preprocess-app-db-call-count query) 7)))))))
 
 (deftest prefetch-metadata-nested-card-source-call-count-test
   (mt/dataset test-data
@@ -112,10 +110,9 @@
         (mt/with-temp [:model/Card outer-card {:dataset_query (lib/query mp (lib.metadata/card mp (:id inner-card)))}]
           (let [query (-> (lib/query mp (lib.metadata/card mp (:id outer-card)))
                           (lib/limit 1))]
-            ;; the same calls as for a single source card, plus:
-            ;; - fetch the inner Card: source cards are resolved recursively, so each level of nesting fetches its
-            ;;   card individually
-            (is (<= (preprocess-app-db-call-count query) 9))))))))
+            ;; one more call than for a single source card: referenced Cards are prefetched with one bulk fetch per
+            ;; level of nesting, and both cards' tables and columns are folded into the same bulk loads
+            (is (<= (preprocess-app-db-call-count query) 8))))))))
 
 (deftest prefetch-metadata-card-source-with-join-call-count-test
   (mt/dataset test-data
@@ -127,5 +124,5 @@
                                                            (lib.metadata/field mp (mt/id :categories :id)))]))
                         (lib/limit 1))]
           ;; the same calls as for a plain source card: the joined Table and its columns are folded into the same
-          ;; bulk calls
-          (is (<= (preprocess-app-db-call-count query) 8)))))))
+          ;; bulk loads
+          (is (<= (preprocess-app-db-call-count query) 7)))))))

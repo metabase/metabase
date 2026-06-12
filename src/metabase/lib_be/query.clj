@@ -12,7 +12,11 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    {:keys [table card metric measure segment snippet]} :- ::lib.walk.util/referenced-entity-ids]
   (when (seq table)
-    (lib.metadata/bulk-metadata metadata-providerable :metadata/table table))
+    (lib.metadata/bulk-metadata metadata-providerable :metadata/table table)
+    ;; also warm the columns of all the referenced Tables in one call, since query processing will almost certainly
+    ;; want to list the fields of each of them
+    (lib.metadata.protocols/metadatas (lib.metadata.util/->metadata-provider metadata-providerable)
+                                      {:lib/type :metadata/column, :table-ids (set table)}))
   (when (seq card)
     (lib.metadata/bulk-metadata metadata-providerable :metadata/card card))
   (when (seq metric)
@@ -23,7 +27,4 @@
     (lib.metadata/bulk-metadata metadata-providerable :metadata/segment segment))
   (when (seq snippet)
     (lib.metadata/bulk-metadata metadata-providerable :metadata/native-query-snippet snippet))
-  (when (seq table)
-    (lib.metadata.protocols/metadatas (lib.metadata.util/->metadata-provider metadata-providerable)
-                                      {:lib/type :metadata/column, :table-id (set table)}))
   nil)
