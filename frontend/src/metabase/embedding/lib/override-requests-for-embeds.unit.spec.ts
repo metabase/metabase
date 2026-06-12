@@ -159,6 +159,8 @@ describe("setupEmbedPreviewRewrite", () => {
       (handler) => handler === rewriteEmbedPreviewUrl,
     ).length;
 
+    expect(before).toBe(0);
+
     setupEmbedPreviewRewrite();
     setupEmbedPreviewRewrite();
 
@@ -166,8 +168,7 @@ describe("setupEmbedPreviewRewrite", () => {
       (handler) => handler === rewriteEmbedPreviewUrl,
     ).length;
 
-    expect(after).toBe(Math.max(before, 1));
-    expect(after).toBeLessThanOrEqual(1);
+    expect(after).toBe(1);
   });
 });
 
