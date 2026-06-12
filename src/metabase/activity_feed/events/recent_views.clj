@@ -48,10 +48,11 @@
   "Handle processing for a single card query event."
   [topic {:keys [card-id user-id context] :as _event}]
   (try
-    (let [user-id  (or user-id api/*current-user-id*)]
+    (let [user-id (or user-id api/*current-user-id*)]
       ;; we don't want to count pinned card views or document cards
-      (when-not (or (#{:collection :dashboard :dashboard-subscription} context)
-                    (some? (t2/select-one-fn :document_id :model/Card :id card-id)))
+      (when (and user-id
+                 (not (#{:collection :dashboard :dashboard-subscription} context))
+                 (not (t2/select-one-fn :document_id :model/Card :id card-id)))
         (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
     (catch Throwable e
       (log/warnf e "Failed to process recent_views event: %s" topic))))

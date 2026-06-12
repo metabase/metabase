@@ -22,6 +22,10 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                        (thunk))))
+
 (defn latest-view
   "Returns the most recent view for a given user and model ID"
   [user-id model-id]

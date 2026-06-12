@@ -308,10 +308,11 @@
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
-        (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
-                                {:request-options {:headers {"x-metabase-client" client-string
-                                                             "x-metabase-client-version" version-string}}}))
+        (mt/with-temporary-setting-values [synchronous-batch-updates true]
+          (mt/with-premium-features #{:audit-app}
+            (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
+                                  {:request-options {:headers {"x-metabase-client" client-string
+                                                               "x-metabase-client-version" version-string}}})))
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 

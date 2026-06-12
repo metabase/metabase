@@ -12,6 +12,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.batch-processing.core :as grouper]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
@@ -45,14 +46,31 @@
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
-(defn- purge! [backend]
-  (try
-    (log/tracef "Purging cache entries older than %s" (u/format-seconds (cache/query-caching-max-ttl)))
-    (i/purge-old-entries! backend (cache/query-caching-max-ttl))
-    (log/trace "Successfully purged old cache entries.")
-    :done
-    (catch Throwable e
-      (log/errorf e "Error purging old cache entries: %s" (ex-message e)))))
+(def ^:private purge-interval-seconds
+  "How often, at most, to purge cache entries older than [[cache/query-caching-max-ttl]]. Purging on every save is
+  wasteful: the max TTL is measured in days, and on instances with a high cache-miss rate the repeated DELETEs are
+  expensive and contend with concurrent cache writes."
+  (* 60 60))
+
+(def ^:private purge-queue-capacity 1000)
+
+(defn- purge!* [backends]
+  (doseq [backend (distinct backends)]
+    (try
+      (log/tracef "Purging cache entries older than %s" (u/format-seconds (cache/query-caching-max-ttl)))
+      (i/purge-old-entries! backend (cache/query-caching-max-ttl))
+      (log/trace "Successfully purged old cache entries.")
+      (catch Throwable e
+        (log/errorf e "Error purging old cache entries: %s" (ex-message e))))))
+
+(defonce ^:private purge-queue
+  (delay (grouper/start!
+          #'purge!*
+          :capacity purge-queue-capacity
+          :interval (* purge-interval-seconds 1000))))
+
+(defn- schedule-purge! [backend]
+  (grouper/submit! @purge-queue backend))
 
 (def ^:private ^:dynamic *in-fn*
   "The `in-fn` provided by [[impl/do-with-serialization]]."
@@ -87,7 +105,7 @@
           (log/trace "Got serialized bytes; saving to cache backend")
           (i/save-results! *backend* query-hash bytez)
           (log/debug "Successfully cached results for query.")
-          (purge! *backend*))))
+          (schedule-purge! *backend*))))
     :done
     (catch Throwable e
       (if (= (:type (ex-data e)) ::impl/max-bytes)
