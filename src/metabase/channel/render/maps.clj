@@ -191,7 +191,9 @@
               (-> (/ (- m mn) (- mx mn))
                   (Math/max 0.0)
                   (Math/min 1.0)))]
-      (lch->color [(+ l0 (* t (- l1 l0))) (+ c0 (* t (- c1 c0))) (+ h0 (* t dh))]))))
+      (lch->color [(+ l0 (* t (- l1 l0)))
+                   (+ c0 (* t (- c1 c0)))
+                   (+ h0 (* t dh))]))))
 
 ;;; ------------------------------------------------ render ------------------------------------------------
 
@@ -199,6 +201,15 @@
   "Clamp `v` between `lo` and `hi` and round to the nearest whole number."
   ^long [^double v ^double lo ^double hi]
   (Math/round (-> v (Math/max lo) (Math/min hi))))
+
+(defn- axis-window
+  "Fit one axis of the output window to the data: given the data's projected extent `[lo hi]` along that
+  axis, return `[size origin]` — the window size (data extent plus padding on both sides, clamped between
+  `min-size` and `max-size`) and the world-px of the window's near edge, centering the data within the
+  (possibly clamped) window."
+  [^double lo ^double hi min-size max-size]
+  (let [size (clamp (+ (- hi lo) (* 2 *map-padding*)) min-size max-size)]
+    [size (- (/ (+ lo hi) 2.0) (/ size 2.0))]))
 
 (defn- do-render-map
   "Render a basemap covering the lat/lon extent of `coords` (a seq of `[lat lon]`), then call
@@ -208,12 +219,8 @@
   (let [template (or tile-url default-tile-url)
         z        (or zoom (choose-zoom coords))
         {:keys [min-x max-x min-y max-y]} (world-px-bounds coords z)
-        ;; size the image to the data's bounding box + padding (clamped), so the data fills the frame
-        w        (clamp (+ (- max-x min-x) (* 2 *map-padding*)) *map-min-width* *map-max-width*)
-        h        (clamp (+ (- max-y min-y) (* 2 *map-padding*)) *map-min-height* *map-max-height*)
-        ;; center the data's bounding box within the (possibly clamped) window
-        ox       (- (/ (+ min-x max-x) 2.0) (/ w 2.0))   ; world-px of the window's top-left corner
-        oy       (- (/ (+ min-y max-y) 2.0) (/ h 2.0))
+        [w ox]   (axis-window min-x max-x *map-min-width* *map-max-width*)
+        [h oy]   (axis-window min-y max-y *map-min-height* *map-max-height*)
         img      (BufferedImage. w h BufferedImage/TYPE_INT_RGB)
         g        (.createGraphics img)
         project  (fn [lat lon] (let [[wx wy] (latlon->world-px lat lon z)] [(- wx ox) (- wy oy)]))]
