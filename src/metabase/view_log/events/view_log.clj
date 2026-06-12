@@ -166,7 +166,7 @@
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
           #'update-dashboard-last-viewed-at!*
-          :capacity 500
+          :capacity update-dashboard-last-viewed-at-queue-capacity
           :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
 
 (defn- update-dashboard-last-viewed-at!
