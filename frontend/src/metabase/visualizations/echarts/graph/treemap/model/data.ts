@@ -72,9 +72,8 @@ export function getTreemapData(
   const rowNameByKey = new Map<string, string>(
     (treemapRows ?? []).map((row) => [row.key, row.name]),
   );
-  // Only an explicit `enabled: false` disables a group — rows saved before the
-  // remove-group feature existed have no `enabled` field and must stay visible.
-  const disabledKeys = new Set(
+
+  const userDisabledRows = new Set(
     (treemapRows ?? [])
       .filter((row) => row.enabled === false)
       .map((row) => row.key),
@@ -87,19 +86,18 @@ export function getTreemapData(
     const groupingValue = row[grouping.index];
     const metricValue = row[value.index];
 
-    // Groups removed via the X in the settings list are excluded entirely, so
-    // totals and percentages are computed over the remaining groups only.
-    if (disabledKeys.has(getKeyFromDimensionValue(groupingValue))) {
+    if (userDisabledRows.has(getKeyFromDimensionValue(groupingValue))) {
       return;
     }
 
-    const { node: rootNode } = getOrCreateNode(
-      rootByKey,
-      groupingValue,
-      rowNameByKey.get(getKeyFromDimensionValue(groupingValue)) ??
+    const { node: rootNode } = getOrCreateNode({
+      map: rootByKey,
+      rawName: groupingValue,
+      displayName:
+        rowNameByKey.get(getKeyFromDimensionValue(groupingValue)) ??
         (groupingValue == null ? NULL_DISPLAY_VALUE : String(groupingValue)),
-      subGrouping != null,
-    );
+      withChildren: subGrouping != null,
+    });
     addRowMetric(rootNode, metricValue, rowIndex);
 
     if (subGrouping == null) {
@@ -112,12 +110,15 @@ export function getTreemapData(
       leafMap = new Map();
       leafMapByRoot.set(rootNode, leafMap);
     }
-    const { node: leaf, wasCreated } = getOrCreateNode(
-      leafMap,
-      subGroupingValue,
-      subGroupingValue == null ? NULL_DISPLAY_VALUE : String(subGroupingValue),
-      false,
-    );
+    const { node: leaf, wasCreated } = getOrCreateNode({
+      map: leafMap,
+      rawName: subGroupingValue,
+      displayName:
+        subGroupingValue == null
+          ? NULL_DISPLAY_VALUE
+          : String(subGroupingValue),
+      withChildren: false,
+    });
     addRowMetric(leaf, metricValue, rowIndex);
     if (wasCreated) {
       rootNode.children?.push(leaf);
@@ -127,12 +128,17 @@ export function getTreemapData(
   return Array.from(rootByKey.values());
 }
 
-function getOrCreateNode(
-  map: Map<RowValue, TreemapNode>,
-  rawName: RowValue,
-  displayName: string,
-  withChildren: boolean,
-): { node: TreemapNode; wasCreated: boolean } {
+function getOrCreateNode({
+  map,
+  rawName,
+  displayName,
+  withChildren,
+}: {
+  map: Map<RowValue, TreemapNode>;
+  rawName: RowValue;
+  displayName: string;
+  withChildren: boolean;
+}): { node: TreemapNode; wasCreated: boolean } {
   const existing = map.get(rawName);
   if (existing != null) {
     return { node: existing, wasCreated: false };
