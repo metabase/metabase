@@ -60,16 +60,6 @@ export interface TreemapRow {
   originalName: string;
   color: string;
   defaultColor: boolean;
-  /**
-   * False when the user removed the group via the X in the settings list — the
-   * group is excluded from the chart (and from totals/percentages) until it is
-   * added back.
-   */
   enabled: boolean;
-  /**
-   * True when the key is no longer present in the data — the row is retained
-   * so customizations survive filter changes, but it is not shown in the
-   * settings UI and never rendered.
-   */
   hidden: boolean;
 }
