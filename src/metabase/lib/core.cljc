@@ -1385,6 +1385,7 @@
  [lib.convert
   ->legacy-MBQL
   ->mbql5
+  do-with-aggregation-list
   legacy-default-join-alias
   without-cleaning]
  [metabase.lib.convert.metadata-to-legacy

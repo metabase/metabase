@@ -13,27 +13,30 @@
 
 (set! *warn-on-reflection* true)
 
-;; Dynamic var to collect registry schema references during type generation.
-;; When bound to an atom, registry refs are recorded so we can generate type aliases.
-(def ^:dynamic *registry-refs* nil)
+(def ^:dynamic *registry-refs*
+  "Atom collecting registry schema references during type generation. When bound, refs are recorded so we can generate
+  type aliases."
+  nil)
 
-;; Dynamic var for shared types - when bound to a set, refs in this set will be
-;; prefixed with "Shared." to reference the shared module.
-(def ^:dynamic *shared-types* #{})
+(def ^:dynamic *shared-types*
+  "Set of registry schemas emitted in the shared module. References to these schemas are prefixed with `Shared.`."
+  #{})
 
-;; Dynamic var to track current namespace being processed (for debug warnings)
-(def ^:dynamic *current-ns* nil)
+(def ^:dynamic *current-ns*
+  "Current namespace being processed, used for diagnostics."
+  nil)
 
-;; Dynamic var to track current def name being processed (for debug warnings)
-(def ^:dynamic *current-def* nil)
+(def ^:dynamic *current-def*
+  "Current var being processed, used for diagnostics."
+  nil)
 
-;; Dynamic var to collect files with any/unknown types (for debug warnings)
-;; When bound to an atom, maps ns -> set of {:type :any|:unknown, :def string}
-(def ^:dynamic *weak-types* nil)
+(def ^:dynamic *weak-types*
+  "Atom collecting generated any/unknown occurrences for diagnostics. Maps namespace to entries with type and var name."
+  nil)
 
-;; Dynamic var to indicate we're generating types for function arguments.
-;; When true, :maybe generates "T | undefined | null" instead of "T | null".
-(def ^:dynamic *argument-context* false)
+(def ^:dynamic *argument-context*
+  "True when generating function argument types. In argument context, :maybe includes undefined."
+  false)
 
 (defn- debug-cljs?
   "Check if MB_DEBUG_CLJS environment variable is set."
@@ -113,7 +116,9 @@
 
 (declare schema->ts)
 
-(def ^:dynamic *key-transform* nil)
+(def ^:dynamic *key-transform*
+  "Optional map-key transform applied while generating JS-facing object types."
+  nil)
 
 (defn- camel-case-key
   "Convert a kebab/snake/camel-ish Clojure key name to camelCase for JS-facing object schemas.
@@ -176,7 +181,7 @@
               close-count (count (re-seq #"\}" line))
               ;; For closing braces, reduce depth before indenting
               indent-depth (if (str/starts-with? (str/trim line) "}")
-                             (max 0 (- depth 1))
+                             (max 0 (dec depth))
                              depth)
               indented-line (str (apply str (repeat indent-depth "  ")) line)
               new-depth (+ depth open-count (- close-count))]
@@ -603,17 +608,11 @@
                                             :schema       schema
                                             :type         (mc/type schema)})))))
 
-(comment
-  (println (fn->ts (meta #'metabase.models.visualization-settings/parse-db-column-ref)))
-
-  (schema->ts [:orn
-               [:string? string?]
-               [:vector? vector?]
-               [:keyword? keyword?]]))
-
 ;; Public API
 
-(def ^:dynamic *seen* #{})
+(def ^:dynamic *seen*
+  "Schemas currently being expanded, used to detect recursive inline expansion."
+  #{})
 
 (defn- schema->ts-impl
   "Core implementation of schema->ts (non-memoized)."
@@ -1181,13 +1180,6 @@
               (str "// Type aliases for registry schemas\n" type-aliases "\n\n" fn-defs)
               fn-defs))))))
 
-(comment
-  (requiring-resolve 'metabase.lib.binning/with-binning-option-type)
-  (ns-resolve (find-ns 'metabase.lib.binning) 'with-binning-option-type)
-  (print (fn->ts (meta #'metabase.lib.template-tags/arity)))
-
-  (fn->ts (meta #'metabase.lib.binning.util/resolve-options)))
-
 (defn- try-require-ns
   "Try to require a namespace on the Clojure side. Returns true if successful, false if the namespace
    doesn't exist (e.g., .cljs only files). Logs a debug message on failure."
@@ -1234,14 +1226,13 @@
   (let [ns-str (str ns-sym)
         path (-> ns-str
                  (str/replace "." "/")
-                 (str/replace "-" "_"))]
-    ;; Try to find the actual file extension
-    (let [base-path (str "src/" path)
-          candidates [(str base-path ".cljs")
-                      (str base-path ".cljc")
-                      (str base-path ".clj")]]
-      (or (first (filter #(.exists (java.io.File. ^String %)) candidates))
-          (str base-path ".cljs")))))
+                 (str/replace "-" "_"))
+        base-path (str "src/" path)
+        candidates [(str base-path ".cljs")
+                    (str base-path ".cljc")
+                    (str base-path ".clj")]]
+    (or (first (filter #(.exists (java.io.File. ^String %)) candidates))
+        (str base-path ".cljs"))))
 
 (defn- output-weak-type-warnings!
   "Output warnings for namespaces that have any/unknown types."
@@ -1264,6 +1255,7 @@
               (log/warn (str "    " def-name " [" types "]")))))))))
 
 (defn produce-dts
+  "Shadow-cljs build hook that writes generated TypeScript declaration files for schema-annotated CLJS vars."
   {:shadow.build/stage :flush}
   [state]
   (binding [*weak-types* (when (debug-cljs?) (atom {}))]

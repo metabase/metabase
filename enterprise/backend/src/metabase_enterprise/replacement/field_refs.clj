@@ -49,11 +49,12 @@
         viz-settings  (:visualization_settings card)
         viz-settings' (if valid-query?
                         (let [columns (lib/returned-columns query')]
-                          (lib/with-aggregation-list (lib/aggregations query')
-                            (some-> viz-settings
-                                    vs/db->norm
-                                    (replacement.walk/walk-viz-settings-refs #(ref->column-name % columns))
-                                    vs/norm->db)))
+                          (lib/do-with-aggregation-list (lib/aggregations query')
+                                                        #(some-> viz-settings
+                                                                 vs/db->norm
+                                                                 (replacement.walk/walk-viz-settings-refs (fn [ref]
+                                                                                                            (ref->column-name ref columns)))
+                                                                 vs/norm->db)))
                         viz-settings)
         parameters    (:parameters card)
         parameters'   (if (seq parameters)
