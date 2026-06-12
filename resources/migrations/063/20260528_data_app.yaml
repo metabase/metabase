@@ -20,7 +20,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: data_app
-            remarks: Stores Git-synced data-app bundles, one row per data-apps.yaml entry.
+            remarks: Stores Git-synced data-app bundles, one row per data_apps/<dir> app.
             columns:
               - column:
                   name: id
@@ -32,7 +32,7 @@ databaseChangeLog:
               - column:
                   name: name
                   type: varchar(254)
-                  remarks: Slug from data-apps.yaml; unique, used in the URL /data-app/:name
+                  remarks: Slug from the app's data_app.yml; unique, used in the URL /data-app/:name
                   constraints:
                     nullable: false
                     unique: true

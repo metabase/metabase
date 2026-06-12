@@ -2,14 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.remote-sync.settings]
    [metabase.data-apps.sync :as data-app.sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(comment metabase-enterprise.remote-sync.settings/keep-me)
 
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
@@ -187,10 +184,10 @@
            "DEMOBUNDLE")))))
 
 (deftest repo-status-endpoint-test
-  (testing "configured reflects the remote-sync connection"
-    (mt/with-temporary-setting-values [remote-sync-url nil]
+  (testing "configured reflects whether a repository is connected"
+    (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
       (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))
-    (mt/with-temporary-setting-values [remote-sync-url "https://example.com/repo.git"]
+    (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
       (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))))
 
 (deftest enable-disable-endpoint-test

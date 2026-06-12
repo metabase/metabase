@@ -121,7 +121,9 @@
    rather than aborting the others; per-app bundle failures are recorded on the
    row. Throws only on duplicate slugs, which make app identity ambiguous."
   [{:keys [read-file list-files sha]}]
-  (let [results (discover-app-configs list-files read-file)
+  ;; realize discovery once (it calls read-file/parse per config); `results` is
+  ;; then walked several times below
+  (let [results (vec (discover-app-configs list-files read-file))
         good    (filter :slug results)
         errors  (vec (keep :config-error results))
         slugs   (map :slug good)]

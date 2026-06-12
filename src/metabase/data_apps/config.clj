@@ -49,7 +49,7 @@
 
 (defn- parse-yaml [^bytes bytes ^String dir]
   (try
-    (with-open [r (io/reader (ByteArrayInputStream. bytes))]
+    (with-open [r (io/reader (ByteArrayInputStream. bytes) :encoding "UTF-8")]
       (yaml/parse-stream r))
     (catch Exception e
       (throw (ex-info (tru "Could not parse {0}/{1}: {2}" dir config-file-name (ex-message e))

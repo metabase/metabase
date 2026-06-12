@@ -27,15 +27,17 @@ const REMOTE_SYNC_SETTINGS_PATH = "/admin/settings/remote-sync";
 // Skipped automatically when the tab is unfocused.
 const STATUS_POLL_INTERVAL_MS = 10_000;
 
+const POLL_OPTS = {
+  pollingInterval: STATUS_POLL_INTERVAL_MS,
+  skipPollingIfUnfocused: true,
+} as const;
+
 export function ManageDataAppsPage() {
   const { data: status, isLoading: isStatusLoading } =
-    useGetDataAppRepoStatusQuery();
+    useGetDataAppRepoStatusQuery(undefined, POLL_OPTS);
   const { data: apps, isLoading: isAppsLoading } = useListDataAppsQuery(
     undefined,
-    {
-      pollingInterval: STATUS_POLL_INTERVAL_MS,
-      skipPollingIfUnfocused: true,
-    },
+    POLL_OPTS,
   );
 
   const isConfigured = status?.configured ?? false;

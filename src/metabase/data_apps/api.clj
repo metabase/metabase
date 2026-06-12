@@ -11,6 +11,7 @@
    because Metabase's server reserves `/app/*` for serving static assets (see
    `metabase.server.routes/static-files-handler`)."
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -41,6 +42,14 @@
 
 (defn- repo-status []
   {:configured (data-app.sync/repo-configured?)})
+
+(defn- if-none-match-hashes
+  "Parse an `If-None-Match` header into the set of bare hashes it lists, dropping
+   any `W/` weak prefix and surrounding quotes (handles a comma-separated list)."
+  [header]
+  (->> (some-> header (str/split #"\s*,\s*"))
+       (map #(-> % (str/replace-first #"^W/" "") (str/replace #"^\"|\"$" "")))
+       set))
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -111,16 +120,20 @@
   (try
     (api/check-superuser)
     (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
-          etag (some-> (:bundle_hash row) (#(str "\"" % "\"")))]
+          hash (:bundle_hash row)
+          etag (some->> hash (format "\"%s\""))]
       (cond
-        (and etag (= etag (get-in request [:headers "if-none-match"])))
-        (respond {:status 304, :headers (assoc bundle-response-headers "ETag" etag)})
+        (and hash (contains? (if-none-match-hashes (get-in request [:headers "if-none-match"])) hash))
+        ;; 304 carries only the cacheable headers (Cache-Control) + ETag — never
+        ;; Content-Type or a body, per RFC 9110 §15.4.5.
+        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
 
         :else
         (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
           (if (and bundle (pos? (alength bundle)))
             (respond {:status  200
-                      :headers (assoc bundle-response-headers "ETag" etag)
+                      :headers (cond-> bundle-response-headers
+                                 etag (assoc "ETag" etag))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404
                       :headers {"Content-Type" "application/json"}

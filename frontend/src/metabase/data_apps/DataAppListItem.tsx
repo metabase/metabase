@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useSetDataAppEnabledMutation } from "metabase/api";
@@ -17,11 +17,20 @@ export function DataAppListItem({ app }: Props) {
   const [setEnabled, { isLoading }] = useSetDataAppEnabledMutation();
   const [sendToast] = useToast();
 
+  // Optimistic local state so the toggle flips immediately instead of snapping
+  // back until the list refetch lands; re-synced whenever the server value changes.
+  const [enabled, setLocalEnabled] = useState(app.enabled);
+  useEffect(() => {
+    setLocalEnabled(app.enabled);
+  }, [app.enabled]);
+
   const handleToggle = useCallback(
-    async (enabled: boolean) => {
+    async (next: boolean) => {
+      setLocalEnabled(next);
       try {
-        await setEnabled({ name: app.name, enabled }).unwrap();
+        await setEnabled({ name: app.name, enabled: next }).unwrap();
       } catch {
+        setLocalEnabled(!next);
         sendToast({ message: t`Failed to update this app`, icon: "warning" });
       }
     },
@@ -35,7 +44,7 @@ export function DataAppListItem({ app }: Props) {
       <Group flex="0 0 auto" gap="md" wrap="nowrap">
         <Switch
           aria-label={t`Enable ${app.display_name}`}
-          checked={app.enabled}
+          checked={enabled}
           disabled={isLoading}
           onChange={(event) => handleToggle(event.currentTarget.checked)}
           size="sm"
@@ -45,7 +54,7 @@ export function DataAppListItem({ app }: Props) {
           to={`/data-app/${encodeURIComponent(app.name)}`}
           leftSection={<Icon name="external" />}
           variant="subtle"
-          disabled={!app.enabled}
+          disabled={!enabled}
         >
           {t`Open`}
         </Button>
