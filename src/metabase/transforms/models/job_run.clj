@@ -76,23 +76,23 @@
                       :is_active nil})))
 
 (defn heartbeat-runs!
-  "Bump `updated_at = now` on the given still-active job-run-ids."
+  "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
   [run-ids]
-  (rt/heartbeat-ids! :model/TransformJobRun [:is_active true] :updated_at run-ids))
+  (rt/heartbeat-ids! :model/TransformJobRun [:is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
-  "Time out active job runs whose `updated_at` is older than `stale-minutes` (their coordinator process is
-  presumed dead). Returns the rows that were timed out so callers can notify."
+  "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
+  process is presumed dead). Returns the rows that were timed out so callers can notify."
   [stale-minutes]
   (rt/reap-orphaned!
    {:model    :model/TransformJobRun
     :active   [:is_active true]
-    :stale    [:< :updated_at (rt/cutoff stale-minutes :minute)]
+    :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
     :terminal {:status :timeout :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
                :latency-metric :metabase-transforms/timeout-detection-latency-ms
                :tags           {:type "job"}
-               :latency-column :updated_at
+               :latency-column :last_heartbeat
                :timeout-ms     (rt/unit->ms stale-minutes :minute)}}))
 
 (defn running-run-for-job-id

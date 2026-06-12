@@ -296,10 +296,10 @@
                                                   :run_method :cron
                                                   :status     :started
                                                   :is_active  true})]
-          ;; push updated_at past the heartbeat-staleness threshold so the reaper fires
+          ;; push last_heartbeat past the heartbeat-staleness threshold so the reaper fires
           (t2/update! :model/TransformJobRun
                       :id (:id run)
-                      {:updated_at #t "2000-01-01T00:00:00Z"})
+                      {:last_heartbeat #t "2000-01-01T00:00:00Z"})
           (#'jobs/reap-orphaned-runs!)
           (is (=? {:status    :timeout
                    :is_active nil

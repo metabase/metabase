@@ -26,11 +26,11 @@
 (defn- recently-beaten? [run-id]
   (.isAfter (heartbeat run-id) (minutes-ago 1)))
 
-(defn- job-updated-at ^OffsetDateTime [run-id]
-  (t2/select-one-fn :updated_at :model/TransformJobRun :id run-id))
+(defn- job-heartbeat ^OffsetDateTime [run-id]
+  (t2/select-one-fn :last_heartbeat :model/TransformJobRun :id run-id))
 
 (defn- job-recently-beaten? [run-id]
-  (.isAfter (job-updated-at run-id) (minutes-ago 1)))
+  (.isAfter (job-heartbeat run-id) (minutes-ago 1)))
 
 (deftest heartbeat-runs!-test
   (mt/with-premium-features #{:transforms-basic}
@@ -64,8 +64,8 @@
       (testing "empty id list is a no-op"
         (is (nil? (transform-run/heartbeat-runs! [])))))))
 
-(deftest send-heartbeat!-beats-connections-test
-  (testing "send-heartbeat! beats exactly the runs registered in the cancel/heartbeat registry"
+(deftest heartbeat-and-reconcile-runs!-beats-connections-test
+  (testing "the per-node tick beats exactly the runs registered in the cancel/heartbeat registry"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {t1 :id}             {}
                      :model/Transform    {t2 :id}             {}
@@ -83,7 +83,7 @@
                                                                 :last_heartbeat (minutes-ago 10)}]
         (canceling/chan-start-run! registered-id (a/promise-chan))
         (try
-          (canceling/send-heartbeat!)
+          (canceling/heartbeat-and-reconcile-runs!)
           (is (recently-beaten? registered-id) "the registered (executing) run is heartbeated")
           (is (not (recently-beaten? unregistered-id)) "a run not being executed here is left to go stale")
           (finally
@@ -131,21 +131,21 @@
 (deftest job-heartbeat-runs!-test
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-temp [:model/TransformJob    {job-id :id}   {:name "hb-job" :schedule "0 0 * * * ? *"}
-                   :model/TransformJobRun {beat-id :id}  {:job_id     job-id
-                                                          :status     :started
-                                                          :is_active  true
-                                                          :run_method :manual
-                                                          :updated_at (minutes-ago 10)}
-                   :model/TransformJobRun {other-id :id} {:job_id     job-id
-                                                          :status     :started
-                                                          :is_active  true
-                                                          :run_method :manual
-                                                          :updated_at (minutes-ago 10)}
-                   :model/TransformJobRun {done-id :id}  {:job_id     job-id
-                                                          :status     :succeeded
-                                                          :is_active  nil
-                                                          :run_method :manual
-                                                          :updated_at (minutes-ago 10)}]
+                   :model/TransformJobRun {beat-id :id}  {:job_id         job-id
+                                                          :status         :started
+                                                          :is_active      true
+                                                          :run_method     :manual
+                                                          :last_heartbeat (minutes-ago 10)}
+                   :model/TransformJobRun {other-id :id} {:job_id         job-id
+                                                          :status         :started
+                                                          :is_active      true
+                                                          :run_method     :manual
+                                                          :last_heartbeat (minutes-ago 10)}
+                   :model/TransformJobRun {done-id :id}  {:job_id         job-id
+                                                          :status         :succeeded
+                                                          :is_active      nil
+                                                          :run_method     :manual
+                                                          :last_heartbeat (minutes-ago 10)}]
       (job-run/heartbeat-runs! [beat-id done-id])
       (testing "only the passed run that is still active gets a fresh heartbeat"
         (is (job-recently-beaten? beat-id))
@@ -159,16 +159,16 @@
   (mt/with-premium-features #{:transforms-basic}
     (mt/with-prometheus-system! [_ _system]
       (mt/with-temp [:model/TransformJob    {job-id :id}   {:name "hb-job" :schedule "0 0 * * * ? *"}
-                     :model/TransformJobRun {stale-id :id} {:job_id     job-id
-                                                            :status     :started
-                                                            :is_active  true
-                                                            :run_method :manual
-                                                            :updated_at (minutes-ago 10)}
-                     :model/TransformJobRun {fresh-id :id} {:job_id     job-id
-                                                            :status     :started
-                                                            :is_active  true
-                                                            :run_method :manual
-                                                            :updated_at (minutes-ago 1)}]
+                     :model/TransformJobRun {stale-id :id} {:job_id         job-id
+                                                            :status         :started
+                                                            :is_active      true
+                                                            :run_method     :manual
+                                                            :last_heartbeat (minutes-ago 10)}
+                     :model/TransformJobRun {fresh-id :id} {:job_id         job-id
+                                                            :status         :started
+                                                            :is_active      true
+                                                            :run_method     :manual
+                                                            :last_heartbeat (minutes-ago 1)}]
         (testing "reaps only the job run whose heartbeat is older than the threshold"
           (let [reaped (job-run/reap-orphaned-runs! 5)]
             (is (= [stale-id] (mapv :id reaped)))
