@@ -1121,3 +1121,11 @@ export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
     renderingContext,
   },
 };
+
+export const Bar45DegreeLabels = {
+  render: Template,
+  args: {
+    rawSeries: data.bar45DegreeLabels,
+    renderingContext,
+  },
+};
