@@ -65,11 +65,13 @@
 
 (def ^:private increment-view-count-interval-seconds 20)
 
+(def ^:private increment-view-count-queue-capacity 500)
+
 (defonce ^:private
   increase-view-count-queue
   (delay (grouper/start!
           #'increment-view-counts!*
-          :capacity 500
+          :capacity increment-view-count-queue-capacity
           :interval (* increment-view-count-interval-seconds 1000))))
 
 (defn increment-view-counts!
@@ -77,7 +79,7 @@
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
-(def ^:private record-view-interval-seconds 10)
+(def ^:private record-view-interval-seconds 20)
 
 (def ^:private record-view-queue-capacity 500)
 
@@ -139,6 +141,8 @@
 (derive :event/dashboard-queried ::dashboard-queried)
 
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
+
+(def ^:private update-dashboard-last-viewed-at-queue-capacity 500)
 
 (defn- update-dashboard-last-viewed-at!* [dashboard-id-timestamps]
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)

@@ -41,7 +41,7 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private save-execution-metadata-interval-seconds 10)
+(def ^:private save-execution-metadata-interval-seconds 20)
 
 (def ^:private save-execution-metadata-queue-capacity 500)
 

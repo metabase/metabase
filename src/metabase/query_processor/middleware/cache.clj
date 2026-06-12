@@ -50,7 +50,7 @@
   "How often, at most, to purge cache entries older than [[cache/query-caching-max-ttl]]. Purging on every save is
   wasteful: the max TTL is measured in days, and on instances with a high cache-miss rate the repeated DELETEs are
   expensive and contend with concurrent cache writes."
-  (* 60 60))
+  (* 5 60))
 
 (def ^:private purge-queue-capacity 1000)
 
