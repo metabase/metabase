@@ -91,9 +91,10 @@
 
 (defn- validate-region
   "Throw if region is not a known AWS region.
-  The region becomes a host label in the mantle URL, so anything outside the AWS SDK's
-  known region set is rejected before it can be spliced in. The [[llm/llm-bedrock-region]] setter rejects
-  bad values at write time, but env-var/direct sets bypass that setter — this is the second layer."
+
+  The region becomes a host label in the mantle URL, so anything outside the AWS SDK's known region set is rejected
+  before it can be spliced in. The [[llm/llm-bedrock-region]] setter rejects bad values at write time, but we also
+  want to validate caller-provided args."
   [region]
   (when-not (contains? llm/known-aws-regions region)
     (throw (invalid-region-ex region)))

@@ -14,8 +14,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private translated-chunk-type?
-  "Output item types we translate into AI SDK chunks. Other types (e.g. reasoning summaries) are ignored so we
-  don't emit garbage or blow up on an unmatched `case` clause."
+  "Output item types we translate into AI SDK chunks.
+  Other types (e.g. reasoning summaries) are ignored."
   #{:text :function_call})
 
 (defn openai->aisdk-chunks-xf
@@ -39,8 +39,8 @@
           model-name   (volatile! nil)
           payload      (volatile! {})
           close!       (fn [result]
-                         ;; only emit an end marker for chunk types we translate; reasoning (and any other
-                         ;; output item types) are ignored so we don't blow up on an unmatched `case` clause.
+                         ;; only emit an end marker for chunk types we translate; reasoning and other
+                         ;; output item types are ignored.
                          (u/prog1 (if-let [end-type (case @current-type
                                                       :text          :text-end
                                                       :function_call :tool-input-available
