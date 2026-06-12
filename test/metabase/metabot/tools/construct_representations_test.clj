@@ -953,3 +953,34 @@
           "the metric's base table (orders) is absent; the metric and field remain")
       (is (every? #(not= "table" (:type %)) (:input eu))
           "the metric's base table is not emitted as an authored `table`"))))
+
+(deftest query->entity-usage-metric-source-card-excluded-test
+  (testing "a metric's source card (model) is not an authored card; the metric itself remains"
+    (let [model-id     200
+          model-query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp-model     (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider model-id model-query {:type :model})
+          metric-id    100
+          metric-query (-> (lib/query mp-model (lib.metadata/card mp-model model-id))
+                           (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          mp*          (lib.tu/metadata-provider-with-card-from-query mp-model metric-id metric-query {:type :metric})
+          query        (-> (lib/query mp* (lib.metadata/card mp* model-id))
+                           (lib/aggregate (lib.metadata/metric mp* metric-id)))
+          eu           (construct/query->entity-usage query)]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id metric-id}
+                       {:type "metric"   :id metric-id}]
+              :output []}
+             eu)
+          "the metric's source model is absent; the metric remains under both `card` and `metric` types")))
+  (testing "a non-metric query on the same model still records the source card"
+    (let [model-id    200
+          model-query (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          mp*         (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider model-id model-query {:type :model})
+          query       (-> (lib/query mp* (lib.metadata/card mp* model-id))
+                          (lib/aggregate (lib/count)))
+          eu          (construct/query->entity-usage query)]
+      (is (= {:input  [{:type "database" :id (meta/id)}
+                       {:type "card"     :id model-id}]
+              :output []}
+             eu)))))

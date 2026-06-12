@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -137,12 +138,6 @@
   [result format-fn]
   (m/assoc-some result :output (some-> result :structured-output format-fn)))
 
-(defn- entity-usage-on-result
-  "Attach an `:entity-usage` map under `:structured-output`, preserving any
-  structured-output already present."
-  [result entity-usage]
-  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
-
 (defn- list-available-fields-input
   "Build `:input` for `list_available_fields` from the tool args. One entry per
   id in each list, typed by source list."
@@ -204,7 +199,7 @@
                                                       :with-segments?     true})
                 format-answer-sources-output)
         output (answer-sources-output-refs (:structured-output result))]
-    (entity-usage-on-result result {:input [] :output output})))
+    (entity-usage/entity-usage-on-result result {:input [] :output output})))
 
 (def ^:private list-available-fields-schema
   [:map {:closed true}
@@ -224,9 +219,9 @@
                                    :model-ids  model_ids
                                    :metric-ids metric_ids})
                     format-metadata-output)]
-    (entity-usage-on-result result
-                            {:input  base-input
-                             :output (list-available-fields-output result)})))
+    (entity-usage/entity-usage-on-result result
+                                         {:input  base-input
+                                          :output (list-available-fields-output result)})))
 
 (def ^:private get-field-values-schema
   [:map {:closed true}
@@ -247,7 +242,7 @@
                                {:type "field"     :id field_id}]
                       :output []}]
     (try
-      (entity-usage-on-result
+      (entity-usage/entity-usage-on-result
        (add-output
         (field-stats-tools/field-values {:entity-type data_source
                                          :entity-id   source_id
@@ -257,7 +252,7 @@
        entity-usage)
       (catch Exception e
         (log/error e "Failed to fetch field values")
-        (entity-usage-on-result
+        (entity-usage/entity-usage-on-result
          (if (:agent-error? (ex-data e))
            {:output (ex-message e)}
            {:output (str "Failed to fetch field values: " (or (ex-message e) "Unknown error"))})

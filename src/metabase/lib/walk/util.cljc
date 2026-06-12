@@ -59,6 +59,17 @@
   (stage-values-set query (comp (remove stage-aggregates-metric?)
                                 (keep :source-table))))
 
+(mu/defn all-non-metric-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "The `:source-card` analog of [[all-non-metric-source-table-ids]]: every stage's `:source-card`,
+  omitting stages that aggregate a metric. A metric may be defined over a card/model rather than
+  a table ([[metabase.lib.metric/available-metrics]] resolves by `:source-table` or
+  `:source-card`), in which case the consuming stage's `:source-card` is fixed by the metric
+  rather than chosen on its own. Unlike [[all-source-card-ids]], this does not include metric
+  ids or template-tag card ids — only stage `:source-card` values."
+  [query :- ::lib.schema/query]
+  (stage-values-set query (comp (remove stage-aggregates-metric?)
+                                (keep :source-card))))
+
 (mu/defn all-template-tags-map :- [:maybe ::lib.schema.template-tag/template-tag-map]
   "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]

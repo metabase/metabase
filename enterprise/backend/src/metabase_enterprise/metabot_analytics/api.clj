@@ -131,35 +131,6 @@
   "Route-param schema for endpoints addressing a single conversation by id."
   [:map [:id ms/UUIDString]])
 
-(def ^:private MessageQuality
-  "Per-message quality columns. `:data` is present only when the request
-   sets `include_data=true`. The JSON columns (`:quality_attribution`,
-   `:data`) are returned pre-parsed by the model transforms."
-  [:map
-   [:id                  ms/PositiveInt]
-   [:external_id         [:maybe :string]]
-   [:role                :keyword]
-   [:created_at          ms/TemporalInstant]
-   [:finished            [:maybe :boolean]]
-   [:error               [:maybe :string]]
-   [:quality_attribution [:maybe :map]]
-   [:data                {:optional true} :any]])
-
-(def ^:private ConversationQuality
-  "Response schema for the conversation-quality-score diagnostic endpoint."
-  [:map
-   [:conversation_id   ms/UUIDString]
-   [:user_id           [:maybe ms/PositiveInt]]
-   [:created_at        ms/TemporalInstant]
-   [:quality_score     [:maybe number?]]
-   [:quality_breakdown [:maybe :map]]
-   [:messages          [:sequential MessageQuality]]])
-
-(def ^:private QualityQueryParams
-  "Query-param schema for `GET /conversations/:id/quality`."
-  [:map
-   [:include_data {:optional true} [:maybe ms/BooleanValue]]])
-
 ;;; -------------------------------------------------- Endpoints --------------------------------------------------
 
 (api.macros/defendpoint :get "/conversations" :- ListConversationsResponse
@@ -182,20 +153,6 @@
   [{:keys [id]} :- ConversationIdParams]
   (api/check-superuser)
   (analytics.conversations/fetch-conversation-detail id))
-
-(api.macros/defendpoint :get "/conversations/:id/quality" :- ConversationQuality
-  "Return the raw conversation-quality-score columns for a conversation: its
-  `quality_score`/`quality_breakdown` and each non-deleted message's
-  `quality_attribution`, oldest-first. Pass `include_data=true` to also
-  return each message's raw `data` part stream.
-
-  Temporary diagnostic surface for the conversation-quality-score work
-  (BOT-1515); mirrors the `dump_quality_score.py` pretty-printer attached to
-  PR #74920 for instances without direct appdb access."
-  [{:keys [id]} :- ConversationIdParams
-   {:keys [include_data]} :- QualityQueryParams]
-  (api/check-superuser)
-  (analytics.conversations/fetch-conversation-quality id {:include-data? (boolean include_data)}))
 
 ;;; -------------------------------------------------- Routes --------------------------------------------------
 

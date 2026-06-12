@@ -2,6 +2,7 @@
   "Enterprise implementations of Python transform tools."
   (:require
    [metabase-enterprise.metabot.tools.transforms.write :as transforms-write-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.transforms :as tools.transforms]
    [metabase.metabot.util :as metabot.u]
@@ -32,14 +33,14 @@
   ;; `handle-agent-error` re-raises from `get-transform-python-library-details`.
   (let [entity-usage (tools.transforms/transform-inspection-entity-usage path)]
     (try
-      (tools.transforms/entity-usage-on-result
+      (entity-usage/entity-usage-on-result
        (tools.transforms/add-output
         (transforms-write-tools/get-transform-python-library-details {:path path})
         format-python-library-output)
        entity-usage)
       (catch Exception e
         (log/error e "Failed to get transform Python library details")
-        (tools.transforms/entity-usage-on-result
+        (entity-usage/entity-usage-on-result
          (if (:agent-error? (ex-data e))
            {:output (ex-message e)}
            {:output (str "Failed to get transform Python library details: "
@@ -84,17 +85,17 @@
             eu           (tools.transforms/entity-usage-for-transform
                           {:database_id final-db :source_tables final-tables}
                           nil)]
-        (-> (tools.transforms/entity-usage-on-result raw-result eu)
-            (tools.transforms/stamp-artifact-valid true)))
+        (-> (entity-usage/entity-usage-on-result raw-result eu)
+            (entity-usage/stamp-artifact-valid true)))
       (catch Exception e
         (if (:agent-error? (ex-data e))
           ;; Expected agent-facing signal — relay `(ex-message e)` and stamp invalid so the
           ;; failed authoring attempt feeds `artifact-validity-share`, not the `:error` channel.
-          (-> (tools.transforms/entity-usage-on-result {:output (ex-message e)} base-eu)
-              (tools.transforms/stamp-artifact-valid false))
+          (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} base-eu)
+              (entity-usage/stamp-artifact-valid false))
           (do
             (log/error e "Failed to write Python transform")
-            (-> (tools.transforms/entity-usage-on-result
+            (-> (entity-usage/entity-usage-on-result
                  {:output (str "Failed to write Python transform: " (or (ex-message e) "Unknown error"))}
                  base-eu)
-                (tools.transforms/stamp-artifact-valid false))))))))
+                (entity-usage/stamp-artifact-valid false))))))))

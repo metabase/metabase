@@ -58,6 +58,23 @@
    [:input  [:sequential entity-usage-entry-schema]]
    [:output [:sequential entity-usage-entry-schema]]])
 
+(defn entity-usage-on-result
+  "Attach an `:entity-usage` map under `:structured-output` on a tool result,
+  preserving any structured-output already present."
+  [result entity-usage]
+  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
+
+(defn stamp-artifact-valid
+  "Stamp the authoring-outcome flag onto an authoring tool result's
+  `:structured-output`. `valid?` is `true` when the tool produced a valid
+  artifact (a resolvable/executable query, transform, or chart) and `false`
+  on any non-success branch — validation failure, agent-input rejection, a
+  genuine exception, or a degraded result with no artifact. Read back by the
+  quality pipeline's `artifact-validity-share` metric. Survives the
+  persistence trim via `persisted-structured-output-keys`."
+  [result valid?]
+  (assoc-in result [:structured-output :artifact-valid] valid?))
+
 (def tool-types
   "Closed enum for the `:tool-type` metadata key required on every
   registered tool.

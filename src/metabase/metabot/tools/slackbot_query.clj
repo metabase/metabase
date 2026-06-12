@@ -10,6 +10,7 @@
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -50,7 +51,7 @@
                                        :link  metabase-link}
                                 title   (assoc :title title)
                                 display (assoc :display display))]
-          (construct/stamp-artifact-valid
+          (entity-usage/stamp-artifact-valid
            {:structured-output structured
             :instructions (str "Query created. The visualization will be posted as a separate "
                                "follow-up message in the thread with the query results. "
@@ -58,14 +59,14 @@
                                "appeared yet when the user sees your text.")
             :data-parts [(streaming/adhoc-viz-part adhoc-viz-value)]}
            true))
-        (-> (construct/entity-usage-on-result query-result
-                                              (get structured :entity-usage construct/empty-entity-usage))
-            (construct/stamp-artifact-valid false))))
+        (-> (entity-usage/entity-usage-on-result query-result
+                                                 (get structured :entity-usage construct/empty-entity-usage))
+            (entity-usage/stamp-artifact-valid false))))
     (catch Exception e
       (log/error e "Failed to construct slackbot notebook query")
-      (-> (construct/entity-usage-on-result
+      (-> (entity-usage/entity-usage-on-result
            (if (:agent-error? (ex-data e))
              {:output (ex-message e)}
              {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})
            construct/empty-entity-usage)
-          (construct/stamp-artifact-valid false)))))
+          (entity-usage/stamp-artifact-valid false)))))

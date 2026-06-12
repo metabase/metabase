@@ -5,6 +5,7 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.pulse.api :as pulse.api]
@@ -107,7 +108,7 @@ If any required information is missing, ask the user for it rather than assuming
                                        [:schedule tools.create-alert/schedule-schema]]]
   (let [entity-usage     {:input  [{:type "dashboard" :id dashboard_id}]
                           :output []}
-        attach-eu        (fn [r] (update r :structured-output (fnil assoc {}) :entity-usage entity-usage))
+        attach-eu        #(entity-usage/entity-usage-on-result % entity-usage)
         slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"

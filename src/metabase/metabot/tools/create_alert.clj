@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.notification.api :as notification.api]
@@ -149,7 +150,7 @@ NEVER tell the user you have created an alert without actually calling the creat
   ;; `card` type — consumers join to `report_card.type` to resolve subtype.
   (let [entity-usage     {:input  [{:type "card" :id card_id}]
                           :output []}
-        attach-eu        (fn [r] (update r :structured-output (fnil assoc {}) :entity-usage entity-usage))
+        attach-eu        #(entity-usage/entity-usage-on-result % entity-usage)
         slack-channel-id (:slack_channel_id (shared/current-context))]
     (when-not slack-channel-id
       (throw (ex-info "This tool can only be used from a Slack channel"

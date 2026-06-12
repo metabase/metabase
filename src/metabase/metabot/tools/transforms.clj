@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.dependencies :as deps]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.transforms.write :as transforms-write-tools]
@@ -93,20 +94,6 @@
      {:input  (into [] (concat db-entries table-entries card-entries extra-table-refs))
       :output []})))
 
-(defn entity-usage-on-result
-  "Attach an `:entity-usage` map under `:structured-output`, preserving any
-  structured-output already present."
-  [result entity-usage]
-  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
-
-(defn stamp-artifact-valid
-  "Stamp the authoring-outcome flag onto a transform-authoring tool result's
-  `:structured-output`. `valid?` is `true` on success and `false` on
-  agent-input rejection or a genuine exception. Read by the quality pipeline's
-  `artifact-validity-share` metric. Shared with the EE Python transform tool."
-  [result valid?]
-  (assoc-in result [:structured-output :artifact-valid] valid?))
-
 (defn transform-inspection-entity-usage
   "Build the `:entity-usage` map for a transform-inspection tool call.
   Input is a single `{:type \"transform\" :id transform-id}` entry. Output is
@@ -171,7 +158,7 @@
   ;; `entity-usage-on-result`).
   (let [entity-usage (transform-inspection-entity-usage transform_id)]
     (try
-      (entity-usage-on-result
+      (entity-usage/entity-usage-on-result
        (try
          (add-output {:structured_output (transforms/get-transform transform_id)}
                      format-transform-details-output)
@@ -180,7 +167,7 @@
        entity-usage)
       (catch Exception e
         (log/error e "Failed to get transform details")
-        (entity-usage-on-result
+        (entity-usage/entity-usage-on-result
          (if (:agent-error? (ex-data e))
            {:output (ex-message e)}
            {:output (str "Failed to get transform details: " (or (ex-message e) "Unknown error"))})
@@ -198,7 +185,7 @@
   "Get Python library details. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
   [{:keys [path]}]
-  (entity-usage-on-result
+  (entity-usage/entity-usage-on-result
    {:output "Python transform tools are only available in Metabase Enterprise Edition."}
    (transform-inspection-entity-usage path)))
 
@@ -284,23 +271,23 @@
             eu          (entity-usage-for-transform
                          {:database_id final-db} final-sql
                          (metabot.tools.sql.common/native-physical-table-refs final-db final-sql))
-            with-eu     (entity-usage-on-result raw-result eu)
+            with-eu     (entity-usage/entity-usage-on-result raw-result eu)
             dep-issues  (check-dependencies transform_id (:source transform))]
-        (stamp-artifact-valid
+        (entity-usage/stamp-artifact-valid
          (cond-> with-eu
            dep-issues (update :instructions str (format-dependency-warnings dep-issues)))
          true))
       (catch Exception e
         (if (:agent-error? (ex-data e))
           ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
-          (-> (entity-usage-on-result {:output (ex-message e)} base-eu)
-              (stamp-artifact-valid false))
+          (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} base-eu)
+              (entity-usage/stamp-artifact-valid false))
           (do
             (log/error e "Failed to write SQL transform")
-            (-> (entity-usage-on-result
+            (-> (entity-usage/entity-usage-on-result
                  {:output (str "Failed to write SQL transform: " (or (ex-message e) "Unknown error"))}
                  base-eu)
-                (stamp-artifact-valid false))))))))
+                (entity-usage/stamp-artifact-valid false))))))))
 
 (def write-transform-python-schema
   "Schema for write-transform-python-tool"
@@ -379,6 +366,6 @@
   "Write Python transforms. EE-only; returns an error in OSS."
   metabase-enterprise.metabot.tools.transforms
   [{:as args}]
-  (entity-usage-on-result
+  (entity-usage/entity-usage-on-result
    {:output "Python transform tools are only available in Metabase Enterprise Edition."}
    (entity-usage-for-transform args nil)))

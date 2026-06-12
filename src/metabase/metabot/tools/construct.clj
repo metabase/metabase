@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.entity-usage :as entity-usage]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -215,41 +216,29 @@
   pmbql-query — see [[query->entity-usage]]."
   {:input [] :output []})
 
-(defn entity-usage-on-result
-  "Attach an `:entity-usage` map under `:structured-output` on a tool result, preserving any
-  structured-output already present."
-  [result entity-usage]
-  (update result :structured-output (fnil assoc {}) :entity-usage entity-usage))
-
-(defn stamp-artifact-valid
-  "Stamp the authoring-outcome flag onto an authoring tool result's
-  `:structured-output`. `valid?` is `true` when the tool produced a valid
-  artifact (a resolvable/executable query, transform, or chart) and `false`
-  on any non-success branch — agent-input rejection, a genuine exception, or
-  a degraded result with no artifact. Read back by the quality pipeline's
-  `artifact-validity-share` metric. Survives the persistence trim via
-  `persisted-structured-output-keys`."
-  [result valid?]
-  (assoc-in result [:structured-output :artifact-valid] valid?))
-
 (defn query->entity-usage
   "Produce an `:entity-usage` map from a resolved pMBQL query.
 
-  Tables are the ones the author named directly: non-metric `:source-table`s and table template
-  tags. A table reached only because the author referenced something else — a field's
-  implicit-join target, the table backing a template-tag field, or the base table a metric is
-  defined over — is deliberately excluded, since the author referenced the field or metric, not
-  the table. Card / metric references come from [[lib/all-referenced-entity-ids]], `:field` refs
-  from [[lib/all-field-ids]], and the query's own `:database` id is prepended. Card subtypes
-  (model / question / metric) are NOT resolved — `\"card\"` is used as the catch-all type,
-  matching how the SQL tools emit `{{#N}}` template-tag refs. `:measure`, `:segment`, and
-  `:snippet` references are dropped because they are not present in the entity-usage vocabulary
-  (see [[metabase.metabot.tools.entity-usage/entity-types]]).
+  Tables and cards are the ones the author named directly: non-metric `:source-table`s /
+  `:source-card`s, table template tags, and `{{#N}}` card template tags. An entity reached only
+  because the author referenced something else — a field's implicit-join target, the table
+  backing a template-tag field, or the table/card a metric is defined over (a metric-bearing
+  stage's source is fixed by the metric, see [[lib/all-non-metric-source-table-ids]]) — is
+  deliberately excluded, since the author referenced the field or metric, not its source.
+  Metric ids are also included under the `card` type (metrics share `report_card`'s id space),
+  `:field` refs come from [[lib/all-field-ids]], and the query's own `:database` id is
+  prepended. Card subtypes (model / question / metric) are NOT resolved — `\"card\"` is used as
+  the catch-all type, matching how the SQL tools emit `{{#N}}` template-tag refs. `:measure`,
+  `:segment`, and `:snippet` references are dropped because they are not present in the
+  entity-usage vocabulary (see [[metabase.metabot.tools.entity-usage/entity-types]]).
 
   Authoring construct-family tools have no `:output` entities, so the output vector is
   always empty."
   [pmbql-query]
-  (let [{:keys [card metric]} (lib/all-referenced-entity-ids [pmbql-query])
+  (let [{:keys [metric]} (lib/all-referenced-entity-ids [pmbql-query])
+        card      (into #{} cat [(lib/all-non-metric-source-card-ids pmbql-query)
+                                 (keep :card-id (lib/all-template-tags pmbql-query))
+                                 metric])
         table-ids (into #{} cat [(lib/all-non-metric-source-table-ids pmbql-query)
                                  (lib/all-template-tag-table-ids pmbql-query)])
         field-ids (lib/all-field-ids pmbql-query)
@@ -445,7 +434,7 @@
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          (stamp-artifact-valid
+          (entity-usage/stamp-artifact-valid
            {:output (str "<result>\n" chart-xml "\n</result>\n"
                          "<instructions>\n" instruction-text "\n</instructions>")
             :data-parts        (when navigate-url
@@ -457,24 +446,24 @@
         (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
           (let [query-xml        (llm-shape/query->xml (structured->query-data s))
                 instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (-> (entity-usage-on-result
+            (-> (entity-usage/entity-usage-on-result
                  (assoc query-result
                         :output (str "<result>\n" query-xml "\n</result>\n"
                                      "<instructions>\n" instruction-text "\n</instructions>"))
                  (get s :entity-usage empty-entity-usage))
-                (stamp-artifact-valid true)))
-          (-> (entity-usage-on-result query-result empty-entity-usage)
-              (stamp-artifact-valid false)))))
+                (entity-usage/stamp-artifact-valid true)))
+          (-> (entity-usage/entity-usage-on-result query-result empty-entity-usage)
+              (entity-usage/stamp-artifact-valid false)))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
         ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
-        (-> (entity-usage-on-result {:output (ex-message e)} empty-entity-usage)
-            (stamp-artifact-valid false))
+        (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} empty-entity-usage)
+            (entity-usage/stamp-artifact-valid false))
         ;; Genuine unexpected failure — keep full stacktrace. Still an authoring miss (no valid
         ;; artifact produced), so stamp invalid.
         (do
           (log/error e "Failed to construct notebook query")
-          (-> (entity-usage-on-result
+          (-> (entity-usage/entity-usage-on-result
                {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}
                empty-entity-usage)
-              (stamp-artifact-valid false)))))))
+              (entity-usage/stamp-artifact-valid false)))))))
