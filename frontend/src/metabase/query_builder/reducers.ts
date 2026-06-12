@@ -710,7 +710,10 @@ export const card = createReducer<Card | null>(null, (builder) => {
         result_metadata: action.payload.card.result_metadata,
         visualization_settings: action.payload.card.visualization_settings,
       };
-    })
+    });
+  // Matchers chained separately — a single fluent chain with the RTK Query
+  // endpoint matchers exceeds TS's type-instantiation depth (TS2589).
+  builder
     .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
       if (!state) {
         return state;

@@ -1,3 +1,4 @@
+import { useMergedRef } from "@mantine/hooks";
 import {
   Node,
   findParentNodeClosestToPos,
@@ -33,6 +34,10 @@ import {
 import { useCardData } from "metabase/documents/hooks/use-card-data";
 import { useCommentUrl } from "metabase/documents/hooks/use-comment-url";
 import { useExternalCardDataLoader } from "metabase/documents/hooks/use-external-card-data";
+import {
+  useNodeInViewport,
+  useReportPrefetchLoading,
+} from "metabase/documents/hooks/use-node-in-viewport";
 import { useUnresolvedCommentsCount } from "metabase/documents/hooks/use-unresolved-comments-count";
 import {
   getChildTargetId,
@@ -233,12 +238,18 @@ export const CardEmbedComponent = memo(
     const staticSort = isStaticCardSort(node.attrs.sort)
       ? node.attrs.sort
       : undefined;
-
+    const {
+      ref: viewportRef,
+      isInViewport,
+      shouldLoadData,
+    } = useNodeInViewport(_id);
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const externalCardData = useExternalCardData();
-    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id);
+    const unresolvedCommentsCount = useUnresolvedCommentsCount(_id, {
+      skip: !isInViewport,
+    });
     const documentHost = useSelector(getDocumentHost);
 
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
@@ -264,16 +275,21 @@ export const CardEmbedComponent = memo(
     const isExternalDocument = externalCardData != null;
     const regularCardData = useCardData({
       id,
-      ...(isStatic && storedResultId != null
+      skip: !shouldLoadData,
+      ...(storedResultId != null
         ? { storedResultId, storedResultSort: staticSort }
         : {}),
     });
-    const externalCardDataResult = useExternalCardDataLoader(id);
+    const externalCardDataResult = useExternalCardDataLoader(id, {
+      skip: !shouldLoadData,
+    });
 
     const { card, dataset, isLoading, series, error } = useMemo(
       () => (isExternalDocument ? externalCardDataResult : regularCardData),
       [isExternalDocument, externalCardDataResult, regularCardData],
     );
+
+    useReportPrefetchLoading(_id, isLoading);
 
     const metadata = useSelector(getMetadata);
     const datasetError = dataset && getDatasetError(dataset);
@@ -283,6 +299,8 @@ export const CardEmbedComponent = memo(
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
     const [menuView, setMenuView] = useState<string | null>(null);
+
+    const setRef = useMergedRef<HTMLDivElement>(viewportRef, cardEmbedRef);
 
     const shouldAllowAddingSupportingText = () => {
       const pos = getPos();
@@ -592,7 +610,7 @@ export const CardEmbedComponent = memo(
             </>
           )}
           <Box
-            ref={cardEmbedRef}
+            ref={setRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -738,7 +756,7 @@ export const CardEmbedComponent = memo(
                 </Flex>
               </Box>
             )}
-            {series ? (
+            {series && isInViewport ? (
               <>
                 <Box className={styles.questionResults}>
                   <ExplicitSizeRefreshModeContext.Provider value="layout">

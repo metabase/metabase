@@ -75,7 +75,8 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     categories,
     activeDimensionBreakout,
   );
-  const showAllFields = mode === "all" || searchText.trim() !== "";
+  const isSearching = searchText.trim() !== "";
+  const showAllFields = mode === "all" || isSearching;
   const hasAllFields = sections.length > 0;
   const showSeeAll = !showAllFields && hasAllFields;
   let defaultEmptyStateText = t`No dimensions found`;
@@ -302,6 +303,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
             metricSourceDataById={sourceDataById}
             sourceColors={sourceColors}
             metricSlots={metricSlots}
+            expandAllMetricGroups={isSearching}
             onSelect={handleAllFieldsSelect}
           />
         )}

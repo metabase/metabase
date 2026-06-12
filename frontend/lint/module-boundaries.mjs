@@ -106,6 +106,7 @@ const elements = [
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
   createElement({ type: "shared", name: "questions" }),
+  createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
@@ -114,7 +115,6 @@ const elements = [
     mode: "full",
     enforceOutgoing: false,
   }),
-  createElement({ type: "shared", name: "search" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
@@ -141,6 +141,7 @@ const elements = [
   createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "query_builder" }),
   createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "search" }),
 
   // app
   ...[

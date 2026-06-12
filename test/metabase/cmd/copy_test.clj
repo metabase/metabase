@@ -59,6 +59,11 @@
     :model/SearchIndexMetadata
     :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentCompositeDaily
+    :model/SourceSegmentDaily
     :model/StoredResult
     :model/StoredResultUse
     :model/SupportAccessGrantLog

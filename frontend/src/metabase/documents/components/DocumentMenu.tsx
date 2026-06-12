@@ -3,10 +3,12 @@ import { Link } from "react-router";
 import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import CS from "metabase/css/core/index.css";
+import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { ActionIcon, Box, Button, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, Loader, Menu } from "metabase/ui";
 import type { Document } from "metabase-types/api";
 
 import { trackDocumentPrint } from "../analytics";
@@ -44,14 +46,42 @@ export const DocumentMenu = ({
 
   const hasPublicLink = !!document?.public_uuid;
 
-  const handlePrint = useCallback(() => {
+  const { prepareForPrint } = usePrintContext();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPreparingForPrint, setIsPreparingForPrint] = useState(false);
+
+  const handlePrint = useCallback(async () => {
+    setIsPreparingForPrint(true);
+    try {
+      await prepareForPrint();
+    } finally {
+      setIsPreparingForPrint(false);
+    }
+    setIsMenuOpen(false);
+    await waitUntilNextFramePainted();
     window.print();
     trackDocumentPrint(document);
-  }, [document]);
+  }, [document, prepareForPrint]);
+
+  const handleMenuChange = useCallback(
+    (opened: boolean) => {
+      if (!opened && isPreparingForPrint) {
+        return;
+      }
+
+      setIsMenuOpen(opened);
+    },
+    [isPreparingForPrint],
+  );
 
   return (
     <Box>
-      <Menu position="bottom-end">
+      <Menu
+        position="bottom-end"
+        opened={isMenuOpen}
+        onChange={handleMenuChange}
+      >
         <Menu.Target>
           <ActionIcon
             variant="subtle"
@@ -65,7 +95,15 @@ export const DocumentMenu = ({
         <Menu.Dropdown>
           {!disablePrint && (
             <Menu.Item
-              leftSection={<Icon name="document" />}
+              leftSection={
+                isPreparingForPrint ? (
+                  <Loader size="xs" />
+                ) : (
+                  <Icon name="document" />
+                )
+              }
+              closeMenuOnClick={false}
+              disabled={isPreparingForPrint}
               onClick={handlePrint}
             >
               {t`Print Document`}

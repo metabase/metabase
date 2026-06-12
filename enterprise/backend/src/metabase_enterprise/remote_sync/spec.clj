@@ -1163,3 +1163,18 @@
                                                   :skip-archived true})))
                 cat
                 (u/group-by first second (keys targets))))))
+
+(defn extract-entities-for-rows
+  "Serializes the entities named by `rows`, grouped by model type. Each row is a map with a
+   `:model_type` (the serdes model name) and a `:model_id` (the local DB primary key). Returns a lazy
+   sequence of serialized entities."
+  [rows]
+  (let [by-model (reduce (fn [m {:keys [model_type model_id]}]
+                           (update m model_type (fnil conj #{}) model_id))
+                         {}
+                         rows)]
+    (eduction (map (fn [[model ids]]
+                     (serdes/extract-all model {:where [:in :id ids]
+                                                :skip-archived true})))
+              cat
+              by-model)))

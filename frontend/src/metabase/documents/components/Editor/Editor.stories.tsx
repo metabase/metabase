@@ -6,6 +6,10 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
+import {
+  ForceDocumentCardRenderDecorator,
+  createWaitForChartsDecorator,
+} from "__support__/storybook";
 import { Api } from "metabase/api";
 import { commonReducers } from "metabase/reducers-common";
 import { MetabaseReduxProvider } from "metabase/redux";
@@ -130,4 +134,9 @@ export const CardEmbed = {
   args: {
     initialContent: Data.cardEmbed,
   },
+  // Render the cards eagerly, then hold the snapshot until both charts paint.
+  decorators: [
+    ForceDocumentCardRenderDecorator,
+    createWaitForChartsDecorator({ count: 2 }),
+  ],
 };
