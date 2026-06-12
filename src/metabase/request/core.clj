@@ -55,6 +55,7 @@
   api-call?
   auth-call?
   cacheable?
+  data-app?
   device-info
   embed?
   embedded?
