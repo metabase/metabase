@@ -24,7 +24,11 @@ export const Default = {
   render: Template,
 
   args: {
-    value: color("brand"),
-    colors: [color("brand"), color("summarize"), color("filter")],
+    value: color("core-brand"),
+    colors: [
+      color("core-brand"),
+      color("core-summarize"),
+      color("core-filter"),
+    ],
   },
 };

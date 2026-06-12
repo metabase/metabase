@@ -35,7 +35,7 @@ export function ChartLayoutPicker({
         >
           <Icon
             name="chart_layout_default"
-            c={!isStacked ? "brand" : "text-primary"}
+            c={!isStacked ? "core-brand" : "text-primary"}
           />
         </ActionIcon>
       </Tooltip>
@@ -54,7 +54,7 @@ export function ChartLayoutPicker({
         >
           <Icon
             name="chart_layout_stack"
-            c={isStacked ? "brand" : "text-primary"}
+            c={isStacked ? "core-brand" : "text-primary"}
           />
         </ActionIcon>
       </Tooltip>

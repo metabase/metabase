@@ -133,7 +133,7 @@ export function EditorPanel({
             <Flex mt="md" h="26" align="center" justify="space-between">
               <UnstyledButton onClick={() => setMoreColorsOpen((v) => !v)}>
                 <Flex align="center" gap="xs">
-                  <Text c="brand" fz="sm" fw={600}>
+                  <Text c="core-brand" fz="sm" fw={600}>
                     {moreColorsOpen
                       ? t`Show fewer colors`
                       : t`Show more colors`}
@@ -141,7 +141,7 @@ export function EditorPanel({
                   <Icon
                     name={moreColorsOpen ? "chevronup" : "chevronright"}
                     size={12}
-                    c="brand"
+                    c="core-brand"
                   />
                 </Flex>
               </UnstyledButton>

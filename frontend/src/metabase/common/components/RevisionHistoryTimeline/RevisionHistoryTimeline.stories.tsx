@@ -69,7 +69,7 @@ const cardRevisionLatest = createMockRevision({
 const cardModerationVerified: RevisionOrModerationEvent = {
   title: "Alice Smith verified this.",
   timestamp: "2026-03-15T08:00:00.000Z",
-  icon: { name: "verified", color: "brand" },
+  icon: { name: "verified", color: "core-brand" },
 };
 
 const cardModerationRemoved: RevisionOrModerationEvent = {
@@ -176,7 +176,7 @@ const dashboardRevisionLatest = createMockRevision({
 const dashboardModerationVerified: RevisionOrModerationEvent = {
   title: "Carol Williams verified this.",
   timestamp: "2026-03-14T11:00:00.000Z",
-  icon: { name: "verified", color: "brand" },
+  icon: { name: "verified", color: "core-brand" },
 };
 
 const dashboardEvents: RevisionOrModerationEvent[] = [

@@ -5,7 +5,9 @@ import { t } from "ttag";
 
 import { skipToken, useSearchQuery } from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { SearchResult } from "metabase/common/components/SearchResult/SearchResult";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
+import type { SearchFilters } from "metabase/common/search/types";
 import {
   EmptyStateContainer,
   ResultsContainer,
@@ -13,8 +15,6 @@ import {
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
 import { useDispatch } from "metabase/redux";
-import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
-import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import {

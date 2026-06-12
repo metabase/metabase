@@ -19,7 +19,7 @@ function setup(step = createMockNotebookStep()) {
     <LimitStep
       step={step}
       query={step.query}
-      color="brand"
+      color="core-brand"
       stageIndex={step.stageIndex}
       isLastOpened={false}
       reportTimezone="UTC"

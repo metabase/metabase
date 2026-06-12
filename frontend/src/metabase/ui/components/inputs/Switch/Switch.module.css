@@ -85,7 +85,7 @@
   }
 
   input:checked + & {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   input:disabled + & {

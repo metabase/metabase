@@ -3,14 +3,14 @@ import { color } from "./palette";
 
 describe("palette", () => {
   it("should get a color from the palette", () => {
-    expect(color("brand")).toBeDefined();
+    expect(color("core-brand")).toBeDefined();
   });
 
   it("should set a color in the palette", () => {
-    const originalColor = color("brand");
-    colors["brand"] = "blue";
-    const modifiedColor = color("brand");
-    colors["brand"] = originalColor;
+    const originalColor = color("core-brand");
+    colors["core-brand"] = "blue";
+    const modifiedColor = color("core-brand");
+    colors["core-brand"] = originalColor;
 
     expect(modifiedColor).toEqual("blue");
   });

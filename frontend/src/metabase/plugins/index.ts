@@ -160,7 +160,7 @@ export {
 } from "./oss/writable-connection";
 export {
   PLUGIN_WORKSPACES,
-  type AdminConnectionInfoSectionProps,
+  type WorkspaceDatabaseSectionProps,
 } from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";

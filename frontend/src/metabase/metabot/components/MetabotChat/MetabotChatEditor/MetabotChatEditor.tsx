@@ -29,7 +29,7 @@ export const MetabotChatEditor = forwardRef<
   return (
     <Box className={S.editorContainer}>
       <Box className={S.iconContainer}>
-        <MetabotIcon c="brand" />
+        <MetabotIcon c="core-brand" />
       </Box>
       <Box className={S.contentWrapper}>
         <MetabotPromptInput

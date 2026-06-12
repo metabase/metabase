@@ -16,7 +16,7 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
               {" "}
               <Text
                 fw="bold"
-                c="brand"
+                c="core-brand"
                 onClick={toggle}
                 component="span"
                 style={{ cursor: "pointer" }}

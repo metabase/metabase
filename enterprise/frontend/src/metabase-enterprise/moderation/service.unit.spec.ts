@@ -74,7 +74,7 @@ describe("moderation/service", () => {
     it("should return an icon if there is a matching status", () => {
       expect(getStatusIcon("verified")).toEqual({
         name: "verified",
-        color: "brand",
+        color: "core-brand",
       });
     });
 
