@@ -3080,7 +3080,8 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table}}
