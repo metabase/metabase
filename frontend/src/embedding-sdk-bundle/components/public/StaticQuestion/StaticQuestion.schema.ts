@@ -29,6 +29,7 @@ const propsSchema: Yup.SchemaOf<StaticQuestionInternalProps> = Yup.object({
   withChartTypeSelector: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withAlerts: Yup.mixed().optional(),
+  initialVisualization: Yup.mixed().optional(),
 }).noUnknown();
 
 export const staticQuestionSchema: FunctionSchema = {

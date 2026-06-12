@@ -9,6 +9,7 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
@@ -39,18 +40,80 @@ import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 
+/**
+ * Fetch a plugin asset (icon, etc.) with auth headers and return a `blob:` URL.
+ * Needed for the SDK: `<img>` tags cross-origin to Metabase can't carry the
+ * `X-Metabase-Session` header, so the direct asset URL 401s. Fetching once
+ * via the authenticated client and exposing a same-origin blob URL sidesteps
+ * both the auth and the CORS problem.
+ *
+ * In the main app the asset is same-origin and the session cookie rides
+ * along automatically, so we keep the direct URL and skip the extra fetch.
+ *
+ * Returns the original URL if the fetch fails so callers always get something
+ * usable.
+ */
+async function fetchAssetAsBlobUrl(assetUrl: string): Promise<string> {
+  // Same-origin (main app): browser attaches the session cookie to the <img>
+  // request directly; no blob conversion needed.
+  if (!api.basename) {
+    return assetUrl;
+  }
+  try {
+    // `getPluginAssetUrl` already prepends `api.basename`; strip it back off
+    // because `api.fetch` re-adds it.
+    const relativeUrl = assetUrl.startsWith(api.basename)
+      ? assetUrl.slice(api.basename.length)
+      : assetUrl;
+    const res = await api.fetch({ method: "GET", url: relativeUrl });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    return URL.createObjectURL(await res.blob());
+  } catch {
+    return assetUrl;
+  }
+}
+
 // Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
-// bundle (or a dev server reload) produced new bytes.
+// Maps plugin id → { identifier, hash, iconBlobUrl? } so we can detect when a
+// re-uploaded bundle (or a dev server reload) produced new bytes, and revoke
+// old icon blob URLs when overwriting.
 const loadedPlugins = new Map<
   number,
-  { identifier: string; hash: string | null }
+  { identifier: string; hash: string | null; iconBlobUrl?: string }
 >();
 
 const failedPluginHashes = new Map<
   CustomVizPluginId,
   CustomVizPluginRuntime["bundle_hash"]
 >();
+
+/**
+ * Remove a previously-loaded custom-viz display from the global
+ * visualizations registry and drop its load/failure cache entries, so a
+ * question with this display falls back to the default visualization on
+ * the next render (and a future `loadCustomVizPlugin` call re-fetches
+ * and re-registers instead of returning the cached registration).
+ *
+ * Used by `useAutoLoadCustomVizPlugin` when a plugin disappears from the
+ * installed list, and by the SDK gating layer when the identifier is removed
+ * from `allowedCustomVisualizations`.
+ */
+export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
+  if (visualizations.has(display)) {
+    visualizations.delete(display);
+  }
+  for (const [id, entry] of loadedPlugins) {
+    if (entry.identifier === display) {
+      if (entry.iconBlobUrl) {
+        URL.revokeObjectURL(entry.iconBlobUrl);
+      }
+      loadedPlugins.delete(id);
+      failedPluginHashes.delete(id);
+    }
+  }
+}
 
 /**
  * Hook that fetches the list of active custom visualization plugins.
@@ -79,6 +142,7 @@ function useCustomVizDevReload(
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
   onInfo: (message: string) => void,
+  sandboxMode: SandboxMode = "hosted",
 ) {
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -107,6 +171,7 @@ function useCustomVizDevReload(
         await loadCustomVizPlugin(plugin, {
           cacheBustSuffix: `?t=${Date.now()}`,
           onInfo,
+          sandboxMode,
         });
       } finally {
         setLoading(false);
@@ -120,8 +185,12 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, onInfo, plugins, setLoading]);
+  }, [display, onInfo, plugins, setLoading, sandboxMode]);
 }
+
+export type UseAutoLoadCustomVizPluginOptions = {
+  sandboxMode?: SandboxMode;
+};
 
 /**
  * Hook that auto-loads a custom viz plugin bundle when the current display
@@ -131,9 +200,13 @@ function useCustomVizDevReload(
  * For plugins with `dev_bundle_url` set, polls the bundle endpoint via HEAD
  * every 2s and reloads when the ETag changes.
  */
-export function useAutoLoadCustomVizPlugin(display: string | undefined): {
+export function useAutoLoadCustomVizPlugin(
+  display: string | undefined,
+  options: UseAutoLoadCustomVizPluginOptions = {},
+): {
   loading: boolean;
 } {
+  const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
@@ -163,13 +236,13 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, { onInfo });
+        await loadCustomVizPlugin(pluginToLoad, { onInfo, sandboxMode });
       } finally {
         loadingRef.current = null;
         setLoading(false);
       }
     },
-    [onInfo],
+    [onInfo, sandboxMode],
   );
 
   useEffect(() => {
@@ -186,7 +259,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     load(plugin);
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, onInfo);
+  useCustomVizDevReload(display, plugins, setLoading, onInfo, sandboxMode);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -212,15 +285,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     plugins &&
     !plugins.find((p) => `custom:${p.identifier}` === display)
   ) {
-    if (visualizations.has(display)) {
-      visualizations.delete(display);
-      for (const [id, entry] of loadedPlugins) {
-        if (entry.identifier === display) {
-          loadedPlugins.delete(id);
-          failedPluginHashes.delete(id);
-        }
-      }
-    }
+    unregisterCustomVizDisplay(display);
     return { loading: false };
   }
 
@@ -278,16 +343,17 @@ export async function loadCustomVizPlugin(
   ensureVizApi();
 
   try {
-    const bundleUrl = new URL(
-      getSubpathSafeUrl(plugin.bundle_url),
-      window.location.origin,
-    );
+    const params: Record<string, string> = {};
     if (cacheBustSuffix) {
-      bundleUrl.searchParams.set("t", Date.now().toString());
+      params.t = Date.now().toString();
     } else if (currentHash) {
-      bundleUrl.searchParams.set("v", currentHash);
+      params.v = currentHash;
     }
-    const res = await fetch(bundleUrl.href, { cache: "no-store" });
+    const res = await api.fetch({
+      method: "GET",
+      url: plugin.bundle_url,
+      params,
+    });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -337,6 +403,20 @@ export async function loadCustomVizPlugin(
       plugin.id,
     );
 
+    // Prefetch the icon as a same-origin blob URL so the chart-type picker
+    // <img> can render it cross-origin in the SDK (no auth header on <img>).
+    if (existing?.iconBlobUrl) {
+      URL.revokeObjectURL(existing.iconBlobUrl);
+    }
+    const rawIconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
+    const resolvedIconUrl = rawIconUrl
+      ? await fetchAssetAsBlobUrl(rawIconUrl)
+      : rawIconUrl;
+    const iconBlobUrl =
+      resolvedIconUrl && resolvedIconUrl.startsWith("blob:")
+        ? resolvedIconUrl
+        : undefined;
+
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
@@ -345,7 +425,7 @@ export async function loadCustomVizPlugin(
       identifier,
       pluginId: plugin.id,
       getUiName: () => plugin.display_name,
-      iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
+      iconUrl: resolvedIconUrl,
       isDev: Boolean(plugin.dev_bundle_url),
     });
 
@@ -361,6 +441,7 @@ export async function loadCustomVizPlugin(
     loadedPlugins.set(plugin.id, {
       identifier,
       hash: currentHash,
+      iconBlobUrl,
     });
     failedPluginHashes.delete(plugin.id);
 

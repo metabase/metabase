@@ -63,7 +63,7 @@
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
-      (query-perms/check-run-permissions-for-query (get-in revision [:object :dataset_query])))
+      (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model

@@ -402,3 +402,35 @@
         (assert-processed :card card-id)
         (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                         :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+
+(deftest ^:sequential backfill-no-status-row-test
+  (testing "Entities with no dependency_status row yet get picked up and processed by the backfill"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        ;; Precondition: the temp card was inserted directly (no :event/card-create), so it has no
+        ;; status row at all. This is the case the left-join in instances-for-dependency-calculation
+        ;; must catch — guard it so the test can't silently pass without exercising that branch.
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id))
+            "Expected the temp card to start with no dependency_status row")
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :card card-id)
+        (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
+                        :to_entity_type :table :to_entity_id (mt/id :orders)))))))
+
+(deftest ^:sequential has-stale-or-outdated?-counts-no-status-row-test
+  (testing "has-stale-or-outdated? (backing /backfill-status) stays consistent with what the backfill processes"
+    (backfill-all-existing-entities!)
+    (mt/with-premium-features #{}
+      ;; Clean slate: nothing left to process.
+      (is (false? (deps.dependency-status/has-stale-or-outdated?))
+          "Expected no pending work after backfilling all existing entities")
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+        ;; A card with no status row is pending work, even though no DependencyStatus row exists.
+        (is (not (t2/exists? :model/DependencyStatus :entity_type :card :entity_id card-id)))
+        (is (true? (deps.dependency-status/has-stale-or-outdated?))
+            "Expected pending work: a card with no status row still needs calculation")
+        (backfill-dependencies-single-trigger!)
+        (assert-processed :card card-id)
+        (is (false? (deps.dependency-status/has-stale-or-outdated?))
+            "Expected no pending work once the card has been processed")))))

@@ -17,11 +17,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import {
-  PLUGIN_DEPENDENCIES,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TRANSFORMS_PYTHON,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -34,6 +30,7 @@ import type {
   DatasetQuery,
   DraftTransformSource,
   Transform,
+  UpdateTransformRequest,
 } from "metabase-types/api";
 
 import {
@@ -148,33 +145,6 @@ function TransformQueryPageBody({
     dryRunError ?? lastRunError,
   );
 
-  const {
-    checkData,
-    isCheckingDependencies,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
-    onSave: async (request) => {
-      const { error } = await updateTransform(request);
-      if (error) {
-        const message = getErrorMessage(error);
-        sendErrorToast(
-          message
-            ? t`Failed to update transform query: ${message}`
-            : t`Failed to update transform query`,
-        );
-      } else {
-        sendSuccessToast(t`Transform query updated`);
-
-        if (isEditMode) {
-          dispatch(push(Urls.transform(transform.id)));
-        }
-      }
-    },
-  });
-
   const handleResetRef = useLatest(() => {
     setSource(transform.source);
     setUiState(getInitialUiState());
@@ -197,7 +167,25 @@ function TransformQueryPageBody({
     }
   }, [isRemoteSyncReadOnly, isEditMode, dispatch, transform.id]);
 
-  const handleSave = async () => {
+  const handleSave = async (request: UpdateTransformRequest) => {
+    const { error } = await updateTransform(request);
+    if (error) {
+      const message = getErrorMessage(error);
+      sendErrorToast(
+        message
+          ? t`Failed to update transform query: ${message}`
+          : t`Failed to update transform query`,
+      );
+    } else {
+      sendSuccessToast(t`Transform query updated`);
+
+      if (isEditMode) {
+        dispatch(push(Urls.transform(transform.id)));
+      }
+    }
+  };
+
+  const handleSaveAttempt = async () => {
     if (!isCompleteSource(source)) {
       return;
     }
@@ -208,7 +196,7 @@ function TransformQueryPageBody({
       openTurnOffIncremental();
       return;
     }
-    await handleInitialSave({ id: transform.id, source });
+    await handleSave({ id: transform.id, source });
   };
 
   const handleConfirmTurnOffIncremental = async () => {
@@ -217,7 +205,7 @@ function TransformQueryPageBody({
     }
     closeTurnOffIncremental();
     const values = getInitialValues({ incremental: false });
-    await handleInitialSave({
+    await handleSave({
       id: transform.id,
       source: buildIncrementalSource(source, values),
       target: buildIncrementalTarget(transform.target, values),
@@ -241,7 +229,7 @@ function TransformQueryPageBody({
                 source={source}
                 isSaving={isSaving}
                 isDirty={isDirty}
-                handleSave={handleSave}
+                handleSave={handleSaveAttempt}
                 handleCancel={handleCancel}
                 transform={transform}
                 readOnly={readOnly}
@@ -305,14 +293,6 @@ function TransformQueryPageBody({
           )}
         </Box>
       </PageContainer>
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
       <ConfirmModal
         opened={isTurnOffIncrementalShown}
         title={t`Turn off incremental processing?`}
@@ -323,7 +303,7 @@ function TransformQueryPageBody({
       />
       <LeaveRouteConfirmModal
         route={route as Route}
-        isEnabled={isDirty && !isSaving && !isCheckingDependencies}
+        isEnabled={isDirty && !isSaving}
         onConfirm={rejectProposed}
       />
     </>

@@ -78,6 +78,7 @@
    [metabase.transforms.init]
    [metabase.types.init]
    [metabase.upload.init]
+   [metabase.usage-metadata.init]
    [metabase.user-key-value.init]
    [metabase.users.init]
    [metabase.version.init]

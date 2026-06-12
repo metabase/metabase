@@ -403,18 +403,9 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.visit();
 
       cy.log("Verify Data empty state is visible initially");
-      // `Library.visit()` only waits for the page container, not the library
-      // tree fetch. The empty-state row renders once that resolves; under
-      // fetch (microtask) timing the load can exceed the default assertion
-      // timeout, so give this first post-visit assertion a longer one.
-      H.DataStudio.Library.libraryPage()
-        .findByText(
-          "Cleaned, pre-transformed data sources ready for exploring",
-          {
-            timeout: 10000,
-          },
-        )
-        .should("be.visible");
+      H.DataStudio.Library.emptyStateRow(
+        "Cleaned, pre-transformed data sources ready for exploring",
+      ).should("be.visible");
 
       cy.log("Publish a table via the +New menu");
       H.DataStudio.Library.newButton().click();
@@ -433,21 +424,16 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Verify Data section shows the table (empty state hidden)");
       H.DataStudio.Library.tableItem("Orders").should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText(
-          "Cleaned, pre-transformed data sources ready for exploring.",
-        )
-        .should("not.exist");
 
       cy.log(
         "Verify Metrics and SQL snippets still show empty states (always expanded behavior)",
       );
-      H.DataStudio.Library.libraryPage()
-        .findByText("Standardized calculations with known dimensions")
-        .should("be.visible");
-      H.DataStudio.Library.libraryPage()
-        .findByText("Reusable bits of code that save your time")
-        .should("be.visible");
+      H.DataStudio.Library.emptyStateRow(
+        "Standardized calculations with known dimensions",
+      ).should("be.visible");
+      H.DataStudio.Library.emptyStateRow(
+        "Reusable bits of code that save your time",
+      ).should("be.visible");
     });
 
     describe("read-only mode", () => {
