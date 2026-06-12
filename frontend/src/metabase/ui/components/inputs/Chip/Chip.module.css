@@ -6,7 +6,6 @@
   height: var(--chip-size);
   padding-inline: var(--chip-padding);
   border-radius: 9999px;
-  font-size: var(--chip-fz);
   font-weight: 600;
   line-height: 1rem;
   white-space: nowrap;

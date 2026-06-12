@@ -77,7 +77,7 @@ const PSEUDO_STATE_PARAMETERS = {
   },
 };
 
-const OverviewTemplate: StoryFn<ChipProps> = () => (
+const OverviewTemplate: StoryFn<ChipProps> = ({ children }) => (
   <StoryShowcase title="Chip">
     <Box
       style={{
@@ -114,7 +114,7 @@ const OverviewTemplate: StoryFn<ChipProps> = () => (
               disabled={state.disabled ?? false}
               onChange={() => {}}
             >
-              {LABEL}
+              {children}
             </Chip>
           ))}
         </Fragment>
@@ -142,5 +142,8 @@ export const Default = {
 
 export const Overview = {
   render: OverviewTemplate,
-  parameters: PSEUDO_STATE_PARAMETERS,
+  parameters: {
+    ...PSEUDO_STATE_PARAMETERS,
+    controls: { include: ["children", "theme"] },
+  },
 };
