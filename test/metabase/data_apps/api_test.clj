@@ -12,13 +12,13 @@
 
 (comment metabase-enterprise.remote-sync.settings/keep-me)
 
-
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
 (defn- create-app! []
   (t2/insert! :model/DataApp
               :name         "demo"
               :display_name "Demo"
+              :bundle_path  "data_apps/demo/index.js"
               :bundle       (.getBytes "BUNDLE" "UTF-8")
               :bundle_hash  "abc123"))
 
@@ -53,10 +53,12 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "data-app")))
       (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "data-app/repo-status")))
+      (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "data-app/demo")))
       (mt/user-real-request :rasta :get 403 "data-app/demo/bundle")
       (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 "data-app/demo"))))))
+             (mt/user-http-request :rasta :put 403 "data-app/demo" {:enabled false}))))))
 
 (deftest superuser-can-manage-and-view-test
   (mt/with-model-cleanup [:model/DataApp]
@@ -69,7 +71,6 @@
       (is (str/includes?
            (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
            "BUNDLE")))))
-
 
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
@@ -175,6 +176,7 @@
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
 (deftest list-and-bundle-endpoints-test
+  (mt/with-model-cleanup [:model/DataApp]
     (data-app.sync/import-from-snapshot!
      (snapshot (app-files "demo" {:name "Demo app" :slug "demo" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
     (testing "GET / lists the synced apps"
@@ -207,9 +209,3 @@
       (is (=? {:enabled true}
               (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled true})))
       (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "data-app/demo"))))))
-
-(deftest superuser-only-test
-  (is (= "You don't have permissions to do that."
-         (mt/user-http-request :rasta :get 403 "data-app")))
-  (is (= "You don't have permissions to do that."
-         (mt/user-http-request :rasta :get 403 "data-app/repo-status"))))

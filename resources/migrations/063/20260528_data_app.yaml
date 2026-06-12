@@ -80,7 +80,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: enabled
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Admin toggle. When false the app is not served and is hidden from the data-app routes.
                   constraints:
@@ -132,7 +132,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: enabled
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Admin toggle. When false the app is not served and is hidden from the data-app routes.
                   constraints:
