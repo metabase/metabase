@@ -1,4 +1,6 @@
-import { CHILD_TYPES, UNNAMED_SCHEMA_NAME } from "./constants";
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
+
+import { CHILD_TYPES } from "./constants";
 import type {
   DatabaseNode,
   ExpandedState,

@@ -1,0 +1,9 @@
+.staticRow {
+  cursor: default;
+}
+
+/* doubled selector to beat .content:hover's specificity regardless of bundle order */
+.staticRow.staticRow:hover,
+.staticRow.staticRow:focus {
+  background-color: transparent;
+}

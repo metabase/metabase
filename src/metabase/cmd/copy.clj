@@ -128,6 +128,7 @@
     :model/Measure
     ;; 60+
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthAuthorizationCode
     :model/OAuthAccessToken
     :model/OAuthRefreshToken

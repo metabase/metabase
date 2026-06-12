@@ -34,6 +34,7 @@ export const TAG_TYPES = [
   "measure",
   "model-index",
   "notification",
+  "oauth-authorization",
   "parameter-values",
   "permissions-group",
   "persisted-info",

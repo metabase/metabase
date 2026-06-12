@@ -39,6 +39,7 @@ import {
   type ModelIndex,
   type NativeQuerySnippet,
   type NotificationChannel,
+  type OAuthAuthorization,
   type ParameterId,
   type PopularItem,
   type RecentItem,
@@ -483,6 +484,21 @@ export const provideAdminNotificationListTags = (
     idTag("notification", notification.id),
   ),
 ];
+
+export function provideOAuthAuthorizationListTags(
+  authorizations: OAuthAuthorization[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("oauth-authorization"),
+    ...authorizations.flatMap(provideOAuthAuthorizationTags),
+  ];
+}
+
+export function provideOAuthAuthorizationTags(
+  authorization: OAuthAuthorization,
+): TagDescription<TagType>[] {
+  return [idTag("oauth-authorization", authorization.id)];
+}
 
 export function providePermissionsGroupListTags(
   groups: GroupListQuery[],
