@@ -396,7 +396,9 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
           ({ colIdx, ...item }) => ({
             ...item,
             column:
-              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+              colIdx !== undefined
+                ? columnsWithoutPivotGroup[colIdx]
+                : item.column,
           }),
         );
       }

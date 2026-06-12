@@ -58,8 +58,10 @@ export function fillParametersInText({
   if (!_.isEmpty(parametersByTag)) {
     // Temporarily override language to use site language, so that all viewers of a dashboard see parameter values
     // translated the same way.
-    return withInstanceLanguage(() =>
-      substitute_tags(text, parametersByTag, siteLocale(), escapeMarkdown),
+    return (
+      withInstanceLanguage(() =>
+        substitute_tags(text, parametersByTag, siteLocale(), escapeMarkdown),
+      ) ?? ""
     );
   }
 

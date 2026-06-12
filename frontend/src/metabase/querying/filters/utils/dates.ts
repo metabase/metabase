@@ -42,6 +42,12 @@ export function isDatePickerExtractionUnit(
   return units.includes(unit);
 }
 
+function optionalDatePickerTruncationUnit(
+  unit: string | null | undefined,
+): DatePickerTruncationUnit | undefined {
+  return unit != null && isDatePickerTruncationUnit(unit) ? unit : undefined;
+}
+
 export function getDatePickerUnits(
   query: Lib.Query,
   stageIndex: number,
@@ -100,13 +106,20 @@ function getRelativeDateValue(
     return undefined;
   }
 
+  const unit = optionalDatePickerTruncationUnit(filterParts.unit);
+  if (unit == null) {
+    return undefined;
+  }
+
   return {
     type: "relative",
-    unit: filterParts.unit,
+    unit,
     value: filterParts.value,
-    offsetUnit: filterParts.offsetUnit ?? undefined,
+    offsetUnit: optionalDatePickerTruncationUnit(filterParts.offsetUnit),
     offsetValue: filterParts.offsetValue ?? undefined,
-    options: filterParts.options,
+    options: {
+      includeCurrent: filterParts.options?.["include-current"],
+    },
   };
 }
 
@@ -172,7 +185,9 @@ function getRelativeFilterClause(
     value: value.value,
     offsetUnit: value.offsetUnit ?? null,
     offsetValue: value.offsetValue ?? null,
-    options: value.options ?? {},
+    options: {
+      "include-current": value.options?.includeCurrent,
+    },
   });
 }
 

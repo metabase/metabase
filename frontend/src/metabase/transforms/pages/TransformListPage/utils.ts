@@ -28,7 +28,7 @@ export function getIncrementalWarning(
   if (isNative) {
     const libQuery = getLibQuery(transform.source, metadata);
     const hasTableTag = libQuery
-      ? Object.values(Lib.templateTags(libQuery)).some(
+      ? Object.values(Lib.templateTags(libQuery) ?? {}).some(
           (tag) => tag.type === "table" && tag["table-id"] != null,
         )
       : false;

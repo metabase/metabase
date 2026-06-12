@@ -13,7 +13,7 @@ export function availableAggregationOperators(
   query: Query,
   stageIndex: number,
 ): AggregationOperator[] {
-  return ML.available_aggregation_operators(query, stageIndex);
+  return ML.available_aggregation_operators(query, stageIndex) || [];
 }
 
 export function aggregationOperatorColumns(
@@ -68,7 +68,7 @@ export function aggregationClause(
 
 export function aggregableColumns(
   query: Query,
-  stageIndex?: number,
+  stageIndex: number,
   expressionIndex?: number,
 ): ColumnMetadata[] {
   return ML.aggregable_columns(query, stageIndex, expressionIndex);

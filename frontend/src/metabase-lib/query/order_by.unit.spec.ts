@@ -182,7 +182,11 @@ describe("order by", () => {
       const orderBys = Lib.orderBys(nextQuery, 0);
 
       expect(orderBys).toHaveLength(1);
-      const displayInfo = Lib.displayInfo(nextQuery, 0, orderBys[0]);
+      const displayInfo = Lib.displayInfo(
+        nextQuery,
+        0,
+        orderBys[0],
+      ) as Lib.OrderByClauseDisplayInfo;
       expect(displayInfo.displayName).toBe("Title");
       expect(displayInfo.direction).toBe("asc");
     });
@@ -210,7 +214,11 @@ describe("order by", () => {
         Lib.orderByClause(productCategory, "desc"),
       );
       const nextOrderBys = Lib.orderBys(nextQuery, 0);
-      const displayInfo = Lib.displayInfo(nextQuery, 0, nextOrderBys[0]);
+      const displayInfo = Lib.displayInfo(
+        nextQuery,
+        0,
+        nextOrderBys[0],
+      ) as Lib.OrderByClauseDisplayInfo;
       expect(displayInfo.displayName).toBe("Category");
       expect(displayInfo.direction).toBe("desc");
 

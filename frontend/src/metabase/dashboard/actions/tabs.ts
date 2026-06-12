@@ -12,7 +12,6 @@ import type {
   GetState,
   SelectedTabId,
   StoreDashboard,
-  StoreDashcard,
   TabDeletionId,
 } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -360,7 +359,12 @@ export const tabsReducer = createReducer<DashboardState>(
           };
 
           // We don't have card (question) data for virtual dashcards (text, heading, link, action)
-          if (isVirtualDashCard(sourceDashCard as StoreDashcard)) {
+          const virtualCard =
+            sourceDashCard.visualization_settings?.virtual_card;
+          if (
+            (typeof virtualCard === "object" && virtualCard != null) ||
+            typeof virtualCard === "function"
+          ) {
             return;
           }
 

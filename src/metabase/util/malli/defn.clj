@@ -38,9 +38,8 @@
       :single   (list (deparameterized-arglist arities-value))
       :multiple (map #(deparameterized-arglist (:values %)) (:arities arities-value)))))
 
-(core/defn- annotated-docstring
-  "Generate a docstring with additional information about inputs and return type using a parsed fn tail (as parsed
-  by [[mx/SchematizedParams]])."
+(core/defn annotated-docstring
+  "Generate a docstring with additional information about inputs and return type using a parsed fn tail."
   [parsed]
   (let [{:keys [doc arities return]} (:values parsed)
         arities-type (:key arities)
@@ -106,7 +105,6 @@
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
         cosmetic-name    (gensym (munge (str fn-name)))
         {attr-map :meta} (:values parsed)
-        docstring        (annotated-docstring parsed)
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
@@ -114,7 +112,7 @@
                           ;; Don't include docstrings in CLJS to prevent them slipping into release build and
                           ;; inflating the bundle.
                           (macros/case
-                            :clj  {:doc docstring}
+                            :clj  {:doc (annotated-docstring parsed)}
                             :cljs nil))
         instrument?      (mu.fn/instrument-ns? *ns*)]
     `(def ~(vary-meta fn-name merge attr-map)

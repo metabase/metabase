@@ -17,7 +17,10 @@ const fmtFilter = (q: Query, f: Lib.FilterClause): string =>
   Lib.displayInfo(q, 0, f).displayName;
 
 const fmtJoin = (q: Query, j: Lib.Join): string => {
-  const tableName = Lib.displayInfo(q, 0, Lib.joinedThing(q, j)).name;
+  const joinedThing = Lib.joinedThing(q, j);
+  const tableName = joinedThing
+    ? Lib.displayInfo(q, 0, joinedThing).name
+    : "[unknown]";
   const strategy = Lib.displayInfo(q, 0, Lib.joinStrategy(j)).shortName;
   const conditions = Lib.joinConditions(j).map((c) => {
     const { operator, lhsExpression, rhsExpression } =

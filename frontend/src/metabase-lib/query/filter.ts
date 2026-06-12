@@ -14,6 +14,7 @@ import type {
   ExpressionClause,
   FilterClause,
   FilterOperator,
+  FilterOperatorMetadata,
   FilterOperatorVariant,
   FilterParts,
   Filterable,
@@ -80,7 +81,11 @@ export function numberFilterClause({
   column,
   values,
 }: NumberFilterParts): ExpressionClause {
-  return ML.number_filter_clause(operator, column, values);
+  return ML.number_filter_clause(
+    operator,
+    column,
+    values as unknown as number[],
+  );
 }
 
 export function numberFilterParts(
@@ -97,7 +102,12 @@ export function coordinateFilterClause({
   longitudeColumn,
   values,
 }: CoordinateFilterParts): ExpressionClause {
-  return ML.coordinate_filter_clause(operator, column, longitudeColumn, values);
+  return ML.coordinate_filter_clause(
+    operator,
+    column,
+    longitudeColumn,
+    values as unknown as number[],
+  );
 }
 
 export function coordinateFilterParts(
@@ -138,7 +148,11 @@ export function specificDateFilterParts(
   stageIndex: number,
   filterClause: Filterable,
 ): SpecificDateFilterParts | null {
-  return ML.specific_date_filter_parts(query, stageIndex, filterClause);
+  return ML.specific_date_filter_parts(
+    query,
+    stageIndex,
+    filterClause,
+  ) as SpecificDateFilterParts | null;
 }
 
 export function relativeDateFilterClause({
@@ -207,7 +221,7 @@ export function timeFilterParts(
   }
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+    values: (filterParts.values as Dayjs[]).map((value) => value.toDate()),
   };
 }
 
@@ -328,19 +342,22 @@ export function updateTemporalFilter(
   start: string | Date,
   end: string | Date,
 ): Query {
+  const startValue = start instanceof Date ? start.toISOString() : start;
+  const endValue = end instanceof Date ? end.toISOString() : end;
   return ML.update_temporal_filter(
     query,
     stageIndex,
     temporalColumn,
     cardId,
-    start,
-    end,
+    startValue,
+    endValue,
   );
 }
 
 export function describeFilterOperator(
-  operator: FilterOperator,
+  operator: FilterOperator | FilterOperatorMetadata,
   variant: FilterOperatorVariant = "default",
 ): string {
-  return ML.describe_filter_operator(operator, variant);
+  const operatorName = typeof operator === "string" ? operator : operator.short;
+  return ML.describe_filter_operator(operatorName, variant);
 }

@@ -9,7 +9,7 @@
         "./frontend/src/*",
         "./frontend/test/*",
         "./enterprise/frontend/src/*",
-        "./enterprise/frontend/test/*"
+        "./enterprise/frontend/test/*",
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
@@ -25,10 +25,10 @@
       {
         "name": "typescript-plugin-css-modules",
         "options": {
-          "goToDefinition": true
-        }
-      }
-    ]
+          "goToDefinition": true,
+        },
+      },
+    ],
   },
   "include": [
     "frontend/src/**/*",
@@ -36,6 +36,7 @@
     "enterprise/frontend/src/**/*",
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
+    "target/cljs_dev/**/*",
     ".github/scripts/**/*"
   ],
   "exclude": [

@@ -126,6 +126,107 @@
    ::dimension-reference
    ::metadata-dimension])
 
+;;; ------------------------------------------------- Metric Filter Parts (JS-facing) -------------------------------------------------
+;;; JS-facing shapes use camelCase keys to match objects returned from metabase.lib-metric.js helpers.
+
+(mr/def ::default-filter-operator
+  [:enum :is-null :not-null])
+
+(mr/def ::string-filter-operator
+  [:enum :is-empty :not-empty := :!= :contains :does-not-contain :starts-with :ends-with])
+
+(mr/def ::string-filter-options
+  ;; camelCase key: this schema describes the JS object emitted by cljs-options->js-options in lib-metric.js.
+  [:map [:caseSensitive {:optional true} :boolean]])
+
+(mr/def ::number-filter-operator
+  [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(mr/def ::coordinate-filter-operator
+  [:enum := :!= :> :>= :< :<= :between :inside])
+
+(mr/def ::boolean-filter-operator
+  [:enum :is-null :not-null :=])
+
+(mr/def ::specific-date-filter-operator
+  [:enum := :> :< :between])
+
+(mr/def ::exclude-date-filter-operator
+  [:enum :!= :is-null :not-null])
+
+(mr/def ::exclude-date-filter-unit
+  [:enum :hour-of-day :day-of-week :month-of-year :quarter-of-year])
+
+(mr/def ::time-filter-operator
+  [:enum :is-null :not-null :> :< :between])
+
+(mr/def ::time-interval-options
+  ;; camelCase key: this schema describes the JS object emitted by cljs-options->js-options in lib-metric.js.
+  [:map [:includeCurrent {:optional true} :boolean]])
+
+(mr/def ::number-filter-value
+  :metabase.lib.schema.filter/number-filter-value)
+
+(mr/def ::string-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::string-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential :string]]
+                        [:options ::string-filter-options]]}])
+
+(mr/def ::number-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::number-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential ::number-filter-value]]]}])
+
+(mr/def ::coordinate-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::coordinate-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:longitudeDimension [:maybe ::metadata-dimension]]
+                        [:values [:sequential ::number-filter-value]]]}])
+
+(mr/def ::boolean-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::boolean-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values [:sequential :boolean]]]}])
+
+(mr/def ::specific-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::specific-date-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values :any]
+                        [:hasTime :boolean]]}])
+
+(mr/def ::relative-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:dimension ::metadata-dimension]
+                        [:value :int]
+                        [:unit ::lib.schema.temporal-bucketing/unit.date-time.interval]
+                        [:offsetValue [:maybe :int]]
+                        [:offsetUnit [:maybe ::lib.schema.temporal-bucketing/unit.date-time.interval]]
+                        [:options ::time-interval-options]]}])
+
+(mr/def ::exclude-date-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::exclude-date-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:unit [:maybe ::exclude-date-filter-unit]]
+                        [:values [:sequential :int]]]}])
+
+(mr/def ::time-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::time-filter-operator]
+                        [:dimension ::metadata-dimension]
+                        [:values :any]]}])
+
+(mr/def ::default-filter-parts
+  [:any {:ts/object-of [:map
+                        [:operator ::default-filter-operator]
+                        [:dimension ::metadata-dimension]]}])
+
 ;;; ------------------------------------------------- Filter Clause Normalization -------------------------------------------------
 ;;; Filter clauses from the API arrive with string operators and dimension refs that need normalization.
 
@@ -302,6 +403,41 @@
   "A sequence of typed projections."
   [:sequential ::typed-projection])
 
+;;; ------------------------------------------------- JS-facing Metric Definition Serialization -------------------------------------------------
+;;; These schemas describe objects returned by metabase.lib-metric.js helpers after CLJS->JS conversion.
+
+(mr/def ::source-instance.js
+  "Serialized expression leaf instance returned by sourceInstances: [\"metric\"|\"measure\", {\"lib/uuid\": uuid}, id]."
+  [:tuple
+   [:enum "metric" "measure"]
+   [:map ["lib/uuid" ::lib.schema.common/non-blank-string]]
+   pos-int?])
+
+(mr/def ::instance-filter.js
+  "Serialized per-instance filter in a JS metric definition."
+  [:map
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:filter :any]])
+
+(mr/def ::typed-projection.js
+  "Serialized typed projection in a JS metric definition."
+  [:map
+   [:type [:enum "metric" "measure"]]
+   [:id pos-int?]
+   ["lib/uuid" ::lib.schema.common/non-blank-string]
+   [:projection [:sequential ::dimension-reference]]])
+
+(mr/def ::metric-expression.js
+  "Serialized metric math expression. Arithmetic operands can nest recursively, so keep nested operands broad for now."
+  [:any {:typescript "Metabase_LibMetric_Schema_SourceInstanceJs | number | [\"+\" | \"-\" | \"*\" | \"/\", Record<string, unknown>, unknown, unknown, ...unknown[]]"}])
+
+(mr/def ::metric-definition.js
+  "JS object produced by toJsMetricDefinition for API serialization."
+  [:map
+   [:expression ::metric-expression.js]
+   [:filters {:optional true} [:sequential ::instance-filter.js]]
+   [:projections {:optional true} [:sequential ::typed-projection.js]]])
+
 ;;; ------------------------------------------------- Persisted Dimensions -------------------------------------------------
 ;;; These schemas are used for storage format in the database.
 
@@ -426,6 +562,7 @@
    [:effective-type {:optional true} :keyword]
    [:semantic-type {:optional true} :keyword]
    [:description {:optional true} [:maybe :string]]
+   [:column-name {:optional true} :string]
    [:selected {:optional true} :boolean]
    [:default {:optional true} :boolean]
    [:short-name {:optional true} :string]

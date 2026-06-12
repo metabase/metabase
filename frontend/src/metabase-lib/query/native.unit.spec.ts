@@ -35,7 +35,7 @@ describe("native query template tags", () => {
     const updatedQuery = Lib.withNativeQuery(queryWithTags, queryText);
     const retrievedTags = Lib.templateTags(updatedQuery);
 
-    expect(retrievedTags.state.required).toBe(true);
+    expect(retrievedTags!.state.required).toBe(true);
   });
 
   it("should preserve required=false attribute (metabase#38263)", () => {
@@ -61,6 +61,6 @@ describe("native query template tags", () => {
     const queryWithTags = Lib.withTemplateTags(query, templateTags);
     const retrievedTags = Lib.templateTags(queryWithTags);
 
-    expect(retrievedTags.state.required).toBe(false);
+    expect(retrievedTags!.state.required).toBe(false);
   });
 });

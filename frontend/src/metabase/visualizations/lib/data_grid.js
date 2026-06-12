@@ -17,6 +17,27 @@ export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
+/**
+ * @typedef {import("metabase/visualizations/visualizations/PivotTable/types").BodyItem} BodyItem
+ * @typedef {import("metabase/visualizations/visualizations/PivotTable/types").HeaderItem} HeaderItem
+ * @typedef {import("metabase-types/api").DatasetColumn} DatasetColumn
+ *
+ * @typedef {object} PivotedData
+ * @property {HeaderItem[]} leftHeaderItems
+ * @property {HeaderItem[]} topHeaderItems
+ * @property {number} rowCount
+ * @property {number} columnCount
+ * @property {string[]} rowIndex
+ * @property {(columnIndex: number, rowIndex: number) => BodyItem[]} getRowSection
+ * @property {number[]} rowIndexes
+ * @property {number[]} columnIndexes
+ * @property {number[]} valueIndexes
+ * @property {DatasetColumn[]} columnsWithoutPivotGroup
+ */
+
+/**
+ * @returns {PivotedData | null}
+ */
 export function multiLevelPivot(data, settings) {
   if (!settings[COLUMN_SPLIT_SETTING]) {
     return null;

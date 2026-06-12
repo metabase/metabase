@@ -267,7 +267,7 @@ export const NativeQueryEditorRoot = forwardRef<
       return;
     }
 
-    const formattedQuery = await formatQuery(queryText, engine);
+    const formattedQuery = await formatQuery(queryText ?? "", engine);
     handleChange(formattedQuery);
     focusEditor();
   }, [question, focusEditor, handleChange]);

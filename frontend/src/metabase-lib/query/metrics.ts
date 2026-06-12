@@ -6,5 +6,5 @@ export function availableMetrics(
   query: Query,
   stageIndex: number,
 ): MetricMetadata[] {
-  return ML.available_metrics(query, stageIndex);
+  return ML.available_metrics(query, stageIndex) || [];
 }

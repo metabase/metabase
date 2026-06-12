@@ -1,9 +1,7 @@
 import * as INSPECTOR from "cljs/metabase.transforms_inspector.js";
 import type {
-  InspectorAlertTrigger,
   InspectorCard,
   InspectorCardId,
-  InspectorDrillLensTrigger,
   InspectorField,
   InspectorLens,
   InspectorLensId,
@@ -12,18 +10,13 @@ import type {
   VisualizationDisplay,
 } from "metabase-types/api";
 
-type TriggerResult = {
-  alerts: InspectorAlertTrigger[];
-  drill_lenses: InspectorDrillLensTrigger[];
-};
-
 export type CardStats = Record<string, unknown>;
 
 export const interestingFields = (
   fields: InspectorField[],
   visitedFields?: InspectorVisitedFields,
   options?: { threshold?: number; limit?: number },
-): Array<InspectorField & { interestingness: { score: number } }> =>
+) =>
   INSPECTOR.interestingFields(
     fields,
     visitedFields ?? null,
@@ -34,7 +27,7 @@ export const interestingFields = (
 export const evaluateTriggers = (
   lens: InspectorLens,
   cardsStats: Record<InspectorCardId, CardStats>,
-): TriggerResult => INSPECTOR.evaluateTriggers(lens, cardsStats);
+) => INSPECTOR.evaluateTriggers(lens, cardsStats);
 
 export const computeCardStats = (
   lensId: InspectorLensId,

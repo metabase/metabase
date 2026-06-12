@@ -1,6 +1,5 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
   Field,
@@ -84,15 +83,29 @@ function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
+function isNativeQueryLike(query: unknown): query is {
+  templateTags: () => TemplateTag[];
+} {
+  return (
+    typeof query === "object" &&
+    query != null &&
+    "templateTags" in query &&
+    typeof query.templateTags === "function"
+  );
+}
+
 export function checkCanBeModel(question: Question) {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
     return true;
   }
 
-  return (question.legacyNativeQuery() as NativeQuery)
-    .templateTags()
-    .every(isSupportedTemplateTagForModel);
+  const legacyNativeQuery = question.legacyNativeQuery();
+  if (!isNativeQueryLike(legacyNativeQuery)) {
+    return false;
+  }
+
+  return legacyNativeQuery.templateTags().every(isSupportedTemplateTagForModel);
 }
 
 export function isAdHocModelOrMetricQuestion(

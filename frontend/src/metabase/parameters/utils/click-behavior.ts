@@ -205,12 +205,39 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
 }
 
 function getTargetsForNativeQuestion(question: Question): Target[] {
-  const legacyNativeQuery = question.legacyNativeQuery() as NativeQuery;
+  const legacyNativeQuery = question.legacyNativeQuery();
+  if (!isNativeQuery(legacyNativeQuery)) {
+    return [];
+  }
 
   return [
     ...getTargetsForDimensionOptions(legacyNativeQuery),
     ...getTargetsForVariables(legacyNativeQuery),
   ];
+}
+
+function isNativeQuery(value: unknown): value is NativeQuery {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "dimensionOptions" in value &&
+    typeof value.dimensionOptions === "function" &&
+    "variables" in value &&
+    typeof value.variables === "function"
+  );
+}
+
+function isTemplateTagDimension(value: unknown): value is TemplateTagDimension {
+  return (
+    typeof value === "object" &&
+    value != null &&
+    "tag" in value &&
+    typeof value.tag === "function" &&
+    "field" in value &&
+    typeof value.field === "function" &&
+    "displayName" in value &&
+    typeof value.displayName === "function"
+  );
 }
 
 function getTargetsForDimensionOptions(
@@ -219,10 +246,17 @@ function getTargetsForDimensionOptions(
   return legacyNativeQuery
     .dimensionOptions()
     .all()
-    .map((templateTagDimension) => {
-      const { name, id } = (
-        templateTagDimension as unknown as TemplateTagDimension
-      ).tag();
+    .flatMap((templateTagDimension) => {
+      if (!isTemplateTagDimension(templateTagDimension)) {
+        return [];
+      }
+
+      const tag = templateTagDimension.tag();
+      if (!tag) {
+        return [];
+      }
+
+      const { name, id } = tag;
       const target: ClickBehaviorTarget = { type: "variable", id: name };
 
       const field = templateTagDimension.field();

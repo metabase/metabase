@@ -84,7 +84,7 @@ export function NewMetricPage({
 
   const defaultValues = useMemo(
     () => ({
-      name: name === "" ? Lib.suggestedName(query) : name,
+      name: name === "" ? (Lib.suggestedName(query) ?? "") : name,
       result_metadata: resultMetadata,
       collection_id: initialCollectionId ?? defaultCollectionId,
     }),

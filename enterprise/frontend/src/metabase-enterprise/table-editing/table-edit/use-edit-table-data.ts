@@ -38,7 +38,11 @@ export function useEditTableData({ tableId, databaseId, location }: Props) {
         if (columnInfo.orderByPosition != null) {
           const orderBysMap = Lib.orderBys(query, stageIndex);
           const orderBy = orderBysMap[columnInfo.orderByPosition];
-          const orderByInfo = Lib.displayInfo(query, stageIndex, orderBy);
+          const orderByInfo = Lib.displayInfo(
+            query,
+            stageIndex,
+            orderBy,
+          ) as Lib.OrderByClauseDisplayInfo;
           return orderByInfo.direction;
         }
       }

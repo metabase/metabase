@@ -28,7 +28,7 @@ export function nativeQuery(
   return ML.native_query(databaseId, metadata, innerQuery);
 }
 
-export function rawNativeQuery(query: Query): string {
+export function rawNativeQuery(query: Query): string | null {
   return ML.raw_native_query(query);
 }
 
@@ -40,8 +40,19 @@ export function withTemplateTags(query: Query, tags: TemplateTags): Query {
   return ML.with_template_tags(query, tags);
 }
 
-export function templateTags(query: Query): TemplateTags {
-  return ML.template_tags(query);
+export function templateTags(query: Query): TemplateTags | null {
+  const tags = ML.template_tags(query);
+  if (!isTemplateTags(tags)) {
+    return null;
+  }
+  return tags;
+}
+
+// Intentionally shallow: tags can legitimately be incomplete at runtime (e.g. a
+// dimension tag before its id/display-name are filled in), and rejecting them here
+// would silently discard the whole tag map.
+function isTemplateTags(tags: unknown): tags is TemplateTags {
+  return typeof tags === "object" && tags != null;
 }
 
 export function hasWritePermission(query: Query): boolean {

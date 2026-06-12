@@ -1,4 +1,4 @@
-import dayjs, { type Dayjs } from "dayjs";
+import dayjs from "dayjs";
 
 import * as LibMetric from "cljs/metabase.lib_metric.js";
 import type { Metadata } from "metabase-lib";
@@ -145,7 +145,7 @@ export function sourceMetricOrMeasureMetadata(
 export function sourceInstances(
   definition: MetricDefinition,
 ): SourceInstance[] {
-  return LibMetric.sourceInstances(definition) as SourceInstance[];
+  return LibMetric.sourceInstances(definition);
 }
 
 export function filters(definition: MetricDefinition): FilterClause[];
@@ -158,9 +158,9 @@ export function filters(
   sourceInstance?: SourceInstance,
 ): FilterClause[] {
   if (sourceInstance !== undefined) {
-    return LibMetric.filters(definition, sourceInstance) as FilterClause[];
+    return LibMetric.filters(definition, sourceInstance);
   }
-  return LibMetric.filters(definition) as FilterClause[];
+  return LibMetric.filters(definition);
 }
 
 export function filterableDimensions(
@@ -175,12 +175,9 @@ export function filterableDimensions(
   sourceInstance?: SourceInstance,
 ): DimensionMetadata[] {
   if (sourceInstance !== undefined) {
-    return LibMetric.filterableDimensions(
-      definition,
-      sourceInstance,
-    ) as DimensionMetadata[];
+    return LibMetric.filterableDimensions(definition, sourceInstance);
   }
-  return LibMetric.filterableDimensions(definition) as DimensionMetadata[];
+  return LibMetric.filterableDimensions(definition);
 }
 
 export function filter(
@@ -207,10 +204,24 @@ export function filter(
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
 }
 
+function isRelativeDateFilterUnit(
+  value: string,
+): value is RelativeDateFilterParts["unit"] {
+  return (
+    value === "minute" ||
+    value === "hour" ||
+    value === "day" ||
+    value === "week" ||
+    value === "month" ||
+    value === "quarter" ||
+    value === "year"
+  );
+}
+
 export function availableSegments(
   definition: MetricDefinition,
 ): SegmentMetadata[] {
-  return LibMetric.availableSegments(definition) as SegmentMetadata[];
+  return LibMetric.availableSegments(definition);
 }
 
 export function addSegmentFilter(
@@ -239,116 +250,142 @@ export function segmentMetadataId(segment: SegmentMetadata): SegmentId {
 }
 
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
-  return LibMetric.stringFilterClause(parts) as FilterClause;
+  return LibMetric.stringFilterClause({
+    ...parts,
+    options: { "case-sensitive": parts.options.caseSensitive },
+  });
 }
 
 export function stringFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): StringFilterParts | null {
-  return LibMetric.stringFilterParts(
-    definition,
-    filterClause,
-  ) as StringFilterParts | null;
+  const parts = LibMetric.stringFilterParts(definition, filterClause);
+  if (!parts) {
+    return null;
+  }
+  return {
+    ...parts,
+    options: { caseSensitive: parts.options.caseSensitive },
+  };
 }
 
 export function numberFilterClause(parts: NumberFilterParts): FilterClause {
-  return LibMetric.numberFilterClause(parts) as FilterClause;
+  return LibMetric.numberFilterClause(parts);
 }
 
 export function numberFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): NumberFilterParts | null {
-  return LibMetric.numberFilterParts(
-    definition,
-    filterClause,
-  ) as NumberFilterParts | null;
+  return LibMetric.numberFilterParts(definition, filterClause);
 }
 
 export function coordinateFilterClause(
   parts: CoordinateFilterParts,
 ): FilterClause {
-  return LibMetric.coordinateFilterClause(parts) as FilterClause;
+  return LibMetric.coordinateFilterClause(parts);
 }
 
 export function coordinateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): CoordinateFilterParts | null {
-  return LibMetric.coordinateFilterParts(
-    definition,
-    filterClause,
-  ) as CoordinateFilterParts | null;
+  return LibMetric.coordinateFilterParts(definition, filterClause);
 }
 
 export function booleanFilterClause(parts: BooleanFilterParts): FilterClause {
-  return LibMetric.booleanFilterClause(parts) as FilterClause;
+  return LibMetric.booleanFilterClause(parts);
 }
 
 export function booleanFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): BooleanFilterParts | null {
-  return LibMetric.booleanFilterParts(
-    definition,
-    filterClause,
-  ) as BooleanFilterParts | null;
+  return LibMetric.booleanFilterParts(definition, filterClause);
 }
 
 export function specificDateFilterClause(
   parts: SpecificDateFilterParts,
 ): FilterClause {
-  return LibMetric.specificDateFilterClause(parts) as FilterClause;
+  return LibMetric.specificDateFilterClause(parts);
 }
 
 export function specificDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): SpecificDateFilterParts | null {
-  return LibMetric.specificDateFilterParts(
-    definition,
-    filterClause,
-  ) as SpecificDateFilterParts | null;
+  const parts = LibMetric.specificDateFilterParts(definition, filterClause);
+  if (!parts || !Array.isArray(parts.values)) {
+    return null;
+  }
+  return {
+    ...parts,
+    values: parts.values.map((value) => {
+      if (dayjs.isDayjs(value)) {
+        return value.toDate();
+      }
+      if (value instanceof Date) {
+        return value;
+      }
+      if (typeof value === "string" || typeof value === "number") {
+        return new Date(value);
+      }
+      return new Date(String(value));
+    }),
+  };
 }
 
 export function relativeDateFilterClause(
   parts: RelativeDateFilterParts,
 ): FilterClause {
-  return LibMetric.relativeDateFilterClause(parts) as FilterClause;
+  return LibMetric.relativeDateFilterClause({
+    ...parts,
+    options: { "include-current": parts.options.includeCurrent },
+  });
 }
 
 export function relativeDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): RelativeDateFilterParts | null {
-  return LibMetric.relativeDateFilterParts(
-    definition,
-    filterClause,
-  ) as RelativeDateFilterParts | null;
+  const parts = LibMetric.relativeDateFilterParts(definition, filterClause);
+  if (!parts) {
+    return null;
+  }
+  const { unit, offsetUnit } = parts;
+  if (
+    !isRelativeDateFilterUnit(unit) ||
+    (offsetUnit != null && !isRelativeDateFilterUnit(offsetUnit))
+  ) {
+    return null;
+  }
+  return {
+    ...parts,
+    unit,
+    offsetUnit,
+    options: { includeCurrent: parts.options.includeCurrent },
+  };
 }
 
 export function excludeDateFilterClause(
   parts: ExcludeDateFilterParts,
 ): FilterClause {
-  return LibMetric.excludeDateFilterClause(parts) as FilterClause;
+  return LibMetric.excludeDateFilterClause(parts);
 }
 
 export function excludeDateFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): ExcludeDateFilterParts | null {
-  return LibMetric.excludeDateFilterParts(
-    definition,
-    filterClause,
-  ) as ExcludeDateFilterParts | null;
+  return LibMetric.excludeDateFilterParts(definition, filterClause);
 }
 
 export function timeFilterClause(parts: TimeFilterParts): FilterClause {
   return LibMetric.timeFilterClause({
     ...parts,
     values: parts.values.map((value) => dayjs(value)),
-  }) as FilterClause;
+  });
 }
 
 export function timeFilterParts(
@@ -356,27 +393,28 @@ export function timeFilterParts(
   filterClause: FilterClause,
 ): TimeFilterParts | null {
   const filterParts = LibMetric.timeFilterParts(definition, filterClause);
-  if (!filterParts) {
+  if (!filterParts || !Array.isArray(filterParts.values)) {
     return null;
   }
+  // CLJS emits time values as dayjs objects at this boundary even though the
+  // generated schema types them as Date; narrow at runtime instead of casting.
   return {
     ...filterParts,
-    values: filterParts.values.map((value: Dayjs) => value.toDate()),
+    values: filterParts.values.map((value) =>
+      dayjs.isDayjs(value) ? value.toDate() : value,
+    ),
   };
 }
 
 export function defaultFilterClause(parts: DefaultFilterParts): FilterClause {
-  return LibMetric.defaultFilterClause(parts) as FilterClause;
+  return LibMetric.defaultFilterClause(parts);
 }
 
 export function defaultFilterParts(
   definition: MetricDefinition,
   filterClause: FilterClause,
 ): DefaultFilterParts | null {
-  return LibMetric.defaultFilterParts(
-    definition,
-    filterClause,
-  ) as DefaultFilterParts | null;
+  return LibMetric.defaultFilterParts(definition, filterClause);
 }
 
 export function filterParts(
@@ -441,7 +479,7 @@ export function projectionableDimensions(
 }
 
 export function dimensionReference(
-  dimension: DimensionMetadata,
+  dimension: ProjectionClause | DimensionMetadata,
 ): ProjectionClause {
   return LibMetric.dimensionReference(dimension) as ProjectionClause;
 }
@@ -535,10 +573,11 @@ export function isTemporalBucketable(
 }
 
 export function withTemporalBucket(
-  projection: Clause | DimensionMetadata,
+  projection: ProjectionClause | DimensionMetadata,
   bucket: TemporalBucket | null,
 ): ProjectionClause {
-  return LibMetric.withTemporalBucket(projection, bucket) as ProjectionClause;
+  const projectionRef = dimensionReference(projection);
+  return LibMetric.withTemporalBucket(projectionRef, bucket);
 }
 
 export function withDefaultTemporalBucket(
@@ -566,17 +605,14 @@ export function defaultTemporalBucket(
 export function binning(
   projection: Clause | DimensionMetadata,
 ): BinningStrategy | null {
-  return LibMetric.binning(projection) as BinningStrategy | null;
+  return LibMetric.binning(projection);
 }
 
 export function availableBinningStrategies(
   definition: MetricDefinition,
   dimension: DimensionMetadata,
 ): BinningStrategy[] {
-  return LibMetric.availableBinningStrategies(
-    definition,
-    dimension,
-  ) as BinningStrategy[];
+  return LibMetric.availableBinningStrategies(definition, dimension);
 }
 
 export function isBinnable(
@@ -587,10 +623,11 @@ export function isBinnable(
 }
 
 export function withBinning(
-  projection: Clause | DimensionMetadata,
+  projection: ProjectionClause | DimensionMetadata,
   binningStrategy: BinningStrategy | null,
 ): ProjectionClause {
-  return LibMetric.withBinning(projection, binningStrategy) as ProjectionClause;
+  const projectionRef = dimensionReference(projection);
+  return LibMetric.withBinning(projectionRef, binningStrategy);
 }
 
 export function withDefaultBinning(

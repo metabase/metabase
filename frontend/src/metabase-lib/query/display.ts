@@ -59,7 +59,11 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    const breakoutInfo = Lib.displayInfo(query, stageIndex, breakout);
+    const breakoutInfo = Lib.displayInfo(
+      query,
+      stageIndex,
+      breakout,
+    ) as Lib.BreakoutClauseDisplayInfo;
     if (breakoutInfo.isTemporalExtraction) {
       return { display: "bar" };
     }

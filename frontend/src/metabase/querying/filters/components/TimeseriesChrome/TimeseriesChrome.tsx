@@ -79,7 +79,10 @@ function TimeseriesControls({
   );
 
   const filter = useMemo(
-    () => filterColumn && findFilterClause(query, stageIndex, filterColumn),
+    () =>
+      filterColumn
+        ? (findFilterClause(query, stageIndex, filterColumn) ?? undefined)
+        : undefined,
     [query, stageIndex, filterColumn],
   );
 

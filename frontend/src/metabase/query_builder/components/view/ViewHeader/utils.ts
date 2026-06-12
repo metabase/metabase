@@ -7,7 +7,9 @@ import type Question from "metabase-lib/v1/Question";
  * and satisfies other conditionals below.
  */
 export const canExploreResults = (question: Question): boolean => {
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  const { isEditable = false, isNative = false } = Lib.queryDisplayInfo(
+    question.query(),
+  );
   const canNest = Boolean(question.database()?.hasFeature("nested-queries"));
 
   return (

@@ -36,7 +36,22 @@ export const isTemplateTagReference = (
 
 export const createFieldReference = (
   columnNameOrFieldId: string | FieldId,
-): FieldReference => ["field", columnNameOrFieldId, null] as FieldReference;
+): DimensionReference => {
+  if (typeof columnNameOrFieldId === "number") {
+    const fieldRef: ["field", FieldId, null] = [
+      "field",
+      columnNameOrFieldId,
+      null,
+    ];
+    return fieldRef;
+  }
+  const fieldRef: ["field", string, { "base-type": string }] = [
+    "field",
+    columnNameOrFieldId,
+    { "base-type": "type/Text" },
+  ];
+  return fieldRef;
+};
 
 export const isValidDimensionReference = (
   mbql: any,
@@ -83,11 +98,15 @@ export const getNormalizedDimensionReference = (
     isExpressionReference(mbql) ||
     isAggregationReference(mbql)
   ) {
-    const normalizedReference = [...mbql] as DimensionReference;
+    const normalizedReference = [...mbql];
     const normalizedOptions = normalizeReferenceOptions(mbql[2]);
     normalizedReference[2] = normalizedOptions;
 
-    return normalize(normalizedReference);
+    const normalized = normalize(normalizedReference);
+    if (!isValidDimensionReference(normalized)) {
+      throw new TypeError("Expected normalize to return a dimension reference");
+    }
+    return normalized;
   }
 
   return mbql;
@@ -97,7 +116,7 @@ const getDimensionReferenceWithoutOptions = (
   mbql: DimensionReferenceWithOptions,
   optionsKeysToOmit: string[],
 ): DimensionReferenceWithOptions => {
-  const newReference = mbql.slice() as DimensionReferenceWithOptions;
+  const newReference: DimensionReferenceWithOptions = [...mbql];
   const options = newReference[2];
 
   if (!options) {
