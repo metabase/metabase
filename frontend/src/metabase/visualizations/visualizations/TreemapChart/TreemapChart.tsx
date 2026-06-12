@@ -91,6 +91,7 @@ export const TreemapChart = ({
       tree: chartData?.tree ?? null,
       formatters,
       renderingContext,
+      viewRootId,
       showLeafValues: settings["treemap.show_leaf_values"] ?? true,
       showParentValues: settings["treemap.show_parent_values"] ?? true,
     });

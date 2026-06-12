@@ -20,9 +20,25 @@ interface UseLabelMeasurementOptions {
   tree: TreemapTree | null;
   formatters: TreemapFormatters | null;
   renderingContext: RenderingContext;
+  viewRootId: NodeId | null /* the root used for current measurements */;
   showLeafValues: boolean;
   showParentValues: boolean;
 }
+
+interface MeasuredLayouts {
+  viewRootId: NodeId | null;
+  labelLayout: Record<NodeId, TreemapLabelLayout>;
+  parentLabelLayout: Record<NodeId, TreemapParentLabelLayout>;
+}
+
+const EMPTY_MEASURED: MeasuredLayouts = {
+  viewRootId: null,
+  labelLayout: {},
+  parentLabelLayout: {},
+};
+
+const EMPTY_LABEL_LAYOUT: Record<NodeId, TreemapLabelLayout> = {};
+const EMPTY_PARENT_LABEL_LAYOUT: Record<NodeId, TreemapParentLabelLayout> = {};
 
 /**
  * Second pass of the label layout: after ECharts finishes laying out (or
@@ -40,21 +56,14 @@ export function useLabelMeasurement({
   tree,
   formatters,
   renderingContext,
+  viewRootId,
   showLeafValues,
   showParentValues,
 }: UseLabelMeasurementOptions) {
-  const [labelLayout, setLabelLayout] = useState<
-    Record<NodeId, TreemapLabelLayout>
-  >({});
-  const [parentLabelLayout, setParentLabelLayout] = useState<
-    Record<NodeId, TreemapParentLabelLayout>
-  >({});
+  const [measured, setMeasured] = useState<MeasuredLayouts>(EMPTY_MEASURED);
 
-  // A new dataset re-renders the chart from scratch, so clear the measured
-  // label maps — their ids belong to the previous tree.
   useEffect(() => {
-    setLabelLayout({});
-    setParentLabelLayout({});
+    setMeasured(EMPTY_MEASURED);
   }, [tree]);
 
   const handleLabelMeasure = useCallback(() => {
@@ -62,27 +71,37 @@ export function useLabelMeasurement({
     if (!chart || !tree || !formatters) {
       return;
     }
-    const { labelLayout: nextLayout, parentLabelLayout: nextParentLayout } =
-      measureTreemapLabelLayouts({
-        nodes: getTreemapLayoutNodes(chart),
-        tree,
-        formatters,
-        renderingContext,
-        showLeafValues,
-        showParentValues,
-      });
-    setLabelLayout((prev) => (_.isEqual(prev, nextLayout) ? prev : nextLayout));
-    setParentLabelLayout((prev) =>
-      _.isEqual(prev, nextParentLayout) ? prev : nextParentLayout,
-    );
+    const { labelLayout, parentLabelLayout } = measureTreemapLabelLayouts({
+      nodes: getTreemapLayoutNodes(chart),
+      tree,
+      formatters,
+      renderingContext,
+      showLeafValues,
+      showParentValues,
+    });
+    setMeasured((prev) => {
+      const next = { viewRootId, labelLayout, parentLabelLayout };
+      return _.isEqual(prev, next) ? prev : next;
+    });
   }, [
     chartRef,
     tree,
     formatters,
     renderingContext,
+    viewRootId,
     showLeafValues,
     showParentValues,
   ]);
 
-  return { labelLayout, parentLabelLayout, handleLabelMeasure };
+  const animationInProgress = measured.viewRootId !== viewRootId;
+
+  return {
+    labelLayout: animationInProgress
+      ? EMPTY_LABEL_LAYOUT
+      : measured.labelLayout,
+    parentLabelLayout: animationInProgress
+      ? EMPTY_PARENT_LABEL_LAYOUT
+      : measured.parentLabelLayout,
+    handleLabelMeasure,
+  };
 }
