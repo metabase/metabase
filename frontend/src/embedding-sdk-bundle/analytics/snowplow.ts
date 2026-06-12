@@ -22,18 +22,18 @@ export type SdkAuthMethod = "guest" | "api_key" | "sso";
 type WasJustInitialized = boolean;
 
 let trackerInitialized = false;
-let sdkAuthMethod: SdkAuthMethod | "" = "";
+let sdkAuthMethod: SdkAuthMethod;
 let sdkLocaleUsed: boolean = false;
 
 // Initialize the SDK's Snowplow tracker. Idempotent — safe under StrictMode double-mount.
 export function initSdkTracker({
   metabaseInstanceUrl,
-  authMethod = "",
+  authMethod,
   localeUsed = false,
   store,
 }: {
   metabaseInstanceUrl: string;
-  authMethod?: SdkAuthMethod | "";
+  authMethod: SdkAuthMethod;
   localeUsed?: boolean;
   store: { getState: () => SdkStoreState };
 }): WasJustInitialized {
@@ -67,7 +67,7 @@ export function initSdkTracker({
   return true;
 }
 
-export function getSdkAuthMethod(): SdkAuthMethod | "" {
+export function getSdkAuthMethod(): SdkAuthMethod | undefined {
   return sdkAuthMethod;
 }
 

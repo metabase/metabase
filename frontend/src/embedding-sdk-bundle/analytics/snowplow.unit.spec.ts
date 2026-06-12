@@ -133,10 +133,10 @@ describe("embedding-sdk-bundle/analytics/snowplow (CSP transport)", () => {
   });
 
   describe("getSdkAuthMethod", () => {
-    it("returns empty string before initSdkTracker is called", async () => {
+    it("returns undefined before initSdkTracker is called", async () => {
       const { getSdkAuthMethod } = await loadModule();
 
-      expect(getSdkAuthMethod()).toBe("");
+      expect(getSdkAuthMethod()).toBeUndefined();
     });
 
     it("returns the auth method passed to initSdkTracker", async () => {

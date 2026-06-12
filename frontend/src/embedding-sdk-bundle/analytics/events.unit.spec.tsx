@@ -10,7 +10,7 @@ jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
   getBuildInfo: jest.fn(() => ({ version: "1.2.3" })),
 }));
 
-import { renderWithProviders } from "__support__/ui";
+import { renderHookWithProviders } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
@@ -35,21 +35,6 @@ const STUB_DASHBOARD_PROPS = {
   enable_entity_navigation: false,
 };
 
-interface TestComponentProps {
-  componentName: SdkComponentName;
-  entityId: number | null;
-  properties: Record<string, unknown>;
-}
-
-function TestComponent({
-  componentName,
-  entityId,
-  properties,
-}: TestComponentProps) {
-  useTrackSdkComponentMount(componentName, entityId, properties);
-  return null;
-}
-
 interface SetupOptions {
   trackingEnabled?: boolean;
   sdkTrackerReady?: boolean;
@@ -72,12 +57,8 @@ function setup({
     sdkState: createMockSdkState({ sdkTrackerReady }),
   });
 
-  return renderWithProviders(
-    <TestComponent
-      componentName={componentName}
-      entityId={entityId}
-      properties={properties}
-    />,
+  return renderHookWithProviders(
+    () => useTrackSdkComponentMount(componentName, entityId, properties),
     { storeInitialState: state, customReducers: sdkReducers },
   );
 }
@@ -144,20 +125,8 @@ describe("useTrackSdkComponentMount", () => {
       entityId,
       properties: STUB_DASHBOARD_PROPS,
     });
-    rerender(
-      <TestComponent
-        componentName="InteractiveDashboard"
-        entityId={entityId}
-        properties={STUB_DASHBOARD_PROPS}
-      />,
-    );
-    rerender(
-      <TestComponent
-        componentName="InteractiveDashboard"
-        entityId={entityId}
-        properties={STUB_DASHBOARD_PROPS}
-      />,
-    );
+    rerender();
+    rerender();
 
     expect(mockTrackSdkEvent).toHaveBeenCalledTimes(1);
   });
@@ -173,21 +142,13 @@ describe("useTrackSdkComponentMount", () => {
     };
 
     // First mount fires.
-    renderWithProviders(
-      <TestComponent
-        componentName="CollectionBrowser"
-        entityId={null}
-        properties={{}}
-      />,
+    renderHookWithProviders(
+      () => useTrackSdkComponentMount("CollectionBrowser", null, {}),
       renderOptions,
     );
     // Second mount — same dedup key (CollectionBrowser:presence), already fired.
-    renderWithProviders(
-      <TestComponent
-        componentName="CollectionBrowser"
-        entityId={null}
-        properties={{}}
-      />,
+    renderHookWithProviders(
+      () => useTrackSdkComponentMount("CollectionBrowser", null, {}),
       renderOptions,
     );
 
@@ -206,20 +167,14 @@ describe("useTrackSdkComponentMount", () => {
       customReducers: sdkReducers,
     };
 
-    renderWithProviders(
-      <TestComponent
-        componentName="StaticDashboard"
-        entityId={idA}
-        properties={STUB_DASHBOARD_PROPS}
-      />,
+    renderHookWithProviders(
+      () =>
+        useTrackSdkComponentMount("StaticDashboard", idA, STUB_DASHBOARD_PROPS),
       renderOptions,
     );
-    renderWithProviders(
-      <TestComponent
-        componentName="StaticDashboard"
-        entityId={idB}
-        properties={STUB_DASHBOARD_PROPS}
-      />,
+    renderHookWithProviders(
+      () =>
+        useTrackSdkComponentMount("StaticDashboard", idB, STUB_DASHBOARD_PROPS),
       renderOptions,
     );
 

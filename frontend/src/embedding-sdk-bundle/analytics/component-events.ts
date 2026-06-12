@@ -2,15 +2,14 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 import { getSdkAuthMethod, getSdkLocaleUsed, trackSdkEvent } from "./snowplow";
 
 export function useIsTrackingEnabled(): boolean {
   // Default false so we don't fire events during the settings-load window for users who opted out.
-  return useSdkSelector(
-    (state) => state.settings?.values?.["anon-tracking-enabled"] ?? false,
-  );
+  return useSetting("anon-tracking-enabled") ?? false;
 }
 
 export const EMBEDDING_SDK_SCHEMA =
@@ -131,7 +130,7 @@ const firedKeys = new Set<string>();
 // sdkTrackerReady (set by ComponentProvider after initSdkTracker completes).
 // Without the sdkTrackerReady gate, firing early would either silently drop the
 // event (Snowplow discards calls before newTracker runs) or record auth_method
-// as "" because initSdkTracker hasn't written it yet.
+// as undefined because initSdkTracker hasn't written it yet.
 export function useTrackSdkComponentMount<C extends SdkComponentName>(
   componentName: C,
   entityId: number | string | null,
