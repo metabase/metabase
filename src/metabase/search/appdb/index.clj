@@ -230,6 +230,15 @@
                 (log/infof "New pending index %s" pending)
                 pending)))))))
 
+(defn- analyze-table!
+  "Refresh the table's statistics so size estimates are accurate as soon as it becomes active.
+  Best-effort: a failure here must never block activation."
+  [table-name]
+  (try
+    (specialization/analyze-table! table-name)
+    (catch Exception e
+      (log/warnf e "Failed to analyze index table %s" table-name))))
+
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
@@ -238,11 +247,13 @@
       ;; The atoms are the only source of truth, we must not update the metadata.
       (boolean
        (when-let [pending (:pending @*indexes*)]
+         (analyze-table! pending)
          (reset! *indexes* {:pending nil, :active pending}) true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
+          (analyze-table! pending)
           (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
