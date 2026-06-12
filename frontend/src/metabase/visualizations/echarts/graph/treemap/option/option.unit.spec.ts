@@ -279,79 +279,6 @@ describe("getTreemapChartOption within-group borders", () => {
   });
 });
 
-describe("getTreemapChartOption small-node labels", () => {
-  it("hides the label on a leaf whose area share is below the threshold", () => {
-    const tree: TreemapTree = [
-      {
-        rawName: "G",
-        displayName: "G",
-        value: 100,
-        rowIndices: [0, 1],
-        children: [
-          { rawName: "Big", displayName: "Big", value: 98, rowIndices: [0] },
-          { rawName: "Tiny", displayName: "Tiny", value: 2, rowIndices: [1] },
-        ],
-      },
-    ];
-
-    const { series } = getTreemapChartOption({ tree, renderingContext });
-    const [big, tiny] = series.data[0].children ?? [];
-
-    expect(tiny.label).toMatchObject({ show: false });
-    expect(big.label?.show).not.toBe(false);
-  });
-
-  it("hides the label on a small tile in a 1-level treemap", () => {
-    const tree: TreemapTree = [
-      { rawName: "A", displayName: "A", value: 99, rowIndices: [0] },
-      { rawName: "B", displayName: "B", value: 1, rowIndices: [1] },
-    ];
-
-    const { series } = getTreemapChartOption({ tree, renderingContext });
-
-    expect(series.data[1].label).toMatchObject({ show: false });
-    expect(series.data[0].label?.show).not.toBe(false);
-  });
-
-  it("keeps top-level group headers visible even when the group is a small share", () => {
-    const tree: TreemapTree = [
-      {
-        rawName: "Big",
-        displayName: "Big",
-        value: 99,
-        rowIndices: [0],
-        children: [
-          {
-            rawName: "Big-1",
-            displayName: "Big-1",
-            value: 99,
-            rowIndices: [0],
-          },
-        ],
-      },
-      {
-        rawName: "Small",
-        displayName: "Small",
-        value: 1,
-        rowIndices: [1],
-        children: [
-          {
-            rawName: "Small-1",
-            displayName: "Small-1",
-            value: 1,
-            rowIndices: [1],
-          },
-        ],
-      },
-    ];
-
-    const { series } = getTreemapChartOption({ tree, renderingContext });
-
-    // The small group's own label is never force-hidden — its header chip stays.
-    expect(series.data[1].label?.show).not.toBe(false);
-  });
-});
-
 describe("getTreemapChartOption wrapping", () => {
   it("enables word-wrapping with vertical truncation on the series label", () => {
     const { series } = getTreemapChartOption({
@@ -391,7 +318,7 @@ describe("getTreemapChartOption labelLayout override", () => {
     expect(big.label).toEqual({ show: false, width: 50 });
   });
 
-  it("shows a leaf label and wraps it, overriding the area-share heuristic", () => {
+  it("shows a leaf label and sets its wrap width from the measured layout", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
       labelLayout: { "0-1": { show: true, detail: "labelOnly", width: 120 } },
@@ -399,11 +326,10 @@ describe("getTreemapChartOption labelLayout override", () => {
     });
     const [, tiny] = series.data[0].children ?? [];
 
-    // Without the override, "Tiny" (2% share) would be hidden by area-share.
     expect(tiny.label).toEqual({ show: true, width: 120 });
   });
 
-  it("falls back to the area-share heuristic for ids not in the map", () => {
+  it("hides labels for ids not yet measured (first paint)", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
       labelLayout: { "0-0": { show: false, detail: "none", width: 50 } },
@@ -411,7 +337,9 @@ describe("getTreemapChartOption labelLayout override", () => {
     });
     const [, tiny] = series.data[0].children ?? [];
 
-    // "0-1" is absent from the map, so the area-share proxy still hides it.
+    // "0-1" is absent from the map — its label stays hidden until the
+    // measurement pass covers it, so a label never flashes on a tile it
+    // turns out not to fit.
     expect(tiny.label).toMatchObject({ show: false });
   });
 
@@ -431,7 +359,6 @@ describe("getTreemapChartOption labelLayout override", () => {
     });
 
     expect(series.data[0].label).toEqual({ show: false, width: 200 });
-    // "B" would be area-share-hidden, but the layout shows it.
     expect(series.data[1].label).toEqual({ show: true, width: 30 });
   });
 });

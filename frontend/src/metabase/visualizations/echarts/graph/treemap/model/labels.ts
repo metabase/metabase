@@ -112,9 +112,9 @@ export interface TreemapLabelLayoutsConfig extends TreemapLabelLayoutConfig {
 }
 
 /**
- * Per-leaf label layout (detail level + wrap width), keyed by node id. The
- * option builder applies it on top of its cheap area-share heuristic, which only
- * covers the first paint before any layout exists to measure.
+ * Per-leaf label layout (detail level + wrap width), keyed by node id. Tiles
+ * missing from the map (the first paint, before any layout exists to measure)
+ * stay hidden until a measurement pass covers them.
  */
 export function getTreemapLabelLayouts(
   nodes: TreemapLayoutNode[],

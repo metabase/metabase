@@ -19,14 +19,6 @@ import {
   leafBlock,
 } from "../style";
 
-// Hide a tile's label once it occupies less than this fraction of the chart
-// area. A treemap tile's area is proportional to its value, so a node's share
-// of the total is a reliable proxy for its rendered box size — below this,
-// the label can't be drawn legibly and ECharts would only truncate it to an
-// ellipsis. Applies to tiles that render their own label (leaves in a 2-level
-// tree, top-level nodes in a 1-level tree), not to group header chips.
-const LEAF_LABEL_MIN_AREA_SHARE = 0.03;
-
 export interface TreemapSeriesNode {
   id: string;
   name: string;
@@ -92,9 +84,9 @@ export function getTreemapChartOption({
   showParentLabels?: boolean;
   /**
    * Per-leaf label layout (show + wrap width), keyed by node id, measured from
-   * the rendered tile after layout (see `model/labels.ts`). Takes precedence
-   * over the cheap area-share heuristic below; missing ids fall back to that
-   * heuristic (used for the first paint, before any layout exists to measure).
+   * the rendered tile after layout (see `model/labels.ts`). Missing ids (the
+   * first paint, before any layout exists to measure) stay hidden until the
+   * measurement pass covers them.
    */
   labelLayout?: Record<string, TreemapLabelLayout>;
   /**
@@ -217,11 +209,9 @@ function toSeriesData(
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
-  // A leaf's share of the whole chart is its value over the total (the root
-  // values already sum the leaves), which equals its share of the rendered area.
+  // The root values already sum the leaves, so the grand total is the sum of
+  // the top-level nodes.
   const total = tree.reduce((sum, node) => sum + node.value, 0);
-  const isTileTooSmall = (value: number) =>
-    total > 0 && value / total < LEAF_LABEL_MIN_AREA_SHARE;
   const formatShare = (value: number) =>
     formatPercent(total === 0 ? 0 : value / total);
 
@@ -230,8 +220,9 @@ function toSeriesData(
   //   formatter referencing the series `label.rich`), truncated to the tile;
   // - `"labelOnly"` → the name alone, wrapped to the tile width (the default);
   // - `"none"` → hidden.
-  // Before any layout exists to measure, fall back to the cheap area-share
-  // proxy (name-only, or hidden for tiles too small to read).
+  // Unmeasured tiles (the first paint, before any layout exists to measure)
+  // stay hidden — labels only appear once the measurement pass has sized them,
+  // so a label never flashes on a tile it turns out not to fit.
   const getLabelOverride = (
     id: string,
     value: number,
@@ -265,10 +256,7 @@ function toSeriesData(
       }
       return { label: { show: true, width: layout.width } };
     }
-    if (isTileTooSmall(value)) {
-      return { label: { show: false } };
-    }
-    return {};
+    return { label: { show: false } };
   };
 
   return tree.map((node, rootIndex) => {
