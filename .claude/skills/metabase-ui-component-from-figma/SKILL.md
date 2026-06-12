@@ -29,15 +29,16 @@ Phases 1, 2, 5 and 6 are shared. The middle two differ in **order**: update mode
    - **Figma link(s)** — extract the `node-id` (`?node-id=250-13588` → `250-13588`) and `fileKey` (the `/design/<fileKey>/…` segment).
    - **`gitBranchName`** — switch to it if not already there.
    - **The component's intended API** — variants, sizes, and states the design system supports for this component. This defines the axes of your showcase (Phase 3).
-3. Decide the mode. Does the component already exist anywhere — in `frontend/src/metabase/ui/components/**/<Component>/`, or as a legacy component under `frontend/src/metabase/common/components/` (or elsewhere)? If so → **update** mode (a legacy component still counts; the ticket migrates it into `metabase/ui`). Only if nothing equivalent exists → **create** mode. Confirm with the user when unsure — a similarly-named primitive may already exist under a different group or name.
+3. Decide the mode (see **Two modes** above): search for an existing component — in `metabase/ui` or as a legacy component elsewhere. Found → **update**; nothing equivalent anywhere → **create**. Confirm with the user when unsure.
+4. **Verify a Figma desktop MCP is connected before doing the work** — this skill depends on it for exact tokens in Phase 4 (and styling can't proceed accurately without it). Do a quick read against the issue's node (e.g. `get_metadata`/`get_variable_defs`); if it errors with "nothing selected" or the server isn't connected, prompt the user to enable it (Switch to Dev Mode → MCP section in the right sidebar) and select the relevant layer before continuing.
 
 ## Phase 2 — Understand the component
 
 ### Mode: update an existing component
 
-1. Locate the component dir under `frontend/src/metabase/ui/components/<group>/<Component>/` (typically `Component.config.ts` or `Component.tsx`, `Component.module.css`, `Component.stories.tsx`, `index.ts`). A ticket may also be **migrating a legacy component** from `frontend/src/metabase/common/components/` into `metabase/ui` — if it still uses Emotion styled-components, reach for the **emotion-migrate** skill.
+1. Locate the component dir (typically containing `Component.config.ts` or `Component.tsx`, `Component.module.css`, `Component.stories.tsx`, `index.ts`). A ticket may also be **migrating a legacy component** — if it still uses Emotion styled-components, reach for the **emotion-migrate** skill.
 2. Map every usage across `frontend/src` and `e2e` (JSX `<Component`, sub-components like `Component.Group`, and wrapper components).
-3. Write findings to **`local/<TICKET>-<component>-usage-findings.md`** (`local/` is gitignored), one entry per usage: code location (`file:line`), short context, and **non-standard usage** (excessive customization, inline styling, invalid/legacy props). Invalid props are a signal that call sites will need migrating in Phase 6. This doc **stays** — the user walks it at the end to verify each real usage still looks right.
+3. Write findings to **`local/<TICKET>-<component>-usage-findings.md`**, one entry per usage: code location (`file:line`), short context, and **non-standard usage** (excessive customization, inline styling, invalid/legacy props). Invalid props are a signal that call sites will need migrating in Phase 6. This doc **stays** — the user walks it at the end to verify each real usage still looks right.
 4. State the blast radius plainly: how many call sites, where, and whether they're confined.
 5. **Lock behavior with tests before changing anything — when warranted.** Only for components that have **custom interactive behavior** (their own event handlers, state, keyboard logic, controlled/uncontrolled wiring). Add unit tests covering that current API/behavior so a regression shows up as a failing test. **Skip tests for thin Mantine wrappers** — don't test built-in Mantine behavior, and a pure visual restyle is covered by the showcase/Loki, not unit tests.
 
@@ -77,6 +78,93 @@ Use **`storybook-addon-pseudo-states`** (registered in `.storybook/main.ts`); do
 
 The addon toolbar toggle keeps working independently (it forces every rule in the story).
 
+### Example: a finalized matrix story
+
+Illustrative — adapt the axes and states to the component you're working on. This is the shape the pieces above add up to (state labels on the left, one column per `variant × size`, forced hover/pressed via `parameters.pseudo`, the root hook on `wrapperProps`, controls scoped to the meaningful knobs):
+
+```tsx
+import type { StoryFn } from "@storybook/react";
+import { Fragment } from "react";
+
+import { Box, Chip, type ChipProps, Text } from "metabase/ui";
+import { StoryJsx, StoryShowcase } from "metabase/ui/stories/showcase";
+
+import S from "./Chip.module.css";
+
+// Axes derived from the component's API (here: variant × size).
+const COLUMNS = [
+  { variant: "light", size: "sm" },
+  { variant: "light", size: "md" },
+  { variant: "filled", size: "sm" },
+  { variant: "filled", size: "md" },
+] as const;
+
+// Every state the component supports; `id` doubles as the pseudo-state hook.
+const STATES = [
+  { id: "default", label: "Default" },
+  { id: "hover", label: "Hover" },
+  { id: "pressed", label: "Pressed" },
+  { id: "selected", label: "Selected", checked: true },
+  { id: "hover-selected", label: "Hover selected", checked: true },
+  { id: "disabled", label: "Disabled", disabled: true },
+];
+
+// Force hover/pressed by targeting the slot the pseudo-class sits on (.ChipLabel).
+const labelSelector = (id: string) => `[data-state-row="${id}"] .${S.ChipLabel}`;
+
+const Overview: StoryFn<ChipProps> = ({ children }) => (
+  <StoryShowcase title="Chip">
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `9rem repeat(${COLUMNS.length}, max-content)`,
+        columnGap: "2rem",
+        rowGap: "1rem",
+        alignItems: "center",
+      }}
+    >
+      <div />
+      {COLUMNS.map(({ variant, size }) => (
+        <StoryJsx
+          key={`${variant}-${size}`}
+        >{`<Chip variant="${variant}" size="${size}" />`}</StoryJsx>
+      ))}
+      {STATES.map((state) => (
+        <Fragment key={state.id}>
+          <Text size="sm" c="text-secondary">
+            {state.label}
+          </Text>
+          {COLUMNS.map(({ variant, size }) => (
+            <Chip
+              key={`${variant}-${size}`}
+              wrapperProps={{ "data-state-row": state.id }} // hook on the ROOT
+              variant={variant}
+              size={size}
+              checked={state.checked ?? false}
+              disabled={state.disabled ?? false}
+              onChange={() => {}}
+            >
+              {children}
+            </Chip>
+          ))}
+        </Fragment>
+      ))}
+    </Box>
+  </StoryShowcase>
+);
+
+export const OverviewStory = {
+  render: Overview,
+  parameters: {
+    pseudo: {
+      hover: ["hover", "hover-selected"].map(labelSelector),
+      active: ["pressed"].map(labelSelector),
+    },
+    controls: { include: ["children", "theme"] },
+  },
+};
+```
+
 ### Story conventions
 
 - Keep an interactive default story plus the matrix story.
@@ -88,7 +176,7 @@ Validate: `bun run lint-eslint-pure -- <files>` and `bun run type-check-pure`.
 
 ### Optional: verify in the browser yourself
 
-If a browser-driving MCP is connected (e.g. **chrome-devtools-mcp**: `navigate_page`, `take_screenshot`, `take_snapshot`, `evaluate_script`, `resize_page`), use it to check your own work against the running Storybook (`http://localhost:6006/iframe.html?id=<story-id>`, the kebab-cased title + story). Screenshot for a visual read; `evaluate_script`/`take_snapshot` to confirm DOM facts (a hook landed on the root, pseudo classes applied, a resolved `--mb-color-*`). This is a **convenience, never a requirement** — without it, rely on the user's visual check (and you may suggest installing the plugin). Storybook is usually already running; don't start it. (Screenshot writes may be sandboxed to the repo root — save under `local/` then `mv`.)
+If a browser-driving MCP is connected (e.g. **chrome-devtools-mcp** or **playwright-mcp**: `navigate_page`, `take_screenshot`, `take_snapshot`, `evaluate_script`, `resize_page`), use it to check your own work against the running Storybook (`http://localhost:6006/iframe.html?id=<story-id>`, the kebab-cased title + story). Screenshot for a visual read; `evaluate_script`/`take_snapshot` to confirm DOM facts (a hook landed on the root, pseudo classes applied, a resolved `--mb-color-*`). This is a **convenience, never a requirement** — without it, rely on the user's visual check (and you may suggest installing the plugin). Storybook is usually already running; don't start it. (Screenshot writes may be sandboxed to the repo root — save under `local/` then `mv`.)
 
 Pause here and let the user look. Iterate on layout/spacing only — **no component style changes yet.**
 
