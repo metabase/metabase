@@ -111,7 +111,7 @@ export function getTreemapChartOption({
 }): {
   series: TreemapChartSeriesOption;
 } {
-  const hasChildren = tree.some((node) => node.children != null);
+  const hasNestedChildren = tree.some(hasChildren);
 
   // Header band labelling each top-level group at the overview. ECharts wraps
   // `series.data` in a synthetic root, so depths are: root=0 (`levels[0]`),
@@ -200,7 +200,7 @@ export function getTreemapChartOption({
     childrenVisibleMin: 25 * 25,
     // The root gap applies to both 1-level and 2-level treemaps; the group
     // level (headers, saturation) only exists when there are children.
-    levels: hasChildren ? [rootLevel, groupLevel] : [rootLevel],
+    levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
   };
 
   return { series };
@@ -278,7 +278,7 @@ function toSeriesData(
 
     const upperLabel = getUpperLabel({
       groupTint,
-      hasChildren: node.children !== null,
+      hasChildren: hasChildren(node),
       layout: parentLabelLayout[groupId],
       displayName: node.displayName,
       valueLabel: formatValue(node.value),
@@ -289,7 +289,7 @@ function toSeriesData(
     const itemStyle = getItemStyle({
       groupColor,
       groupTint,
-      hasChildren: node.children !== null,
+      hasChildren: hasChildren(node),
       isDrilled,
     });
 
@@ -303,11 +303,11 @@ function toSeriesData(
       // Top-level nodes with children render a header chip (always shown), not
       // their own tile label, so only resolve the label for childless tiles —
       // i.e. a 1-level treemap's tiles.
-      ...(node.children == null
+      ...(!hasChildren(node)
         ? getLabelOverride(groupId, node.value, node.displayName)
         : {}),
       upperLabel,
-      ...(node.children
+      ...(hasChildren(node)
         ? {
             children: node.children.map((leaf, leafIndex) => ({
               id: getTreemapNodeId(rootIndex, leafIndex),
@@ -325,6 +325,12 @@ function toSeriesData(
         : {}),
     };
   });
+}
+
+function hasChildren(
+  node: TreemapNode,
+): node is TreemapNode & { children: NonNullable<TreemapNode["children"]> } {
+  return node.children != null;
 }
 
 /**
