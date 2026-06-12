@@ -20,6 +20,7 @@
    [metabase.explorations.query-plan.planner :as planner]
    [metabase.explorations.query-plan.prompts :as qp.prompts]
    [metabase.explorations.query-plan.variants :as qp.variants]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]))
 
 (set! *warn-on-reflection* true)
@@ -28,12 +29,12 @@
 ;; LLM config + schema
 ;; ---------------------------------------------------------------------------
 
-(def llm-config
-  "Sonnet 4.6 with extended thinking, matching Phase-1 of ai-summary. The
-  planning task is structurally similar — pattern-match a moderate landscape
-  against the user's intent — and benefits from the same model + budget.
-  Public so the orchestrator can stamp it into the transcript preamble."
-  {:model           "anthropic/claude-sonnet-4-6"
+(defn llm-config
+  "Extended-thinking config matching Phase-1 of ai-summary. The planning task is
+  structurally similar — pattern-match a moderate landscape against the user's
+  intent — and benefits from the same budget."
+  []
+  {:model           (metabot.settings/llm-metabot-provider)
    :temperature     1.0
    :max-tokens      16000
    :thinking-config {:type "enabled" :budget_tokens 8000}})
@@ -307,7 +308,7 @@
       (ai.common/run-with-repair
        {:thread-id      thread-id
         :phase-name     "query-plan"
-        :llm-config     llm-config
+        :llm-config     (llm-config)
         :prompt         rendered-prompt
         :schema         plan-schema
         :extract-fn     extract-plan

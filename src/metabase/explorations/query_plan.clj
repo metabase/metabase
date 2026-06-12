@@ -181,7 +181,7 @@
    :thread-id    thread-id
    :planner      planner-name
    :setting      (explorations.settings/explorations-query-planner)
-   :llm-config   (when (= planner-name :llm) qp.llm/llm-config)})
+   :llm-config   (when (= planner-name :llm) (qp.llm/llm-config))})
 
 ;; ---------------------------------------------------------------------------
 ;; Ctx building

@@ -13,16 +13,17 @@
   (:require
    [clojure.string :as str]
    [metabase.explorations.ai-summary.common :as common]
-   [metabase.explorations.ai-summary.prompts :as prompts]))
+   [metabase.explorations.ai-summary.prompts :as prompts]
+   [metabase.metabot.settings :as metabot.settings]))
 
 (set! *warn-on-reflection* true)
 
-(def llm-config
+(defn llm-config
   "Phase-1 LLM settings. Curation is pattern matching against a
-  richly-annotated index — Sonnet 4.6 with extended thinking handles the
-  edge-case tie-breaking (near-duplicate charts, ambiguous question framing)
-  noticeably better than Haiku while costing materially less than Opus."
-  {:model           "anthropic/claude-sonnet-4-6"
+  richly-annotated index, run with extended thinking so the model handles the
+  edge-case tie-breaking (near-duplicate charts, ambiguous question framing)."
+  []
+  {:model           (metabot.settings/llm-metabot-provider)
    :temperature     1.0
    :max-tokens      16000
    :thinking-config {:type "enabled" :budget_tokens 8000}})
@@ -189,7 +190,7 @@
   [thread-id prompt pool-ids]
   (common/run-with-repair {:thread-id      thread-id
                            :phase-name     "phase-1"
-                           :llm-config     llm-config
+                           :llm-config     (llm-config)
                            :prompt         prompt
                            :schema         curation-schema
                            :extract-fn     extract-curation

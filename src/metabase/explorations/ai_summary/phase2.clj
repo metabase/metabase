@@ -18,6 +18,7 @@
    [metabase.explorations.ai-summary.common :as common]
    [metabase.explorations.ai-summary.prompts :as prompts]
    [metabase.interestingness.core :as interestingness]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.queries.core :as queries]))
 
 (set! *warn-on-reflection* true)
@@ -127,14 +128,13 @@
                    ":\n  "
                    (str/join " | " (map format-pair pairs)))))))))
 
-(def llm-config
+(defn llm-config
   "Phase-2 LLM settings. Analysis composes a research-paper-style document,
   correlates timeline events with data inflections, judges evidence strength,
   and structures the argument — the most reasoning-intensive step in the
-  pipeline. Opus 4.7 with extended thinking is worth the cost here: the
-  document is the user-facing deliverable, and the per-run absolute cost is
-  small (async background task, one doc per thread completion)."
-  {:model           "anthropic/claude-opus-4-7"
+  pipeline, run with high-effort extended thinking when possible."
+  []
+  {:model           (metabot.settings/llm-metabot-provider)
    :temperature     1.0
    :max-tokens      16000
    :thinking-config {:type "adaptive" :effort "high"}})
@@ -469,7 +469,7 @@
   [thread-id prompt categorical-chart-ids]
   (common/run-with-repair {:thread-id      thread-id
                            :phase-name     "phase-2"
-                           :llm-config     llm-config
+                           :llm-config     (llm-config)
                            :prompt         prompt
                            :schema         response-schema
                            :extract-fn     extract-doc

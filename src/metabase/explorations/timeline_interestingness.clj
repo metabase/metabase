@@ -17,6 +17,7 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.query-processor.middleware.cache.impl :as cache.impl]
    [metabase.timeline.core :as timeline]
    [metabase.util.log :as log]
@@ -74,7 +75,6 @@ Always return a single object matching the supplied schema. Do not respond with 
 
 ")
 
-(def ^:private model "anthropic/claude-haiku-4-5")
 (def ^:private temperature 0.0)
 (def ^:private max-tokens 256)
 
@@ -111,7 +111,7 @@ Always return a single object matching the supplied schema. Do not respond with 
   [chart-config thread-prompt timeline-row]
   (try
     (let [response (metabot.self/call-llm-structured
-                    model
+                    (metabot.settings/llm-metabot-provider)
                     [{:role "user" :content (build-user-message chart-config thread-prompt timeline-row)}]
                     response-schema
                     temperature
