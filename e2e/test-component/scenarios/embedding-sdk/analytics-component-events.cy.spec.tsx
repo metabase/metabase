@@ -200,6 +200,4 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
     cy.wrap(capturedEvents).should("have.length", 0);
   });
-
 });
-
