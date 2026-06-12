@@ -17,6 +17,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.sync :as data-apps.sync]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -311,6 +312,19 @@
   (and (some? pre-task-branch)
        (not= pre-task-branch (settings/remote-sync-branch))))
 
+(defn- materialize-data-apps!
+  "After a successful content import, materialize data apps from the same
+   snapshot. Data apps live under `data_apps/` in the repo (outside the serdes
+   paths), so they ride this import rather than having their own sync. Adapts the
+   snapshot to plain reader fns; `data-apps.sync/sync-from-snapshot!` never throws."
+  [^SourceSnapshot snapshot]
+  ;; `read-file` returns file text (a string) or nil; data-apps.sync converts to
+  ;; bytes on its side, keeping all Java interop out of this namespace.
+  (data-apps.sync/sync-from-snapshot!
+   {:read-file  (fn [path] (source.p/read-file snapshot path))
+    :list-files (fn [] (source.p/list-files snapshot))
+    :sha        (source.p/version snapshot)}))
+
 (defn load-snapshot!
   "Loads a snapshot's serialized entities into the app DB and reconciles local state to match it:
   runs `load-metabase!`, toggles the `remote-sync-transforms` setting based on the snapshot's contents,
@@ -566,90 +580,97 @@
                                      (not force-deletion?)
                                      (into (:deletion-conflicts @conflicts)))))
             incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
-            dirty?             (delay (remote-sync.object/dirty?))]
-        (cond
-          ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
-          merge?
-          (cond
-            ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
-            (nil? base-snapshot)
-            {:status    :conflict
-             :version   snapshot-version
-             :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
-             :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
+            dirty?             (delay (remote-sync.object/dirty?))
+            result
+            (cond
+              ;; --- Merge mode: fold remote changes into local, keeping un-pushed local changes. ---
+              merge?
+              (cond
+                ;; No safe merge base (no prior sync, or base orphaned by a force-push/rebase) — can't 3-way merge.
+                (nil? base-snapshot)
+                {:status    :conflict
+                 :version   snapshot-version
+                 :conflicts ["Remote history was rewritten (force-push or rebase); cannot merge automatically."]
+                 :message   "Cannot merge: the remote branch history was rewritten. Discard local changes and pull, or push to a new branch."}
 
-            ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
-            (= (source.p/version base-snapshot) snapshot-version)
-            (do
-              (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
-              {:status        :success
-               :version       snapshot-version
-               :merge-summary {:added 0 :updated 0 :removed 0}
-               :outcome       {:kind "pull-skipped"}})
+                ;; Remote hasn't advanced past the merge base — nothing to fold in; keep local changes dirty.
+                (= (source.p/version base-snapshot) snapshot-version)
+                (do
+                  (log/info "Pull merge: remote has not advanced; keeping local changes unchanged")
+                  {:status        :success
+                   :version       snapshot-version
+                   :merge-summary {:added 0 :updated 0 :removed 0}
+                   :outcome       {:kind "pull-skipped"}})
 
-            :else
-            (import-merged! snapshot base-snapshot task-id sync-timestamp))
+                :else
+                (import-merged! snapshot base-snapshot task-id sync-timestamp))
 
-          ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
-          ;; force-deletion? is false) still block; otherwise a full reload. ---
-          force?
-          (cond
-            (seq @blocking-conflicts)
-            (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
-              (log/info message)
-              {:status :conflict
-               :version snapshot-version
-               :conflicts (into #{} (map :category) @blocking-conflicts)
-               :conflict-details @blocking-conflicts
-               :message message})
+              ;; --- Forced reload: bypasses the no-op/incremental guards. Deletion conflicts (when
+              ;; force-deletion? is false) still block; otherwise a full reload. ---
+              force?
+              (cond
+                (seq @blocking-conflicts)
+                (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+                  (log/info message)
+                  {:status :conflict
+                   :version snapshot-version
+                   :conflicts (into #{} (map :category) @blocking-conflicts)
+                   :conflict-details @blocking-conflicts
+                   :message message})
 
-            :else
-            (let [_             (log/info "Remote sync full import: forced")
-                  imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
-              (log/info "Successfully reloaded entities from git repository")
-              {:status :success
-               :version snapshot-version
-               :outcome {:kind "pulled"
-                         :count (pulled-change-count imported-data)
-                         :branch (settings/remote-sync-branch)}}))
+                :else
+                (let [_             (log/info "Remote sync full import: forced")
+                      imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+                  (log/info "Successfully reloaded entities from git repository")
+                  {:status :success
+                   :version snapshot-version
+                   :outcome {:kind "pulled"
+                             :count (pulled-change-count imported-data)
+                             :branch (settings/remote-sync-branch)}}))
 
-          ;; --- Normal pull ---
-          ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
-          (= last-imported-version snapshot-version)
-          (do
-            (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pull-skipped"}})
+              ;; --- Normal pull ---
+              ;; Cheap no-op pull: nothing changed remotely, so nothing is loaded or deleted.
+              (= last-imported-version snapshot-version)
+              (do
+                (log/infof "Skipping import: snapshot version %s matches last imported version" snapshot-version)
+                {:status :success
+                 :version snapshot-version
+                 :outcome {:kind "pull-skipped"}})
 
-          ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
-          ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
-          (and (not @dirty?)
-               (not= :remote-sync/incremental-not-possible @incremental-plan))
-          (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
+              ;; Incremental fast-path: no local drift and the change is incrementally loadable. Tested before the
+              ;; conflict. It touches only changed files, so it can't wholesale-delete unsynced transforms.
+              (and (not @dirty?)
+                   (not= :remote-sync/incremental-not-possible @incremental-plan))
+              (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
 
-          (seq @blocking-conflicts)
-          (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
-            (log/info message)
-            {:status :conflict
-             :version snapshot-version
-             :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
-             :conflict-details @blocking-conflicts
-             :message message})
+              (seq @blocking-conflicts)
+              (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
+                (log/info message)
+                {:status :conflict
+                 :version snapshot-version
+                 :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
+                 :conflict-details @blocking-conflicts
+                 :message message})
 
-          :else ;; fall back to full import
-          (let [reason        (cond
-                                @dirty?       "local changes pending"
-                                first-import? "first import"
-                                :else         "changes not incrementally loadable")
-                _             (log/infof "Remote sync full import: %s" reason)
-                imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
-            (log/info "Successfully reloaded entities from git repository")
-            {:status :success
-             :version snapshot-version
-             :outcome {:kind "pulled"
-                       :count (pulled-change-count imported-data)
-                       :branch (settings/remote-sync-branch)}})))
+              :else ;; fall back to full import
+              (let [reason        (cond
+                                    @dirty?       "local changes pending"
+                                    first-import? "first import"
+                                    :else         "changes not incrementally loadable")
+                    _             (log/infof "Remote sync full import: %s" reason)
+                    imported-data (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)]
+                (log/info "Successfully reloaded entities from git repository")
+                {:status :success
+                 :version snapshot-version
+                 :outcome {:kind "pulled"
+                           :count (pulled-change-count imported-data)
+                           :branch (settings/remote-sync-branch)}}))]
+        ;; Data apps ride the pull: re-materialize from the real source snapshot
+        ;; (the repo file tree under `data_apps/`), not the synthetic merged
+        ;; snapshot `load-snapshot!` sees.
+        (when (= :success (:status result))
+          (materialize-data-apps! snapshot))
+        result)
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
         ;; return a user-friendly :error result.
@@ -658,7 +679,7 @@
           (do
             (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
-            {:status :error
+            {:status  :error
              :message (source-error-message e)
              :version (source.p/version snapshot)
              :details {:error-type (type e)}})))

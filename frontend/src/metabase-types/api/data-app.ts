@@ -1,24 +1,43 @@
 export type DataAppId = number;
 
+/**
+ * A data app materialized from the connected repository. The repo's
+ * `data_apps/<dir>/data_app.yml` files are discovered on sync; one row exists
+ * per app and the bundle is cached in the app DB and served at `/data-app/:name`.
+ * The repository itself is configured via the remote-sync settings.
+ */
 export interface DataApp {
   id: DataAppId;
+  /** Stable slug from the app's `data_app.yml`; also the URL segment. */
   name: string;
   display_name: string;
-  bundle_hash: string;
-  creator_id: number | null;
+  /** Path within the repo to the built bundle. */
+  bundle_path: string;
+  /** Admin toggle. When false the app is not served. */
+  enabled: boolean;
+  /** SHA-256 of the cached bundle; `null` until the first successful sync. */
+  bundle_hash: string | null;
+  /** Git commit the cached bundle was synced from; `null` until first sync. */
+  last_synced_sha: string | null;
+  /** ISO timestamp of the last successful sync; `null` if never synced. */
+  last_synced_at: string | null;
+  /** Message from this app's most recent failed sync; `null` when it succeeded. */
+  sync_error: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface CreateDataAppRequest {
-  name: string;
-  display_name: string;
-  file: File;
+/**
+ * Status of the connected repository as it relates to data apps. The connection
+ * itself (URL / branch / token) is configured on the remote-sync settings page.
+ */
+export interface DataAppRepoStatus {
+  /** Whether a repository is connected via remote-sync. */
+  configured: boolean;
 }
 
-export interface UpdateDataAppRequest {
-  /** The existing app's slug (URL identity); cannot be renamed. */
+export interface SetDataAppEnabledRequest {
+  /** The app's slug. */
   name: string;
-  display_name?: string;
-  file?: File;
+  enabled: boolean;
 }
