@@ -18,9 +18,16 @@ import {
 import { useAction } from "embedding-sdk-package/hooks/public/use-action";
 // eslint-disable-next-line no-restricted-imports
 import {
+  avg,
   breakout,
+  count,
   createMetabaseQuery,
+  distinct,
   filter,
+  max,
+  median,
+  min,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "embedding-sdk-package/hooks/public/use-metabase-query";
@@ -81,9 +88,16 @@ export function createDataAppSandbox(
           // Custom actions
           useAction,
           // Query helpers
+          avg,
           breakout,
+          count,
           createMetabaseQuery,
+          distinct,
           filter,
+          max,
+          median,
+          min,
+          sum,
           useMetabaseQueryObject,
           // Configuration helpers
           defineMetabaseAuthConfig,

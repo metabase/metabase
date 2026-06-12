@@ -8,12 +8,25 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 
 import type { MetabaseQueryOptions } from "./use-metabase-query";
 import {
+  avg,
   breakout,
+  count,
   createMetabaseQuery,
+  distinct,
   filter,
+  max,
+  median,
+  min,
+  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./use-metabase-query";
+
+type Equals<TLeft, TRight> =
+  (<T>() => T extends TLeft ? 1 : 2) extends <T>() => T extends TRight ? 1 : 2
+    ? true
+    : false;
+type Expect<TValue extends true> = TValue;
 
 const TEST_SCHEMA = {
   tables: {
@@ -83,10 +96,13 @@ const TEST_SCHEMA = {
   metrics: {
     orderCount: {
       id: 34,
+      databaseId: 1,
+      sourceTableId: 1,
       columns: [{ name: "count", displayName: "Count", jsType: "number" }],
       dimensions: {
         createdAt: {
           id: "metric-created-at",
+          fieldId: 103,
           metricId: 34,
           tableId: 1,
           name: "created_at",
@@ -95,6 +111,7 @@ const TEST_SCHEMA = {
         },
         status: {
           id: "metric-status",
+          fieldId: 101,
           metricId: 34,
           tableId: 1,
           name: "status",
@@ -103,6 +120,7 @@ const TEST_SCHEMA = {
         },
         amount: {
           id: "metric-amount",
+          fieldId: 102,
           metricId: 34,
           tableId: 1,
           name: "amount",
@@ -114,10 +132,13 @@ const TEST_SCHEMA = {
     },
     orderValue: {
       id: 35,
+      databaseId: 1,
+      sourceTableId: 1,
       columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
       dimensions: {
         amount: {
           id: "metric-order-value-amount",
+          fieldId: 102,
           metricId: 35,
           tableId: 1,
           name: "amount",
@@ -234,6 +255,29 @@ const _invalidTableCustomFilterQuery = {
       operator: "=",
       value: 10,
     },
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _validTableAggregationQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  aggregations: [
+    sum(TEST_SCHEMA.tables.orders.fields.amount),
+    avg(TEST_SCHEMA.tables.orders.fields.amount),
+    median(TEST_SCHEMA.tables.orders.fields.amount),
+    min(TEST_SCHEMA.tables.orders.fields.status),
+    max(TEST_SCHEMA.tables.orders.fields.createdAt),
+  ],
+} satisfies MetabaseQueryOptions<OrdersTable>;
+
+const _invalidTableAggregationQuery = {
+  tableId: TEST_SCHEMA.tables.orders.id,
+  aggregations: [
+    // @ts-expect-error sum only supports numeric dimensions
+    sum(TEST_SCHEMA.tables.orders.fields.status),
+    // @ts-expect-error avg only supports numeric dimensions
+    avg(TEST_SCHEMA.tables.orders.fields.createdAt),
+    // @ts-expect-error median only supports numeric dimensions
+    median(TEST_SCHEMA.tables.orders.fields.status),
   ],
 } satisfies MetabaseQueryOptions<OrdersTable>;
 
@@ -371,6 +415,27 @@ function useMetricFilterOperatorTypeFixtures() {
 
 void useMetricFilterOperatorTypeFixtures;
 
+function useAggregationResultTypeFixtures() {
+  const _result = useMetabaseQuery({
+    table: TEST_SCHEMA.tables.orders,
+    aggregations: [
+      min(TEST_SCHEMA.tables.orders.fields.status),
+      max(TEST_SCHEMA.tables.orders.fields.createdAt),
+      distinct(TEST_SCHEMA.tables.orders.fields.status),
+    ],
+  });
+
+  type Row = NonNullable<typeof _result.data>["rows"][number];
+  type _ExpectMinResult = Expect<Equals<Row["min"], string | null>>;
+  type _ExpectMaxResult = Expect<Equals<Row["max"], string | Date | null>>;
+  type _ExpectDistinctResult = Expect<Equals<Row["count"], number | null>>;
+  type _ExpectDistinctNameFallsBackToUnknown = Expect<
+    Equals<Row["distinct"], unknown>
+  >;
+}
+
+void useAggregationResultTypeFixtures;
+
 const _invalidMetricSegmentQuery = {
   metric: TEST_SCHEMA.metrics.orderCount,
   // @ts-expect-error segments must belong to the metric's mapped tables
@@ -399,6 +464,7 @@ describe("useMetabaseQuery", () => {
       query: {
         "source-table": 1,
         filter: ["=", ["field", 101, {}], "paid"],
+        aggregation: [["count"]],
         breakout: [["field", 103, {}]],
       },
       parameters: [],
@@ -422,6 +488,124 @@ describe("useMetabaseQuery", () => {
       expect(
         JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
       ).toEqual(expectedOrdersQuery);
+    });
+
+    it("builds explicit count aggregations", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [count()],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("supports count aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [{ type: "count" }],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["count"]],
+        },
+      });
+    });
+
+    it("builds field aggregation helpers", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            sum(TEST_SCHEMA.tables.orders.fields.amount),
+            avg(TEST_SCHEMA.tables.orders.fields.amount),
+            distinct(TEST_SCHEMA.tables.orders.fields.status),
+          ],
+          breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [
+            ["sum", ["field", 102, {}]],
+            ["avg", ["field", 102, {}]],
+            ["distinct", ["field", 101, {}]],
+          ],
+          breakout: [["field", 101, {}]],
+        },
+      });
+    });
+
+    it("supports field aggregation object literals", () => {
+      expect(
+        createMetabaseQuery({
+          table: TEST_SCHEMA.tables.orders,
+          aggregations: [
+            { type: "max", dimension: TEST_SCHEMA.tables.orders.fields.amount },
+          ],
+        }),
+      ).toMatchObject({
+        query: {
+          aggregation: [["max", ["field", 102, {}]]],
+        },
+      });
+    });
+
+    it("builds a complete dataset query from a generated metric schema", () => {
+      expect(
+        createMetabaseQuery({
+          metric: TEST_SCHEMA.metrics.orderCount,
+          filters: [
+            filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid"),
+          ],
+          measures: [TEST_SCHEMA.tables.orders.measures.revenue],
+          breakouts: [
+            breakout(TEST_SCHEMA.metrics.orderCount.dimensions.createdAt, {
+              bucket: "month",
+            }),
+          ],
+        }),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [
+            ["metric", 34],
+            ["measure", {}, 21],
+          ],
+          filter: ["=", ["field", 101, {}], "paid"],
+          breakout: [["field", 103, { "temporal-unit": "month" }]],
+        },
+        parameters: [],
+      });
+    });
+
+    it("memoizes a complete dataset query from a generated metric schema", () => {
+      render(<MetricQueryObjectComponent />);
+
+      expect(
+        JSON.parse(screen.getByTestId("query-object").textContent ?? ""),
+      ).toEqual({
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["metric", 34]],
+          breakout: [["field", 101, {}]],
+        },
+        parameters: [],
+      });
     });
   });
 
@@ -479,6 +663,7 @@ describe("useMetabaseQuery", () => {
           query: {
             "source-table": 1,
             filter: ["=", ["field", 101, {}], "paid"],
+            aggregation: [["count"]],
             breakout: [["field", 101, {}]],
           },
           parameters: [],
@@ -646,6 +831,15 @@ const MetabaseQueryObjectComponent = () => {
     table: TEST_SCHEMA.tables.orders,
     filters: [filter(TEST_SCHEMA.tables.orders.fields.status, "=", "paid")],
     breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.createdAt)],
+  });
+
+  return <div data-testid="query-object">{JSON.stringify(query)}</div>;
+};
+
+const MetricQueryObjectComponent = () => {
+  const query = useMetabaseQueryObject({
+    metric: TEST_SCHEMA.metrics.orderCount,
+    breakouts: [breakout(TEST_SCHEMA.tables.orders.fields.status)],
   });
 
   return <div data-testid="query-object">{JSON.stringify(query)}</div>;

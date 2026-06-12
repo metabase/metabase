@@ -11,6 +11,7 @@ import type {
   QueryData,
   QuestionSchema,
   SchemaColumn,
+  SchemaJavaScriptType,
   SchemaValue,
   TableSchema,
 } from "../data-schema";
@@ -49,6 +50,8 @@ type DimensionInput<TEntity> = [DimensionValues<TEntity>] extends [never]
 
 export type MetricReference<TMappedTableId extends number = number> = {
   id: ID;
+  databaseId?: ID;
+  sourceTableId?: ID;
   mappedTableIds: readonly TMappedTableId[];
   columns?: readonly SchemaColumn[];
   dimensions?: Record<string, MetricDimensionSchema>;
@@ -66,6 +69,102 @@ export type MeasureReference<TTableId extends number = number> = {
   tableId: TTableId;
   columns?: readonly SchemaColumn[];
 };
+
+export type CountAggregation = {
+  type: "count";
+};
+
+export type CountAggregationSchema = CountAggregation & {
+  columns: readonly [
+    {
+      name: "count";
+      displayName: "Count";
+      jsType: "number";
+    },
+  ];
+};
+
+type CountAggregationColumn = CountAggregationSchema["columns"][number];
+
+export type FieldAggregationOperator =
+  | "sum"
+  | "avg"
+  | "median"
+  | "distinct"
+  | "min"
+  | "max";
+
+export type FieldAggregation<
+  TOperator extends FieldAggregationOperator = FieldAggregationOperator,
+  TDimension = unknown,
+> = {
+  type: TOperator;
+  dimension: TDimension;
+};
+
+type AggregationDimensionWithJavaScriptType<
+  TDimension,
+  TJavaScriptType extends SchemaJavaScriptType,
+> = TDimension extends unknown
+  ? TDimension extends { jsType?: infer TDimensionJavaScriptType }
+    ? Extract<
+        NonNullable<TDimensionJavaScriptType>,
+        TJavaScriptType
+      > extends never
+      ? never
+      : TDimension
+    : TDimension
+  : never;
+
+export type NumericAggregationDimension<TDimension> =
+  AggregationDimensionWithJavaScriptType<TDimension, "number">;
+
+export type OrderableAggregationDimension<TDimension> =
+  AggregationDimensionWithJavaScriptType<
+    TDimension,
+    "string" | "number" | "boolean" | "Date"
+  >;
+
+type FieldAggregationColumnJavaScriptType<
+  TOperator extends FieldAggregationOperator,
+  TDimension,
+> = TOperator extends "min" | "max"
+  ? TDimension extends { jsType?: infer TJavaScriptType }
+    ? Extract<
+        NonNullable<TJavaScriptType>,
+        "string" | "number" | "boolean" | "Date"
+      > extends never
+      ? "number"
+      : Extract<
+          NonNullable<TJavaScriptType>,
+          "string" | "number" | "boolean" | "Date"
+        >
+    : "number"
+  : "number";
+
+type FieldAggregationColumnName<TOperator extends FieldAggregationOperator> =
+  TOperator extends "distinct" ? "count" : TOperator;
+
+export type FieldAggregationSchema<
+  TOperator extends FieldAggregationOperator = FieldAggregationOperator,
+  TDimension = unknown,
+  TJavaScriptType extends SchemaJavaScriptType =
+    FieldAggregationColumnJavaScriptType<TOperator, TDimension>,
+> = FieldAggregation<TOperator, TDimension> & {
+  columns: readonly [
+    {
+      name: FieldAggregationColumnName<TOperator>;
+      displayName: string;
+      jsType: TJavaScriptType;
+    },
+  ];
+};
+
+type AnyAggregation<TDimension = unknown> =
+  | CountAggregation
+  | CountAggregationSchema
+  | FieldAggregation<FieldAggregationOperator, TDimension>
+  | FieldAggregationSchema<FieldAggregationOperator, TDimension>;
 
 type TableId<TTable> = TTable extends { id: infer TId extends number }
   ? TId
@@ -363,6 +462,12 @@ export type TableQuery<TTable> = TableReference<TTable> & {
         | MetabaseDimensionFilter<TTable>
       )[]
     : readonly unknown[];
+  aggregations?: TTable extends TableSchema
+    ? readonly (
+        | MeasureReference<TableId<TTable>>
+        | AnyAggregation<FieldValues<TTable>>
+      )[]
+    : readonly (MeasureReference | AnyAggregation)[];
   measures?: TTable extends TableSchema
     ? readonly MeasureReference<TableId<TTable>>[]
     : readonly MeasureReference[];
@@ -446,12 +551,44 @@ type QueryMeasureColumns<TQuery> = TQuery extends {
     : never
   : never;
 
+type QueryAggregationColumns<TQuery> = TQuery extends {
+  aggregations?: infer TAggregations;
+}
+  ? TupleElement<NonNullable<TAggregations>> extends infer TAggregation
+    ? TAggregation extends {
+        columns: infer TColumns;
+      }
+      ? TupleElement<NonNullable<TColumns>>
+      : TAggregation extends CountAggregation
+        ? CountAggregationColumn
+        : TAggregation extends FieldAggregationSchema
+          ? TupleElement<NonNullable<TAggregation["columns"]>>
+          : TAggregation extends FieldAggregation<infer TOperator>
+            ? FieldAggregationSchema<TOperator>["columns"][number]
+            : never
+    : never
+  : never;
+
+type QueryDefaultAggregationColumns<TQuery> =
+  "aggregations" extends keyof TQuery
+    ? never
+    : "measures" extends keyof TQuery
+      ? never
+      : TQuery extends { breakouts: readonly unknown[] }
+        ? CountAggregationColumn
+        : never;
+
 /** @notExported InferQuerySchema */
 type InferQuerySchema<TEntity, TQuery> = InferSchema<
   TEntity,
   Record<string, unknown>
 > &
-  RowsFromColumns<QueryBreakoutColumns<TQuery> | QueryMeasureColumns<TQuery>>;
+  RowsFromColumns<
+    | QueryBreakoutColumns<TQuery>
+    | QueryMeasureColumns<TQuery>
+    | QueryAggregationColumns<TQuery>
+    | QueryDefaultAggregationColumns<TQuery>
+  >;
 
 type InferQueryEntity<TQuery> = TQuery extends { metric: infer TMetric }
   ? TMetric

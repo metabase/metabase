@@ -34,6 +34,7 @@ export type TableQueryRuntime = {
   metric?: never;
   metricId?: never;
   filters?: readonly unknown[];
+  aggregations?: readonly unknown[];
   measures?: readonly unknown[];
   breakouts?: readonly unknown[];
   enabled?: boolean;
@@ -69,8 +70,19 @@ export type MeasureReferenceRuntime = {
   columns?: readonly unknown[];
 };
 
+export type CountAggregationRuntime = {
+  type: "count";
+};
+
+export type FieldAggregationRuntime = {
+  type: "sum" | "avg" | "median" | "distinct" | "min" | "max";
+  dimension: unknown;
+};
+
 export type MetricReferenceRuntime = {
   id: ID;
+  databaseId?: ID;
+  sourceTableId?: ID;
   mappedTableIds: readonly number[];
 };
 

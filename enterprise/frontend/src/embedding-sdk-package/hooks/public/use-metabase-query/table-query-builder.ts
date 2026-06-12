@@ -8,7 +8,9 @@ import type {
 
 import {
   getTableId,
+  isCountAggregation,
   isDimensionFilter,
+  isFieldAggregation,
   isMeasureSchema,
   isMetricDimensionSchema,
   isSegmentSchema,
@@ -36,7 +38,7 @@ export function buildTableDatasetQuery(
   validateTableScopedInputs({
     allowedTableIds: [Number(tableId)],
     filters: query.filters,
-    measures: query.measures,
+    measures: query.aggregations ?? query.measures,
     context: "Table query",
   });
 
@@ -45,7 +47,7 @@ export function buildTableDatasetQuery(
   };
 
   const filters = query.filters?.map(buildTableFilter).filter(Boolean);
-  const measures = query.measures?.map(buildMeasureClause).filter(isNotNull);
+  const aggregations = buildTableAggregationClauses(query);
   const breakouts = query.breakouts?.map(buildTableBreakout).filter(Boolean);
 
   if (filters?.length === 1) {
@@ -54,8 +56,8 @@ export function buildTableDatasetQuery(
     mbql.filter = ["and", ...(filters as Filter[])];
   }
 
-  if (measures?.length) {
-    mbql.aggregation = measures;
+  if (aggregations.length > 0) {
+    mbql.aggregation = aggregations;
   }
 
   if (breakouts?.length) {
@@ -81,12 +83,38 @@ function buildTableFilter(filter: unknown) {
   return null;
 }
 
-function buildMeasureClause(measure: unknown): Aggregation | null {
-  if (!isMeasureSchema(measure)) {
+function buildTableAggregationClauses(query: TableQueryRuntime): Aggregation[] {
+  const aggregations = query.aggregations ?? query.measures;
+  const clauses = aggregations?.map(buildAggregationClause).filter(isNotNull);
+
+  if (clauses?.length) {
+    return clauses;
+  }
+
+  return query.breakouts?.length ? [buildCountClause()] : [];
+}
+
+function buildAggregationClause(aggregation: unknown): Aggregation | null {
+  if (isCountAggregation(aggregation)) {
+    return buildCountClause();
+  }
+
+  if (isFieldAggregation(aggregation)) {
+    return [
+      aggregation.type,
+      buildFieldReference(aggregation.dimension),
+    ] as Aggregation;
+  }
+
+  if (!isMeasureSchema(aggregation)) {
     return null;
   }
 
-  return ["measure", {}, measure.id] as Aggregation;
+  return ["measure", {}, aggregation.id] as Aggregation;
+}
+
+function buildCountClause(): Aggregation {
+  return ["count"] as Aggregation;
 }
 
 function buildTableBreakout(breakout: unknown): ConcreteFieldReference {
