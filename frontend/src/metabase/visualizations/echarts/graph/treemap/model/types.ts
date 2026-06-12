@@ -19,11 +19,6 @@ export interface TreemapNode {
 
 export type TreemapTree = TreemapNode[];
 
-export interface TreemapBuildResult {
-  tree: TreemapTree;
-  error?: { message: string };
-}
-
 export interface TreemapRect {
   x: number;
   y: number;
