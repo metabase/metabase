@@ -77,7 +77,7 @@ describe("Metabot Query Builder", () => {
 
   it("should render a generated chart inline without leaving the page", () => {
     cy.visit("/question/ask");
-    H.metabotChatSidebar().should("be.visible");
+    H.metabotChatInput().should("be.visible");
 
     H.mockMetabotResponse({
       body: mockGeneratedEntityResponse(allOrdersQuestion.dataset_query),
