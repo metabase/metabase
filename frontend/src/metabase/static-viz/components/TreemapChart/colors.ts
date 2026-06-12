@@ -3,18 +3,8 @@ import Color from "color";
 import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 
-/**
- * How much the smallest tile is darkened relative to the base color. The
- * in-between tiles interpolate linearly by value rank.
- */
 const MAX_DARKEN = 0.55;
 
-/**
- * Single-hue color ramp for a 1-level static treemap, per the Figma
- * static-export spec: the largest tile keeps the base (brand) color and
- * progressively smaller tiles get progressively darker shades of it. Keyed by
- * the node's settings key, like `getTreemapColors`.
- */
 export function getMonochromeTreemapColors(
   tree: TreemapTree,
   baseColor: string,
