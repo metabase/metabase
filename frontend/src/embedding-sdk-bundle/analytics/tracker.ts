@@ -14,7 +14,7 @@ import {
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 
 export function deriveAuthMethod(
@@ -58,9 +58,7 @@ export function useInitSdkTracker(
     reduxStore.dispatch(setSdkTrackerReady(true));
 
     if (wasJustInitialized) {
-      const sdkVersion =
-        getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ??
-        null;
+      const sdkVersion = getSdkPackageVersion();
 
       trackSdkEvent({
         schema: EMBEDDING_SDK_SCHEMA,

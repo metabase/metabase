@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { useSetting } from "metabase/common/hooks";
 import { isEmbeddingEajs, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
@@ -157,8 +157,7 @@ export function useTrackSdkComponentMount<C extends SdkComponentName>(
     }
     firedKeys.add(dedupKey);
 
-    const sdkVersion =
-      getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
+    const sdkVersion = getSdkPackageVersion();
 
     const definedProperties = Object.fromEntries(
       Object.entries(properties as Record<string, unknown>).filter(
