@@ -38,7 +38,10 @@ path: ./dist/index.js"))))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
                           (parse "name: X\nslug: x\npath: ../other/dist/index.js")))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
-                          (parse "name: X\nslug: x\npath: dist/../../escape.js")))))
+                          (parse "name: X\nslug: x\npath: dist/../../escape.js"))))
+  (testing "a reserved slug that collides with an API sub-route is rejected"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved slug"
+                          (parse "name: X\nslug: repo-status\npath: dist/index.js")))))
 
 (deftest parse-errors-carry-400-test
   (try

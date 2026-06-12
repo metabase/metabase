@@ -39,6 +39,12 @@
   "Lowercase letters/numbers separated by single dashes."
   #"[a-z0-9]+(?:-[a-z0-9]+)*")
 
+(def ^:private reserved-slugs
+  "Slugs that collide with literal `/api/data-app/*` sub-routes (see the API's
+   `slug-regex`). An app with one of these would sync but be unreachable, so we
+   reject it during parsing."
+  #{"repo-status"})
+
 (defn- normalize-path
   "Trim and drop a leading `./` so the path is relative to the app directory."
   [p]
@@ -67,6 +73,9 @@
         path   (some-> (:path parsed) normalize-path not-empty)]
     (when-not (and slug (re-matches slug-pattern slug))
       (throw (ex-info (tru "{0}/{1}: \"slug\" must be lowercase letters, numbers, and dashes." dir config-file-name)
+                      {:status-code 400})))
+    (when (contains? reserved-slugs slug)
+      (throw (ex-info (tru "{0}/{1}: \"{2}\" is a reserved slug." dir config-file-name slug)
                       {:status-code 400})))
     (when-not name
       (throw (ex-info (tru "{0}/{1}: \"name\" is required." dir config-file-name)
