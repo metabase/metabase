@@ -15,14 +15,14 @@ export const DetailsSection = ({
   notification,
   emailRecipientCount,
   slackChannelCount,
-  httpHandler,
+  webhookCount,
 }: DetailsSectionProps) => {
   const cardId = notification.payload.card_id;
   const cardName = notification.payload.card?.name;
   const channelSummary = formatChannelSummary({
     emailRecipientCount,
     slackChannelCount,
-    httpHandler,
+    webhookCount,
   });
   const creator = notification.creator;
   const ownerName = creator?.common_name ?? creator?.email ?? t`Unknown`;

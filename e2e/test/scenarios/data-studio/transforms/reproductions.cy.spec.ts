@@ -206,6 +206,14 @@ describe("issue GDGT-2429", () => {
     H.leaveConfirmationModal().should("be.visible");
 
     cy.log("pressing Esc should close the warning, not the saving modal");
+    // Wait for Mantine's focus trap to move focus inside the leave-confirm modal
+    // before pressing Escape. `be.visible` passes during the open transition,
+    // before the trap engages, so an early Escape lands outside the modal's
+    // focus-trapped content (where its closeOnEscape handler lives) and is lost,
+    // leaving the modal open.
+    H.leaveConfirmationModal().within(() => {
+      cy.get(":focus").should("exist");
+    });
     cy.realPress("Escape");
     H.leaveConfirmationModal().should("not.exist");
     H.modal().findByText("Save your transform").should("be.visible");

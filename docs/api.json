@@ -2080,15 +2080,28 @@
       "metabase-enterprise.erd.impl.erd-node" : {
         "type" : "object",
         "properties" : {
-          "db_id" : {
-            "type" : "integer"
+          "owner" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
           },
-          "description" : {
+          "visibility_type" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "type" : "integer"
           },
           "display_name" : {
             "type" : "string"
@@ -2099,21 +2112,15 @@
               "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-field"
             }
           },
-          "name" : {
-            "type" : "string"
+          "db_id" : {
+            "type" : "integer"
           },
-          "owner" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.erd.impl.erd-owner"
-          },
-          "schema" : {
+          "description" : {
             "oneOf" : [ {
               "type" : "string"
             }, {
               "type" : "null"
             } ]
-          },
-          "table_id" : {
-            "type" : "integer"
           }
         },
         "required" : [ "table_id", "name", "display_name", "db_id", "fields" ]
@@ -2195,260 +2202,6 @@
           }
         },
         "required" : [ "nodes", "edges" ]
-      },
-      "metabase-enterprise.notification-admin.api.bulk-response" : {
-        "type" : "object",
-        "properties" : {
-          "updated" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "type" : "integer",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "updated" ]
-      },
-      "metabase-enterprise.notification-admin.api.channel-entry" : {
-        "description" : "One channel delivery attempt within a tick.",
-        "type" : "object",
-        "properties" : {
-          "channel_type" : {
-            "type" : "string"
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "channel_type", "status", "error" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.notification-admin.api.detail-response" : {
-        "type" : "object",
-        "properties" : {
-          "last_check" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "payload_type" : {
-            "type" : "string"
-          },
-          "payload_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "send_history" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.tick-send-entry"
-            }
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "check_history" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }
-          },
-          "last_send" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "updated_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "created_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "creator_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send", "check_history", "send_history" ]
-      },
-      "metabase-enterprise.notification-admin.api.list-response" : {
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-row"
-            }
-          },
-          "limit" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "offset" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater or equal to than zero.",
-              "type" : "integer",
-              "minimum" : 0
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "total" : {
-            "description" : "value must be an integer greater or equal to than zero.",
-            "type" : "integer",
-            "minimum" : 0
-          }
-        },
-        "required" : [ "data", "total", "limit", "offset" ]
-      },
-      "metabase-enterprise.notification-admin.api.list-row" : {
-        "type" : "object",
-        "properties" : {
-          "last_check" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "payload_type" : {
-            "type" : "string"
-          },
-          "payload_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "last_send" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-summary"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "updated_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "created_at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "creator_id" : {
-            "oneOf" : [ {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send" ]
-      },
-      "metabase-enterprise.notification-admin.api.run-status" : {
-        "type" : "string",
-        "enum" : [ "failing", "successful" ]
-      },
-      "metabase-enterprise.notification-admin.api.run-summary" : {
-        "type" : "object",
-        "properties" : {
-          "at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "at", "error", "status" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.notification-admin.api.sort-column" : {
-        "type" : "string",
-        "enum" : [ "id", "last_send", "last_check", "card_name", "creator_name", "updated_at" ]
-      },
-      "metabase-enterprise.notification-admin.api.sort-direction" : {
-        "type" : "string",
-        "enum" : [ "asc", "desc" ]
-      },
-      "metabase-enterprise.notification-admin.api.tick-send-entry" : {
-        "description" : "One tick's worth of sends, rolled up across all channels that fired in that tick.",
-        "type" : "object",
-        "properties" : {
-          "at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "channels" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.channel-entry"
-            }
-          },
-          "error" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "status" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        },
-        "required" : [ "at", "status", "error", "channels" ],
-        "additionalProperties" : false
       },
       "metabase-enterprise.permission-debug.impl.group-id" : {
         "type" : "integer"
@@ -2701,7 +2454,7 @@
       },
       "metabase-enterprise.security-center.schema.semver" : {
         "type" : "string",
-        "pattern" : "^\\d+\\.\\d+\\.\\d+$"
+        "pattern" : "^\\d+(?:\\.\\d+)*$"
       },
       "metabase-enterprise.security-center.schema.severity" : {
         "type" : "string",
@@ -4095,6 +3848,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -4118,9 +3874,12 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "name", "collection_id", "description", "dashcard_ids" ]
+        "required" : [ "id", "name", "url", "collection_id", "collection_path", "description", "dashcard_ids" ]
       },
       "metabase.agent-api.api.create-question-request" : {
         "type" : "object",
@@ -4179,6 +3938,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -4197,9 +3959,12 @@
           "name" : {
             "type" : "string",
             "minLength" : 1
+          },
+          "url" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "name", "display", "collection_id", "description" ]
+        "required" : [ "id", "name", "url", "display", "collection_id", "collection_path", "description" ]
       },
       "metabase.agent-api.api.dashcard-mutation" : {
         "description" : "One dashcard mutation. Discriminated on `:action`:\n   - `add`    : requires `card_id`. Auto-positioned. Optional `display_size`(\"wide\", \"tall\", or \"full\").\n   - `remove` : requires `dashcard_id`.\n   - `move`   : requires `dashcard_id` and `position` (\"top\" or \"bottom\").",
@@ -4323,7 +4088,7 @@
         "required" : [ "database_id", "sql" ]
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request body for /v2/query. Accepts either a fresh-query payload (`{:query <external-query>}`,\n  same shape as /v2/construct-query) or a `:continuation_token` from a prior response.\n\n  Both branches are closed maps: extra top-level keys (e.g. the legacy\n  `source_entity` / `referenced_entities` envelope, or sending `:query` and\n  `:continuation_token` simultaneously) are rejected with a 400.",
+        "description" : "Request body for /v2/query, one of three shapes:\n    - `{:continuation_token <string>}` from a prior response (pagination);\n    - `{:query <base64-string>}` — a query_handle resolved by the MCP layer to its stored base64\n      MBQL; already resolved, so it's executed directly (like /v1/execute) rather than re-run\n      through the representations pipeline;\n    - `{:query <external-query-object>}` — a fresh portable MBQL 5 payload, same shape as\n      /v2/construct-query.\n\n  The string-vs-object `:query` distinction is what the `:dispatch` keys on. Each branch is a\n  closed map: extra top-level keys (e.g. the legacy `source_entity` / `referenced_entities`\n  envelope, or sending `:query` and `:continuation_token` simultaneously) are rejected with a 400.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -4333,6 +4098,16 @@
             }
           },
           "required" : [ "continuation_token" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "query" : {
+              "type" : "string",
+              "minLength" : 1
+            }
+          },
+          "required" : [ "query" ],
           "additionalProperties" : false
         }, {
           "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
@@ -4578,6 +4353,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "dashcard_ids" : {
             "type" : "array",
             "items" : {
@@ -4603,7 +4381,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "collection_id", "description", "archived", "dashcard_ids" ]
+        "required" : [ "id", "name", "collection_id", "collection_path", "description", "archived", "dashcard_ids" ]
       },
       "metabase.agent-api.api.update-question-request" : {
         "description" : "Patch shape for `update_question`. Every field is optional; only the fields the caller\n  passes are changed. `:query` accepts a base64-encoded MBQL string (or query_handle UUID\n  resolved upstream in the MCP layer).",
@@ -4681,6 +4459,9 @@
               "type" : "null"
             } ]
           },
+          "collection_path" : {
+            "type" : "string"
+          },
           "description" : {
             "oneOf" : [ {
               "type" : "string"
@@ -4701,7 +4482,7 @@
             "minLength" : 1
           }
         },
-        "required" : [ "id", "name", "display", "collection_id", "description", "archived" ]
+        "required" : [ "id", "name", "display", "collection_id", "collection_path", "description", "archived" ]
       },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "description" : "value must be an array of valid results column metadata maps.",
@@ -5754,7 +5535,7 @@
             "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.WidgetType"
           }
         },
-        "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+        "required" : [ "type", "name", "display-name", "dimension" ]
       },
       "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
         "type" : "object",
@@ -8027,7 +7808,7 @@
               } ]
             }
           },
-          "required" : [ "base_type", "display_name", "name" ]
+          "required" : [ "display_name", "name" ]
         }, {
           "allOf" : [ ]
         } ]
@@ -9193,7 +8974,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.join.strategy"
             }
           },
-          "required" : [ "lib/type", "stages", "conditions", "alias" ]
+          "required" : [ "stages", "conditions", "alias" ]
         }, {
           "allOf" : [ ]
         }, {
@@ -10009,7 +9790,7 @@
               } ]
             }
           },
-          "required" : [ "lib/type", "name", "base-type" ]
+          "required" : [ "name" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
@@ -10150,13 +9931,6 @@
           "mode-fraction" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.metadata.fingerprint.percent"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "skewness" : {
-            "oneOf" : [ {
-              "type" : "number"
             }, {
               "type" : "null"
             } ]
@@ -10596,7 +10370,7 @@
                 } ]
               }
             },
-            "required" : [ "lib/type", "name", "base-type" ]
+            "required" : [ "name" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
@@ -10639,7 +10413,7 @@
             "const" : "metadata/results"
           }
         },
-        "required" : [ "lib/type", "columns" ]
+        "required" : [ "columns" ]
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -10898,7 +10672,7 @@
               "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
             }
           },
-          "required" : [ "lib/type", "stages" ]
+          "required" : [ "stages" ]
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
         }, {
@@ -12031,6 +11805,260 @@
             "type" : "string"
           } ]
         } ]
+      },
+      "metabase.notification.api.admin.bulk-response" : {
+        "type" : "object",
+        "properties" : {
+          "updated" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "updated" ]
+      },
+      "metabase.notification.api.admin.channel-entry" : {
+        "description" : "One channel delivery attempt within a tick.",
+        "type" : "object",
+        "properties" : {
+          "channel_type" : {
+            "type" : "string"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "channel_type", "status", "error" ],
+        "additionalProperties" : false
+      },
+      "metabase.notification.api.admin.detail-response" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "send_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.tick-send-entry"
+            }
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "check_history" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send", "check_history", "send_history" ]
+      },
+      "metabase.notification.api.admin.list-response" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.list-row"
+            }
+          },
+          "limit" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "offset" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "total" : {
+            "description" : "value must be an integer greater or equal to than zero.",
+            "type" : "integer",
+            "minimum" : 0
+          }
+        },
+        "required" : [ "data", "total", "limit", "offset" ]
+      },
+      "metabase.notification.api.admin.list-row" : {
+        "type" : "object",
+        "properties" : {
+          "last_check" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "payload_type" : {
+            "type" : "string"
+          },
+          "payload_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "last_send" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.run-summary"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "active" : {
+            "type" : "boolean"
+          },
+          "creator_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "active", "creator_id", "created_at", "updated_at", "payload_type", "payload_id", "last_check", "last_send" ]
+      },
+      "metabase.notification.api.admin.run-status" : {
+        "type" : "string",
+        "enum" : [ "failing", "successful" ]
+      },
+      "metabase.notification.api.admin.run-summary" : {
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "at", "error", "status" ],
+        "additionalProperties" : false
+      },
+      "metabase.notification.api.admin.sort-column" : {
+        "type" : "string",
+        "enum" : [ "id", "last_send", "last_check", "card_name", "creator_name", "updated_at" ]
+      },
+      "metabase.notification.api.admin.sort-direction" : {
+        "type" : "string",
+        "enum" : [ "asc", "desc" ]
+      },
+      "metabase.notification.api.admin.tick-send-entry" : {
+        "description" : "One tick's worth of sends, rolled up across all channels that fired in that tick.",
+        "type" : "object",
+        "properties" : {
+          "at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "channels" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.notification.api.admin.channel-entry"
+            }
+          },
+          "error" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        },
+        "required" : [ "at", "status", "error", "channels" ],
+        "additionalProperties" : false
       },
       "metabase.notification.api.notification.NotificationApiInput" : {
         "description" : "Notification schema for API input. Like FullyHydratedNotification but restricts templates\n  to user-provided types only (no handlebars-resource).",
@@ -13633,7 +13661,7 @@
                 "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
               }
             },
-            "required" : [ "lib/type", "lib/metadata", "stages" ]
+            "required" : [ "lib/metadata", "stages" ]
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
           }, {
@@ -14852,7 +14880,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -14959,7 +14987,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-dashboard",
         "summary" : "POST /api/agent/v1/dashboard",
-        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.",
+        "description" : "Create a new dashboard, optionally populated with saved questions.\n\n  Pass `question_ids` to add existing saved questions as cards on the dashboard.\n  Cards are automatically positioned on the grid based on their display type.\n  If `collection_id` is omitted the dashboard is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15145,7 +15173,7 @@
       "post" : {
         "operationId" : "post-api-agent-v1-question",
         "summary" : "POST /api/agent/v1/question",
-        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.",
+        "description" : "Save a previously constructed query as a named question (card).\n\n  The `query` parameter accepts a `query_handle` (UUID) returned by `construct_query`,\n  or a base64-encoded MBQL string. MCP callers should always use the handle.\n  Optionally specify display type, description, collection, and visualization settings.\n  If `collection_id` is omitted the question is saved to the caller's personal collection.\n  The response `collection_path` is the saved location.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -15483,7 +15511,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -16723,7 +16751,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : [ "root" ],
             "type" : "array",
@@ -16764,7 +16792,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -16773,7 +16801,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -16997,7 +17025,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "f",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -17525,7 +17553,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "ignore_cache" ]
+                "required" : [ ]
               }
             }
           }
@@ -17592,7 +17620,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -18480,7 +18508,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18492,7 +18520,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18516,7 +18544,7 @@
         }, {
           "in" : "query",
           "name" : "personal-only",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18645,7 +18673,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18657,7 +18685,7 @@
         }, {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18803,7 +18831,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18815,7 +18843,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -18839,7 +18867,7 @@
         }, {
           "in" : "query",
           "name" : "include_library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19000,7 +19028,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19012,7 +19040,7 @@
         }, {
           "in" : "query",
           "name" : "exclude-other-user-collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19024,7 +19052,7 @@
         }, {
           "in" : "query",
           "name" : "include-library",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19062,7 +19090,7 @@
         }, {
           "in" : "query",
           "name" : "shallow",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19214,7 +19242,7 @@
                     } ]
                   }
                 },
-                "required" : [ "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -19323,7 +19351,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19335,7 +19363,7 @@
         }, {
           "in" : "query",
           "name" : "include_can_run_adhoc_query",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -19394,7 +19422,7 @@
         }, {
           "in" : "query",
           "name" : "show_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -20217,7 +20245,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -20456,7 +20484,7 @@
                     } ]
                   }
                 },
-                "required" : [ "is_deep_copy" ]
+                "required" : [ ]
               }
             }
           }
@@ -21384,7 +21412,7 @@
         }, {
           "in" : "query",
           "name" : "include_analytics",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21396,7 +21424,7 @@
         }, {
           "in" : "query",
           "name" : "saved",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21408,7 +21436,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21420,7 +21448,7 @@
         }, {
           "in" : "query",
           "name" : "exclude_uneditable_details",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21432,7 +21460,7 @@
         }, {
           "in" : "query",
           "name" : "include_only_uploadable",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -21582,7 +21610,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "engine", "details", "is_full_sync", "is_on_demand", "connection_source" ]
+                "required" : [ "name", "engine", "details" ]
               }
             }
           }
@@ -22154,7 +22182,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22166,7 +22194,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22178,7 +22206,7 @@
         }, {
           "in" : "query",
           "name" : "remove_inactive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22190,7 +22218,7 @@
         }, {
           "in" : "query",
           "name" : "skip_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22260,7 +22288,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22272,7 +22300,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22354,7 +22382,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22366,7 +22394,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22440,7 +22468,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22452,7 +22480,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -22819,7 +22847,7 @@
                     } ]
                   }
                 },
-                "required" : [ "database", "pretty" ]
+                "required" : [ "database" ]
               }
             }
           }
@@ -23119,7 +23147,7 @@
                     "properties" : { }
                   }
                 },
-                "required" : [ "query", "visualization_settings", "format_rows", "pivot_results" ]
+                "required" : [ "query" ]
               }
             }
           }
@@ -23630,7 +23658,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -23973,7 +24001,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -23985,7 +24013,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -25177,7 +25205,7 @@
       "post" : {
         "operationId" : "post-api-ee-custom-viz-plugin",
         "summary" : "POST /api/ee/custom-viz-plugin",
-        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle, plus any whitelisted assets under\n  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`\n  field.",
+        "description" : "Register a new custom visualization plugin from an uploaded tar.gz bundle.\n\n  The archive must contain `metabase-plugin.json` at the root and\n  `dist/index.js` for the JS bundle. The only static asset served from the bundle\n  is the manifest `icon` (under `dist/assets/`); plugins do not ship arbitrary\n  assets. The plugin's `identifier` is taken from the manifest's `name` field.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -25766,7 +25794,7 @@
       "get" : {
         "operationId" : "get-api-ee-custom-viz-plugin-id-asset",
         "summary" : "GET /api/ee/custom-viz-plugin/{id}/asset",
-        "description" : "Serve a static image asset from the plugin's bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match an entry in the manifest's `assets` whitelist.\n   Only image files are served.\n   In dev mode, proxies from the dev base URL if set.",
+        "description" : "Serve the plugin's icon image from its bundle.\n   The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)\n   and must match the manifest `icon`. Only the icon is served — plugins do not\n   ship arbitrary assets.\n   In dev mode, proxies from the dev base URL if set.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -26173,7 +26201,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "force-recalculation",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -26598,7 +26626,7 @@
       "post" : {
         "operationId" : "post-api-ee-dependencies-check-card",
         "summary" : "POST /api/ee/dependencies/check-card",
-        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+        "description" : "Check a proposed edit to a card, and return the cards/transforms this edit will break.\n\n  `broken-cards-response` ensures the stable response order.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -28287,236 +28315,6 @@
           }
         },
         "tags" : [ "/api/ee/metabot" ]
-      }
-    },
-    "/api/ee/notifications" : {
-      "get" : {
-        "operationId" : "get-api-ee-notifications",
-        "summary" : "GET /api/ee/notifications",
-        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed). The Failing tab uses `?last_send_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "active",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "creator_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "creator_active",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "creatorless",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "card_id",
-          "required" : false,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "query",
-          "name" : "recipient_email",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        }, {
-          "in" : "query",
-          "name" : "channel",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "anyOf" : [ {
-                "type" : "string",
-                "minLength" : 1
-              }, {
-                "type" : "array",
-                "items" : {
-                  "type" : "string",
-                  "minLength" : 1
-                }
-              } ]
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "last_send_status",
-          "required" : false,
-          "schema" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.run-status"
-          }
-        }, {
-          "in" : "query",
-          "name" : "query",
-          "required" : false,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        }, {
-          "in" : "query",
-          "name" : "sort_column",
-          "required" : true,
-          "schema" : {
-            "default" : "last_send",
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-column"
-          }
-        }, {
-          "in" : "query",
-          "name" : "sort_direction",
-          "required" : true,
-          "schema" : {
-            "default" : "desc",
-            "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.sort-direction"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.list-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
-      }
-    },
-    "/api/ee/notifications/bulk" : {
-      "post" : {
-        "operationId" : "post-api-ee-notifications-bulk",
-        "summary" : "POST /api/ee/notifications/bulk",
-        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.bulk-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "action" : {
-                    "type" : "string",
-                    "enum" : [ "archive", "change-creator" ]
-                  },
-                  "creator_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "notification_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "minItems" : 1
-                  }
-                },
-                "required" : [ "notification_ids", "action" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
-      }
-    },
-    "/api/ee/notifications/{id}" : {
-      "get" : {
-        "operationId" : "get-api-ee-notifications-id",
-        "summary" : "GET /api/ee/notifications/{id}",
-        "description" : "Get a single card-type notification with last_check, last_send, check_history (up to 10\n  most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send\n  delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.notification-admin.api.detail-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/notifications" ]
       }
     },
     "/api/ee/permission_debug" : {
@@ -30803,7 +30601,7 @@
         }, {
           "in" : "query",
           "name" : "all_collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30811,7 +30609,7 @@
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30819,7 +30617,7 @@
         }, {
           "in" : "query",
           "name" : "data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30827,7 +30625,7 @@
         }, {
           "in" : "query",
           "name" : "field_values",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30835,7 +30633,7 @@
         }, {
           "in" : "query",
           "name" : "database_secrets",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30843,7 +30641,7 @@
         }, {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30851,7 +30649,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30879,7 +30677,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30887,7 +30685,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -30895,7 +30693,7 @@
         }, {
           "in" : "query",
           "name" : "reindex",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -30953,7 +30751,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30965,7 +30763,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -30977,7 +30775,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -31122,7 +30920,7 @@
         }, {
           "in" : "query",
           "name" : "is_recursive",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -31130,7 +30928,7 @@
         }, {
           "in" : "query",
           "name" : "sort_column",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "name",
             "type" : "string",
@@ -31139,7 +30937,7 @@
         }, {
           "in" : "query",
           "name" : "sort_direction",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "asc",
             "type" : "string",
@@ -31422,7 +31220,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "status",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "all",
             "type" : "string",
@@ -33389,7 +33187,7 @@
         }, {
           "in" : "query",
           "name" : "with-databases",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33401,7 +33199,7 @@
         }, {
           "in" : "query",
           "name" : "with-tables",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -33413,7 +33211,7 @@
         }, {
           "in" : "query",
           "name" : "with-fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -34215,7 +34013,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34223,7 +34021,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34355,7 +34153,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34363,7 +34161,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -34807,7 +34605,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -38585,7 +38383,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -38872,6 +38670,243 @@
           }
         },
         "tags" : [ "/api/notification" ]
+      }
+    },
+    "/api/notification/admin" : {
+      "get" : {
+        "operationId" : "get-api-notification-admin",
+        "summary" : "GET /api/notification/admin",
+        "description" : "List card-type notifications (alerts) for admin management. Supports pagination (`limit` +\n  `offset` query params — handled by the offset-paging middleware), filtering, and sorting.\n\n  `last_send_status` filter operates on the latest channel-send task_history row for the\n  notification's card (`successful` = latest channel-send succeeded; `failing` = latest\n  channel-send failed).\n\n  `last_check_status` filter operates on the latest terminal TaskRun for the card — the whole-run\n  rollup (`successful` = the run succeeded; `failing` = it failed or was abandoned). This is a\n  superset of `last_send_status`: it also catches query failures and heartbeat-abandoned runs that\n  never reached the send step. The Failing tab uses `?last_check_status=failing`.\n\n  `creatorless=true` selects notifications with no creator or a deactivated creator (the Ownerless\n  tab). `creatorless=false` selects the inverse.\n\n  `channel` accepts a single string or a repeated query param for multi-select (OR logic).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creator_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "creator_active",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "creatorless",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "recipient_email",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "channel",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "anyOf" : [ {
+                "type" : "string",
+                "minLength" : 1
+              }, {
+                "type" : "array",
+                "items" : {
+                  "type" : "string",
+                  "minLength" : 1
+                }
+              } ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_send_status",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_check_status",
+          "required" : false,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.run-status"
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_column",
+          "required" : false,
+          "schema" : {
+            "default" : "last_send",
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-column"
+          }
+        }, {
+          "in" : "query",
+          "name" : "sort_direction",
+          "required" : false,
+          "schema" : {
+            "default" : "desc",
+            "$ref" : "#/components/schemas/metabase.notification.api.admin.sort-direction"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.list-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
+      }
+    },
+    "/api/notification/admin/bulk" : {
+      "post" : {
+        "operationId" : "post-api-notification-admin-bulk",
+        "summary" : "POST /api/notification/admin/bulk",
+        "description" : "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes\n  through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz\n  triggers. Recipient emails and `:event/notification-update` audit events are\n  published via the shared [[notification-api/publish-notification-update!]] helper so this\n  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.bulk-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "action" : {
+                    "type" : "string",
+                    "enum" : [ "archive", "change-creator" ]
+                  },
+                  "creator_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "notification_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1
+                  }
+                },
+                "required" : [ "notification_ids", "action" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
+      }
+    },
+    "/api/notification/admin/{id}" : {
+      "get" : {
+        "operationId" : "get-api-notification-admin-id",
+        "summary" : "GET /api/notification/admin/{id}",
+        "description" : "Get a single card-type notification with last_check, last_send, check_history (up to 10\n  most-recent terminal alert-type TaskRuns) and send_history (up to 10 most-recent channel-send\n  delivery attempts). 404 if the notification doesn't exist or isn't a card-type notification.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.notification.api.admin.detail-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/notification/admin" ]
       }
     },
     "/api/notification/send" : {
@@ -39178,7 +39213,7 @@
                     } ]
                   }
                 },
-                "required" : [ "synchronous?" ]
+                "required" : [ ]
               }
             }
           }
@@ -39326,7 +39361,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "skip-graph",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39338,7 +39373,7 @@
         }, {
           "in" : "query",
           "name" : "force",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -39660,7 +39695,7 @@
                     "minimum" : 1
                   }
                 },
-                "required" : [ "group_id", "user_id", "is_group_manager" ]
+                "required" : [ "group_id", "user_id" ]
               }
             }
           }
@@ -41033,7 +41068,7 @@
         }, {
           "in" : "query",
           "name" : "format_rows",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41041,7 +41076,7 @@
         }, {
           "in" : "query",
           "name" : "pivot_results",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -41238,7 +41273,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41624,7 +41659,7 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "format_rows", "pivot_results" ]
+                "required" : [ ]
               }
             }
           }
@@ -41661,7 +41696,7 @@
         }, {
           "in" : "query",
           "name" : "maxheight",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 800,
             "type" : "integer",
@@ -41670,7 +41705,7 @@
         }, {
           "in" : "query",
           "name" : "maxwidth",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : 1024,
             "type" : "integer",
@@ -41967,7 +42002,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -41992,7 +42027,7 @@
         }, {
           "in" : "query",
           "name" : "creator_or_recipient",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42090,7 +42125,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42191,7 +42226,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty", "disable_links" ]
+                "required" : [ "name", "cards", "channels" ]
               }
             }
           }
@@ -42400,7 +42435,7 @@
                     } ]
                   }
                 },
-                "required" : [ "skip_if_empty", "archived" ]
+                "required" : [ ]
               }
             }
           }
@@ -42587,7 +42622,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42723,7 +42758,7 @@
         }, {
           "in" : "query",
           "name" : "model_ancestors",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42795,7 +42830,7 @@
         }, {
           "in" : "query",
           "name" : "include_dashboard_questions",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42807,7 +42842,7 @@
         }, {
           "in" : "query",
           "name" : "include_metadata",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -42902,7 +42937,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -42928,7 +42963,7 @@
         "parameters" : [ {
           "in" : "query",
           "name" : "context",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "default",
             "type" : "string"
@@ -44608,12 +44643,27 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "array",
-                "items" : {
-                  "description" : "value must be an integer greater than zero.",
-                  "type" : "integer",
-                  "minimum" : 1
-                }
+                "anyOf" : [ {
+                  "type" : "array",
+                  "items" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                }, {
+                  "type" : "object",
+                  "properties" : {
+                    "field_order" : {
+                      "type" : "array",
+                      "items" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      }
+                    }
+                  },
+                  "required" : [ "field_order" ]
+                } ]
               }
             }
           }
@@ -44667,7 +44717,7 @@
         }, {
           "in" : "query",
           "name" : "include_sensitive_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44679,7 +44729,7 @@
         }, {
           "in" : "query",
           "name" : "include_hidden_fields",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -44691,7 +44741,7 @@
         }, {
           "in" : "query",
           "name" : "include_editable_data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45397,7 +45447,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -45695,7 +45745,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45747,7 +45797,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
@@ -45795,7 +45845,7 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : "false",
             "type" : "boolean"
@@ -46923,7 +46973,7 @@
                     "enum" : [ "cron/raw", "cron/builder" ]
                   }
                 },
-                "required" : [ "name", "schedule", "ui_display_type" ]
+                "required" : [ "name", "schedule" ]
               }
             }
           }
@@ -48024,7 +48074,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "transform-name", "start-time", "end-time", "status", "run-method", "transform-tags" ]
+            "enum" : [ "transform-name", "start-time", "end-time", "status", "run-method", "transform-tags", "duration" ]
           }
         }, {
           "in" : "query",
@@ -49880,7 +49930,7 @@
         }, {
           "in" : "query",
           "name" : "include_deactivated",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "oneOf" : [ {
