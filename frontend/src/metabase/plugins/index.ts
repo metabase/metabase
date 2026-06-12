@@ -1,5 +1,4 @@
 // Re-export all plugins from OSS modules (excluding reinitialize functions to avoid conflicts)
-export { PLUGIN_API } from "./oss/api";
 export {
   PLUGIN_AUDIT,
   type InsightsLinkProps,
