@@ -1,11 +1,17 @@
-## Create data_app table for the data-app PoC
+## Create data_app table for the data-app PoC.
+##
+## Data apps come from the repository connected via the remote-sync feature. The
+## repo root has a `data_apps/` directory; each subdirectory is one app and
+## contains a `data_app.yml` (name/slug/path) plus its built bundle. Each app dir
+## is materialized as one row in this table on sync. The `bundle` / `bundle_hash`
+## columns cache the last successfully synced bytes (nullable until first sync).
 
 databaseChangeLog:
   - logicalFilePath: migrations/062_update_migrations.yaml
   - changeSet:
       id: v63.2026-05-28T00:00:00
       author: timofei
-      comment: Create data_app table for uploaded data-app bundles
+      comment: Create data_app table for Git-synced data-app bundles
       preConditions:
         - onFail: MARK_RAN
         - not:
@@ -14,7 +20,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: data_app
-            remarks: Stores uploaded data-app bundles (single JS file). PoC scope - no manifest yet.
+            remarks: Stores Git-synced data-app bundles, one row per data_apps/<dir> app.
             columns:
               - column:
                   name: id
@@ -26,41 +32,63 @@ databaseChangeLog:
               - column:
                   name: name
                   type: varchar(254)
-                  remarks: Unique short identifier used in URLs and admin lists
+                  remarks: Slug from the app's data_app.yml; unique, used in the URL /data-app/:name
                   constraints:
                     nullable: false
                     unique: true
               - column:
                   name: display_name
                   type: varchar(254)
-                  remarks: Human-readable name shown in the admin UI
+                  remarks: Human-readable name from the manifest, shown in the admin UI
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bundle_path
+                  type: varchar(1024)
+                  remarks: Path within the repository to this app's built bundle file
                   constraints:
                     nullable: false
               - column:
                   name: bundle
                   type: ${blob.type}
-                  remarks: Raw bytes of the uploaded index.js
+                  remarks: Cached raw bytes of the last successfully synced bundle. NULL until first sync.
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: bundle_hash
                   type: varchar(64)
-                  remarks: SHA-256 hex of the uploaded bytes, used as HTTP ETag and cache buster
+                  remarks: SHA-256 hex of the cached bytes, used as HTTP ETag. NULL until first sync.
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_synced_sha
+                  type: varchar(40)
+                  remarks: Git commit SHA the cached bundle was synced from
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_synced_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last successful sync for this app
+                  constraints:
+                    nullable: true
+              - column:
+                  name: sync_error
+                  type: ${text.type}
+                  remarks: Error from the most recent failed sync of this app, NULL when the last sync succeeded
+                  constraints:
+                    nullable: true
+              - column:
+                  name: enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Admin toggle. When false the app is not served and is hidden from the data-app routes.
                   constraints:
                     nullable: false
               - column:
-                  name: creator_id
-                  type: int
-                  remarks: User who uploaded this data app
-                  constraints:
-                    nullable: true
-                    foreignKeyName: fk_data_app_creator_id
-                    references: core_user(id)
-                    deleteCascade: false
-              - column:
                   name: created_at
                   type: ${timestamp_type}
-                  remarks: Timestamp when the data app was uploaded
+                  remarks: Timestamp when the data app was first synced
                   constraints:
                     nullable: false
               - column:
@@ -73,7 +101,7 @@ databaseChangeLog:
   - changeSet:
       id: v63.2026-05-28T00:00:01
       author: timofei
-      comment: Use longblob for data_app.bundle on MySQL/MariaDB so it can hold multi-MB uploads
+      comment: Use longblob for data_app.bundle on MySQL/MariaDB so it can hold multi-MB bundles
       changes:
         - modifyDataType:
             tableName: data_app
@@ -84,3 +112,32 @@ databaseChangeLog:
         - onFail: MARK_RAN
         - dbms:
             type: mysql,mariadb
+
+  - changeSet:
+      id: v63.2026-05-28T00:00:02
+      author: timofei
+      comment: >-
+        Add data_app.enabled. Guarded so instances that created the table before
+        this column existed pick it up, while fresh installs (createTable already
+        includes the column) skip it.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: data_app
+                columnName: enabled
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Admin toggle. When false the app is not served and is hidden from the data-app routes.
+                  constraints:
+                    nullable: false
+      # No-op rollback: created in the same deployment as the table, whose own
+      # rollback drops it. Reverting the column first would only run right before
+      # that DROP (and could fail once the table is gone). See the bundle changeset.
+      rollback: []
