@@ -1690,7 +1690,7 @@
 
 (deftest ^:parallel resolve-in-implicit-join-should-use-source-field-join-alias-test
   (testing "resolve-field-ref should use :source-field-join-alias to disambiguate implicit joins through different explicit joins"
-    ;; Two-stage query. Stage 0 has orders with an explicit join to orders ("Orders")
+    ;; Two-stage query. Stage 0 has orders with an explicit join to orders ("Orders"),
     ;; plus two implicitly-joinable products.category columns (one from the base table's
     ;; product-id, one from the "Orders" join's product-id). We add both as fields, then
     ;; append a stage. resolve-field-ref in stage 1 should use :source-field-join-alias
@@ -1745,7 +1745,7 @@
                 (:lib/desired-column-alias stage-0-join-cat))
           "the two stage-0 category columns should have different desired aliases")
       ;; resolve-field-ref should pick the previous-stage column whose :fk-join-alias matches.
-      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
       ;; so it reveals which column was actually resolved.
       (testing "ref with :source-field-join-alias should resolve to the column with matching :fk-join-alias"
         (is (= (:lib/desired-column-alias stage-0-join-cat)
@@ -1814,7 +1814,7 @@
                 (:lib/desired-column-alias stage-1-renamed-cat))
           "the two stage-1 category columns should have different desired aliases")
       ;; resolve-field-ref should use :source-field-name to pick the correct column.
-      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias
+      ;; :lib/source-column-alias comes from the matched column's :lib/desired-column-alias,
       ;; so it reveals which column was actually resolved.
       (testing "ref with :source-field-name should resolve to the column with matching :fk-field-name"
         (is (= (:lib/desired-column-alias stage-1-renamed-cat)

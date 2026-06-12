@@ -126,7 +126,7 @@
     ;; 4. Run the Saved Question; results metadata incorrectly returns "Products → [RENAMED]"
     ;;
     ;; Note that the metadata here was captured from following these repro steps in the GUI in 0.55.0; the issue does
-    ;; not seem to reproduce with newly created metadata. NOTE THAT THE METADATA CAPTURED FROM 59 IS WRONG! THE
+    ;; not seem to reproduce with newly created metadata. NOTE THAT THE METADATA CAPTURED FROM 55 IS WRONG! THE
     ;; METADATA FOR THE SECOND CARD INCORRECTLY USES the `:id` of `orders.id` for the `products.id` column. We need to
     ;; work around this 😢
     (let [model-metadata-55    (read-metadata "test/metabase/query_processor/model_test/preserve-model-display-names-test-metadata-1.edn")
