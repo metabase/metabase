@@ -1,7 +1,6 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
-   [buddy.core.codecs :as codecs]
    [metabase.app-db.core :as mdb]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,7 +13,9 @@
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model])
+  (:import
+   (java.nio ByteBuffer)))
 
 (set! *warn-on-reflection* true)
 
@@ -82,30 +83,36 @@
           (long (first execution-times-ms))
           (rest execution-times-ms)))
 
+(defn- hash-key
+  "Wrap a query-hash byte array so it can be used as a map key: unlike byte arrays themselves, `ByteBuffer`s have
+  value-based equality and hash code."
+  [hash-bytes]
+  (when hash-bytes
+    (ByteBuffer/wrap ^bytes hash-bytes)))
+
 (defn- save-queries-and-update-average-execution-times!*
   [entries remaining-attempts]
   (when (seq entries)
-    ;; group by the hex representation since byte arrays don't have value-based equality
-    (let [hex->entries  (group-by #(codecs/bytes->hex (:query-hash %)) entries)
-          query-hashes  (map (comp :query-hash first val) hex->entries)
+    (let [hash->entries (group-by (comp hash-key :query-hash) entries)
+          query-hashes  (map (comp :query-hash first val) hash->entries)
           existing-rows (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
                                    :from   [(t2/table-name :model/Query)]
                                    :where  [:in :query_hash query-hashes]})
           ;; mysql returns 0/1 instead of booleans
-          hex->legacy?  (into {} (map (juxt #(codecs/bytes->hex (:query_hash %))
+          hash->legacy? (into {} (map (juxt (comp hash-key :query_hash)
                                             (comp boolean #{true 1} :missing_query)))
                               existing-rows)
           ;; nil = no existing row for this hash
-          {batchable false, legacy true, new-groups nil} (group-by (comp hex->legacy? key) hex->entries)]
+          {batchable false, legacy true, new-groups nil} (group-by (comp hash->legacy? key) hash->entries)]
       ;; one atomic UPDATE for all existing rows
       (when-let [hash+exprs (not-empty
-                             (for [[_hex group] batchable
-                                   :let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]]
-                               [(:query-hash (first group))
-                                (h2x/cast (int-casting-type)
-                                          (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
-                                                            [:inline c1])
-                                                     [:inline 0]))]))]
+                             (vec (for [[_hash group] batchable
+                                        :let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]]
+                                    [(:query-hash (first group))
+                                     (h2x/cast (int-casting-type)
+                                               (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
+                                                                 [:inline c1])
+                                                          [:inline 0]))])))]
         (t2/query {:update (t2/table-name :model/Query)
                    :set    {:average_execution_time (into [:case]
                                                           (mapcat (fn [[query-hash expr]]
@@ -113,7 +120,7 @@
                                                           hash+exprs)}
                    :where  [:in :query_hash (map first hash+exprs)]}))
       ;; pre-0.31.0 rows whose `query` still needs backfilling: rare legacy path, handle individually
-      (doseq [[_hex group] legacy
+      (doseq [[_hash group] legacy
               {:keys [query query-hash execution-time-ms]} group]
         (update-rolling-average-execution-time! query query-hash execution-time-ms))
       ;; one multi-row INSERT for hashes we haven't seen before. If some other instance beat us to inserting any of
@@ -121,7 +128,7 @@
       ;; UPDATE instead.
       (when (seq new-groups)
         (try
-          (t2/insert! :model/Query (for [[_hex group] new-groups]
+          (t2/insert! :model/Query (for [[_hash group] new-groups]
                                      {:query                  (:query (first group))
                                       :query_hash             (:query-hash (first group))
                                       :average_execution_time (initial-average-execution-time
