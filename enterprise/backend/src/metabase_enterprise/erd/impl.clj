@@ -9,6 +9,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as schema.table]
    [toucan2.core :as t2]))
 
 ;;; -------------------------------------------------- Schema --------------------------------------------------
@@ -118,13 +119,15 @@
 
 (defn- fetch-fields-for-tables
   "Fetch all active fields for the given table IDs.
-   Returns a vector of field maps."
+   Returns a vector of field maps ordered by the same ordering
+   as table metadata view (`/api/table/:id/query_metadata`)."
   [table-ids]
   (when (seq table-ids)
     (t2/select :model/Field
-               {:where [:and
-                        [:in :table_id table-ids]
-                        [:= :active true]]})))
+               {:where    [:and
+                           [:in :table_id table-ids]
+                           [:= :active true]]
+                :order-by schema.table/field-order-rule})))
 
 (defn- fetch-fields-by-ids
   "Fetch active fields by ID."
