@@ -21,12 +21,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  Card,
-  CardDisplayType,
-  DashboardId,
-  QueryVisualizationDisplayType,
-} from "metabase-types/api";
+import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -162,7 +157,7 @@ type SdkQuestionConfig = {
    * Falls back to the question's saved visualization when the requested one
    * doesn't exist or isn't allowed.
    **/
-  initialVisualization?: QueryVisualizationDisplayType;
+  initialVisualization?: CardDisplayType | `custom:${string}`;
 };
 
 export type QuestionMockLocationParameters = {
