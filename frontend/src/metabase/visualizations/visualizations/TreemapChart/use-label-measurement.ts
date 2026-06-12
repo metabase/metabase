@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { type MutableRefObject, useCallback, useEffect, useState } from "react";
+import { type MutableRefObject, useCallback, useState } from "react";
 import _ from "underscore";
 
 import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
@@ -20,25 +20,25 @@ interface UseLabelMeasurementOptions {
   tree: TreemapTree | null;
   formatters: TreemapFormatters | null;
   renderingContext: RenderingContext;
-  viewRootId: NodeId | null /* the root used for current measurements */;
+  /** The view root the chart is currently showing (null at the overview). */
+  viewRootId: NodeId | null;
   showLeafValues: boolean;
   showParentValues: boolean;
 }
 
 interface MeasuredLayouts {
+  tree: TreemapTree | null;
   viewRootId: NodeId | null;
   labelLayout: Record<NodeId, TreemapLabelLayout>;
   parentLabelLayout: Record<NodeId, TreemapParentLabelLayout>;
 }
 
 const EMPTY_MEASURED: MeasuredLayouts = {
+  tree: null,
   viewRootId: null,
   labelLayout: {},
   parentLabelLayout: {},
 };
-
-const EMPTY_LABEL_LAYOUT: Record<NodeId, TreemapLabelLayout> = {};
-const EMPTY_PARENT_LABEL_LAYOUT: Record<NodeId, TreemapParentLabelLayout> = {};
 
 /**
  * Second pass of the label layout: after ECharts finishes laying out (or
@@ -62,10 +62,6 @@ export function useLabelMeasurement({
 }: UseLabelMeasurementOptions) {
   const [measured, setMeasured] = useState<MeasuredLayouts>(EMPTY_MEASURED);
 
-  useEffect(() => {
-    setMeasured(EMPTY_MEASURED);
-  }, [tree]);
-
   const handleLabelMeasure = useCallback(() => {
     const chart = chartRef.current;
     if (!chart || !tree || !formatters) {
@@ -79,10 +75,14 @@ export function useLabelMeasurement({
       showLeafValues,
       showParentValues,
     });
-    setMeasured((prev) => {
-      const next = { viewRootId, labelLayout, parentLabelLayout };
-      return _.isEqual(prev, next) ? prev : next;
-    });
+    setMeasured((prev) =>
+      prev.tree === tree &&
+      prev.viewRootId === viewRootId &&
+      _.isEqual(prev.labelLayout, labelLayout) &&
+      _.isEqual(prev.parentLabelLayout, parentLabelLayout)
+        ? prev
+        : { tree, viewRootId, labelLayout, parentLabelLayout },
+    );
   }, [
     chartRef,
     tree,
@@ -93,14 +93,13 @@ export function useLabelMeasurement({
     showParentValues,
   ]);
 
-  const animationInProgress = measured.viewRootId !== viewRootId;
+  // Measurements are only valid for the exact tree and view root they were measured at
+  const isStale = measured.tree !== tree || measured.viewRootId !== viewRootId;
 
   return {
-    labelLayout: animationInProgress
-      ? EMPTY_LABEL_LAYOUT
-      : measured.labelLayout,
-    parentLabelLayout: animationInProgress
-      ? EMPTY_PARENT_LABEL_LAYOUT
+    labelLayout: isStale ? EMPTY_MEASURED.labelLayout : measured.labelLayout,
+    parentLabelLayout: isStale
+      ? EMPTY_MEASURED.parentLabelLayout
       : measured.parentLabelLayout,
     handleLabelMeasure,
   };
