@@ -263,16 +263,17 @@
                                              ;; if we have `id` then filter out anything that is definitely not a
                                              ;; match
                                              (:id col) (filter #(= (:id %) (:id col)))))]
-            ;; prefer resolution with `:lib/source-column-alias` over `:id` if multiple versions of the column (e.g.
-            ;; with different bucketing units) are returned. If there's only one match then use ID for resolution. On
-            ;; very old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2`
-            ;; rather than `Products__ID` so, matching on it is not as reliable as `:id`, which has been around since
-            ;; the dawn of human history.
-            (when-some [col (let [resolution-key (if (and (:id col)
-                                                          (= (count card-cols) 1))
-                                                   :id
-                                                   :lib/source-column-alias)]
-                              (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (resolution-key col)))]
+            ;; prefer resolution with `:lib/source-column-alias` over `:id` if we have it because it will be
+            ;; unique/unambiguous if multiple versions of the column (e.g. with different bucketing units) are
+            ;; returned.
+            ;;
+            ;; If that fails and there's only one potential match then use `:id` for resolution as a fallback. On very
+            ;; old saved Card source metadata `:lib/source-column-alias` might be set to something like `ID_2` rather
+            ;; than `Products__ID` so this will catch those cases.
+            (when-some [col (or (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:lib/source-column-alias col))
+                                (when (and (:id col)
+                                           (= (count card-cols) 1))
+                                  (resolve-in-previous-stage-returned-columns-and-update-keys query card-cols (:id col))))]
               (let [col             (assoc col :lib/source :source/card, :lib/card-id card-id)
                     model?          (= (:type card) :model)
                     col             (cond-> col
