@@ -85,13 +85,6 @@
                                             :margin-bottom :8px})}
                  (markdown/process-markdown description :html)]})))
 
-(defn- visualizer-display-type
-  "Return dashcard's display type if it is a visualizer dashcard else nil"
-  [dashcard]
-  (if (render.util/is-visualizer-dashcard? dashcard)
-    (keyword (get-in dashcard [:visualization_settings :visualization :display]))
-    nil))
-
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
   [cols]
@@ -125,39 +118,33 @@
               "pin")
             "region")))))
 
-(defn- region-map?
-  "True when `card` is a region (choropleth) map whose region we can render statically. Mirrors the
-  frontend: a `:map` display (or legacy `:state`/`:country`) whose effective map type is region and whose
-  region key is configured — built-in or a user-defined custom map (the latter is fetched at render time).
-  Pin/heat/grid maps aren't here."
+(defn- map-chart-type
+  "The static-viz chart type a map card renders as — `:region_map`, `:pin_map`, or `:grid_map` — or nil
+  when the card isn't a map, or is one we can't render statically yet (heat maps, region maps whose region
+  isn't defined). Mirrors the frontend's map-type defaulting, computing [[effective-map-type]] once for
+  all three outcomes."
   [display-type card maybe-dashcard data]
-  (and (#{:map :state :country} display-type)
-       (= "region" (effective-map-type display-type card maybe-dashcard data))
-       ;; `boolean`, not `some?`: region-map-region-key returns logical false (not always nil) for
-       ;; unresolvable regions.
-       (boolean (body/region-map-region-key display-type card maybe-dashcard data))))
-
-(defn- pin-map?
-  "True when `card` is a pin map: the legacy `:pin_map` display, or a `:map` whose effective map type is
-  \"pin\"."
-  [display-type card maybe-dashcard data]
-  (or (= :pin_map display-type)
-      (and (= :map display-type)
-           (= "pin" (effective-map-type display-type card maybe-dashcard data)))))
-
-(defn- grid-map?
-  "True when `card` is a grid map: a `:map` whose effective map type is \"grid\" (binned lat/long).
-  (Heat maps aren't statically rendered yet — they still fall through to a table.)"
-  [display-type card maybe-dashcard data]
-  (and (= :map display-type)
-       (= "grid" (effective-map-type display-type card maybe-dashcard data))))
+  (if (= :pin_map display-type)
+    :pin_map
+    (when (#{:map :state :country} display-type)
+      (case (effective-map-type display-type card maybe-dashcard data)
+        ;; a region map is only renderable when its region key names GeoJSON we know about — built-in, or
+        ;; a user-defined custom map (the latter is fetched at render time)
+        "region" (when (body/region-map-region-key display-type card maybe-dashcard data)
+                   :region_map)
+        "pin"    (when (= :map display-type)
+                   :pin_map)
+        "grid"   (when (= :map display-type)
+                   :grid_map)
+        nil))))
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
   [{display-type :display card-name :name :as card} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count  (delay (count (take 3 cols)))
         row-sample-count  (delay (count (take 2 rows)))
-        display-type      (or (visualizer-display-type maybe-dashcard) display-type)]
+        display-type      (or (render.util/visualizer-display-type maybe-dashcard) display-type)
+        map-type          (map-chart-type display-type card maybe-dashcard data)]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
@@ -168,14 +155,8 @@
             (= [[nil]] (-> data :rows)))
         (chart-type :empty "there are no rows in results")
 
-        (region-map? display-type card maybe-dashcard data)
-        (chart-type :region_map "display-type is a built-in region map")
-
-        (pin-map? display-type card maybe-dashcard data)
-        (chart-type :pin_map "display-type is a pin map")
-
-        (grid-map? display-type card maybe-dashcard data)
-        (chart-type :grid_map "display-type is a grid map")
+        map-type
+        (chart-type map-type "card is a map renderable as %s" (name map-type))
 
         (#{:state :country} display-type)
         (chart-type nil "display-type is %s" display-type)

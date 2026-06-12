@@ -471,7 +471,7 @@
                          (cond
                            (some #(render.util/col-of-type? % :type/State) cols)   "us_states"
                            (some #(render.util/col-of-type? % :type/Country) cols) "world_countries"))]
-    (and (contains? (geojson.settings/custom-geojson) (keyword region-key))
+    (and (geojson.settings/defined-region? region-key)
          region-key)))
 
 (defn- javascript-visualization->rendered-part
@@ -512,8 +512,10 @@
 
 (mu/defmethod render :region_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard data]
-  (let [region-key (region-map-region-key (:display card) card dashcard data)
-        geojson    (some-> region-key geojson.api/region-geojson)]
+  ;; Resolve the display type the same way detection does, so a visualizer dashcard's display wins.
+  (let [display-type (or (render.util/visualizer-display-type dashcard) (:display card))
+        region-key   (region-map-region-key display-type card dashcard data)
+        geojson      (some-> region-key geojson.api/region-geojson)]
     (if-not geojson
       ;; The region's GeoJSON couldn't be resolved (e.g. a custom map whose fetch failed); degrade to a
       ;; table of the data rather than emit an empty map.

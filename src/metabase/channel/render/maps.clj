@@ -90,7 +90,9 @@
   from hammering the tile server — important for OSM's usage policy."
   (u/hours->ms 1))
 
-(def ^:private fetch-tile
+(def ^:private fetch-tile*
+  ;; Throws on any failure (non-200, undecodable image) so that only successful fetches are cached —
+  ;; otherwise a transient failure would leave a blank strip in every render until the TTL expires.
   (memoize/ttl
    (fn [template ^long z ^long x ^long y]
      (let [url  (expand-tile-url template z x y)
@@ -100,9 +102,22 @@
                                :throw-exceptions   false
                                ;; OSM rejects requests without a valid User-Agent.
                                :headers            {"User-Agent" "Metabase static map renderer"}})]
-       (when (= 200 (:status resp))
-         (ImageIO/read (ByteArrayInputStream. ^bytes (:body resp))))))
+       (when-not (= 200 (:status resp))
+         (throw (ex-info (format "Tile fetch failed with status %d" (:status resp))
+                         {:url url :status (:status resp)})))
+       (or (ImageIO/read (ByteArrayInputStream. ^bytes (:body resp)))
+           (throw (ex-info "Tile response is not a decodable image" {:url url})))))
    :ttl/threshold tile-cache-ttl-ms))
+
+(defn- fetch-tile
+  "Fetch one basemap tile, caching successes for [[tile-cache-ttl-ms]]. Returns nil on failure, so the
+  render skips the tile rather than aborting; failures are logged and not cached."
+  [template z x y]
+  (try
+    (fetch-tile* template z x y)
+    (catch Throwable e
+      (log/warn e "Failed to fetch map tile")
+      nil)))
 
 ;;; ------------------------------------------------ color (HCL) ------------------------------------------------
 ;;; Grid maps colour cells on a linear green->red scale interpolated in HCL space, matching the live app
@@ -214,8 +229,9 @@
 (defn- do-render-map
   "Render a basemap covering the lat/lon extent of `coords` (a seq of `[lat lon]`), then call
   `(draw-fn graphics project)` to draw the overlay, where `project` is `(fn [lat lon] -> [px py])` in image
-  space. Returns PNG `byte[]`. `opts`: `:zoom` (override auto-fit), `:tile-url` (template)."
-  ^bytes [coords {:keys [zoom tile-url]} draw-fn]
+  space. Returns PNG `byte[]`, or nil if the render fails. `opts`: `:zoom` (override auto-fit), `:tile-url`
+  (template)."
+  [coords {:keys [zoom tile-url]} draw-fn]
   (let [template (or tile-url default-tile-url)
         z        (or zoom (choose-zoom coords))
         {:keys [min-x max-x min-y max-y]} (world-px-bounds coords z)
@@ -263,8 +279,8 @@
   "Render `points` (a seq of `[lat lon]`) onto a basemap as a PNG `byte[]`. `opts` may include `:zoom`
   (override auto-fit), `:tile-url` (template, defaults to OSM), and `:pin-type` — `\"markers\"` (default)
   draws the teardrop pin icon like the live app; anything else (e.g. `\"tiles\"`, for dense data) draws a
-  small dot."
-  ^bytes [points & [{:keys [pin-type] :as opts}]]
+  small dot. Returns nil if the render fails."
+  [points & [{:keys [pin-type] :as opts}]]
   (do-render-map
    points opts
    (fn [^java.awt.Graphics2D g project]
@@ -286,8 +302,9 @@
 (defn render-grid-map
   "Render binned grid `cells` onto a basemap as a PNG `byte[]`. Each cell is a map with `:lat`/`:lon` (the
   cell's lower bound), `:lat-bin`/`:lon-bin` (bin widths in degrees), and `:metric` (value driving colour).
-  Cells are coloured on a linear green->red HCL scale across the metric range. `opts` as for pin maps."
-  ^bytes [cells & [opts]]
+  Cells are coloured on a linear green->red HCL scale across the metric range. `opts` as for pin maps.
+  Returns nil if the render fails."
+  [cells & [opts]]
   (let [metrics (keep :metric cells)
         mn      (if (seq metrics)
                   (double (apply min metrics))

@@ -133,7 +133,12 @@
       (testing "but not when the key is absent from custom-geojson"
         (is (not= :region_map
                   (channel.render/detect-pulse-chart-type
-                   (card {"map.region" "unconfigured_region"}) nil data)))))))
+                   (card {"map.region" "unconfigured_region"}) nil data))))
+      (testing "but not when custom GeoJSON is disabled (render-time resolution would fail too)"
+        (mt/with-temp-env-var-value! [mb-custom-geojson-enabled false]
+          (is (not= :region_map
+                    (channel.render/detect-pulse-chart-type
+                     (card {"map.region" "sales_zones"}) nil data))))))))
 
 (deftest ^:parallel detect-pulse-chart-type-pin-map-test
   (let [data {:cols [{:name "lat"} {:name "lon"}] :rows [[1.0 2.0]]}

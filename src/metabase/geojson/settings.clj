@@ -144,6 +144,16 @@
   []
   (reduce dissoc (custom-geojson) (keys (builtin-geojson))))
 
+(defn defined-region?
+  "Whether `region-key` names a region map whose GeoJSON we could resolve: a built-in region (when default
+  maps are enabled), or a user-defined one (when custom GeoJSON is enabled). Mirrors what
+  [[metabase.geojson.api/region-geojson]] can resolve, minus the fetch itself."
+  [region-key]
+  (let [k (keyword region-key)]
+    (or (contains? (builtin-geojson) k)
+        (and (custom-geojson-enabled)
+             (contains? (user-defined-custom-geojson) k)))))
+
 (def ^:private read-classpath-geojson
   ;; Built-in GeoJSON files are static, so reading + parsing them once is safe to cache forever. The stored
   ;; `url` (e.g. "app/assets/...") is a web path served out of resources/frontend_client, so resolve it there.
