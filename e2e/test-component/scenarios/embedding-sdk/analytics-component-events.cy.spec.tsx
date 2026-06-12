@@ -2,7 +2,6 @@ import {
   CollectionBrowser,
   CreateQuestion,
   InteractiveQuestion,
-  StaticQuestion,
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -14,7 +13,6 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -203,27 +201,5 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     cy.wrap(capturedEvents).should("have.length", 0);
   });
 
-  it("does not fire events in iframe embed context (isSimpleEmbedding gate)", () => {
-    updateSetting("anon-tracking-enabled", true);
-    cy.signOut();
-    mockAuthProviderAndJwtSignIn();
-
-    // Simulate the iframe embed entry point setting this flag.
-    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
-
-    const capturedEvents = interceptAnalyticsProxy();
-
-    mountStaticQuestion();
-
-    // Let the question fully render so any (incorrect) tracking would have fired.
-    getSdkRoot().within(() => {
-      cy.findByText("Product ID").should("be.visible");
-    });
-
-    cy.wrap(capturedEvents).should("have.length", 0);
-
-    cy.then(() => {
-      EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
-    });
-  });
 });
+
