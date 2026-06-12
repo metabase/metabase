@@ -122,7 +122,7 @@
 (deftest ^:parallel metadatas-fetches-metrics-by-table-id-test
   (testing "metadatas should fetch metrics by table-id (excludes card-based metrics)"
     (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id 10})]
+          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id #{10}})]
       (is (= 2 (count metrics)))
       (is (every? #(= 10 (:table-id %)) metrics))
       (is (every? #(nil? (:source-card-id %)) metrics)))))
@@ -130,7 +130,7 @@
 (deftest ^:parallel metadatas-fetches-metrics-by-card-id-test
   (testing "metadatas should fetch metrics by card-id"
     (let [mp (create-mock-provider)
-          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :card-id 100})]
+          metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :card-id #{100}})]
       (is (= 1 (count metrics)))
       (is (= 100 (:source-card-id (first metrics)))))))
 
@@ -145,7 +145,7 @@
 (deftest ^:parallel metadatas-routes-columns-to-db-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
     (let [mp (create-mock-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 10})]
+          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id #{10}})]
       (is (= 2 (count columns)))
       (is (every? #(= 10 (:table-id %)) columns)))))
 
