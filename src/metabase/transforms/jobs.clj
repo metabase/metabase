@@ -96,7 +96,7 @@
       (>= (u/since-ms timer) timeout-ms)                              false
       :else (do (Thread/sleep 2000) (recur)))))
 
-(defn- run-transform! [run-id run-method user-id {transform-id :id :as transform}]
+(defn- run-transform! [run-id run-method user-id started-run-id {transform-id :id :as transform}]
   (cond
     (not (transforms.u/check-feature-enabled transform))
     (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
@@ -119,7 +119,10 @@
             (let [result (try
                            (log/info "Executing job transform" (pr-str transform-id))
                            (transforms.execute/execute! transform {:run-method run-method
-                                                                   :user-id user-id})
+                                                                   :user-id    user-id
+                                                                   ;; lets the coordinator cancel exactly the run
+                                                                   ;; this worker started (see [[cancel-worker!]])
+                                                                   :on-start   #(deliver started-run-id %)})
                            :ok
                            (catch Exception e
                              ;; Raced with another starter that won the is_active slot; wait again.
@@ -141,11 +144,15 @@
   (some seq (vals in-flight)))
 
 (defn- submit-transform!
-  "Run `transform` on its own thread; returns a future yielding a `::status` completion map."
-  [run-id run-method user-id transform]
+  "Run `transform` on its own thread; returns a future yielding a `::status` completion map.
+  `started-run-id` is a promise the worker delivers its transform run id to once `execute!` has
+  created it, so the coordinator can cancel exactly that run (see [[cancel-worker!]]). A worker
+  starts at most one run: the `:already-running` retry loop only re-enters after a start that
+  *failed*, i.e. before the run id was delivered."
+  [run-id run-method user-id started-run-id transform]
   (future
     (try
-      (run-transform! run-id run-method user-id transform)
+      (run-transform! run-id run-method user-id started-run-id transform)
       {::status :succeeded ::transform transform}
       (catch Throwable t
         (log/errorf t "Transform %s in run %s failed" (pr-str (:id transform)) (pr-str run-id))
@@ -194,9 +201,14 @@
 
          (and (every? succeeded dep-ids)
               (< (count in-flight-now) (lanes lane-key)))
-         (let [fut (submit-transform! run-id run-method user-id t)]
+         (let [started-run-id (promise)
+               fut            (submit-transform! run-id run-method user-id started-run-id t)]
            (cond-> (assoc-in st [:in-flight lane-key id]
-                             {:future fut :timer (u/start-timer) :tkey tkey :transform t})
+                             {:future         fut
+                              :timer          (u/start-timer)
+                              :tkey           tkey
+                              :transform      t
+                              :started-run-id started-run-id})
              tkey (update :in-flight-targets conj tkey)))
 
          :else st)))
@@ -204,11 +216,11 @@
    plan))
 
 (defn- cancel-worker!
-  "Stop an in-flight worker for `transform-id`: signal cooperative cancelation for its active run
-   then interrupt its thread."
-  [transform-id fut]
-  (when-let [run (transform-run/running-run-for-transform-id transform-id)]
-    (canceling/chan-signal-cancel! (:id run)))
+  "Stop an in-flight worker: signal cooperative cancelation for the run it started, then interrupt
+  its thread."
+  [{:keys [started-run-id] fut :future}]
+  (when-let [run-id (deref started-run-id 0 nil)]
+    (canceling/chan-signal-cancel! run-id))
   (future-cancel fut))
 
 (defn- sweep-workers!
@@ -218,7 +230,7 @@
   (reduce-kv
    (fn [st lane-key workers]
      (reduce-kv
-      (fn [st id {:keys [timer tkey transform] fut :future}]
+      (fn [st id {:keys [timer tkey transform] fut :future :as worker}]
         (let [freed (cond-> (update-in st [:in-flight lane-key] dissoc id)
                       tkey (update :in-flight-targets disj tkey))]
           (cond
@@ -233,7 +245,7 @@
 
             (>= (u/since-ms timer) timeout-ms)
             (do (log/warnf "Transform %s exceeded its deadline; canceling its worker" (pr-str id))
-                (cancel-worker! id fut)
+                (cancel-worker! worker)
                 (-> freed
                     (update :failed conj id)
                     (update :failures conj
@@ -250,8 +262,11 @@
   "Best-effort cancel + interrupt of every in-flight worker."
   [st]
   (doseq [workers (vals (:in-flight st))
-          [id {fut :future}] workers]
-    (cancel-worker! id fut)))
+          [id worker] workers]
+    (try
+      (cancel-worker! worker)
+      (catch Throwable t
+        (log/warnf t "Error canceling in-flight worker for transform %s" (pr-str id))))))
 
 (defonce ^:private active-runs
   ;; job-run-id -> promise, delivered once the run is found terminated externally (e.g. reaped)
