@@ -1914,8 +1914,15 @@
 
 (deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
-    ;; This test is failing with "no index" for some reason, forcing the reindex
-    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
+    ;; This test hits the real (non-temp) index via user-real-request, so it has to populate it itself.
+    ;; force-reindex rebuilds asynchronously (a Quartz job triggered by the endpoint in test mode), so we
+    ;; can't assert against the index immediately — we'd race the rebuild and hit a transient empty /
+    ;; "Search Index not found" (500) state. Poll until the index is actually queryable and populated.
+    (mt/user-real-request :crowberto :post 200 "search/force-reindex")
+    (u/poll {:thunk       #(mt/user-real-request :crowberto :get "search?q=product")
+             :done?       #(seq (:data %))
+             :timeout-ms  10000
+             :interval-ms 200}))
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
     (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
                           :data count)

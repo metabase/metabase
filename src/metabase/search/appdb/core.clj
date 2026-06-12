@@ -31,8 +31,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
-   (java.time OffsetDateTime)
-   (java.util Queue)))
+   (java.time OffsetDateTime)))
 
 ;; Register the multimethods for each specialization
 (comment
@@ -146,7 +145,7 @@
   [{:keys [search-string] :as search-ctx}]
   (when (setting/string->boolean (:mb-experimental-search-block-on-queue env/env))
     ;; wait for a bit for the queue to be drained
-    (let [pending-updates #(.size ^Queue @#'search.ingestion/queue)]
+    (let [pending-updates #(search.ingestion/pending-count)]
       (when-not (u/poll {:thunk       pending-updates
                          :done?       zero?
                          :timeout-ms  2000

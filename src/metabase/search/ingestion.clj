@@ -7,22 +7,17 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
+   [metabase.search.index-queue :as index-queue]
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
-   [metabase.util.queue :as queue]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
-  (:import
-   (java.util.concurrent DelayQueue)))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
-
-;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
-(defonce ^:private ^DelayQueue queue (queue/delay-queue))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
@@ -330,72 +325,56 @@
           (update! documents to-delete))
         {}))))
 
-(defn- track-queue-size! []
-  (analytics/set-gauge! :metabase-search/queue-size (.size queue)))
-
-(defn- index-worker-exists? []
-  (queue/listener-exists? listener-name))
-
-(defn ingest-maybe-async!
-  "Update or create any search index entries related to the given updates.
-  Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
-  Can also be forced to run synchronously for testing."
-  ([updates]
-   (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
-  ([updates sync?]
-   (when-not *disable-updates*
-     (if sync?
-       (bulk-ingest! updates)
-       (do
-         (doseq [update updates]
-           (log/trace "Queuing update" update)
-           (queue/put-with-delay! queue message-delay-ms update))
-         (track-queue-size!)
-         true)))))
-
-(defn wait-for-idle!
-  "Block until the ingestion queue has been drained and no more items arrive.
-   Polls the queue and considers it idle when it has been empty for `settle-ms`
-   (default 500ms). Gives up after `timeout-ms` (default 30s)."
-  [& {:keys [settle-ms timeout-ms poll-ms]
-      :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
-  (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
-        settle-ns   (* (long settle-ms) 1000000)
-        poll-ms     (long poll-ms)
-        empty-since (atom nil)]
-    (loop []
-      (let [now-ns       (System/nanoTime)
-            sz           (.size queue)
-            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
-        (cond
-          (>= now-ns deadline-ns)
-          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
-
-          (pos? sz)
-          (do (reset! empty-since nil)
-              (Thread/sleep poll-ms)
-              (recur))
-
-          (pos? remaining-ns)
-          (do (when-not @empty-since (reset! empty-since now-ns))
-              (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
-              (recur)))))))
-
-(defn start-listener!
-  "Starts the ingestion listener on the queue"
-  []
-  (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
-                   {:success-handler     (fn [_result _duration _]
-                                           (track-queue-size!))
-                    :err-handler        (fn [err _]
+(defonce ^:private index-queue
+  ;; A single queue, even if multiple engines are enabled, but we may want to revisit this.
+  (index-queue/async-queue
+   {:delay-ms      message-delay-ms
+    :listener-name listener-name
+    ;; resolve the var at call time so test redefs of `bulk-ingest!` take effect
+    :handler       (fn [batch] (bulk-ingest! batch))
+    :gauge-fn      (fn [n] (analytics/set-gauge! :metabase-search/queue-size n))
+    :listener-opts {:err-handler        (fn [err _listener-name]
                                           (log/error err "Error indexing search entries")
-                                          (analytics/inc! :metabase-search/index-error)
-                                          (track-queue-size!))
+                                          (analytics/inc! :metabase-search/index-error))
                     ;; Note that each message can correspond to multiple documents,
                     ;; for example there would be 1 message for updating all
                     ;; the tables within a given database when it is renamed.
                     ;; Messages can also correspond to zero documents,
                     ;; such as when updating a table that is marked as not visible.
                     :max-batch-messages 50
-                    :max-next-ms       100})))
+                    :max-next-ms        100}}))
+
+(defn ingest-maybe-async!
+  "Update or create any search index entries related to the given updates.
+  Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
+  Can also be forced to run synchronously for testing."
+  ([updates]
+   (ingest-maybe-async! updates (or *force-sync* (not (index-queue/running? index-queue)))))
+  ([updates sync?]
+   (when-not *disable-updates*
+     (if sync?
+       (bulk-ingest! updates)
+       (index-queue/enqueue! index-queue updates)))))
+
+(defn wait-for-idle!
+  "Block until the ingestion queue has been fully drained — including any batch currently
+   being processed. Accepts `:timeout-ms` (default 30s) and `:poll-ms`.
+   Returns true if the queue became idle, false on timeout."
+  [& {:as opts}]
+  (index-queue/await-idle! index-queue opts))
+
+(defn pending-count
+  "Number of search-index updates that have been enqueued but not yet fully processed."
+  []
+  (index-queue/pending-count index-queue))
+
+(defn clear-queue!
+  "Discard all not-yet-processed queued updates. Intended for test/restore reset."
+  []
+  (index-queue/clear! index-queue))
+
+(defn start-listener!
+  "Starts the ingestion listener on the queue"
+  []
+  (when (seq (search.engine/active-engines))
+    (index-queue/start! index-queue)))
