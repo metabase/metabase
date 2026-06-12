@@ -3583,6 +3583,7 @@
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
+                    :model/Table
                     :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

@@ -73,7 +73,7 @@ export * from "./util";
 export * from "./visualization";
 export * from "./visualization-settings";
 export * from "./visualizer";
-export * from "./workspace";
+export * from "./workspace-manager";
 export * from "./workspace-instance";
 
 // ISO8601 timestamp

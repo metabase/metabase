@@ -102,7 +102,7 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getAdminConnectionInfoRoutes(IsAdmin)}
+          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>
