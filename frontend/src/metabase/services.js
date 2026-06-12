@@ -57,11 +57,6 @@ export const EmbedApi = {
   dashboard: GET(getEmbedBase() + "/dashboard/:token"),
 };
 
-export const AutoApi = {
-  // `:subPath*` keeps slashes in subPath unencoded (multi-segment path).
-  dashboard: GET("/api/automagic-dashboards/:subPath*"),
-};
-
 export const ParameterApi = {
   parameterValues: POST("/api/dataset/parameter/values"),
   parameterSearch: POST("/api/dataset/parameter/search/:query"),

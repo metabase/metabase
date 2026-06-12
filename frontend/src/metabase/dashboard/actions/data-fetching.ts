@@ -41,7 +41,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
+import { DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -736,9 +736,10 @@ export const fetchDashboard = createAsyncThunk(
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
         const [response] = await Promise.all([
-          AutoApi.dashboard(
+          runRtkEndpoint(
             { subPath, dashboard_load_id: dashboardLoadId },
-            { signal: fetchDashboardCancellation.signal },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboard,
           ),
           runRtkEndpoint(
             {
