@@ -38,13 +38,11 @@ export const getDataColumns = ({
   groupType,
   isExternal,
   showTransformPermissions = false,
-  showWorkspacesPermissions = false,
 }: {
   subject: PermissionSubject;
   groupType?: SpecialGroupType;
   isExternal?: boolean;
   showTransformPermissions?: boolean;
-  showWorkspacesPermissions?: boolean;
 }) => {
   const allSubjectsColumns: { name: string; hint?: ReactNode }[] = [
     {
@@ -77,22 +75,6 @@ export const getDataColumns = ({
                   style={{ textDecoration: "underline" }}
                 >{t`Data Analysts group`}</Link>
               )} to use transforms.`,
-      });
-    }
-
-    if (showWorkspacesPermissions) {
-      allSubjectsColumns.push({
-        name: t`Workspaces`,
-        hint:
-          groupType === "analyst" || groupType === "admin"
-            ? null
-            : jt`Users must also be a member of the ${(
-                <Link
-                  key="link"
-                  to="/admin/people"
-                  style={{ textDecoration: "underline" }}
-                >{t`Data Analysts group`}</Link>
-              )} to use workspaces.`,
       });
     }
   }

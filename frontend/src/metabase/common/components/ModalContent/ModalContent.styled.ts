@@ -22,6 +22,6 @@ export const ModalHeaderBackIcon = styled(ModalContentActionIcon)`
   flex-shrink: 0;
 
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;

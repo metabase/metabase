@@ -192,6 +192,7 @@ const ChartWithLegendInner = ({
         paddingRight: PADDING,
       }}
       data-testid="chart-with-legend"
+      data-legend-position={layout.type}
       ref={forwardedRef}
     >
       {legend && (

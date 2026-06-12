@@ -18,11 +18,11 @@ import type { GroupInfo } from "metabase-types/api";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isAdminGroup(group)) {
-    return color("filter");
+    return color("core-filter");
   } else if (isDefaultGroup(group)) {
     return color("text-secondary");
   } else {
-    return color("brand");
+    return color("core-brand");
   }
 }
 

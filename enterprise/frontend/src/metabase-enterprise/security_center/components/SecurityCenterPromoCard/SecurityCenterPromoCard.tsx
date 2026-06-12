@@ -70,7 +70,7 @@ export function SecurityCenterPromoCard() {
           name="shield_stroke"
           height={24}
           width={24}
-          style={{ stroke: "var(--mb-color-brand)", fill: "transparent" }}
+          style={{ stroke: "var(--mb-color-core-brand)", fill: "transparent" }}
         />
       }
       title={t`Stay safe with security alerts`}

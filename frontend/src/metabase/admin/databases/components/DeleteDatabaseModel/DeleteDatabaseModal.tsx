@@ -137,7 +137,7 @@ export const DeleteDatabaseModal = ({
                     <UnstyledButton
                       key="button"
                       onClick={handleEditConnectionDetailsClick}
-                      c="brand"
+                      c="core-brand"
                       fw="bold"
                     >{t`edit your connection details.`}</UnstyledButton>
                   )}`}

@@ -80,7 +80,7 @@ const isRowDisabled = (row: Row<TreeNode>) => {
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
-  transform: "brand",
+  transform: "core-brand",
   library: "text-primary",
 };
 

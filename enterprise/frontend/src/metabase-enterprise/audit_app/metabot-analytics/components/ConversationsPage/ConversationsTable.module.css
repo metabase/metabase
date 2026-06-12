@@ -1,6 +1,6 @@
 .table thead th,
 .table thead th * {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .table td,

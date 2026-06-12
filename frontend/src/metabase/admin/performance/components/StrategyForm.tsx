@@ -614,7 +614,7 @@ const MultiplierFieldSubtitle = () => (
       label={t`If a query takes on average 120 seconds (2 minutes) to run, and you input 10 for your multiplier, its cache entry will persist for 1,200 seconds (20 minutes).`}
       maw="20rem"
     >
-      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="brand">
+      <Text tabIndex={0} fz="md" lh="1.25rem" display="inline" c="core-brand">
         {t`Example`}
       </Text>
     </Tooltip>

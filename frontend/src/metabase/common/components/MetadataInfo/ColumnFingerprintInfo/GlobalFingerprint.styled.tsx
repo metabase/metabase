@@ -35,7 +35,7 @@ export const LoadingSpinner = styled((props: LoadingSpinnerProps) => (
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const RelativeContainer = styled.div<{ height?: string }>`

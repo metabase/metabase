@@ -57,7 +57,7 @@
   &.isSelected {
     .Content,
     .ColumnTypeIcon {
-      background-color: var(--mb-color-summarize);
+      background-color: var(--mb-color-core-summarize);
       color: var(--mb-color-text-primary-inverse);
     }
 
@@ -86,7 +86,7 @@
       .AddButton,
       .Content,
       .ColumnTypeIcon {
-        color: var(--mb-color-summarize);
+        color: var(--mb-color-core-summarize);
         background-color: var(--mb-color-background-secondary);
       }
 

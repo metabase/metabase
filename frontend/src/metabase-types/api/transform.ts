@@ -55,6 +55,12 @@ export type Transform = {
 
   last_checkpoint_value?: string | null;
 
+  // set by the job transforms endpoint on transforms pulled into the plan
+  // only as dependencies (not tagged for the job); `scheduled` says whether
+  // any active job's schedule covers them
+  dependency?: boolean;
+  scheduled?: boolean;
+
   // hydrated fields
   collection?: Collection | null;
   tag_ids?: TransformTagId[];

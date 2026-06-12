@@ -241,6 +241,7 @@ export type DimensionPickerSidebarCategorySelectRow = {
   metricName: string;
   colors?: string[];
   isExpressionToken: boolean;
+  occurrenceCount?: number;
   value: string | null;
   options: DimensionPickerSidebarCategorySelectOption[];
 };
@@ -423,6 +424,9 @@ export function buildDimensionPickerSidebarCategorySelectRows({
         metricName: sourceDataById[slot.sourceId]?.name ?? slot.sourceId,
         colors: sourceColors[slot.entityIndex],
         isExpressionToken: slot.tokenPosition != null,
+        ...(slot.occurrenceCount != null
+          ? { occurrenceCount: slot.occurrenceCount }
+          : {}),
         value: options.some((option) => option.value === activeDimensionId)
           ? activeDimensionId
           : null,

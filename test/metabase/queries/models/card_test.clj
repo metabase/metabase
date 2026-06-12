@@ -680,6 +680,46 @@
                     :type :category}]
                   (t2/select-one-fn :parameters :model/Card :id (:id card)))))))))
 
+(deftest cleanup-parameter-join-aliased-value-field-test
+  (let [mp                (mt/metadata-provider)
+        venue-table       (lib.metadata/table mp (mt/id :venues))
+        categories-table  (lib.metadata/table mp (mt/id :categories))
+        venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+        categories-id     (lib.metadata/field mp (mt/id :categories :id))
+        categories-name   (lib.metadata/field mp (mt/id :categories :name))
+        venues-query      (lib/query mp venue-table)
+        source-query-1    (lib/join venues-query
+                                    (lib/join-clause categories-table
+                                                     [(lib/= venue-category-id categories-id)]))
+        source-query-2    (lib/join venues-query
+                                    (-> (lib/join-clause categories-table
+                                                         [(lib/= venue-category-id categories-id)])
+                                        (lib/with-join-fields [categories-name])))]
+    (mt/with-temp
+      [:model/Card {source-card-id :id} (mt/card-with-source-metadata-for-query source-query-1)
+       :model/Card {param-card-id :id
+                    param-card-params :parameters}  {:parameters [{:name                 "Category name"
+                                                                   :slug                 "category_name"
+                                                                   :id                   "category_name_param"
+                                                                   :type                 :string/=
+                                                                   :values_query_type    :list
+                                                                   :values_source_type   :card
+                                                                   :values_source_config {:card_id     source-card-id
+                                                                                          :value_field [:field "Categories__NAME" {:base-type "type/Text"}]}}]}]
+      (testing "saving the source card with different columns that still include the value_field keeps the parameter config"
+        (t2/update! :model/Card source-card-id (mt/card-with-source-metadata-for-query source-query-2))
+        (is (= param-card-params
+               (t2/select-one-fn :parameters :model/Card :id param-card-id))))
+      (testing "removing the join from the source card removes the parameter config"
+        (t2/update! :model/Card source-card-id (mt/card-with-source-metadata-for-query venues-query))
+        (is (= [{:name "Category name",
+                 :slug "category_name",
+                 :id "category_name_param",
+                 :type :string/=,
+                 :values_query_type :list,
+                 :values_source_type nil}]
+               (t2/select-one-fn :parameters :model/Card :id param-card-id)))))))
+
 (deftest ^:parallel descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp [:model/Card card {:name "some card"}]
