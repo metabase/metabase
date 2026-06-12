@@ -44,8 +44,8 @@
   (apply t2/select (into [:model/DataApp] non-blob-columns) conditions))
 
 (defmethod mi/can-read? :model/DataApp
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+  ([_instance]   api/*is-superuser?*)
+  ([_model _pk]  api/*is-superuser?*))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
