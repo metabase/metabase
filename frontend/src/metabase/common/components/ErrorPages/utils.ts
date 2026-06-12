@@ -39,7 +39,7 @@ export const getEntityDetails = ({
       );
     case "dashboard":
       return runRtkEndpoint(
-        { id },
+        { dashId: id },
         dispatch,
         dashboardApi.endpoints.getDashboard,
       ).catch(nullOnCatch);
