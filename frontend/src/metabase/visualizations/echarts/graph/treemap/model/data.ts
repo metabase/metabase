@@ -95,7 +95,7 @@ export function getTreemapData(
       rawName: groupingValue,
       displayName:
         rowNameByKey.get(getKeyFromDimensionValue(groupingValue)) ??
-        (groupingValue == null ? NULL_DISPLAY_VALUE : String(groupingValue)),
+        displayName(groupingValue),
       withChildren: subGrouping != null,
     });
     addRowMetric(rootNode, metricValue, rowIndex);
@@ -113,10 +113,7 @@ export function getTreemapData(
     const { node: leaf, wasCreated } = getOrCreateNode({
       map: leafMap,
       rawName: subGroupingValue,
-      displayName:
-        subGroupingValue == null
-          ? NULL_DISPLAY_VALUE
-          : String(subGroupingValue),
+      displayName: displayName(subGroupingValue),
       withChildren: false,
     });
     addRowMetric(leaf, metricValue, rowIndex);
@@ -161,4 +158,8 @@ function addRowMetric(
 ): void {
   node.value = sumMetric(node.value, metricValue) ?? node.value;
   node.rowIndices.push(rowIndex);
+}
+
+function displayName(value: RowValue): string {
+  return value == null ? NULL_DISPLAY_VALUE : String(value);
 }
