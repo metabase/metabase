@@ -198,6 +198,7 @@ function DisconnectButton({
   return (
     <ActionIcon
       variant="subtle"
+      size="sm"
       className={S.CloseIconButton}
       aria-label={t`Disconnect`}
       onClick={onClick}

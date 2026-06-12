@@ -53,7 +53,7 @@ export const ResponsiveParametersList = ({
     >
       {parameters.length > 0 && isSmallScreen && (
         <Button
-          className={ResponsiveParametersListS.filterButton}
+          m="sm"
           variant="subtle"
           leftSection={<Icon name="filter" />}
           onClick={handleFilterButtonClick}

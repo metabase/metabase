@@ -19,10 +19,23 @@ export const Root = styled(FullWidthContainer, {
   padding-bottom: 0.5rem;
   background-color: ${(props) =>
     alpha(props.admin ? "accent7" : "brand", 0.85)};
+`;
 
-  /* metabase/ui Button: subtle = secondary (cancel), filled = primary (save) */
-  .${ButtonsS.Button}, button[data-variant="subtle"],
-  button[data-variant="filled"] {
+export const EditIcon = styled(Icon)`
+  color: var(--mb-color-text-primary-inverse);
+`;
+
+export const Title = styled.span`
+  color: var(--mb-color-text-primary-inverse);
+  font-weight: 700;
+`;
+
+/* the legacy class selectors cover ActionButton; the attribute selectors cover
+   buttons already migrated to metabase/ui (filled = primary, subtle = secondary) */
+export const ButtonsContainer = styled.div<{ admin: boolean }>`
+  display: flex;
+
+  .${ButtonsS.Button}, button[data-variant] {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${() => alpha("background-primary", 0.1)};
     border: none;
@@ -35,22 +48,8 @@ export const Root = styled(FullWidthContainer, {
     background-color: var(--mb-color-background-primary);
   }
 
-  .${ButtonsS.Button}:hover, button[data-variant="subtle"]:hover,
-  button[data-variant="filled"]:hover {
+  .${ButtonsS.Button}:hover, button[data-variant]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
   }
-`;
-
-export const EditIcon = styled(Icon)`
-  color: var(--mb-color-text-primary-inverse);
-`;
-
-export const Title = styled.span`
-  color: var(--mb-color-text-primary-inverse);
-  font-weight: 700;
-`;
-
-export const ButtonsContainer = styled.div`
-  display: flex;
 `;

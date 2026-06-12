@@ -621,95 +621,67 @@ export const selectedTimelineEventIds = createReducer<number[]>(
   },
 );
 
+type CardAction = {
+  type: string;
+  payload: Card;
+};
+
+type WrappedCardAction = {
+  type: string;
+  payload: {
+    card: Card;
+  };
+};
+
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
   builder.addCase(RESET_QB, () => null);
   builder.addCase(CLOSE_QB, () => null);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: {
-        card: Card;
-      };
-    }
-  >(INITIALIZE_QB, (state, action) =>
+  builder.addCase<string, WrappedCardAction>(INITIALIZE_QB, (state, action) =>
     action.payload ? action.payload.card : null,
   );
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: Card;
-    }
-  >(SOFT_RELOAD_CARD, (state, action) => action.payload);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: Card;
-    }
-  >(RELOAD_CARD, (state, action) => action.payload);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: {
-        card: Card;
+  builder.addCase<string, CardAction>(
+    SOFT_RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardAction>(
+    RELOAD_CARD,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, WrappedCardAction>(
+    SET_CARD_AND_RUN,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, CardAction>(
+    API_CREATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, CardAction>(
+    API_UPDATE_QUESTION,
+    (state, action) => action.payload,
+  );
+  builder.addCase<string, WrappedCardAction>(
+    CANCEL_QUESTION_CHANGES,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, WrappedCardAction>(
+    UPDATE_QUESTION,
+    (state, action) => action.payload.card,
+  );
+  builder.addCase<string, WrappedCardAction>(
+    QUERY_COMPLETED,
+    (state, action) => {
+      if (!state) {
+        return state;
+      }
+      return {
+        ...state,
+        display: action.payload.card.display,
+        result_metadata: action.payload.card.result_metadata,
+        visualization_settings: action.payload.card.visualization_settings,
       };
-    }
-  >(SET_CARD_AND_RUN, (state, action) => action.payload.card);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: Card;
-    }
-  >(API_CREATE_QUESTION, (state, action) => action.payload);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: Card;
-    }
-  >(API_UPDATE_QUESTION, (state, action) => action.payload);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: {
-        card: Card;
-      };
-    }
-  >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: {
-        card: Card;
-      };
-    }
-  >(UPDATE_QUESTION, (state, action) => action.payload.card);
-  builder.addCase<
-    string,
-    {
-      type: string;
-      payload: {
-        card: Card;
-      };
-    }
-  >(QUERY_COMPLETED, (state, action) => {
-    if (!state) {
-      return state;
-    }
-    return {
-      ...state,
-      display: action.payload.card.display,
-      result_metadata: action.payload.card.result_metadata,
-      visualization_settings: action.payload.card.visualization_settings,
-    };
-  });
+    },
+  );
   builder.addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
     if (!state) {
       return state;

@@ -5,8 +5,6 @@ import { t } from "ttag";
 import { FormField } from "metabase/common/components/FormField";
 import { Button, Icon } from "metabase/ui";
 
-import S from "./DatabaseSectionField.module.css";
-
 export interface DatabaseSectionFieldProps {
   name: string;
 }
@@ -23,9 +21,10 @@ const DatabaseSectionField = ({
   return (
     <FormField>
       <Button
-        className={S.sectionButton}
+        w="fit-content"
         type="button"
         variant="subtle"
+        size="compact-sm"
         rightSection={<Icon name={value ? "chevronup" : "chevrondown"} />}
         onClick={handleClick}
       >

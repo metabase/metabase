@@ -1,6 +1,0 @@
-.sectionButton {
-  &[data-variant="subtle"] {
-    padding: 0;
-    height: auto;
-  }
-}
