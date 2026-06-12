@@ -93,7 +93,13 @@
         (is (= "{\n\tgroup: {\n\tdisplayName: string;\n\tnestedValue?: {\n\tlongDisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}"
                (ts/schema->ts [:any {:ts/object-of [:map [:group [:ref ::key-transform-ref]]]
                                      :ts/key-transform :camelCase}]))))
-      (is (empty? @refs)))))
+      (is (empty? @refs))))
+  (testing ":ts/key-transform :none resets an inherited transform on nested :ts/object-of"
+    (is (= "{\n\touterKey: {\n\t\"inner-key\": string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:any {:ts/object-of [:map
+                                                [:outer-key [:any {:ts/object-of [:map [:inner-key :string]]
+                                                                   :ts/key-transform :none}]]]
+                                 :ts/key-transform :camelCase}])))))
 
 (deftest collect-registry-refs-test
   (testing "collects registry refs without generating TypeScript"
@@ -187,6 +193,11 @@
   (testing "pads missing arg schemas with unknown instead of truncating runtime args"
     (is (= "a: string, b: unknown"
            (#'ts/format-ts-args '[a b] [:cat :string]))))
+  (testing "pads missing rest arg schemas with an array type, not bare unknown"
+    (is (= "a: string, ...rest: unknown[]"
+           (#'ts/format-ts-args '[a & rest] [:cat :string])))
+    (is (= "a: string, ...rest: unknown[]"
+           (#'ts/format-ts-args '[a _AMPERSAND_] [:cat :string]))))
   (testing "ignores extra arg schemas after warning"
     (is (= "a: string"
            (#'ts/format-ts-args '[a] [:cat :string :int]))))
@@ -304,7 +315,14 @@
     (is (= "[string, ...string[]]"
            (ts/schema->ts [:+ :string])))
     (is (= "[string, string, ...string[]]"
-           (ts/schema->ts [:+ {:min 2} :string])))))
+           (ts/schema->ts [:+ {:min 2} :string]))))
+  (testing ":repeat honors min count"
+    (is (= "string[]"
+           (ts/schema->ts [:repeat :string])))
+    (is (= "[string, ...string[]]"
+           (ts/schema->ts [:repeat {:min 1} :string])))
+    (is (= "[string, string, ...string[]]"
+           (ts/schema->ts [:repeat {:min 2} :string])))))
 
 (deftest unknown-type-test
   (testing "unknown-type? matches expected patterns"

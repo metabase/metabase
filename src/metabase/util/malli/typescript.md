@@ -104,9 +104,9 @@ Rules:
 | `[:merge A B]` | `A & B`, with unknown branches dropped when safe |
 | `[:tuple A B]` | `[A, B]` |
 | `[:cat A B]`, `[:catn ...]` | `[A, B]` |
-| `[:* X]` | `X[]` |
-| `[:+ X]` | `[X, ...X[]]` |
-| `[:+ {:min 2} X]` | `[X, X, ...X[]]` |
+| `[:* X]`, `[:repeat X]` | `X[]` |
+| `[:+ X]`, `[:repeat {:min 1} X]` | `[X, ...X[]]` |
+| `[:+ {:min 2} X]`, `[:repeat {:min 2} X]` | `[X, X, ...X[]]` |
 | `[:? X]` | `X \| undefined` |
 | `[:=> [:cat Args...] Return]`, `[:=> [:catn ...] Return]` | function type |
 | `:fn` with `{:typescript "SomeType"}` | `SomeType` |
@@ -255,7 +255,7 @@ Use `:ts/key-transform :camelCase` with `:ts/object-of` to reflect that returned
 This transform:
 
 - applies recursively to nested map schemas,
-- is inherited by nested `:ts/object-of` schemas unless they explicitly set their own transform,
+- is inherited by nested `:ts/object-of` schemas unless they explicitly set their own transform; use `:ts/key-transform :none` on a nested `:ts/object-of` to reset to default key formatting,
 - converts predicate-style keys ending in `?` to `isX`,
 - expands registry refs inline under the transform, including explicit `[:ref ...]`, instead of reusing shared kebab-case aliases.
 

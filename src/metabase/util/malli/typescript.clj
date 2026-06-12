@@ -212,6 +212,8 @@
       (str (schema->ts (:ts/array-of props)) "[]")
 
       ;; [:any {:ts/object-of [:map [:key Type] ...]}] => "{ key: Type; ... }"
+      ;; Nested :ts/object-of inherits an outer :ts/key-transform unless it sets its own;
+      ;; use :ts/key-transform :none to explicitly reset to default key formatting.
       (:ts/object-of props)
       (binding [*key-transform* (or (:ts/key-transform props) *key-transform*)]
         (schema->ts (:ts/object-of props)))
@@ -474,11 +476,11 @@
     (-> (str/join ", " (map schema->ts schemas))
         (wrap "[]"))))
 
-;; :repeat is a repeating sequence - produce array type
+;; :repeat is a repeating sequence; honors {:min n} like :+
 (defmethod -schema->ts :repeat
   [schema]
   (let [[child] (mc/children (mc/schema schema))]
-    (str (schema->ts child) "[]")))
+    (repeated-tuple-type (schema->ts child) (:min (mc/properties schema) 0))))
 
 ;; :* is zero or more - produce array type
 (defmethod -schema->ts :*
@@ -724,24 +726,27 @@
         specs)
 
       :else
-      (let [arg-name   (first remaining-args)
-            arg-schema (or (first remaining-schemas)
-                           (do
-                             (warn-arg-schema-mismatch! "Function arglist has more entries than schema; using unknown"
-                                                        {:arg-name (pr-str arg-name), :arg-idx arg-idx})
-                             :any))]
+      (let [arg-name      (first remaining-args)
+            ;; Rest params must pad with a sequential schema so the emitted rest type stays an array
+            ;; (`...rest: unknown[]`); a bare `unknown` rest type is invalid TypeScript.
+            schema-or-pad (fn [fallback]
+                            (or (first remaining-schemas)
+                                (do
+                                  (warn-arg-schema-mismatch! "Function arglist has more entries than schema; using unknown"
+                                                             {:arg-name (pr-str arg-name), :arg-idx arg-idx})
+                                  fallback)))]
         (if (rest-marker? arg-name)
           (if (munged-ampersand? arg-name)
             (recur (next remaining-args)
                    (next remaining-schemas)
                    (inc arg-idx)
                    (conj specs {:arg-name   'rest
-                                :arg-schema arg-schema
+                                :arg-schema (schema-or-pad [:sequential :any])
                                 :arg-idx    arg-idx
                                 :rest?      true}))
             (if-let [rest-name (second remaining-args)]
               (conj specs {:arg-name   rest-name
-                           :arg-schema arg-schema
+                           :arg-schema (schema-or-pad [:sequential :any])
                            :arg-idx    arg-idx
                            :rest?      true})
               (do
@@ -752,7 +757,7 @@
                  (next remaining-schemas)
                  (inc arg-idx)
                  (conj specs {:arg-name   arg-name
-                              :arg-schema arg-schema
+                              :arg-schema (schema-or-pad :any)
                               :arg-idx    arg-idx
                               :rest?      false})))))))
 
