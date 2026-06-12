@@ -842,7 +842,7 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.visitDashboard(ORDERS_DASHBOARD_ID);
 
         H.openSharingMenu();
-        H.sharingMenu().findByRole("button", { name: "Embed" }).click();
+        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
         cy.findByLabelText("Metabase account (SSO)").click();
         embedModalEnableEmbedding();
         cy.findByLabelText("Allow subscriptions").check().should("be.checked");

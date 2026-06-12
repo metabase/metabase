@@ -166,7 +166,7 @@ describe("DashboardSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it('should show a "Copy link" menu item without any public link or embed options when a public link exists', async () => {
+      it("should show both copy options when a public link exists", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
@@ -174,6 +174,7 @@ describe("DashboardSharingMenu", () => {
         });
         await openMenu();
         expect(screen.getByText("Copy link")).toBeInTheDocument();
+        expect(screen.getByText("Copy public link")).toBeInTheDocument();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
         expect(screen.queryByText("Public link")).not.toBeInTheDocument();
         expect(
@@ -184,7 +185,7 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should copy the public link when clicking 'Copy link'", async () => {
+      it("should copy the app link when clicking 'Copy link'", async () => {
         jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: false,
@@ -195,48 +196,58 @@ describe("DashboardSharingMenu", () => {
         await userEvent.click(screen.getByText("Copy link"));
         await waitFor(() =>
           expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-            "http://localhost:3000/public/dashboard/1337bad801",
+            "http://localhost:3000/dashboard/1-my-cool-dashboard",
           ),
         );
+        expect(
+          await screen.findByText("Link copied to clipboard"),
+        ).toBeInTheDocument();
       });
 
-      it("shows a 'Link copied to clipboard!' tooltip after clicking 'Copy link'", async () => {
+      it("should copy the public link when clicking 'Copy public link'", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
         await openMenu();
-        await userEvent.click(screen.getByText("Copy link"));
-
+        await userEvent.click(screen.getByText("Copy public link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/public/dashboard/1337bad801",
+          ),
+        );
         expect(
-          await screen.findByText("Link copied to clipboard!"),
+          await screen.findByText("Public link copied to clipboard"),
         ).toBeInTheDocument();
       });
 
-      it("should only show the PDF export when public sharing is disabled", async () => {
+      it("should hide 'Copy public link' when public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: false,
           hasPublicLink: true,
         });
         await openMenu();
+        expect(screen.getByText("Copy link")).toBeInTheDocument();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
+        expect(screen.queryByText("Copy public link")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Ask your admin to create a public link"),
         ).not.toBeInTheDocument();
       });
 
-      it("should only show the PDF export when there is no public link", async () => {
+      it("should hide 'Copy public link' when there is no public link", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
         });
         await openMenu();
+        expect(screen.getByText("Copy link")).toBeInTheDocument();
         expect(screen.getByText("Export as PDF")).toBeInTheDocument();
-        expect(screen.queryByText("Copy link")).not.toBeInTheDocument();
+        expect(screen.queryByText("Copy public link")).not.toBeInTheDocument();
       });
     });
   });

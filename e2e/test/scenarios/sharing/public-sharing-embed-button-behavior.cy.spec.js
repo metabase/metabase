@@ -30,7 +30,7 @@ const { H } = cy;
 
           H.openSharingMenu();
           H.sharingMenu()
-            .findByRole("button", { name: "Embed" })
+            .findByRole("menuitem", { name: "Embed" })
             .should("be.visible")
             .and("be.enabled")
             .click();
@@ -48,8 +48,12 @@ const { H } = cy;
           });
 
           if (resource === "question") {
-            // No public link: the share button is hidden, so there's no embed.
-            H.sharingMenuButton().should("not.exist");
+            // No public link: the share button copies directly, so there's no menu.
+            H.sharingMenuButton().should(
+              "have.attr",
+              "aria-label",
+              "Copy link",
+            );
           } else {
             H.openSharingMenu();
             H.sharingMenu().findByText(/embed/i).should("not.exist");
@@ -115,19 +119,8 @@ const { H } = cy;
                 .resolves();
             });
 
-            if (resource === "question") {
-              // The share button copies the public link directly.
-              H.sharingMenuButton()
-                .should("be.enabled")
-                .and("have.attr", "aria-label", "Copy link")
-                .click();
-              H.sharingMenuButton().realHover();
-              H.tooltip().findByText("Link copied to clipboard!");
-            } else {
-              // The menu item copies the public link.
-              H.openSharingMenu("Copy link");
-              H.tooltip().findByText("Link copied to clipboard!");
-            }
+            H.openSharingMenu("Copy public link");
+            H.tooltip().findByText("Public link copied to clipboard");
 
             cy.get("@copyLink").should((stub) => {
               expect(stub.firstCall.args[0]).to.match(
@@ -158,7 +151,7 @@ const { H } = cy;
               cy.findByText("Enable").should("not.exist");
             });
 
-            H.sharingMenu().findByRole("button", { name: "Embed" }).click();
+            H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
           });
         });
 
@@ -1035,14 +1028,14 @@ function visitResource(resource, id) {
 
 function assertNonAdminCannotCreatePublicLink(resource) {
   if (resource === "question") {
-    // No public link: the share button is hidden entirely.
-    H.sharingMenuButton().should("not.exist");
+    // No public link: the share button copies the app link directly, no menu.
+    H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
   } else {
-    // No public link: dashboards keep only the PDF export.
+    // No public link: dashboards keep the app link copy and the PDF export.
     H.openSharingMenu();
     H.sharingMenu().within(() => {
+      cy.findByText("Copy link").should("be.visible");
       cy.findByText("Export as PDF").should("be.visible");
-      cy.findByText("Copy link").should("not.exist");
       cy.findByText("Embed").should("not.exist");
       cy.findByText(/public link/i).should("not.exist");
     });

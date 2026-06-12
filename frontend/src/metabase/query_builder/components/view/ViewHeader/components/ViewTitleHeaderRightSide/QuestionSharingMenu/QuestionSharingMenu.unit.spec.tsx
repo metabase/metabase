@@ -108,60 +108,79 @@ describe("QuestionSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it('should turn the share button into a "Copy link" action when a public link exists', async () => {
+      it("should show a sharing menu with both copy options when a public link exists", async () => {
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
-        const button = screen.getByTestId("sharing-menu-button");
-        expect(button).toBeEnabled();
-        expect(button).toHaveAttribute("aria-label", "Copy link");
+        expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+          "aria-label",
+          "Share",
+        );
+        await openMenu();
+        expect(screen.getByText("Copy link")).toBeInTheDocument();
+        expect(screen.getByText("Copy public link")).toBeInTheDocument();
+        expect(screen.queryByText("Embed")).not.toBeInTheDocument();
       });
 
-      it("clicking the share button copies the public link without opening a popover", async () => {
+      it("should copy the app link from the menu", async () => {
         jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
-
-        await userEvent.click(screen.getByTestId("sharing-menu-button"));
-
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-          "http://localhost:3000/public/question/1337bad801",
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/question/1-my-cool-question",
+          ),
         );
         expect(
-          screen.queryByTestId("public-link-popover-content"),
-        ).not.toBeInTheDocument();
+          await screen.findByText("Link copied to clipboard"),
+        ).toBeInTheDocument();
       });
 
-      it("shows a 'Link copied to clipboard!' tooltip after copying", async () => {
+      it("should copy the public link from the menu", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
-
-        const button = screen.getByTestId("sharing-menu-button");
-        await userEvent.click(button);
-        await userEvent.hover(button);
-
+        await openMenu();
+        await userEvent.click(screen.getByText("Copy public link"));
+        await waitFor(() =>
+          expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+            "http://localhost:3000/public/question/1337bad801",
+          ),
+        );
         expect(
-          await screen.findByText("Link copied to clipboard!"),
+          await screen.findByText("Public link copied to clipboard"),
         ).toBeInTheDocument();
       });
 
-      it("should hide the share button entirely when there is no public link", async () => {
+      it("should copy the app link directly when there is no public link", async () => {
+        jest.mocked(navigator.clipboard.writeText).mockClear();
         await setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
         });
+        const button = screen.getByTestId("sharing-menu-button");
+        expect(button).toHaveAttribute("aria-label", "Copy link");
+
+        await userEvent.click(button);
+        await userEvent.hover(button);
+
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+          "http://localhost:3000/question/1-my-cool-question",
+        );
         expect(
-          screen.queryByTestId("sharing-menu-button"),
-        ).not.toBeInTheDocument();
+          await screen.findByText("Link copied to clipboard"),
+        ).toBeInTheDocument();
         expect(
           screen.queryByText("Ask your admin to create a public link"),
         ).not.toBeInTheDocument();

@@ -4,9 +4,6 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { Menu, type MenuProps } from "metabase/ui";
 
-// 24px padding + two 120px buttons + 16px gap, per the sharing menu design
-export const SHARING_MENU_WIDTH = 304;
-
 export function SharingMenu({
   children,
   ...menuProps

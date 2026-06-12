@@ -3,24 +3,27 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitFor } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setupQuestionSharingMenu } from "./tests/setup";
+import { openMenu, setupQuestionSharingMenu } from "./tests/setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   describe("non-admins", () => {
-    it('turns the share button into a "Copy link" action when a public link exists', async () => {
+    it("shows a sharing menu with both copy options when a public link exists", async () => {
       setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
         isEnterprise: true,
       });
-      const sharingButton = screen.getByTestId("sharing-menu-button");
-
-      expect(sharingButton).toBeEnabled();
-      expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+      expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+        "aria-label",
+        "Share",
+      );
+      await openMenu();
+      expect(screen.getByText("Copy link")).toBeInTheDocument();
+      expect(screen.getByText("Copy public link")).toBeInTheDocument();
     });
 
-    it("clicking the share button copies the public link directly instead of opening a popover", async () => {
+    it("copies the public link from the menu instead of opening a popover", async () => {
       jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         canManageSubscriptions: false,
@@ -29,7 +32,8 @@ describe("QuestionSharingMenu > Enterprise", () => {
         isEnterprise: true,
       });
 
-      await userEvent.click(screen.getByTestId("sharing-menu-button"));
+      await openMenu();
+      await userEvent.click(screen.getByText("Copy public link"));
 
       await waitFor(() =>
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -41,32 +45,42 @@ describe("QuestionSharingMenu > Enterprise", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("hides the share button without an admin prompt when public sharing is disabled", async () => {
+    it("copies the app link directly without an admin prompt when public sharing is disabled", async () => {
+      jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
         canManageSubscriptions: false,
         isEnterprise: true,
       });
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-      expect(
-        screen.queryByTestId("sharing-menu-button"),
-      ).not.toBeInTheDocument();
+      expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+      await userEvent.click(sharingButton);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "http://localhost:3000/question/1-my-cool-question",
+      );
       expect(
         screen.queryByText("Ask your admin to create a public link"),
       ).not.toBeInTheDocument();
     });
 
-    it("hides the share button without an admin prompt when there is no public link", async () => {
+    it("copies the app link directly without an admin prompt when there is no public link", async () => {
+      jest.mocked(navigator.clipboard.writeText).mockClear();
       setupQuestionSharingMenu({
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,
         hasPublicLink: false,
       });
+      const sharingButton = screen.getByTestId("sharing-menu-button");
 
-      expect(
-        screen.queryByTestId("sharing-menu-button"),
-      ).not.toBeInTheDocument();
+      expect(sharingButton).toHaveAttribute("aria-label", "Copy link");
+      await userEvent.click(sharingButton);
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "http://localhost:3000/question/1-my-cool-question",
+      );
       expect(
         screen.queryByText("Ask your admin to create a public link"),
       ).not.toBeInTheDocument();
