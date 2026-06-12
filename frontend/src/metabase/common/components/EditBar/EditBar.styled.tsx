@@ -2,7 +2,6 @@ import isPropValid from "@emotion/is-prop-valid";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Icon } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
@@ -30,12 +29,11 @@ export const Title = styled.span`
   font-weight: 700;
 `;
 
-/* the legacy class selectors cover ActionButton; the attribute selectors cover
-   buttons already migrated to metabase/ui (filled = primary, subtle = secondary) */
+/* restyles metabase/ui buttons for the colored bar: filled = primary, subtle = secondary */
 export const ButtonsContainer = styled.div<{ admin: boolean }>`
   display: flex;
 
-  .${ButtonsS.Button}, button[data-variant] {
+  button[data-variant] {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${() => alpha("background-primary", 0.1)};
     border: none;
@@ -43,12 +41,12 @@ export const ButtonsContainer = styled.div<{ admin: boolean }>`
     margin-left: 0.75em;
   }
 
-  .${ButtonsS.ButtonPrimary}, button[data-variant="filled"] {
+  button[data-variant="filled"] {
     color: ${(props) => color(props.admin ? "text-primary" : "brand")};
     background-color: var(--mb-color-background-primary);
   }
 
-  .${ButtonsS.Button}:hover, button[data-variant]:hover {
+  button[data-variant]:hover {
     color: var(--mb-color-text-primary-inverse);
     background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
   }

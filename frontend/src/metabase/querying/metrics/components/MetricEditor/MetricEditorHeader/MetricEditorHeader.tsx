@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useRef } from "react";
 import { t } from "ttag";
 
@@ -7,7 +6,6 @@ import {
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
 import { EditBar } from "metabase/common/components/EditBar";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import { Button } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -61,11 +59,8 @@ export function MetricEditorHeader({
             activeText={t`Saving…`}
             failedText={t`Save failed`}
             successText={t`Saved`}
-            className={cx(
-              ButtonsS.Button,
-              ButtonsS.ButtonPrimary,
-              ButtonsS.ButtonSmall,
-            )}
+            variant="filled"
+            size="sm"
           />
         ),
       ]}

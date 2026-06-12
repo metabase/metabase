@@ -21,7 +21,6 @@ import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import {
   setDatasetEditorTab,
@@ -691,11 +690,8 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                ButtonsS.ButtonSmall,
-              )}
+              variant="filled"
+              size="sm"
             />
           </Tooltip>,
         ]}
