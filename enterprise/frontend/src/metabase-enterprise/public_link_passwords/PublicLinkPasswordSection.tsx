@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ComponentProps, useCallback, useEffect, useState } from "react";
+import { type ComponentProps, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
@@ -24,7 +24,10 @@ import {
 
 const MIN_PASSWORD_LENGTH = 6;
 
-type PasswordState = "idle" | "setting" | "viewing" | "editing";
+// Whether the user is actively setting a new password or editing an existing
+// one. When `null`, the section is derived from the server state: `viewing` if
+// a password exists, `idle` otherwise.
+type PasswordMode = "setting" | "editing" | null;
 
 function getValidationError(value: string): string | undefined {
   if (value.length > 0 && value.length < MIN_PASSWORD_LENGTH) {
@@ -56,68 +59,62 @@ export const PublicLinkPasswordSection = ({
   const hasPassword = !!passwordData?.password && !fetchError;
   const currentPassword = passwordData?.password ?? "";
 
-  const [state, setState] = useState<PasswordState>("idle");
+  const [mode, setMode] = useState<PasswordMode>(null);
   const [inputValue, setInputValue] = useState("");
 
-  const isEditable = state === "setting" || state === "editing";
-  const validationError = isEditable
+  const isEditing = mode === "setting" || mode === "editing";
+  const isViewing = hasPassword && mode === null;
+  const validationError = isEditing
     ? getValidationError(inputValue)
     : undefined;
   const canSave =
     inputValue.length >= MIN_PASSWORD_LENGTH &&
-    (state !== "editing" || inputValue !== currentPassword);
+    (mode !== "editing" || inputValue !== currentPassword);
 
-  useEffect(() => {
-    if (!isLoading) {
-      setState(hasPassword ? "viewing" : "idle");
-    }
-  }, [hasPassword, isLoading]);
+  const resetDraft = useCallback(() => {
+    setMode(null);
+    setInputValue("");
+  }, []);
 
   const handleToggle = useCallback(async () => {
     if (hasPassword) {
       await deletePassword({ entityType, entityId });
-      setState("idle");
-      setInputValue("");
-    } else if (state === "setting") {
-      setState("idle");
-      setInputValue("");
+      resetDraft();
     } else {
-      setState("setting");
+      setMode(mode === "setting" ? null : "setting");
       setInputValue("");
     }
-  }, [hasPassword, state, deletePassword, entityType, entityId]);
+  }, [hasPassword, mode, deletePassword, entityType, entityId, resetDraft]);
 
   const handleSave = useCallback(async () => {
-    if (inputValue.length < MIN_PASSWORD_LENGTH) {
+    if (!canSave) {
       return;
     }
-    await setPassword({ entityType, entityId, password: inputValue });
-    setState("viewing");
-  }, [inputValue, setPassword, entityType, entityId]);
+    // Only leave the editing/setting state once the write succeeds — otherwise
+    // we'd fall back to `viewing` and show the stale (or empty) server value as
+    // if the new password had been saved.
+    try {
+      await setPassword({
+        entityType,
+        entityId,
+        password: inputValue,
+      }).unwrap();
+      resetDraft();
+    } catch {
+      // Keep the user in the input so they can retry.
+    }
+  }, [canSave, inputValue, setPassword, entityType, entityId, resetDraft]);
 
   const handleEdit = useCallback(() => {
-    setState("editing");
+    setMode("editing");
     setInputValue(currentPassword);
   }, [currentPassword]);
-
-  const handleCancelEdit = useCallback(() => {
-    setState("viewing");
-    setInputValue("");
-  }, []);
-
-  const handleSaveEdit = useCallback(async () => {
-    if (inputValue.length < MIN_PASSWORD_LENGTH) {
-      return;
-    }
-    await setPassword({ entityType, entityId, password: inputValue });
-    setState("viewing");
-  }, [inputValue, setPassword, entityType, entityId]);
 
   if (isLoading || (fetchError && !is404)) {
     return null;
   }
 
-  const toggleOn = hasPassword || state === "setting";
+  const toggleOn = hasPassword || mode === "setting";
 
   return (
     <Box mt="md">
@@ -144,11 +141,11 @@ export const PublicLinkPasswordSection = ({
         )}
       </Group>
 
-      {(state === "setting" || state === "viewing" || state === "editing") && (
+      {(isEditing || isViewing) && (
         <Box mt={isAdmin ? "md" : undefined}>
           <Text size="md" fw={700} lh="1rem" mb="xs">{t`Password`}</Text>
 
-          {state === "setting" && isAdmin && (
+          {mode === "setting" && isAdmin && (
             <TextInput
               placeholder={t`Enter a password`}
               value={inputValue}
@@ -171,7 +168,7 @@ export const PublicLinkPasswordSection = ({
             />
           )}
 
-          {state === "viewing" && (
+          {isViewing && (
             <TextInput
               value={currentPassword}
               readOnly
@@ -193,7 +190,7 @@ export const PublicLinkPasswordSection = ({
             />
           )}
 
-          {state === "editing" && isAdmin && (
+          {mode === "editing" && isAdmin && (
             <TextInput
               value={inputValue}
               onChange={(e) => setInputValue(e.currentTarget.value)}
@@ -205,7 +202,7 @@ export const PublicLinkPasswordSection = ({
                   <IconButton
                     icon="close"
                     variant="error"
-                    onClick={handleCancelEdit}
+                    onClick={resetDraft}
                     aria-label={t`Cancel`}
                     data-testid="public-link-password-cancel"
                   />
@@ -213,7 +210,7 @@ export const PublicLinkPasswordSection = ({
                     icon="check"
                     variant="success"
                     disabled={!canSave}
-                    onClick={handleSaveEdit}
+                    onClick={handleSave}
                     aria-label={t`Save`}
                     data-testid="public-link-password-confirm"
                   />
