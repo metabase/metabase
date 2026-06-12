@@ -18,7 +18,7 @@ import {
 import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import type {
-  BedrockCredentials,
+  MetabotCredentials,
   MetabotProvider,
   MetabotSettingsResponse,
   SettingDefinition,
@@ -134,7 +134,7 @@ type MetabotSettingsUpdateBody = {
   provider: MetabotProvider;
   model?: string;
   "api-key"?: string | null;
-  credentials?: BedrockCredentials | null;
+  credentials?: MetabotCredentials | null;
 };
 
 type SetupOptions = {
@@ -208,7 +208,10 @@ async function setup({
   const purchaseCloudAddOnDeferred = defer<void>();
   const updateMetabotSettingsDeferred = defer<void>();
 
-  const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
+  const mergedApiKeyValues: Record<
+    MetabotApiKeyProvider | "azure" | "bedrock",
+    string | null
+  > = {
     anthropic: "**********45",
     azure: null,
     bedrock: null,

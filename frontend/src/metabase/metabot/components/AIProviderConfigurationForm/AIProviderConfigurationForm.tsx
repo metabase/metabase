@@ -1,21 +1,8 @@
-import {
-  type ChangeEvent,
-  Fragment,
-  type MutableRefObject,
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { P, match } from "ts-pattern";
-import { c, t } from "ttag";
-import _ from "underscore";
+import { t } from "ttag";
 
 import {
-  useGetMetabotSettingsQuery,
   useUpdateMetabotSettingsMutation,
   useUpdateSettingsMutation,
 } from "metabase/api";
@@ -25,233 +12,22 @@ import {
   useAdminSettings,
 } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useSetting, useToast } from "metabase/common/hooks";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import {
-  Button,
-  type ComboboxItem,
-  Flex,
-  Group,
-  Select,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
-import type {
-  MetabotProvider,
-  MetabotSettingsResponse,
-  SettingDefinition,
-} from "metabase-types/api";
+import { Button, Flex, Group, Select, Stack, Text } from "metabase/ui";
+import type { MetabotProvider } from "metabase-types/api";
 
+import { AIProviderConfigurationContext } from "./AIProviderConfigurationContext";
+import { ApiKeyProviderFields } from "./ApiKeyProviderFields";
+import { AzureProviderFields } from "./AzureProviderFields";
+import { BedrockProviderFields } from "./BedrockProviderFields";
 import {
   API_KEY_SETTING_BY_PROVIDER,
-  AZURE_MODEL_FAMILIES,
   getProviderOptions,
   isAvailableProvider,
-  parseAzureModel,
   parseProviderAndModel,
 } from "./utils";
-
-type MetabotModelOption = ComboboxItem & {
-  group?: string | null;
-};
-
-type BedrockExtraField = "secretAccessKey" | "region" | "sessionToken";
-
-const BEDROCK_EXTRA_FIELDS = [
-  {
-    key: "secretAccessKey",
-    settingKey: "llm-bedrock-secret-access-key",
-    password: true,
-  },
-  { key: "region", settingKey: "llm-bedrock-region", password: false },
-  {
-    key: "sessionToken",
-    settingKey: "llm-bedrock-session-token",
-    password: true,
-  },
-] as const;
-
-const UNTOUCHED_BEDROCK_VALUES: Record<BedrockExtraField, string | null> = {
-  secretAccessKey: null,
-  region: null,
-  sessionToken: null,
-};
-
-type AzureExtraField = "family" | "baseUrl" | "deployment";
-
-const UNTOUCHED_AZURE_VALUES: Record<AzureExtraField, string | null> = {
-  family: null,
-  baseUrl: null,
-  deployment: null,
-};
-
-// Azure has no model dropdown and no default model: every value the connect request
-// needs must be present before the button does anything.
-const isAzureConnectReady = (
-  values: Record<AzureExtraField, string>,
-  apiKeyValue: string,
-) =>
-  Boolean(
-    values.family &&
-    values.baseUrl.trim() &&
-    values.deployment.trim() &&
-    apiKeyValue.trim(),
-  );
-
-const AzureConnectionFields = ({
-  values,
-  baseUrlEnvSettingName,
-  disabled,
-  onChange,
-}: {
-  values: Record<AzureExtraField, string>;
-  baseUrlEnvSettingName: string | undefined;
-  disabled: boolean;
-  onChange: (field: AzureExtraField, value: string | null) => void;
-}) => (
-  <>
-    <Select
-      label={t`Model provider`}
-      description={t`Whether your deployment serves an Anthropic or an OpenAI model.`}
-      placeholder={t`Select a model provider`}
-      data={[...AZURE_MODEL_FAMILIES]}
-      value={values.family || null}
-      onChange={(value) => onChange("family", value)}
-      disabled={disabled}
-    />
-    <TextInput
-      label={t`Base URL`}
-      description={t`The full URL of your Azure resource's model-provider surface, including the provider segment.`}
-      placeholder="https://<resource>.services.ai.azure.com/openai"
-      value={values.baseUrl}
-      onChange={(event) => onChange("baseUrl", event.target.value)}
-      disabled={disabled || !!baseUrlEnvSettingName}
-      w="100%"
-    />
-    {baseUrlEnvSettingName && <SetByEnvVar varName={baseUrlEnvSettingName} />}
-  </>
-);
-
-const AzureDeploymentField = ({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: string;
-  disabled: boolean;
-  onChange: (field: AzureExtraField, value: string | null) => void;
-}) => (
-  <TextInput
-    label={t`Deployment name`}
-    description={t`The name of the model deployment on your Azure resource. We recommend naming deployments after the model they serve.`}
-    placeholder={t`Enter your Azure deployment name`}
-    value={value}
-    onChange={(event) => onChange("deployment", event.target.value)}
-    disabled={disabled}
-    w="100%"
-  />
-);
-
-function getBedrockFieldCopy(field: BedrockExtraField): {
-  label: string;
-  description?: string;
-  placeholder?: string;
-} {
-  switch (field) {
-    case "secretAccessKey":
-      return {
-        label: t`Secret access key`,
-        placeholder: t`Enter your AWS secret access key`,
-      };
-    case "region":
-      return {
-        label: t`Region`,
-        description: t`The AWS region to use for Bedrock.`,
-        placeholder: "us-east-1",
-      };
-    case "sessionToken":
-      return {
-        label: t`Session token`,
-        description: t`Optional. Only needed for temporary AWS credentials.`,
-        placeholder: t`Enter your AWS session token`,
-      };
-  }
-}
-
-function getModelDescription(provider: MetabotProvider | undefined) {
-  if (provider === "metabase") {
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- "Metabase" is the product name for the managed AI provider option, only shown to admins configuring AI.
-    return t`Available models are provided by Metabase.`;
-  }
-
-  return t`Available models are fetched from the selected provider using its configured credentials.`;
-}
-
-const AIProviderConfigurationContext = createContext<{
-  connectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
-  disconnectHandlerRef: MutableRefObject<(() => Promise<void>) | null> | null;
-  isMutating: boolean;
-  isConnectButtonEnabled: boolean;
-  setIsConnectButtonEnabled: (enabled: boolean) => void;
-  resetProvider: VoidFunction;
-  handleDisconnect: VoidFunction;
-  isModal: boolean;
-}>({
-  isMutating: false,
-  connectHandlerRef: null,
-  disconnectHandlerRef: null,
-  isConnectButtonEnabled: false,
-  setIsConnectButtonEnabled: () => {},
-  resetProvider: () => {},
-  handleDisconnect: () => {},
-  isModal: false,
-});
-
-export function useAIProviderConfigurationContext(
-  onConnect: (() => Promise<void>) | null,
-  onDisconnect: (() => Promise<void>) | null = null,
-) {
-  const {
-    connectHandlerRef,
-    disconnectHandlerRef,
-    isMutating,
-    setIsConnectButtonEnabled,
-    resetProvider,
-    handleDisconnect,
-    isModal,
-  } = useContext(AIProviderConfigurationContext);
-
-  useEffect(() => {
-    if (!connectHandlerRef) {
-      return;
-    }
-
-    connectHandlerRef.current = onConnect;
-    setIsConnectButtonEnabled(!!onConnect);
-
-    return () => {
-      setIsConnectButtonEnabled(false);
-      connectHandlerRef.current = null;
-    };
-  }, [connectHandlerRef, onConnect, setIsConnectButtonEnabled]);
-
-  useEffect(() => {
-    if (!disconnectHandlerRef) {
-      return;
-    }
-
-    disconnectHandlerRef.current = onDisconnect;
-
-    return () => {
-      disconnectHandlerRef.current = null;
-    };
-  }, [disconnectHandlerRef, onDisconnect]);
-
-  return { isMutating, resetProvider, handleDisconnect, isModal };
-}
 
 export function AIProviderConfigurationForm({
   isModal = false,
@@ -300,10 +76,8 @@ export function AIProviderConfigurationForm({
 
   const { details: providerApiKeyDetails } = useAdminSettings([
     "llm-anthropic-api-key",
-    "llm-azure-api-key",
     "llm-openai-api-key",
     "llm-openrouter-api-key",
-    "llm-bedrock-access-key-id",
   ] as const);
 
   const disconnectProvider = useCallback(async () => {
@@ -478,8 +252,23 @@ export function AIProviderConfigurationForm({
           .with("metabase", () => (
             <MetabaseAIProviderSetup onConnect={onClose} />
           ))
-          .with(P.nonNullable, (selectedProvider) => (
-            <ProviderCredentialsFields
+          .with("azure", () => (
+            <AzureProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
+          ))
+          .with("bedrock", () => (
+            <BedrockProviderFields
+              connectedModel={connectedModel}
+              isCurrentConfigured={isCurrentConfigured}
+              isEnvSetting={isEnvSetting}
+            />
+          ))
+          .with("anthropic", "openai", "openrouter", (selectedProvider) => (
+            <ApiKeyProviderFields
+              key={selectedProvider}
               selectedProvider={selectedProvider}
               connectedModel={connectedModel}
               isCurrentConfigured={isCurrentConfigured}
@@ -544,335 +333,3 @@ export function AIProviderConfigurationForm({
     </AIProviderConfigurationContext.Provider>
   );
 }
-
-const ProviderCredentialsFields = ({
-  selectedProvider,
-  connectedModel,
-  isCurrentConfigured,
-  isEnvSetting,
-}: {
-  selectedProvider: Exclude<MetabotProvider, "metabase">;
-  connectedModel: string | undefined;
-  isCurrentConfigured: boolean;
-  isEnvSetting: boolean;
-}) => {
-  const isBedrock = selectedProvider === "bedrock";
-  const isAzure = selectedProvider === "azure";
-  const [model, setModel] = useState<string | undefined>(connectedModel);
-  const [apiKeyLocalValue, setApiKeyLocalValue] = useState<string | null>(null);
-  const [bedrockLocalValues, setBedrockLocalValues] = useState<
-    Record<BedrockExtraField, string | null>
-  >(UNTOUCHED_BEDROCK_VALUES);
-  const [azureLocalValues, setAzureLocalValues] = useState<
-    Record<AzureExtraField, string | null>
-  >(UNTOUCHED_AZURE_VALUES);
-  const [sendToast] = useToast();
-
-  useEffect(() => {
-    setModel(connectedModel);
-  }, [connectedModel]);
-
-  const [updateMetabotSettings, updateMetabotSettingsResult] =
-    useUpdateMetabotSettingsMutation();
-
-  const { details: providerApiKeyDetails } = useAdminSettings([
-    "llm-anthropic-api-key",
-    "llm-azure-api-key",
-    "llm-azure-api-base-url",
-    "llm-openai-api-key",
-    "llm-openrouter-api-key",
-    "llm-bedrock-access-key-id",
-    "llm-bedrock-secret-access-key",
-    "llm-bedrock-region",
-    "llm-bedrock-session-token",
-  ] as const);
-
-  const selectedApiKeySetting =
-    providerApiKeyDetails[API_KEY_SETTING_BY_PROVIDER[selectedProvider]];
-  const selectedApiKeyValue = String(selectedApiKeySetting?.value ?? "");
-  const apiKeyEnvSettingName = selectedApiKeySetting?.is_env_setting
-    ? selectedApiKeySetting.env_name
-    : undefined;
-
-  // Display values fall back to the saved settings so untouched fields round-trip unchanged
-  // when connecting.
-  const displayBedrockValues = Object.fromEntries(
-    BEDROCK_EXTRA_FIELDS.map(({ key, settingKey }) => [
-      key,
-      bedrockLocalValues[key] ??
-        String(providerApiKeyDetails[settingKey]?.value ?? ""),
-    ]),
-  ) as Record<BedrockExtraField, string>;
-
-  const displayApiKeyValue = apiKeyLocalValue ?? selectedApiKeyValue;
-
-  // The family and deployment name are carried by the saved provider/model value rather
-  // than their own settings; the base URL falls back to its saved setting like Bedrock's
-  // extra fields.
-  const savedAzureModel = parseAzureModel(
-    isAzure && isCurrentConfigured ? connectedModel : undefined,
-  );
-  const azureBaseUrlSetting = providerApiKeyDetails["llm-azure-api-base-url"];
-  const displayAzureValues: Record<AzureExtraField, string> = {
-    family: azureLocalValues.family ?? savedAzureModel.family ?? "",
-    baseUrl:
-      azureLocalValues.baseUrl ?? String(azureBaseUrlSetting?.value ?? ""),
-    deployment: azureLocalValues.deployment ?? savedAzureModel.deployment ?? "",
-  };
-
-  const onConnect = async () => {
-    if (isBedrock) {
-      await updateMetabotSettings({
-        provider: selectedProvider,
-        credentials: {
-          "access-key-id": apiKeyLocalValue || null,
-          "secret-access-key": bedrockLocalValues.secretAccessKey || null,
-          region: bedrockLocalValues.region || null,
-          "session-token": bedrockLocalValues.sessionToken || null,
-        },
-      }).unwrap();
-    } else if (isAzure) {
-      await updateMetabotSettings({
-        provider: selectedProvider,
-        model: `${displayAzureValues.family}/${displayAzureValues.deployment}`,
-        credentials: {
-          "api-key": apiKeyLocalValue || null,
-          "base-url": azureLocalValues.baseUrl || null,
-        },
-      }).unwrap();
-    } else {
-      await updateMetabotSettings({
-        provider: selectedProvider,
-        "api-key": apiKeyLocalValue || null,
-      }).unwrap();
-    }
-
-    setApiKeyLocalValue(null);
-    setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
-    setAzureLocalValues(UNTOUCHED_AZURE_VALUES);
-  };
-
-  const hasDirtyApiKey = apiKeyLocalValue !== null;
-  const hasDirtyBedrockCredentials =
-    isBedrock && Object.values(bedrockLocalValues).some((v) => v !== null);
-  const hasDirtyAzureValues =
-    isAzure && Object.values(azureLocalValues).some((v) => v !== null);
-  const isAzureFormComplete =
-    !isAzure || isAzureConnectReady(displayAzureValues, displayApiKeyValue);
-  const connectHandler =
-    (!isCurrentConfigured ||
-      hasDirtyApiKey ||
-      hasDirtyBedrockCredentials ||
-      hasDirtyAzureValues) &&
-    isAzureFormComplete
-      ? onConnect
-      : null;
-
-  const { isMutating } = useAIProviderConfigurationContext(connectHandler);
-
-  const needsApiKey = isBedrock
-    ? !hasConfiguredSettingValue(selectedApiKeySetting) ||
-      !hasConfiguredSettingValue(
-        providerApiKeyDetails["llm-bedrock-secret-access-key"],
-      )
-    : !hasConfiguredSettingValue(selectedApiKeySetting);
-
-  const metabotSettingsQuery = useGetMetabotSettingsQuery(
-    {
-      provider: selectedProvider,
-    },
-    // Azure has no model dropdown to populate — deployment names are free text.
-    { skip: needsApiKey || isAzure },
-  );
-
-  const modelOptions = useMemo(
-    () => getLlmModelOptions(metabotSettingsQuery.currentData?.models ?? []),
-    [metabotSettingsQuery.currentData?.models],
-  );
-
-  const modelError = getModelError(
-    metabotSettingsQuery.error,
-    selectedProvider,
-  );
-  const credentialsError = hasDirtyApiKey
-    ? undefined
-    : (metabotSettingsQuery.currentData?.["credentials-error"] ?? undefined);
-
-  useEffect(() => {
-    setApiKeyLocalValue(null);
-    setBedrockLocalValues(UNTOUCHED_BEDROCK_VALUES);
-    setAzureLocalValues(UNTOUCHED_AZURE_VALUES);
-  }, [selectedProvider, selectedApiKeySetting?.value]);
-
-  const handleApiKeyChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setApiKeyLocalValue(event.target.value);
-  };
-
-  const handleBedrockFieldChange =
-    (field: BedrockExtraField) => (event: ChangeEvent<HTMLInputElement>) => {
-      setBedrockLocalValues((values) => ({
-        ...values,
-        [field]: event.target.value,
-      }));
-    };
-
-  const handleAzureFieldChange = (
-    field: AzureExtraField,
-    value: string | null,
-  ) => {
-    setAzureLocalValues((values) => ({
-      ...values,
-      [field]: value,
-    }));
-  };
-
-  const handleModelChange = async (value: string) => {
-    setModel(value);
-
-    if (!value) {
-      return;
-    }
-
-    await updateMetabotSettings({
-      provider: selectedProvider,
-      model: value,
-    }).unwrap();
-
-    sendToast({
-      message: t`Settings saved successfully`,
-      icon: "check",
-    });
-  };
-
-  const selectedProviderDetails = getProviderOptions(true)[selectedProvider];
-
-  const azureBaseUrlEnvSettingName = azureBaseUrlSetting?.is_env_setting
-    ? azureBaseUrlSetting.env_name
-    : undefined;
-
-  return (
-    <>
-      {isAzure && (
-        <AzureConnectionFields
-          values={displayAzureValues}
-          baseUrlEnvSettingName={azureBaseUrlEnvSettingName}
-          disabled={isMutating || isEnvSetting}
-          onChange={handleAzureFieldChange}
-        />
-      )}
-
-      <TextInput
-        key={selectedProvider}
-        label={isBedrock ? t`Access key ID` : t`API key`}
-        type="password"
-        description={
-          <ExternalLink
-            key={selectedProviderDetails.value}
-            href={selectedProviderDetails.apiKey.addKeyUrl}
-          >
-            {c("{0} is the name of an AI provider")
-              .t`Get or manage keys in ${selectedProviderDetails.label}`}
-          </ExternalLink>
-        }
-        placeholder={
-          selectedProviderDetails.apiKey?.placeholder ?? t`Enter your API key`
-        }
-        value={displayApiKeyValue}
-        error={credentialsError}
-        onChange={handleApiKeyChange}
-        disabled={isMutating || isEnvSetting || !!apiKeyEnvSettingName}
-        w="100%"
-      />
-
-      {apiKeyEnvSettingName ? (
-        <SetByEnvVar varName={apiKeyEnvSettingName} />
-      ) : null}
-
-      {isAzure && (
-        <AzureDeploymentField
-          value={displayAzureValues.deployment}
-          disabled={isMutating || isEnvSetting}
-          onChange={handleAzureFieldChange}
-        />
-      )}
-
-      {isBedrock &&
-        BEDROCK_EXTRA_FIELDS.map(({ key, settingKey, password }) => {
-          const { label, description, placeholder } = getBedrockFieldCopy(key);
-          const setting = providerApiKeyDetails[settingKey];
-          const envSettingName = setting?.is_env_setting
-            ? setting.env_name
-            : undefined;
-
-          return (
-            <Fragment key={key}>
-              <TextInput
-                label={label}
-                type={password ? "password" : undefined}
-                description={description}
-                placeholder={placeholder}
-                value={displayBedrockValues[key]}
-                onChange={handleBedrockFieldChange(key)}
-                disabled={isMutating || isEnvSetting || !!envSettingName}
-                w="100%"
-              />
-              {envSettingName && <SetByEnvVar varName={envSettingName} />}
-            </Fragment>
-          );
-        })}
-
-      {!isAzure && !needsApiKey && !credentialsError && (
-        <Select
-          label={t`Model`}
-          placeholder={
-            metabotSettingsQuery.isLoading
-              ? t`Loading models...`
-              : t`Select a model`
-          }
-          description={getModelDescription(selectedProvider)}
-          error={modelError}
-          data={modelOptions}
-          value={model}
-          onChange={handleModelChange}
-          disabled={isEnvSetting || needsApiKey || isMutating}
-          searchable
-          nothingFoundMessage={t`No models found`}
-        />
-      )}
-
-      {updateMetabotSettingsResult.error && (
-        <Text size="sm" c="error">
-          {getErrorMessage(
-            updateMetabotSettingsResult.error,
-            t`Unable to save provider settings.`,
-          )}
-        </Text>
-      )}
-    </>
-  );
-};
-
-const getLlmModelOptions = (models: MetabotSettingsResponse["models"]) => {
-  const modelOptions = models.map((m) => ({
-    value: m.id,
-    label: m.display_name,
-    group: m.group,
-  }));
-
-  const sel = (o: MetabotModelOption) => _.pick(o, ["value", "label"]);
-  // group model options if needed
-  return _.every(modelOptions, (o) => !o.group)
-    ? modelOptions.map(sel)
-    : _.map(
-        _.groupBy(modelOptions, (o) => o.group ?? t`Other`),
-        (items, group) => ({ group, items: items.map(sel) }),
-      );
-};
-
-const hasConfiguredSettingValue = (setting: SettingDefinition | undefined) =>
-  Boolean(setting?.value || setting?.is_env_setting);
-
-const getModelError = (error: unknown, provider?: MetabotProvider) =>
-  !provider || !error
-    ? undefined
-    : getErrorMessage(error, t`Unable to load models.`);

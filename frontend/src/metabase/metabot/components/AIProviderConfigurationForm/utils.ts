@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { MetabotProvider } from "metabase-types/api";
+import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";
 type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
@@ -82,19 +82,13 @@ export function getProviderOptions(
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  ApiKeylessProviders
+  "metabase" | "azure" | "bedrock"
 >;
 
 export function isMetabotProvider(
   value: string | null | undefined,
 ): value is MetabotProvider {
   return !!value && value in getProviderOptions(true);
-}
-
-export function isApiKeyMetabotProvider(
-  provider: MetabotProvider,
-): provider is MetabotApiKeyProvider {
-  return "apiKey" in (getProviderOptions(true)[provider] ?? {});
 }
 
 export function isAvailableProvider(provider: MetabotProvider): boolean {
@@ -108,15 +102,9 @@ export function isAvailableProvider(provider: MetabotProvider): boolean {
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
   MetabotApiKeyProvider,
-  | "llm-anthropic-api-key"
-  | "llm-azure-api-key"
-  | "llm-bedrock-access-key-id"
-  | "llm-openai-api-key"
-  | "llm-openrouter-api-key"
+  "llm-anthropic-api-key" | "llm-openai-api-key" | "llm-openrouter-api-key"
 > = {
   anthropic: "llm-anthropic-api-key",
-  azure: "llm-azure-api-key",
-  bedrock: "llm-bedrock-access-key-id",
   openai: "llm-openai-api-key",
   openrouter: "llm-openrouter-api-key",
 };
@@ -143,3 +131,7 @@ export function parseProviderAndModel(value: string | null | undefined) {
 
   return { provider, model };
 }
+
+export const hasConfiguredSettingValue = (
+  setting: SettingDefinition | undefined,
+) => Boolean(setting?.value || setting?.is_env_setting);
