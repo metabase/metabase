@@ -743,11 +743,18 @@ export function useViewerState({
   );
 
   const updateActiveDimensionBreakout = useCallback(
-    (updates: Partial<MetricsViewerDimensionBreakoutState>) => {
+    (
+      setterFn: (
+        prev: MetricsViewerDimensionBreakoutState,
+      ) => MetricsViewerDimensionBreakoutState,
+    ) => {
       if (!derivedData.activeDimensionBreakout) {
         return;
       }
-      updateDimensionBreakout(derivedData.activeDimensionBreakout.id, updates);
+      updateDimensionBreakout(
+        derivedData.activeDimensionBreakout.id,
+        setterFn(derivedData.activeDimensionBreakout),
+      );
     },
     [derivedData.activeDimensionBreakout, updateDimensionBreakout],
   );

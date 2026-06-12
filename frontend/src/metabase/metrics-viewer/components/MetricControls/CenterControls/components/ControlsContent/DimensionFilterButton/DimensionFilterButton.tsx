@@ -7,6 +7,11 @@ import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
 } from "metabase/metrics-viewer/analytics";
+import {
+  type DimensionFilterValue,
+  buildDimensionFilterClause,
+  parseFilter,
+} from "metabase/metrics-viewer/utils";
 import { Button, Popover } from "metabase/ui";
 import type {
   DimensionMetadata,
@@ -15,12 +20,7 @@ import type {
 } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
-import type { DimensionFilterValue } from "../../../utils/dimension-filters";
-import {
-  buildDimensionFilterClause,
-  parseFilter,
-} from "../../../utils/dimension-filters";
-import S from "../MetricControls.module.css";
+import S from "../../../CenterControls.module.css";
 
 import { getFilterDisplayName } from "./utils";
 

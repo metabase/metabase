@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
@@ -10,69 +9,59 @@ import {
   DimensionPillBar,
   type DimensionPillBarItem,
 } from "metabase/metrics-viewer/components/DimensionPillBar";
+import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types/viewer-state";
 import { DISPLAY_TYPE_REGISTRY } from "metabase/metrics-viewer/utils";
 import { MetricsViewerClickActionsMode } from "metabase/metrics-viewer/utils/MetricsViewerClickActionsMode";
 import { getGridColumns } from "metabase/metrics-viewer/utils/grid-columns";
-import type { MetricSlot } from "metabase/metrics-viewer/utils/metric-slots";
 import { Center, Flex, SimpleGrid, Stack, useElementSize } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
-import type { CardId, SingleSeries } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDimensionBreakoutState,
-  MetricsViewerFormulaEntity,
-} from "../../types/viewer-state";
+import { useMetricsViewerContext } from "../../context";
 
 import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
-  rawSeries: SingleSeries[];
   onBrush?: (range: { start: number; end: number }) => void;
-  className?: string;
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
-  formulaEntities: MetricsViewerFormulaEntity[];
-  metricSlots: MetricSlot[];
-  dimensionBreakout: MetricsViewerDimensionBreakoutState;
-  onDimensionBreakoutUpdate: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
-  ) => void;
-  cardIdToEntityIndex: Record<CardId, number>;
-  interactive?: boolean;
-  queriesAreLoading: boolean;
-  queriesError: string | null;
   chartColumnLabelsByEntityIndex?: Map<number, DimensionPillBarItem>;
 };
 
 export function MetricsViewerVisualization({
-  rawSeries,
   onBrush,
-  className,
-  definitions,
-  formulaEntities,
-  metricSlots,
-  dimensionBreakout,
-  onDimensionBreakoutUpdate,
-  cardIdToEntityIndex,
-  interactive = true,
-  queriesAreLoading,
-  queriesError,
   chartColumnLabelsByEntityIndex,
 }: MetricsViewerVisualizationProps) {
+  const {
+    definitions,
+    formulaEntities,
+    activeDimensionBreakout: dimensionBreakout,
+    queriesAreLoading,
+    queriesError,
+    metricSlots,
+    series: rawSeries,
+    cardIdToEntityIndex,
+    updateActiveDimensionBreakout,
+  } = useMetricsViewerContext();
+
   const { ref, width } = useElementSize();
   const cols = getGridColumns(width, rawSeries.length);
 
   const clickActionsMode = useMemo(
     () =>
-      interactive
+      dimensionBreakout
         ? new MetricsViewerClickActionsMode({
             definitions,
             formulaEntities,
             metricSlots,
             dimensionBreakout,
-            onDimensionBreakoutUpdate,
+            onDimensionBreakoutUpdate: (
+              partial: Partial<MetricsViewerDimensionBreakoutState>,
+            ) => {
+              updateActiveDimensionBreakout((prev) => ({
+                ...prev,
+                ...partial,
+              }));
+            },
             cardIdToEntityIndex,
           })
         : undefined,
@@ -81,8 +70,7 @@ export function MetricsViewerVisualization({
       cardIdToEntityIndex,
       formulaEntities,
       metricSlots,
-      interactive,
-      onDimensionBreakoutUpdate,
+      updateActiveDimensionBreakout,
       dimensionBreakout,
     ],
   );
@@ -119,14 +107,12 @@ export function MetricsViewerVisualization({
     );
   }
 
+  if (!dimensionBreakout) {
+    return null;
+  }
+
   return (
-    <Flex
-      ref={ref}
-      direction="column"
-      flex="1 0 auto"
-      gap="sm"
-      className={className}
-    >
+    <Flex ref={ref} direction="column" flex="1 0 auto" gap="sm">
       {rawSeries.length > 1 &&
       !DISPLAY_TYPE_REGISTRY[dimensionBreakout.display]
         .supportsMultipleSeries ? (
@@ -134,7 +120,7 @@ export function MetricsViewerVisualization({
           {rawSeries.map((series, i) => (
             <Stack
               gap="sm"
-              className={cx(className, S.gridChart)}
+              className={S.gridChart}
               key={`series-${i}`}
               data-in-grid
             >
@@ -144,7 +130,7 @@ export function MetricsViewerVisualization({
                   rawSeries={[series]}
                   isQueryBuilder={false}
                   hideLegend
-                  onBrush={interactive ? onBrush : undefined}
+                  onBrush={onBrush}
                   mode={clickActionsMode}
                   onChangeCardAndRun={noop}
                   autoAdjustSettings
@@ -166,7 +152,7 @@ export function MetricsViewerVisualization({
             rawSeries={rawSeries}
             isQueryBuilder={false}
             hideLegend
-            onBrush={interactive ? onBrush : undefined}
+            onBrush={onBrush}
             mode={clickActionsMode}
             onChangeCardAndRun={noop}
           />
