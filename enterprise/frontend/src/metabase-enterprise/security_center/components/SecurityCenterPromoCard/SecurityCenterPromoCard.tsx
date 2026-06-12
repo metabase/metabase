@@ -8,8 +8,8 @@ import {
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
+import { useSelector } from "metabase/lib/redux";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
-import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 
