@@ -13,7 +13,6 @@ export function getTreemapBreadcrumbModel(
   tree: TreemapTree,
   viewRootId: string | null,
 ): TreemapBreadcrumbModel {
-  // Top level overview
   if (viewRootId == null) {
     return { groupLabel: null, value: getGrandTotal(tree) };
   }
