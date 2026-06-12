@@ -389,6 +389,7 @@ function getFullBlockFormatter(
 function getItemStyle({
   groupColor,
   groupTint,
+  hasChildren,
   isDrilled,
 }: {
   groupColor: string | undefined;
@@ -398,7 +399,9 @@ function getItemStyle({
 }) {
   return {
     color: groupColor,
-    borderColor: isDrilled ? "transparent" : groupTint,
+    ...(hasChildren
+      ? { borderColor: isDrilled ? "transparent" : groupTint }
+      : {}),
   };
 }
 
