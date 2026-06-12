@@ -22,7 +22,10 @@ Assuming your site is localhost serving on port 3000:
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
-As an alternative to putting the JWT in the URL query string (which some environments log or cache), you can send the same token in a `POST` request to `/auth/sso` with `Content-Type: application/json`. You can still pass `return_to` as a query parameter. The login behavior is otherwise the same as the GET flow.
+- For full app embeds, use a `GET` request.
+- For modular embeds use a `POST` request with a JSON body (to avoid putting the JWT in the URL). You'll also want to use `POST` requests in contexts that log or cache URLs, such as server-side integrations or testing.
+
+In both cases the login behavior is the same, and you can pass `return_to` as a query parameter in both `GET` and `POST` requests.
 
 For example, with curl:
 
@@ -32,7 +35,7 @@ curl -X POST "http://localhost:3000/auth/sso?return_to=/question/1-superb-questi
   -d '{"jwt": "TOKEN_GOES_HERE"}'
 ```
 
-From JavaScript (for example, modular embedding or programmatic login):
+Or with JavaScript:
 
 ```js
 await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
@@ -43,7 +46,6 @@ await fetch(`${METABASE_URL}/auth/sso?return_to=/question/1-superb-question`, {
 });
 ```
 
-GET redirect remains the standard full-app browser flow. POST with a JSON body is for environments that want to avoid putting the JWT in the URL, such as the embedding SDK, server-side integrations, or testing.
 
 ## Set up JWT authentication
 
