@@ -22,16 +22,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- publish-sync-event!
-  "Publishes an audit-log event for a completed remote-sync task. Called from
-  the `:on-success` callback so the task already has its version set."
-  [topic task-id branch user-id]
-  (let [task (t2/select-one :model/RemoteSyncTask task-id)]
-    (events/publish-event! topic
-                           {:object  task
-                            :details {:branch branch}
-                            :user-id user-id})))
-
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
   "Import Metabase content from configured Remote Sync source.
 
@@ -54,7 +44,8 @@
         {task-id :id}
         (impl/async-import!
          branch-name force {}
-         :on-success #(publish-sync-event! :event/remote-sync-import %1 branch-name user-id))]
+         :on-success (fn [task-id _result]
+                       (impl/publish-sync-event! :event/remote-sync-import task-id {:branch branch-name} user-id)))]
     {:status :success
      :task_id task-id
      :message (when-not task-id "No changes since last import")}))
@@ -124,7 +115,8 @@
          branch-name
          (or force false)
          (or message "Exported from Metabase")
-         :on-success #(publish-sync-event! :event/remote-sync-export %1 branch-name user-id))]
+         :on-success (fn [task-id _result]
+                       (impl/publish-sync-event! :event/remote-sync-export task-id {:branch branch-name} user-id)))]
     {:message "Export task started"
      :task_id task-id}))
 
@@ -294,7 +286,8 @@
   (try
     (let [user-id       api/*current-user-id*
           {task-id :id} (impl/stash! new-branch message
-                                     :on-success #(publish-sync-event! :event/remote-sync-stash %1 new-branch user-id))]
+                                     :on-success (fn [task-id _result]
+                                                   (impl/publish-sync-event! :event/remote-sync-stash task-id {:branch new-branch} user-id)))]
       {:status "success"
        :message (str "Stashing to " new-branch)
        :task_id task-id})

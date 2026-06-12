@@ -52,6 +52,22 @@ const CARD_IN_DASHBOARD = createMockCard({
   dashboard_id: 4,
   dashboard: BAR_DASHBOARD,
 });
+const CARD_IN_RENAMED_DASHBOARD = createMockCard({
+  id: 4,
+  collection_id: 3,
+  dashboard_id: 4,
+  dashboard: createMockDashboard({
+    id: 4,
+    name: "Stale Dashboard Name",
+    collection_id: 3,
+  }),
+});
+const CARD_WITH_DASHBOARD_ID = createMockCard({
+  id: 5,
+  collection_id: 3,
+  dashboard_id: 4,
+  dashboard: undefined,
+});
 
 describe("AppBar", () => {
   const matchMediaSpy = jest.spyOn(window, "matchMedia");
@@ -239,6 +255,32 @@ describe("AppBar", () => {
 
         expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
         expect(await screen.findByText("Bar Dashboard")).toBeInTheDocument();
+      });
+
+      it("should use the latest dashboard name for question breadcrumbs (#75184)", async () => {
+        setup({
+          embedOptions: {
+            breadcrumbs: true,
+          },
+          card: CARD_IN_RENAMED_DASHBOARD,
+        });
+
+        expect(await screen.findByText("Bar Dashboard")).toBeInTheDocument();
+        expect(
+          screen.queryByText("Stale Dashboard Name"),
+        ).not.toBeInTheDocument();
+      });
+
+      it("should not show dashboard breadcrumbs without dashboard context", async () => {
+        setup({
+          embedOptions: {
+            breadcrumbs: true,
+          },
+          card: CARD_WITH_DASHBOARD_ID,
+        });
+
+        expect(await screen.findByText("Foo Collection")).toBeInTheDocument();
+        expect(screen.queryByText("Bar Dashboard")).not.toBeInTheDocument();
       });
 
       it("should work for dashboards", async () => {

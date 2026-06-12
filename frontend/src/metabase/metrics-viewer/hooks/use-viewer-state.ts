@@ -1,44 +1,50 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { measureApi, metricApi, segmentApi } from "metabase/api";
 import { useDispatch, useStore } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
-import { isNotNull } from "metabase/utils/types";
-import type {
-  DimensionMetadata,
-  MetricDefinition,
-  ProjectionClause,
-} from "metabase-lib/metric";
+import { getObjectEntries } from "metabase/utils/objects";
+import type { MetricDefinition, ProjectionClause } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
+import type { MetricsViewerPageProps } from "../pages/MetricsViewerPage/MetricsViewerPage";
 import type {
+  DimensionBreakoutInfo,
   MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
   MetricsViewerFormulaEntity,
   MetricsViewerPageState,
-  MetricsViewerTabState,
-  StoredMetricsViewerTab,
-} from "../types/viewer-state";
+  SelectedMetric,
+  UseViewerStateResult,
+} from "../types";
 import {
   getInitialMetricsViewerPageState,
   isExpressionEntry,
   isMetricEntry,
-} from "../types/viewer-state";
-import { buildBinnedBreakoutDefinition } from "../utils/definition-builder";
-import { getEffectiveDefinitionEntry } from "../utils/definition-entries";
-import { computeMetricSlots } from "../utils/metric-slots";
-import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
+} from "../types";
 import {
+  applySerializedDefinitionInfo,
+  areDimensionBreakoutDimensionsValid,
+  assignDimensionsForUnmappedSlots,
+  buildBinnedBreakoutDefinition,
+  computeDefaultDimensionBreakouts,
+  createDimensionBreakoutFromInfo,
   createMeasureSourceId,
   createMetricSourceId,
-} from "../utils/source-ids";
-import { getTabConfig } from "../utils/tab-config";
-import { computeDefaultTabs, findMatchingDimensionForTab } from "../utils/tabs";
-import { applySerializedDefinitionInfo } from "../utils/url-serialization";
+  createSourceId,
+  getEffectiveDefinitionEntry,
+  getValidSelectedDimensionBreakoutId,
+} from "../utils";
+import { computeMetricSlots } from "../utils/metric-slots";
+import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
+
+import { useViewerDerivedData } from "./use-viewer-derived-data";
+import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
 async function loadMetricDefinition(
   dispatch: ReturnType<typeof useDispatch>,
@@ -80,179 +86,9 @@ async function loadMeasureDefinition(
   return LibMetric.fromMeasureMetadata(provider, meta);
 }
 
-function getValidSelectedTabId(
-  currentSelectedId: string | null,
-  newTabs: MetricsViewerTabState[],
-): string | null {
-  const selectedTabExists = newTabs.some((tab) => tab.id === currentSelectedId);
-
-  return selectedTabExists ? currentSelectedId : (newTabs[0]?.id ?? null);
-}
-
-/**
- * For each tab, find slots that have no dimension assigned yet but whose
- * definition IS loaded, and try to smart-match a dimension using the same
- * logic as `addDefinitionToTabs`.  This handles both timing orderings:
- *  - definition loaded before formula committed (called from setFormulaEntities)
- *  - formula committed before definition loaded (called from updateDefinition)
- */
-function assignDimensionsForUnmappedSlots(
-  tabs: MetricsViewerTabState[],
-  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
-  formulaEntities: MetricsViewerFormulaEntity[],
-): MetricsViewerTabState[] {
-  const slots = computeMetricSlots(formulaEntities);
-  if (slots.length === 0) {
-    return tabs;
-  }
-
-  const slotIndexToSourceId = new Map<number, MetricSourceId>();
-  for (const slot of slots) {
-    slotIndexToSourceId.set(slot.slotIndex, slot.sourceId);
-  }
-
-  return tabs.map((tab) => {
-    if (tab.label == null) {
-      return tab;
-    }
-
-    // Collect unmapped slots grouped by sourceId.
-    const unmappedBySource = new Map<
-      MetricSourceId,
-      { slotIndices: number[]; definition: MetricDefinition }
-    >();
-
-    for (const slot of slots) {
-      const existing = tab.dimensionMapping[slot.slotIndex];
-      if (existing !== undefined) {
-        continue; // already mapped (even if null — that's an explicit clear)
-      }
-      const defEntry = definitions[slot.sourceId];
-      if (!defEntry?.definition) {
-        continue; // definition not loaded yet
-      }
-      let group = unmappedBySource.get(slot.sourceId);
-      if (!group) {
-        group = { slotIndices: [], definition: defEntry.definition };
-        unmappedBySource.set(slot.sourceId, group);
-      }
-      group.slotIndices.push(slot.slotIndex);
-    }
-
-    if (unmappedBySource.size === 0) {
-      return tab;
-    }
-
-    // Build stored-tab representation for matching.
-    const activeMappings: Record<number, string> = {};
-    for (const [key, value] of getObjectEntries(tab.dimensionMapping)) {
-      if (value != null) {
-        activeMappings[Number(key)] = value;
-      }
-    }
-    const storedTab: StoredMetricsViewerTab = {
-      id: tab.id,
-      type: tab.type,
-      label: tab.label,
-      dimensionBySlotIndex: activeMappings,
-    };
-
-    let newMappings: Record<number, string> | null = null;
-
-    for (const [sourceId, { slotIndices, definition }] of unmappedBySource) {
-      const existingDefinitions = objectFromEntries(
-        Object.values(definitions)
-          .filter((entry) => entry.id !== sourceId && entry.definition != null)
-          .map((entry) => [entry.id, entry.definition] as const),
-      );
-
-      const matchingDimension = findMatchingDimensionForTab(
-        definition,
-        storedTab,
-        existingDefinitions,
-        slotIndexToSourceId,
-      );
-
-      if (matchingDimension) {
-        if (!newMappings) {
-          newMappings = {};
-        }
-        for (const idx of slotIndices) {
-          newMappings[idx] = matchingDimension;
-        }
-      }
-    }
-
-    if (!newMappings) {
-      return tab;
-    }
-
-    return {
-      ...tab,
-      dimensionMapping: {
-        ...tab.dimensionMapping,
-        ...newMappings,
-      },
-    };
-  });
-}
-
-function areTabDimensionsValid(tab: MetricsViewerTabState): boolean {
-  const tabConfig = getTabConfig(tab.type);
-  return (
-    Object.values(tab.dimensionMapping).filter(isNotNull).length >=
-    tabConfig.minDimensions
-  );
-}
-
-export interface UseViewerStateResult {
-  state: MetricsViewerPageState;
-  loadingIds: Set<MetricSourceId>;
-  initialLoadComplete: boolean;
-  setInitialLoadComplete: (initialLoadComplete: boolean) => void;
-
-  removeDefinition: (id: MetricSourceId) => void;
-  updateDefinition: (id: MetricSourceId, definition: MetricDefinition) => void;
-  setFormulaEntities: (
-    entities: MetricsViewerFormulaEntity[],
-    slotMapping?: Map<number, number>,
-  ) => void;
-
-  selectTab: (tabId: string) => void;
-  addTab: (tab: MetricsViewerTabState) => void;
-  removeTab: (tabId: string) => void;
-  updateTab: (tabId: string, updates: Partial<MetricsViewerTabState>) => void;
-  setDefinitionDimension: (
-    tabId: string,
-    slotIndex: number,
-    dimension: DimensionMetadata,
-  ) => void;
-  removeDefinitionDimension: (tabId: string, slotIndex: number) => void;
-  setBreakoutDimension: (
-    entity: MetricDefinitionEntry,
-    dimension: ProjectionClause | undefined,
-  ) => void;
-
-  initialize: (state: MetricsViewerPageState) => void;
-  loadAndAddMetric: (
-    metricId: MetricId,
-    transform?: (def: MetricDefinition) => MetricDefinition,
-  ) => void;
-  loadAndAddMeasure: (
-    measureId: MeasureId,
-    transform?: (def: MetricDefinition) => MetricDefinition,
-  ) => void;
-  loadAndReplaceMetric: (
-    oldSourceId: MetricSourceId,
-    metricId: MetricId,
-  ) => void;
-  loadAndReplaceMeasure: (
-    oldSourceId: MetricSourceId,
-    measureId: MeasureId,
-  ) => void;
-}
-
-export function useViewerState(): UseViewerStateResult {
+export function useViewerState({
+  location,
+}: MetricsViewerPageProps): UseViewerStateResult {
   const dispatch = useDispatch();
   const store = useStore();
 
@@ -266,6 +102,8 @@ export function useViewerState(): UseViewerStateResult {
   const [loadingIds, setLoadingIds] = useState<Set<MetricSourceId>>(new Set());
 
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isSidebarOpen, { open: openSidebar, close: closeSidebar }] =
+    useDisclosure(false);
 
   const initialize: (newState: MetricsViewerPageState) => void = setState;
 
@@ -298,34 +136,39 @@ export function useViewerState(): UseViewerStateResult {
           slots.filter((s) => s.sourceId === id).map((s) => s.slotIndex),
         );
 
-        const newTabs =
-          // scalar tab is always valid, but we want to remove it if there are no definitions
-          // so that adding a new definition triggers computeDefaultTabs
+        const newDimensionBreakouts =
+          // scalar dimension breakout is always valid, but we want to remove it if there are no definitions
+          // so that adding a new definition triggers computeDefaultDimensionBreakouts
           Object.keys(newDefinitions).length === 0
             ? []
-            : prev.tabs
-                .map((tab) => {
+            : prev.dimensionBreakouts
+                .map((dimensionBreakout) => {
                   // Remove entries for removed slot indices.
                   // Don't shift — remapDimensionMappings handles that
                   // when formulaEntities are updated separately.
                   const newMapping: Record<number, string | null> = {};
                   for (const [key, value] of getObjectEntries(
-                    tab.dimensionMapping,
+                    dimensionBreakout.dimensionMapping,
                   )) {
                     const idx = Number(key);
                     if (!removedSlotIndices.has(idx)) {
                       newMapping[idx] = value;
                     }
                   }
-                  return { ...tab, dimensionMapping: newMapping };
+                  return { ...dimensionBreakout, dimensionMapping: newMapping };
                 })
-                .filter((tab) => areTabDimensionsValid(tab));
+                .filter((dimensionBreakout) =>
+                  areDimensionBreakoutDimensionsValid(dimensionBreakout),
+                );
 
         return {
           ...prev,
           definitions: newDefinitions,
-          tabs: newTabs,
-          selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
+          dimensionBreakouts: newDimensionBreakouts,
+          selectedDimensionBreakoutId: getValidSelectedDimensionBreakoutId(
+            prev.selectedDimensionBreakoutId,
+            newDimensionBreakouts,
+          ),
         };
       }),
     [],
@@ -344,23 +187,29 @@ export function useViewerState(): UseViewerStateResult {
           [id]: { ...existing, definition },
         };
 
-        if (prev.tabs.length === 0) {
+        if (prev.dimensionBreakouts.length === 0) {
           return { ...prev, definitions: newDefinitions };
         }
 
-        const updatedTabs = assignDimensionsForUnmappedSlots(
-          prev.tabs,
+        const updatedDimensionBreakouts = assignDimensionsForUnmappedSlots(
+          prev.dimensionBreakouts,
           newDefinitions,
           prev.formulaEntities,
         );
 
-        const newTabs = updatedTabs.filter((tab) => areTabDimensionsValid(tab));
+        const newDimensionBreakouts = updatedDimensionBreakouts.filter(
+          (dimensionBreakout) =>
+            areDimensionBreakoutDimensionsValid(dimensionBreakout),
+        );
 
         return {
           ...prev,
           definitions: newDefinitions,
-          tabs: newTabs,
-          selectedTabId: getValidSelectedTabId(prev.selectedTabId, newTabs),
+          dimensionBreakouts: newDimensionBreakouts,
+          selectedDimensionBreakoutId: getValidSelectedDimensionBreakoutId(
+            prev.selectedDimensionBreakoutId,
+            newDimensionBreakouts,
+          ),
         };
       }),
     [],
@@ -402,129 +251,74 @@ export function useViewerState(): UseViewerStateResult {
         );
 
         // Remove dimension mappings for replaced slot indices (new metric has different dimensions)
-        const newTabs = prev.tabs.map((tab) => {
-          const newMapping = { ...tab.dimensionMapping };
-          for (const idx of replacedSlotIndices) {
-            delete newMapping[idx];
-          }
-          return { ...tab, dimensionMapping: newMapping };
-        });
+        const newDimensionBreakouts = prev.dimensionBreakouts.map(
+          (dimensionBreakout) => {
+            const newMapping = { ...dimensionBreakout.dimensionMapping };
+            for (const idx of replacedSlotIndices) {
+              delete newMapping[idx];
+            }
+            return { ...dimensionBreakout, dimensionMapping: newMapping };
+          },
+        );
 
         return {
           ...prev,
           definitions: newDefinitions,
           formulaEntities: newFormulaEntities,
-          tabs: newTabs,
+          dimensionBreakouts: newDimensionBreakouts,
         };
       }),
     [],
   );
 
-  const selectTab = useCallback(
-    (tabId: string) => setState((prev) => ({ ...prev, selectedTabId: tabId })),
+  const selectDimensionBreakoutById = useCallback(
+    (dimensionBreakoutId: string) =>
+      setState((prev) => ({
+        ...prev,
+        selectedDimensionBreakoutId: dimensionBreakoutId,
+      })),
     [],
   );
 
-  const addTab = useCallback(
-    (tab: MetricsViewerTabState) =>
+  const addDimensionBreakout = useCallback(
+    (dimensionBreakout: MetricsViewerDimensionBreakoutState) =>
       setState((prev) => {
-        if (prev.tabs.some((existing) => existing.id === tab.id)) {
+        if (
+          prev.dimensionBreakouts.some(
+            (existing) => existing.id === dimensionBreakout.id,
+          )
+        ) {
           return prev;
         }
-        const newTabs = assignDimensionsForUnmappedSlots(
-          [...prev.tabs, tab],
+        const newDimensionBreakouts = assignDimensionsForUnmappedSlots(
+          [...prev.dimensionBreakouts, dimensionBreakout],
           prev.definitions,
           prev.formulaEntities,
         );
         return {
           ...prev,
-          tabs: newTabs,
-          selectedTabId:
-            prev.selectedTabId == null ? tab.id : prev.selectedTabId,
+          dimensionBreakouts: newDimensionBreakouts,
+          selectedDimensionBreakoutId:
+            prev.selectedDimensionBreakoutId == null
+              ? dimensionBreakout.id
+              : prev.selectedDimensionBreakoutId,
         };
       }),
     [],
   );
 
-  const removeTab = useCallback(
-    (tabId: string) =>
-      setState((prev) => {
-        const newTabs = prev.tabs.filter((tab) => tab.id !== tabId);
-        const needsTabSwitch = prev.selectedTabId === tabId;
-
-        return {
-          ...prev,
-          tabs: newTabs,
-          selectedTabId: needsTabSwitch
-            ? (newTabs[0]?.id ?? null)
-            : prev.selectedTabId,
-        };
-      }),
-    [],
-  );
-
-  const updateTab = useCallback(
-    (tabId: string, updates: Partial<MetricsViewerTabState>) =>
+  const updateDimensionBreakout = useCallback(
+    (
+      dimensionBreakoutId: string,
+      updates: Partial<MetricsViewerDimensionBreakoutState>,
+    ) =>
       setState((prev) => ({
         ...prev,
-        tabs: prev.tabs.map((tab) =>
-          tab.id === tabId ? { ...tab, ...updates } : tab,
+        dimensionBreakouts: prev.dimensionBreakouts.map((dimensionBreakout) =>
+          dimensionBreakout.id === dimensionBreakoutId
+            ? { ...dimensionBreakout, ...updates }
+            : dimensionBreakout,
         ),
-      })),
-    [],
-  );
-
-  const setDefinitionDimension = useCallback(
-    (tabId: string, slotIndex: number, dimension: DimensionMetadata) =>
-      setState((prev) => {
-        const slots = computeMetricSlots(prev.formulaEntities);
-        const slot = slots[slotIndex];
-        if (!slot) {
-          return prev;
-        }
-
-        const entry = prev.definitions[slot.sourceId];
-        const def = entry?.definition;
-        const dimId = def
-          ? LibMetric.dimensionValuesInfo(def, dimension).id
-          : undefined;
-
-        if (!dimId) {
-          return prev;
-        }
-
-        return {
-          ...prev,
-          tabs: prev.tabs.map((tab) => {
-            if (tab.id !== tabId) {
-              return tab;
-            }
-            return {
-              ...tab,
-              dimensionMapping: {
-                ...tab.dimensionMapping,
-                [slotIndex]: dimId,
-              },
-            };
-          }),
-        };
-      }),
-    [],
-  );
-
-  const removeDefinitionDimension = useCallback(
-    (tabId: string, slotIndex: number) =>
-      setState((prev) => ({
-        ...prev,
-        tabs: prev.tabs.map((tab) => {
-          if (tab.id !== tabId) {
-            return tab;
-          }
-          return {
-            ...tab,
-            dimensionMapping: { ...tab.dimensionMapping, [slotIndex]: null },
-          };
-        }),
       })),
     [],
   );
@@ -538,20 +332,24 @@ export function useViewerState(): UseViewerStateResult {
         // When a slotMapping is provided (from commitAndCollapse or
         // handleRemoveItem), use it to remap dimension mappings efficiently.
         // Otherwise the caller is not changing entity structure (paren cleanup,
-        // filter/breakout changes, URL restore) so tabs are kept as-is.
-        const reconciledTabs = slotMapping
-          ? remapDimensionMappings(prev.tabs, slotMapping, formulaEntities)
-          : prev.tabs;
-        let tabs = assignDimensionsForUnmappedSlots(
-          reconciledTabs,
+        // filter/breakout changes, URL restore) so dimensionBreakouts are kept as-is.
+        const reconciledDimensionBreakouts = slotMapping
+          ? remapDimensionMappings(
+              prev.dimensionBreakouts,
+              slotMapping,
+              formulaEntities,
+            )
+          : prev.dimensionBreakouts;
+        let dimensionBreakouts = assignDimensionsForUnmappedSlots(
+          reconciledDimensionBreakouts,
           prev.definitions,
           formulaEntities,
         );
 
-        // When tabs are empty (e.g. all metrics were removed then one was
-        // added back), generate default tabs now that formulaEntities includes
+        // When dimensionBreakouts are empty (e.g. all metrics were removed then one was
+        // added back), generate default dimensionBreakouts now that formulaEntities includes
         // the new metric and its definition may already be loaded.
-        if (tabs.length === 0) {
+        if (dimensionBreakouts.length === 0) {
           const metricSlots = computeMetricSlots(formulaEntities);
           if (metricSlots.length > 0) {
             const definitionsBySourceId: Record<
@@ -562,14 +360,23 @@ export function useViewerState(): UseViewerStateResult {
               definitionsBySourceId[id as MetricSourceId] =
                 entry.definition ?? null;
             }
-            tabs = computeDefaultTabs(definitionsBySourceId, metricSlots);
+            dimensionBreakouts = computeDefaultDimensionBreakouts(
+              definitionsBySourceId,
+              metricSlots,
+            );
           }
+        }
+
+        let selectedDimensionBreakoutId = prev.selectedDimensionBreakoutId;
+        if (selectedDimensionBreakoutId == null) {
+          selectedDimensionBreakoutId = dimensionBreakouts[0]?.id ?? null;
         }
 
         return {
           ...prev,
           formulaEntities,
-          tabs,
+          dimensionBreakouts,
+          selectedDimensionBreakoutId,
         };
       }),
     [],
@@ -652,7 +459,7 @@ export function useViewerState(): UseViewerStateResult {
               : rawDefinition;
             updateDefinition(id, definition);
 
-            if (stateRef.current.tabs.length === 0) {
+            if (stateRef.current.dimensionBreakouts.length === 0) {
               const definitions: Record<
                 MetricSourceId,
                 MetricDefinition | null
@@ -662,9 +469,12 @@ export function useViewerState(): UseViewerStateResult {
               const metricSlots = computeMetricSlots(
                 stateRef.current.formulaEntities,
               );
-              const tabs = computeDefaultTabs(definitions, metricSlots);
-              for (const tab of tabs) {
-                addTab(tab);
+              const dimensionBreakouts = computeDefaultDimensionBreakouts(
+                definitions,
+                metricSlots,
+              );
+              for (const dimensionBreakout of dimensionBreakouts) {
+                addDimensionBreakout(dimensionBreakout);
               }
             }
           } finally {
@@ -676,7 +486,13 @@ export function useViewerState(): UseViewerStateResult {
         clearLoading(id);
       }
     },
-    [addDefinition, updateDefinition, removeDefinition, addTab, clearLoading],
+    [
+      addDefinition,
+      updateDefinition,
+      removeDefinition,
+      addDimensionBreakout,
+      clearLoading,
+    ],
   );
 
   const loadAndReplace = useCallback(
@@ -811,28 +627,172 @@ export function useViewerState(): UseViewerStateResult {
     }
   }, [state.definitions, state.formulaEntities, setFormulaEntities]);
 
-  return {
+  const handleLoadSources = useCallback(
+    (request: LoadSourcesRequest) => {
+      for (const metricId of request.metricIds) {
+        loadAndAddMetric(metricId);
+      }
+      for (const measureId of request.measureIds) {
+        loadAndAddMeasure(measureId);
+      }
+    },
+    [loadAndAddMetric, loadAndAddMeasure],
+  );
+
+  useViewerUrl(
     state,
-    loadingIds,
-    initialLoadComplete,
-    setInitialLoadComplete,
-
-    removeDefinition,
-    updateDefinition,
-    setFormulaEntities,
-
-    selectTab,
-    addTab,
-    removeTab,
-    updateTab,
-    setDefinitionDimension,
-    removeDefinitionDimension,
-    setBreakoutDimension,
-
     initialize,
-    loadAndAddMetric,
-    loadAndAddMeasure,
-    loadAndReplaceMetric,
-    loadAndReplaceMeasure,
-  };
+    handleLoadSources,
+    location,
+    setFormulaEntities,
+    setInitialLoadComplete,
+  );
+
+  const derivedData = useViewerDerivedData({
+    definitions: state.definitions,
+    formulaEntities: state.formulaEntities,
+    dimensionBreakouts: state.dimensionBreakouts,
+    selectedDimensionBreakoutId: state.selectedDimensionBreakoutId,
+    loadingIds,
+  });
+
+  const addMetric = useCallback(
+    (metric: SelectedMetric) => {
+      const sourceId = createSourceId(metric.id, metric.sourceType);
+
+      if (sourceId in state.definitions) {
+        return;
+      }
+
+      if (metric.sourceType === "metric") {
+        loadAndAddMetric(metric.id);
+      } else {
+        loadAndAddMeasure(metric.id);
+      }
+    },
+    [state.definitions, loadAndAddMetric, loadAndAddMeasure],
+  );
+
+  const swapMetric = useCallback(
+    (oldMetric: SelectedMetric, newMetric: SelectedMetric) => {
+      const oldSourceId = createSourceId(oldMetric.id, oldMetric.sourceType);
+
+      if (newMetric.sourceType === "metric") {
+        loadAndReplaceMetric(oldSourceId, newMetric.id);
+      } else {
+        loadAndReplaceMeasure(oldSourceId, newMetric.id);
+      }
+    },
+    [loadAndReplaceMetric, loadAndReplaceMeasure],
+  );
+
+  const removeMetric = useCallback(
+    (id: number, sourceType: "metric" | "measure") => {
+      removeDefinition(createSourceId(id, sourceType));
+    },
+    [removeDefinition],
+  );
+
+  const selectDimensionBreakout = useCallback(
+    (
+      dimensionBreakoutInfo: DimensionBreakoutInfo,
+      options?: { updateExisting?: boolean },
+    ) => {
+      const newDimensionBreakout = createDimensionBreakoutFromInfo(
+        dimensionBreakoutInfo,
+      );
+      if (!newDimensionBreakout) {
+        return;
+      }
+
+      if (options?.updateExisting) {
+        setState((prev) => {
+          const existingDimensionBreakout = prev.dimensionBreakouts.find(
+            (dimensionBreakout) =>
+              dimensionBreakout.id === newDimensionBreakout.id,
+          );
+          const dimensionBreakouts = existingDimensionBreakout
+            ? prev.dimensionBreakouts.map((dimensionBreakout) =>
+                dimensionBreakout.id === newDimensionBreakout.id
+                  ? {
+                      ...dimensionBreakout,
+                      label: newDimensionBreakout.label,
+                      dimensionMapping: newDimensionBreakout.dimensionMapping,
+                    }
+                  : dimensionBreakout,
+              )
+            : assignDimensionsForUnmappedSlots(
+                [...prev.dimensionBreakouts, newDimensionBreakout],
+                prev.definitions,
+                prev.formulaEntities,
+              );
+
+          return {
+            ...prev,
+            dimensionBreakouts,
+            selectedDimensionBreakoutId: newDimensionBreakout.id,
+          };
+        });
+        return;
+      }
+
+      addDimensionBreakout(newDimensionBreakout);
+      selectDimensionBreakoutById(newDimensionBreakout.id);
+    },
+    [addDimensionBreakout, selectDimensionBreakoutById],
+  );
+
+  const updateActiveDimensionBreakout = useCallback(
+    (updates: Partial<MetricsViewerDimensionBreakoutState>) => {
+      if (!derivedData.activeDimensionBreakout) {
+        return;
+      }
+      updateDimensionBreakout(derivedData.activeDimensionBreakout.id, updates);
+    },
+    [derivedData.activeDimensionBreakout, updateDimensionBreakout],
+  );
+
+  const setShowColumnLabels = useCallback((showColumnLabels: boolean) => {
+    setState((prev) => ({ ...prev, showColumnLabels }));
+  }, []);
+
+  return useMemo(
+    () => ({
+      definitions: state.definitions,
+      formulaEntities: state.formulaEntities,
+      showColumnLabels: state.showColumnLabels,
+      ...derivedData,
+      initialLoadComplete,
+      isSidebarOpen,
+      openSidebar,
+      closeSidebar,
+
+      addMetric,
+      swapMetric,
+      removeMetric,
+      selectDimensionBreakout,
+      updateActiveDimensionBreakout,
+      setShowColumnLabels,
+      setBreakoutDimension,
+      setFormulaEntities,
+    }),
+    [
+      state.definitions,
+      state.formulaEntities,
+      state.showColumnLabels,
+      derivedData,
+      initialLoadComplete,
+      isSidebarOpen,
+      openSidebar,
+      closeSidebar,
+      addMetric,
+      swapMetric,
+      removeMetric,
+      selectDimensionBreakout,
+      updateActiveDimensionBreakout,
+      setShowColumnLabels,
+      setBreakoutDimension,
+      setFormulaEntities,
+    ],
+  );
 }

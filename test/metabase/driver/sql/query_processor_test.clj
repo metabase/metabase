@@ -1280,6 +1280,13 @@
       -- c3"
       "(SELECT ';')")))
 
+(deftest ^:parallel make-nestable-sql-no-superlinear-backtracking-test
+  (testing "Stripping trailing comments/semicolons completes in linear time, without catastrophic backtracking"
+    (let [sql (str "SELECT 1;\n"
+                   (apply str (repeat 20000 "-- a comment line\n"))
+                   "SELECT 2")]
+      (is (= (str "(" sql ")") (sql.qp/make-nestable-sql sql))))))
+
 (deftest ^:parallel string-inline-value-test
   (testing `String
     (let [honeysql {:select [[:%count.*]]
@@ -1690,3 +1697,75 @@
              (->> (qp/process-query query)
                   (mt/formatted-rows [identity int])
                   (map second)))))))
+
+(deftest ^:parallel multiple-aggregations-on-the-same-column-test
+  (testing "Multiple breakouts against the same column with different bucketing should produce correct SQL (#68701, QUE2-72)"
+    (let [mp    meta/metadata-provider
+          query (-> (lib/query mp (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (-> (meta/field-metadata :orders :created-at)
+                                      (lib/with-temporal-bucket :day)))
+                    lib/append-stage
+                    (as-> $query (lib/aggregate $query (lib/avg (lib.tu.notebook/find-col-with-spec
+                                                                 $query
+                                                                 (lib/aggregable-columns $query nil)
+                                                                 {}
+                                                                 {:display-name "Count"}))))
+                    (as-> $query (let [created-at (lib.tu.notebook/find-col-with-spec
+                                                   $query
+                                                   (lib/breakoutable-columns $query)
+                                                   {}
+                                                   {:display-name "Created At: Day"})]
+                                   (-> $query
+                                       (lib/breakout (lib/with-temporal-bucket created-at :day-of-month))
+                                       (lib/breakout (lib/with-temporal-bucket created-at :month)))))
+                    lib/append-stage
+                    (as-> $query (lib/aggregate $query (lib/avg (lib.tu.notebook/find-col-with-spec
+                                                                 $query
+                                                                 (lib/aggregable-columns $query nil)
+                                                                 {}
+                                                                 {:display-name "Average of Count"})))))]
+      (is (= ["SELECT"
+              "  AVG(__mb_source.avg) AS avg"
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ) AS CREATED_AT,"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) AS CREATED_AT_2," ; <= this should be `CREATED_AT_2`, not a repeat of `CREATED_AT`
+              "      AVG(__mb_source.count) AS avg"
+              "    FROM"
+              "      ("
+              "        SELECT"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) AS CREATED_AT,"
+              "          COUNT(*) AS count"
+              "        FROM"
+              "          PUBLIC.ORDERS"
+              "        GROUP BY"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date)"
+              "        ORDER BY"
+              "          CAST(PUBLIC.ORDERS.CREATED_AT AS date) ASC"
+              "      ) AS __mb_source"
+              "    GROUP BY"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ),"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT)"
+              "    ORDER BY"
+              "      extract("
+              "        day"
+              "        from"
+              "          __mb_source.CREATED_AT"
+              "      ) ASC,"
+              "      DATE_TRUNC('month', __mb_source.CREATED_AT) ASC"
+              "  ) AS __mb_source"]
+             (-> (qp.compile/compile query)
+                 :query
+                 (->> (driver/prettify-native-form :h2))
+                 (str/replace #"\"" "")
+                 str/split-lines))))))

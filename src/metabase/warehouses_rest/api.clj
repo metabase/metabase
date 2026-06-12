@@ -335,6 +335,7 @@
                    :is-superuser? (mi/superuser?)
                    :is-data-analyst? api/*is-data-analyst?*}
         base-where [:and
+                    [:= :is_stub false]
                     (when-not include-analytics?
                       [:= :is_audit false])
                     (if filter-on-router-database-id

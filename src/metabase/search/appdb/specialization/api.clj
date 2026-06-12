@@ -38,3 +38,9 @@
   "Calculate the given p-value of view counts for each search model"
   {:arglists '([index-table p-value])}
   db-type)
+
+(defmulti index-size-estimate
+  "An estimated row count for the index `table-name`, ideally without scanning the whole table (used for the
+  `metabase_search_appdb_index_size` metric, which is scraped frequently)."
+  {:arglists '([table-name])}
+  db-type)

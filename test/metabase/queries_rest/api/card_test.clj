@@ -2852,7 +2852,7 @@
           (is (verified? card))
           (is (=? {:dataset_query {:stages [{:source-table pos-int?}]}}
                   card))
-          (update-card card (update-in card [:dataset_query :stages 0 :source-table] inc))
+          (update-card card (assoc-in card [:dataset_query :stages 0 :source-table] (mt/id :checkins)))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"

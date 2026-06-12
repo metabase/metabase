@@ -5,7 +5,6 @@ import type {
   AdminNotificationDetail,
   CardId,
   NotificationChannelType,
-  NotificationHandlerHttp,
   NotificationId,
   NotificationRunSummary,
   NotificationTickSendEntry,
@@ -42,7 +41,7 @@ export type DetailsSectionProps = {
   notification: AdminNotification;
   emailRecipientCount: number;
   slackChannelCount: number;
-  httpHandler: NotificationHandlerHttp | undefined;
+  webhookCount: number;
 };
 
 export type NotificationRunSummaryLogProps = {

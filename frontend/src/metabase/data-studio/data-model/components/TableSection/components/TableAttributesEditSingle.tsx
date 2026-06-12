@@ -48,6 +48,9 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           owner_email: table.owner_email,
           owner_user_id: table.owner_user_id,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }
@@ -74,6 +77,9 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
           owner_email: table.owner_email,
           owner_user_id: table.owner_user_id,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }
@@ -92,11 +98,15 @@ export function TableAttributesEditSingle({ table, onUpdate }: Props) {
     if (error) {
       sendErrorToast(t`Failed to update table visibility layer`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table visibility layer updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
           data_layer: table.data_layer,
         });
+        if (!error) {
+          onUpdate();
+        }
         sendUndoToast(error);
       });
     }

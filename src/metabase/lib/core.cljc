@@ -100,6 +100,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.referenced-columns :as lib.referenced-columns]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -210,6 +211,7 @@
          lib.query/keep-me
          lib.query.test-spec/keep-me
          lib.ref/keep-me
+         lib.referenced-columns/keep-me
          lib.remove-replace/keep-me
          lib.schema/keep-me
          metabase.lib.schema.util/keep-me
@@ -671,6 +673,17 @@
     stage-number :- :int]
    (lib.filter/filters a-query stage-number)))
 
+(mu/defn atomic-filters :- [:maybe [:ref ::lib.schema/filters]]
+  "Like [[filters]], but with any top-level `:and` clauses recursively flattened so the result is a
+  list of atomic (non-`:and`) boolean filter clauses. The conjunction of the returned list is
+  logically equivalent to the conjunction of [[filters]].
+
+  **Code Health:** Healthy. This is a core API."
+  ([a-query] (atomic-filters a-query -1))
+  ([a-query      :- ::lib.schema/query
+    stage-number :- :int]
+   (lib.filter/atomic-filters a-query stage-number)))
+
 (mu/defn filterable-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Returns column metadata for all the columns that could be used for filtering on the target stage of `a-query`.
 
@@ -795,6 +808,14 @@
   ([a-query      :- ::lib.schema/query
     stage-number :- :int]
    (lib.join/joins a-query stage-number)))
+
+(mu/defn joined-thing :- [:maybe ::lib.join/joinable]
+  "Return metadata about the origin of `a-join` (the joined Table or Card).
+
+  **Code Health:** Healthy. This is a core API."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   a-join                :- ::lib.join.util/partial-join]
+  (lib.join/joined-thing metadata-providerable a-join))
 
 ;;; ### Join Strategies
 
@@ -1017,6 +1038,20 @@
   [a-join :- ::lib.join.util/partial-join
    fields :- [:maybe [:or [:enum :all :none] [:sequential some?]]]] ;; TODO: More precise schema.
   (lib.join/with-join-fields a-join fields))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]].
+
+  **Code Health:** Healthy. This is a core API."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (lib.join/with-join-source-fields a-join cols))
 
 (mu/defn join-fieldable-columns :- ::lib.metadata.calculation/visible-columns
   "Returns the list of column metadata for the columns which are *visible* on the RHS of `a-joinable`, such as a table,
@@ -1543,6 +1578,8 @@
   field-ref-id
   field-ref-name
   ref]
+ [lib.referenced-columns
+  referenced-columns]
  [lib.remove-replace
   remove-clause
   remove-join
@@ -1603,8 +1640,10 @@
   duplicate-column-error
   find-bad-refs
   find-bad-refs-with-source
+  missing-card-error
   missing-column-error
   missing-table-alias-error
+  missing-table-error
   syntax-error
   validation-exception-error]
  [metabase.lib.walk.util

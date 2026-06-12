@@ -63,15 +63,15 @@ import {
   PLUGIN_TENANTS,
   PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
+  PerformanceTabId,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getTokenFeature } from "metabase/setup";
+import { getTokenFeature } from "metabase/selectors/settings";
 
 import { AISettingsPage, McpSettingsPage } from "./ai/AISettingsPage";
 import { MetabotAdminLayout } from "./ai/MetabotAdminLayout";
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
-import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsApp } from "./tools/components/ToolsApp";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
@@ -102,7 +102,7 @@ export const getRoutes = (
           </Route>
           <Route path=":databaseId/edit" component={DatabasePage} />
           {PLUGIN_WRITABLE_CONNECTION.getWritableConnectionInfoRoutes(IsAdmin)}
-          {PLUGIN_WORKSPACES.getAdminConnectionInfoRoutes(IsAdmin)}
+          {PLUGIN_WORKSPACES.getWorkspaceDatabaseRoutes(IsAdmin)}
           <Route path=":databaseId" component={DatabaseEditApp}>
             {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
           </Route>

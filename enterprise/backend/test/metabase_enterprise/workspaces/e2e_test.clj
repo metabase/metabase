@@ -30,6 +30,7 @@
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -91,6 +92,19 @@
    inside the driver's `grant!` impl; only the schema is supplied here."
   [_driver _admin-details main-schema]
   main-schema)
+
+(defn- add-database!
+  "Test helper: insert a WorkspaceDatabase row for `workspace-id` and provision it
+   (blocking). Replaces the removed production add-database! for test setup."
+  [workspace-id database-id input-schemas]
+  (t2/with-transaction [_conn]
+    (let [wsd-id (t2/insert-returning-pk! :model/WorkspaceDatabase
+                                          {:workspace_id     workspace-id
+                                           :database_id      database-id
+                                           :input_schemas    input-schemas
+                                           :database_details {}
+                                           :output_namespace ""})]
+      (provisioning/provision-single! wsd-id))))
 
 ;;; -------------------- driver-branched helpers --------------------
 ;;;
@@ -338,27 +352,13 @@
                     (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-e2e-" run-id)
                                                              :creator_id (mt/user->id :crowberto)})]
                       (try
-                        ;; --- Pre-cleanup: delete any stale BigQuery service account whose
-                        ;; name collides with the one provisioning will create. In CI the
-                        ;; app DB is fresh each run so workspace IDs restart at 1, but the
-                        ;; shared GCP project may still hold `mb-ws-1` from a prior run.
-                        ;; A stale SA carries outdated IAM bindings; reusing it causes
-                        ;; `listDatasets` under impersonation to return empty within the
-                        ;; wait window, triggering "cannot find any matching datasets".
-                        (when (= admin-driver :bigquery-cloud-sdk)
-                          (let [iam ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/iam-client) admin-details)
-                                pid ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/project-id) admin-details)]
-                            (try
-                              ((requiring-resolve 'metabase.driver.bigquery-cloud-sdk.workspace-test-util/delete-sa-direct!)
-                               iam pid {:id ws-id})
-                              (finally (.close ^java.lang.AutoCloseable iam)))))
                         ;; --- Stage 1: provision via the workspace provisioning entrypoint.
                         ;; Drives the same `init-workspace-isolation!` + `grant-workspace-read-access!`
                         ;; multimethods, but through `provisioning/provision-single!`, which writes
                         ;; the resulting `:database_details` and `:output_namespace` back to the
                         ;; `WorkspaceDatabase` row — the inputs `build-workspace-config` reads.
-                        (ws/add-database! ws-id (:id ws-db)
-                                          [(workspace-input-schema admin-driver admin-details main-schema)])
+                        (add-database! ws-id (:id ws-db)
+                                       [(workspace-input-schema admin-driver admin-details main-schema)])
                         ;; Sanity check: provisioning must have populated :output_namespace and flipped
                         ;; status to :provisioned. If empty, the workspace driver impl is broken.
                         (let [wsd (-> (ws/get-workspace ws-id) :databases first)]
@@ -728,8 +728,8 @@
               (let [{ws-id :id} (ws/create-workspace! {:name       (str "ws-native-repro-" run-id)
                                                        :creator_id (mt/user->id :crowberto)})]
                 (try
-                  (ws/add-database! ws-id (:id ws-db)
-                                    [(workspace-input-schema admin-driver admin-details main-schema)])
+                  (add-database! ws-id (:id ws-db)
+                                 [(workspace-input-schema admin-driver admin-details main-schema)])
                   (let [cfg-map  (ws.config/build-workspace-config ws-id)
                         yaml-str (ws.config/config->yaml cfg-map)
                         reparsed (yaml/parse-string yaml-str)]

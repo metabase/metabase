@@ -8,6 +8,8 @@
 
 set -euo pipefail
 
+unset CDPATH
+
 # Check if mise was already active in the parent shell before we do anything
 MISE_WAS_ACTIVE="${MISE_SHELL:-}"
 

@@ -12,7 +12,6 @@ import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
-  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
@@ -40,6 +39,7 @@ import type {
   CollectionPermissionsGraph,
   GroupId,
   GroupsPermissions,
+  PermissionEntityId,
   PermissionsGraph,
 } from "metabase-types/api";
 
@@ -48,7 +48,6 @@ import {
   DataPermission,
   DataPermissionType,
   type DataPermissionValue,
-  type EntityId,
   type PermissionSectionConfig,
 } from "./types";
 import {
@@ -191,7 +190,7 @@ export interface UpdateDataPermissionParams {
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   view: "database" | "group";
 }
 interface UpdateDataPermissionPayload {
@@ -202,7 +201,7 @@ interface UpdateDataPermissionPayload {
   >;
   value: DataPermissionValue;
   metadata: Metadata;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
 }
 export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
@@ -638,17 +637,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
         );
       }
 
-      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
-        return updatePermission(
-          state,
-          groupId,
-          entityId.databaseId,
-          DataPermission.WORKSPACES,
-          [],
-          value,
-        );
-      }
-
       if (
         permissionInfo.type === DataPermissionType.NATIVE &&
         PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -673,14 +661,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
-        state,
-        groupId,
-        entityId,
-        permissionInfo.permission,
-        value,
-      );
-
-      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,
