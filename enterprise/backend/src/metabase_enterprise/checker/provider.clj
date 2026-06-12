@@ -330,12 +330,13 @@
            (->field-metadata (make-import-resolver store nil) data))
 
          table-id
-         (let [table-path (store/id->ref store :table table-id)]
-           (when table-path
-             (for [fpath (store/fields-for-table store table-path)
-                   :let [data (store/load-field! store fpath)]
-                   :when data]
-               (->field-metadata (make-import-resolver store nil) data))))
+         (for [table-id  table-id
+               :let      [table-path (store/id->ref store :table table-id)]
+               :when     table-path
+               fpath     (store/fields-for-table store table-path)
+               :let      [data (store/load-field! store fpath)]
+               :when     data]
+           (->field-metadata (make-import-resolver store nil) data))
 
          :else
          (for [path (store/all-field-paths store)

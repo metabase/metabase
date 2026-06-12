@@ -21,13 +21,13 @@
   (let [objects (case metadata-type
                   :metadata/table   (:tables metadata-graph)
                   :metadata/column  (if table-id
-                                      (:fields (find-table metadata-graph table-id))
+                                      (mapcat #(:fields (find-table metadata-graph %)) table-id)
                                       (mapcat :fields (:tables metadata-graph)))
                   :metadata/metric  (if table-id
-                                      (:metrics (find-table metadata-graph table-id))
+                                      (mapcat #(:metrics (find-table metadata-graph %)) table-id)
                                       (mapcat :metrics (:tables metadata-graph)))
                   :metadata/segment (if table-id
-                                      (:segments (find-table metadata-graph table-id))
+                                      (mapcat #(:segments (find-table metadata-graph %)) table-id)
                                       (mapcat :segments (:tables metadata-graph)))
                   #_else
                   ;; not implemented for the simple graph metadata provider.

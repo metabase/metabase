@@ -33,12 +33,12 @@
                           :metadata/measure ::table-measures
                           :metadata/metric  ::table-metrics
                           :metadata/segment ::table-segments)]
-      (track-ids! tracker tracking-type [table-id]))
+      (track-ids! tracker tracking-type table-id))
 
     card-id
     (let [tracking-type (case metadata-type
                           :metadata/metric ::card-metrics)]
-      (track-ids! tracker tracking-type [card-id]))))
+      (track-ids! tracker tracking-type card-id))))
 
 (defn- metadatas
   [tracker metadata-provider metadata-spec]

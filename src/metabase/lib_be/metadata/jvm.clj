@@ -513,7 +513,7 @@
                                        {:closed true}
                                        [:where {:optional true} vector?]]
   "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
-  [database-id                                                                                                            :- ::lib.schema.id/database
+  [database-id                                                                                                             :- ::lib.schema.id/database
    {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
   (let [database-id-key (db-id-key metadata-type)
         active-only?    (not (or id-set name-set))
@@ -522,8 +522,8 @@
                           database-id-key        (conj [:= database-id-key database-id])
                           id-set                 (conj [:in (id-key metadata-type) id-set])
                           name-set               (conj [:in (name-key metadata-type) name-set])
-                          table-id               (conj [:= (table-id-key metadata-type) table-id])
-                          card-id                (conj [:= (card-id-key metadata-type) card-id])
+                          table-id               (conj [:in (table-id-key metadata-type) table-id])
+                          card-id                (conj [:in (card-id-key metadata-type) card-id])
                           active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
                           metric?                (conj [:= :type [:inline "metric"]])
                           (and metric? table-id) (conj [:= :source_card_id nil]))]
