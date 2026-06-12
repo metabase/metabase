@@ -1,4 +1,3 @@
-import { getEmbedBase } from "metabase/services";
 import type { CardId, DashCardId, Dataset } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -22,11 +21,11 @@ export type EmbedDashcardQueryRequest = {
 export const embedApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getEmbedCardQuery: builder.query<Dataset, EmbedCardQueryRequest>({
-      // `getEmbedBase()` is resolved per request so embed previews
-      // (`/api/preview_embed`) hit the preview endpoints.
+      // `/api/embed` is rewritten to `/api/preview_embed` by the request
+      // middleware when running inside an embed preview.
       query: ({ token, ...params }) => ({
         method: "GET",
-        url: `${getEmbedBase()}/card/${token}/query`,
+        url: `/api/embed/card/${token}/query`,
         params,
       }),
       keepUnusedDataFor: 0,
@@ -34,7 +33,7 @@ export const embedApi = Api.injectEndpoints({
     getEmbedCardQueryPivot: builder.query<Dataset, EmbedCardQueryRequest>({
       query: ({ token, ...params }) => ({
         method: "GET",
-        url: `${getEmbedBase()}/pivot/card/${token}/query`,
+        url: `/api/embed/pivot/card/${token}/query`,
         params,
       }),
       keepUnusedDataFor: 0,
@@ -42,7 +41,7 @@ export const embedApi = Api.injectEndpoints({
     getEmbedDashcardQuery: builder.query<Dataset, EmbedDashcardQueryRequest>({
       query: ({ token, dashcardId, cardId, ...params }) => ({
         method: "GET",
-        url: `${getEmbedBase()}/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`,
+        url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`,
         params,
       }),
       keepUnusedDataFor: 0,
@@ -53,7 +52,7 @@ export const embedApi = Api.injectEndpoints({
     >({
       query: ({ token, dashcardId, cardId, ...params }) => ({
         method: "GET",
-        url: `${getEmbedBase()}/pivot/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`,
+        url: `/api/embed/pivot/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}`,
         params,
       }),
       keepUnusedDataFor: 0,
