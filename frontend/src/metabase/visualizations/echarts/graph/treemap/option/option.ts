@@ -1,4 +1,5 @@
 import type { TreemapSeriesOption } from "echarts/charts";
+import { match } from "ts-pattern";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -50,6 +51,10 @@ type TreemapChartSeriesOption = TreemapSeriesOption & {
   data: TreemapSeriesNode[];
 };
 
+const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
+  label: { show: false },
+};
+
 export function getTreemapChartOption({
   tree,
   colors = getTreemapColors(tree),
@@ -64,40 +69,10 @@ export function getTreemapChartOption({
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
-  /**
-   * Column-aware formatter for the metric value, used to build the inline
-   * `"full"` block's value line (and shared with the measurement pass so the
-   * width it measures matches what renders). Defaults to `String`.
-   */
   formatValue?: (value: number) => string;
-  /**
-   * Whether the leaf tile labels render. Controlled by the
-   * `treemap.show_leaf_labels` setting; applies to the sub-group tiles in a
-   * 2-level treemap and to the top-level tiles in a 1-level treemap.
-   */
   showLeafLabels?: boolean;
-  /**
-   * Whether the top-level group header chips (the parent labels) render at the
-   * overview. Controlled by the `treemap.show_parent_labels` setting; only
-   * meaningful for a 2-level treemap (a 1-level tree has no group headers).
-   */
   showParentLabels?: boolean;
-  /**
-   * Per-leaf label layout (show + wrap width), keyed by node id, measured from
-   * the rendered tile after layout (see `model/labels.ts`). Missing ids (the
-   * first paint, before any layout exists to measure) stay hidden until the
-   * measurement pass covers them.
-   */
   labelLayout?: Record<string, TreemapLabelLayout>;
-  /**
-   * Per-group header-text visibility, keyed by group node id, measured from the
-   * rendered chip width (see `getTreemapParentLabelLayouts`). When a group maps
-   * to `false`, its header chip keeps its band but renders no text — the chip is
-   * too narrow to fit even a readable prefix of the label, so showing a one- or
-   * two-character truncation is worse than nothing. Wider chips keep the text and
-   * let ECharts ellipsis-truncate it. Missing ids default to showing the text
-   * (used for the first paint, before any layout exists to measure).
-   */
   parentLabelLayout?: Record<string, TreemapParentLabelLayout>;
   renderingContext: RenderingContext;
 }): {
@@ -105,44 +80,17 @@ export function getTreemapChartOption({
 } {
   const hasNestedChildren = tree.some(hasChildren);
 
-  // Header band labelling each top-level group at the overview. ECharts wraps
-  // `series.data` in a synthetic root, so depths are: root=0 (`levels[0]`),
-  // groups=1 (`levels[1]`), leaves=2. The header therefore goes on `levels[1]`
-  // (the groups) — NOT the series or `levels[0]`, which target the synthetic
-  // root. A root with `upperLabel.show: true` reserves its `upperLabel.height`
-  // as an empty strip across the top of the whole treemap (see
-  // `getUpperLabelHeight` in treemapLayout), so we keep the root's header off,
-  // letting the group headers start at y=0 so the rounded top corners land on
-  // them.
-  const groupUpperLabel: NonNullable<TreemapChartSeriesOption["upperLabel"]> = {
-    show: showParentLabels && !isDrilled,
-    height: groupHeader.height,
-    color: renderingContext.getColor("text-primary"),
-    fontSize: groupHeader.fontSize,
-    fontWeight: groupHeader.fontWeight,
-    lineHeight: groupHeader.height,
-    // Chip shape; the per-node `backgroundColor` (the group hue with opacity)
-    // is set in `toSeriesData`. A per-node `color: "transparent"` there hides the
-    // text of any chip too narrow to fit it, while keeping this band.
-    padding: [0, groupHeader.paddingX],
-  };
+  const groupUpperLabel = getGroupUpperLabel({
+    showParentLabels,
+    isDrilled,
+    renderingContext,
+  });
 
-  // levels[0] → synthetic root. Keep its header off so it reserves no top
-  // strip; its `gapWidth` spaces the top-level tiles apart. The gaps are
-  // filled with this node's `borderColor`; a transparent border reveals the
-  // canvas behind instead of painting white separators (which look wrong on a
-  // dark-mode background). This applies to both 1-level and 2-level treemaps —
-  // without it a 1-level treemap's tiles render flush, with no gaps.
   const rootLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
     itemStyle: { borderWidth: 0, gapWidth: 2, borderColor: "transparent" },
     upperLabel: { show: false },
   };
-  // levels[1] → the groups (2-level only). The header band lives here.
-  // `borderWidth` is kept at 0: a group's bg rect is filled with its
-  // `borderColor` (the group hue), so any borderWidth would paint a tinted
-  // frame around the group's outer edge. We only want the tint on the
-  // inter-leaf gaps, so we rely on `gapWidth` alone; the white between-group
-  // separators come from the root's `gapWidth`.
+
   const groupLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
     itemStyle: { borderWidth: 0, gapWidth: 1 },
     colorSaturation: [0.3, 0.5],
@@ -158,18 +106,9 @@ export function getTreemapChartOption({
     breadcrumb: { show: false },
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
-      // Default leaf-label visibility; per-tile overrides in `toSeriesData` can
-      // still hide an individual measured tile, but when leaf labels are turned
-      // off this hides every tile the overrides don't touch.
       show: showLeafLabels,
-      // Wrap the label to the per-tile `label.width` set in `toSeriesData`
-      // (breaking at word boundaries), and drop any lines that don't fit the
-      // tile height rather than overflowing it.
       overflow: "break",
       lineOverflow: "truncate",
-      // Rich styles for the inline `"full"` block (name / value / percentage).
-      // Defined once here and referenced by the per-tile `label.formatter`
-      // strings built in `toSeriesData`; the name-only label ignores them.
       rich: getLeafLabelRich(renderingContext),
     },
     upperLabel: { show: false },
@@ -190,8 +129,6 @@ export function getTreemapChartOption({
     leafDepth: 2,
     visibleMin: 25 * 25,
     childrenVisibleMin: 25 * 25,
-    // The root gap applies to both 1-level and 2-level treemaps; the group
-    // level (headers, saturation) only exists when there are children.
     levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
   };
 
@@ -209,55 +146,9 @@ function toSeriesData(
   renderingContext: RenderingContext,
 ): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
-  // The root values already sum the leaves, so the grand total is the sum of
-  // the top-level nodes.
   const total = tree.reduce((sum, node) => sum + node.value, 0);
   const formatShare = (value: number) =>
     formatPercent(total === 0 ? 0 : value / total);
-
-  // Resolve a tile's label from its measured detail level (`labelLayout`):
-  // - `"full"` → the stacked name + value + percentage block (a rich-text
-  //   formatter referencing the series `label.rich`), truncated to the tile;
-  // - `"labelOnly"` → the name alone, wrapped to the tile width (the default);
-  // - `"none"` → hidden.
-  // Unmeasured tiles (the first paint, before any layout exists to measure)
-  // stay hidden — labels only appear once the measurement pass has sized them,
-  // so a label never flashes on a tile it turns out not to fit.
-  const getLabelOverride = (
-    id: string,
-    value: number,
-    displayName: string,
-  ): Pick<TreemapSeriesNode, "label"> | Record<string, never> => {
-    // Leaf labels turned off entirely: hide every tile regardless of fit, so
-    // the per-tile measurement can't re-show one the series default hid.
-    if (!showLeafLabels) {
-      return { label: { show: false } };
-    }
-    const layout = labelLayout[id];
-    if (layout != null) {
-      if (layout.detail === "none") {
-        return { label: { show: false, width: layout.width } };
-      }
-      if (layout.detail === "full") {
-        return {
-          label: {
-            show: true,
-            width: layout.width,
-            // The value/percentage lines must stay on one line each, so truncate
-            // rather than wrap (the name-only label keeps the series' "break").
-            overflow: "truncate",
-            formatter: getFullBlockFormatter(
-              displayName,
-              formatValue(value),
-              formatShare(value),
-            ),
-          },
-        };
-      }
-      return { label: { show: true, width: layout.width } };
-    }
-    return { label: { show: false } };
-  };
 
   return tree.map((node, rootIndex) => {
     const groupColor = colors[getTreemapNodeKey(node)];
@@ -289,7 +180,15 @@ function toSeriesData(
       rowIndices: node.rowIndices,
       itemStyle,
       ...(!hasChildren(node)
-        ? getLabelOverride(groupId, node.value, node.displayName)
+        ? getLabelOverride({
+            id: groupId,
+            value: node.value,
+            displayName: node.displayName,
+            showLeafLabels,
+            labelLayout,
+            formatValue,
+            formatShare,
+          })
         : {}),
       upperLabel,
       ...(hasChildren(node)
@@ -300,16 +199,61 @@ function toSeriesData(
               value: leaf.value,
               rawName: leaf.rawName,
               rowIndices: leaf.rowIndices,
-              ...getLabelOverride(
-                getTreemapNodeId(rootIndex, leafIndex),
-                leaf.value,
-                leaf.displayName,
-              ),
+              ...getLabelOverride({
+                id: getTreemapNodeId(rootIndex, leafIndex),
+                value: leaf.value,
+                displayName: leaf.displayName,
+                showLeafLabels,
+                labelLayout,
+                formatValue,
+                formatShare,
+              }),
             })),
           }
         : {}),
     };
   });
+}
+
+function getLabelOverride({
+  id,
+  value,
+  displayName,
+  showLeafLabels,
+  labelLayout,
+  formatValue,
+  formatShare,
+}: {
+  id: string;
+  value: number;
+  displayName: string;
+  showLeafLabels: boolean;
+  labelLayout: Record<string, TreemapLabelLayout>;
+  formatValue: (value: number) => string;
+  formatShare: (value: number) => string;
+}): Pick<TreemapSeriesNode, "label"> {
+  if (!showLeafLabels) {
+    return HIDDEN_LABEL_OVERRIDE;
+  }
+  const layout = labelLayout[id];
+  if (layout == null) {
+    return HIDDEN_LABEL_OVERRIDE;
+  }
+  return match(layout.detail)
+    .with("none", () => HIDDEN_LABEL_OVERRIDE)
+    .with("full", () => ({
+      label: {
+        show: true,
+        width: layout.width,
+        overflow: "truncate" as const,
+        formatter: getFullBlockFormatter(
+          displayName,
+          formatValue(value),
+          formatShare(value),
+        ),
+      },
+    }))
+    .otherwise(() => ({ label: { show: true, width: layout.width } }));
 }
 
 function hasChildren(
@@ -402,6 +346,26 @@ function getItemStyle({
     ...(hasChildren
       ? { borderColor: isDrilled ? "transparent" : groupTint }
       : {}),
+  };
+}
+
+function getGroupUpperLabel({
+  showParentLabels,
+  isDrilled,
+  renderingContext,
+}: {
+  showParentLabels: boolean;
+  isDrilled: boolean;
+  renderingContext: RenderingContext;
+}): NonNullable<TreemapChartSeriesOption["upperLabel"]> {
+  return {
+    show: showParentLabels && !isDrilled,
+    color: renderingContext.getColor("text-primary"),
+    height: groupHeader.height,
+    fontSize: groupHeader.fontSize,
+    fontWeight: groupHeader.fontWeight,
+    lineHeight: groupHeader.height,
+    padding: [0, groupHeader.paddingX],
   };
 }
 

@@ -307,7 +307,7 @@ describe("getTreemapChartOption labelLayout override", () => {
     },
   ];
 
-  it("hides a leaf label and sets its wrap width from the measured layout", () => {
+  it("hides a leaf label from the measured layout", () => {
     const { series } = getTreemapChartOption({
       tree: twoLevel,
       labelLayout: { "0-0": { show: false, detail: "none", width: 50 } },
@@ -315,7 +315,7 @@ describe("getTreemapChartOption labelLayout override", () => {
     });
     const [big] = series.data[0].children ?? [];
 
-    expect(big.label).toEqual({ show: false, width: 50 });
+    expect(big.label).toEqual({ show: false });
   });
 
   it("shows a leaf label and sets its wrap width from the measured layout", () => {
@@ -358,7 +358,7 @@ describe("getTreemapChartOption labelLayout override", () => {
       renderingContext,
     });
 
-    expect(series.data[0].label).toEqual({ show: false, width: 200 });
+    expect(series.data[0].label).toEqual({ show: false });
     expect(series.data[1].label).toEqual({ show: true, width: 30 });
   });
 });

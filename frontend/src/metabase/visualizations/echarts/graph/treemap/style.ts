@@ -23,9 +23,6 @@ export const groupHeader = {
   fontSize: 12,
   height: 32,
   paddingX: 12,
-  // The right-aligned cluster: value (bold, like the name) + percentage
-  // (regular, secondary). `valuePercentGap` is the gap (px) between the value
-  // and the percentage within the cluster (Figma node 193:488).
   percentFontWeight: 400,
   valuePercentGap: 8,
 } as const;
