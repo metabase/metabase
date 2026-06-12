@@ -15,7 +15,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.data-apps.config :as data-app.config]
-   [metabase.data-apps.settings :as data-app.settings]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -150,17 +149,17 @@
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from
    the just-imported `snapshot` (see [[import-from-snapshot!]] for its shape).
-   Never throws: any failure (including collected per-app config errors) is
-   recorded in `data-app-repo-sync-error` so it can never break the surrounding
-   remote-sync import. Returns the [[import-from-snapshot!]] result, or nil if the
-   sync threw."
+   Never throws, so it can't break the surrounding remote-sync import: a thrown
+   failure is logged and swallowed, and a malformed `data_app.yml` is logged and
+   its app simply doesn't appear. Returns the [[import-from-snapshot!]] result, or
+   nil if the sync threw."
   [snapshot]
   (try
     (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
-      (data-app.settings/data-app-repo-sync-error!
-       (when (seq config-errors) (str/join "; " config-errors)))
+      (when (seq config-errors)
+        (log/warnf "[data-app] %d data_app.yml config(s) skipped: %s"
+                   (count config-errors) (str/join "; " config-errors)))
       result)
     (catch Throwable e
-      (data-app.settings/data-app-repo-sync-error! (ex-message e))
       (log/warn e "[data-app] sync from remote-sync snapshot failed")
       nil)))

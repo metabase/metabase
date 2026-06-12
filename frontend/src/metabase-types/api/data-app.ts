@@ -34,8 +34,6 @@ export interface DataApp {
 export interface DataAppRepoStatus {
   /** Whether a repository is connected via remote-sync. */
   configured: boolean;
-  /** Message from the most recent failed data-app sync; `null` on success. */
-  sync_error: string | null;
 }
 
 export interface SetDataAppEnabledRequest {

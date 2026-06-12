@@ -6,9 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   ;; register :model/DataApp and the data-app settings the hook touches
    [metabase.data-apps.models.data-app]
-   [metabase.data-apps.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -16,8 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each (fn [f] (test-helpers/clean-remote-sync-state f)))
 
-(comment metabase.data-apps.models.data-app/keep-me
-         metabase.data-apps.settings/keep-me)
+(comment metabase.data-apps.models.data-app/keep-me)
 
 (defn- import! [files]
   (let [source  (test-helpers/create-mock-source :initial-files files)

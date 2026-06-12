@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings]
-   [metabase.data-apps.settings :as data-app.settings]
    [metabase.data-apps.sync :as data-app.sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -150,20 +149,19 @@
         (is (= #{"existing" "good"} (t2/select-fn-set :name :model/DataApp))
             "the good app is added and the pre-existing app is NOT pruned despite the bad config")))))
 
-(deftest sync-from-snapshot!-records-errors-test
-  (testing "sync-from-snapshot! never throws; collected config errors land in the sync-error setting"
-    (mt/with-temporary-setting-values [data-app-repo-sync-error nil]
-      (mt/with-model-cleanup [:model/DataApp]
-        (let [result (data-app.sync/sync-from-snapshot!
-                      (snapshot {"data_apps/x/data_app.yml" "name: [unterminated"}))]
-          (is (seq (:config-errors result)))
-          (is (some? (data-app.settings/data-app-repo-sync-error)))))))
-  (testing "a clean sync clears the error"
-    (mt/with-temporary-setting-values [data-app-repo-sync-error "old error"]
-      (mt/with-model-cleanup [:model/DataApp]
-        (data-app.sync/sync-from-snapshot!
-         (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "A"})))
-        (is (nil? (data-app.settings/data-app-repo-sync-error)))))))
+(deftest sync-from-snapshot!-never-throws-test
+  (testing "a malformed data_app.yml is isolated into :config-errors; the app just doesn't appear, the sync doesn't throw"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/sync-from-snapshot!
+                    (snapshot {"data_apps/x/data_app.yml" "name: [unterminated"}))]
+        (is (seq (:config-errors result)))
+        (is (empty? (t2/select-fn-set :name :model/DataApp))))))
+  (testing "a clean sync materializes the app with no config errors"
+    (mt/with-model-cleanup [:model/DataApp]
+      (let [result (data-app.sync/sync-from-snapshot!
+                    (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "A"})))]
+        (is (empty? (:config-errors result)))
+        (is (= #{"a"} (t2/select-fn-set :name :model/DataApp)))))))
 
 (deftest import-accepts-yaml-extension-test
   (testing "data_app.yaml (not just .yml) is discovered"

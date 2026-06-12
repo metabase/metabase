@@ -64,17 +64,6 @@ export function ManageDataAppsPage() {
         </Text>
       </Group>
 
-      {status?.sync_error && (
-        <Box bd="1px solid var(--mb-color-border)" bdrs="md" p="md">
-          <Text c="error" fw={700}>
-            {t`The last data-app sync failed`}
-          </Text>
-          <Text c="text-secondary" mt="xs" ff="monospace" size="sm">
-            {status.sync_error}
-          </Text>
-        </Box>
-      )}
-
       {isStatusLoading ? (
         <Flex justify="center" p="xl">
           <Loader />

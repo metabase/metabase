@@ -15,7 +15,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.models.data-app :as data-app]
-   [metabase.data-apps.settings :as data-app.settings]
    [metabase.data-apps.sync :as data-app.sync]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -41,8 +40,7 @@
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (defn- repo-status []
-  {:configured (data-app.sync/repo-configured?)
-   :sync_error (data-app.settings/data-app-repo-sync-error)})
+  {:configured (data-app.sync/repo-configured?)})
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
@@ -62,8 +60,7 @@
 
 (def ^:private RepoStatusResponse
   [:map
-   [:configured :boolean]
-   [:sync_error [:maybe :string]]])
+   [:configured :boolean]])
 
 ;;; --------------------------------------------- Repo status ---------------------------------------------
 

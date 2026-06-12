@@ -3,5 +3,4 @@
    [metabase.data-apps.api]
    [metabase.data-apps.config]
    [metabase.data-apps.models.data-app]
-   [metabase.data-apps.settings]
    [metabase.data-apps.sync]))
