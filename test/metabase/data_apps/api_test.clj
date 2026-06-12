@@ -135,20 +135,42 @@
           (snapshot (merge (app-files "one" {:name "One" :slug "dup" :path "a.js" :bundle "A"})
                            (app-files "two" {:name "Two" :slug "dup" :path "b.js" :bundle "B"}))))))))
 
+(deftest import-isolates-bad-config-test
+  (testing "a malformed data_app.yml is isolated: other apps still sync, the bad one is reported, nothing is pruned"
+    (mt/with-model-cleanup [:model/DataApp]
+      ;; pre-existing app that must survive a sync where another config is broken
+      (data-app.sync/import-from-snapshot!
+       (snapshot (app-files "existing" {:name "Existing" :slug "existing" :path "i.js" :bundle "E"})))
+      (let [result (data-app.sync/import-from-snapshot!
+                    (snapshot (merge (app-files "good" {:name "Good" :slug "good" :path "i.js" :bundle "GOOD"})
+                                     {"data_apps/bad/data_app.yml" "name: [unterminated"})))]
+        (is (=? {:synced 1} result))
+        (is (= 1 (count (:config-errors result))))
+        (is (= #{"existing" "good"} (t2/select-fn-set :name :model/DataApp))
+            "the good app is added and the pre-existing app is NOT pruned despite the bad config")))))
 
 (deftest sync-from-snapshot!-records-errors-test
-  (testing "sync-from-snapshot! never throws; bad config is recorded in the sync-error setting"
+  (testing "sync-from-snapshot! never throws; collected config errors land in the sync-error setting"
     (mt/with-temporary-setting-values [data-app-repo-sync-error nil]
       (mt/with-model-cleanup [:model/DataApp]
-        (is (nil? (data-app.sync/sync-from-snapshot!
-                   (snapshot {"data_apps/x/data_app.yml" "name: [unterminated"}))))
-        (is (some? (data-app.settings/data-app-repo-sync-error))))))
+        (let [result (data-app.sync/sync-from-snapshot!
+                      (snapshot {"data_apps/x/data_app.yml" "name: [unterminated"}))]
+          (is (seq (:config-errors result)))
+          (is (some? (data-app.settings/data-app-repo-sync-error)))))))
   (testing "a clean sync clears the error"
     (mt/with-temporary-setting-values [data-app-repo-sync-error "old error"]
       (mt/with-model-cleanup [:model/DataApp]
         (data-app.sync/sync-from-snapshot!
          (snapshot (app-files "a" {:name "A" :slug "a" :path "index.js" :bundle "A"})))
         (is (nil? (data-app.settings/data-app-repo-sync-error)))))))
+
+(deftest import-accepts-yaml-extension-test
+  (testing "data_app.yaml (not just .yml) is discovered"
+    (mt/with-model-cleanup [:model/DataApp]
+      (data-app.sync/import-from-snapshot!
+       (snapshot {"data_apps/y/data_app.yaml" (app-config {:name "Y" :slug "y" :path "i.js"})
+                  "data_apps/y/i.js"          "YBUNDLE"}))
+      (is (= #{"y"} (t2/select-fn-set :name :model/DataApp))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 

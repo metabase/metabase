@@ -23,8 +23,13 @@
 (set! *warn-on-reflection* true)
 
 (def config-file-name
-  "Name of the per-app config file inside each `data_apps/<dir>` directory."
+  "Canonical name of the per-app config file (used in error messages). Both
+   `data_app.yml` and `data_app.yaml` are accepted on disk — see [[config-file-re]]."
   "data_app.yml")
+
+(def config-file-re
+  "Matches the per-app config filename, either extension."
+  #"data_app\.ya?ml")
 
 (def apps-dir
   "Directory at the repo root that holds one subdirectory per data app."
@@ -38,6 +43,9 @@
   "Trim and drop a leading `./` so the path is relative to the app directory."
   [p]
   (-> (str p) str/trim (str/replace #"^\./" "")))
+
+(defn- path-traversal? [path]
+  (some #(= ".." %) (str/split path #"/")))
 
 (defn- parse-yaml [^bytes bytes ^String dir]
   (try
@@ -65,5 +73,8 @@
                       {:status-code 400})))
     (when-not path
       (throw (ex-info (tru "{0}/{1}: \"path\" is required." dir config-file-name)
+                      {:status-code 400})))
+    (when (path-traversal? path)
+      (throw (ex-info (tru "{0}/{1}: \"path\" must not contain \"..\"." dir config-file-name)
                       {:status-code 400})))
     {:slug slug, :display_name name, :path path}))

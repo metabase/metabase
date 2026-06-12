@@ -48,23 +48,27 @@
 ;;; ----------------------------------------------------- Discovery -----------------------------------------------------
 
 (def ^:private config-path-regex
-  ;; data_apps/<dir>/data_app.yml, where <dir> is a single path segment
+  ;; data_apps/<dir>/data_app.{yml,yaml}, where <dir> is a single path segment
   (re-pattern (format "%s/[^/]+/%s"
                       (Pattern/quote data-app.config/apps-dir)
-                      (Pattern/quote data-app.config/config-file-name))))
+                      (.pattern ^Pattern data-app.config/config-file-re))))
 
 (defn- discover-app-configs
-  "Given the snapshot's `list-files` and `read-file` fns, return parsed app
-   entries `[{:slug :display_name :bundle}]` where `:bundle` is the repo-root
-   relative path to the built bundle (the app's `path`, resolved against its dir).
-   `read-file` returns file text (a string) or nil."
+  "Given the snapshot's `list-files` and `read-file` fns (where `read-file`
+   returns file text or nil), return one entry per `data_apps/<dir>/data_app.yml`,
+   each either a parsed app `{:slug :display_name :bundle}` (with `:bundle` the
+   repo-root relative bundle path) or `{:config-error <message>}`. Parse/read
+   failures are isolated per app so one bad config can't abort the whole sync."
   [list-files read-file]
   (for [config-path (filter #(re-matches config-path-regex %) (list-files))
-        :let [dir     (subs config-path 0 (str/last-index-of config-path "/"))
-              content (read-file config-path)]
-        :when content
-        :let [{:keys [slug display_name path]} (data-app.config/parse-app-config (->bytes content) dir)]]
-    {:slug slug, :display_name display_name, :bundle (str dir "/" path)}))
+        :let [dir (subs config-path 0 (str/last-index-of config-path "/"))]]
+    (try
+      (if-let [content (read-file config-path)]
+        (let [{:keys [slug display_name path]} (data-app.config/parse-app-config (->bytes content) dir)]
+          {:slug slug, :display_name display_name, :bundle (str dir "/" path)})
+        {:config-error (tru "Could not read {0}." config-path)})
+      (catch Throwable e
+        {:config-error (ex-message e)}))))
 
 ;;; ----------------------------------------------------- Materialize -----------------------------------------------------
 
@@ -112,37 +116,49 @@
       :sha        <commit-sha-string>}
 
    Discovers every `data_apps/<dir>/data_app.yml`, upserts a row per app, and
-   prunes rows whose directory is gone. Throws an `ex-info` with `:status-code`
-   400 on a malformed config or duplicate slugs (per-app bundle failures are
-   isolated and recorded on the row instead)."
+   prunes rows whose directory is gone — all in one transaction. Returns
+   `{:synced <n>, :sha <sha>, :config-errors [<message> ...]}`. A malformed
+   `data_app.yml` is isolated (collected into `:config-errors`, that app skipped)
+   rather than aborting the others; per-app bundle failures are recorded on the
+   row. Throws only on duplicate slugs, which make app identity ambiguous."
   [{:keys [read-file list-files sha]}]
-  (let [apps         (vec (discover-app-configs list-files read-file))
-        config-slugs (set (map :slug apps))]
-    (when (not= (count config-slugs) (count apps))
+  (let [results (discover-app-configs list-files read-file)
+        good    (filter :slug results)
+        errors  (vec (keep :config-error results))
+        slugs   (map :slug good)]
+    (when (not= (count slugs) (count (distinct slugs)))
       (throw (ex-info (tru "Two data apps in the repository share a slug.")
                       {:status-code 400})))
-    (doseq [{:keys [slug display_name bundle]} apps]
-      (sync-app! {:slug slug, :display_name display_name, :bundle bundle
-                  :sha sha, :read-file read-file}))
-    ;; prune apps whose directory no longer exists in the repo
-    (let [orphans (set/difference (set (t2/select-fn-set :name :model/DataApp))
-                                  config-slugs)]
-      (when (seq orphans)
-        (t2/delete! :model/DataApp :name [:in orphans])
-        (log/infof "[data-app] pruned %d app(s) removed from the repo: %s"
-                   (count orphans) (str/join ", " orphans))))
-    (log/infof "[data-app] synced sha=%s apps=%d" sha (count apps))
-    {:synced (count apps), :sha sha}))
+    (t2/with-transaction [_conn]
+      (doseq [{:keys [slug display_name bundle]} good]
+        (sync-app! {:slug slug, :display_name display_name, :bundle bundle
+                    :sha sha, :read-file read-file}))
+      ;; Prune apps whose directory is gone — but only when every config parsed.
+      ;; With an unparsed config we can't tell a removed app from one we failed to
+      ;; read this sync, so we leave existing rows alone rather than risk deleting
+      ;; a still-present app.
+      (when (empty? errors)
+        (let [orphans (set/difference (set (t2/select-fn-set :name :model/DataApp))
+                                      (set slugs))]
+          (when (seq orphans)
+            (t2/delete! :model/DataApp :name [:in orphans])
+            (log/infof "[data-app] pruned %d app(s) removed from the repo: %s"
+                       (count orphans) (str/join ", " orphans))))))
+    (log/infof "[data-app] synced sha=%s apps=%d errors=%d" sha (count good) (count errors))
+    {:synced (count good), :sha sha, :config-errors errors}))
 
 (defn sync-from-snapshot!
   "Entry point for the remote-sync import pipeline. Materializes data apps from
    the just-imported `snapshot` (see [[import-from-snapshot!]] for its shape).
-   Never throws: any failure is recorded in `data-app-repo-sync-error` so it can
-   never break the surrounding remote-sync import."
+   Never throws: any failure (including collected per-app config errors) is
+   recorded in `data-app-repo-sync-error` so it can never break the surrounding
+   remote-sync import. Returns the [[import-from-snapshot!]] result, or nil if the
+   sync threw."
   [snapshot]
   (try
-    (let [result (import-from-snapshot! snapshot)]
-      (data-app.settings/data-app-repo-sync-error! nil)
+    (let [{:keys [config-errors] :as result} (import-from-snapshot! snapshot)]
+      (data-app.settings/data-app-repo-sync-error!
+       (when (seq config-errors) (str/join "; " config-errors)))
       result)
     (catch Throwable e
       (data-app.settings/data-app-repo-sync-error! (ex-message e))

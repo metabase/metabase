@@ -30,11 +30,13 @@
 (def ^:private slug-regex #"(?!repo-status$)[^/]+")
 
 (def ^:private bundle-response-headers
+  ;; `no-cache` so the browser may cache but must revalidate via
+  ;; the content-hash ETag — we answer If-None-Match with 304 below.
   {"Content-Type"                 "application/javascript"
    "X-Content-Type-Options"       "nosniff"
    "Cross-Origin-Resource-Policy" "same-origin"
    "Referrer-Policy"              "no-referrer"
-   "Cache-Control"                "no-store"})
+   "Cache-Control"                "no-cache"})
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
@@ -84,7 +86,7 @@
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows
 ;; slashes inside a segment, so `/:slug` would otherwise swallow `/x/bundle`.
-;; The regex also excludes the literal `sync` / `repo-status` sub-routes above.
+;; The regex also excludes the literal `repo-status` sub-route above.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
   "Enable or disable a single data app. Disabled apps are not served."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
@@ -101,24 +103,31 @@
   (api/read-check (data-app/select-one-non-blob :name slug :enabled true)))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle for a single enabled data app by slug."
+  "Serve the cached JS bundle for a single enabled data app by slug. Honors
+   `If-None-Match` against the content-hash ETag with a 304."
   [{:keys [slug]} :- [:map [:slug ms/NonBlankString]]
    _query-params
    _body
-   _request
+   request
    respond
    raise]
   (try
     (api/check-superuser)
-    (let [row           (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
-          ^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
-      (if (and bundle (pos? (alength bundle)))
-        (respond {:status  200
-                  :headers (assoc bundle-response-headers "ETag" (:bundle_hash row))
-                  :body    (ByteArrayInputStream. bundle)})
-        (respond {:status  404
-                  :headers {"Content-Type" "application/json"}
-                  :body    "{\"error\":\"Bundle not synced yet\"}"})))
+    (let [row  (api/read-check (data-app/select-one-non-blob :name slug :enabled true))
+          etag (some-> (:bundle_hash row) (#(str "\"" % "\"")))]
+      (cond
+        (and etag (= etag (get-in request [:headers "if-none-match"])))
+        (respond {:status 304, :headers (assoc bundle-response-headers "ETag" etag)})
+
+        :else
+        (let [^bytes bundle (t2/select-one-fn :bundle :model/DataApp :id (:id row))]
+          (if (and bundle (pos? (alength bundle)))
+            (respond {:status  200
+                      :headers (assoc bundle-response-headers "ETag" etag)
+                      :body    (ByteArrayInputStream. bundle)})
+            (respond {:status  404
+                      :headers {"Content-Type" "application/json"}
+                      :body    "{\"error\":\"Bundle not synced yet\"}"})))))
     (catch Throwable e
       (raise e))))
 

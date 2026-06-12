@@ -33,7 +33,12 @@ path: ./dist/index.js"))))
                           (parse "name: X\nslug: x"))))
   (testing "malformed yaml"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Could not parse"
-                          (parse "name: [unterminated")))))
+                          (parse "name: [unterminated"))))
+  (testing "path traversal is rejected"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
+                          (parse "name: X\nslug: x\npath: ../other/dist/index.js")))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must not contain"
+                          (parse "name: X\nslug: x\npath: dist/../../escape.js")))))
 
 (deftest parse-errors-carry-400-test
   (try
