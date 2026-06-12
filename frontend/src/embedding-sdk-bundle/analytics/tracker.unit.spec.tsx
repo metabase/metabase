@@ -11,7 +11,7 @@ jest.mock("embedding-sdk-bundle/analytics/snowplow", () => ({
 }));
 
 jest.mock("embedding-sdk-shared/lib/get-build-info", () => ({
-  getBuildInfo: jest.fn(() => ({ version: "1.2.3" })),
+  getSdkPackageVersion: jest.fn(() => "1.2.3"),
 }));
 
 import { renderHook } from "@testing-library/react";
