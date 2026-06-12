@@ -22,6 +22,7 @@ export * from "./metabot";
 export * from "./modelIndexes";
 export * from "./models";
 export * from "./notification";
+export * from "./oauth";
 export * from "./parameters";
 export * from "./performance";
 export * from "./permissions";
