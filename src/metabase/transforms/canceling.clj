@@ -82,12 +82,6 @@
      (transform-run/timeout-run! run-id)
      (catch InterruptedException _ nil))))
 
-(defn cancel-timeout!
-  "Cancel the timeout vthread started by [[chan-start-timeout-vthread!]] (a no-op if already done)."
-  [timeout-handle]
-  (when timeout-handle
-    (.cancel ^Future timeout-handle true)))
-
 (defmacro with-cancelation
   "Run `body` with cancellation wired up for `run-id`, tearing it down on exit (normal or throw)
   Returns the value of `body`."
@@ -98,7 +92,7 @@
        (try
          ~@body
          (finally
-           (cancel-timeout! timeout-handle#)
+           (future-cancel timeout-handle#)
            (chan-end-run! run-id#))))))
 
 (defn- request-latency-ms
