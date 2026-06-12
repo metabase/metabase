@@ -76,7 +76,7 @@ const deleteMappingWithGroups = (mappingName) => {
 
 const createMapping = (name) => {
   cy.button("New mapping").click();
-  cy.findByLabelText("new-group-mapping-name-input").type(name);
+  cy.findByLabelText("New group mapping name").type(name);
   cy.button("Add").click();
 };
 

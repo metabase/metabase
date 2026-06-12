@@ -168,7 +168,12 @@ export function GroupMappingsWidgetView({
         <div>
           <div>
             {!showAddRow && (
-              <AddMappingButton primary small onClick={handleShowAddRow}>
+              <AddMappingButton
+                primary
+                small
+                type="button"
+                onClick={handleShowAddRow}
+              >
                 {t`New mapping`}
               </AddMappingButton>
             )}

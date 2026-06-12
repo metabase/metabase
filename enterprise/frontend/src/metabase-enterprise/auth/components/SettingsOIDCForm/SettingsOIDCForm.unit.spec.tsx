@@ -51,7 +51,9 @@ function setupEndpoints({
   setupPropertiesEndpoints(settings);
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
-  fetchMock.get("path:/api/ee/sso/oidc", providers);
+  fetchMock.get("path:/api/ee/sso/oidc", providers, {
+    name: "oidc-providers",
+  });
   fetchMock.post("path:/api/ee/sso/oidc", 200);
   fetchMock.put("path:/api/ee/sso/oidc/okta", 200);
   fetchMock.post("path:/api/ee/sso/oidc/check", {
@@ -187,59 +189,63 @@ describe("SettingsOIDCForm - Group Sync", () => {
     // Scenario: user adds a mapping via GroupMappingsWidgetView (which saves
     // immediately via PUT), then submits the form. The form should include the
     // freshly-saved mappings, not the stale prop value from initial render.
-    await setup({
-      providers: [
-        {
-          ...EXISTING_PROVIDER,
-          "group-sync": {
-            enabled: true,
-            "group-attribute": "groups",
-            "group-mappings": {},
-          },
-        },
-      ],
-    });
+    const provider = {
+      ...EXISTING_PROVIDER,
+      "group-sync": {
+        enabled: true,
+        "group-attribute": "groups",
+        "group-mappings": {},
+      },
+    };
+    await setup({ providers: [provider] });
 
-    // Make the form dirty first so we can detect the form-level submit
+    // Make the form dirty so it can be saved
     const groupAttrInput = screen.getByLabelText("Group attribute name");
     await userEvent.clear(groupAttrInput);
     await userEvent.type(groupAttrInput, "roles");
 
+    // After the widget saves, the providers refetch returns the new mapping
+    fetchMock.removeRoute("oidc-providers");
+    fetchMock.get(
+      "path:/api/ee/sso/oidc",
+      [
+        {
+          ...provider,
+          "group-sync": {
+            ...provider["group-sync"],
+            "group-mappings": { "Group 1": [] },
+          },
+        },
+      ],
+      { name: "oidc-providers" },
+    );
+
     // Add a mapping via the widget: click "New mapping", type name, click Add
-    const newMappingButton = screen.getByRole("button", {
-      name: "New mapping",
-    });
-    await userEvent.click(newMappingButton);
+    await userEvent.click(screen.getByRole("button", { name: "New mapping" }));
+    await userEvent.type(screen.getByPlaceholderText("Group name"), "Group 1");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
-    const input = screen.getByPlaceholderText("Group name");
-    await userEvent.type(input, "Group 1");
-    const addButton = screen.getByRole("button", { name: "Add" });
-    await userEvent.click(addButton);
-
-    // The "Add" button (type="submit") also submits the Formik form, so
-    // multiple PUTs fire. The form submit that includes full provider data
-    // (attribute-map, scopes, etc.) is the one from the Formik handler.
-    // Due to event ordering, the first form PUT may have stale mappings,
-    // but the second one (after the ref is updated) should have the correct
-    // mappings. We verify the LAST form-level PUT has the right data.
+    // The widget saves the mapping immediately, without submitting the form
     await waitFor(async () => {
       const puts = await getOidcPutCalls();
-      const formPuts = puts.filter(
-        (p: { body: Record<string, unknown> }) => p.body["attribute-map"],
-      );
-      expect(formPuts.length).toBeGreaterThanOrEqual(1);
+      expect(puts).toHaveLength(1);
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(async () => {
+      const puts = await getOidcPutCalls();
+      expect(puts).toHaveLength(2);
     });
 
     const puts = await getOidcPutCalls();
-    const formPuts = puts.filter(
-      (p: { body: Record<string, unknown> }) => p.body["attribute-map"],
-    );
-    const lastFormPut = formPuts[formPuts.length - 1];
-    // The last form submission should include the mapping added via the widget
-    expect(lastFormPut.body["group-sync"]["group-mappings"]).toEqual({
+    const formPut = puts[puts.length - 1];
+    // The form submission should include the mapping added via the widget
+    expect(formPut.body["attribute-map"]).toBeDefined();
+    expect(formPut.body["group-sync"]["group-mappings"]).toEqual({
       "Group 1": [],
     });
-    expect(lastFormPut.body["group-sync"]["group-attribute"]).toBe("roles");
+    expect(formPut.body["group-sync"]["group-attribute"]).toBe("roles");
   });
 
   it("preserves existing group mappings on form submission", async () => {

@@ -124,6 +124,43 @@ describe("GroupMappingsWidgetView", () => {
     });
   });
 
+  describe("adding a mapping", () => {
+    it("adds a mapping with a unique name on Enter", async () => {
+      const updateSettingSpy = jest.fn();
+      setup({ updateSetting: updateSettingSpy });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("New group mapping name"),
+        "cn=People{Enter}",
+      );
+
+      await waitFor(() => {
+        expect(updateSettingSpy).toHaveBeenCalledWith({
+          key: "ldap-group-mappings",
+          value: { "group=Administrators": [1], "cn=People": [] },
+        });
+      });
+    });
+
+    it("does not add a mapping with a duplicate name on Enter", async () => {
+      const updateSettingSpy = jest.fn();
+      setup({ updateSetting: updateSettingSpy });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "New mapping" }),
+      );
+      await userEvent.type(
+        screen.getByLabelText("New group mapping name"),
+        "group=Administrators{Enter}",
+      );
+
+      expect(updateSettingSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("when a mapping is set for admin group", () => {
     it("handles deleting mapping", async () => {
       const updateSettingSpy = jest.fn();

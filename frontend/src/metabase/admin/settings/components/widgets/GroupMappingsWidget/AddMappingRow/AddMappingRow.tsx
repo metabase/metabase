@@ -22,14 +22,16 @@ function AddMappingRow({
   const [value, setValue] = useState("");
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Enter key
-    if (e.keyCode === 13) {
-      handleSubmit();
+    if (e.key === "Enter") {
+      // don't natively submit an enclosing settings form
+      e.preventDefault();
+      if (isMappingNameUnique) {
+        handleAdd();
+      }
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
+  const handleAdd = async () => {
     await onAdd(value);
     setValue("");
   };
@@ -58,7 +60,7 @@ function AddMappingRow({
           )}
         >
           <input
-            aria-label="new-group-mapping-name-input"
+            aria-label={t`New group mapping name`}
             className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
             type="text"
             value={value}
@@ -74,10 +76,10 @@ function AddMappingRow({
             >{t`Cancel`}</Button>
             <Button
               className={CS.ml2}
-              type="submit"
+              type="button"
               variant={isMappingNameUnique ? "filled" : "default"}
               disabled={!isMappingNameUnique}
-              onClick={() => (isMappingNameUnique ? handleSubmit() : undefined)}
+              onClick={() => (isMappingNameUnique ? handleAdd() : undefined)}
             >{t`Add`}</Button>
           </div>
         </div>

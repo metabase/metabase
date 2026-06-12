@@ -29,7 +29,6 @@ import type {
 
 export type JWTFormValues = Pick<
   EnterpriseSettings,
-  | "jwt-user-provisioning-enabled?"
   | "jwt-identity-provider-uri"
   | "jwt-shared-secret"
   | "jwt-attribute-email"
@@ -193,7 +192,6 @@ export const SettingsJWTForm = () => {
 
 const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
   const jwtSettings = _.pick(settingDetails, [
-    "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
     "jwt-group-sync",
@@ -203,14 +201,6 @@ const getFormValues = (settingDetails: SettingDefinitionMap): JWTFormValues => {
     "jwt-attribute-groups",
     "jwt-attribute-tenant",
   ]);
-
-  if (!jwtSettings["jwt-user-provisioning-enabled?"]?.value) {
-    // cast empty to false
-    jwtSettings["jwt-user-provisioning-enabled?"] = {
-      ...jwtSettings["jwt-user-provisioning-enabled?"],
-      value: false,
-    };
-  }
 
   // cast undefined to null
   return _.mapObject(jwtSettings, (val) => val?.value ?? null) as JWTFormValues;
