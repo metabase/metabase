@@ -1,7 +1,6 @@
 import type { TreemapSeriesOption } from "echarts/charts";
 import { match } from "ts-pattern";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
@@ -10,6 +9,7 @@ import type {
   TreemapLabelLayout,
   TreemapParentLabelLayout,
 } from "../model/labels";
+import { getTreemapPercentOfTotalFormatter } from "../model/share";
 import { getTreemapNodeId } from "../model/tooltip";
 import { hasChildren } from "../model/tree";
 import type {
@@ -126,9 +126,7 @@ function toSeriesData({
   renderingContext: RenderingContext;
 }): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
-  const total = tree.reduce((sum, node) => sum + node.value, 0);
-  const formatPercentOfTotal = (value: number) =>
-    formatPercent(total === 0 ? 0 : value / total);
+  const formatPercentOfTotal = getTreemapPercentOfTotalFormatter(tree);
 
   return tree.map((node, rootIndex) =>
     toGroupSeriesNode({

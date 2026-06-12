@@ -1,4 +1,3 @@
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import {
@@ -18,6 +17,7 @@ import {
   getTreemapLabelLayouts,
   getTreemapParentLabelLayouts,
 } from "./labels";
+import { getTreemapPercentOfTotalFormatter } from "./share";
 import { getNode } from "./tree";
 import type { NodeId, TreemapLayoutNode, TreemapTree } from "./types";
 
@@ -49,9 +49,7 @@ export function measureTreemapLabelLayouts({
   showLeafValues: boolean;
   showParentValues: boolean;
 }): TreemapMeasuredLabelLayouts {
-  const total = tree.reduce((sum, node) => sum + node.value, 0);
-  const formatShare = (value: number) =>
-    formatPercent(total === 0 ? 0 : value / total);
+  const formatShare = getTreemapPercentOfTotalFormatter(tree);
 
   // Leaf tiles qualify for the "full" stacked block only when the value line
   // (the widest, at the H3 font) fits the tile width, so measure it at that
