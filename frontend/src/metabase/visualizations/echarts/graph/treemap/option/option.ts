@@ -12,11 +12,8 @@ import {
   type TreemapParentLabelLayout,
 } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
-import type {
-  TreemapNode,
-  TreemapSeriesNode,
-  TreemapTree,
-} from "../model/types";
+import { hasChildren } from "../model/tree";
+import type { TreemapSeriesNode, TreemapTree } from "../model/types";
 import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
@@ -234,21 +231,6 @@ function getLabelOverride({
     .otherwise(() => ({ label: { show: true, width: layout.width } }));
 }
 
-function hasChildren(
-  node: TreemapNode,
-): node is TreemapNode & { children: NonNullable<TreemapNode["children"]> } {
-  return node.children != null;
-}
-
-/**
- * Rich-text styles for the inline `"full"` block, referenced by the per-tile
- * `label.formatter` strings (`{name|…}`, `{value|…}`, `{pct|…}`). The name
- * matches the name-only label (bold 12); the value is the H3 style (bold 20);
- * the percentage is regular 12. All three are white with the leaf label's text
- * shadow (tiles are colored). `value`/`pct` carry a top padding for the vertical
- * gap above each line. Colors go through `renderingContext.getColor` to satisfy
- * the no-color-literals rule.
- */
 function getLeafLabelRich(renderingContext: RenderingContext) {
   const color = renderingContext.getColor("white");
   const {
@@ -295,11 +277,6 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
 }
 
 const formatters = {
-  /**
-   * Rich-text formatter for a `"full"` leaf tile: name, value, percentage
-   * stacked on separate lines. Note: names containing `{` or `}` can interfere
-   * with ECharts rich-text parsing.
-   */
   getLeafFormatter(
     name: string,
     valueLabel: string,
@@ -373,17 +350,14 @@ function getUpperLabel({
   percentLabel: string;
   renderingContext: RenderingContext;
 }): TreemapSeriesNode["upperLabel"] {
-  // When the chip has room, render the name in a fixed-width left column with
-  // the value + percentage flush right (see `getHeaderValuePercent`). The name
-  // column width comes from the measured layout (`model/labels.ts`).
   if (
     hasChildren &&
     layout?.showValuePercent &&
     layout.nameColumnWidth != null
   ) {
     return {
-      backgroundColor: groupTint,
-      ...getHeaderValuePercent({
+      ...getRichUpperLabel({
+        groupTint,
         displayName,
         valueLabel,
         percentLabel,
@@ -393,30 +367,30 @@ function getUpperLabel({
     };
   }
 
-  // Otherwise the chip shows the name alone: transparent when too narrow to fit
-  // even a readable prefix (keeping the band), else the level's default color.
   const color =
     hasChildren && layout?.showText === false ? "transparent" : undefined;
 
-  const label = {
+  const basicLabel = {
     backgroundColor: groupTint,
     color,
   };
 
-  if (Object.values(label).every((value) => value === undefined)) {
+  if (Object.values(basicLabel).every((value) => value === undefined)) {
     return undefined;
   }
 
-  return label;
+  return basicLabel;
 }
 
-function getHeaderValuePercent({
+function getRichUpperLabel({
+  groupTint,
   displayName,
   valueLabel,
   percentLabel,
   nameColumnWidth,
   renderingContext,
 }: {
+  groupTint: string | undefined;
   displayName: string;
   valueLabel: string;
   percentLabel: string;
@@ -426,6 +400,7 @@ function getHeaderValuePercent({
   const textPrimary = renderingContext.getColor("text-primary");
   const textSecondary = renderingContext.getColor("text-secondary");
   return {
+    backgroundColor: groupTint,
     formatter: formatters.getHeaderFormatter(
       displayName,
       valueLabel,

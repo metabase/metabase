@@ -69,6 +69,12 @@ export function getNode(id: NodeId, tree: TreemapTree) {
   return getNodesFromPath(tree, id)?.at(-1);
 }
 
+export function hasChildren(
+  node: TreemapNode,
+): node is TreemapNode & { children: NonNullable<TreemapNode["children"]> } {
+  return node.children != null;
+}
+
 /**
  * Pull the laid-out treemap tiles off an ECharts instance. Off-screen or
  * zero-area nodes (no usable layout) are skipped.
