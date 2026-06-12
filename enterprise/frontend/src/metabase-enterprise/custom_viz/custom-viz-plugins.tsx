@@ -9,7 +9,7 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
@@ -60,8 +60,12 @@ async function fetchAssetAsBlobUrl(assetUrl: string): Promise<string> {
     return assetUrl;
   }
   try {
-    const absolute = new URL(assetUrl, api.basename).href;
-    const res = await fetch(absolute, { headers: api.getClientHeaders() });
+    // `getPluginAssetUrl` already prepends `api.basename`; strip it back off
+    // because `api.fetch` re-adds it.
+    const relativeUrl = assetUrl.startsWith(api.basename)
+      ? assetUrl.slice(api.basename.length)
+      : assetUrl;
+    const res = await api.fetch({ method: "GET", url: relativeUrl });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
@@ -339,21 +343,16 @@ export async function loadCustomVizPlugin(
   ensureVizApi();
 
   try {
-    // The SDK runs on a foreign origin; `api.basename` holds the configured
-    // metabaseInstanceUrl so the request lands on Metabase, not the host
-    // page. Main app leaves it empty and falls back to same-origin.
-    const bundleUrl = new URL(
-      getSubpathSafeUrl(plugin.bundle_url),
-      api.basename || window.location.origin,
-    );
+    const params: Record<string, string> = {};
     if (cacheBustSuffix) {
-      bundleUrl.searchParams.set("t", Date.now().toString());
+      params.t = Date.now().toString();
     } else if (currentHash) {
-      bundleUrl.searchParams.set("v", currentHash);
+      params.v = currentHash;
     }
-    const res = await fetch(bundleUrl.href, {
-      cache: "no-store",
-      headers: api.getClientHeaders(),
+    const res = await api.fetch({
+      method: "GET",
+      url: plugin.bundle_url,
+      params,
     });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
