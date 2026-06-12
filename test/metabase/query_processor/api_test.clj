@@ -21,6 +21,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.unique-name-generator]
+   [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
@@ -926,6 +927,33 @@
                                                        :type                 :string/=,
                                                        :name                 "Text"
                                                        :id                   "abc"}})))))))))
+
+(deftest ^:parallel parameter-values-join-aliased-value-field-test
+  (testing "value_field referencing a joined column of the source model returns values instead of 400 (#75407)"
+    (let [mp                (mt/metadata-provider)
+          venues-table      (lib.metadata/table mp (mt/id :venues))
+          categories-table  (lib.metadata/table mp (mt/id :categories))
+          venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+          categories-id     (lib.metadata/field mp (mt/id :categories :id))
+          source-query      (lib/join (lib/query mp venues-table)
+                                      (lib/join-clause categories-table
+                                                       [(lib/= venue-category-id categories-id)]))]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query source-query)]
+        (binding [custom-values/*max-rows* 3]
+          (let [parameter {:name                 "Category name"
+                           :slug                 "category_name"
+                           :id                   (str (random-uuid))
+                           :type                 :string/=
+                           :values_query_type    :list
+                           :values_source_type   :card
+                           :values_source_config {:card_id     card-id
+                                                  :value_field [:field "Categories__NAME" {:base-type :type/Text}]}}
+                values    (->> (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
+                                                     {:parameter parameter :field_ids []})
+                               :values
+                               (map first)
+                               set)]
+            (is (= #{"American" "Artisan" "Asian"} values))))))))
 
 (deftest ^:parallel parameter-remapping-test
   (testing "field values"
