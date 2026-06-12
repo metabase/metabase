@@ -7,7 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]))
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]))
 
 (set! *warn-on-reflection* true)
 
