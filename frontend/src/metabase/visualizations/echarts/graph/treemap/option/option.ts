@@ -300,9 +300,6 @@ function toSeriesData(
       rawName: node.rawName,
       rowIndices: node.rowIndices,
       itemStyle,
-      // Top-level nodes with children render a header chip (always shown), not
-      // their own tile label, so only resolve the label for childless tiles —
-      // i.e. a 1-level treemap's tiles.
       ...(!hasChildren(node)
         ? getLabelOverride(groupId, node.value, node.displayName)
         : {}),
