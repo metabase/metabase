@@ -40,7 +40,7 @@
                                                        :query {:source-table (mt/id :orders)
                                                                :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id #{(mt/id :orders)}})]
         (is (some #(= (:id metric) (:id %)) metrics))
         (is (every? #(= (mt/id :orders) (:table-id %)) metrics))))))
 
@@ -66,7 +66,7 @@
                                                                 :query {:source-table (mt/id :orders)
                                                                         :aggregation [[:count]]}}}]
       (let [mp (metric-jvm/metadata-provider)
-            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id (mt/id :orders)})]
+            metrics (lib.metadata.protocols/metadatas mp {:lib/type :metadata/metric :table-id #{(mt/id :orders)}})]
         (is (some #(= (:id active-metric) (:id %)) metrics))
         (is (not-any? #(= (:id archived-metric) (:id %)) metrics))))))
 
