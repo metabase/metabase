@@ -232,6 +232,25 @@
             (is (= 1 (count terminals)))
             (is (= {:reason "error"} (:data (first terminals))))))))))
 
+(deftest run-agent-loop-emits-terminal-state-on-provider-error-test
+  (testing "a provider throw → :error part *and* a terminal_state \"error\" part,
+            so the quality pipeline sees the instrumented loop ran and scores
+            the failed turn instead of sentineling it as pre-instrumentation"
+    (mt/as-admin
+      (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                            (throw (ex-info "provider down" {})))]
+          (let [result    (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                            (into [] (agent/run-agent-loop
+                                      {:messages   [{:role :user :content "Hi"}]
+                                       :state      {}
+                                       :profile-id :embedding_next
+                                       :context    {}})))
+                terminals (terminal-state-parts result)]
+            (is (some #(= :error (:type %)) result))
+            (is (= 1 (count terminals)))
+            (is (= {:reason "error"} (:data (first terminals))))))))))
+
 ;;; Query and Chart extraction tests
 
 (deftest extract-queries-test

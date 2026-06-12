@@ -158,10 +158,17 @@
                    [:chart_type chart-type-enum]]]])
 
 (defn- sql-chart-entity-usage
-  [database-id sql]
-  {:input  (into [{:type "database" :id database-id}]
-                 (metabot.tools.sql.common/card-refs-in-sql sql))
-   :output []})
+  "2-arity is the cheap database + `{{#N}}` card-ref projection used on
+  error branches; the 3-arity adds pre-built table refs (resolved via
+  [[metabot.tools.sql.common/native-physical-table-refs]]) on the valid
+  branch, mirroring `entity-usage-for-sql` in the SQL query tools."
+  ([database-id sql]
+   (sql-chart-entity-usage database-id sql nil))
+  ([database-id sql table-refs]
+   {:input  (-> [{:type "database" :id database-id}]
+                (into (metabot.tools.sql.common/card-refs-in-sql sql))
+                (into table-refs))
+    :output []}))
 
 (mu/defn ^{:tool-name "document_construct_sql_chart"
            :tool-type :authoring
@@ -191,7 +198,10 @@
           (if-let [query-error (check-query query)]
             (construct-tools/stamp-artifact-valid
              (attach-eu (query-processing-error-result query-error)) false)
-            (let [structured {:tool          "document_construct_sql_chart"
+            (let [entity-usage (sql-chart-entity-usage
+                                database_id sql
+                                (metabot.tools.sql.common/native-physical-table-refs database_id sql))
+                  structured {:tool          "document_construct_sql_chart"
                               :name          name
                               :description   description
                               :analysis      analysis

@@ -14,7 +14,8 @@
    :tool-events     [{:call-id :function :tool-type :arguments
                       :iteration-index :input :output :error :artifact-valid
                       :duration-ms} ...]
-   :prompt-context  {:entries [<entity-ref>...]}
+   :prompt-context  {:block-present? Boolean
+                     :entries [<entity-ref>...]}
    :sets            {:prompt-context {[type id-str] <atom>}
                      :discovered ... :authored ... :inspected ... :hallucinated ...}}
   ```
@@ -496,6 +497,12 @@
     (merge (conversation-metadata ordered)
            {:messages       ordered
             :tool-events    tool-events
-            :prompt-context {:entries (mapv #(dissoc % ::channel ::iteration)
-                                            prompt-context-entries)}
+            ;; `:block-present?` distinguishes "a prompt-context block was
+            ;; recorded (possibly with empty channels)" from "no block at all"
+            ;; — the pre-instrumentation check reads it, since a block with
+            ;; empty channels still proves the instrumented path ran.
+            :prompt-context {:block-present? (boolean (some prompt-context-block
+                                                            (filter user-row? ordered)))
+                             :entries        (mapv #(dissoc % ::channel ::iteration)
+                                                   prompt-context-entries)}
             :sets           sets})))

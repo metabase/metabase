@@ -204,6 +204,51 @@
                (:input eu)))
         (is (= [] (:output eu)))))))
 
+(deftest document-construct-sql-chart-entity-usage-physical-tables-test
+  (testing "document_construct_sql_chart success path resolves physical tables named in the SQL"
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_]
+                                  {:validation-result {:valid? true
+                                                       :dialect "h2"}
+                                   :action-result     {:query-id "q-1"
+                                                       :query {:database (mt/id)
+                                                               :type "native"
+                                                               :native {:query "SELECT * FROM venues"
+                                                                        :template-tags {}}}}})
+                                qp/process-query (fn [_] nil)]
+      (let [result (document-tools/document-construct-sql-chart-tool
+                    {:database_id (mt/id)
+                     :name "N"
+                     :description "D"
+                     :analysis "A"
+                     :approach "A2"
+                     :sql "SELECT * FROM venues"
+                     :viz_settings {:chart_type "bar"}})
+            eu     (get-in result [:structured-output :entity-usage])
+            input  (set (:input eu))]
+        (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+        (is (contains? input {:type "table" :id (mt/id :venues)})
+            "the directly-named physical table is recorded as authored input")
+        (is (contains? input {:type "database" :id (mt/id)})))))
+  (testing "validation-failure branch keeps the cheap db+card projection (no table resolution)"
+    (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                (fn [_]
+                                  {:validation-result {:valid? false
+                                                       :dialect "h2"
+                                                       :error-message "bad sql"}
+                                   :action-result     nil})]
+      (let [result (document-tools/document-construct-sql-chart-tool
+                    {:database_id (mt/id)
+                     :name "N"
+                     :description "D"
+                     :analysis "A"
+                     :approach "A2"
+                     :sql "SELECT * FROM venues"
+                     :viz_settings {:chart_type "bar"}})
+            eu     (get-in result [:structured-output :entity-usage])]
+        (is (= [{:type "database" :id (mt/id)}] (:input eu)))
+        (is (false? (get-in result [:structured-output :artifact-valid])))))))
+
 (deftest document-construct-model-chart-entity-usage-test
   (testing "success path forwards :entity-usage from the underlying construct_notebook_query"
     (let [forwarded-eu {:input  [{:type "database" :id 1}

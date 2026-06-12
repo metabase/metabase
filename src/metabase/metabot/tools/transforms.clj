@@ -73,18 +73,25 @@
   - `sql-body` — optional resulting SQL body string (post-edit). Extracts
                  `{{#N}}` card refs. Pass `nil` for Python transforms or on
                  error branches where the post-edit SQL is unrecoverable.
+  - `extra-table-refs` — optional pre-built `{:type \"table\" :id N}` entries
+                 (e.g. physical tables resolved from the SQL body via
+                 [[metabot.tools.sql.common/native-physical-table-refs]]).
+                 Passed only on success branches, mirroring
+                 `entity-usage-for-sql`'s 3-arity in the SQL query tools.
 
   Output is always `[]`; authoring tools don't surface entities."
-  [{:keys [database_id source_tables]} sql-body]
-  (let [db-entries    (when (some? database_id)
-                        [{:type "database" :id database_id}])
-        table-entries (some->> source_tables
-                               (keep :table_id)
-                               (mapv (fn [tid] {:type "table" :id tid})))
-        card-entries  (when (string? sql-body)
-                        (metabot.tools.sql.common/card-refs-in-sql sql-body))]
-    {:input  (into [] (concat db-entries table-entries card-entries))
-     :output []}))
+  ([args sql-body]
+   (entity-usage-for-transform args sql-body nil))
+  ([{:keys [database_id source_tables]} sql-body extra-table-refs]
+   (let [db-entries    (when (some? database_id)
+                         [{:type "database" :id database_id}])
+         table-entries (some->> source_tables
+                                (keep :table_id)
+                                (mapv (fn [tid] {:type "table" :id tid})))
+         card-entries  (when (string? sql-body)
+                         (metabot.tools.sql.common/card-refs-in-sql sql-body))]
+     {:input  (into [] (concat db-entries table-entries card-entries extra-table-refs))
+      :output []})))
 
 (defn entity-usage-on-result
   "Attach an `:entity-usage` map under `:structured-output`, preserving any
@@ -274,7 +281,9 @@
             transform   (get-in raw-result [:structured-output :transform])
             final-db    (or (get-in transform [:source :database]) database_id)
             final-sql   (resulting-transform-sql raw-result)
-            eu          (entity-usage-for-transform {:database_id final-db} final-sql)
+            eu          (entity-usage-for-transform
+                         {:database_id final-db} final-sql
+                         (metabot.tools.sql.common/native-physical-table-refs final-db final-sql))
             with-eu     (entity-usage-on-result raw-result eu)
             dep-issues  (check-dependencies transform_id (:source transform))]
         (stamp-artifact-valid

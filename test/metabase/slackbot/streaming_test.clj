@@ -1,6 +1,7 @@
 (ns metabase.slackbot.streaming-test
   (:require
    [clojure.test :refer :all]
+   [metabase.metabot.agent.core :as agent]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features]
@@ -224,6 +225,37 @@
                 (testing "start-turn! was called before the failure"
                   (is (not= ::timeout opts))
                   (is (some? (:slack-msg-id opts))))))))))))
+
+(deftest slackbot-streaming-finalize-captures-streamed-error-part-test
+  (testing "finalize records a streamed :error part in the error column — the agent
+            loop catches provider/tool errors internally and streams an :error part
+            without throwing, so @thrown alone misses the dominant error shape"
+    (tu/with-slackbot-setup
+      (let [event-body     tu/base-dm-event
+            finalize-calls (atom [])
+            error-payload  {:message "provider down" :type "clojure.lang.ExceptionInfo" :data {}}]
+        (tu/with-slackbot-mocks
+          {:ai-text "unused"}
+          (fn [_ctx]
+            (mt/with-dynamic-fn-redefs [agent/run-agent-loop
+                                        (fn [_opts]
+                                          ;; Mimic the loop's internal catch: stream an
+                                          ;; :error part, return normally (no throw).
+                                          (reify clojure.lang.IReduceInit
+                                            (reduce [_ rf init]
+                                              (rf init {:type :error :error error-payload}))))
+                                        metabot.persistence/finalize-assistant-turn!
+                                        (fn [_conv-id _msg-id _parts & {:as opts}]
+                                          (swap! finalize-calls conj opts)
+                                          nil)]
+              (mt/client :post 200 "metabot/slack/events"
+                         (tu/slack-request-options event-body)
+                         event-body)
+              (u/poll {:thunk      #(>= (count @finalize-calls) 1)
+                       :done?      true?
+                       :timeout-ms 5000}))
+            (testing "the streamed error payload landed on finalize's :error kwarg"
+              (is (=? [{:error {:message "provider down"}}] @finalize-calls)))))))))
 
 (deftest slackbot-streaming-never-writes-pii-columns-test
   (testing "Slack-originated rows leave ip_address/embedding_*/user_agent NULL regardless of analytics-pii-retention-enabled"

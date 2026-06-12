@@ -194,13 +194,16 @@
   "Pull `metabase://type/id` references out of a user-message text body.
   Tolerates nil / non-string / empty input. Returns a vector of
   `{:type \"...\" :id N}` maps in source order; duplicates are preserved
-  so consumers can count references."
+  so consumers can count references. Ids too large for a Long (no real
+  entity can have one) are dropped rather than thrown on — this runs in
+  the request path before anything is persisted."
   [user-message-content]
   (if (string? user-message-content)
     (->> (re-seq metabase-uri-re user-message-content)
-         (mapv (fn [[_ entity-type id-str]]
-                 {:type entity-type
-                  :id   (Long/parseLong id-str)})))
+         (into [] (keep (fn [[_ entity-type id-str]]
+                          (when-let [id (parse-long id-str)]
+                            {:type entity-type
+                             :id   id})))))
     []))
 
 (defn- user-message->text

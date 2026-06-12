@@ -759,6 +759,15 @@
     (is (= [] (metabot-persistence/parse-mentioned-refs "")))
     (is (= [] (metabot-persistence/parse-mentioned-refs 42)))
     (is (= [] (metabot-persistence/parse-mentioned-refs {:not "a string"}))))
+  (testing "ids too large for a Long are dropped, not thrown on"
+    ;; This runs in the request path before anything is persisted, so a throw
+    ;; here would 500 the entire turn.
+    (is (= [] (metabot-persistence/parse-mentioned-refs
+               "metabase://table/99999999999999999999")))
+    (is (= [{:type "question" :id 7}]
+           (metabot-persistence/parse-mentioned-refs
+            "metabase://table/99999999999999999999 and metabase://question/7"))
+        "surrounding parseable refs are unaffected"))
   (testing "OpenAI-style content-parts text bodies are flattened by the build helper"
     ;; build-prompt-context-block is the seam; verify the helper supports both shapes.
     (let [block (metabot-persistence/build-prompt-context-block

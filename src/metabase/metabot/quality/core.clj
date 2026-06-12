@@ -53,9 +53,13 @@
          (:tool-events normalized))))
 
 (defn- has-prompt-context?
-  "True iff any user row contributed prompt-context entries."
+  "True iff any user row carries a `prompt-context` block — presence, not
+  entries. A block with empty sub-channels is deliberately persisted to
+  mean \"we recorded an empty context\" and is just as much proof of
+  instrumentation as a populated one (a plain question with nothing
+  viewed and no @-mentions produces exactly that shape)."
   [normalized]
-  (boolean (seq (get-in normalized [:prompt-context :entries]))))
+  (boolean (get-in normalized [:prompt-context :block-present?])))
 
 (defn- pre-instrumentation?
   "A conversation is pre-instrumentation iff it shows no sign of having run the

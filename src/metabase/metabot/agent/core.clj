@@ -657,6 +657,15 @@
 
                       :else
                       (log/errorf e "Agent loop error: %s" msg)))
-                  (rf init (error-part e)))
+                  ;; Emit a terminal-state part alongside the error part: the
+                  ;; instrumented loop did run, and the quality-score pipeline
+                  ;; keys "instrumented" off terminal_state presence — without
+                  ;; it a provider/loop failure would be sentineled as
+                  ;; pre-instrumentation instead of scored as an error
+                  ;; termination. `:error` is not in the finish-reason map, so
+                  ;; it projects to the `error` categorical.
+                  (-> init
+                      (rf (error-part e))
+                      (rf (streaming/terminal-state-part :error))))
                 (finally
                   (analytics/observe! :metabase-metabot/agent-duration-ms labels (u/since-ms start-ms)))))))))))

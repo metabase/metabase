@@ -218,7 +218,20 @@
     (testing "nil SQL body skips card-ref extraction"
       (is (= {:input  [{:type "database" :id 1}]
               :output []}
-             (agent-transforms/entity-usage-for-transform {:database_id 1} nil))))))
+             (agent-transforms/entity-usage-for-transform {:database_id 1} nil))))
+    (testing "3-arity appends pre-built physical-table refs after db + card refs"
+      (is (= {:input  [{:type "database" :id 1}
+                       {:type "card"     :id 42}
+                       {:type "table"    :id 7}]
+              :output []}
+             (agent-transforms/entity-usage-for-transform
+              {:database_id 1}
+              "SELECT * FROM {{#42}}"
+              [{:type "table" :id 7}]))))
+    (testing "3-arity with nil/empty extra refs matches the 2-arity"
+      (is (= (agent-transforms/entity-usage-for-transform {:database_id 1} "SELECT 1")
+             (agent-transforms/entity-usage-for-transform {:database_id 1} "SELECT 1" nil)
+             (agent-transforms/entity-usage-for-transform {:database_id 1} "SELECT 1" []))))))
 
 (deftest write-transform-sql-entity-usage-success-test
   (testing "write_transform_sql success path emits :entity-usage with database + {{#N}} from new SQL"
@@ -235,6 +248,21 @@
               {:type "card"     :id 42}
               {:type "card"     :id 43}]
              (:input eu))))))
+
+(deftest write-transform-sql-entity-usage-physical-tables-test
+  (testing "write_transform_sql success path resolves physical tables named in the final SQL"
+    (let [memory-atom (atom {:state {}})
+          result      (binding [shared/*memory-atom* memory-atom]
+                        (agent-transforms/write-transform-sql-tool
+                         {:edit_action {:mode "replace" :new_content "SELECT * FROM venues"}
+                          :transform_name "Test"
+                          :database_id (mt/id)}))
+          eu          (get-in result [:structured-output :entity-usage])
+          input       (set (:input eu))]
+      (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
+      (is (contains? input {:type "table" :id (mt/id :venues)})
+          "the directly-named physical table is recorded as authored input")
+      (is (contains? input {:type "database" :id (mt/id)})))))
 
 (deftest write-transform-sql-entity-usage-error-test
   (testing "write_transform_sql exception path falls back to args-derived :entity-usage"

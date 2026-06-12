@@ -115,6 +115,77 @@
                                     :data      {:reason "model_signaled_done"}}]})
     conversation-id))
 
+(defn- seed-error-turn-conversation!
+  "Insert a conversation shaped like a provider/loop failure on an
+  instrumented turn: the user row carries a prompt-context block with empty
+  channels (a plain question — nothing viewed, no @-mentions), and the
+  assistant row has the `error` column set but no tool parts and no
+  `terminal_state` part (the pre-fix error path emitted none; aborted turns
+  still produce this shape). Returns the conversation id."
+  []
+  (let [conversation-id (str (random-uuid))
+        user-id         (mt/user->id :rasta)]
+    (t2/insert! :model/MetabotConversation
+                {:id      conversation-id
+                 :user_id user-id})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :user_id         user-id
+                 :role            :user
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :data            [{:role "user" :content "what were sales last month?"}
+                                   {:type                 "prompt-context"
+                                    :user_is_viewing      []
+                                    :user_recently_viewed []
+                                    :mentioned_refs       []}]})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :role            :assistant
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :finished        true
+                 :error           (json/encode {:message "provider down"})
+                 :data            []})
+    conversation-id))
+
+(defn- seed-pre-feature-error-conversation!
+  "Insert a genuinely pre-feature failed conversation: no prompt-context
+  block, no entity-usage, no terminal_state part — only an `error` column on
+  the assistant row. Such rows exist in the backfill population and must
+  stay sentineled; error/finished are not instrumentation signals. Returns
+  the conversation id."
+  []
+  (let [conversation-id (str (random-uuid))
+        user-id         (mt/user->id :rasta)]
+    (t2/insert! :model/MetabotConversation
+                {:id      conversation-id
+                 :user_id user-id})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :user_id         user-id
+                 :role            :user
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :data            [{:role "user" :content "hello"}]})
+    (t2/insert! :model/MetabotMessage
+                {:conversation_id conversation-id
+                 :role            :assistant
+                 :profile_id      "internal"
+                 :external_id     (str (random-uuid))
+                 :total_tokens    0
+                 :ai_proxied      false
+                 :finished        false
+                 :error           (json/encode {:message "old failure"})
+                 :data            []})
+    conversation-id))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Sentinel paths
 ;;; ---------------------------------------------------------------------------
@@ -170,6 +241,35 @@
         (is (= "model_signaled_done" (get-in breakdown [:diagnostics :termination])))
         (is (nil? (mr/explain ::quality.schema/breakdown breakdown))
             "the persisted breakdown conforms to the breakdown schema")))))
+
+(deftest score-conversation-error-turn-with-empty-context-block-is-scored-test
+  (testing "a failed instrumented turn — error column set, no terminal_state
+            part, prompt-context block present with empty channels — is scored
+            with termination :error, not sentineled as pre-instrumentation"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (seed-error-turn-conversation!)
+            score           (quality.core/score-conversation! conversation-id)
+            row             (t2/select-one :model/MetabotConversation :id conversation-id)
+            breakdown       (:quality_breakdown row)]
+        (is (= 0.5 score)
+            "execution health = mean(1.0 tool success, 0.0 termination) with no other applicable subscore")
+        (is (nil? (:unscoreable breakdown))
+            "a real breakdown is written — the empty-channel block proves instrumentation")
+        (is (= "error" (get-in breakdown [:diagnostics :termination])))
+        (is (nil? (mr/explain ::quality.schema/breakdown breakdown)))))))
+
+(deftest score-conversation-pre-feature-error-row-still-sentinel-test
+  (testing "a pre-feature failed conversation — error column and finished=false
+            but no prompt-context block, no entity-usage, no terminal_state part
+            — still routes to the pre-instrumentation sentinel (error/finished
+            are not instrumentation signals)"
+    (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+      (let [conversation-id (seed-pre-feature-error-conversation!)
+            result          (quality.core/score-conversation! conversation-id)
+            row             (t2/select-one :model/MetabotConversation :id conversation-id)]
+        (is (= :sentinel result))
+        (is (nil? (:quality_score row)))
+        (is (= "pre-instrumentation" (:unscoreable (:quality_breakdown row))))))))
 
 (deftest score-conversation-extract-error-writes-sentinel-test
   (testing "if extract/normalize throws, the pipeline writes the extract-error

@@ -401,6 +401,24 @@
       (is (every? empty? (vals sets))
           "all five sets empty when there's no entity activity"))))
 
+(deftest normalize-prompt-context-block-present-test
+  (testing "a prompt-context block with all-empty channels still flips :block-present?"
+    (let [{:keys [prompt-context]} (extract/normalize [(user-row 1 "hi")])]
+      (is (true? (:block-present? prompt-context)))
+      (is (= [] (:entries prompt-context))
+          "empty channels contribute no entries — presence and entries are independent signals")))
+  (testing "no prompt-context block on any user row → :block-present? false"
+    (let [{:keys [prompt-context]}
+          (extract/normalize
+           [{:id 1 :role :user :conversation_id "c" :profile_id "internal" :user_id 1 :created_at 1
+             :data [{:role :user :content "hi"}]}])]
+      (is (false? (:block-present? prompt-context)))))
+  (testing "populated channels imply presence"
+    (let [{:keys [prompt-context]}
+          (extract/normalize [(user-row 1 "hi" {:user_is_viewing [{:type "table" :id 5}]})])]
+      (is (true? (:block-present? prompt-context)))
+      (is (= [{:type "table" :id 5}] (:entries prompt-context))))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; Representative profile-shaped fixtures
 ;;; ---------------------------------------------------------------------------
