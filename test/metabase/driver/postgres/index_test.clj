@@ -1,5 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.postgres.index-test
-  "Tests for the Postgres post-CTAS index driver methods (Index Manager, milestone 0):
+  "Tests for the Postgres standalone index driver methods (Index Manager, milestone 0):
   `supported-index-methods`, `compile-create-index`, and `refresh-table-stats!`.
 
   The rendering and execution tests are driven by case tables (`render-cases` / `execute-cases`) so that
@@ -12,51 +12,51 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.test :as mt]))
 
-(deftest ^:parallel supports-post-ctas-create-test
-  (testing "Postgres reports support for post-CTAS hints"
-    (is (true? (driver/database-supports? :postgres :index/post-ctas-create nil)))))
+(deftest ^:parallel supports-standalone-create-test
+  (testing "Postgres reports support for standalone index creation"
+    (is (true? (driver/database-supports? :postgres :index/standalone-create nil)))))
 
 (deftest ^:parallel supported-index-methods-test
-  (testing "Postgres advertises single-column btree (which supports unique) as a post-CTAS hint method"
-    (is (= {:btree {:lifecycle :post-ctas, :unique? true}}
+  (testing "Postgres advertises single-column btree (which supports unique) as a standalone index method"
+    (is (= {:btree {:lifecycle :standalone, :unique true}}
            (driver/supported-index-methods :postgres nil)))))
 
 (deftest default-impls-test
-  (testing "a driver without :index/post-ctas-create inherits safe defaults"
-    (is (false? (driver/database-supports? :h2 :index/post-ctas-create nil)))
+  (testing "a driver without :index/standalone-create inherits safe defaults"
+    (is (false? (driver/database-supports? :h2 :index/standalone-create nil)))
     (is (= {} (driver/supported-index-methods :h2 nil)))
     (is (nil? (driver/refresh-table-stats! :h2 nil "public" "t" :table)))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
 (def ^:private render-cases
-  "Each case: inputs to `compile-create-index` and the single SQL string it should render. `:name` is the un-prefixed
-  base name; the rendered physical name carries the `mb_idx_` prefix. Add a row to cover a new index kind, column
-  shape, or quoting wrinkle."
+  "Each case: inputs to `compile-create-index` and the single SQL string it should render. The index's `:name` is
+  rendered verbatim as the physical index name. Add a row to cover a new index kind, column shape, or quoting
+  wrinkle."
   [{:label      "schema-qualified single-column btree"
     :schema     "public" :table "events"
-    :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_events_user_id\" ON \"public\".\"events\" USING BTREE (\"user_id\")"}
+    :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"events_user_id\" ON \"public\".\"events\" (\"user_id\")"}
    {:label      "no schema qualifier"
     :schema     nil :table "events"
+    :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"events_user_id\" ON \"events\" (\"user_id\")"}
+   {:label      "without :if-not-exists the create is not idempotent"
+    :schema     nil :table "events"
     :structured {:kind :btree :name "events_user_id" :columns [{:name "user_id"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_events_user_id\" ON \"events\" USING BTREE (\"user_id\")"}
+    :expected   "CREATE INDEX \"events_user_id\" ON \"events\" (\"user_id\")"}
    {:label      "renders all columns, not just the first"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "multi" :columns [{:name "a"} {:name "b"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_multi\" ON \"events\" USING BTREE (\"a\", \"b\")"}
-   {:label      "access method comes from :kind, so other index types render too"
-    :schema     nil :table "events"
-    :structured {:kind :gin :name "gin" :columns [{:name "tags"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_gin\" ON \"events\" USING GIN (\"tags\")"}
+    :structured {:kind :btree :name "multi" :columns [{:name "a"} {:name "b"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"multi\" ON \"events\" (\"a\", \"b\")"}
    {:label      "unique renders CREATE UNIQUE INDEX"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "email" :columns [{:name "email"}] :unique true}
-    :expected   "CREATE UNIQUE INDEX IF NOT EXISTS \"mb_idx_email\" ON \"events\" USING BTREE (\"email\")"}
-   {:label      "the mb_idx_ prefix is applied to the base name, and identifiers that need quoting still get it"
+    :structured {:kind :btree :name "email" :columns [{:name "email"}] :unique true :if-not-exists true}
+    :expected   "CREATE UNIQUE INDEX IF NOT EXISTS \"email\" ON \"events\" (\"email\")"}
+   {:label      "identifiers that need quoting still get it"
     :schema     nil :table "events"
-    :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}]}
-    :expected   "CREATE INDEX IF NOT EXISTS \"mb_idx_weird idx\" ON \"events\" USING BTREE (\"a\"\"b\")"}])
+    :structured {:kind :btree :name "weird idx" :columns [{:name "a\"b"}] :if-not-exists true}
+    :expected   "CREATE INDEX IF NOT EXISTS \"weird idx\" ON \"events\" (\"a\"\"b\")"}])
 
 (deftest ^:parallel compile-create-index-test
   (doseq [{:keys [label schema table structured expected]} render-cases]
@@ -79,22 +79,22 @@
     {:access-method (:access_method row), :unique? (:is_unique row)}))
 
 (def ^:private execute-cases
-  "Each case: a table to materialize (`columns` is the column DDL), the hint to apply, and the `index-info` the
+  "Each case: a table to materialize (`columns` is the column DDL), the index to apply, and the `index-info` the
   resulting index must report. Add a row to exercise a new kind end-to-end against a real database (e.g. a gin
   index over a jsonb column)."
   [{:label      "single-column btree"
-    :table      "perf_hints_btree"
+    :table      "perf_idx_btree"
     :columns    "id INT, user_id INT"
-    :structured {:kind :btree :name "btree_user_id" :columns [{:name "user_id"}]}
+    :structured {:kind :btree :name "btree_user_id" :columns [{:name "user_id"}] :if-not-exists true}
     :expected   {:access-method "btree", :unique? false}}
    {:label      "unique single-column btree"
-    :table      "perf_hints_unique"
+    :table      "perf_idx_unique"
     :columns    "id INT, email TEXT"
-    :structured {:kind :btree :name "unique_email" :columns [{:name "email"}] :unique true}
+    :structured {:kind :btree :name "unique_email" :columns [{:name "email"}] :unique true :if-not-exists true}
     :expected   {:access-method "btree", :unique? true}}])
 
-(deftest post-ctas-path-test
-  (testing "the post-CTAS path runs the rendered DDL and then ANALYZE against a real table"
+(deftest standalone-create-path-test
+  (testing "the standalone-create path runs the rendered DDL and then ANALYZE against a real table"
     (mt/test-driver :postgres
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -102,15 +102,14 @@
               schema     "public"]
           (doseq [{:keys [label table columns structured expected]} execute-cases]
             (testing label
-              ;; the physical name carries the mb_ prefix the driver applies, not the base :name we pass in
-              (let [index-name (str driver/index-name-prefix (:name structured))
+              (let [index-name (:name structured)
                     qtable     (str (sql.u/quote-name :postgres :schema schema) "."
                                     (sql.u/quote-name :postgres :table table))]
                 (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])
                 (jdbc/execute! admin-spec [(format "CREATE TABLE %s (%s)" qtable columns)])
                 (try
                   (is (nil? (index-info admin-spec index-name))
-                      "index absent before the post-CTAS step")
+                      "index absent before the standalone-create step")
                   (testing "rendered DDL creates the index with the expected access method and uniqueness"
                     (driver/execute-raw-queries! :postgres conn-spec
                                                  (driver/compile-create-index :postgres schema table structured))
@@ -123,3 +122,24 @@
                     (is (some? (driver/refresh-table-stats! :postgres (mt/db) schema table :table))))
                   (finally
                     (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])))))))))))
+
+(deftest create-index!-shared-render-path-test
+  (testing "driver/create-index! executes through the same per-driver rendering as compile-create-index"
+    (mt/test-driver :postgres
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              db-id      (:id (mt/db))]
+          (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"perf_idx_legacy\""])
+          (jdbc/execute! admin-spec ["CREATE TABLE \"public\".\"perf_idx_legacy\" (id INT, user_id INT)"])
+          (try
+            (driver/create-index! :postgres db-id "public" "perf_idx_legacy" "legacy_user_id" ["user_id"])
+            (is (= {:access-method "btree", :unique? false} (index-info admin-spec "legacy_user_id")))
+            (testing "without :if-not-exists a duplicate create throws"
+              (is (thrown? Exception
+                           (driver/create-index! :postgres db-id "public" "perf_idx_legacy"
+                                                 "legacy_user_id" ["user_id"]))))
+            (testing "with :if-not-exists a duplicate create is a no-op"
+              (is (nil? (driver/create-index! :postgres db-id "public" "perf_idx_legacy"
+                                              "legacy_user_id" ["user_id"] :if-not-exists true))))
+            (finally
+              (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"perf_idx_legacy\""]))))))))

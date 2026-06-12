@@ -28,23 +28,19 @@ title: Driver interface changelog
     between the aforementioned FK description methods; you should remove any `metabase.driver/database-supports?`
     implementations for it.
 
-- Added the `:index/post-ctas-create` driver feature flag, for drivers that can create an index (or a similar
-  physical-layout hint like a clustering or sort key) on a transform's target table as a separate statement after the
-  table is created. Postgres supports it.
+- Added the `:index/standalone-create` driver feature flag, for drivers that can create an index (in the broad
+  sense, including things like clustering or sort keys) on a transform's target table as a standalone statement
+  after the table is created. Postgres supports it.
 
-- Added `metabase.driver/supported-index-methods` `[driver database]`, which returns the index methods the driver
-  supports as a map of `hint-kind` to a metadata map carrying at least `:lifecycle` (`:post-ctas` for hints applied as
-  a separate statement after the table exists, or `:ctas-inline` for hints inlined into the CTAS). Defaults to `{}`.
+- Added `metabase.driver/supported-index-methods` `[driver database]`. Returns the index methods the driver supports
+  as a map of `index-kind` to a metadata map carrying at least `:lifecycle` (`:standalone` or `:inline`). Defaults to
+  `{}`.
 
-- Added `metabase.driver/compile-create-index` `[driver schema table structured]`, which renders a `:post-ctas` hint
-  into the DDL statement(s) that create it (including `CREATE UNIQUE INDEX` for unique hints). The hint's `:name` is an
-  un-prefixed base name; the driver prepends `metabase.driver/index-name-prefix` (`mb_idx_`) to the physical name so the
-  objects Metabase creates are recognizable in the target database. Only implemented by drivers that support
-  `:index/post-ctas-create`.
+- Added `metabase.driver/compile-create-index` `[driver schema table structured]`. Compiles a `:standalone` index
+  into the DDL statement(s) that create it.
 
-- Added `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]`, per-driver post-CTAS
-  housekeeping that downstream transforms depend on (e.g. `ANALYZE` on Postgres). Runs synchronously after a transform
-  run; defaults to a no-op.
+- Added `metabase.driver/refresh-table-stats!` `[driver database schema table transform-type]`. Refreshes table
+  statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
 ## Metabase 0.62.0
 

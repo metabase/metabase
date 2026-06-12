@@ -82,7 +82,7 @@
                               :expressions/integer            true
                               :expressions/text               true
                               :identifiers-with-spaces        true
-                              :index/post-ctas-create         true
+                              :index/standalone-create        true
                               :metadata/table-existence-check true
                               :now                            true
                               :persist-models                 true
@@ -1414,22 +1414,7 @@
 (defmethod driver/supported-index-methods :postgres
   [_driver _database]
   ;; Phase 0: btree only. Other methods (gin/gist/brin/hash/spgist) come in a later milestone.
-  {:btree {:lifecycle :post-ctas, :unique? true}})
-
-(defn- index-column
-  [{column-name :name}]
-  (keyword column-name))
-
-(defmethod driver/compile-create-index :postgres
-  [_driver schema table {index-name :name, :keys [kind columns unique]}]
-  (let [table-ref (driver.sql/qualified-name {:schema (not-empty schema) :name table})
-        using     (keyword (str "using-" (name kind)))
-        index-id  (keyword (str driver/index-name-prefix index-name))
-        index-ref (if unique
-                    [:unique index-id :if-not-exists]
-                    [index-id :if-not-exists])]
-    [(sql/format {:create-index [index-ref (into [table-ref using] (map index-column) columns)]}
-                 {:dialect (sql.qp/quote-style :postgres) :quoted true})]))
+  {:btree {:lifecycle :standalone, :unique true}})
 
 (defmethod driver/refresh-table-stats! :postgres
   [driver database schema table _transform-type]

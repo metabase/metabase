@@ -844,10 +844,11 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
-    ;; Does this driver support creating a performance hint (index/clustering) as a separate statement after the
-    ;; transform target table already exists? Drivers with this feature implement [[supported-index-methods]] and
-    ;; [[compile-create-index]]. Contrast with inline-on-CTAS drivers (e.g. Redshift sortkeys).
-    :index/post-ctas-create
+    ;; Does this driver support creating an index (in the broad sense -- see the comment above
+    ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
+    ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
+    ;; drivers that inline indexes into the table-creation statement itself (e.g. Redshift sortkeys).
+    :index/standalone-create
     ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
@@ -1552,19 +1553,13 @@
 ;;; |                                          Indexes (Index Manager)                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; "Index" is the umbrella term for every physical-layout hint a transform's target table can carry. It isn't always
-;; literally an index: Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
-
-(def index-name-prefix
-  "Prefix Metabase prepends to the physical name of every named index/hint it creates on a transform target table, so
-  the objects are easy to recognize (and tell apart from user-created ones) in the target database. Shared by every
-  driver that names its hints; callers pass the un-prefixed base name and the driver applies this at render time."
-  "mb_idx_")
+;; "Index" is used in the broad sense here: anything that shapes the physical layout of a transform's target table.
+;; Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
 
 (defmulti supported-index-methods
-  "Return the index methods this driver supports for transform target tables, as a map of `hint-kind` -> metadata map.
-  Each metadata map carries at least `:lifecycle`, one of `:post-ctas` (applied as a separate statement after the
-  table exists) or `:ctas-inline` (inlined into the CTAS statement), e.g. `{:btree {:lifecycle :post-ctas}}`.
+  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map.
+  Each metadata map carries at least `:lifecycle`, one of `:standalone` (applied as a separate statement after the
+  table exists) or `:inline` (inlined into the table-creation statement), e.g. `{:btree {:lifecycle :standalone}}`.
 
   Defaults to `{}` for drivers with no index support."
   {:added "0.63.0", :arglists '([driver database])}
@@ -1576,23 +1571,18 @@
   {})
 
 (defmulti compile-create-index
-  "Render a `:post-ctas` index hint into the DDL statement(s) that create it on the existing `table` in `schema`.
-  `structured` is the hint description, e.g. `{:kind :btree, :name \"foo_bar\", :columns [{:name \"bar\"}]}`. `:name`
-  is the un-prefixed base name; the driver prepends [[index-name-prefix]] to the rendered physical name.
+  "Render a `:standalone` index into the DDL statement(s) that create it on the existing `table` in `schema`.
+  `structured` is the index description, e.g. `{:kind :btree, :name \"foo_bar\", :columns [{:name \"bar\"}]}`; it may
+  also carry `:unique` and `:if-not-exists` booleans. The index's `:name` is rendered verbatim as the physical name.
 
-  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]].
-
-  Not implemented by drivers without `:index/post-ctas-create`."
+  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]]."
   {:added "0.63.0", :arglists '([driver schema table structured])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti refresh-table-stats!
-  "Per-driver post-CTAS housekeeping that downstream transforms depend on: `ANALYZE` on Postgres/Redshift/MySQL,
-  `UPDATE STATISTICS ... WITH FULLSCAN` on SQL Server, no-op on the rest.
-
-  Synchronous: in Phase 1 this runs in `complete-execution!` after sync and before publishing
-  `:event/transform-run-complete`, because downstream transforms can't safely start until stats exist."
+  "Refresh the database's table statistics (e.g. `ANALYZE`) for `table` after a transform run materializes it, so
+  query planners see fresh stats. Defaults to a no-op."
   {:added "0.63.0", :arglists '([driver database schema table transform-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
