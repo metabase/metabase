@@ -80,8 +80,6 @@ function ModelActionListItem({
     });
   }, [action, askConfirmation, onArchive]);
 
-  const [menuOpened, menu] = useDisclosure(false);
-
   return (
     <>
       <ActionHeader>
@@ -101,19 +99,10 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <Menu
-          opened={menuOpened}
-          onChange={(opened) => (opened ? menu.open() : menu.close())}
-          position="bottom-end"
-          closeOnItemClick={false}
-        >
+        <Menu position="bottom-end">
           <Menu.Target>
             <div>
-              <EntityMenuTrigger
-                icon="ellipsis"
-                onClick={menu.toggle}
-                open={menuOpened}
-              />
+              <EntityMenuTrigger icon="ellipsis" onClick={() => undefined} />
             </div>
           </Menu.Target>
           <Menu.Dropdown miw={184}>
@@ -124,17 +113,13 @@ function ModelActionListItem({
                 <Icon name={canEdit ? "pencil" : "eye"} aria-hidden />
               }
               to={actionUrl}
-              onClick={menu.close}
             >
               {canEdit ? t`Edit` : t`View`}
             </Menu.Item>
             {canArchive && (
               <Menu.Item
                 leftSection={<Icon name="archive" aria-hidden />}
-                onClick={() => {
-                  handleArchive();
-                  menu.close();
-                }}
+                onClick={handleArchive}
               >
                 {t`Archive`}
               </Menu.Item>

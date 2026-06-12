@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -96,7 +95,6 @@ function ModelActionDetails({ model }: Props) {
     });
   }, [implicitActions, askConfirmation, onDeleteAction]);
 
-  const [menuOpened, menu] = useDisclosure(false);
   const hasImplicitActions = implicitActions.length > 0;
   const hasActionsMenu = hasImplicitActions || supportsImplicitActions;
 
@@ -128,19 +126,13 @@ function ModelActionDetails({ model }: Props) {
         <ActionsHeader data-testid="model-actions-header">
           <Button component={Link} to={newActionUrl}>{t`New action`}</Button>
           {hasActionsMenu && (
-            <Menu
-              opened={menuOpened}
-              onChange={(opened) => (opened ? menu.open() : menu.close())}
-              position="bottom-end"
-              closeOnItemClick={false}
-            >
+            <Menu position="bottom-end">
               <Menu.Target>
                 <div style={{ marginLeft: "0.5rem" }}>
                   <EntityMenuTrigger
                     ariaLabel={t`Actions menu`}
                     icon="ellipsis"
-                    onClick={menu.toggle}
-                    open={menuOpened}
+                    onClick={() => undefined}
                   />
                 </div>
               </Menu.Target>
@@ -148,20 +140,14 @@ function ModelActionDetails({ model }: Props) {
                 {hasImplicitActions ? (
                   <Menu.Item
                     leftSection={<Icon name="bolt" aria-hidden />}
-                    onClick={() => {
-                      onDeleteImplicitActions();
-                      menu.close();
-                    }}
+                    onClick={onDeleteImplicitActions}
                   >
                     {t`Disable basic actions`}
                   </Menu.Item>
                 ) : (
                   <Menu.Item
                     leftSection={<Icon name="bolt" aria-hidden />}
-                    onClick={() => {
-                      onEnableImplicitActions();
-                      menu.close();
-                    }}
+                    onClick={onEnableImplicitActions}
                   >
                     {t`Create basic actions`}
                   </Menu.Item>

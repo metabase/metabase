@@ -274,12 +274,9 @@ export function DetailViewSidesheet({
 
             {actionItems.length > 0 && (
               <Menu
-                opened={actionsMenuOpened}
-                onChange={(opened) =>
-                  opened ? actionsMenu.open() : actionsMenu.close()
-                }
                 position="bottom-end"
-                closeOnItemClick={false}
+                onOpen={actionsMenu.open}
+                onClose={actionsMenu.close}
               >
                 <Menu.Target>
                   <div>
@@ -293,7 +290,6 @@ export function DetailViewSidesheet({
                         p={0}
                         variant="subtle"
                         w={20}
-                        onClick={actionsMenu.toggle}
                       />
                     </Tooltip>
                   </div>
@@ -303,10 +299,7 @@ export function DetailViewSidesheet({
                     <Menu.Item
                       key={item.title}
                       leftSection={<Icon name={item.icon} aria-hidden />}
-                      onClick={() => {
-                        item.action();
-                        actionsMenu.close();
-                      }}
+                      onClick={item.action}
                     >
                       {item.title}
                     </Menu.Item>

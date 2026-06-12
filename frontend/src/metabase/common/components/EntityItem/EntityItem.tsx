@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
@@ -216,9 +215,6 @@ function EntityItemMenu({
   const isModel = isItemModel(item);
   const isXrayShown = isModel && isXrayEnabled;
 
-  const [opened, { close: closeMenu, open: openMenu, toggle: toggleMenu }] =
-    useDisclosure(false);
-
   const actions = useMemo(() => {
     const result: EntityItemMenuAction[] = [];
 
@@ -331,19 +327,13 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer style={{ textAlign: "center" }}>
-      <Menu
-        opened={opened}
-        onChange={(opened) => (opened ? openMenu() : closeMenu())}
-        position="bottom-end"
-        closeOnItemClick={false}
-      >
+      <Menu position="bottom-end">
         <Menu.Target>
           <div className={className}>
             <EntityMenuTrigger
               ariaLabel={t`Actions`}
               icon="ellipsis"
-              onClick={toggleMenu}
-              open={opened}
+              onClick={() => undefined}
             />
           </div>
         </Menu.Target>
@@ -365,7 +355,6 @@ function EntityItemMenu({
                     component={Link}
                     data-testid="entity-menu-link"
                     to={item.link}
-                    onClick={closeMenu}
                   >
                     {item.title}
                   </Menu.Item>
@@ -375,13 +364,7 @@ function EntityItemMenu({
 
             return (
               <MenuItemTooltip key={key} tooltip={item.tooltip}>
-                <Menu.Item
-                  {...menuItemProps}
-                  onClick={() => {
-                    item.action?.();
-                    closeMenu();
-                  }}
-                >
+                <Menu.Item {...menuItemProps} onClick={item.action}>
                   {item.title}
                 </Menu.Item>
               </MenuItemTooltip>

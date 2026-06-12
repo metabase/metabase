@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 
 import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
@@ -38,8 +37,6 @@ export function ObjectDetailHeader({
   viewNextObjectDetail,
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const [menuOpened, menu] = useDisclosure(false);
-
   return (
     <Box className={cx(CS.Grid, S.headerWrapper)}>
       <div className={CS.GridCell}>
@@ -78,18 +75,12 @@ export function ObjectDetailHeader({
           )}
 
           {actionItems.length > 0 && (
-            <Menu
-              opened={menuOpened}
-              onChange={(opened) => (opened ? menu.open() : menu.close())}
-              position="bottom-end"
-              closeOnItemClick={false}
-            >
+            <Menu position="bottom-end">
               <Menu.Target>
                 <div>
                   <EntityMenuTrigger
                     icon="ellipsis"
-                    onClick={menu.toggle}
-                    open={menuOpened}
+                    onClick={() => undefined}
                     triggerProps={{
                       "data-testid": "actions-menu",
                     }}
@@ -101,10 +92,7 @@ export function ObjectDetailHeader({
                   <Menu.Item
                     key={item.title}
                     leftSection={<Icon name={item.icon} aria-hidden />}
-                    onClick={() => {
-                      item.action();
-                      menu.close();
-                    }}
+                    onClick={item.action}
                   >
                     {item.title}
                   </Menu.Item>

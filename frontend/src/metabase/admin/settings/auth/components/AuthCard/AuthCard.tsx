@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { Link } from "react-router";
@@ -160,33 +159,15 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const [opened, { close: closeMenu, open: openMenu, toggle: toggleMenu }] =
-    useDisclosure(false);
-
   const handleChange = useCallback(() => {
     onChange(!isEnabled);
-    closeMenu();
-  }, [closeMenu, isEnabled, onChange]);
-
-  const handleDeactivate = useCallback(() => {
-    onDeactivate?.();
-    closeMenu();
-  }, [closeMenu, onDeactivate]);
+  }, [isEnabled, onChange]);
 
   return (
-    <Menu
-      opened={opened}
-      onChange={(opened) => (opened ? openMenu() : closeMenu())}
-      position="bottom-end"
-      closeOnItemClick={false}
-    >
+    <Menu position="bottom-end">
       <Menu.Target>
         <div style={{ marginLeft: "auto" }}>
-          <EntityMenuTrigger
-            icon="ellipsis"
-            onClick={toggleMenu}
-            open={opened}
-          />
+          <EntityMenuTrigger icon="ellipsis" onClick={() => undefined} />
         </div>
       </Menu.Target>
       <Menu.Dropdown miw={184}>
@@ -199,7 +180,7 @@ const AuthCardMenu = ({
         {onDeactivate && (
           <Menu.Item
             leftSection={<Icon name="close" aria-hidden />}
-            onClick={handleDeactivate}
+            onClick={onDeactivate}
           >
             {t`Deactivate`}
           </Menu.Item>
