@@ -4,7 +4,6 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
@@ -78,7 +77,6 @@
                                                    :transform_entity_id (:entity_id transform)
                                                    :status :started
                                                    :is_active true
-                                                   :process_uuid config/local-process-uuid
                                                    :metered_as metered-as))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start

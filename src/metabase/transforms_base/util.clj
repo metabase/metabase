@@ -758,7 +758,7 @@
   [run]
   (-> run
       localize-run-timestamps
-      (dissoc :last_heartbeat :process_uuid)))
+      (dissoc :last_heartbeat)))
 
 ;;; ------------------------------------------------- Filter Transforms -------------------------------------------------
 

@@ -3,7 +3,6 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.canceling :as canceling]
@@ -117,13 +116,11 @@
         (testing "a second sweep finds nothing (row already inactive)"
           (is (empty? (transform-run/reap-orphaned-runs! 5))))))))
 
-(deftest start-run!-records-process-uuid-test
-  (testing "start-run! stamps the owning process uuid and an initial heartbeat"
+(deftest start-run!-stamps-initial-heartbeat-test
+  (testing "a freshly started run has an initial heartbeat"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {}]
         (let [{run-id :id} (transform-run/start-run! transform-id {:run_method "manual"})]
-          (is (= config/local-process-uuid
-                 (t2/select-one-fn :process_uuid :model/TransformRun :id run-id)))
           (is (some? (heartbeat run-id)) "last_heartbeat is populated by the column default"))))))
 
 ;;; ------------------------------------------- Job-run heartbeat -------------------------------------------

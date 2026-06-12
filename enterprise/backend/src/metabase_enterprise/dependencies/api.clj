@@ -55,7 +55,7 @@
     :model/Collection   (select-keys entity [:id :name :authority_level :is_personal])
     :model/Dashboard    (select-keys entity [:id :name])
     :model/Document     (select-keys entity [:id :name])
-    :model/TransformRun (dissoc entity :last_heartbeat :process_uuid)
+    :model/TransformRun (dissoc entity :last_heartbeat)
     entity))
 
 (mr/def ::usages
