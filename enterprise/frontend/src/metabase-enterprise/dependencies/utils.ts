@@ -544,17 +544,17 @@ export function getDependencyGroupTypeInfo(
     case "question":
       return { label: t`Question`, color: "text-secondary" };
     case "model":
-      return { label: t`Model`, color: "brand" };
+      return { label: t`Model`, color: "core-brand" };
     case "metric":
-      return { label: t`Metric`, color: "summarize" };
+      return { label: t`Metric`, color: "core-summarize" };
     case "table":
-      return { label: t`Table`, color: "brand" };
+      return { label: t`Table`, color: "core-brand" };
     case "transform":
       return { label: t`Transform`, color: "warning" };
     case "snippet":
       return { label: t`Snippet`, color: "text-secondary" };
     case "dashboard":
-      return { label: t`Dashboard`, color: "filter" };
+      return { label: t`Dashboard`, color: "core-filter" };
     case "document":
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
@@ -562,7 +562,7 @@ export function getDependencyGroupTypeInfo(
     case "segment":
       return { label: t`Segment`, color: "accent2" };
     case "measure":
-      return { label: t`Measure`, color: "summarize" };
+      return { label: t`Measure`, color: "core-summarize" };
   }
 }
 

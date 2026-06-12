@@ -80,13 +80,13 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
         <div className={S.tableRow}>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="folder" c="brand" />
+              <Icon name="folder" c="core-brand" />
               {t`Question`}
             </Flex>
           </div>
           <div className={S.column}>
             <Flex gap="sm" align="center">
-              <Icon name="dashboard" c="brand" />
+              <Icon name="dashboard" c="core-brand" />
               {t`Dashboard it'll be moved to`}
             </Flex>
           </div>
@@ -150,7 +150,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
             variant="filled"
             onClick={onConfirm}
             disabled={ctaDisabled}
-            color={mutationError ? "error" : "brand"}
+            color={mutationError ? "error" : "core-brand"}
           >
             {t`Move these questions`}
           </Button>

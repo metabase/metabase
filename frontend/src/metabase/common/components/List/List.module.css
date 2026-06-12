@@ -29,7 +29,7 @@
   display: flex;
   align-items: center;
   height: 100%;
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .headerButton {
@@ -65,7 +65,7 @@
   font-size: 1rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

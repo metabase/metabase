@@ -51,7 +51,7 @@ const FullSearchCTA = ({
 
   return (
     <Text
-      c="brand"
+      c="core-brand"
       component={Link}
       fw={700}
       id="search-results-metadata"

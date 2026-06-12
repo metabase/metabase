@@ -50,7 +50,7 @@ export function NativeQueryPreview({
 
       {isFetching ? (
         <Flex direction="column" justify="center" align="center">
-          <Loader c="brand" />
+          <Loader c="core-brand" />
         </Flex>
       ) : (
         <Flex direction="column" mih={0}>

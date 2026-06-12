@@ -35,7 +35,7 @@ export const AboutModal = ({
   return (
     <Modal opened={opened} onClose={onClose} withCloseButton={false} size={475}>
       <Flex direction="column" align="center" pb="lg">
-        <Box c="brand" pb="md">
+        <Box c="core-brand" pb="md">
           <LogoIcon height={48} />
         </Box>
         <Stack gap={14} align="center">

@@ -245,7 +245,7 @@ The icon appears in the chart type picker and elsewhere in the Metabase UI.
 You can also use Metabase CSS variables inside inline SVG for more control:
 
 ```svg
-<path fill="var(--mb-color-brand)" .../>
+<path fill="var(--mb-color-core-brand)" .../>
 ```
 
 Keep the icon **simple and monochromatic** — avoid gradients and multiple colors.

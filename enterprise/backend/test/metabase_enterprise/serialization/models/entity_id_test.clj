@@ -81,6 +81,7 @@
     :model/OAuthAccessToken
     :model/OAuthAuthorizationCode
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthRefreshToken
     :model/ParameterCard
     :model/Permissions

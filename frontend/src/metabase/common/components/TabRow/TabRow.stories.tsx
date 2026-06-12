@@ -116,7 +116,7 @@ const DraggableTemplate: StoryFn<typeof TabRow> = (args) => {
           href="https://docs.dndkit.com/presets/sortable"
           target="_blank"
           rel="noreferrer"
-          style={{ color: color("brand") }}
+          style={{ color: color("core-brand") }}
         >
           dnd-kit.
         </a>
