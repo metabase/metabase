@@ -244,14 +244,20 @@
                 :preview-display false})))))))
 
 (defn describe-table-fields-xf
-  "Returns a transducer for computing metadata about the fields in a table"
-  [driver table]
-  (let [table-info (merge {:table-name (:name table)}
-                          (when (:schema table)
-                            {:table-schema (:schema table)}))]
-    (comp
-     (describe-fields-xf driver (driver-api/table->database table) table-info)
-     (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema))))))
+  "Returns a transducer for computing metadata about the fields in a table.
+
+  Accepts `database` explicitly so sync code that already has the Database instance does not
+  need to repeatedly resolve it from `table`."
+  ([driver table]
+   (describe-table-fields-xf driver (driver-api/table->database table) table))
+
+  ([driver database table]
+   (let [table-info (merge {:table-name (:name table)}
+                           (when (:schema table)
+                             {:table-schema (:schema table)}))]
+     (comp
+      (describe-fields-xf driver database table-info)
+      (map-indexed (fn [i col] (dissoc (assoc col :database-position i) :table-schema)))))))
 
 (defmulti describe-table-fields
   "Returns a set of column metadata for `table` using JDBC Connection `conn`."
@@ -264,7 +270,7 @@
   [driver conn table db-name-or-nil]
   (into
    #{}
-   (describe-table-fields-xf driver table)
+   (describe-table-fields-xf driver (driver-api/table->database table) table)
    (fields-metadata driver conn table db-name-or-nil)))
 
 ;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
@@ -738,7 +744,7 @@
           (comp
            (filter #(isa? (:base-type %) :type/JSON))
            (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
-           (describe-table-fields-xf driver table))
+           (describe-table-fields-xf driver (driver-api/table->database table) table))
           (describe-table-fields driver conn table nil))))
 
 (defn- sample-json-row-honey-sql
