@@ -14,6 +14,7 @@ import type { Dashboard } from "metabase-types/api";
 import type {
   SnippetSidebarContext,
   SnippetSidebarMenuOption,
+  SnippetSidebarRowRenderers,
 } from "./snippets";
 
 // Types
@@ -119,10 +120,10 @@ export const PLUGIN_FORM_WIDGETS = getDefaultFormWidgets();
 const getDefaultSnippetSidebarPlusMenuOptions = (): ((
   snippetSidebar: SnippetSidebarContext,
 ) => SnippetSidebarMenuOption)[] => [];
-const getDefaultSnippetSidebarRowRenderers = (): Record<
-  string,
-  ComponentType<any> | null
-> => ({});
+const getDefaultSnippetSidebarRowRenderers =
+  (): SnippetSidebarRowRenderers => ({
+    collection: null,
+  });
 const getDefaultSnippetSidebarHeaderButtons = (): ((
   snippetSidebar: SnippetSidebarContext,
   opts: { className?: string },

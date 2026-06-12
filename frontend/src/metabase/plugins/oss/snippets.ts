@@ -25,6 +25,13 @@ export type SnippetSidebarContext = {
   };
 };
 
+export type SnippetSidebarRowRenderers = {
+  collection: ComponentType<{
+    item: Collection;
+    setSnippetCollectionId?: (id: CollectionId) => void;
+  }> | null;
+};
+
 export type SnippetCollectionPickerModalProps = {
   isOpen: boolean;
   onSelect: (collectionId: CollectionId | null) => void;

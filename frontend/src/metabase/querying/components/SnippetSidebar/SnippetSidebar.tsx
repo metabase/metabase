@@ -1,4 +1,4 @@
-import { Component, type ComponentType, createRef } from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -444,10 +444,15 @@ interface RowProps {
 }
 
 function Row(props: RowProps) {
-  const renderersByType: Record<string, ComponentType<any> | null> = {
-    snippet: SnippetRow,
-    ...PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  };
-  const Component = renderersByType[props.type];
-  return Component ? <Component {...props} /> : null;
+  // `type` tells us what `item` is, but TS can't correlate independent props
+  if (props.type === "collection") {
+    const CollectionRow = PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS.collection;
+    return CollectionRow ? (
+      <CollectionRow {...props} item={props.item as Collection} />
+    ) : null;
+  }
+  if (props.type === "snippet") {
+    return <SnippetRow {...props} item={props.item as NativeQuerySnippet} />;
+  }
+  return null;
 }
