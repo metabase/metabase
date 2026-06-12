@@ -261,13 +261,12 @@
   "Stamp a heartbeat on every job run this process is coordinating, then flag any that another path
   (reaper, force-fail) has already moved to a terminal state, so its coordinator aborts."
   []
-  (when-let [ids (seq (keys @active-runs))]
-    (transforms.job-run/heartbeat-runs! ids)
-    (let [active (t2/select-fn-set :id :model/TransformJobRun
-                                   {:where [:and [:in :id ids] [:= :is_active true]]})]
-      (doseq [[run-id gone] @active-runs
-              :when (not (contains? active run-id))]
-        (deliver gone true)))))
+  (rt/heartbeat-and-reconcile! {:model      :model/TransformJobRun
+                                :active     [:is_active true]
+                                :ids        (keys @active-runs)
+                                :heartbeat! transforms.job-run/heartbeat-runs!
+                                :on-gone    (fn [run-id]
+                                              (some-> (get @active-runs run-id) (deliver true)))}))
 
 (defn- run-coordinator-loop!
   "Dispatch ready transforms; then each round sweep the in-flight workers and refill freed slots —

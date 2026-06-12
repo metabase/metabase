@@ -42,6 +42,23 @@
   (when (seq ids)
     (apply t2/update! model :id [:in ids] (concat active [{heartbeat-column :%now}]))))
 
+(defn heartbeat-and-reconcile!
+  "Per-node tick for the runs this process owns: call `(heartbeat! ids)` to stamp them, then
+  `(on-gone id)` for each id whose row no longer matches `active` (kv-pairs, e.g. `[:is_active true]`)
+  — another path (reaper, timeout sweeper, force-cancel) has already moved it to a terminal state, so
+  the local work should stop. Only ids from the `ids` snapshot are reconciled; runs registered while
+  the tick is in flight are left for the next tick. No-op when `ids` is empty."
+  [{:keys [model active ids heartbeat! on-gone]}]
+  (when-let [ids (seq ids)]
+    (heartbeat! ids)
+    (let [active-ids (t2/select-fn-set :id model
+                                       {:where (into [:and [:in :id ids]]
+                                                     (map (fn [[k v]] [:= k v]))
+                                                     (partition 2 active))})]
+      (doseq [id ids
+              :when (not (contains? active-ids id))]
+        (on-gone id)))))
+
 (defn reap-rows!
   "Atomically move the `:active` rows of `:model` matching the `:stale` honeysql predicate into
   `:terminal`, returning the pre-update rows. `SELECT … FOR UPDATE` + `UPDATE` in one transaction,

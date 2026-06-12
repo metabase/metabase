@@ -17,7 +17,7 @@
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
-   (java.util.concurrent Executors Future ScheduledExecutorService TimeUnit)))
+   (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -48,29 +48,17 @@
     (a/put! cancel-chan :cancel!)
     true))
 
-(defn send-heartbeat!
-  "Stamp a heartbeat on every run this instance is actively executing (those registered in `connections`)."
-  []
-  (transform-run/heartbeat-runs! (keys @connections)))
-
-(defn reconcile-local-runs!
-  "Signal cancel for any run this process is executing that another path (timeout sweeper, reaper,
-  force-cancel) has already moved to a terminal state, so the local work stops promptly instead of
-  running to its own deadline. Only the owning node holds the run's `cancel-chan`, so each node
-  reconciles its own runs."
-  []
-  (when-let [local-ids (seq (keys @connections))]
-    (let [active (t2/select-fn-set :id :model/TransformRun
-                                   {:where [:and [:in :id local-ids] [:= :is_active true]]})]
-      (doseq [run-id local-ids
-              :when  (not (contains? active run-id))]
-        (chan-signal-cancel! run-id)))))
-
 (defn heartbeat-and-reconcile-runs!
-  "Per-node tick: heartbeat the runs we're executing, then stop any that have been terminated elsewhere."
+  "Per-node tick: heartbeat the runs this process is executing (those registered in `connections`),
+  then signal cancel for any that another path (timeout sweeper, reaper, force-cancel) has already
+  moved to a terminal state, so the local work stops promptly instead of running to its own deadline.
+  Only the owning node holds the run's `cancel-chan`, so each node reconciles its own runs."
   []
-  (send-heartbeat!)
-  (reconcile-local-runs!))
+  (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
+                                :active     [:is_active true]
+                                :ids        (keys @connections)
+                                :heartbeat! transform-run/heartbeat-runs!
+                                :on-gone    chan-signal-cancel!}))
 
 (defn chan-start-timeout-vthread!
   "Starts a vthread that will signal a timeout after a given number of minutes."
