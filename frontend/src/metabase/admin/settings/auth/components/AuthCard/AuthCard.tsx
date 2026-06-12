@@ -158,10 +158,6 @@ const AuthCardMenu = ({
   onChange,
   onDeactivate,
 }: AuthCardMenuProps): JSX.Element => {
-  const handleChange = useCallback(() => {
-    onChange(!isEnabled);
-  }, [isEnabled, onChange]);
-
   return (
     <Menu position="bottom-end">
       <Menu.Target>
@@ -176,7 +172,7 @@ const AuthCardMenu = ({
       <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
-          onClick={handleChange}
+          onClick={() => onChange(!isEnabled)}
         >
           {isEnabled ? t`Pause` : t`Resume`}
         </Menu.Item>
