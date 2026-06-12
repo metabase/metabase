@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: flex-start;
   gap: 0.5rem;
-  padding: 28px 2rem 0 2rem;
+  padding: 28px 2rem 0.75rem 2rem;
   font-size: var(--mantine-font-size-sm);
   line-height: 1rem;
   white-space: nowrap;
@@ -30,7 +30,7 @@
 }
 
 .value {
-  font-weight: 700;
+  font-weight: 400;
   font-size: 14px;
   color: var(--mb-color-text-primary);
 }

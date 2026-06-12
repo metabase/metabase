@@ -61,11 +61,10 @@ export function getGroupHeaderBgTint(
     .string();
 }
 
-const PADDING_REGULAR = 32;
 const PADDING_COMPACT = 24;
 
 export function getChartPadding(isCompact: boolean) {
-  return isCompact ? PADDING_COMPACT : PADDING_REGULAR;
+  return isCompact ? PADDING_COMPACT : `1rem 2rem 2rem 2rem`;
 }
 
 export const TREEMAP_HOVER_OVERLAY_FILL = Color("black")
