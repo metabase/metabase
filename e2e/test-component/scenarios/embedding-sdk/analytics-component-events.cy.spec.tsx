@@ -75,7 +75,11 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     const capturedEvents: SdkEventData[] = [];
     cy.intercept("POST", "/api/analytics-proxy", (request) => {
       capturedEvents.push(...sdkEventsFromProxyBody(request.body));
-      request.continue();
+      // Reply immediately rather than forwarding to the real proxy. The Snowplow
+      // queue is serialized: event N+1 only fires after event N's XHR response
+      // arrives. Forwarding to the real server in CI can take 10+ seconds, which
+      // blocks the queue and causes subsequent events to miss the wait timeout.
+      request.reply({ statusCode: 200 });
     }).as("analyticsProxy");
     return capturedEvents;
   };
@@ -88,6 +92,11 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     const capturedEvents = interceptAnalyticsProxy();
 
     mountStaticQuestion();
+
+    // Ensures settings are loaded before the proxy wait (settings-load race guard).
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
+    });
 
     // Beacon and component event are serialized by Snowplow's executingQueue:
     // event 2 is only sent after event 1's XHR response arrives, so they come
@@ -160,6 +169,12 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
           <CollectionBrowser />
         </>,
       );
+    });
+
+    // Wait for the question to fully render before asserting analytics (same
+    // settings-load race guard as test 1).
+    getSdkRoot().within(() => {
+      cy.findByText("Product ID").should("be.visible");
     });
 
     // beacon already fired in test 1 (once per JS context);
