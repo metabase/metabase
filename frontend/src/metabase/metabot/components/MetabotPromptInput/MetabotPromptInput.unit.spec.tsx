@@ -1,11 +1,13 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EditorState } from "@tiptap/pm/state";
+import fetchMock from "fetch-mock";
 import { createRef } from "react";
 
 import {
   setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -39,6 +41,7 @@ const setup = (props = {}) => {
   setupCollectionByIdEndpoint({
     collections: [rootCollection],
   });
+  setupSearchEndpoints([]);
 
   return renderWithProviders(
     <MetabotPromptInput {...defaultProps} {...props} autoFocus />,
@@ -105,5 +108,37 @@ describe("MetabotPromptInput", () => {
     await waitFor(() => {
       expect(screen.queryByTestId("mini-picker")).not.toBeInTheDocument();
     });
+  });
+
+  it("should scope mention search to the currently selected database after a database change", async () => {
+    const suggestionModels: SuggestionModel[] = ["table"];
+
+    const typeMentionQueryAndGetSearchDbId = async () => {
+      await userEvent.type(getEditor(), "@ord");
+      await waitFor(() => {
+        expect(fetchMock.callHistory.lastCall("path:/api/search")).toBeTruthy();
+      });
+      const lastCall = fetchMock.callHistory.lastCall("path:/api/search");
+      return new URL(lastCall!.url).searchParams.get("table_db_id");
+    };
+
+    const { rerender } = setup({
+      suggestionConfig: { suggestionModels, onlyDatabaseId: 1 },
+    });
+
+    expect(await typeMentionQueryAndGetSearchDbId()).toBe("1");
+
+    await userEvent.keyboard("{Escape}");
+    fetchMock.clearHistory();
+
+    rerender(
+      <MetabotPromptInput
+        {...defaultProps}
+        suggestionConfig={{ suggestionModels, onlyDatabaseId: 2 }}
+        autoFocus
+      />,
+    );
+
+    expect(await typeMentionQueryAndGetSearchDbId()).toBe("2");
   });
 });
