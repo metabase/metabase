@@ -30,10 +30,22 @@ export type GetExplorationDataResponse = {
 };
 
 // One group Metabot authored via the `add_research_groups` tool: either a metric sliced by chosen
-// dimensions, or a dimension slicing every related metric.
+// dimensions, or a dimension slicing a chosen set of (by default, all) related metrics.
 export type ResearchGroupSpec =
-  | { anchor: "metric"; metric_id: number; dimension_ids?: DimensionId[] }
-  | { anchor: "dimension"; dimension_id: DimensionId };
+  | {
+      anchor: "metric";
+      metric_id: number;
+      dimension_ids?: DimensionId[];
+      // When true, slice the metric by exactly `dimension_ids` instead of adding them on top of
+      // the automatically-selected interesting dimensions.
+      replace_default_dimensions?: boolean;
+    }
+  | {
+      anchor: "dimension";
+      dimension_id: DimensionId;
+      // When present, include only these metrics instead of every related metric.
+      metric_ids?: number[];
+    };
 
 // Result of the `add_research_groups` tool: the picker hydration for the referenced metrics, plus
 // the validated group specs the chat handler turns into picker blocks.

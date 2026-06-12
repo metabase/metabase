@@ -308,6 +308,53 @@ describe("NewExplorationChat", () => {
     );
   });
 
+  it("forwards replace_default_dimensions and metric_ids to the selection mutators", async () => {
+    const { selection, rerender } = setup();
+
+    const message: MetabotDebugToolCallMessage = {
+      ...addResearchGroupsToolCallMessage,
+      id: "tool-call-replace",
+      result: JSON.stringify({
+        ...addResearchGroupsResponse,
+        groups: [
+          {
+            anchor: "metric",
+            metric_id: metricRevenue.id,
+            dimension_ids: [revenueDateDimension.id],
+            replace_default_dimensions: true,
+          },
+          {
+            anchor: "dimension",
+            dimension_id: customerSegmentDimension.id,
+            metric_ids: [metricRevenue.id],
+          },
+        ],
+      }),
+    };
+
+    rerender({ messages: [userMessage, message], isDoingScience: true });
+    rerender({
+      messages: [userMessage, message, agentMessage],
+      isDoingScience: false,
+    });
+
+    await waitFor(() => {
+      expect(selection.addMetric).toHaveBeenCalled();
+    });
+    // metric anchor forwards the replace flag
+    expect(selection.addMetric).toHaveBeenCalledWith(
+      expect.objectContaining({ id: metricRevenue.id }),
+      expect.objectContaining({ replace: true }),
+    );
+    // dimension anchor forwards the curated metric subset
+    expect(selection.addDimension).toHaveBeenCalledWith(
+      expect.objectContaining({ id: customerSegmentDimension.id }),
+      expect.objectContaining({
+        selectedMetricIds: new Set([metricRevenue.id]),
+      }),
+    );
+  });
+
   it("sets the exploration name from a set name tool call response", async () => {
     const { selection, rerender } = setup();
 

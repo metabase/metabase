@@ -494,11 +494,11 @@
       (let [result (user-context/format-research-plan {:research_plan plan})]
         (is (string? result))
         (is (str/includes? result "Why was revenue down?"))
-        ;; metric-anchored group surfaces its block id and selected dimensions
-        (is (str/includes? result "[metric:42] Revenue, broken out by: Region, Plan"))
-        ;; dimension-anchored group surfaces its block id and the metrics it slices
-        (is (str/includes? result "[dim:7] by Plan, slicing: Revenue, Churn"))
-        (is (str/includes? result "Selected timelines: Releases"))))
+        ;; metric-anchored group surfaces its block id and selected dimensions with their ids
+        (is (str/includes? result "[metric:42] Revenue, broken out by: Region (d1), Plan (d2)"))
+        ;; dimension-anchored group surfaces its block id and the metrics it slices with their ids
+        (is (str/includes? result "[dim:7] by Plan, slicing: Revenue (42), Churn (43)"))
+        (is (str/includes? result "Selected timelines: Releases (1)"))))
     (testing "enrich-context-for-template threads the formatted plan through"
       (is (= (user-context/format-research-plan {:research_plan plan})
              (:research_plan (user-context/enrich-context-for-template {:research_plan plan})))))

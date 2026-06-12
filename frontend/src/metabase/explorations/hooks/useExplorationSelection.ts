@@ -63,11 +63,18 @@ export function dimensionBlockId(dimensionId: DimensionId): string {
 export interface ToggleMetricContext {
   dimensionsById: Map<DimensionId, MetricDimension>;
   additionalSelectedDimensionIds?: Set<DimensionId>;
+  // When true, select exactly `additionalSelectedDimensionIds` instead of unioning them onto the
+  // interesting defaults. Used when the agent wants the metric sliced by only the dimensions it
+  // names. Requires a non-empty `additionalSelectedDimensionIds`.
+  replace?: boolean;
 }
 
 export interface ToggleDimensionContext {
   group: ExplorationDimensionGroup | null;
   metricsByDimension: Map<DimensionId, ExplorationMetric[]>;
+  // When set, select only these metrics (e.g. the few the agent curated) instead of every related
+  // metric. Restricted to the block's candidate metrics.
+  selectedMetricIds?: Set<ExplorationMetric["id"]>;
 }
 
 export interface ExplorationSelection {
@@ -128,23 +135,30 @@ function buildMetricBlock(
   metric: ExplorationMetric,
   dimensionsById: Map<DimensionId, MetricDimension>,
   additionalSelectedDimensionIds?: Set<DimensionId>,
+  replace?: boolean,
 ): MetricBlock {
   const referencedDims = sortDimensionsByInterestingness(
     metric.dimension_ids
       .map((id) => dimensionsById.get(id))
       .filter((d): d is MetricDimension => d != null),
   );
-  const interesting = referencedDims.filter(isInterestingDimension);
-  // Select the interesting dimensions; fall back to all so the block is
-  // never created with an empty selection (BE rejects a metric with no dims).
-  const base = interesting.length > 0 ? interesting : referencedDims;
-  const selectedDimensionIds = new Set(base.map((d) => d.id));
-  // Add any explicitly-requested dimensions (e.g. Metabot's picks) that the metric actually has.
-  if (additionalSelectedDimensionIds) {
-    for (const d of referencedDims) {
-      if (additionalSelectedDimensionIds.has(d.id)) {
-        selectedDimensionIds.add(d.id);
-      }
+  // The explicitly-requested dimensions (e.g. Metabot's picks) that the metric actually has.
+  const requested = referencedDims.filter((d) =>
+    additionalSelectedDimensionIds?.has(d.id),
+  );
+  let selectedDimensionIds: Set<DimensionId>;
+  if (replace && requested.length > 0) {
+    // Pin the block to exactly the requested dimensions (no interesting defaults).
+    selectedDimensionIds = new Set(requested.map((d) => d.id));
+  } else {
+    const interesting = referencedDims.filter(isInterestingDimension);
+    // Select the interesting dimensions; fall back to all so the block is
+    // never created with an empty selection (BE rejects a metric with no dims).
+    const base = interesting.length > 0 ? interesting : referencedDims;
+    selectedDimensionIds = new Set(base.map((d) => d.id));
+    // Add the explicitly-requested dimensions on top of the interesting defaults.
+    for (const d of requested) {
+      selectedDimensionIds.add(d.id);
     }
   }
   return {
@@ -171,13 +185,19 @@ function buildDimensionBlock(
       }
     }
   }
+  const requested = context.selectedMetricIds;
+  // Default to every related metric; when a subset is requested, select just those (bounded by
+  // the block's candidate metrics).
+  const selectedMetricIds = requested
+    ? new Set(metrics.filter((m) => requested.has(m.id)).map((m) => m.id))
+    : new Set(metrics.map((m) => m.id));
   return {
     kind: "dimension",
     id: dimensionBlockId(dimension.id),
     dimension,
     groupDimensions,
     metrics,
-    selectedMetricIds: new Set(metrics.map((m) => m.id)),
+    selectedMetricIds,
   };
 }
 
@@ -201,7 +221,11 @@ export function useExplorationSelection(): ExplorationSelection {
   const addMetric = useCallback(
     (
       metric: ExplorationMetric,
-      { dimensionsById, additionalSelectedDimensionIds }: ToggleMetricContext,
+      {
+        dimensionsById,
+        additionalSelectedDimensionIds,
+        replace,
+      }: ToggleMetricContext,
     ) => {
       setBlocks((prevBlocks) => {
         const existing = prevBlocks.find(
@@ -237,6 +261,7 @@ export function useExplorationSelection(): ExplorationSelection {
             metric,
             dimensionsById,
             additionalSelectedDimensionIds,
+            replace,
           ),
         ];
       });

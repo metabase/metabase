@@ -171,6 +171,29 @@ describe("useExplorationSelection", () => {
       ]);
     });
 
+    it("replaces the interesting defaults with exactly the requested dimensions when replace is set", () => {
+      const dimHigh = makeDim("dim-high", 0.9);
+      const dimLow = makeDim("dim-low", 0.1);
+      const metric = makeMetric(1, ["dim-high", "dim-low"]);
+      const dimensionsById = makeDimensionsById([dimHigh, dimLow]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addMetric(metric, {
+          dimensionsById,
+          additionalSelectedDimensionIds: new Set(["dim-low"]),
+          replace: true,
+        });
+      });
+
+      // Without replace this would select dim-high (interesting) ∪ dim-low; with replace it is
+      // exactly the requested dim-low.
+      expect([...metricBlockOf(result).selectedDimensionIds]).toEqual([
+        "dim-low",
+      ]);
+    });
+
     it("is a no-op when the requested dimensions are already selected", () => {
       const dimHigh = makeDim("dim-high", 0.9);
       const metric = makeMetric(1, ["dim-high"]);
@@ -298,6 +321,31 @@ describe("useExplorationSelection", () => {
         });
       });
       expect(result.current.blocks).toBe(blocksAfterFirst);
+    });
+
+    it("selects only the requested metrics when a subset is given", () => {
+      const dimA = makeDim("dim-a", 0.9);
+      const metric1 = makeMetric(1, ["dim-a"]);
+      const metric2 = makeMetric(2, ["dim-a"]);
+      const metricsByDimension = new Map([["dim-a", [metric1, metric2]]]);
+
+      const { result } = renderSelection();
+
+      act(() => {
+        result.current.addDimension(dimA, {
+          group: null,
+          metricsByDimension,
+          selectedMetricIds: new Set([1]),
+        });
+      });
+
+      const block = result.current.blocks[0];
+      if (block.kind !== "dimension") {
+        throw new Error("expected a dimension block");
+      }
+      // Both metrics remain candidates, but only the requested one is selected.
+      expect(block.metrics.map((m) => m.id).sort()).toEqual([1, 2]);
+      expect([...block.selectedMetricIds]).toEqual([1]);
     });
 
     it("grows an existing dimension block by re-selecting related metrics", () => {

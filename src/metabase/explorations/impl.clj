@@ -381,6 +381,9 @@
           (when-not metric
             (throw (ex-info (format "Unknown or inaccessible metric id %s" metric-id)
                             {:anchor "metric" :metric_id metric-id})))
+          (when (and (:replace_default_dimensions g) (empty? (:dimension_ids g)))
+            (throw (ex-info "replace_default_dimensions requires at least one dimension_id"
+                            {:anchor "metric" :metric_id metric-id})))
           (let [valid (set (map :id (:dimensions metric)))]
             (doseq [d (:dimension_ids g)]
               (when-not (contains? valid d)
@@ -392,13 +395,22 @@
             (throw (ex-info "A dimension-anchored group requires a dimension_id" {:group g})))
           (when-not (contains? all-dim-ids dimension-id)
             (throw (ex-info (format "Unknown dimension id %s" dimension-id)
-                            {:anchor "dimension" :dimension_id dimension-id}))))
+                            {:anchor "dimension" :dimension_id dimension-id})))
+          (when-let [mids (seq (:metric_ids g))]
+            (let [related (into #{} (mapcat dim->metrics) (dim->group dimension-id))]
+              (doseq [mid mids]
+                (when-not (contains? related mid)
+                  (throw (ex-info (format "Metric %s is not related to dimension %s" mid dimension-id)
+                                  {:anchor "dimension" :dimension_id dimension-id :metric_id mid})))))))
         (throw (ex-info (format "Unknown anchor %s" (:anchor g)) {:group g}))))
     (let [relevant         (reduce (fn [acc g]
                                      (case (:anchor g)
                                        "metric"    (conj acc (:metric_id g))
-                                       "dimension" (into acc (mapcat dim->metrics
-                                                                     (dim->group (:dimension_id g))))))
+                                       "dimension" (let [related (into #{} (mapcat dim->metrics)
+                                                                       (dim->group (:dimension_id g)))]
+                                                     (into acc (if-let [mids (seq (:metric_ids g))]
+                                                                 (filter related mids)
+                                                                 related)))))
                                    #{} groups)
           relevant-metrics (filterv #(contains? relevant (:id %)) all)]
       {:metrics          (mapv slim-metric relevant-metrics)

@@ -159,6 +159,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
                   additionalSelectedDimensionIds: new Set(
                     group.dimension_ids ?? [],
                   ),
+                  replace: group.replace_default_dimensions,
                 });
                 editedMetrics = true;
               }
@@ -168,6 +169,9 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
                 addDimension(dimensionGroup.dimensions[0], {
                   group: dimensionGroup,
                   metricsByDimension,
+                  selectedMetricIds: group.metric_ids
+                    ? new Set(group.metric_ids)
+                    : undefined,
                 });
                 editedDimensions = true;
               }

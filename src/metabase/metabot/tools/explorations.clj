@@ -27,18 +27,24 @@
       [:anchor [:enum "metric" "dimension"]]
       [:metric_id {:optional true} :int]
       [:dimension_id {:optional true} :string]
-      [:dimension_ids {:optional true} [:sequential :string]]]]]])
+      [:dimension_ids {:optional true} [:sequential :string]]
+      [:metric_ids {:optional true} [:sequential :int]]
+      [:replace_default_dimensions {:optional true} :boolean]]]]])
 
 (mu/defn ^{:tool-name "add_research_groups"}
   add-research-groups-tool
   "Add one or more groups to the research artifact. Each group is either:
    - metric-anchored: `{\"anchor\": \"metric\", \"metric_id\": <id>, \"dimension_ids\": [<id>, ...]}`
-     — the metric sliced by the chosen dimensions, added on top of the automatically-selected
-     interesting ones. Omit `dimension_ids` to use only the automatic selection.
-   - dimension-anchored: `{\"anchor\": \"dimension\", \"dimension_id\": <id>}` — the dimension
-     slicing every related metric.
-
-   Ids must come from `get_research_candidates`; an unknown id fails the whole call."
+     — the metric sliced by the chosen dimensions. By default `dimension_ids` are added on top of
+     the automatically-selected interesting dimensions; omit it to use only the automatic
+     selection. To pin the metric to exactly the dimensions you list (no automatic ones), also
+     pass `\"replace_default_dimensions\": true` - then `dimension_ids` must be non-empty.
+   - dimension-anchored: `{\"anchor\": \"dimension\", \"dimension_id\": <id>}`, the dimension
+     slicing every related metric. To slice only a chosen few, pass
+     `\"metric_ids\": [<id>, ...]` and just those metrics are included. Prefer this (a single
+     dimension-anchored group with a curated `metric_ids`) when the user asks to look at a handful
+     of metrics by one dimension — it reads as one \"by <dimension>\" block rather than several
+     loose metrics."
   [{:keys [groups]} :- add-research-groups-schema]
   (explorations/research-groups {:groups groups}))
 
