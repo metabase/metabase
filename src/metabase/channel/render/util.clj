@@ -40,6 +40,17 @@
    (and (some? dashcard)
         (get-in dashcard [:visualization_settings :visualization]))))
 
+(defn merged-viz-settings
+  "Merge a card's and dashcard's `:visualization_settings`, with the dashcard's taking precedence."
+  [card dashcard]
+  (merge (:visualization_settings card) (:visualization_settings dashcard)))
+
+(defn viz-setting
+  "Look up the `map.*`-style setting `k` (a string) in `viz-settings`, tolerating either string or keyword
+  keys — production stores viz-settings keys as keywords-with-dots, but they can also arrive as strings."
+  [viz-settings k]
+  (or (get viz-settings k) (get viz-settings (keyword k))))
+
 (defn is-scalar-funnel?
   "Check if the visualization is a scalar funnel.
    Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"

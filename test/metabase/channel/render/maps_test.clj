@@ -42,11 +42,11 @@
           (is (<= maps/*map-min-width* (.getWidth img) 600))
           (is (<= maps/*map-min-height* (.getHeight img) 400)))))))
 
-(deftest pin-marker-icon-loads-test
+(deftest ^:parallel pin-marker-icon-loads-test
   (testing "the teardrop pin marker icon is present on the classpath (markers pin type depends on it)"
     (is (some? (deref @#'maps/pin-marker-icon)))))
 
-(deftest grid-color-endpoints-test
+(deftest ^:parallel grid-color-endpoints-test
   (testing "the grid color scale runs green (low) to red (high)"
     (let [grid-color @#'maps/grid-color
           low  (grid-color 0.0 0.0 10.0)

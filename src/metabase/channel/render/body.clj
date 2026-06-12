@@ -456,12 +456,6 @@
        (map add-dashcard-timeline-events)
        (m/distinct-by #(get-in % [:card :id]))))
 
-;; the `:javascript_visualization` render method
-;; is and will continue to handle more and more 'isomorphic' chart types.
-;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
-;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
-;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
-;; Trend charts were added more recently and will not have multi-series.
 (defn region-map-region-key
   "Resolve the region key for a region map, mirroring the frontend `map.region` default: an explicit
   `map.region` setting, else a legacy `:state`/`:country` display, else inferred from a State/Country
@@ -472,9 +466,8 @@
   (letfn [(any-col-type? [t] (some #(isa? (some-> (:semantic_type %) keyword) t) cols))]
     ;; Merge (dashcard overrides card) rather than `or`: a dashcard usually has an empty-but-present
     ;; :visualization_settings that would otherwise shadow the card's map.region.
-    (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
-          region-key   (or (get viz-settings "map.region")
-                           (get viz-settings :map.region)
+    (let [viz-settings (render.util/merged-viz-settings card dashcard)
+          region-key   (or (render.util/viz-setting viz-settings "map.region")
                            (case display-type :state "us_states" :country "world_countries" nil)
                            (cond
                              (any-col-type? :type/State)   "us_states"
@@ -502,6 +495,12 @@
     :html
     {:content [:div content] :attachments nil}))
 
+;; the `:javascript_visualization` render method
+;; is and will continue to handle more and more 'isomorphic' chart types.
+;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
+;; As of 2024-03-21, isomorphic chart types include: line, area, bar (LAB), and trend charts
+;; Because this effort began with LAB charts, this method is written to handle multi-series dashcards.
+;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
   (let [cards-with-data  (series-cards-with-data dashcard card data)
@@ -516,11 +515,11 @@
   (let [region-key (region-map-region-key (:display card) card dashcard data)
         geojson    (some-> region-key geojson.api/region-geojson)]
     (if-not geojson
-      ;; Custom/unresolvable regions can't be rendered statically; degrade to a table of the data.
+      ;; The region's GeoJSON couldn't be resolved (e.g. a custom map whose fetch failed); degrade to a
+      ;; table of the data rather than emit an empty map.
       (render :table render-type timezone-id card dashcard data)
       (let [cards-with-data (series-cards-with-data dashcard card data)
-            base-settings   (merge (get card :visualization_settings)
-                                   (get dashcard :visualization_settings))
+            base-settings   (render.util/merged-viz-settings card dashcard)
             ;; Embed the resolved GeoJSON, and pin map.region to the resolved key so the bundle picks
             ;; the right projection even when the region was only an inferred default (never persisted).
             viz-settings    (-> base-settings
@@ -572,12 +571,12 @@
   [col idx rows]
   (or (get-in col [:binning_info :bin_width])
       (let [vs (sort (distinct (keep (fn [row] (let [v (nth row idx nil)] (when (number? v) v))) rows)))]
-        (->> (map - (rest vs) vs) (filter pos?) (reduce min ##Inf) (#(when (not= ##Inf %) %))))))
+        (some->> (map - (rest vs) vs) (filter pos?) seq (apply min)))))
 
 (mu/defmethod render :pin_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
-  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
-        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+  (let [viz-settings (render.util/merged-viz-settings card dashcard)
+        setting      (partial render.util/viz-setting viz-settings)
         lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
         lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
         points       (when (and lat-idx lon-idx)
@@ -585,19 +584,20 @@
                              :let  [lat (nth row lat-idx nil)
                                     lon (nth row lon-idx nil)]
                              :when (and (number? lat) (number? lon))]
-                         [lat lon]))]
-    (if (empty? points)
-      ;; No usable coordinates (mismatched columns, all nil, etc.) — degrade to a table of the data.
-      (render :table render-type timezone-id card dashcard data)
-      (png->rendered-part
-       render-type
-       (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
-                                    :pin-type (setting "map.pin_type")})))))
+                         [lat lon]))
+        png          (when (seq points)
+                       (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
+                                                    :pin-type (setting "map.pin_type")}))]
+    (if png
+      (png->rendered-part render-type png)
+      ;; No usable coordinates (mismatched columns, all nil, etc.) or the render failed — degrade to a
+      ;; table of the data.
+      (render :table render-type timezone-id card dashcard data))))
 
 (mu/defmethod render :grid_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
-  (let [viz-settings (merge (:visualization_settings card) (:visualization_settings dashcard))
-        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))
+  (let [viz-settings (render.util/merged-viz-settings card dashcard)
+        setting      (partial render.util/viz-setting viz-settings)
         lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
         lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
         metric-idx   (metric-col-index cols lat-idx lon-idx (setting "map.metric_column"))
@@ -610,12 +610,13 @@
                              :when (and (number? lat) (number? lon))]
                          {:lat lat :lon lon :lat-bin lat-bin :lon-bin lon-bin
                           :metric (when metric-idx
-                                    (let [m (nth row metric-idx nil)] (when (number? m) m)))}))]
-    (if (empty? cells)
-      (render :table render-type timezone-id card dashcard data)
-      (png->rendered-part
-       render-type
-       (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)})))))
+                                    (let [m (nth row metric-idx nil)] (when (number? m) m)))}))
+        png          (when (seq cells)
+                       (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
+    (if png
+      (png->rendered-part render-type png)
+      ;; No usable cells or the render failed — degrade to a table of the data.
+      (render :table render-type timezone-id card dashcard data))))
 
 ;;; ------------------------------------------------ pivot tables ------------------------------------------------
 

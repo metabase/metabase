@@ -1,8 +1,8 @@
 (ns metabase.channel.render.maps
-  "Proof-of-concept: render a static pin map (basemap tiles + drawn markers) to PNG bytes, entirely on the
-  JVM (Java2D), for use in email/Slack subscriptions. Unlike choropleth maps this bypasses the GraalJS
+  "Render static pin and grid maps (basemap tiles + drawn markers/cells) to PNG bytes, entirely on the JVM
+  (Java2D), for use in email/Slack subscriptions. Unlike choropleth maps this bypasses the GraalJS
   static-viz bundle. The Web Mercator projection here mirrors [[metabase.tiles.api]] (which already draws
-  pin tiles for the live app); the new part is fetching + stitching the OSM basemap under the pins."
+  pin tiles for the live app); the new part is fetching + stitching the OSM basemap under the overlay."
   (:require
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
@@ -188,13 +188,15 @@
       ;; attribution (OSM requires it)
       (.setColor g (Color. 90 90 90))
       (.drawString g "© OpenStreetMap contributors" (int (- w 210)) (int (- h 8)))
+      (let [out (ByteArrayOutputStream.)]
+        (ImageIO/write img "png" out)
+        (.toByteArray out))
+      ;; Return nil on failure so the caller can degrade to a table rather than email a blank/partial map.
       (catch Throwable e
-        (log/warn e "Failed to render map"))
+        (log/warn e "Failed to render map")
+        nil)
       (finally
-        (.dispose g)))
-    (let [out (ByteArrayOutputStream.)]
-      (ImageIO/write img "png" out)
-      (.toByteArray out))))
+        (.dispose g)))))
 
 (defn- draw-dot [^java.awt.Graphics2D g ^double mx ^double my]
   (let [r 5]

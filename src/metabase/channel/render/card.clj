@@ -114,9 +114,8 @@
   it's a grid map when those lat/long columns are binned, otherwise a pin map. Returns
   \"pin\" / \"grid\" / \"region\" / \"heat\"."
   [display-type card maybe-dashcard {:keys [cols]}]
-  (let [viz-settings (merge (:visualization_settings card)
-                            (:visualization_settings maybe-dashcard))
-        setting      (fn [k] (or (get viz-settings k) (get viz-settings (keyword k))))]
+  (let [viz-settings (render.util/merged-viz-settings card maybe-dashcard)
+        setting      (partial render.util/viz-setting viz-settings)]
     (or (setting "map.type")
         (case display-type
           :pin_map           "pin"
@@ -128,9 +127,10 @@
             :else                                   "pin")))))
 
 (defn- region-map?
-  "True when `card` is a region (choropleth) map over a built-in region we can render statically. Mirrors
-  the frontend: a `:map` display (or legacy `:state`/`:country`) whose effective map type is region and
-  whose region resolves to a built-in GeoJSON. Pin/heat/grid and custom (Leaflet) regions aren't here."
+  "True when `card` is a region (choropleth) map whose region we can render statically. Mirrors the
+  frontend: a `:map` display (or legacy `:state`/`:country`) whose effective map type is region and whose
+  region key is configured — built-in or a user-defined custom map (the latter is fetched at render time).
+  Pin/heat/grid maps aren't here."
   [display-type card maybe-dashcard data]
   (and (#{:map :state :country} display-type)
        (= "region" (effective-map-type display-type card maybe-dashcard data))

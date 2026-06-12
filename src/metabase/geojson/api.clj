@@ -89,6 +89,22 @@
   ;; would otherwise keep a map broken until the TTL expires.
   (memoize/ttl fetch-geojson-data* :ttl/threshold custom-geojson-cache-ttl-ms))
 
+(defn- custom-region-geojson
+  "Resolve GeoJSON for a user-defined `custom-geojson` region key by fetching its URL (cached with a short
+  TTL). Returns nil when custom GeoJSON is disabled, the key is unknown, or the fetch fails."
+  [region-key]
+  (when-let [{:keys [url region_key region_name]}
+             (and (geojson.settings/custom-geojson-enabled)
+                  (get (geojson.settings/user-defined-custom-geojson) (keyword region-key)))]
+    (try
+      {:data        (fetch-geojson-data url)
+       :region_key  region_key
+       :region_name region_name}
+      (catch Throwable e
+        (log/warnf e "Failed to load custom GeoJSON for region %s from %s"
+                   (pr-str region-key) (pr-str url))
+        nil))))
+
 (defn region-geojson
   "Resolve GeoJSON `{:data :region_key :region_name}` for a `custom-geojson` region key, built-in or
   user-defined. Built-in maps are read from the classpath; user maps are fetched from their URL and the
@@ -97,17 +113,7 @@
   [region-key]
   (when region-key
     (or (geojson.settings/builtin-region-geojson region-key)
-        (when (geojson.settings/custom-geojson-enabled)
-          (when-let [{:keys [url region_key region_name]}
-                     (get (geojson.settings/user-defined-custom-geojson) (keyword region-key))]
-            (try
-              {:data        (fetch-geojson-data url)
-               :region_key  region_key
-               :region_name region_name}
-              (catch Throwable e
-                (log/warnf e "Failed to load custom GeoJSON for region %s from %s"
-                           (pr-str region-key) (pr-str url))
-                nil)))))))
+        (custom-region-geojson region-key))))
 
 (defn- read-url-and-respond
   "Reads the provided URL and responds with the contents as a stream."
