@@ -23,6 +23,7 @@ import {
 } from "embedding-sdk-bundle/analytics/snowplow";
 import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
 import { deriveAuthMethod, useInitSdkTracker } from "./tracker";
 
@@ -66,6 +67,22 @@ describe("deriveAuthMethod", () => {
 describe("useInitSdkTracker", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+  });
+
+  afterEach(() => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = false;
+  });
+
+  it("does nothing in iframe embed context", () => {
+    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
+    mockUseIsTrackingEnabled.mockReturnValue(true);
+    const store = makeStore();
+
+    renderHook(() => useInitSdkTracker(SSO_AUTH_CONFIG, store, false));
+
+    expect(mockInitSdkTracker).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
   });
 
   it("does nothing when tracking is disabled", () => {

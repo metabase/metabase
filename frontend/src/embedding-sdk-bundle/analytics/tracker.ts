@@ -15,6 +15,7 @@ import { setSdkTrackerReady } from "embedding-sdk-bundle/store/reducer";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 
 export function deriveAuthMethod(
   authConfig: MetabaseAuthConfig,
@@ -39,7 +40,7 @@ export function useInitSdkTracker(
   const isTrackingEnabled = useIsTrackingEnabled();
 
   useEffect(() => {
-    if (!isTrackingEnabled) {
+    if (isEmbeddingEajs() || !isTrackingEnabled) {
       return;
     }
 
