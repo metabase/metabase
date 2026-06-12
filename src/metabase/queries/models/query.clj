@@ -9,6 +9,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -140,8 +141,19 @@
                    :from   [(t2/table-name :model/Query)]
                    :where  [:in :query_hash query-hashes]})))
 
-(defn- save-queries-and-update-average-execution-times!*
-  [entries remaining-attempts]
+(defn save-queries-and-update-average-execution-times!
+  "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,
+  `:query-hash`, and `:execution-time-ms` keys, using a fixed number of statements rather than several per entry.
+  Multiple entries for the same hash are folded into a single atomic update equivalent to applying the rolling-average
+  formula once per entry, in order.
+
+  The INSERT of new Query rows runs in a nested transaction (a savepoint), so that if it conflicts inside a caller's
+  transaction (e.g. when batch updates run synchronously inside a transaction in tests), the constraint violation
+  doesn't abort the outer transaction -- Postgres refuses to run any further statements in a transaction with a failed
+  statement otherwise. A conflict means someone else just inserted one of these hashes with its own initial average;
+  dropping this batch's samples for a brand-new row doesn't meaningfully change the rolling average, so there is no
+  need to retry."
+  [entries]
   (when (seq entries)
     (let [groups       (vals (group-by (fn [entry] (hash-key (:query-hash entry))) entries))
           hash->status (query-hash->row-status (map (fn [group] (:query-hash (first group))) groups))
@@ -153,23 +165,12 @@
       ;; rare legacy path: rows whose `query` still needs backfilling are handled individually
       (doseq [{:keys [query query-hash execution-time-ms]} (apply concat needs-query-backfill)]
         (update-rolling-average-execution-time! query query-hash execution-time-ms))
-      ;; if some other instance beat us to inserting any of the new rows, retry: the next attempt will see the
-      ;; conflicting rows as existing and fold them into the batched UPDATE instead
       (when (seq new-entry)
         (try
-          (insert-query-entries! new-entry)
+          (t2/with-transaction [_conn]
+            (insert-query-entries! new-entry))
           (catch Throwable e
-            (if (pos? remaining-attempts)
-              (save-queries-and-update-average-execution-times!* (apply concat new-entry) (dec remaining-attempts))
-              (throw e))))))))
-
-(defn save-queries-and-update-average-execution-times!
-  "Update the recorded average execution times (or insert new records as needed) for `entries`, maps with `:query`,
-  `:query-hash`, and `:execution-time-ms` keys, using a fixed number of statements rather than several per entry.
-  Multiple entries for the same hash are folded into a single atomic update equivalent to applying the rolling-average
-  formula once per entry, in order."
-  [entries]
-  (save-queries-and-update-average-execution-times!* entries 2))
+            (log/tracef e "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
 
 (mr/def ::database-and-table-ids
   [:map
