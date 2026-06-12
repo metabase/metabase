@@ -3,6 +3,10 @@ import { replace } from "react-router-redux";
 
 import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type {
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useDispatch } from "metabase/redux";
 import { Center } from "metabase/ui";
@@ -11,7 +15,6 @@ import type { Card } from "metabase-types/api";
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps, MetricUrls } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 export function MetricOverviewPage({

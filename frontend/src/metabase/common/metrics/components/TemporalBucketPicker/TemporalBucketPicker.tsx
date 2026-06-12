@@ -1,8 +1,8 @@
 import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import type { DimensionWithDefinition } from "metabase/metrics/types";
-import { getCommonTemporalUnits } from "metabase/metrics/utils/dates";
+import type { DimensionWithDefinition } from "metabase/common/metrics/types";
+import { getCommonTemporalUnits } from "metabase/common/metrics/utils/dates";
 import { TemporalUnitPicker } from "metabase/querying/common/components/TemporalUnitPicker";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";

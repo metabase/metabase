@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterAdded,
   trackMetricsViewerFilterEdited,

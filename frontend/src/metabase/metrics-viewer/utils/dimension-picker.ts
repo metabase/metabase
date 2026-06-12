@@ -1,7 +1,7 @@
 import {
   type GeoSubtype,
   getGeoSubtype,
-} from "metabase/metrics/common/utils/dimension-types";
+} from "metabase/common/metrics/utils/dimension-types";
 import type {
   DimensionGroup,
   DimensionMetadata,
