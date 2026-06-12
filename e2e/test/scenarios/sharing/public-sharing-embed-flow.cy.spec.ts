@@ -9,6 +9,11 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
+// The Behavior/Parameters/Appearance cards share a wrapper whose inline
+// `opacity` style is dimmed (0.5) while the selected auth type isn't ready.
+const optionCardsWrapper = () =>
+  getEmbedSidebar().findByText("Behavior").closest("[style*='opacity']");
+
 describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
@@ -48,6 +53,29 @@ describe(suiteTitle, () => {
       event: "embed_wizard_options_completed",
       event_detail: "settings=default",
     });
+  });
+
+  it("lets Guest embedding proceed after accepting only the Guest terms, without requiring the SSO terms (EMB-1884)", () => {
+    // Reproduce a fresh Pro instance where neither auth type's terms have
+    // been accepted yet, so the option cards start dimmed.
+    H.updateSetting("show-simple-embed-terms", true);
+    H.updateSetting("show-static-embed-terms", true);
+    H.updateSetting("enable-embedding-static", false);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.openSharingMenu("Embed");
+
+    cy.log("switch to Guest authentication");
+    getEmbedSidebar().findByLabelText("Guest").click();
+
+    cy.log("option cards stay dimmed until the Guest terms are accepted");
+    optionCardsWrapper().should("have.css", "opacity", "0.5");
+
+    cy.log("accept the Guest terms only — never the SSO terms");
+    H.embedModalEnableEmbedding();
+
+    cy.log("option cards become available without accepting the SSO terms");
+    optionCardsWrapper().should("have.css", "opacity", "1");
   });
 
   it("pre-selects question in embed flow when opened from question sharing modal", () => {
