@@ -6,11 +6,17 @@
   flaky. The SSRF-safe image-fetch defenses now live in `metabase.util.http` (see
   `metabase.util.http-test`)."
   (:require
+   [clojure.core.memoize :as ccm]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.channel.render.pdf :as pdf]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs])
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util.memoize :as memo])
   (:import
+   (java.awt Color Font)
+   (java.awt.geom PathIterator Rectangle2D)
+   (java.io ByteArrayOutputStream StringReader)
+   (org.apache.batik.parser AWTPathProducer)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
@@ -71,6 +77,90 @@
                         set)]
           ;; "rel" (relative) and "js" (javascript:) must not be clickable
           (is (= #{"https://metabase.com" "mailto:a@b.com"} uris)))))))
+
+;; --------------------------------------------------------------------------------------------
+;; "Made with Metabase" vector branding badge (logo SVG paths + Lato-outlined "Made with")
+;; --------------------------------------------------------------------------------------------
+
+(deftest ^:parallel branding-logo-asset-test
+  (testing "the logo SVG parses to three fill groups with the brand colors and non-empty paths"
+    (let [{:keys [vw vh groups]} @@#'pdf/brand-logo]
+      (is (= 87.0 vw))
+      (is (= 22.0 vh))
+      (is (= 3 (count groups)))
+      (is (every? (comp seq :ds) groups) "every fill group has at least one path")
+      (is (= #{(Color. 0x5A 0x60 0x72) (Color. 0x50 0x9E 0xE3) (Color. 0xC2 0xDA 0xF0)}
+             (set (map :color groups)))))))
+
+(deftest ^:parallel branding-svg-paths-drawable-test
+  (testing "every logo path parses to a non-empty shape (Batik flattens arcs to beziers)"
+    (doseq [{:keys [ds]} (:groups @@#'pdf/brand-logo)
+            d            ds]
+      (let [shape (AWTPathProducer/createShape (StringReader. d) PathIterator/WIND_NON_ZERO)
+            b     ^Rectangle2D (.getBounds2D shape)]
+        (is (pos? (.getWidth b)) (str "path has width: " d))
+        (is (pos? (.getHeight b)) (str "path has height: " d))))))
+
+(deftest ^:parallel branding-text-fallback-runs-test
+  (testing "the localized prefix splits into font runs: Lato covers Latin+Cyrillic, CJK falls back to Noto"
+    (let [runs (#'pdf/brand-text-runs "Made Сделано 作成")]
+      (is (= ["Made Сделано " "作成"] (mapv :text runs)) "Latin+Cyrillic share a run; CJK splits off")
+      (is (re-find #"Lato" (.getFamily ^Font (:font (first runs)))))
+      (is (re-find #"Noto" (.getFamily ^Font (:font (second runs))))))))
+
+;; not ^:parallel: exercises the real PDFBox path-drawing pipeline (content stream + Lato outline
+;; with quadratic segments + SVG cubic paths), which the deftest linter treats as side-effecting
+(deftest branding-badge-render-smoke-test
+  (testing "draw-brand-badge! streams vectors into a real content stream and yields a saveable PDF"
+    (with-open [doc (PDDocument.)]
+      (let [page (PDPage. PDRectangle/A4)]
+        (.addPage doc page)
+        (with-open [cs (PDPageContentStream. doc page)]
+          ;; right edge near the A4 content margin, badge in the top margin band
+          (#'pdf/draw-brand-badge! cs 559.0 800.0))
+        (let [baos (ByteArrayOutputStream.)]
+          (.save doc baos)
+          (is (pos? (count (.toByteArray baos)))))))))
+
+;; --------------------------------------------------------------------------------------------
+;; `segment` -- greedy streaming grouping transducer
+;; --------------------------------------------------------------------------------------------
+
+(deftest ^:parallel segment-test
+  ;; pack numbers into groups whose running sum stays <= limit (greedy bin packing); ::pdf/reject
+  ;; uses the alias so it resolves to the sentinel in pdf's namespace.
+  (let [pack (fn [limit]
+               (#'pdf/segment
+                (fn ([x] {:items [x] :sum x})
+                  ([{:keys [items sum]} x]
+                   (let [s (+ sum x)]
+                     (if (<= s limit) {:items (conj items x) :sum s} ::pdf/reject))))
+                :items))]
+    (testing "greedy grouping by running total; an overflowing item reopens the next group"
+      (is (= [[3 4] [5 5] [2]] (into [] (pack 10) [3 4 5 5 2]))))
+    (testing "no rejection -> a single group"
+      (is (= [[1 2 3]] (into [] (pack 100) [1 2 3]))))
+    (testing "empty input -> no groups"
+      (is (= [] (into [] (pack 10) []))))
+    (testing "default close is identity (emits the raw accumulator)"
+      (is (= [[1 2 3]]
+             (into [] (#'pdf/segment (fn ([x] [x]) ([acc x] (conj acc x)))) [1 2 3]))))
+    (testing "custom close transforms each finished group"
+      (is (= [3 7 5] ; consecutive pairs, summed
+             (into [] (#'pdf/segment (fn ([x] [x])
+                                       ([acc x] (if (< (count acc) 2) (conj acc x) ::pdf/reject)))
+                                     #(reduce + %))
+                   [1 2 3 4 5]))))
+    (testing "::break closes the group and DROPS the seam item"
+      (is (= [[1 2] [3] [4]]
+             (into [] (#'pdf/segment (fn ([x] [x])
+                                       ([acc x] (if (= x :|) ::pdf/break (conj acc x)))))
+                   [1 2 :| 3 :| 4]))))
+    (testing "honors downstream reduced? (take) without double-flushing or erroring"
+      (is (= [[3 4]] (into [] (comp (pack 10) (take 1)) [3 4 5 5 2])))
+      (is (= [[3 4] [5 5]] (into [] (comp (pack 10) (take 2)) [3 4 5 5 2]))))
+    (testing "composes/streams via sequence too, flushing the final open group"
+      (is (= [[3 4] [5 5] [2]] (sequence (pack 10) [3 4 5 5 2]))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Link cards render as clickable markdown text cells
@@ -283,6 +373,17 @@
                      {:font :italic :pt 10.5 :x 78.9 :y 689.5 :text "em"}
                      {:font :mono :pt 10.5 :x 99.7 :y 689.5 :text "cd"}
                      {:font :regular :pt 10.5 :x 115.0 :y 689.5 :text "lk"}]]
+                   ;; a word whose style changes mid-word with no whitespace ("x**Y**z") is ONE
+                   ;; indivisible multi-piece word: the pieces draw contiguously in their own fonts
+                   ;; and never break across a line. (Pre-refactor this split into separate units that
+                   ;; the wrapper could break between.)
+                   ["markdown cross-style word stays one indivisible word"
+                    (dmic 40.0 700.0 70.0 80.0 "x**Y**z tail end")
+                    [{:font :regular :pt 10.5 :x 40.0 :y 689.5 :text "x"}
+                     {:font :bold :pt 10.5 :x 45.6 :y 689.5 :text "Y"}
+                     {:font :regular :pt 10.5 :x 52.1 :y 689.5 :text "z"}
+                     {:font :regular :pt 10.5 :x 59.8 :y 689.5 :text "tail"}
+                     {:font :regular :pt 10.5 :x 77.6 :y 689.5 :text "end"}]]
                    ["markdown heading + bullet list (markers)"
                     (dmic 40.0 700.0 240.0 120.0 "## Head\n\n- one\n- two")
                     [{:font :bold :pt 13.5 :x 40.0 :y 686.5 :text "Head"}
@@ -328,24 +429,35 @@
             (is (= expected (capture-line-draws! render)) nm))
           (.close cs))))))
 
-(deftest width-cache-test
+(deftest em-width-memoization-test
   (with-open [doc (PDDocument.)]
     (binding [pdf/*fonts* (#'pdf/load-fonts! doc)]
       (let [reg   (#'pdf/face :regular)
+            inner @#'pdf/raw-em-width-inner
             strs  ["Hello world" "مرحبا بكم" "これはテスト" "" "שלום עולם"]
             width (fn [s pt] (#'pdf/text-width reg pt s))]
-        (testing "text-width is identical whether or not the per-render width cache is bound"
+        (testing "text-width is identical whether *em-width* is the default (uncached) or memoized"
           (let [uncached (mapv #(width % 11.0) strs)
-                cached   (binding [pdf/*width-cache* (atom {})] (mapv #(width % 11.0) strs))]
+                cached   (binding [pdf/*em-width* (memo/memo inner)] (mapv #(width % 11.0) strs))]
             (is (= uncached cached))))
-        (testing "a string's em-width is cached once and reused across font sizes (the fit-scale win)"
-          (let [cache (atom {})]
-            (binding [pdf/*width-cache* cache]
+        (testing "each [face string] is measured once and reused across font sizes (the fit-scale win)"
+          (let [calls    (atom 0)
+                counting (fn [face s] (swap! calls inc) (inner face s))]
+            (binding [pdf/*em-width* (memo/memo counting)]
               (width "Hello world" 10.0)
-              (width "Hello world" 20.0)    ; same face+string, different size -> no new entry
+              (width "Hello world" 20.0)    ; same face+string, different size -> no recompute
               (width "Goodbye now" 10.0))
-            (is (= 2 (count @cache)))
-            ;; and the scaled widths are exactly proportional to font size
-            (binding [pdf/*width-cache* cache]
-              (is (= (* 2.0 (width "Hello world" 10.0))
-                     (width "Hello world" 20.0))))))))))
+            (is (= 2 @calls) "two distinct strings -> two inner computations; the sizes share the cache")))
+        (testing "scaled widths are exactly proportional to font size (ems are size-independent)"
+          (binding [pdf/*em-width* (memo/memo inner)]
+            (is (= (* 2.0 (width "Hello world" 10.0))
+                   (width "Hello world" 20.0)))))
+        (testing "the memoization cache is introspectable and clearable (clojure.core.memoize tooling)"
+          (let [m (memo/memo inner)]
+            (binding [pdf/*em-width* m]
+              (width "Hello world" 10.0)
+              (width "Goodbye now" 10.0))
+            (is (ccm/memoized? m))
+            (is (= 2 (count (ccm/snapshot m))))
+            (ccm/memo-clear! m)
+            (is (= 0 (count (ccm/snapshot m))))))))))
