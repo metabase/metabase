@@ -27,7 +27,7 @@ export const GroupCategoryTabs = (props: GroupCategoryTabsProps) => {
         <Button
           bd="none"
           bg={activeTab === tabItem.tab ? "background-selected" : "transparent"}
-          c={activeTab === tabItem.tab ? "brand" : "text-secondary"}
+          c={activeTab === tabItem.tab ? "core-brand" : "text-secondary"}
           key={tabItem.tab}
           onClick={() => setActiveTab(tabItem.tab)}
           radius="xl"

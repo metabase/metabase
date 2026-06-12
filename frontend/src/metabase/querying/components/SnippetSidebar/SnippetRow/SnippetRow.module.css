@@ -4,13 +4,13 @@
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 }
 
 .SnippetContent {
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

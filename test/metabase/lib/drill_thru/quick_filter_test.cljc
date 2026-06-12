@@ -342,3 +342,31 @@
                                     [:field {:temporal-unit :month} (meta/id :orders :created-at)]
                                     "2023-03-01T00:00:00Z"]]}]}
               (lib/drill-thru base-query -1 nil drill "="))))))
+
+(deftest ^:parallel quick-filter-on-binned-column-keeps-binning-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (-> (meta/field-metadata :orders :total)
+                                    (lib/with-binning {:strategy :default}))))
+        count-col (m/find-first #(= (:name %) "count")
+                                (lib/returned-columns query))
+        total-col (m/find-first #(= (:name %) "TOTAL")
+                                (lib/returned-columns query))
+        context {:column total-col
+                 :column-ref (lib/ref total-col)
+                 :value 40
+                 :row [{:column total-col
+                        :column-ref (lib/ref total-col)
+                        :value 40}
+                       {:column count-col
+                        :column-ref (lib/ref count-col)
+                        :value 4107}]}
+        drill (m/find-first #(= (:type %) :drill-thru/quick-filter)
+                            (lib/available-drill-thrus query context))
+        drilled (lib/drill-thru query -1 nil drill "=")]
+    (is (=? [[:= {}
+              [:field {:binning {:strategy :default, :lib/type :metabase.lib.binning/binning}} (:id total-col)]
+              40]]
+            (lib/filters drilled)))
+    (is (= #{(:id count-col) (:id total-col)}
+           (set (map :id (lib/returned-columns drilled)))))))

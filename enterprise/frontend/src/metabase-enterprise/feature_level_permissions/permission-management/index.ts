@@ -13,7 +13,6 @@ import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";
 import { buildDownloadPermission } from "./download-permission";
 import { buildTransformsPermission } from "./transforms-permission";
-import { buildWorkspacesPermission } from "./workspaces-permission";
 
 export const getFeatureLevelDataPermissions = ({
   entityId,
@@ -25,7 +24,6 @@ export const getFeatureLevelDataPermissions = ({
   permissionSubject,
   permissionView,
   showTransformPermissions = false,
-  showWorkspacesPermissions = false,
 }: {
   entityId: PermissionEntityId;
   groupId: number;
@@ -36,7 +34,6 @@ export const getFeatureLevelDataPermissions = ({
   permissionSubject: PermissionSubject;
   permissionView?: "group" | "database";
   showTransformPermissions?: boolean;
-  showWorkspacesPermissions?: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
   const isExternal = groupType === "external";
@@ -86,22 +83,10 @@ export const getFeatureLevelDataPermissions = ({
       )
     : null;
 
-  const workspacesPermission = showWorkspacesPermissions
-    ? buildWorkspacesPermission(
-        entityId,
-        groupId,
-        isAdmin,
-        permissions,
-        defaultGroup,
-        permissionSubject,
-      )
-    : null;
-
   return [
     downloadPermission,
     dataModelPermission,
     detailsPermission,
     transformsPermission,
-    workspacesPermission,
   ].filter(isNotNull);
 };

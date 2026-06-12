@@ -155,7 +155,7 @@ export function DashboardHeaderView({
                       />
                       {!!collection && (
                         <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                          c="brand"
+                          c="core-brand"
                           collection={collection}
                           entity="dashboard"
                         />
