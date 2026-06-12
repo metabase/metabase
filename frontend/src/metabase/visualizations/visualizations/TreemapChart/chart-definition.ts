@@ -301,7 +301,5 @@ export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
       });
     }
   },
-  settings: {
-    ...SETTINGS_DEFINITIONS,
-  },
+  settings: SETTINGS_DEFINITIONS,
 };
