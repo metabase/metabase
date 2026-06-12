@@ -16,7 +16,6 @@ const args = {
 
 const argTypes = {
   size: {
-    // We only use the `sm` and `md` sizes (see GDGT-2483).
     options: ["sm", "md"],
     control: { type: "inline-radio" },
   },
@@ -28,14 +27,10 @@ const argTypes = {
   },
 };
 
-// The two variants we support.
 const VARIANTS = ["light", "filled"] as const;
 
-// The two sizes we support; the default is `md`.
 const SIZES = ["sm", "md"] as const;
 
-// Each column of the matrix is one (variant × size) combination — the JSX
-// header above each column states the props explicitly.
 const COLUMNS: {
   variant: (typeof VARIANTS)[number];
   size: (typeof SIZES)[number];
@@ -82,9 +77,6 @@ const PSEUDO_STATE_PARAMETERS = {
   },
 };
 
-// One big CSS-grid matrix: row labels on the left, then one column per
-// (variant × size) combination. Light and dark are driven by the global
-// Storybook `theme` toggle.
 const OverviewTemplate: StoryFn<ChipProps> = () => (
   <StoryShowcase title="Chip">
     <Box
@@ -97,7 +89,6 @@ const OverviewTemplate: StoryFn<ChipProps> = () => (
         justifyItems: "start",
       }}
     >
-      {/* Header row: empty top-left cell, then one JSX header per column. */}
       <div />
       {COLUMNS.map(({ variant, size }) => (
         <StoryJsx
@@ -105,7 +96,6 @@ const OverviewTemplate: StoryFn<ChipProps> = () => (
         >{`<Chip variant="${variant}" size="${size}" />`}</StoryJsx>
       ))}
 
-      {/* One row per state. */}
       {STATES.map((state) => (
         <Fragment key={state.id}>
           <Text size="sm" c="text-secondary">
@@ -133,8 +123,6 @@ const OverviewTemplate: StoryFn<ChipProps> = () => (
   </StoryShowcase>
 );
 
-// A single, interactive chip. Kept inside a `Group` (flex) so the chip's
-// block-display label hugs its content instead of stretching to fill the canvas.
 const DefaultTemplate: StoryFn<ChipProps> = (args) => (
   <Group>
     <Chip {...args} defaultChecked />

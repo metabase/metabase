@@ -16,12 +16,6 @@
     color 0.15s ease;
 }
 
-/* `data-variant` lives on the root (Mantine renders it on the wrapping Box), so
-   these are scoped through `.ChipRoot`. The descendant combinator also gives the
-   rules enough specificity to win over Mantine's built-in variant styles, which
-   paint the label background at `.m_*:not([data-disabled])` specificity. */
-
-/* Unchecked — shared by the light and filled variants. */
 .ChipRoot .ChipLabel:not([data-disabled]) {
   border: none;
   background-color: var(--mb-color-background_surface-secondary);
@@ -36,7 +30,6 @@
   background-color: var(--mb-color-background_surface-secondary-pressed);
 }
 
-/* Selected — light variant: a subtle brand fill with strong brand text. */
 .ChipRoot[data-variant="light"] .ChipLabel[data-checked]:not([data-disabled]) {
   background-color: var(--mb-color-background_surface-brand-subtle);
   color: var(--mb-color-text-brand-strong);
@@ -50,7 +43,6 @@
   color: var(--mb-color-text-brand-strong-hover);
 }
 
-/* Selected — filled variant: a strong brand fill with inverse text. */
 .ChipRoot[data-variant="filled"] .ChipLabel[data-checked]:not([data-disabled]) {
   background-color: var(--mb-color-background_surface-brand-strong);
   color: var(--mb-color-text-primary-inverse);
@@ -63,7 +55,6 @@
   background-color: var(--mb-color-background_surface-brand-strong-hover);
 }
 
-/* Disabled — both variants, checked or not. */
 .ChipRoot .ChipLabel[data-disabled] {
   border: none;
   background-color: var(--mb-color-background_surface-disabled);
@@ -71,9 +62,6 @@
   cursor: default;
 }
 
-/* The icon occupies a 12px box (Figma), but the checkmark glyph inside is only
-   ~8.8px wide and centered — so size the wrapper to the box and the SVG to the
-   glyph rather than letting the glyph fill the whole 12px. */
 .ChipIconWrapper {
   display: inline-flex;
   align-items: center;
