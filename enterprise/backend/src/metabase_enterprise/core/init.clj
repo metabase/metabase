@@ -16,6 +16,7 @@
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.gsheets.init]
    [metabase-enterprise.metabot.init]
+   [metabase-enterprise.public-link-passwords.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.security-center.init]

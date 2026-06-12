@@ -18,6 +18,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.public-sharing.api :as public-sharing.api]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
@@ -976,9 +977,12 @@
 (api.macros/defendpoint :post "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
-  be enabled."
+  be enabled. Optionally accepts a `password` in the request body (requires premium token)."
   [{:keys [card-id]} :- [:map
-                         [:card-id ms/PositiveInt]]]
+                         [:card-id ms/PositiveInt]]
+   _query-params
+   {:keys [password]} :- [:map
+                          [:password {:optional true} [:maybe ms/NonBlankString]]]]
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
@@ -991,6 +995,8 @@
                    (t2/update! :model/Card card-id
                                {:public_uuid       <>
                                 :made_public_by_id api/*current-user-id*})))]
+    (when password
+      (public-sharing.api/set-public-link-password! :model/Card card-id password))
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1014,6 +1020,40 @@
   (events/publish-event! :event/card-public-link-deleted
                          {:object-id card-id
                           :user-id api/*current-user-id*})
+  {:status 204, :body nil})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:card-id/public_password"
+  "Reveal the plaintext password for a Card's public link. Visible to any user who can see the Card.
+  Requires premium token. Audit-logged."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (api/read-check :model/Card card-id)
+  (public-sharing.api/get-public-link-password :model/Card card-id))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:card-id/public_password"
+  "Set or update the password on a Card's public link. Requires premium token."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
+  (public-sharing.api/set-public-link-password! :model/Card card-id password)
+  {:status 204, :body nil})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/:card-id/public_password"
+  "Remove the password from a Card's public link without revoking the link. Requires premium token."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil])
+  (public-sharing.api/delete-public-link-password! :model/Card card-id)
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

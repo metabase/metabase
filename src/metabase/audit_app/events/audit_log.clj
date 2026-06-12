@@ -56,6 +56,8 @@
 (derive :event/card-public-link-deleted ::publicize-card)
 (derive :event/dashboard-public-link-created ::publicize-dashboard)
 (derive :event/dashboard-public-link-deleted ::publicize-dashboard)
+(derive :event/card-public-pwd-revealed ::publicize-card)
+(derive :event/dashboard-public-pwd-revealed ::publicize-dashboard)
 
 (methodical/defmethod events/publish-event! ::publicize
   [topic {:keys [user-id object-id] :as _event}]

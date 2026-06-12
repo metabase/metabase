@@ -174,6 +174,10 @@
   "Should we enable user/group provisioning via SCIM?"
   :scim)
 
+(define-premium-feature enable-public-link-passwords?
+  "Should we enable password protection on public links?"
+  :public-link-passwords)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -428,7 +432,8 @@
    :workspaces                     (enable-workspaces?)
    :whitelabel                     (enable-whitelabeling?)
    :writable_connection            (enable-writable-connection?)
-   :ai_controls                    (enable-ai-controls?)})
+   :ai_controls                    (enable-ai-controls?)
+   :public_link_passwords          (enable-public-link-passwords?)})
 
 (defsetting token-features
   "Features registered for this instance's token"

@@ -86,6 +86,8 @@
 (mr/def :event/dashboard-public-link-deleted ::publicize)
 (mr/def :event/card-public-link-created ::publicize)
 (mr/def :event/card-public-link-deleted ::publicize)
+(mr/def :event/card-public-pwd-revealed ::publicize)
+(mr/def :event/dashboard-public-pwd-revealed ::publicize)
 
 ;; user events
 

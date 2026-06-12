@@ -31,6 +31,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.public-sharing.api :as public-sharing.api]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
@@ -1149,9 +1150,12 @@
 (api.macros/defendpoint :post "/:dashboard-id/public_link"
   "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
-  sharing must be enabled."
+  sharing must be enabled. Optionally accepts a `password` in the request body (requires premium token)."
   [{:keys [dashboard-id]} :- [:map
-                              [:dashboard-id ms/PositiveInt]]]
+                              [:dashboard-id ms/PositiveInt]]
+   _query-params
+   {:keys [password]} :- [:map
+                          [:password {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
@@ -1164,6 +1168,8 @@
                    (t2/update! :model/Dashboard dashboard-id
                                {:public_uuid       <>
                                 :made_public_by_id api/*current-user-id*})))]
+    (when password
+      (public-sharing.api/set-public-link-password! :model/Dashboard dashboard-id password))
     {:uuid uuid}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1187,6 +1193,40 @@
   (events/publish-event! :event/dashboard-public-link-deleted
                          {:object-id dashboard-id
                           :user-id api/*current-user-id*})
+  {:status 204, :body nil})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:dashboard-id/public_password"
+  "Reveal the plaintext password for a Dashboard's public link. Visible to any user who can see the Dashboard.
+  Requires premium token. Audit-logged."
+  [{:keys [dashboard-id]} :- [:map
+                              [:dashboard-id ms/PositiveInt]]]
+  (api/read-check :model/Dashboard dashboard-id)
+  (public-sharing.api/get-public-link-password :model/Dashboard dashboard-id))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:dashboard-id/public_password"
+  "Set or update the password on a Dashboard's public link. Requires premium token."
+  [{:keys [dashboard-id]} :- [:map
+                              [:dashboard-id ms/PositiveInt]]
+   _query-params
+   {:keys [password]} :- [:map [:password ms/NonBlankString]]]
+  (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
+  (public-sharing.api/set-public-link-password! :model/Dashboard dashboard-id password)
+  {:status 204, :body nil})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/:dashboard-id/public_password"
+  "Remove the password from a Dashboard's public link without revoking the link. Requires premium token."
+  [{:keys [dashboard-id]} :- [:map
+                              [:dashboard-id ms/PositiveInt]]]
+  (perms/check-has-application-permission :setting)
+  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
+  (public-sharing.api/delete-public-link-password! :model/Dashboard dashboard-id)
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
