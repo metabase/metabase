@@ -19,6 +19,7 @@ import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import { useSelector } from "metabase/redux";
 import {
   getDocsUrl,
+  getIsHosted,
   getIsPaidPlan,
   getSetting,
 } from "metabase/selectors/settings";
@@ -27,7 +28,6 @@ import {
   getApplicationName,
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
-import { getIsHosted } from "metabase/setup/selectors";
 import {
   Accordion,
   Box,

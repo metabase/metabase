@@ -104,6 +104,13 @@
                            "aggregation"  [["count" {}]]
                            "filters"      [["=" {} ["field" {} 1] 4]]}]})))))
 
+(deftest ^:parallel lazy-seq-input-test
+  (testing "Seq input (e.g. LazySeqs from json/decode+kw) normalizes"
+    (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} 1] 4]
+            (lib/normalize '("=" {} ("field" {} 1) 4))))
+    (is (=? [:> {:lib/uuid string?} [:field {:lib/uuid string?} 1] 0]
+            (lib/normalize '(">" {} ("field" {} 1) 0))))))
+
 (deftest ^:parallel normalize-from-json-test
   (let [query '{:lib/type     "mbql/query"
                 :lib/metadata nil

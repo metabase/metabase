@@ -1,1 +1,1 @@
-export * from "./SetupWorkspaceModal";
+export { SetupWorkspaceModal } from "./SetupWorkspaceModal";

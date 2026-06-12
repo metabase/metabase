@@ -8,9 +8,9 @@ import {
   useLazyListDatabasesQuery,
 } from "metabase/api";
 import { isSyncCompleted } from "metabase/utils/syncing";
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
-import { UNNAMED_SCHEMA_NAME } from "../constants";
 import type {
   DatabaseNode,
   SchemaNode,

@@ -2,8 +2,6 @@ import type { IconName } from "metabase-types/api";
 
 import type { ItemType } from "./types";
 
-export const UNNAMED_SCHEMA_NAME = "";
-
 export const CHILD_TYPES = {
   database: "schema",
   schema: "table",

@@ -1,9 +1,9 @@
 import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/redux/store";
 import {
   createMockSetupState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import type { SetupStep } from "metabase/setup/types";
 
 import { CompletedStep } from "./CompletedStep";
 

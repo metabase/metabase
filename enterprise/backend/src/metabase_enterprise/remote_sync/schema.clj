@@ -102,6 +102,22 @@
    [:message :string]
    [:task_id pos-int?]])
 
+(def MergeSummary
+  "Counts of remote changes a merge would fold into local content."
+  [:map
+   [:added :int]
+   [:updated :int]
+   [:removed :int]])
+
+(def ExportPreflightResponse
+  "Schema for GET /export-preflight response."
+  [:map
+   [:has_changes :boolean]
+   [:clean :boolean]
+   [:conflicts [:sequential :string]]
+   [:summary MergeSummary]
+   [:reason [:maybe :string]]])
+
 (def SettingsUpdateResponse
   "Schema for PUT /settings response."
   [:map

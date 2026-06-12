@@ -90,6 +90,29 @@
         (is (nil? (:fk_target_field_id pk-field)))
         (is (nil? (:fk_target_table_id pk-field)))))))
 
+(deftest erd-graph-field-order-test
+  (mt/with-premium-features #{:schema-viewer}
+    (testing "fields come back ordered by [position asc, lower(name) asc] — same as /api/table/:id/query_metadata"
+      ;; Insertion order deliberately scrambled relative to the expected order so
+      ;; an unsorted DB read would not accidentally pass. `position` is the primary
+      ;; key; `lower(name)` breaks ties (and proves the sort is case-insensitive).
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {tid :id} {:db_id db-id :name "t" :schema "PUBLIC"}
+                     :model/Field _ {:table_id tid :name "zulu"   :position 2
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "Bravo"  :position 1
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "alpha"  :position 1
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "yankee" :position 0
+                                     :database_type "INTEGER" :base_type :type/Integer}]
+        (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
+                                             :database-id db-id
+                                             :table-ids tid)
+              node     (first (filter #(= tid (:table_id %)) (:nodes response)))]
+          (is (= ["yankee" "alpha" "Bravo" "zulu"]
+                 (mapv :name (:fields node)))))))))
+
 (deftest erd-external-fk-target-resolution-test
   (mt/with-premium-features #{:schema-viewer}
     (testing "FK field pointing to a readable table beyond the hop budget still carries the target IDs"

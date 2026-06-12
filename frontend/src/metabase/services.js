@@ -1,12 +1,4 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
-import { isEmbedPreview } from "metabase/embedding/config";
-
-export const internalBase = "/api";
-export const publicBase = "/api/public";
-// use different endpoints for embed previews
-export function getEmbedBase() {
-  return isEmbedPreview() ? "/api/preview_embed" : "/api/embed";
-}
 
 export const ActivityApi = {
   most_recently_viewed_dashboard: GET(
@@ -39,23 +31,24 @@ export const CollectionsApi = {
 };
 
 export const PublicApi = {
-  action: GET(`${publicBase}/action/:uuid`),
+  action: GET(`/api/public/action/:uuid`),
   executeDashcardAction: POST(
-    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
+    `/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  executeAction: POST(`${publicBase}/action/:uuid/execute`),
-  card: GET(`${publicBase}/card/:uuid`),
-  dashboard: GET(`${publicBase}/dashboard/:uuid`),
+  executeAction: POST(`/api/public/action/:uuid/execute`),
+  card: GET(`/api/public/card/:uuid`),
+  dashboard: GET(`/api/public/dashboard/:uuid`),
   prefetchDashcardValues: GET(
-    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
+    `/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
   document: GET(`/api/public/document/:uuid`),
-  documentCardQuery: GET(`/api/public/document/:uuid/card/:cardId`),
 };
 
+// `/api/embed` is rewritten to `/api/preview_embed` by the request middleware
+// when running inside an embed preview.
 export const EmbedApi = {
-  card: GET(getEmbedBase() + "/card/:token"),
-  dashboard: GET(getEmbedBase() + "/dashboard/:token"),
+  card: GET("/api/embed/card/:token"),
+  dashboard: GET("/api/embed/dashboard/:token"),
 };
 
 export const AutoApi = {
@@ -71,16 +64,6 @@ export const ParameterApi = {
 export const ModerationReviewApi = {
   create: POST("/api/moderation-review"),
   update: PUT("/api/moderation-review/:id"),
-};
-
-export const PulseApi = {
-  list: GET("/api/pulse"),
-  create: POST("/api/pulse"),
-  get: GET("/api/pulse/:pulseId"),
-  update: PUT("/api/pulse/:id"),
-  test: POST("/api/pulse/test"),
-  form_input: GET("/api/pulse/form_input"),
-  unsubscribe: DELETE("/api/pulse/:id/subscription"),
 };
 
 /// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
@@ -139,15 +122,4 @@ export const UserApi = {
 
 export const FrontendErrorsApi = {
   report: POST("/api/frontend-errors"),
-};
-
-export const ActionsApi = {
-  execute: POST("/api/action/:id/execute"),
-  prefetchValues: GET("/api/action/:id/execute"),
-  prefetchDashcardValues: GET(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
-  ),
-  executeDashcardAction: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
-  ),
 };

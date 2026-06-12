@@ -12,7 +12,7 @@
 }
 
 .Colors {
-  --illustration-primary: var(--mb-color-brand);
+  --illustration-primary: var(--mb-color-core-brand);
 }
 
 .Image {

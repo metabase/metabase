@@ -157,7 +157,7 @@ export const ContentTranslationConfiguration = () => {
               onClick={triggerDownload}
               leftSection={
                 showDownloadingIndicator ? null : (
-                  <Icon name="download" c="brand" />
+                  <Icon name="download" c="core-brand" />
                 )
               }
               miw="calc(50% - 0.5rem)"
@@ -337,7 +337,7 @@ const UploadForm = ({
         disabled={status === "pending"}
         label={
           <Group gap="sm">
-            <Icon name="upload" c="brand" />
+            <Icon name="upload" c="core-brand" />
             <Text
               c="inherit"
               fw="normal"

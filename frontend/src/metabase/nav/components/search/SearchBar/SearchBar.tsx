@@ -14,15 +14,15 @@ import { t } from "ttag";
 import { useKeyboardShortcut } from "metabase/common/hooks/use-keyboard-shortcut";
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { RecentsList } from "metabase/nav/components/search/RecentsList";
-import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
-import { useDispatch, useSelector } from "metabase/redux";
-import type { SearchAwareLocation } from "metabase/search/types";
 import {
   getFiltersFromLocation,
   getSearchTextFromLocation,
   isSearchPageLocation,
-} from "metabase/search/utils";
+} from "metabase/common/search";
+import type { SearchAwareLocation } from "metabase/common/search/types";
+import { RecentsList } from "metabase/nav/components/search/RecentsList";
+import { SearchResultsDropdown } from "metabase/nav/components/search/SearchResultsDropdown";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

@@ -158,7 +158,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
         <Icon
           name={icon}
           size="1rem"
-          c={hasBeenClicked ? "brand" : "currentColor"}
+          c={hasBeenClicked ? "core-brand" : "currentColor"}
         />
       </ActionIcon>
     );

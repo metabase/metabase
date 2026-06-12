@@ -32,6 +32,7 @@ export * from "./metric";
 export * from "./model-index";
 export * from "./moderation";
 export * from "./notification";
+export * from "./oauth";
 export * from "./parameters";
 export * from "./permission";
 export * from "./persist";

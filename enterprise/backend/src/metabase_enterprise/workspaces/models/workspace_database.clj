@@ -1,9 +1,11 @@
 (ns metabase-enterprise.workspaces.models.workspace-database
   (:require
+   [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.api.common :as api]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -20,27 +22,50 @@
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
-;;; - read:          Data Analyst.
-;;; - write/create:  Data Analyst + `:perms/workspaces :yes` for `:database_id`.
+;;; WorkspaceDatabases are superuser-only: read, write, and create all require admin.
 
 (defmethod mi/can-read? :model/WorkspaceDatabase
-  ([_instance]
-   (api/is-data-analyst?))
-  ([_model _pk]
-   (api/is-data-analyst?)))
+  ([_instance] api/*is-superuser?*)
+  ([_model _pk] api/*is-superuser?*))
 
 (defmethod mi/can-write? :model/WorkspaceDatabase
-  ([{:keys [database_id]}]
-   (and (api/is-data-analyst?)
-        (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
-  ([_model pk]
-   (when-let [wsd (t2/select-one :model/WorkspaceDatabase :id pk)]
-     (mi/can-write? wsd))))
+  ([_instance]
+   api/*is-superuser?*)
+  ([_model _pk]
+   api/*is-superuser?*))
 
 (defmethod mi/can-create? :model/WorkspaceDatabase
-  [_model {:keys [database_id]}]
-  (and (api/is-data-analyst?)
-       (perms/has-db-workspaces-permission? api/*current-user-id* database_id)))
+  [_model _instance]
+  api/*is-superuser?*)
+
+(methodical/defmethod t2/batched-hydrate [:model/WorkspaceDatabase :database]
+  [_model k workspace-databases]
+  (mi/instances-with-hydrated-data
+   workspace-databases k
+   (fn []
+     (when-let [ids (seq (distinct (keep :database_id workspace-databases)))]
+       (t2/select-pk->fn identity :model/Database :id [:in ids])))
+   :database_id
+   {:default nil}))
+
+;;; --------------------------------------- Database eligibility ---------------------------------------
+
+(defn database-eligible-for-workspaces?
+  "True iff `database`'s driver supports the `:workspace` feature and the
+   `database-enable-workspaces` database-local setting is enabled for it."
+  [database]
+  (and (driver.u/supports? (:engine database) :workspace database)
+       (boolean (setting/with-database database
+                  (ws.settings/database-enable-workspaces)))))
+
+(defn database-input-schemas
+  "The distinct non-blank schema names of `database`'s active tables, sorted.
+   Empty for schemaless drivers (e.g. MySQL)."
+  [database]
+  (->> (t2/select-fn-set :schema :model/Table :db_id (:id database) :active true)
+       (remove #(or (nil? %) (= % "")))
+       sort
+       vec))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

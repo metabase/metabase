@@ -77,8 +77,11 @@ export function configureGitAndPullChanges(
     // Read-only mode automatically triggers an import, just wait for it
     pollForTask({ taskName: "import" });
   } else {
-    // Read-write mode needs manual import trigger
-    cy.request("POST", "/api/ee/remote-sync/import", {});
+    // Read-write mode needs manual import trigger. expected_branch asserts the client's view of the
+    // active branch against the setting (configureGit sets it to "main").
+    cy.request("POST", "/api/ee/remote-sync/import", {
+      expected_branch: "main",
+    });
     pollForTask({ taskName: "import" });
   }
 }
