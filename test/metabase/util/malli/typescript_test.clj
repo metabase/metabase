@@ -8,17 +8,28 @@
 
 (mr/def ::memo-context-ref :string)
 
+(mr/def ::key-transform-ref
+  [:map
+   [:display-name :string]
+   [:nested-value {:optional true} [:map [:long-display-name :string]]]])
+
 (deftest basic-transforms-test
   (testing "basic schema transforms"
     (are [res schema] (= res (ts/schema->ts schema))
       "number"                                                  number?
       "{\n\ta: number;\n\tb: string;\n\t[key: string]: unknown;\n}" [:map [:a :int] [:b :string]]
       "{\n\ttype: \"main\";\n\tvalue: string;\n\t[key: string]: unknown;\n}" [:map [:type [:= :main]] [:value :string]]
+      "\"type/Integer\""                                      [:= :type/Integer]
+      "\"type/Integer\" | \"type/Text\""                    [:enum :type/Integer :type/Text]
       "(string | number)"                                       [:or :string :int]
       "[string, ...string[]]"                                   [:sequential {:min 1} :string]
+      "[string, string, ...string[]]"                           [:sequential {:min 2} :string]
+      "unknown"                                                  [:maybe :any]
       "Record<string, unknown>"                                 [:map-of :keyword :any]
       "Record<string, number>"                                  [:map-of [:map [:a :string]] :int]
       "Partial<Record<\"a\" | \"b\", number>>"                [:map-of [:enum :a :b] :int]
+      "string[]"                                                 [:any {:ts/array-of :string}]
+      "Metabase_Lib_Schema_Binning_Strategy[]"                   [:any {:ts/array-of ::lib.schema.binning/strategy}]
       "CustomType"                                               [:any {:typescript "CustomType"}]
       "{\n\tdisplayName: string;\n\tfilterPositions?: number[];\n\tisManyPks?: boolean;\n\tgroup?: {\n\tdisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}" [:any {:ts/object-of [:map
                                                                                                                                                                                                                  [:display-name :string]
@@ -62,11 +73,35 @@
   (testing "intersections drop unknown branches because T & unknown is T"
     (is (= "string"
            (ts/schema->ts [:and :string [:fn {:typescript "unknown"} any?]]))))
+  (testing "intersections preserve array-ness when every branch is unknown-ish"
+    (is (= "unknown[]"
+           (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:fn {:typescript "unknown"} any?]]))))
   (testing "merges drop unknown branches because T & unknown is T"
     (is (= "{\n\ta: string;\n\t[key: string]: unknown;\n}"
            (ts/schema->ts [:merge
                            [:map [:a :string]]
                            [:fn {:typescript "unknown"} any?]])))))
+
+(deftest key-transform-test
+  (testing "explicit refs under key-transform are expanded inline with transformed keys"
+    (is (= "{\n\tgroup: {\n\tdisplayName: string;\n\tnestedValue?: {\n\tlongDisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}"
+           (ts/schema->ts [:any {:ts/object-of [:map [:group [:ref ::key-transform-ref]]]
+                                 :ts/key-transform :camelCase}]))))
+  (testing "explicit refs under key-transform are not recorded for shared aliases"
+    (let [refs (atom #{})]
+      (binding [ts/*registry-refs* refs]
+        (is (= "{\n\tgroup: {\n\tdisplayName: string;\n\tnestedValue?: {\n\tlongDisplayName: string;\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n};\n\t[key: string]: unknown;\n}"
+               (ts/schema->ts [:any {:ts/object-of [:map [:group [:ref ::key-transform-ref]]]
+                                     :ts/key-transform :camelCase}]))))
+      (is (empty? @refs)))))
+
+(deftest collect-registry-refs-test
+  (testing "collects registry refs without generating TypeScript"
+    (is (= #{::lib.schema.binning/strategy ::lib.schema.common/non-blank-string}
+           (#'ts/collect-registry-refs [:map
+                                        [:strategy [:ref ::lib.schema.binning/strategy]]
+                                        [:name ::lib.schema.common/non-blank-string]
+                                        [:literal [:= :not.a.real/schema]]])))))
 
 (deftest registry-type-names-test
   (testing "registry schemas return type names instead of inline expansions"
@@ -140,12 +175,24 @@
   (testing "formats function arguments correctly"
     (is (= "a: number, b: number | undefined | null"
            (#'ts/format-ts-args '[a b] [:cat number? [:maybe number?]]))))
+  (testing "maybe unknown remains unknown in argument context"
+    (is (= "a: unknown"
+           (#'ts/format-ts-args '[a] [:cat [:maybe :any]]))))
   (testing "formats variadic arguments as rest params"
     (is (= "query: string, stage: number, ...args: unknown[]"
            (#'ts/format-ts-args '[query stage & args] [:cat :string :int [:sequential :any]]))))
   (testing "formats compiler-munged variadic placeholder as ...rest"
     (is (= "query: string, ...rest: unknown[]"
-           (#'ts/format-ts-args '[query _AMPERSAND_] [:cat :string [:sequential :any]])))))
+           (#'ts/format-ts-args '[query _AMPERSAND_] [:cat :string [:sequential :any]]))))
+  (testing "pads missing arg schemas with unknown instead of truncating runtime args"
+    (is (= "a: string, b: unknown"
+           (#'ts/format-ts-args '[a b] [:cat :string]))))
+  (testing "ignores extra arg schemas after warning"
+    (is (= "a: string"
+           (#'ts/format-ts-args '[a] [:cat :string :int]))))
+  (testing "formats named catn argument schemas"
+    (is (= "a: string, b: number"
+           (#'ts/format-ts-args '[a b] [:catn [:a :string] [:b :int]])))))
 
 (deftest fn->ts-test
   (testing "generates function declaration with JSDoc"
@@ -179,7 +226,10 @@
                           [:cat :any]
                           [:schema {:ts/same-as 0
                                     :ts/generic-bound [:or :string :int]}
-                           :string]])))))
+                           :string]]))))
+  (testing "standalone function schema handles named catn arguments"
+    (is (= "(arg0: string, arg1: number) => boolean"
+           (ts/schema->ts [:=> [:catn [:a :string] [:b :int]] :boolean])))))
 
 (deftest predicate-schema-test
   (testing "common predicate schemas produce precise primitive types"
@@ -212,6 +262,13 @@
                 "export const SOME_CONST: unknown;")
            (#'ts/fallback-const->ts {:name 'SOME_CONST :doc nil})))))
 
+(deftest require-or-return-test
+  (testing "accepts fully-qualified var symbols and plain namespace symbols"
+    (is (= 'clojure.string
+           (ns-name (#'ts/require-or-return 'clojure.string/blank?))))
+    (is (= 'clojure.string
+           (ns-name (#'ts/require-or-return 'clojure.string))))))
+
 (deftest js-interop-resolve-test
   (testing "resolve-var-refs transforms [:is-a js/X] to [:any {:ts/instance-of X}]"
     (is (= [:any {:ts/instance-of "Array"}]
@@ -241,6 +298,13 @@
            (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :string]])))
     (is (= "number[]"
            (ts/schema->ts [:and [:any {:ts/instance-of "Array"}] [:sequential :int]])))))
+
+(deftest repeat-schema-test
+  (testing ":+ honors min count"
+    (is (= "[string, ...string[]]"
+           (ts/schema->ts [:+ :string])))
+    (is (= "[string, string, ...string[]]"
+           (ts/schema->ts [:+ {:min 2} :string])))))
 
 (deftest unknown-type-test
   (testing "unknown-type? matches expected patterns"

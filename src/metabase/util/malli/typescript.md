@@ -82,6 +82,7 @@ Rules:
 | Malli schema | TypeScript output |
 |---|---|
 | `:string`, `:keyword`, `:symbol`, `:uuid`, `:uri`, `:re` | `string` |
+| `:time/local-date`, `:time/local-time`, `:time/local-date-time`, offset/zoned time schemas | `string` |
 | `:int`, `:double`, `number?`, `int?`, `pos-int?`, `nat-int?`, `neg-int?` | `number` |
 | `:boolean`, `boolean?` | `boolean` |
 | `:nil` | `null` |
@@ -103,7 +104,11 @@ Rules:
 | `[:merge A B]` | `A & B`, with unknown branches dropped when safe |
 | `[:tuple A B]` | `[A, B]` |
 | `[:cat A B]`, `[:catn ...]` | `[A, B]` |
-| `[:=> [:cat Args...] Return]` | function type |
+| `[:* X]` | `X[]` |
+| `[:+ X]` | `[X, ...X[]]` |
+| `[:+ {:min 2} X]` | `[X, X, ...X[]]` |
+| `[:? X]` | `X \| undefined` |
+| `[:=> [:cat Args...] Return]`, `[:=> [:catn ...] Return]` | function type |
 | `:fn` with `{:typescript "SomeType"}` | `SomeType` |
 | unsupported / predicate-only schemas | `unknown`, or branded unknown inside unions |
 
@@ -250,8 +255,9 @@ Use `:ts/key-transform :camelCase` with `:ts/object-of` to reflect that returned
 This transform:
 
 - applies recursively to nested map schemas,
+- is inherited by nested `:ts/object-of` schemas unless they explicitly set their own transform,
 - converts predicate-style keys ending in `?` to `isX`,
-- expands registry refs inline under the transform instead of reusing shared kebab-case aliases.
+- expands registry refs inline under the transform, including explicit `[:ref ...]`, instead of reusing shared kebab-case aliases.
 
 Generated output is concrete camelCase TypeScript:
 
@@ -323,6 +329,8 @@ export function with_binning<
 ```
 
 Use this when the output type is directly tied to an input type. Do not add argument schemas solely to avoid `unknown` if the argument does not affect output precision.
+
+This is a pragmatic TypeScript idiom, not a proof that every literal refinement of `T` survives. Only use it when the function preserves the input kind/collection species and key set; avoid it for functions that rebuild a different shape.
 
 ## Variadic functions
 
@@ -401,9 +409,9 @@ Instead of dropping the export, the generator emits a fallback declaration:
 
 This preserves API surface in generated `.d.ts` files.
 
-## Memoization and dynamic contexts
+## Dynamic generation contexts
 
-`schema->ts` is memoized for performance, but memoization is bypassed whenever dynamic generation context can affect output or side effects, including:
+`schema->ts` is intentionally not globally memoized. Generated output can depend on dynamic generation context, including:
 
 - argument context (`*argument-context*`),
 - registry ref collection,
@@ -411,25 +419,37 @@ This preserves API surface in generated `.d.ts` files.
 - shared type mode,
 - key transforms (`:ts/key-transform`).
 
-If a type appears correct in one place but wrong in another, check whether a new dynamic context needs to bypass memoization.
+Avoid adding global memoization unless it is keyed by all context that can affect output or side effects, and only after measuring build-time need.
 
 ## Debugging weak types
 
 Set `MB_DEBUG_CLJS` to log weak generated types during compilation:
 
 ```bash
-MB_DEBUG_CLJS=1 yarn shadow-cljs compile app
+MB_DEBUG_CLJS=1 bun run build:cljs
 ```
 
 Use verbose mode for per-function detail:
 
 ```bash
-MB_DEBUG_CLJS=verbose yarn shadow-cljs compile app
+MB_DEBUG_CLJS=verbose bun run build:cljs
 ```
 
 The generator records weak types through dynamic tracking while converting schemas.
 
 ## Gotchas
+
+### Never change runtime validation shape just to improve TypeScript output
+
+A schema attached to `mu/defn` validates real runtime values in dev/test. Do not add structural constraints only to make generated TypeScript more precise. For example, changing a shape-neutral predicate to `[:and [:sequential :any] [:fn ...]]` makes map values fail validation.
+
+If the runtime contract is shape-neutral but TypeScript needs help, keep validation shape-neutral and add TS metadata such as `:typescript`, `:ts/array-of`, `:ts/object-of`, or a runtime-inert `[:schema props child]` wrapper. After editing shared schemas, run `bun run test-cljs`.
+
+### Plain CLJS return shapes are not necessarily JavaScript property-accessible
+
+Plain Malli `:map` schemas describe CLJS map values, not automatically converted JS objects. The generated structural type is useful for wrapper boundaries and discriminants, but frontend code should not assume direct JS property access unless the CLJS export actually returns a JS object and uses `:ts/object-of`.
+
+Similarly, `:ts/array-of` is for functions that return JS arrays. Plain `[:sequential X]` usually means a CLJS collection.
 
 ### No CLJS-only predicates in schemas
 
@@ -470,7 +490,9 @@ If a function returns `#js {}` or another native JS object, do not use `[:map ..
 
 ### Keyword key formatting depends on runtime conversion
 
-By default, keyword map keys are emitted using `(name k)`, so `:lib/uuid` becomes `uuid`. If runtime output preserves qualified names like `"lib/uuid"`, use explicit string keys in the JS-facing schema:
+Keyword literal values preserve namespaces, so `[:= :type/Integer]` emits `"type/Integer"`.
+
+Map keys are different: by default, keyword map keys are emitted using `(name k)`, so `:lib/uuid` becomes `uuid`. If runtime output preserves qualified names like `"lib/uuid"`, use explicit string keys in the JS-facing schema:
 
 ```clojure
 [:map ["lib/uuid" :string]]

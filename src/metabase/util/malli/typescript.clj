@@ -143,7 +143,8 @@
     (nil? v)     "null"
     (boolean? v) (str v)
     (number? v)  (str v)
-    (keyword? v) (pr-str (name v))
+    (keyword? v) (pr-str (cond->> (name v)
+                           (namespace v) (str (namespace v) "/")))
     (string? v)  (pr-str v)
     :else        (pr-str (str v))))
 
@@ -212,7 +213,7 @@
 
       ;; [:any {:ts/object-of [:map [:key Type] ...]}] => "{ key: Type; ... }"
       (:ts/object-of props)
-      (binding [*key-transform* (:ts/key-transform props)]
+      (binding [*key-transform* (or (:ts/key-transform props) *key-transform*)]
         (schema->ts (:ts/object-of props)))
 
       ;; [:any {:ts/instance-of "Array"}] — from [:is-a js/Array] transformation
@@ -264,13 +265,18 @@
   (let [children (mc/children schema)]
     (str (schema->ts (first children)) "[]")))
 
+(defn- repeated-tuple-type
+  [child-type min-count]
+  (if (pos? min-count)
+    (str "[" (str/join ", " (concat (repeat min-count child-type)
+                                    [(str "..." child-type "[]")])) "]")
+    (str child-type "[]")))
+
 (defmethod -schema->ts :sequential
   [schema]
   (let [[child] (mc/children schema)
         child-type (schema->ts child)]
-    (if (pos? (:min (mc/properties schema) 0))
-      (str "[" child-type ", ..." child-type "[]]")
-      (str child-type "[]"))))
+    (repeated-tuple-type child-type (:min (mc/properties schema) 0))))
 
 (defmethod -schema->ts :set
   [schema]
@@ -370,15 +376,20 @@
 (defn- merge-intersection-types
   "Merge intersection type strings, dropping unknown branches.
    Unknown constraints in intersections (e.g. predicate-only schemas) cannot be represented
-   structurally in TS without poisoning assignability of known branches."
+   structurally in TS without poisoning assignability of known branches. If every branch is unknown-ish, preserve
+   array-ness when present rather than degrading `unknown[]` to bare `unknown`."
   [types]
   (let [known-types     (remove unknown-type? types)
         simplified      (vec (distinct known-types))]
     (cond
-      (empty? simplified)
-      ["unknown"]
+      (seq simplified)
+      simplified
+
+      (some #(= % "unknown[]") types)
+      ["unknown[]"]
+
       :else
-      simplified)))
+      ["unknown"])))
 
 (defmethod -schema->ts :or
   [schema]
@@ -417,16 +428,37 @@
 
 (defmethod -schema->ts :maybe
   [schema]
-  (let [[inner] (mc/children (mc/schema schema))]
-    (if *argument-context*
-      (str (schema->ts inner) " | undefined | null")
-      (str (schema->ts inner) " | null"))))
+  (let [[inner] (mc/children (mc/schema schema))
+        inner-type (schema->ts inner)]
+    (cond
+      (= inner-type "unknown")
+      "unknown"
+
+      *argument-context*
+      (str inner-type " | undefined | null")
+
+      :else
+      (str inner-type " | null"))))
 
 ;; :schema wraps a schema for validation - just unwrap and process the child
 (defmethod -schema->ts :schema
   [schema]
   (let [[child] (mc/children (mc/schema schema))]
     (schema->ts child)))
+
+(defn- catn-child-schema
+  "Extract the schema from a Malli :catn child: [name schema] or [name opts schema]."
+  [child]
+  (if (= 3 (count child))
+    (nth child 2)
+    (nth child 1)))
+
+(defn- arg-schema-children
+  [arg-schema]
+  (let [schema (mc/schema arg-schema)]
+    (case (mc/type schema)
+      :catn (map catn-child-schema (mc/children schema))
+      (mc/children schema))))
 
 ;; :cat is a sequence schema with positional elements (like tuple but for seqex)
 (defmethod -schema->ts :cat
@@ -438,13 +470,7 @@
 ;; :catn is like :cat but with named entries - extract schema from each entry
 (defmethod -schema->ts :catn
   [schema]
-  (let [children (mc/children (mc/schema schema))
-        ;; Each child is [name opts? schema] - extract the schema part
-        schemas (map (fn [child]
-                       (if (= 3 (count child))
-                         (nth child 2)
-                         (nth child 1)))
-                     children)]
+  (let [schemas (map catn-child-schema (mc/children (mc/schema schema)))]
     (-> (str/join ", " (map schema->ts schemas))
         (wrap "[]"))))
 
@@ -460,11 +486,11 @@
   (let [[child] (mc/children (mc/schema schema))]
     (str (schema->ts child) "[]")))
 
-;; :+ is one or more - produce array type (same as :* for TypeScript purposes)
+;; :+ is one or more.
 (defmethod -schema->ts :+
   [schema]
   (let [[child] (mc/children (mc/schema schema))]
-    (str (schema->ts child) "[]")))
+    (repeated-tuple-type (schema->ts child) (:min (mc/properties schema) 1))))
 
 ;; :? is zero or one - produce optional type
 (defmethod -schema->ts :?
@@ -497,7 +523,7 @@
 (defmethod -schema->ts :=>
   [schema]
   (let [[args-schema return-schema] (mc/children (mc/schema schema))
-        args-children               (mc/children (mc/schema args-schema))]
+        args-children               (arg-schema-children args-schema)]
     (str
      (-> (str/join ", " (map-indexed (fn [i arg-schema]
                                        (str "arg" i ": "
@@ -523,11 +549,14 @@
 (defmethod -schema->ts :ref
   [schema]
   (let [t (first (mc/children schema))]
-    ;; If this is a qualified keyword (registry ref), output type name and record it
+    ;; If this is a qualified keyword (registry ref), output type name and record it unless a key transform requires
+    ;; expanding inline so nested map keys are transformed too.
     (if (and (keyword? t) (namespace t))
-      (do
-        (record-registry-ref! t)
-        (registry-type-name t))
+      (if *key-transform*
+        (schema->ts (mr/resolve-schema t))
+        (do
+          (record-registry-ref! t)
+          (registry-type-name t)))
       ;; Otherwise fall through to resolve the schema
       (schema->ts t))))
 
@@ -584,9 +613,6 @@
 
 (def ^:dynamic *seen* #{})
 
-;; Dynamic var to bypass memoization (for type alias expansion)
-(def ^:dynamic *bypass-memoization* false)
-
 (defn- schema->ts-impl
   "Core implementation of schema->ts (non-memoized)."
   [schema]
@@ -609,24 +635,10 @@
         :else
         (throw t)))))
 
-(def ^:private schema->ts-memoized
-  "Memoized version of schema->ts-impl."
-  (memoize schema->ts-impl))
-
 (defn schema->ts
-  "Convert a Malli schema to TypeScript type definition.
-   Dispatches on the schema type (keyword).
-   Uses memoization only when no dynamic generation context can affect the returned
-   type string or side-effect collection."
+  "Convert a Malli schema to TypeScript type definition. Dispatches on the schema type (keyword)."
   [schema]
-  (if (or *bypass-memoization*
-          *argument-context*
-          *registry-refs*
-          *weak-types*
-          (seq *shared-types*)
-          *key-transform*)
-    (schema->ts-impl schema)
-    (schema->ts-memoized schema)))
+  (schema->ts-impl schema))
 
 (defn generate-typescript-interface
   "Generate a TypeScript interface definition from a Malli schema."
@@ -689,6 +701,10 @@
   (and (symbol? arg-form)
        (= (name arg-form) "_AMPERSAND_")))
 
+(defn- warn-arg-schema-mismatch!
+  [message extra]
+  (log/warn message (merge {:ns *current-ns*, :def *current-def*} extra)))
+
 (defn- arg-specs
   "Pair arglist entries with schema children, handling variadic args.
    Returns specs like:
@@ -696,32 +712,47 @@
    {:arg-name args :arg-schema s :arg-idx 1 :rest? true}"
   [arglist arg-schema]
   (loop [remaining-args    (seq arglist)
-         remaining-schemas (seq (mc/children arg-schema))
+         remaining-schemas (seq (arg-schema-children arg-schema))
          arg-idx           0
          specs             []]
-    (if (or (nil? remaining-args) (nil? remaining-schemas))
-      specs
-      (let [arg-name (first remaining-args)]
+    (cond
+      (nil? remaining-args)
+      (do
+        (when (seq remaining-schemas)
+          (warn-arg-schema-mismatch! "Function schema has more argument schemas than arglist entries"
+                                     {:extra-schemas (count remaining-schemas)}))
+        specs)
+
+      :else
+      (let [arg-name   (first remaining-args)
+            arg-schema (or (first remaining-schemas)
+                           (do
+                             (warn-arg-schema-mismatch! "Function arglist has more entries than schema; using unknown"
+                                                        {:arg-name (pr-str arg-name), :arg-idx arg-idx})
+                             :any))]
         (if (rest-marker? arg-name)
           (if (munged-ampersand? arg-name)
             (recur (next remaining-args)
                    (next remaining-schemas)
                    (inc arg-idx)
                    (conj specs {:arg-name   'rest
-                                :arg-schema (first remaining-schemas)
+                                :arg-schema arg-schema
                                 :arg-idx    arg-idx
                                 :rest?      true}))
             (if-let [rest-name (second remaining-args)]
               (conj specs {:arg-name   rest-name
-                           :arg-schema (first remaining-schemas)
+                           :arg-schema arg-schema
                            :arg-idx    arg-idx
                            :rest?      true})
-              specs))
+              (do
+                (warn-arg-schema-mismatch! "Function arglist has variadic marker without rest arg name"
+                                           {:arg-idx arg-idx})
+                specs)))
           (recur (next remaining-args)
                  (next remaining-schemas)
                  (inc arg-idx)
                  (conj specs {:arg-name   arg-name
-                              :arg-schema (first remaining-schemas)
+                              :arg-schema arg-schema
                               :arg-idx    arg-idx
                               :rest?      false})))))))
 
@@ -909,10 +940,12 @@
 
 (defn- require-or-return [ns-or-name]
   (if (symbol? ns-or-name)
-    (do
+    (let [ns-sym (if-let [sym-ns (namespace ns-or-name)]
+                   (symbol sym-ns)
+                   ns-or-name)]
       (locking clojure.lang.RT/REQUIRE_LOCK
-        (-> ns-or-name namespace symbol require))
-      (-> ns-or-name namespace symbol find-ns))
+        (require ns-sym))
+      (find-ns ns-sym))
     ns-or-name))
 
 (defn- js-symbol?
@@ -1058,9 +1091,8 @@
             (recur (vec remaining) processed aliases)
             ;; Expand this ref and collect any new refs it discovers
             (let [new-refs-atom (atom #{})
-                  type-def     (binding [*registry-refs*      new-refs-atom
-                                         *bypass-memoization* true
-                                         *seen*               #{}]
+                  type-def     (binding [*registry-refs* new-refs-atom
+                                         *seen*          #{}]
                                  (try
                                    (schema->ts (mr/resolve-schema current-ref))
                                    (catch Exception e
@@ -1081,17 +1113,40 @@
                      (conj processed current-ref)
                      (conj aliases alias-decl)))))))))
 
+(defn- collect-registry-refs
+  "Cheaply collect direct registry schema refs from a schema form without generating TypeScript strings. This is
+  intentionally conservative: if a literal keyword also happens to name a registry schema, collecting it can only create
+  an unused alias, which is safer than missing a real dependency."
+  [schema]
+  (let [refs (atom #{})]
+    (walk/postwalk (fn [form]
+                     (when (and (keyword? form)
+                                (namespace form)
+                                (registry-schema? form))
+                       (swap! refs conj form))
+                     form)
+                   schema)
+    @refs))
+
 (defn- collect-refs-from-defs
-  "Collect all registry schema refs used by a set of defs (without generating full TypeScript).
-   Returns a set of qualified keywords."
+  "Collect all registry schema refs used by a set of defs without generating full TypeScript. Returns a set of
+  qualified keywords."
   [defs]
-  (binding [*registry-refs* (atom #{})]
-    (doseq [defmeta (vals defs)]
-      (try
-        (binding [*current-def* (name (:name defmeta))]
-          (def->ts defmeta))
-        (catch Exception _)))
-    @*registry-refs*))
+  (reduce (fn [refs {:keys [schema ns] fqname :name}]
+            (try
+              (let [resolved-schema (resolve-var-refs (or ns fqname) schema)]
+                (into refs (collect-registry-refs resolved-schema)))
+              (catch clojure.lang.ExceptionInfo e
+                (if (= :malli.core/sci-not-available (:type (ex-data e)))
+                  refs
+                  (do
+                    (log/warn "Failed to collect TypeScript schema refs" {:name fqname :error (.getMessage e)})
+                    refs)))
+              (catch Exception e
+                (log/warn "Failed to collect TypeScript schema refs" {:name fqname :error (.getMessage e)})
+                refs)))
+          #{}
+          (vals defs)))
 
 (defn- ts-content
   "Generate TypeScript content for a namespace.
