@@ -1436,7 +1436,8 @@
 
   oauth-server
   {:team "UX West"
-   :api  #{metabase.oauth-server.api
+   :api  #{metabase.oauth-server.api       ;; Special case OAuth standard endpoints under `/`
+           metabase.oauth-server.api.admin ;; The usual Metabase internal API endpoints under `/api`
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api

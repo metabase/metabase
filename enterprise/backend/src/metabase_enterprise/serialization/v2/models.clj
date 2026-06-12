@@ -107,6 +107,7 @@
    "OAuthAccessToken"
    "OAuthAuthorizationCode"
    "OAuthClient"
+   "OAuthClientEvent"
    "OAuthRefreshToken"
    "Permissions"
    "PermissionsGroup"
