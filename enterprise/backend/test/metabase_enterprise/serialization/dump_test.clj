@@ -117,8 +117,6 @@ dataset_query:
       - source-card: 0wVIfjBJWclD0lKeABYYl
         lib/type: mbql.stage/mbql
       strategy: left-join
-      lib/options:
-        lib/uuid: dc61e51d-9dfd-4fa6-a096-f70665a7d988
       lib/type: mbql/join
     source-card: skoPT2xiuEcUV8vFkHE6S
     lib/type: mbql.stage/mbql
