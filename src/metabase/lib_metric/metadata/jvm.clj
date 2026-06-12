@@ -35,9 +35,9 @@
         where-clauses (cond-> [[:= :type [:inline "metric"]]]
                         id-set       (conj [:in :id id-set])
                         name-set     (conj [:in :name name-set])
-                        table-id     (conj [:= :table_id table-id])
+                        table-id     (conj [:in :table_id table-id])
                         table-id     (conj [:= :source_card_id nil])
-                        card-id      (conj [:= :source_card_id card-id])
+                        card-id      (conj [:in :source_card_id card-id])
                         active-only? (conj [:= :archived false]))]
     (reduce sql.helpers/where {} where-clauses)))
 
@@ -81,7 +81,7 @@
         where-clauses (cond-> []
                         id-set       (conj [:in :measure/id id-set])
                         name-set     (conj [:in :measure/name name-set])
-                        table-id     (conj [:= :measure/table_id table-id])
+                        table-id     (conj [:in :measure/table_id table-id])
                         active-only? (conj [:= :measure/archived false]))]
     (reduce sql.helpers/where {} where-clauses)))
 
@@ -144,7 +144,7 @@
    (lib.metadata.protocols/metadatas mp {:lib/type :metadata/dimension :metric-id 1})
 
    ;; Routes to correct database provider for table 1
-   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 1})
+   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id #{1}})
    ```"
   []
   (let [table->db (table->database-id)

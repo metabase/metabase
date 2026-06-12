@@ -48,11 +48,11 @@
              (filter #(contains? name-set (:name %)))
              identity)
            (if table-id
-             (filter #(and (= (:table-id %) table-id)
+             (filter #(and (contains? table-id (:table-id %))
                            (nil? (:source-card-id %))))
              identity)
            (if card-id
-             (filter #(= (:source-card-id %) card-id))
+             (filter #(contains? card-id (:source-card-id %)))
              identity)
            (if active-only?
              (filter #(not (:archived %)))
@@ -82,7 +82,7 @@
                 (vals mock-tables)))
         :metadata/column
         (when table-id
-          (get mock-columns table-id []))
+          (into [] (mapcat #(get mock-columns % [])) table-id))
         []))
     (setting [_this k]
       (get mock-settings k))))

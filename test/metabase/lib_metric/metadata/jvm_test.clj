@@ -90,7 +90,7 @@
 (deftest ^:parallel metadatas-routes-columns-to-database-provider-test
   (testing "metadatas should route column requests to the appropriate database provider"
     (let [mp (metric-jvm/metadata-provider)
-          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id (mt/id :orders)})]
+          columns (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id #{(mt/id :orders)}})]
       (is (seq columns))
       (is (every? #(= (mt/id :orders) (:table-id %)) columns)))))
 
