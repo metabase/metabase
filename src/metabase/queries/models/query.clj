@@ -90,52 +90,77 @@
   (when hash-bytes
     (ByteBuffer/wrap ^bytes hash-bytes)))
 
+(defn- rolling-average-update-expr
+  "HoneySQL expression that updates `:average_execution_time` as if the rolling-average formula were applied once per
+  execution time, in order."
+  [execution-times-ms]
+  (let [[c0 c1] (rolling-average-coefficients execution-times-ms)]
+    (h2x/cast (int-casting-type)
+              (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
+                                [:inline c1])
+                         [:inline 0]))))
+
+(defn- update-rolling-average-execution-times!
+  "Update the rolling average execution times for `groups` (each a sequence of entries sharing a query hash) with a
+  single atomic UPDATE."
+  [groups]
+  (when (seq groups)
+    (let [hash+exprs (vec (for [group groups]
+                            [(:query-hash (first group))
+                             (rolling-average-update-expr (map :execution-time-ms group))]))]
+      (t2/query {:update (t2/table-name :model/Query)
+                 :set    {:average_execution_time (into [:case]
+                                                        (mapcat (fn [[query-hash expr]]
+                                                                  [[:= :query_hash query-hash] expr]))
+                                                        hash+exprs)}
+                 :where  [:in :query_hash (mapv first hash+exprs)]}))))
+
+(defn- insert-query-entries!
+  "Insert new Query rows for `groups` (each a sequence of entries sharing a query hash) with a single INSERT."
+  [groups]
+  (t2/insert! :model/Query (for [group groups]
+                             {:query                  (:query (first group))
+                              :query_hash             (:query-hash (first group))
+                              :average_execution_time (initial-average-execution-time
+                                                       (map :execution-time-ms group))})))
+
+(defn- query-hash->row-status
+  "Fetch which of `query-hashes` already have Query rows. Returns a map of [[hash-key]] -> `:up-to-date` or
+  `:needs-query-backfill` (for rows predating 0.31.0 whose `query` column was never set); hashes without a row are
+  absent from the map."
+  [query-hashes]
+  (into {}
+        (map (fn [{:keys [query_hash missing_query]}]
+               [(hash-key query_hash)
+                ;; mysql returns 0/1 instead of booleans
+                (if (contains? #{true 1} missing_query)
+                  :needs-query-backfill
+                  :up-to-date)]))
+        (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
+                   :from   [(t2/table-name :model/Query)]
+                   :where  [:in :query_hash query-hashes]})))
+
 (defn- save-queries-and-update-average-execution-times!*
   [entries remaining-attempts]
   (when (seq entries)
-    (let [hash->entries (group-by (comp hash-key :query-hash) entries)
-          query-hashes  (map (comp :query-hash first val) hash->entries)
-          existing-rows (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
-                                   :from   [(t2/table-name :model/Query)]
-                                   :where  [:in :query_hash query-hashes]})
-          ;; mysql returns 0/1 instead of booleans
-          hash->legacy? (into {} (map (juxt (comp hash-key :query_hash)
-                                            (comp boolean #{true 1} :missing_query)))
-                              existing-rows)
-          ;; nil = no existing row for this hash
-          {batchable false, legacy true, new-groups nil} (group-by (comp hash->legacy? key) hash->entries)]
-      ;; one atomic UPDATE for all existing rows
-      (when-let [hash+exprs (not-empty
-                             (vec (for [[_hash group] batchable
-                                        :let [[c0 c1] (rolling-average-coefficients (map :execution-time-ms group))]]
-                                    [(:query-hash (first group))
-                                     (h2x/cast (int-casting-type)
-                                               (h2x/round (h2x/+ (h2x/* [:inline c0] :average_execution_time)
-                                                                 [:inline c1])
-                                                          [:inline 0]))])))]
-        (t2/query {:update (t2/table-name :model/Query)
-                   :set    {:average_execution_time (into [:case]
-                                                          (mapcat (fn [[query-hash expr]]
-                                                                    [[:= :query_hash query-hash] expr]))
-                                                          hash+exprs)}
-                   :where  [:in :query_hash (map first hash+exprs)]}))
-      ;; pre-0.31.0 rows whose `query` still needs backfilling: rare legacy path, handle individually
-      (doseq [[_hash group] legacy
-              {:keys [query query-hash execution-time-ms]} group]
+    (let [groups       (vals (group-by (fn [entry] (hash-key (:query-hash entry))) entries))
+          hash->status (query-hash->row-status (map (fn [group] (:query-hash (first group))) groups))
+          {:keys [up-to-date needs-query-backfill new-entry]}
+          (group-by (fn [group]
+                      (get hash->status (hash-key (:query-hash (first group))) :new-entry))
+                    groups)]
+      (update-rolling-average-execution-times! up-to-date)
+      ;; rare legacy path: rows whose `query` still needs backfilling are handled individually
+      (doseq [{:keys [query query-hash execution-time-ms]} (apply concat needs-query-backfill)]
         (update-rolling-average-execution-time! query query-hash execution-time-ms))
-      ;; one multi-row INSERT for hashes we haven't seen before. If some other instance beat us to inserting any of
-      ;; them, retry: the next attempt will see the conflicting rows as existing and fold them into the batched
-      ;; UPDATE instead.
-      (when (seq new-groups)
+      ;; if some other instance beat us to inserting any of the new rows, retry: the next attempt will see the
+      ;; conflicting rows as existing and fold them into the batched UPDATE instead
+      (when (seq new-entry)
         (try
-          (t2/insert! :model/Query (for [[_hash group] new-groups]
-                                     {:query                  (:query (first group))
-                                      :query_hash             (:query-hash (first group))
-                                      :average_execution_time (initial-average-execution-time
-                                                               (map :execution-time-ms group))}))
+          (insert-query-entries! new-entry)
           (catch Throwable e
             (if (pos? remaining-attempts)
-              (save-queries-and-update-average-execution-times!* (mapcat val new-groups) (dec remaining-attempts))
+              (save-queries-and-update-average-execution-times!* (apply concat new-entry) (dec remaining-attempts))
               (throw e))))))))
 
 (defn save-queries-and-update-average-execution-times!
