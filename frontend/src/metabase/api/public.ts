@@ -18,7 +18,12 @@ export type PublicDashcardQueryRequest = {
   ignore_cache?: boolean;
 };
 
-const PIVOT_PREFIX = `/api/public/pivot`;
+export type PublicDocumentCardQueryRequest = {
+  uuid: string;
+  cardId: CardId;
+};
+
+const PIVOT_PREFIX = "/api/public/pivot";
 
 export const publicApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -57,6 +62,18 @@ export const publicApi = Api.injectEndpoints({
       }),
       keepUnusedDataFor: 0,
     }),
+    // Unlike the endpoints above this one keeps the default cache window:
+    // public document cards subscribe only while near the viewport, so
+    // dropping data on unsubscribe would refetch on every scroll back.
+    getPublicDocumentCardQuery: builder.query<
+      Dataset,
+      PublicDocumentCardQueryRequest
+    >({
+      query: ({ uuid, cardId }) => ({
+        method: "GET",
+        url: `/api/public/document/${uuid}/card/${cardId}`,
+      }),
+    }),
   }),
 });
 
@@ -65,4 +82,5 @@ export const {
   useGetPublicCardQueryPivotQuery,
   useGetPublicDashcardQueryQuery,
   useGetPublicDashcardQueryPivotQuery,
+  useGetPublicDocumentCardQueryQuery,
 } = publicApi;

@@ -1,15 +1,13 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import {
-  getPerformanceTabMetadata,
-  getPositiveIntegerSchema,
-} from "metabase/admin/performance/constants/complex";
+import { defaultCron } from "metabase/common/components/Schedule/cron";
 import {
   PerformanceTabId,
   type StrategyData,
-} from "metabase/admin/performance/types";
-import { defaultCron } from "metabase/common/components/Schedule/cron";
+  getPerformanceTabMetadata,
+  getPositiveIntegerSchema,
+} from "metabase/plugins";
 import type { AdminPath } from "metabase/redux/store";
 import { CacheDurationUnit } from "metabase-types/api";
 

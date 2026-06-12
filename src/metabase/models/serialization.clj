@@ -858,7 +858,8 @@
 (defn- xform-one [model-name ingested]
   (let [spec (*make-spec* model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
-    (-> (merge (:defaults spec) (select-keys ingested (:copy spec)))
+    (-> (merge (:defaults spec)
+               (select-keys (apply dissoc ingested (::strip ingested)) (:copy spec)))
         (into (for [[k transform] (:transform spec)
                     :when (and (not (::nested transform))
                                ;; handling circuit-breaking
@@ -873,7 +874,8 @@
                                (or (some? res)
                                    (contains? ingested import-k)))]
                 [k res]))
-        (coerce-keys (:coerce spec)))))
+        ;; coercing a stripped key would re-introduce it as an explicit nil
+        (coerce-keys (apply dissoc (:coerce spec) (::strip ingested))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (let [spec (*make-spec* model-name nil)]
