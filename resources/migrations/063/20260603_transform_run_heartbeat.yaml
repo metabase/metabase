@@ -53,3 +53,49 @@ databaseChangeLog:
         - dropColumn:
             tableName: transform_run
             columnName: process_uuid
+
+  - changeSet:
+      id: v63.2026-06-12T00:00:01
+      author: bronsa
+      comment: Index transform_job_run on (is_active, last_heartbeat) so the every-minute reaper scan is O(active rows)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_job_run
+                indexName: idx_transform_job_run_active_runs
+      changes:
+        - createIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: last_heartbeat
+      rollback:
+        - dropIndex:
+            tableName: transform_job_run
+            indexName: idx_transform_job_run_active_runs
+
+  - changeSet:
+      id: v63.2026-06-12T00:00:02
+      author: bronsa
+      comment: Index task_run on status so the task-run reaper's locking scan only touches started rows
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: task_run
+                indexName: idx_task_run_status
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_status
+            columns:
+              - column:
+                  name: status
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_status
