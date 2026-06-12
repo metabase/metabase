@@ -96,7 +96,7 @@ const elements = [
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
   createElement({ type: "shared", name: "metrics" }),
-  createElement({ type: "shared", name: "metrics-viewer" }),
+  createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
