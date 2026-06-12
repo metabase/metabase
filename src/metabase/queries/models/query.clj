@@ -87,16 +87,16 @@
   (when (seq entries)
     ;; group by the hex representation since byte arrays don't have value-based equality
     (let [hex->entries  (group-by #(codecs/bytes->hex (:query-hash %)) entries)
+          query-hashes  (map (comp :query-hash first val) hex->entries)
           existing-rows (t2/query {:select [:query_hash [[:= :query nil] :missing_query]]
                                    :from   [(t2/table-name :model/Query)]
-                                   :where  [:in :query_hash (map (comp :query-hash first val) hex->entries)]})
+                                   :where  [:in :query_hash query-hashes]})
           ;; mysql returns 0/1 instead of booleans
           hex->legacy?  (into {} (map (juxt #(codecs/bytes->hex (:query_hash %))
                                             (comp boolean #{true 1} :missing_query)))
                               existing-rows)
-          {batchable false, legacy true} (group-by (comp hex->legacy? key)
-                                                   (filter (comp #(contains? hex->legacy? %) key) hex->entries))
-          new-groups    (vals (remove (comp #(contains? hex->legacy? %) key) hex->entries))]
+          ;; nil = no existing row for this hash
+          {batchable false, legacy true, new-groups nil} (group-by (comp hex->legacy? key) hex->entries)]
       ;; one atomic UPDATE for all existing rows
       (when-let [hash+exprs (not-empty
                              (for [[_hex group] batchable
@@ -121,14 +121,14 @@
       ;; UPDATE instead.
       (when (seq new-groups)
         (try
-          (t2/insert! :model/Query (for [group new-groups]
+          (t2/insert! :model/Query (for [[_hex group] new-groups]
                                      {:query                  (:query (first group))
                                       :query_hash             (:query-hash (first group))
                                       :average_execution_time (initial-average-execution-time
                                                                (map :execution-time-ms group))}))
           (catch Throwable e
             (if (pos? remaining-attempts)
-              (save-queries-and-update-average-execution-times!* (apply concat new-groups) (dec remaining-attempts))
+              (save-queries-and-update-average-execution-times!* (mapcat val new-groups) (dec remaining-attempts))
               (throw e))))))))
 
 (defn save-queries-and-update-average-execution-times!

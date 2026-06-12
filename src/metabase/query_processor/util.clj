@@ -136,22 +136,10 @@
         col))))
 
 (def ^:dynamic *execute-async?*
-  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
+  queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
+  calling thread."
   true)
-
-(defn do-with-execute-async
-  "Impl of `with-execute-async`"
-  [thunk]
-  (if *execute-async?*
-    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
-    (thunk)))
-
-(defmacro with-execute-async
-  "Execute body asynchronously in a pooled executor.
-
-  Used for side effects during query execution like saving query execution info."
-  [thunk]
-  `(do-with-execute-async ~thunk))
 
 (mu/defn userland-query? :- :boolean
   "Returns true if the query is an userland query, else false."
