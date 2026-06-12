@@ -172,9 +172,12 @@
 
 (t2/define-before-insert :model/Table
   [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
-                  :data_layer   :internal}]
+  ;; Default both curation columns here so model inserts are consistent across app DBs; a migration
+  ;; reasserts matching DB-level defaults for non-model insert paths.
+  (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
+                  :field_order    (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
+                  :data_layer     :internal
+                  :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
     (merge defaults table)))
 

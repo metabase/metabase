@@ -5,11 +5,13 @@ import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import {
+  actionApi,
   skipToken,
   useGetAdhocQueryQuery,
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/common/components/Modal";
@@ -23,7 +25,7 @@ import {
   getHeaderColumns,
   getRowName,
 } from "metabase/detail-view/utils";
-import { ActionsApi } from "metabase/services";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -86,6 +88,7 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
+  const dispatch = useDispatch();
   const {
     data: dataset,
     error,
@@ -154,11 +157,15 @@ export function DetailViewSidesheet({
       return {};
     }
 
-    return ActionsApi.prefetchValues({
-      id: actionId,
-      parameters: JSON.stringify({ id: String(rowId) }),
-    });
-  }, [actionId, rowId]);
+    return runRtkEndpoint(
+      {
+        id: actionId,
+        parameters: { id: String(rowId) },
+      },
+      dispatch,
+      actionApi.endpoints.prefetchActionValues,
+    );
+  }, [actionId, rowId, dispatch]);
 
   const handleActionSuccess = useCallback(() => {
     onActionSuccess?.();
