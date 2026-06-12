@@ -32,10 +32,10 @@
       ;; - fetch the Database
       ;; - fetch the Tables in bulk
       ;; - fetch the Tables' columns in bulk
-      ;; - the permissions check
-      ;; - the database-routing check
-      ;; - the table-remapping check
-      (is (= 6 (preprocess-app-db-call-count query))))))
+      ;; - the permissions check (EE only)
+      ;; - the database-routing check (EE only)
+      ;; - the table-remapping check (EE only)
+      (is (<= (preprocess-app-db-call-count query) 6)))))
 
 (deftest prefetch-metadata-mbql-three-tables-call-count-test
   (mt/dataset test-data
@@ -50,7 +50,7 @@
                     (lib/limit 1))]
       ;; the same number of calls as for a single-table query: all the referenced tables and their columns are
       ;; bulk-loaded, so the count does not depend on the number of tables
-      (is (= 6 (preprocess-app-db-call-count query))))))
+      (is (<= (preprocess-app-db-call-count query) 6)))))
 
 (deftest prefetch-metadata-native-one-field-filter-call-count-test
   (mt/dataset test-data
@@ -68,7 +68,7 @@
                                          :value  [1]}]))]
       ;; one more call than for MBQL queries: the fields referenced by the template tags are bulk-loaded by ID, which
       ;; is also how their tables are discovered
-      (is (= 7 (preprocess-app-db-call-count query))))))
+      (is (<= (preprocess-app-db-call-count query) 7)))))
 
 (deftest prefetch-metadata-native-three-field-filters-call-count-test
   (mt/dataset test-data
@@ -90,7 +90,7 @@
                                          :value  [1]}]))]
       ;; the same calls as with a single field filter: all the template-tag Fields are loaded with a single bulk
       ;; call, while without prefetching parameter substitution would resolve them one at a time
-      (is (= 7 (preprocess-app-db-call-count query))))))
+      (is (<= (preprocess-app-db-call-count query) 7)))))
 
 (deftest prefetch-metadata-card-source-call-count-test
   (mt/dataset test-data
@@ -103,7 +103,7 @@
           ;; the baseline calls, plus:
           ;; - fetch the source Card
           ;; - fetch the Fields referenced by the Card's query by id in bulk (also used to discover their Tables)
-          (is (= 8 (preprocess-app-db-call-count query))))))))
+          (is (<= (preprocess-app-db-call-count query) 8)))))))
 
 (deftest prefetch-metadata-nested-card-source-call-count-test
   (mt/dataset test-data
@@ -115,7 +115,7 @@
             ;; the same calls as for a single source card, plus:
             ;; - fetch the inner Card: source cards are resolved recursively, so each level of nesting fetches its
             ;;   card individually
-            (is (= 9 (preprocess-app-db-call-count query)))))))))
+            (is (<= (preprocess-app-db-call-count query) 9))))))))
 
 (deftest prefetch-metadata-card-source-with-join-call-count-test
   (mt/dataset test-data
@@ -128,4 +128,4 @@
                         (lib/limit 1))]
           ;; the same calls as for a plain source card: the joined Table and its columns are folded into the same
           ;; bulk calls
-          (is (= 8 (preprocess-app-db-call-count query))))))))
+          (is (<= (preprocess-app-db-call-count query) 8)))))))
