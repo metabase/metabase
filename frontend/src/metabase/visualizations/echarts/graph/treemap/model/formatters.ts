@@ -1,4 +1,3 @@
-import { memoize } from "metabase/common/hooks/use-memoized-callback";
 import { formatValue } from "metabase/visualizations/lib/formatting";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
@@ -12,9 +11,8 @@ export function getTreemapFormatters(
   columns: TreemapChartColumns,
   settings: ComputedVisualizationSettings,
 ): TreemapFormatters {
+  const columnSettings = settings.column?.(columns.value.column) ?? {};
   return {
-    value: memoize((value: number) =>
-      String(formatValue(value, settings.column?.(columns.value.column) ?? {})),
-    ),
+    value: (value: number) => String(formatValue(value, columnSettings)),
   };
 }
