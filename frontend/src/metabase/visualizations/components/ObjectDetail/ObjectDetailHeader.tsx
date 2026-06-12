@@ -1,18 +1,15 @@
 import cx from "classnames";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
-import type { IconName } from "metabase-types/api";
 
 import S from "./ObjectDetailHeader.module.css";
 import type { ObjectId } from "./types";
+import type { ActionItem } from "./utils";
 
 export interface ObjectDetailHeaderProps {
-  actionItems: {
-    title: string;
-    icon: IconName;
-    action: () => void;
-  }[];
+  actionItems: ActionItem[];
   canZoom: boolean;
   objectName: string;
   objectId: ObjectId | null;
@@ -77,14 +74,14 @@ export function ObjectDetailHeader({
             <Menu position="bottom-end">
               <Menu.Target>
                 <ActionIcon
-                  aria-label="Actions"
+                  aria-label={t`Actions`}
                   data-testid="actions-menu"
                   variant="subtle"
                 >
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>
-              <Menu.Dropdown miw={184}>
+              <Menu.Dropdown>
                 {actionItems.map((item) => (
                   <Menu.Item
                     key={item.title}

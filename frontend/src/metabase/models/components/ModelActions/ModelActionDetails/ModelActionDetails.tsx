@@ -128,14 +128,14 @@ function ModelActionDetails({ model }: Props) {
             <Menu position="bottom-end">
               <Menu.Target>
                 <ActionIcon
-                  aria-label={t`Actions menu`}
+                  aria-label={t`Actions`}
                   variant="subtle"
                   style={{ marginLeft: "0.5rem" }}
                 >
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>
-              <Menu.Dropdown miw={184}>
+              <Menu.Dropdown>
                 {hasImplicitActions ? (
                   <Menu.Item
                     leftSection={<Icon name="bolt" aria-hidden />}

@@ -343,35 +343,35 @@ function EntityItemMenu({
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>
-        <Menu.Dropdown miw={184}>
-          {actions.map((item, index) => {
-            const key = item.title ?? index;
+        <Menu.Dropdown>
+          {actions.map((action, index) => {
+            const key = action.title ?? index;
             const menuItemProps = {
               className: S.menuItem,
-              disabled: item.disabled,
-              leftSection: getLeftSection(item.icon),
-              style: getItemStyle(item),
+              disabled: action.disabled,
+              leftSection: getLeftSection(action.icon),
+              style: getItemStyle(action),
             };
 
-            if (item.link) {
+            if (action.link) {
               return (
-                <MenuItemTooltip key={key} tooltip={item.tooltip}>
+                <MenuItemTooltip key={key} tooltip={action.tooltip}>
                   <Menu.Item
                     {...menuItemProps}
                     component={Link}
                     data-testid="entity-menu-link"
-                    to={item.link}
+                    to={action.link}
                   >
-                    {item.title}
+                    {action.title}
                   </Menu.Item>
                 </MenuItemTooltip>
               );
             }
 
             return (
-              <MenuItemTooltip key={key} tooltip={item.tooltip}>
-                <Menu.Item {...menuItemProps} onClick={item.action}>
-                  {item.title}
+              <MenuItemTooltip key={key} tooltip={action.tooltip}>
+                <Menu.Item {...menuItemProps} onClick={action.action}>
+                  {action.title}
                 </Menu.Item>
               </MenuItemTooltip>
             );

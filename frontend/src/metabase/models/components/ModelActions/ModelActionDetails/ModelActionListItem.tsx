@@ -100,11 +100,11 @@ function ModelActionListItem({
         </div>
         <Menu position="bottom-end">
           <Menu.Target>
-            <ActionIcon aria-label={t`Action options`} variant="subtle">
+            <ActionIcon aria-label={t`Actions`} variant="subtle">
               <Icon name="ellipsis" />
             </ActionIcon>
           </Menu.Target>
-          <Menu.Dropdown miw={184}>
+          <Menu.Dropdown>
             <Menu.Item
               component={RouterLink}
               data-testid="entity-menu-link"

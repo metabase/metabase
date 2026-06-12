@@ -279,22 +279,20 @@ export function DetailViewSidesheet({
                 onClose={actionsMenu.close}
               >
                 <Menu.Target>
-                  <div>
-                    <Tooltip label={t`Actions`}>
-                      <Button
-                        aria-label={t`Actions`}
-                        c="text-primary"
-                        data-testid="actions-menu"
-                        h={20}
-                        leftSection={<Icon name="ellipsis" />}
-                        p={0}
-                        variant="subtle"
-                        w={20}
-                      />
-                    </Tooltip>
-                  </div>
+                  <Tooltip label={t`Actions`}>
+                    <Button
+                      aria-label={t`Actions`}
+                      c="text-primary"
+                      data-testid="actions-menu"
+                      h={20}
+                      leftSection={<Icon name="ellipsis" />}
+                      p={0}
+                      variant="subtle"
+                      w={20}
+                    />
+                  </Tooltip>
                 </Menu.Target>
-                <Menu.Dropdown miw={184}>
+                <Menu.Dropdown>
                   {actionItems.map((item) => (
                     <Menu.Item
                       key={item.title}

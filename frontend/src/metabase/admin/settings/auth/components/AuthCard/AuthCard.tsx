@@ -166,14 +166,14 @@ const AuthCardMenu = ({
     <Menu position="bottom-end">
       <Menu.Target>
         <ActionIcon
-          aria-label={t`Actions menu`}
+          aria-label={t`Actions`}
           variant="subtle"
           style={{ marginLeft: "auto" }}
         >
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
-      <Menu.Dropdown miw={184}>
+      <Menu.Dropdown>
         <Menu.Item
           leftSection={<Icon name={isEnabled ? "pause" : "play"} aria-hidden />}
           onClick={handleChange}

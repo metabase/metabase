@@ -136,7 +136,7 @@ export const getSinglePKIndex = (cols: DatasetColumn[]) => {
   return index === -1 ? undefined : index;
 };
 
-type ActionItem = {
+export type ActionItem = {
   title: string;
   icon: IconName;
   action: () => void;
