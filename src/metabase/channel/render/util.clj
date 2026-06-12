@@ -63,6 +63,11 @@
   [col sem-type]
   (isa? (some-> (:semantic_type col) keyword) sem-type))
 
+(defn any-col-of-type?
+  "Whether any column in `cols` has a semantic type deriving from `sem-type`."
+  [cols sem-type]
+  (boolean (some #(col-of-type? % sem-type) cols)))
+
 (defn is-scalar-funnel?
   "Check if the visualization is a scalar funnel.
    Matches the frontend implementation in frontend/src/metabase/visualizer/visualizations/funnel.ts"

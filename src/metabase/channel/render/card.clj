@@ -88,8 +88,8 @@
 (defn- has-lat-lng-columns?
   "True when the result has both a Latitude and a Longitude column (a coordinate-based map)."
   [cols]
-  (and (some #(render.util/col-of-type? % :type/Latitude) cols)
-       (some #(render.util/col-of-type? % :type/Longitude) cols)))
+  (and (render.util/any-col-of-type? cols :type/Latitude)
+       (render.util/any-col-of-type? cols :type/Longitude)))
 
 (defn- binned-lat-lng-columns?
   "True when both a Latitude and a Longitude column are binned (a grid map, per the frontend default)."
@@ -128,14 +128,14 @@
     :pin_map
     (when (#{:map :state :country} display-type)
       (case (effective-map-type display-type card maybe-dashcard data)
-        ;; a region map is only renderable when its region key names GeoJSON we know about — built-in, or
-        ;; a user-defined custom map (the latter is fetched at render time)
-        "region" (when (body/region-map-region-key display-type card maybe-dashcard data)
-                   :region_map)
         "pin"    (when (= :map display-type)
                    :pin_map)
         "grid"   (when (= :map display-type)
                    :grid_map)
+        ;; a region map is only renderable when its region key names GeoJSON we know about — built-in, or
+        ;; a user-defined custom map (the latter is fetched at render time)
+        "region" (when (body/region-map-region-key display-type card maybe-dashcard data)
+                   :region_map)
         nil))))
 
 (defn detect-pulse-chart-type

@@ -469,31 +469,31 @@
         region-key   (or (render.util/viz-setting viz-settings "map.region")
                          (case display-type :state "us_states" :country "world_countries" nil)
                          (cond
-                           (some #(render.util/col-of-type? % :type/State) cols)   "us_states"
-                           (some #(render.util/col-of-type? % :type/Country) cols) "world_countries"))]
+                           (render.util/any-col-of-type? cols :type/State)   "us_states"
+                           (render.util/any-col-of-type? cols :type/Country) "world_countries"))]
     (and (geojson.settings/defined-region? region-key)
          region-key)))
+
+(defn- png->rendered-part
+  "Wrap PNG `byte[]` as a RenderedPartCard `<img>`."
+  [render-type png-bytes]
+  (let [image-bundle (image-bundle/make-image-bundle render-type png-bytes)]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
+
+     :content
+     [:div
+      [:img {:style (style/style {:display :block :width :100%})
+             :src   (:image-src image-bundle)}]]}))
 
 (defn- javascript-visualization->rendered-part
   "Turn the `{:type :svg/:html :content ...}` result of [[js.svg/*javascript-visualization*]] into a RenderedPartCard.
   SVG results are rasterized to a PNG `<img>`; HTML results are embedded as-is."
   [render-type {rendered-type :type content :content}]
   (case rendered-type
-    :html
-    {:content [:div content] :attachments nil}
-
-    :svg
-    (let [image-bundle (image-bundle/make-image-bundle
-                        render-type
-                        (js.svg/svg-string->bytes content))]
-      {:attachments
-       (when image-bundle
-         (image-bundle/image-bundle->attachment image-bundle))
-
-       :content
-       [:div
-        [:img {:style (style/style {:display :block :width :100%})
-               :src   (:image-src image-bundle)}]]})))
+    :html {:content [:div content] :attachments nil}
+    :svg  (png->rendered-part render-type (js.svg/svg-string->bytes content))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -534,19 +534,6 @@
          render-type
          (js.svg/*javascript-visualization* cards-with-data viz-settings))))))
 
-(defn- png->rendered-part
-  "Wrap PNG `byte[]` (from a server-side map render) as a RenderedPartCard `<img>`."
-  [render-type png-bytes]
-  (let [image-bundle (image-bundle/make-image-bundle render-type png-bytes)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
-
 (defn- number-at
   "The value of `row` at `idx` when it's a number, else nil."
   [row idx]
@@ -563,6 +550,13 @@
                              (when (render.util/col-of-type? col sem-type)
                                i))
                            cols))))
+
+(defn- coordinate-col-indexes
+  "`[lat-idx lon-idx]` for a coordinate map, honoring the `map.latitude_column`/`map.longitude_column`
+  settings, with semantic-type fallbacks."
+  [cols setting]
+  [(coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
+   (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)])
 
 (defn- metric-col-index
   "Resolve the metric column's index: the named column if set, else the first numeric column that isn't the
@@ -591,16 +585,15 @@
 
 (mu/defmethod render :pin_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
-  (let [viz-settings (render.util/merged-viz-settings card dashcard)
-        setting      (partial render.util/viz-setting viz-settings)
-        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
-        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
-        points       (when (and lat-idx lon-idx)
-                       (for [row   rows
-                             :let  [lat (number-at row lat-idx)
-                                    lon (number-at row lon-idx)]
-                             :when (and lat lon)]
-                         [lat lon]))]
+  (let [viz-settings      (render.util/merged-viz-settings card dashcard)
+        setting           (partial render.util/viz-setting viz-settings)
+        [lat-idx lon-idx] (coordinate-col-indexes cols setting)
+        points            (when (and lat-idx lon-idx)
+                            (for [row   rows
+                                  :let  [lat (number-at row lat-idx)
+                                         lon (number-at row lon-idx)]
+                                  :when (and lat lon)]
+                              [lat lon]))]
     (if-let [png (when (seq points)
                    (maps/render-pin-map points {:tile-url (tiles.settings/map-tile-server-url)
                                                 :pin-type (setting "map.pin_type")}))]
@@ -611,23 +604,22 @@
 
 (mu/defmethod render :grid_map :- ::RenderedPartCard
   [_chart-type render-type timezone-id card dashcard {:keys [cols rows] :as data}]
-  (let [viz-settings (render.util/merged-viz-settings card dashcard)
-        setting      (partial render.util/viz-setting viz-settings)
-        lat-idx      (coordinate-col-index cols (setting "map.latitude_column") :type/Latitude)
-        lon-idx      (coordinate-col-index cols (setting "map.longitude_column") :type/Longitude)
-        metric-idx   (metric-col-index cols lat-idx lon-idx (setting "map.metric_column"))
-        lat-bin      (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
-        lon-bin      (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
-        cells        (when (and lat-idx lon-idx lat-bin lon-bin)
-                       (for [row   rows
-                             :let  [lat (number-at row lat-idx)
-                                    lon (number-at row lon-idx)]
-                             :when (and lat lon)]
-                         {:lat     lat
-                          :lon     lon
-                          :lat-bin lat-bin
-                          :lon-bin lon-bin
-                          :metric  (when metric-idx (number-at row metric-idx))}))]
+  (let [viz-settings      (render.util/merged-viz-settings card dashcard)
+        setting           (partial render.util/viz-setting viz-settings)
+        [lat-idx lon-idx] (coordinate-col-indexes cols setting)
+        metric-idx        (metric-col-index cols lat-idx lon-idx (setting "map.metric_column"))
+        lat-bin           (when lat-idx (column-bin-width (nth cols lat-idx) lat-idx rows))
+        lon-bin           (when lon-idx (column-bin-width (nth cols lon-idx) lon-idx rows))
+        cells             (when (and lat-idx lon-idx lat-bin lon-bin)
+                            (for [row   rows
+                                  :let  [lat (number-at row lat-idx)
+                                         lon (number-at row lon-idx)]
+                                  :when (and lat lon)]
+                              {:lat     lat
+                               :lon     lon
+                               :lat-bin lat-bin
+                               :lon-bin lon-bin
+                               :metric  (when metric-idx (number-at row metric-idx))}))]
     (if-let [png (when (seq cells)
                    (maps/render-grid-map cells {:tile-url (tiles.settings/map-tile-server-url)}))]
       (png->rendered-part render-type png)

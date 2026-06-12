@@ -1,6 +1,7 @@
 (ns metabase.channel.render.body-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.channel.render.body-test]}}}}}}
   (:require
+   [clj-http.fake :as fake]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -19,6 +20,8 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each
   (fn warn-possible-rebuild
@@ -1417,3 +1420,15 @@
         (is (every? #(str/includes? h %) ["11" "22" "33" "44" "100" "200" "300" "400"])))
       (testing "only the four m2 value cells (> 50) are colored"
         (is (= 4 (count (re-seq #"background-color" h))))))))
+
+(deftest render-pin-map-resolves-columns-by-semantic-type-test
+  (testing "render :pin_map finds lat/long columns by semantic type when the column settings aren't persisted"
+    (fake/with-fake-routes (render.tu/fake-tile-routes #"https://.*tile\.openstreetmap\.org/.*")
+      (let [card {:display :map :visualization_settings {}}
+            data {:cols [{:name "latitude" :semantic_type :type/Latitude}
+                         {:name "longitude" :semantic_type :type/Longitude}
+                         {:name "state" :semantic_type :type/State}]
+                  :rows [[37.7749 -122.4194 "CA"] [40.7128 -74.0060 "NY"]]}
+            part (body/render :pin_map :inline "UTC" card nil data)]
+        ;; should be a rendered image, NOT a degraded table
+        (is (= :img (-> part :content second first)))))))

@@ -7,11 +7,11 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
-   [metabase.geojson.settings :as geojson.settings]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
@@ -111,15 +111,18 @@
       (is (= :region_map (channel.render/detect-pulse-chart-type {:display :state} nil data)))
       (is (= :region_map (channel.render/detect-pulse-chart-type {:display :country} nil data))))))
 
-;; Not ^:parallel: with-redefs mutates the custom-geojson var globally, which would race other tests.
+;; Not ^:parallel: temporarily writes the custom-geojson setting, which would race other tests.
 (deftest detect-pulse-chart-type-custom-region-test
   (let [data {:cols [{:base_type :type/Text :name "zone"}
                      {:base_type :type/Number :name "count"}]
               :rows [["a" 2] ["b" 4]]}
         card (fn [settings] {:display :map :visualization_settings settings})]
-    (with-redefs [geojson.settings/custom-geojson (constantly
-                                                   {:sales_zones {:name "Zones" :url "https://example.com/z.json"
-                                                                  :region_key "ZONE" :region_name "NAME"}})]
+    ;; raw setting value: the setter's URL validation does live DNS, which we don't want in tests
+    (mt/with-temporary-raw-setting-values
+      [custom-geojson (json/encode {:sales_zones {:name        "Zones"
+                                                  :url         "https://example.com/z.json"
+                                                  :region_key  "ZONE"
+                                                  :region_name "NAME"}})]
       (testing "A user-defined custom region map is detected when its key is in custom-geojson"
         (is (= :region_map
                (channel.render/detect-pulse-chart-type
@@ -171,7 +174,9 @@
     (testing "binned lat/long maps route to :grid_map (map.type unset)"
       (is (= :grid_map (channel.render/detect-pulse-chart-type card nil data))))
     (testing "binned lat/long routes to :grid_map in a dashboard subscription with empty dashcard settings"
-      (is (= :grid_map (channel.render/detect-pulse-chart-type card {:visualization_settings {}} data)))))
+      (is (= :grid_map (channel.render/detect-pulse-chart-type card {:visualization_settings {}} data))))))
+
+(deftest ^:parallel detect-pulse-chart-type-grid-map-test-2
   (let [card {:display :map :visualization_settings {}}
         data {:cols [{:name "lat" :semantic_type :type/Latitude}
                      {:name "lon" :semantic_type :type/Longitude}
