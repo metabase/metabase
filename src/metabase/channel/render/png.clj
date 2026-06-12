@@ -44,6 +44,17 @@
     (.addStyleSheet nil (CSSNorm/formsStyleSheet) DOMAnalyzer$Origin/AGENT)
     .getStyleSheets))
 
+(defn- redraw-at-scale
+  "Re-render the already-laid-out boxes of `graphics-engine` into a fresh image `scale`x the device size
+  of `base`, for crisp supersampled output. Returns the new [[BufferedImage]]."
+  ^java.awt.image.BufferedImage [^GraphicsEngine graphics-engine ^java.awt.image.BufferedImage base ^double scale]
+  (let [big (BufferedImage. (int (Math/round (* (.getWidth base) scale)))
+                            (int (Math/round (* (.getHeight base) scale)))
+                            BufferedImage/TYPE_INT_ARGB)]
+    (.setImage graphics-engine big)
+    (.redrawBoxes graphics-engine)
+    big))
+
 (defn- render-to-png
   "Render `html` to a [[BufferedImage]] at `width` logical pixels. `scale` > 1 rasterizes to that many
   device pixels for crispness (via scaled device graphics, since CSSBox ignores CSS `zoom`/`transform`)."
@@ -78,13 +89,7 @@
                                 (int (.getMaximalWidth viewport)))
              image         (if (= 1.0 scale)
                              base
-                             ;; re-render the laid-out boxes into a `scale`x device-pixel image
-                             (let [big (BufferedImage. (int (Math/round (* (.getWidth base) scale)))
-                                                       (int (Math/round (* (.getHeight base) scale)))
-                                                       BufferedImage/TYPE_INT_ARGB)]
-                               (.setImage graphics-engine big)
-                               (.redrawBoxes graphics-engine)
-                               big))
+                             (redraw-at-scale graphics-engine base scale))
              crop-width    (int (Math/round (* content-width scale)))]
          ;; Crop the image to the actual size of the rendered content so that tables don't have a ton of whitespace.
          (if (< crop-width (.getWidth image))

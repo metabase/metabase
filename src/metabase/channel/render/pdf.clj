@@ -50,6 +50,7 @@
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util.http :as u.http]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -1429,16 +1430,22 @@
   "Logical-pixel height of the `N rows` footer row at the bottom of a table image."
   32)
 
-(def ^:private table-border-color
-  "CSS colour for the in-image footer divider (`border-top` above the `N rows` row)."
-  "#F0F0F0")
-
 (def ^:private table-frame-color
   "Colour of the card's outer frame, stroked natively -- CSSBox's raster is 1px shorter than the
-  bordered box, so an HTML bottom border would be clipped."
+  bordered box, so an HTML bottom border would be clipped. Also the in-image footer divider, as CSS
+  via [[table-border-color]]."
   (Color. 0xF0 0xF0 0xF0))
 
-(defn- th-cell? [x] (and (vector? x) (= :th (first x))))
+(def ^:private table-border-color
+  "CSS form of [[table-frame-color]] for the in-image footer divider (`border-top` above the `N rows` row)."
+  (format "#%06X" (bit-and (.getRGB ^Color table-frame-color) 0xFFFFFF)))
+
+(defn- element?
+  "Whether `form` is a Hiccup element with tag `tag`, i.e. `[tag ...]`."
+  [form tag]
+  (and (vector? form) (= tag (first form))))
+
+(defn- th-cell? [el] (element? el :th))
 
 (defn- header-row?
   "Whether a `:tr` holds header (`:th`) cells -- which `render-table-head` nests inside a lazy seq."
@@ -1465,10 +1472,10 @@
   (walk/postwalk
    (fn [form]
      (cond
-       (and (vector? form) (= :table (first form)) (map? (second form)))
+       (and (element? form :table) (map? (second form)))
        (update-in form [1 :style] str ";width:100%;box-sizing:border-box;border:none;border-radius:0;margin:0;")
 
-       (and (vector? form) (= :tr (first form)) (header-row? form))
+       (and (element? form :tr) (header-row? form))
        (add-header-dividers form)
 
        :else form))
@@ -1490,9 +1497,17 @@
                                                     "font-size:12.5px;text-align:right;padding-right:16px;"
                                                     "color:#696E7B;border-top:1px solid %2$s")
                                                table-footer-px table-border-color)}
-                          (format "%,d rows" (long n-rows))]])
+                          (tru "{0} rows" (format "%,d" (long n-rows)))]])
         bytes    (png/render-html-to-png wrapped px-w {:channel.render/scale table-supersample})]
     (ImageIO/read (ByteArrayInputStream. bytes))))
+
+(defn- move-to! [^PDPageContentStream cs x y] (.moveTo cs (float x) (float y)))
+(defn- line-to! [^PDPageContentStream cs x y] (.lineTo cs (float x) (float y)))
+
+(defn- curve-to!
+  "Append a cubic Bézier from the current point via control points `[x1 y1]` and `[x2 y2]` to `[x3 y3]`."
+  [^PDPageContentStream cs x1 y1 x2 y2 x3 y3]
+  (.curveTo cs (float x1) (float y1) (float x2) (float y2) (float x3) (float y3)))
 
 (defn- stroke-round-rect!
   "Stroke a rounded-rectangle outline whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`
@@ -1507,15 +1522,15 @@
         c  (* r 0.5523)]
     (.setStrokingColor cs color)
     (.setLineWidth cs (float line-w))
-    (.moveTo  cs (float (+ l r)) (float t))
-    (.lineTo  cs (float (- rt r)) (float t))                                               ; top edge
-    (.curveTo cs (float (+ (- rt r) c)) (float t) (float rt) (float (- t (- r c))) (float rt) (float (- t r))) ; TR
-    (.lineTo  cs (float rt) (float (+ b r)))                                               ; right edge
-    (.curveTo cs (float rt) (float (- (+ b r) c)) (float (- rt (- r c))) (float b) (float (- rt r)) (float b)) ; BR
-    (.lineTo  cs (float (+ l r)) (float b))                                                ; bottom edge
-    (.curveTo cs (float (- (+ l r) c)) (float b) (float l) (float (- (+ b r) c)) (float l) (float (+ b r)))    ; BL
-    (.lineTo  cs (float l) (float (- t r)))                                                ; left edge
-    (.curveTo cs (float l) (float (- (+ (- t r) c) 0.0)) (float (- (+ l r) c)) (float t) (float (+ l r)) (float t)) ; TL
+    (move-to!  cs (+ l r) t)
+    (line-to!  cs (- rt r) t)                                       ; top edge
+    (curve-to! cs (+ (- rt r) c) t   rt (- t (- r c))   rt (- t r)) ; TR
+    (line-to!  cs rt (+ b r))                                       ; right edge
+    (curve-to! cs rt (- (+ b r) c)   (- rt (- r c)) b   (- rt r) b) ; BR
+    (line-to!  cs (+ l r) b)                                        ; bottom edge
+    (curve-to! cs (- (+ l r) c) b    l (- (+ b r) c)    l (+ b r))  ; BL
+    (line-to!  cs l (- t r))                                        ; left edge
+    (curve-to! cs l (+ (- t r) c)    (- (+ l r) c) t    (+ l r) t)  ; TL
     (.stroke cs)
     (.setStrokingColor cs Color/BLACK)
     (.setLineWidth cs (float 1.0))))
