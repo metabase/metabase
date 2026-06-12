@@ -4,8 +4,8 @@
   target and through the creation lifecycle, whatever the driver's mix of `:inline` and `:standalone` index methods.
 
   The test is driver-generic and selects drivers by feature, so it starts running for a driver the moment it
-  declares `:index/inline-create` or `:index/standalone-create`. To add a driver, implement [[index-fixture]] and
-  [[physical-indexes]] below; until then the `:default` methods fail the test with instructions."
+  declares `:index/inline-create` or `:index/standalone-create`. To add a driver, add an entry to [[driver-cases]];
+  until then the test fails for that driver with instructions."
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -21,59 +21,15 @@
 
 (set! *warn-on-reflection* true)
 
-;;; Both multimethods dispatch on the exact driver keyword, deliberately without the driver hierarchy: a child driver
-;;; (e.g. Redshift under Postgres) supports different index methods than its parent, so inheriting the parent's
-;;; fixture would assert the wrong thing. Every driver gets its own explicit pair.
-
-(defmulti index-fixture
-  "The indexes to declare on the transform target for `driver`, and the value [[physical-indexes]] must read back
-  once they took effect: `{:indexes [...], :expected ...}`. Should exercise every index method the driver supports.
-  The target table is built from the transforms-test dataset's `transforms_products` (columns include `category`
-  text and `price` float)."
-  {:arglists '([driver])}
-  identity)
-
-(defmulti physical-indexes
-  "Read the indexes on `schema`.`table` back out of `database`'s system catalog, in the same shape as the
-  `:expected` value of this driver's [[index-fixture]]."
-  {:arglists '([driver database schema table])}
-  (fn [driver _database _schema _table] driver))
-
-(defmethod index-fixture :default
-  [driver]
-  (throw (ex-info (str driver " declares index support (`:index/inline-create` or `:index/standalone-create`) but "
-                       "has no test coverage here. Implement `index-fixture` and `physical-indexes` for it in "
-                       (namespace `index-fixture) ".")
-                  {:driver driver})))
-
-(defmethod physical-indexes :default
-  [driver _database _schema _table]
-  (throw (ex-info (str "No `physical-indexes` implementation for " driver " in " (namespace `index-fixture) ".")
-                  {:driver driver})))
-
-;;; --- Postgres: standalone btree ---
-
-(defmethod index-fixture :postgres
-  [_driver]
-  {:indexes  [{:kind :btree :name "by_category" :columns [{:name "category"}]}]
-   :expected #{"by_category"}})
-
-(defmethod physical-indexes :postgres
-  [_driver database schema table]
+(defn- postgres-indexes
+  [database schema table]
   (->> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                    ["SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ?" schema table])
        (map :indexname)
        set))
 
-;;; --- Redshift: inline sortkey ---
-
-(defmethod index-fixture :redshift
-  [_driver]
-  {:indexes  [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
-   :expected {:columns ["category" "price"] :style :interleaved}})
-
-(defmethod physical-indexes :redshift
-  [_driver database schema table]
+(defn- redshift-sortkey
+  [database schema table]
   ;; `svv_redshift_columns.sortkey` encodes both facts in one column: a positive value is the column's 1-based
   ;; position in a COMPOUND key; an INTERLEAVED key alternates the sign, so any negative value marks the whole key
   ;; interleaved while `abs` still gives the position.
@@ -85,20 +41,8 @@
       {:columns (mapv :column_name rows)
        :style   (if (some (comp neg? :sortkey) rows) :interleaved :compound)})))
 
-;;; --- ClickHouse: inline order-by + standalone skip-index, both in one target ---
-
-(defmethod index-fixture :clickhouse
-  [_driver]
-  {:indexes  [{:kind :order-by :columns [{:name "category"}]}
-              {:kind    :skip-index :name "by_price" :type :minmax
-               :columns [{:name "price"}] :granularity 1}]
-   ;; ClickHouse normalizes the index expression in the catalog and reports a single column wrapped in parens, so
-   ;; `expr` reads back as "(price)".
-   :expected {:sorting-key  "category"
-              :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}})
-
-(defmethod physical-indexes :clickhouse
-  [_driver database schema table]
+(defn- clickhouse-indexes
+  [database schema table]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     {:sorting-key  (-> (jdbc/query spec ["SELECT sorting_key FROM system.tables WHERE database = ? AND name = ?"
                                          schema table])
@@ -108,7 +52,28 @@
                                           schema table])
                         (mapv #(update % :granularity long)))}))
 
-;;; --- the test ---
+(def ^:private driver-cases
+  "Driver -> the test case for it: `:indexes` to declare on the transform target (should exercise every index method
+  the driver supports), `:physical-indexes` a `(fn [database schema table])` that reads the indexes back out of the
+  database's system catalog, and `:expected` the value it must return once they took effect. The target table is
+  built from the transforms-test dataset's `transforms_products` (columns include `category` text and `price`
+  float)."
+  {;; Postgres: standalone btree
+   :postgres   {:indexes          [{:kind :btree :name "by_category" :columns [{:name "category"}]}]
+                :expected         #{"by_category"}
+                :physical-indexes postgres-indexes}
+   ;; Redshift: inline sortkey
+   :redshift   {:indexes          [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
+                :expected         {:columns ["category" "price"] :style :interleaved}
+                :physical-indexes redshift-sortkey}
+   ;; ClickHouse: inline order-by + standalone skip-index, both in one target. ClickHouse normalizes the index
+   ;; expression in the catalog and reports a single column wrapped in parens, so `expr` reads back as "(price)".
+   :clickhouse {:indexes          [{:kind :order-by :columns [{:name "category"}]}
+                                   {:kind    :skip-index :name "by_price" :type :minmax
+                                    :columns [{:name "price"}] :granularity 1}]
+                :expected         {:sorting-key  "category"
+                                   :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
+                :physical-indexes clickhouse-indexes}})
 
 (defn- index-test-drivers
   "Drivers that run transforms and declare any index support."
@@ -120,22 +85,26 @@
   (mt/test-drivers (index-test-drivers)
     (mt/dataset transforms-dataset/transforms-test
       (let [driver driver/*driver*
-            {:keys [indexes expected]} (index-fixture driver)
-            schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-        (with-transform-cleanup! [{table-name :name :as target}
-                                  {:type    "table"
-                                   :schema  schema
-                                   :name    "idx_products"
-                                   :indexes indexes}]
-          (let [source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
-                query        (query-test-util/make-query {:source-table source-table})]
-            (mt/with-temp [:model/Transform transform {:name   "index-transform"
-                                                       :source {:type :query :query query}
-                                                       :target target}]
-              (testing "a full run applies the declared indexes to the physical table"
-                (transforms.execute/execute! transform {:run-method :manual})
-                (transforms.tu/wait-for-table table-name 10000)
-                (is (= expected (physical-indexes driver (mt/db) schema table-name))))
-              (testing "a re-run rebuilds the table and the indexes come back with it"
-                (transforms.execute/execute! transform {:run-method :manual})
-                (is (= expected (physical-indexes driver (mt/db) schema table-name)))))))))))
+            {:keys [indexes expected physical-indexes] :as test-case} (driver-cases driver)]
+        (is (some? test-case)
+            (str driver " declares index support (`:index/inline-create` or `:index/standalone-create`) but has no "
+                 "test coverage here. Add an entry for it to `driver-cases`."))
+        (when test-case
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [{table-name :name :as target}
+                                      {:type    "table"
+                                       :schema  schema
+                                       :name    "idx_products"
+                                       :indexes indexes}]
+              (let [source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+                    query        (query-test-util/make-query {:source-table source-table})]
+                (mt/with-temp [:model/Transform transform {:name   "index-transform"
+                                                           :source {:type :query :query query}
+                                                           :target target}]
+                  (testing "a full run applies the declared indexes to the physical table"
+                    (transforms.execute/execute! transform {:run-method :manual})
+                    (transforms.tu/wait-for-table table-name 10000)
+                    (is (= expected (physical-indexes (mt/db) schema table-name))))
+                  (testing "a re-run rebuilds the table and the indexes come back with it"
+                    (transforms.execute/execute! transform {:run-method :manual})
+                    (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))
