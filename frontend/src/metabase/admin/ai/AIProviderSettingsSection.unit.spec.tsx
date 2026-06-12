@@ -201,7 +201,10 @@ async function setup({
   const purchaseCloudAddOnDeferred = defer<void>();
   const updateMetabotSettingsDeferred = defer<void>();
 
-  const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
+  const mergedApiKeyValues: Record<
+    MetabotApiKeyProvider | "bedrock",
+    string | null
+  > = {
     anthropic: "**********45",
     bedrock: null,
     openai: null,
