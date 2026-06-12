@@ -157,7 +157,7 @@ type SdkQuestionConfig = {
    * question's saved visualization. Accepts chart types such as `"bar"` or
    * `"table"`, and custom visualization displays (`"custom:<identifier>"`,
    * requires the plugin to be installed and enabled via
-   * `enableCustomVisualizations`).
+   * `allowedCustomVisualizations`).
    * <br/>
    * Falls back to the question's saved visualization when the requested one
    * doesn't exist or isn't allowed.

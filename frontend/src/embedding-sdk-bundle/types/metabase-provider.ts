@@ -78,17 +78,14 @@ export interface MetabaseProviderProps {
 
   /**
    * Opt-in support for EE custom visualization plugins inside the SDK.
-   * When enabled, the SDK loads custom-viz bundles into an `about:blank`
+   * When set, the SDK loads custom-viz bundles into an `about:blank`
    * sandbox (no hosted-sandbox endpoint required).
    *
-   * - `false` (default): no custom-viz plugins are loaded
-   * - `true`: every installed plugin is loaded
-   * - `string[]`: allowlist of plugin identifiers (e.g.
-   *   `["SdkTestSimple", "SdkTestReact18"]`); only these plugins are loaded
+   * Pass an allowlist of plugin identifiers (manifest `name`), e.g.
+   * `["SdkTestSimple", "SdkTestReact18"]`. Only listed plugins are loaded.
+   * Omit or pass `[]` to disable.
    *
    * Requires the `custom-viz` premium feature.
-   *
-   * @defaultValue false
    **/
-  enableCustomVisualizations?: boolean | string[];
+  allowedCustomVisualizations?: string[];
 }

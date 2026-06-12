@@ -26,36 +26,29 @@ import {
 import { isWidgetMount } from "../../metabase-enterprise/custom_viz/widget-mount";
 
 /**
- * The `enableCustomVisualizations` MetabaseProvider prop:
- * `false` = off, `true` = all installed plugins, `string[]` = allowlist of
- * plugin identifiers.
+ * The `allowedCustomVisualizations` MetabaseProvider prop: allowlist of
+ * plugin identifiers. Empty / undefined = disabled.
  */
-type EnableSetting = boolean | string[];
+type EnableSetting = string[];
 
 function normalizeSetting(value: unknown): EnableSetting {
-  return Array.isArray(value) ? value : Boolean(value);
+  return Array.isArray(value) ? value : [];
 }
 
 function useEnableSetting(): EnableSetting {
   const { state } = useMetabaseProviderPropsStore();
-  return normalizeSetting(state?.props?.enableCustomVisualizations);
+  return normalizeSetting(state?.props?.allowedCustomVisualizations);
 }
 
 function getEnableSetting(): EnableSetting {
   return normalizeSetting(
     ensureMetabaseProviderPropsStore().getState().props
-      ?.enableCustomVisualizations,
+      ?.allowedCustomVisualizations,
   );
 }
 
 function isAllowed(setting: EnableSetting, identifier: string): boolean {
-  if (setting === true) {
-    return true;
-  }
-  if (Array.isArray(setting)) {
-    return setting.includes(identifier);
-  }
-  return false;
+  return setting.includes(identifier);
 }
 
 function extractIdentifier(display: string | undefined): string | null {
@@ -132,20 +125,13 @@ export function initializeSdkCustomVizPlugin() {
       const result = eeUseCustomVizPlugins(opts);
       // Key on the allowlist contents, not the array identity — the host may
       // pass a new (inline) array on every render.
-      const settingKey = Array.isArray(setting) ? setting.join(",") : setting;
+      const settingKey = setting.join(",");
       // Memoized so consumers can use `plugins` as an effect dependency:
       // returning a fresh `.filter()` array on every render would re-trigger
       // those effects in a render loop.
       const plugins = useMemo(
-        () => {
-          if (setting === true || !result.plugins) {
-            return result.plugins;
-          }
-          if (setting === false) {
-            return [];
-          }
-          return result.plugins.filter((p) => setting.includes(p.identifier));
-        },
+        () =>
+          result.plugins?.filter((p) => setting.includes(p.identifier)) ?? [],
         // eslint-disable-next-line react-hooks/exhaustive-deps -- settingKey stands in for `setting`
         [result.plugins, settingKey],
       );

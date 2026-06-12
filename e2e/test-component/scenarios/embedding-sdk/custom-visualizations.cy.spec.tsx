@@ -56,13 +56,11 @@ const setup = () => {
   mockAuthProviderAndJwtSignIn();
 };
 
-const mountQuestion = (
-  enableCustomVisualizations: boolean | string[] | undefined,
-) => {
+const mountQuestion = (allowedCustomVisualizations: string[] | undefined) => {
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
       sdkProviderProps: {
-        enableCustomVisualizations,
+        allowedCustomVisualizations,
       },
     });
   });
@@ -73,8 +71,8 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     setup();
   });
 
-  it("renders the custom visualization when enableCustomVisualizations is true", () => {
-    mountQuestion(true);
+  it("renders the custom visualization when the identifier is in allowedCustomVisualizations", () => {
+    mountQuestion([CUSTOM_VIZ_IDENTIFIER]);
 
     getSdkRoot().within(() => {
       cy.findByText("Custom viz rendered successfully").should("be.visible");
@@ -86,7 +84,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
         sdkProviderProps: {
-          enableCustomVisualizations: true,
+          allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
         },
       });
     });
@@ -122,8 +120,8 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
   });
 
-  it("falls back to the default visualization when enableCustomVisualizations is false", () => {
-    mountQuestion(false);
+  it("falls back to the default visualization when allowedCustomVisualizations is empty", () => {
+    mountQuestion([]);
 
     getSdkRoot().within(() => {
       // Custom viz text shouldn't render — the SDK falls back to whatever
@@ -146,7 +144,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              enableCustomVisualizations: true,
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
             },
           },
         );
@@ -214,7 +212,7 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
           />,
           {
             sdkProviderProps: {
-              enableCustomVisualizations: true,
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
             },
           },
         );

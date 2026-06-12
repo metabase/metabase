@@ -93,8 +93,8 @@ const failedPluginHashes = new Map<
  * and re-registers instead of returning the cached registration).
  *
  * Used by `useAutoLoadCustomVizPlugin` when a plugin disappears from the
- * installed list, and by the SDK gating layer when `enableCustomVisualizations`
- * flips off (or the identifier is removed from the allowlist).
+ * installed list, and by the SDK gating layer when the identifier is removed
+ * from `allowedCustomVisualizations`.
  */
 export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
   if (visualizations.has(display)) {
