@@ -91,7 +91,7 @@ export function getTreemapChartOption({
     visibleMin: 25 * 25,
     childrenVisibleMin: 25 * 25,
     levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
-    data: toSeriesData(
+    data: toSeriesData({
       tree,
       colors,
       isDrilled,
@@ -100,25 +100,34 @@ export function getTreemapChartOption({
       parentLabelLayout,
       formatValue,
       renderingContext,
-    ),
+    }),
   };
 
   return { series };
 }
 
-function toSeriesData(
-  tree: TreemapTree,
-  colors: Record<string, string>,
-  isDrilled: boolean,
-  showLeafLabels: boolean,
-  labelLayout: Record<string, TreemapLabelLayout>,
-  parentLabelLayout: Record<string, TreemapParentLabelLayout>,
-  formatValue: (value: number) => string,
-  renderingContext: RenderingContext,
-): TreemapSeriesNode[] {
+function toSeriesData({
+  tree,
+  colors,
+  isDrilled,
+  showLeafLabels,
+  labelLayout,
+  parentLabelLayout,
+  formatValue,
+  renderingContext,
+}: {
+  tree: TreemapTree;
+  colors: Record<string, string>;
+  isDrilled: boolean;
+  showLeafLabels: boolean;
+  labelLayout: Record<string, TreemapLabelLayout>;
+  parentLabelLayout: Record<string, TreemapParentLabelLayout>;
+  formatValue: (value: number) => string;
+  renderingContext: RenderingContext;
+}): TreemapSeriesNode[] {
   const headerTintTarget = renderingContext.getColor("white");
   const total = tree.reduce((sum, node) => sum + node.value, 0);
-  const formatShare = (value: number) =>
+  const formatPercentOfTotal = (value: number) =>
     formatPercent(total === 0 ? 0 : value / total);
 
   return tree.map((node, rootIndex) =>
@@ -132,7 +141,7 @@ function toSeriesData(
       labelLayout,
       parentLabelLayout,
       formatValue,
-      formatShare,
+      formatPercentOfTotal,
       renderingContext,
     }),
   );
@@ -148,7 +157,7 @@ function toGroupSeriesNode({
   labelLayout,
   parentLabelLayout,
   formatValue,
-  formatShare,
+  formatPercentOfTotal,
   renderingContext,
 }: {
   node: TreemapNode;
@@ -160,7 +169,7 @@ function toGroupSeriesNode({
   labelLayout: Record<string, TreemapLabelLayout>;
   parentLabelLayout: Record<string, TreemapParentLabelLayout>;
   formatValue: (value: number) => string;
-  formatShare: (value: number) => string;
+  formatPercentOfTotal: (value: number) => string;
   renderingContext: RenderingContext;
 }): TreemapSeriesNode {
   const groupColor = colors[getTreemapNodeKey(node)];
@@ -168,7 +177,7 @@ function toGroupSeriesNode({
   const groupId = getTreemapNodeId(rootIndex);
   const nodeHasChildren = hasChildren(node);
   const valueLabel = formatValue(node.value);
-  const percentLabel = formatShare(node.value);
+  const percentLabel = formatPercentOfTotal(node.value);
 
   const upperLabel = getUpperLabelOverride({
     groupTint,
@@ -207,7 +216,7 @@ function toGroupSeriesNode({
         showLeafLabels,
         labelLayout,
         formatValue,
-        formatShare,
+        formatPercentOfTotal,
       }),
     };
   }
@@ -222,7 +231,7 @@ function toGroupSeriesNode({
         showLeafLabels,
         labelLayout,
         formatValue,
-        formatShare,
+        formatPercentOfTotal,
       }),
     ),
   };
@@ -235,7 +244,7 @@ function toLeafSeriesNode({
   showLeafLabels,
   labelLayout,
   formatValue,
-  formatShare,
+  formatPercentOfTotal,
 }: {
   leaf: TreemapNode;
   rootIndex: number;
@@ -243,7 +252,7 @@ function toLeafSeriesNode({
   showLeafLabels: boolean;
   labelLayout: Record<string, TreemapLabelLayout>;
   formatValue: (value: number) => string;
-  formatShare: (value: number) => string;
+  formatPercentOfTotal: (value: number) => string;
 }): TreemapSeriesNode {
   const leafId = getTreemapNodeId(rootIndex, leafIndex);
 
@@ -260,7 +269,7 @@ function toLeafSeriesNode({
       showLeafLabels,
       labelLayout,
       formatValue,
-      formatShare,
+      formatPercentOfTotal,
     }),
   };
 }
@@ -317,7 +326,7 @@ function getTileLabelOverride({
   showLeafLabels,
   labelLayout,
   formatValue,
-  formatShare,
+  formatPercentOfTotal,
 }: {
   id: string;
   value: number;
@@ -325,7 +334,7 @@ function getTileLabelOverride({
   showLeafLabels: boolean;
   labelLayout: Record<string, TreemapLabelLayout>;
   formatValue: (value: number) => string;
-  formatShare: (value: number) => string;
+  formatPercentOfTotal: (value: number) => string;
 }): Pick<TreemapSeriesNode, "label"> {
   if (!showLeafLabels) {
     return HIDDEN_LABEL_OVERRIDE;
@@ -344,7 +353,7 @@ function getTileLabelOverride({
         formatter: formatters.getLeafFormatter(
           displayName,
           formatValue(value),
-          formatShare(value),
+          formatPercentOfTotal(value),
         ),
       },
     }))
