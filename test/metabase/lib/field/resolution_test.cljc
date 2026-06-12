@@ -104,7 +104,6 @@
               :lib/metadata metabase.lib.field-test/grandparent-parent-child-metadata-provider
               :database     (meta/id)
               :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid (str (random-uuid))}
                               :source-table (meta/id :venues)}]}
              -1
              a-field-clause))]
