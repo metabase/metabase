@@ -5,6 +5,8 @@ import "metabase/utils/csp";
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
+
+import { api } from "metabase/api/client";
 // eslint-disable-next-line import/order
 import {
   EMBEDDING_SDK_CONFIG,
@@ -16,6 +18,7 @@ import {
  */
 EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding = true;
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+api.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "embedding-simple";
 EMBEDDING_SDK_CONFIG.enableEmbeddingSettingKey = "enable-embedding-simple";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";

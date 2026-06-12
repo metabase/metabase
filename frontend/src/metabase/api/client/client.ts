@@ -1,7 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
@@ -35,6 +34,10 @@ export class ApiClient extends EventEmitter<EventMap> {
   apiKey = "";
   sessionToken: string | undefined;
   requestClient: RequestClientInfo | undefined;
+  // Set to `true` by the embedding SDK entry points. Read here (rather than
+  // importing `isEmbeddingSdk`) so `metabase/api` stays free of SDK imports —
+  // the same inversion as `apiKey`/`sessionToken`/`requestClient`.
+  isEmbeddingSdk = false;
 
   private buildUrl(
     template: string,
@@ -61,7 +64,7 @@ export class ApiClient extends EventEmitter<EventMap> {
       headers["X-Metabase-Session"] = this.sessionToken;
     }
 
-    if (isWithinIframe() && !isEmbeddingSdk()) {
+    if (isWithinIframe() && !this.isEmbeddingSdk) {
       headers["X-Metabase-Embedded"] = "true";
     }
 

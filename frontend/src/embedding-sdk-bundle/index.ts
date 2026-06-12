@@ -1,10 +1,14 @@
 /* eslint-disable import/order */
 
+import { api } from "metabase/api/client";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 // Enable SDK mode as we are in the SDK bundle
 // This applies to SDK derivatives such as new iframe embedding.
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+// Mirror the flag onto the api client so it can omit the embedded-app header
+// without `metabase/api` importing SDK config.
+api.isEmbeddingSdk = true;
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";

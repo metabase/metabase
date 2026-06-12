@@ -11,6 +11,7 @@ import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import "sdk-iframe-embedding-ee-plugins";
 
 EMBEDDING_SDK_CONFIG.isEmbeddingSdk = true;
+api.isEmbeddingSdk = true;
 EMBEDDING_SDK_CONFIG.isMcpApp = true;
 EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "mcp-apps";
 EMBEDDING_SDK_CONFIG.tokenFeatureKey = "embedding_simple";
