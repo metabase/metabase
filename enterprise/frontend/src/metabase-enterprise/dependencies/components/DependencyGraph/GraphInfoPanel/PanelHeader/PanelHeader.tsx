@@ -44,7 +44,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
     <>
       <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
         <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background-secondary">
-          <FixedSizeIcon name={getNodeIcon(node)} c="brand" size={20} />
+          <FixedSizeIcon name={getNodeIcon(node)} c="core-brand" size={20} />
         </Center>
         <Stack gap="xs" flex={1}>
           <Title className={CS.textWrap} order={3} lh="1.5rem">

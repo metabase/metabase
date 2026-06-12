@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
@@ -110,6 +111,8 @@
   (let [url (if approved
               (oidc/authorize provider parsed (str (:metabase-user-id request)))
               (oidc/deny-authorization provider parsed "access_denied" "User denied the request"))]
+    ;; Record an audit event for the user's decision on this client's registration.
+    (client-event/record-decision! (:client_id parsed) (:metabase-user-id request) approved)
     (-> {:status  302
          :headers {"Location" url}
          :body    ""}
@@ -209,6 +212,8 @@
                       client-id  (:client_id response)]
                   ;; Mark as dynamically registered (the library doesn't know about registration_type)
                   (proto/update-client (:client-store provider) client-id {:registration-type "dynamic"})
+                  ;; Open the audit trail for this DCR client with a pending decision.
+                  (client-event/record-registration! client-id)
                   {:status  201
                    :headers {"Content-Type" "application/json"}
                    :body    response})

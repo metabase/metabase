@@ -1,7 +1,7 @@
 .StyledSelectButton {
   &.hasValue {
-    background-color: var(--mb-color-brand);
-    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
+    border-color: var(--mb-color-core-brand);
 
     .StyledSelectIcon {
       color: var(--mb-color-text-primary-inverse);

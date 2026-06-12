@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import { useCallback } from "react";
 
 import { setupActionsEndpoints } from "__support__/server-mocks";
 import {
@@ -7,7 +8,9 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { ActionsApi } from "metabase/services";
+import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch } from "metabase/redux";
 import {
   createMockActionParameter,
   createMockImplicitQueryAction,
@@ -41,31 +44,40 @@ function setupPrefetch() {
   });
 }
 
-const fetchInitialValues = () =>
-  ActionsApi.prefetchValues({
-    id: implicitUpdateAction.id,
-    parameters: JSON.stringify({}),
-  });
+function TestActionExecuteModal(props?: Partial<ActionExecuteModalProps>) {
+  const dispatch = useDispatch();
+  const fetchInitialValues = useCallback(
+    () =>
+      runRtkEndpoint(
+        { id: implicitUpdateAction.id, parameters: {} },
+        dispatch,
+        actionApi.endpoints.prefetchActionValues,
+      ),
+    [dispatch],
+  );
+
+  return (
+    <ActionExecuteModal
+      opened
+      onClose={() => {}}
+      fetchInitialValues={fetchInitialValues}
+      {...props}
+      actionId={implicitUpdateAction.id}
+    />
+  );
+}
 
 function setup(props?: Partial<ActionExecuteModalProps>) {
   setupActionsEndpoints([implicitUpdateAction]);
   setupPrefetch();
 
-  renderWithProviders(
-    <ActionExecuteModal
-      opened
-      onClose={() => {}}
-      {...props}
-      actionId={implicitUpdateAction.id}
-    />,
-  );
+  renderWithProviders(<TestActionExecuteModal {...props} />);
 }
 
 describe("Actions > ActionExecuteModal", () => {
   it("should fetch and load existing values from API for implicit update actions", async () => {
     await setup({
       actionId: implicitUpdateAction.id,
-      fetchInitialValues,
       shouldPrefetch: true,
     });
 

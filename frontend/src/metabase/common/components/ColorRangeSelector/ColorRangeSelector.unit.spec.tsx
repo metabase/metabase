@@ -9,8 +9,12 @@ import { getColorRangeLabel } from "./ColorRangeToggle";
 // Color components only speak hex, so we need to convert the values we use for testing to hex
 const color = (name: string) => Color(libColors(name)).hex();
 
-const DEFAULT_VALUE = [color("white"), color("brand")];
-const DEFAULT_COLORS = [color("brand"), color("summarize"), color("filter")];
+const DEFAULT_VALUE = [color("white"), color("core-brand")];
+const DEFAULT_COLORS = [
+  color("core-brand"),
+  color("core-summarize"),
+  color("core-filter"),
+];
 
 const WHITE_COLOR_RANGE = [color("error"), color("white"), color("success")];
 const WARNING_COLOR_RANGE = [
@@ -40,10 +44,10 @@ describe("ColorRangeSelector", () => {
     screen.getByRole("button").click();
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
-    (await screen.findByLabelText(color("summarize"))).click();
+    (await screen.findByLabelText(color("core-summarize"))).click();
     expect(onChange).toHaveBeenCalled();
 
-    screen.getByLabelText(color("filter")).click();
+    screen.getByLabelText(color("core-filter")).click();
     expect(onChange).toHaveBeenCalled();
   });
 

@@ -40,7 +40,7 @@ export function BucketPickerPopover({
   items,
   onSelect,
   initiallyVisibleItemsCount,
-  color: colorProp = "brand",
+  color: colorProp = "core-brand",
   hasChevronDown,
   className,
   classNames = {},
@@ -150,7 +150,7 @@ export function BucketPickerPopover({
               className={S.moreButton}
               onClick={handleExpand}
               variant="subtle"
-              color="brand"
+              color="core-brand"
               fullWidth
               px="md"
               py="sm"

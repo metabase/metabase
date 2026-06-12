@@ -17,7 +17,7 @@ export const Default = {
   render: Template,
 
   args: {
-    colors: [color("white"), color("brand")],
+    colors: [color("white"), color("core-brand")],
   },
 };
 
@@ -25,7 +25,7 @@ export const Inverted = {
   render: Template,
 
   args: {
-    colors: [color("brand"), color("white")],
+    colors: [color("core-brand"), color("white")],
   },
 };
 

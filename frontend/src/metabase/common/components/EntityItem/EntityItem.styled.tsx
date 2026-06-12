@@ -15,7 +15,7 @@ function getForeground(model: string, disabled: boolean) {
     ? darken("border", 0.38)
     : model === "dataset"
       ? color("accent2")
-      : color("brand");
+      : color("core-brand");
 }
 
 const getItemPadding = (variant?: string) => {
@@ -56,7 +56,7 @@ export const EntityItemWrapper = styled.div<{
 
   &:hover {
     color: ${(props) =>
-      props.disabled ? color("text-secondary") : color("brand")};
+      props.disabled ? color("text-secondary") : color("core-brand")};
   }
 `;
 
@@ -64,7 +64,7 @@ export const EntityItemSpinner = styled(LoadingSpinner)`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const EntityMenuContainer = styled.div`

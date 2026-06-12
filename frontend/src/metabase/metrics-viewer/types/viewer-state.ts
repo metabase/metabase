@@ -120,7 +120,6 @@ export interface MetricsViewerDimensionBreakoutState {
   type: MetricsViewerDimensionBreakoutType;
   label: string | null;
   display: MetricsViewerDisplayType;
-  showColumnLabels?: boolean;
   visualizationSettings?: Partial<VisualizationSettings>;
   dimensionMapping: Record<number, DimensionId | null>;
   projectionConfig: MetricsViewerDimensionBreakoutProjectionConfig;
@@ -232,7 +231,9 @@ export interface UseViewerStateResult {
     options?: { updateExisting?: boolean },
   ) => void;
   updateActiveDimensionBreakout: (
-    updates: Partial<MetricsViewerDimensionBreakoutState>,
+    setterFn: (
+      prev: MetricsViewerDimensionBreakoutState,
+    ) => MetricsViewerDimensionBreakoutState,
   ) => void;
   setShowColumnLabels: (showColumnLabels: boolean) => void;
   setBreakoutDimension: (
