@@ -40,7 +40,6 @@
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
-   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -306,29 +305,30 @@
           version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
       (mt/with-temp [:model/Card card-1 {:name "Card 1"
                                          :dataset_query (mt/mbql-query venues {:limit 1})}]
-        (mt/with-premium-features #{:audit-app}
-          (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
-                                {:request-options {:headers {"x-metabase-client" client-string
-                                                             "x-metabase-client-version" version-string}}}))
+        (mt/with-temporary-setting-values [synchronous-batch-updates true]
+          (mt/with-premium-features #{:audit-app}
+            (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card-1) "/query")
+                                  {:request-options {:headers {"x-metabase-client" client-string
+                                                               "x-metabase-client-version" version-string}}})))
         (is (= {:embedding_client client-string, :embedding_sdk_version version-string}
                (t2/select-one [:model/ViewLog :embedding_client :embedding_sdk_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Card card-1 {:name "Card 1"
-                                       ;; This query is just to make sure the card actually runs a query, otherwise
-                                       ;; there won't be a QueryExecution record to check!
-                                       :dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
-      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-B"
-                                                         "x-metabase-client-version" "2"}}})
-      (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
-              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 2000
-                             (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
-                                            :card_id (u/the-id card-1))))))))
+    ;; QueryExecutions are saved in async batches by default; save them synchronously so we can assert on them
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                         ;; This query is just to make sure the card actually runs a query, otherwise
+                                         ;; there won't be a QueryExecution record to check!
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+        (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                              {:request-options {:headers {"x-metabase-client" "client-B"
+                                                           "x-metabase-client-version" "2"}}})
+        (is (=? {:embedding_client "client-B", :embedding_sdk_version "2"}
+                (t2/select-one [:model/QueryExecution :embedding_client :embedding_sdk_version]
+                               :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
