@@ -89,10 +89,10 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
     mountStaticQuestion();
 
-    // Wait for at least one proxy delivery, then assert on what was captured.
-    cy.wait("@analyticsProxy");
-
-    cy.wrap(capturedEvents).should("have.length", 2);
+    // Beacon and component event are serialized by Snowplow's executingQueue:
+    // event 2 is only sent after event 1's XHR response arrives, so they come
+    // in two separate requests. Wait for both before asserting.
+    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const componentEvent = events.find(
@@ -122,11 +122,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
 
     mountSdkContent(<CreateQuestion />);
 
-    cy.wait("@analyticsProxy");
-
     // The beacon fires only once per JS context (module-level singleton); it
     // already fired in the first test, so only the component event is captured here.
-    cy.wrap(capturedEvents).should("have.length", 1);
+    cy.wait("@analyticsProxy");
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find(
@@ -164,11 +162,9 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
       );
     });
 
-    cy.wait("@analyticsProxy");
-
     // beacon already fired in test 1 (once per JS context);
     // InteractiveQuestion + CollectionBrowser = 2 component events
-    cy.wrap(capturedEvents).should("have.length", 2);
+    cy.wait(["@analyticsProxy", "@analyticsProxy"]);
 
     cy.wrap(capturedEvents).should((events: SdkEventData[]) => {
       const interactiveQuestionEvent = events.find(
