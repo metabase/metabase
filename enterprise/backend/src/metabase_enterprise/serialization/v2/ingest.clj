@@ -84,27 +84,66 @@
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
   #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
 
+(defn- path-interner
+  "Returns a function that interns `:serdes/meta` path vectors.
+
+  Every parsed file allocates fresh copies of its path maps and strings, but the
+  `[db schema table]` prefix segments recur once per sibling file (a million-field instance
+  has ~#tables distinct prefixes). Canonicalizing each segment through the interner's tables
+  makes index keys share that structure — value equality is unchanged, so lookups and
+  `:seen`-set comparisons behave identically. The tables live only as long as the returned
+  function is reachable; do not hold it past index construction."
+  []
+  (let [seg-table  (java.util.HashMap.)
+        str-table  (java.util.HashMap.)
+        intern-str (fn [s]
+                     (if (string? s)
+                       (or (.get str-table s) (do (.put str-table s s) s))
+                       s))
+        intern-seg (fn [seg]
+                     (or (.get seg-table seg)
+                         (let [canon (cond-> (update seg :model intern-str)
+                                       (string? (:id seg)) (update :id intern-str))]
+                           (.put seg-table canon canon)
+                           canon)))]
+    (fn intern-path [hierarchy]
+      (mapv intern-seg hierarchy))))
+
+(defn- ingestible-file?
+  "Whether `file` is a regular `.yaml` file under one of the [[legal-top-level-paths]].
+  Dotfiles are excluded (editor temp files, see #41567)."
+  [^File root-dir ^File file]
+  (boolean (and (.isFile file)
+                (not (str/starts-with? (.getName file) "."))
+                (str/ends-with? (.getName file) ".yaml")
+                (let [rel (.relativize (.toPath root-dir) (.toPath file))]
+                  (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))))
+
+(defn- file-hierarchy!
+  "Parses `file` and returns its `:serdes/meta` abstract path, or nil on parse failure.
+  On failure the exception is recorded in the `errors` atom."
+  [^File file errors]
+  (try
+    (serdes/path (ingest-file file))
+    (catch Exception e
+      (log/warn (u/strip-error e "Error reading file during ingestion"))
+      (let [file-name (.getName file)]
+        (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name)
+                                    {:file file-name} e)))
+      nil)))
+
 (defn- ingest-all
   "Returns {:entities {unlabeled-hierarchy File}, :errors [Exception...]}.
   Dotfiles are silently skipped (editor temp files, see #41567).
   Non-dotfile YAML parse failures are collected in :errors."
   [^File root-dir]
-  (let [errors (atom [])]
+  (let [errors      (atom [])
+        intern-path (path-interner)]
     {:entities (into {} (for [^File file (file-seq root-dir)
-                              :when (and (.isFile file)
-                                         (not (str/starts-with? (.getName file) "."))
-                                         (str/ends-with? (.getName file) ".yaml")
-                                         (let [rel (.relativize (.toPath root-dir) (.toPath file))]
-                                           (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
-                              :let [file-name (.getName file)
-                                    hierarchy (try
-                                                (serdes/path (ingest-file file))
-                                                (catch Exception e
-                                                  (log/warn (u/strip-error e "Error reading file during ingestion"))
-                                                  (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name) {:file file-name} e))
-                                                  nil))]
+                              :when (ingestible-file? root-dir file)
+                              :let  [hierarchy (file-hierarchy! file errors)]
                               :when hierarchy]
-                          [(strip-labels hierarchy) file]))
+                          [(intern-path (strip-labels hierarchy)) file]))
      :errors  @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
