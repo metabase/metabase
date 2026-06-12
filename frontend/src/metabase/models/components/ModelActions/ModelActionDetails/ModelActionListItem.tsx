@@ -4,10 +4,9 @@ import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -101,9 +100,9 @@ function ModelActionListItem({
         </div>
         <Menu position="bottom-end">
           <Menu.Target>
-            <div>
-              <EntityMenuTrigger icon="ellipsis" onClick={() => undefined} />
-            </div>
+            <ActionIcon aria-label={t`Action options`} variant="subtle">
+              <Icon name="ellipsis" />
+            </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown miw={184}>
             <Menu.Item

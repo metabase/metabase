@@ -8,12 +8,11 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
-import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
@@ -128,13 +127,13 @@ function ModelActionDetails({ model }: Props) {
           {hasActionsMenu && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <div style={{ marginLeft: "0.5rem" }}>
-                  <EntityMenuTrigger
-                    ariaLabel={t`Actions menu`}
-                    icon="ellipsis"
-                    onClick={() => undefined}
-                  />
-                </div>
+                <ActionIcon
+                  aria-label={t`Actions menu`}
+                  variant="subtle"
+                  style={{ marginLeft: "0.5rem" }}
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown miw={184}>
                 {hasImplicitActions ? (

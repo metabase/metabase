@@ -23,12 +23,18 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { EntityIcon } from "metabase/common/components/EntityIcon";
-import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import { Swapper } from "metabase/common/components/Swapper";
 import type { IconData } from "metabase/common/utils/icon";
 import CS from "metabase/css/core/index.css";
 import type { IconProps } from "metabase/ui";
-import { Checkbox, Ellipsified, Icon, Menu, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Checkbox,
+  Ellipsified,
+  Icon,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
@@ -329,13 +335,13 @@ function EntityItemMenu({
     <EntityMenuContainer style={{ textAlign: "center" }}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <div className={className}>
-            <EntityMenuTrigger
-              ariaLabel={t`Actions`}
-              icon="ellipsis"
-              onClick={() => undefined}
-            />
-          </div>
+          <ActionIcon
+            aria-label={t`Actions`}
+            className={className}
+            variant="subtle"
+          >
+            <Icon name="ellipsis" />
+          </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown miw={184}>
           {actions.map((item, index) => {

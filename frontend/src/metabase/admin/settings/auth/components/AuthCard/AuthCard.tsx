@@ -6,8 +6,7 @@ import { c, t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
-import { Anchor, Button, Icon, Menu, Text } from "metabase/ui";
+import { ActionIcon, Anchor, Button, Icon, Menu, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
@@ -166,9 +165,13 @@ const AuthCardMenu = ({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <div style={{ marginLeft: "auto" }}>
-          <EntityMenuTrigger icon="ellipsis" onClick={() => undefined} />
-        </div>
+        <ActionIcon
+          aria-label={t`Actions menu`}
+          variant="subtle"
+          style={{ marginLeft: "auto" }}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown miw={184}>
         <Menu.Item

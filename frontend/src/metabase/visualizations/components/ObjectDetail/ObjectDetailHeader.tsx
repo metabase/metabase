@@ -1,6 +1,5 @@
 import cx from "classnames";
 
-import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Box, Flex, Icon, Menu, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
@@ -77,15 +76,13 @@ export function ObjectDetailHeader({
           {actionItems.length > 0 && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <div>
-                  <EntityMenuTrigger
-                    icon="ellipsis"
-                    onClick={() => undefined}
-                    triggerProps={{
-                      "data-testid": "actions-menu",
-                    }}
-                  />
-                </div>
+                <ActionIcon
+                  aria-label="Actions"
+                  data-testid="actions-menu"
+                  variant="subtle"
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
               </Menu.Target>
               <Menu.Dropdown miw={184}>
                 {actionItems.map((item) => (
