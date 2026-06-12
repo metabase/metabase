@@ -6,10 +6,9 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
-import {
-  HEADER_VALUE_PERCENT_GAP,
-  type TreemapLabelLayout,
-  type TreemapParentLabelLayout,
+import type {
+  TreemapLabelLayout,
+  TreemapParentLabelLayout,
 } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
 import { hasChildren } from "../model/tree";
@@ -22,8 +21,8 @@ import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
   groupHeader,
-  leafBlock,
 } from "../style";
+import { getRichLeafLabel, getRichUpperLabel } from "../style-rich";
 
 type TreemapChartSeriesOption = TreemapSeriesOption & {
   type: "treemap";
@@ -80,21 +79,24 @@ export function getTreemapChartOption({
     type: "treemap",
     nodeClick: false,
     roam: false,
-    // We're adding custom hover effect to be able to highlight the whole group.
-    emphasis: { disabled: true },
+    emphasis: { disabled: true }, // We're adding custom hover effect to be able to highlight the whole group.
     breadcrumb: { show: false },
     label: {
       ...TREEMAP_CHART_STYLE.nodeLabels,
       show: showLeafLabels,
       overflow: "break",
       lineOverflow: "truncate",
-      rich: getLeafLabelRich(renderingContext),
+      rich: getRichLeafLabel(renderingContext),
     },
     upperLabel: { show: false },
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    leafDepth: 2,
+    visibleMin: 25 * 25,
+    childrenVisibleMin: 25 * 25,
+    levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
     data: toSeriesData(
       tree,
       colors,
@@ -105,10 +107,6 @@ export function getTreemapChartOption({
       formatValue,
       renderingContext,
     ),
-    leafDepth: 2,
-    visibleMin: 25 * 25,
-    childrenVisibleMin: 25 * 25,
-    levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
   };
 
   return { series };
@@ -314,51 +312,6 @@ function getLabelOverride({
     .otherwise(() => ({ label: { show: true, width: layout.width } }));
 }
 
-function getLeafLabelRich(renderingContext: RenderingContext) {
-  const color = renderingContext.getColor("white");
-  const {
-    fontFamily,
-    textShadowColor,
-    textShadowBlur,
-    textShadowOffsetX,
-    textShadowOffsetY,
-  } = TREEMAP_CHART_STYLE.nodeLabels;
-  const shadow = {
-    fontFamily,
-    color,
-    textShadowColor,
-    textShadowBlur,
-    textShadowOffsetX,
-    textShadowOffsetY,
-  };
-  return {
-    name: {
-      ...shadow,
-      fontSize: leafBlock.name.fontSize,
-      fontWeight: leafBlock.name.fontWeight,
-      height: leafBlock.name.height,
-      verticalAlign: "middle" as const,
-    },
-    value: {
-      ...shadow,
-      fontSize: leafBlock.value.fontSize,
-      fontWeight: leafBlock.value.fontWeight,
-      padding: [leafBlock.valueGap, 0, 0, 0],
-      height: leafBlock.value.height,
-      verticalAlign: "middle" as const,
-    },
-    pct: {
-      ...shadow,
-      fontSize: leafBlock.percent.fontSize,
-      fontWeight: leafBlock.percent.fontWeight,
-      height: leafBlock.percent.height,
-      lineHeight: leafBlock.percent.height,
-      padding: [leafBlock.percentGap, 0, 0, 0],
-      verticalAlign: "middle" as const,
-    },
-  };
-}
-
 const formatters = {
   getLeafFormatter(
     name: string,
@@ -366,14 +319,6 @@ const formatters = {
     percentLabel: string,
   ): string {
     return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
-  },
-
-  getHeaderFormatter(
-    displayName: string,
-    valueLabel: string,
-    percentLabel: string,
-  ): string {
-    return `{name|${displayName}}{value|${valueLabel}}{pct|${percentLabel}}`;
   },
 };
 
@@ -461,55 +406,4 @@ function getUpperLabel({
   }
 
   return basicLabel;
-}
-
-function getRichUpperLabel({
-  groupTint,
-  displayName,
-  valueLabel,
-  percentLabel,
-  nameColumnWidth,
-  renderingContext,
-}: {
-  groupTint: string | undefined;
-  displayName: string;
-  valueLabel: string;
-  percentLabel: string;
-  nameColumnWidth: number;
-  renderingContext: RenderingContext;
-}) {
-  const textPrimary = renderingContext.getColor("text-primary");
-  const textSecondary = renderingContext.getColor("text-secondary");
-  return {
-    backgroundColor: groupTint,
-    formatter: formatters.getHeaderFormatter(
-      displayName,
-      valueLabel,
-      percentLabel,
-    ),
-    rich: {
-      name: {
-        width: nameColumnWidth,
-        overflow: "truncate",
-        align: "left",
-        color: textPrimary,
-        fontSize: groupHeader.fontSize,
-        fontWeight: groupHeader.fontWeight,
-      },
-      value: {
-        color: textPrimary,
-        fontSize: groupHeader.fontSize,
-        fontWeight: groupHeader.fontWeight,
-        // Gap between the name column and the value.
-        padding: [0, 0, 0, HEADER_VALUE_PERCENT_GAP],
-      },
-      pct: {
-        color: textSecondary,
-        fontSize: groupHeader.fontSize,
-        fontWeight: groupHeader.percentFontWeight,
-        // Gap between the value and the percentage.
-        padding: [0, 0, 0, groupHeader.valuePercentGap],
-      },
-    },
-  };
 }

@@ -1,0 +1,106 @@
+import type { RenderingContext } from "metabase/visualizations/types";
+
+import { HEADER_VALUE_PERCENT_GAP } from "./model/labels";
+import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "./style";
+
+export function getRichLeafLabel(renderingContext: RenderingContext) {
+  const color = renderingContext.getColor("white");
+  const {
+    fontFamily,
+    textShadowColor,
+    textShadowBlur,
+    textShadowOffsetX,
+    textShadowOffsetY,
+  } = TREEMAP_CHART_STYLE.nodeLabels;
+  const shadow = {
+    fontFamily,
+    color,
+    textShadowColor,
+    textShadowBlur,
+    textShadowOffsetX,
+    textShadowOffsetY,
+  };
+
+  return {
+    name: {
+      ...shadow,
+      fontSize: leafBlock.name.fontSize,
+      fontWeight: leafBlock.name.fontWeight,
+      height: leafBlock.name.height,
+      verticalAlign: "middle" as const,
+    },
+    value: {
+      ...shadow,
+      fontSize: leafBlock.value.fontSize,
+      fontWeight: leafBlock.value.fontWeight,
+      padding: [leafBlock.valueGap, 0, 0, 0],
+      height: leafBlock.value.height,
+      verticalAlign: "middle" as const,
+    },
+    pct: {
+      ...shadow,
+      fontSize: leafBlock.percent.fontSize,
+      fontWeight: leafBlock.percent.fontWeight,
+      height: leafBlock.percent.height,
+      lineHeight: leafBlock.percent.height,
+      padding: [leafBlock.percentGap, 0, 0, 0],
+      verticalAlign: "middle" as const,
+    },
+  };
+}
+
+export function getRichUpperLabel({
+  groupTint,
+  displayName,
+  valueLabel,
+  percentLabel,
+  nameColumnWidth,
+  renderingContext,
+}: {
+  groupTint: string | undefined;
+  displayName: string;
+  valueLabel: string;
+  percentLabel: string;
+  nameColumnWidth: number;
+  renderingContext: RenderingContext;
+}) {
+  const textPrimary = renderingContext.getColor("text-primary");
+  const textSecondary = renderingContext.getColor("text-secondary");
+
+  return {
+    backgroundColor: groupTint,
+    formatter: getHeaderFormatter(displayName, valueLabel, percentLabel),
+    rich: {
+      name: {
+        width: nameColumnWidth,
+        overflow: "truncate",
+        align: "left",
+        color: textPrimary,
+        fontSize: groupHeader.fontSize,
+        fontWeight: groupHeader.fontWeight,
+      },
+      value: {
+        color: textPrimary,
+        fontSize: groupHeader.fontSize,
+        fontWeight: groupHeader.fontWeight,
+        // Gap between the name column and the value.
+        padding: [0, 0, 0, HEADER_VALUE_PERCENT_GAP],
+      },
+      pct: {
+        color: textSecondary,
+        fontSize: groupHeader.fontSize,
+        fontWeight: groupHeader.percentFontWeight,
+        // Gap between the value and the percentage.
+        padding: [0, 0, 0, groupHeader.valuePercentGap],
+      },
+    },
+  };
+}
+
+function getHeaderFormatter(
+  displayName: string,
+  valueLabel: string,
+  percentLabel: string,
+) {
+  return `{name|${displayName}}{value|${valueLabel}}{pct|${percentLabel}}`;
+}
