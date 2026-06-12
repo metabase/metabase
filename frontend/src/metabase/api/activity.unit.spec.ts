@@ -4,14 +4,18 @@ import fetchMock from "fetch-mock";
 import { getStore } from "__support__/entities-store";
 import {
   setupCollectionsEndpoints,
+  setupMostRecentlyViewedDashboard,
   setupRecentViewsEndpoints,
 } from "__support__/server-mocks";
-import { createMockRecentCollectionItem } from "metabase-types/api/mocks";
+import {
+  createMockDashboard,
+  createMockRecentCollectionItem,
+} from "metabase-types/api/mocks";
 
 import { activityApi } from "./activity";
 import { Api } from "./api";
 import { collectionApi } from "./collection";
-import { listTag } from "./tags";
+import { idTag, listTag } from "./tags";
 
 let activeStore: ReturnType<typeof getStore> | undefined;
 
@@ -71,6 +75,33 @@ describe("activityApi", () => {
 
       // ...without invalidating the collection list.
       expect(collectionCalls()).toBe(1);
+    });
+  });
+
+  describe("getMostRecentlyViewedDashboard provided tags", () => {
+    it("refetches when the dashboard it surfaced is edited elsewhere", async () => {
+      const dashboard = createMockDashboard({ id: 42 });
+      setupMostRecentlyViewedDashboard(dashboard);
+
+      const store = getStore({ [Api.reducerPath]: Api.reducer }, {}, [
+        Api.middleware,
+      ]);
+      activeStore = store;
+
+      const dashboardCalls = () =>
+        fetchMock.callHistory.calls(
+          "path:/api/activity/most_recently_viewed_dashboard",
+          { method: "GET" },
+        ).length;
+
+      store.dispatch(
+        activityApi.endpoints.getMostRecentlyViewedDashboard.initiate(),
+      );
+      await waitFor(() => expect(dashboardCalls()).toBe(1));
+
+      store.dispatch(Api.util.invalidateTags([idTag("dashboard", 42)]));
+
+      await waitFor(() => expect(dashboardCalls()).toBe(2));
     });
   });
 
