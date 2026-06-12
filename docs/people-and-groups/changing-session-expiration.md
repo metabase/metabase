@@ -10,7 +10,7 @@ When someone logs in — whether by email and password or through an SSO provide
 
 Clearing browser cookies or cache manually ends a session immediately, regardless of any of these settings.
 
-## Set the absolute session limit with MAX_SESSION_AGE
+## Set the absolute session limit with `MAX_SESSION_AGE`
 
 `MAX_SESSION_AGE` controls the maximum number of minutes a session can live from the time of login. A person with hundreds of tabs open who hasn't rebooted in months will get logged out two weeks after their last login (even if they had checked the **Remember me** box on the login page).
 
@@ -31,14 +31,14 @@ This setting applies equally to everyone regardless of their browser behavior or
 
 > **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab.
 
-Configure it in the UI (**Admin** > **Authentication** > **Overview**), or set it as an environment variable:
+To configure session time out, go to **Admin** > **Authentication** > **Overview**, or set an environment variable:
 
 ```sh
 # log out after 2 hours of inactivity
 MB_SESSION_TIMEOUT='{"amount":120,"unit":"minutes"}' java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-The UI offers `minutes` and `hours` as units. The environment variable also accepts `seconds`.
+Note that if you're configuring session timeout in Metabase Admin settings, you need to specify the timeout only in minutes or hours, but the `MB_SESSION_TIMEOUT` variable also accepts `"unit":"seconds"`.
 
 When both `MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` are configured, a session ends at whichever limit hits first. Use it for shared workstations, forgotten open tabs, or any situation where a long-inactive session is a security concern.
 
