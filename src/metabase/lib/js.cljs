@@ -2371,7 +2371,10 @@
                        (legacy-ref->mbql5 a-ref))]
       (fix-column-with-ref column-ref (js.metadata/parse-column js-column)))))
 
-(mu/defn ^:export legacy-column->type-info :- [:or ::lib.schema.metadata/column :any]
+(mu/defn ^:export legacy-column->type-info :- [:map
+                                               [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                               [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+                                               [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]]
   "Parses a `legacy-column` into an object compatible with type checking functions. Unlike [[legacy-column->metadata]],
   does not require a `query`. Lib columns remain unchanged.
 

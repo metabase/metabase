@@ -1,259 +1,495 @@
 # TypeScript Generation from Malli Schemas
 
-Metabase automatically generates TypeScript type declarations (`.d.ts` files) from Malli schemas defined on ClojureScript functions. This bridges the CLJS MLv2 library (`metabase.lib.*`) and the TypeScript frontend, giving the TS codebase accurate types for all exported functions.
+Metabase automatically generates TypeScript declaration files (`.d.ts`) from Malli schemas attached to ClojureScript vars. This bridges the CLJS `metabase.lib.*` APIs and the TypeScript frontend, so frontend wrappers can use backend-derived types instead of handwritten approximations.
 
-## How it works
+The generator lives in:
 
-The generator lives in `src/metabase/util/malli/typescript.clj` and runs as a **shadow-cljs build hook** at the `:flush` stage (after compilation). It:
+```text
+src/metabase/util/malli/typescript.clj
+```
 
-1. Iterates all CLJS namespaces in the compiler state
-2. Finds every `def` that has `:schema` metadata (i.e., defined with `mu/defn`)
-3. Converts each Malli schema to a TypeScript type string
-4. Writes `.d.ts` files to the shadow-cljs output directory
+It runs as a `shadow-cljs` build hook at the `:flush` stage, after CLJS compilation has produced analyzer metadata.
 
-### Two-pass architecture
+## Pipeline overview
 
-**Pass 1 — Collect references:** For each namespace, the generator walks all schemas and records every qualified keyword (registry ref) encountered. It counts how many namespaces reference each schema.
+At build time the generator:
 
-**Pass 2 — Generate files:** Schemas referenced by 2+ namespaces become **shared types**, defined in `metabase.lib.shared.d.ts` and imported via `Shared.TypeName`. Each namespace gets its own `.d.ts` file with:
-- An import of `Shared` (if it uses any shared types)
-- Type aliases for registry schemas used only by that namespace
-- Exported function/constant declarations
+1. Reads CLJS namespaces from the shadow compiler state.
+2. Finds vars with Malli schema metadata, usually from `mu/defn`.
+3. Resolves schemas, registry refs, function arities, and TS-specific metadata.
+4. Converts Malli schemas to TypeScript strings.
+5. Emits one `.d.ts` file per namespace under `target/cljs_dev`.
+6. Emits shared registry types into `metabase.lib.shared.d.ts` when a schema ref is reused across namespaces.
+7. Emits re-exports from `metabase.lib.js.d.ts` for other `metabase.*` modules.
 
-The `metabase.lib.js.d.ts` file additionally re-exports all other `metabase.*` modules, so the TS frontend can import everything from a single entry point.
+## Two-pass architecture
 
-## Schema-to-TypeScript conversion
+### Pass 1 — reference collection
 
-The core is a multimethod `-schema->ts` that dispatches on `(mc/type schema)`. Some key mappings:
+The first pass walks schemas without generating final output. It records qualified registry refs, such as:
+
+```clojure
+::lib.schema.metadata/column
+::lib.schema/query
+```
+
+Refs used by multiple namespaces are promoted to shared declarations.
+
+### Pass 2 — declaration generation
+
+The second pass emits:
+
+- namespace-local type aliases,
+- shared type imports,
+- function declarations,
+- constant declarations,
+- fallback declarations for schemas that cannot be fully evaluated during JVM-side generation.
+
+Shared refs are emitted as:
+
+```ts
+import type * as Shared from "./metabase.lib.shared";
+```
+
+and referenced as:
+
+```ts
+Shared.Metabase_Lib_Schema_Metadata_Column
+```
+
+## Registry ref naming
+
+A registry keyword like:
+
+```clojure
+:metabase.lib.schema.metadata/column
+```
+
+becomes:
+
+```ts
+Metabase_Lib_Schema_Metadata_Column
+```
+
+Rules:
+
+- namespace segments are converted to `CapitalCase` and joined with `_`,
+- the schema name is converted to `CapitalCase`,
+- special characters are transliterated where needed.
+
+## Core schema-to-TypeScript mappings
 
 | Malli schema | TypeScript output |
 |---|---|
-| `:string`, `:keyword`, `:symbol`, `:uuid`, `:re` | `string` |
-| `:int`, `:double`, `pos-int?`, `number?` | `number` |
-| `:boolean` | `boolean` |
+| `:string`, `:keyword`, `:symbol`, `:uuid`, `:uri`, `:re` | `string` |
+| `:int`, `:double`, `number?`, `int?`, `pos-int?`, `nat-int?`, `neg-int?` | `number` |
+| `:boolean`, `boolean?` | `boolean` |
 | `:nil` | `null` |
-| `:any` | `unknown` (unless annotated, see below) |
-| `[:maybe X]` | `X \| null` (or `X \| undefined \| null` in argument position) |
+| `:any` | `unknown`, unless TS metadata overrides it |
+| `[:maybe X]` in return position | `X \| null` |
+| `[:maybe X]` in argument position | `X \| undefined \| null` |
 | `[:sequential X]`, `[:vector X]` | `X[]` |
+| `[:sequential {:min 1} X]` | `[X, ...X[]]` |
 | `[:set X]` | `Set<X>` |
 | `[:map [:key Type] ...]` | `{ key: Type; ... }` |
-| `[:map-of K V]` | `Record<K, V>` |
+| open `:map` with entries | known keys plus `[key: string]: unknown` |
+| empty open `:map` | `Record<string, unknown>` |
+| closed empty `:map` | `{}` |
+| `[:map-of K V]` | `Record<normalized-key, V>` |
+| `[:map-of [:enum ...] V]` | `Partial<Record<literal-union, V>>` |
 | `[:enum "a" "b"]` | `"a" \| "b"` |
 | `[:or A B]` | `A \| B` |
-| `[:and A B]` | `A & B` |
+| `[:and A B]` | `A & B`, with unknown branches dropped when safe |
+| `[:merge A B]` | `A & B`, with unknown branches dropped when safe |
 | `[:tuple A B]` | `[A, B]` |
-| `[:=> [:cat Args...] Return]` | `(arg0: Arg0, ...) => Return` (supports variadics as `...args: T[]`) |
-| `[:fn {:typescript "SomeType"}]` | `SomeType` (explicit override) |
+| `[:cat A B]`, `[:catn ...]` | `[A, B]` |
+| `[:=> [:cat Args...] Return]` | function type |
+| `:fn` with `{:typescript "SomeType"}` | `SomeType` |
+| unsupported / predicate-only schemas | `unknown`, or branded unknown inside unions |
 
-### Registry refs
+## Argument context
 
-Qualified keywords like `::lib.schema/query` are Malli registry references. The generator resolves them via `mr/resolve-schema`, expands them into their full TS type, and emits a `type` alias:
+The generator tracks whether a schema is being emitted for an argument or a return value.
 
-```typescript
-export type Metabase_Lib_Schema_Query = { ... };
+This matters for `:maybe`:
 
-export function query(databaseId: number, tableId: number): Metabase_Lib_Schema_Query;
+```clojure
+[:maybe :string]
 ```
 
-The naming convention is: namespace segments become `CapitalCase` joined by `_`, entity name becomes `CapitalCase`. Special characters are transliterated (`?` -> `Q`, `!` -> `Bang`, etc.).
+Return position:
 
-### Argument context
+```ts
+string | null
+```
 
-`:maybe` schemas produce different output depending on context:
-- **Return position:** `T | null`
-- **Argument position:** `T | undefined | null`
+Argument position:
 
-This is because JS callers typically pass `undefined` (or omit args) rather than `null`. The generator tracks this via the `*argument-context*` dynamic var.
+```ts
+string | undefined | null
+```
+
+This reflects JavaScript call sites, where optional arguments may be omitted or passed as `undefined`.
+
+## Open maps
+
+Open Malli maps allow additional keys. The generator emits those additional keys as `unknown`, not `any`:
+
+```clojure
+[:map [:a :int]]
+```
+
+```ts
+{
+  a: number;
+  [key: string]: unknown;
+}
+```
+
+This preserves assignability for open maps while preventing arbitrary unchecked property access.
+
+Closed maps omit the index signature:
+
+```clojure
+[:map {:closed true} [:a :int]]
+```
+
+```ts
+{
+  a: number;
+}
+```
+
+## `:map-of` key normalization
+
+TypeScript `Record<K, V>` requires `K` to be a property key (`string | number | symbol` or literals). Malli key schemas can be richer than that, so the generator normalizes them:
+
+- `:string`, `:keyword`, `:symbol`, `:uuid`, `:uri`, `:re` → `string`
+- `:int`, `:double` → `number`
+- enum string/number keys → literal key union
+- structural or unknown key schemas → `string`
+
+Examples:
+
+```clojure
+[:map-of :keyword :any]
+```
+
+```ts
+Record<string, unknown>
+```
+
+```clojure
+[:map-of [:enum :a :b] :int]
+```
+
+```ts
+Partial<Record<"a" | "b", number>>
+```
 
 ## TS-aware annotations on `:any`
 
-Many `metabase.lib.js` functions return JS arrays (`to-array`) or JS objects (`#js {}`). These fail Malli runtime validation with `:sequential` or `:map` schemas because they're native JS types, not CLJS persistent data structures.
+Some JS-facing functions return native JS arrays or objects (`to-array`, `#js {}`), which are not CLJS persistent collections and should not be validated with `:sequential` or `:map` at runtime.
 
-The solution: use `:any` as the base schema (no runtime validation) with metadata properties that the TS generator reads to produce specific types.
+Use `:any` for runtime validation and attach TypeScript-only schema properties.
 
-### `{:ts/array-of <element-schema>}`
-
-For functions returning JS arrays:
+### `{:ts/array-of X}`
 
 ```clojure
 (mu/defn ^:export visible-columns :- [:any {:ts/array-of ::lib.schema.metadata/column}]
-  [a-query :- ::lib.schema/query
-   stage-number :- :int]
-  (to-array (lib.core/visible-columns a-query stage-number)))
+  [query stage-number]
+  (to-array (lib.core/visible-columns query stage-number)))
 ```
 
 Generates:
 
-```typescript
-export function visible_columns(a_query: ..., stage_number: number): Metabase_Lib_Schema_Metadata_Column[];
+```ts
+export function visible_columns(...): Shared.Metabase_Lib_Schema_Metadata_Column[];
 ```
 
-Without the annotation, the return type would be `unknown`.
-
-### `{:ts/object-of <map-schema>}`
-
-For functions returning JS object literals:
+### `{:ts/object-of X}`
 
 ```clojure
 (mu/defn ^:export expression-parts :- [:any {:ts/object-of [:map
-                                                              [:operator :string]
-                                                              [:options :any]
-                                                              [:args :any]]}]
-  [a-query :- ::lib.schema/query
-   stage-number :- :int
-   an-expression-clause :- ::lib.schema.expression/expression]
-  (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
-    #js {:operator (:operator parts)
-         :options  (clj->js (:options parts))
-         :args     (to-array (:args parts))}))
+                                                            [:operator :string]
+                                                            [:args [:any {:ts/array-of :any}]]]}]
+  [...]
+  #js {:operator "="
+       :args     #js [...]})
 ```
 
-Generates:
+Generates an object shape from the supplied map schema.
 
-```typescript
-export function expression_parts(
-  a_query: ...,
-  stage_number: number,
-  an_expression_clause: ...
-): {
-  operator: string;
-  options: any;
-  args: any;
+### `{:typescript "..."}` on `:any`
+
+For exact escape hatches, use:
+
+```clojure
+[:any {:typescript "SomeFrontendType"}]
+```
+
+This is preferred over `[:fn {:typescript ...} any?]` in JS-facing CLJS files when JVM-side resolution of the predicate would fail.
+
+## JS-facing key transforms
+
+Some JS-facing helpers recursively convert CLJS keys to JavaScript-style keys before returning objects. For example `display-info->js` converts:
+
+- `:display-name` → `displayName`
+- `:filter-positions` → `filterPositions`
+- `:many-pks?` → `isManyPks`
+
+Use `:ts/key-transform :camelCase` with `:ts/object-of` to reflect that returned JS shape:
+
+```clojure
+(mu/defn ^:export displayInfo :- [:any {:ts/object-of ::lib-metric.schema/display-info
+                                         :ts/key-transform :camelCase}]
+  [...]
+  (display-info->js ...))
+```
+
+This transform:
+
+- applies recursively to nested map schemas,
+- converts predicate-style keys ending in `?` to `isX`,
+- expands registry refs inline under the transform instead of reusing shared kebab-case aliases.
+
+Generated output is concrete camelCase TypeScript:
+
+```ts
+export function displayInfo(...): {
+  displayName?: string;
+  filterPositions?: number[];
+  group?: {
+    displayName: string;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
 };
 ```
 
-### How it works internally
+Use this only for functions whose implementation actually performs that key conversion. For opaque CLJS maps, keep the default kebab-case/qualified-key behavior.
 
-The `:any` defmethod checks for these properties:
+## `[:schema ...]` wrappers
 
-```clojure
-(defmethod -schema->ts :any [schema]
-  (let [props (mc/properties schema)]
-    (cond
-      (:ts/array-of props)
-      (str (schema->ts (:ts/array-of props)) "[]")
-
-      (:ts/object-of props)
-      (schema->ts (:ts/object-of props))
-
-      :else
-      (do (record-weak-type! :any)
-          "unknown"))))
-```
-
-The `[:any {:ts/array-of X}]` form is valid Malli — `:any` accepts any value at runtime, and the `{:ts/array-of X}` part is schema properties accessible via `mc/properties`. The TS generator reads the properties; Malli runtime validation ignores them.
-
-## The `:fn` escape hatch
-
-For schemas that use `:fn` predicates (which have no structural type info), you can provide an explicit TS type via the `:typescript` property:
-
-```clojure
-[:fn {:typescript "Record<string, TemplateTag>"} some-predicate?]
-```
-
-Without `:typescript`, `:fn` schemas produce `unknown`.
-
-## Unknown branches in composed types
-
-The generator preserves uncertainty when only *some* branches can be typed.
+Use Malli's `[:schema props child]` wrapper when you need to attach TS-specific metadata to a schema node without changing the runtime shape.
 
 Example:
 
 ```clojure
-[:or :string [:fn {:typescript "unknown"} pred?]]
+[:schema {:ts/same-as 0} ::lib.schema.metadata/column]
 ```
 
-Generates:
+The generator reads the wrapper properties, then emits the child schema's TypeScript type. This is different from the `:schema` var metadata attached by `mu/defn`, which is how the generator finds function schemas in the first place.
 
-```typescript
-(string | { readonly __metabaseUnknownSchemaBranch: true })
+## Generic return preservation: `:ts/same-as`
+
+Some functions preserve the input type in their return value. Example: applying binning to either a column or a reference should return the same kind of thing the caller passed.
+
+Use `:ts/same-as` on the return schema:
+
+```clojure
+(mu/defn ^:export with-binning :- [:schema {:ts/same-as 0}
+                                  ::lib.schema.metadata/column]
+  [column-or-ref binning-option]
+  ...)
 ```
 
-This avoids over-confident narrowing (e.g. incorrectly collapsing to just `string`).
-The same marker is used in intersection-like compositions (`:and`, `:merge`) when mixed
-with typed branches.
+This emits:
 
-## Variadic functions (`& args`)
+```ts
+export function with_binning<T extends Shared.Metabase_Lib_Schema_Metadata_Column>(
+  column_or_ref: T,
+  binning_option: unknown,
+): T;
+```
 
-Variadic CLJS functions are emitted as TS rest arguments.
+### Explicit generic bounds: `:ts/generic-bound`
 
-Example:
+If the returned nominal schema is narrower than the actual input domain, provide an explicit generic bound:
+
+```clojure
+[:schema {:ts/same-as 0
+          :ts/generic-bound [:or ::lib.schema.metadata/column
+                              ::lib.schema.ref/ref]}
+ ::lib.schema.metadata/column]
+```
+
+This emits:
+
+```ts
+export function with_binning<
+  T extends (Shared.Metabase_Lib_Schema_Metadata_Column | Shared.Metabase_Lib_Schema_Ref_Ref)
+>(column_or_ref: T, binning_option: unknown): T;
+```
+
+Use this when the output type is directly tied to an input type. Do not add argument schemas solely to avoid `unknown` if the argument does not affect output precision.
+
+## Variadic functions
+
+Variadic CLJS functions are emitted as TypeScript rest arguments.
 
 ```clojure
 (mu/defn ^:export drill-thru :- ::lib.schema/query
-  [a-query :- ::lib.schema/query
-   stage-number :- :int
-   card-id :- [:maybe ::lib.schema.id/card]
-   drill :- ::lib.schema.drill-thru/drill-thru
-   & args]
+  [query stage-number card-id drill & args]
   ...)
 ```
 
 Generates:
 
-```typescript
+```ts
 export function drill_thru(
-  a_query: ...,
-  stage_number: number,
-  card_id: ...,
-  drill: ...,
+  query: unknown,
+  stage_number: unknown,
+  card_id: unknown,
+  drill: unknown,
   ...args: unknown[]
-): ...;
+): Shared.Metabase_Lib_Schema_Query;
 ```
 
-JSDoc `@param` tags also include rest params as `...args`.
+JSDoc `@param` tags also use the canonical rest arg name.
+
+## Unknown branches in unions
+
+When a union contains both known and unknown branches, the generator preserves the known branches and represents the unknown branch with a marker:
+
+```clojure
+[:or :string :any]
+```
+
+```ts
+(string | { readonly __metabaseUnknownSchemaBranch: true })
+```
+
+This is intentional. It avoids both of these bad outcomes:
+
+- over-confident narrowing to only the known branch,
+- collapsing the entire union to `unknown` and losing useful type information.
+
+For intersection-like schemas (`:and`, `:merge`), unknown branches are dropped when safe because `T & unknown` is equivalent to `T`.
+
+## `:fn` and predicate schemas
+
+Predicate-only schemas often cannot be structurally represented in TypeScript.
+
+Supported/common predicates are mapped directly where possible, e.g.:
+
+- `number?` → `number`
+- `int?` → `number`
+- `pos-int?`, `nat-int?`, `neg-int?` → `number`
+- `boolean?` → `boolean`
+- `symbol?`, `uuid?` → `string`
+
+For custom predicates, provide `:typescript` metadata if the accepted shape is known:
+
+```clojure
+[:fn {:typescript "bigint"} u.number/bigint?]
+```
+
+Without a structural mapping or explicit override, predicate schemas produce `unknown` or a branded unknown branch in unions.
 
 ## SCI-unavailable fallback declarations
 
-Some schemas include `[:fn ...]` validators that require SCI and cannot be evaluated during JVM-side type generation.
+Some schemas contain `[:fn ...]` validators that require SCI or CLJS-only code unavailable during JVM-side type generation.
 
-Instead of dropping exports, the generator now emits fallback declarations:
+Instead of dropping the export, the generator emits a fallback declaration:
 
-- Function args: `unknown` (rest args become `unknown[]`)
-- Return type: `unknown`
-- Constants: `unknown`
-- JSDoc note indicating fallback mode
+- function arguments: `unknown`,
+- rest args: `unknown[]`,
+- return type: `unknown`,
+- constants: `unknown`,
+- JSDoc note explaining fallback mode.
 
-This preserves API surface in `.d.ts` files and prevents downstream missing-export failures.
+This preserves API surface in generated `.d.ts` files.
 
-## Debugging
+## Memoization and dynamic contexts
 
-Set the `MB_DEBUG_CLJS` environment variable to enable weak-type warnings during compilation:
+`schema->ts` is memoized for performance, but memoization is bypassed whenever dynamic generation context can affect output or side effects, including:
+
+- argument context (`*argument-context*`),
+- registry ref collection,
+- weak-type diagnostics,
+- shared type mode,
+- key transforms (`:ts/key-transform`).
+
+If a type appears correct in one place but wrong in another, check whether a new dynamic context needs to bypass memoization.
+
+## Debugging weak types
+
+Set `MB_DEBUG_CLJS` to log weak generated types during compilation:
 
 ```bash
 MB_DEBUG_CLJS=1 yarn shadow-cljs compile app
 ```
 
-This logs which files/functions produce `any` or `unknown` types. Set `MB_DEBUG_CLJS=verbose` for per-function detail.
+Use verbose mode for per-function detail:
 
-The generator tracks weak types via the `*weak-types*` dynamic var. Every time a schema resolves to `any` or `unknown`, it records the namespace and function name.
+```bash
+MB_DEBUG_CLJS=verbose yarn shadow-cljs compile app
+```
+
+The generator records weak types through dynamic tracking while converting schemas.
 
 ## Gotchas
 
-**No CLJS-only predicates in schemas.** The TS generator runs on the JVM. Predicates like `array?` or `object?` exist only in CLJS and cause `FileNotFoundException` when the generator tries to resolve them. Use Malli keyword schemas (`:int`, `:string`, `:boolean`) instead.
+### No CLJS-only predicates in schemas
 
-**`:number` is not a valid Malli schema.** Use `:int` or `:double`. The symbol `number?` works as a predicate schema (dispatches to `'number?` method), but the keyword `:number` does not exist in the Malli registry.
+The generator runs on the JVM. CLJS-only predicates such as `array?` or `object?` can cause JVM resolution failures. Prefer Malli keyword schemas or `:any` with TS metadata for JS-only values.
 
-**`to-array` results fail `:sequential` validation.** JS arrays are not CLJS sequences. Use `[:any {:ts/array-of X}]` instead of `[:sequential X]` for functions that call `to-array`.
+### Local schema vars in `.cljs` files can fail JVM resolution
 
-**`#js {}` results fail `:map` validation.** JS objects are not CLJS maps. Use `[:any {:ts/object-of [:map ...]}]` instead of `[:map ...]` for functions that return JS object literals.
+A return schema like this in a `.cljs` namespace can fail during generation:
 
-**Memoization and argument context.** The generator memoizes `schema->ts` calls for performance, but bypasses the cache when `*argument-context*` is true (because `:maybe` produces different output). If you see incorrect `undefined` in return types, this is likely a memoization issue.
+```clojure
+(def ^:private ColumnTypeInfo [:map ...])
 
-**Multi-arity `mu/defn`.** For functions with multiple arities, the return schema goes after the function name. Arg schemas go on the longest arity's arglist. The `:function` schema type (wrapping multiple `:=>` children) handles this.
+(mu/defn ^:export legacy-column->type-info :- ColumnTypeInfo
+  ...)
+```
 
-## Precision opportunities
+The JVM generator may try to require the `.cljs` namespace to resolve the var. Inline the schema or move it to a `.cljc` namespace instead.
 
-The current generator is significantly more precise than before, but there are still places to improve:
+### `:number` is not a Malli schema
 
-1. **Ref schemas are broad in TS**
-   `::lib.schema.ref/ref` currently expands to a very large union because it aliases the broad MBQL clause universe.
-   A dedicated narrower schema for "column-or-breakout-ref" would improve wrapper precision and reduce casts.
+Use `:int`, `:double`, or a supported predicate such as `number?`. The keyword `:number` is not a registered Malli schema here.
 
-2. **Per-function overload metadata for polymorphic APIs**
-   Some APIs return different object shapes depending on argument type (for example `display-info`).
-   Structured schema metadata for overload generation could reduce manual wrapper overloads and casts.
+### JS arrays are not CLJS sequences
 
-3. **Richer TS metadata for predicate schemas**
-   `:fn` + `:typescript` works, but it is string-based and manual.
-   Additional structured metadata (e.g. tagged brands or standardized helper aliases) would make these types safer and easier to audit.
+If a function returns `to-array`, do not use `[:sequential X]` as the runtime schema. Use:
+
+```clojure
+[:any {:ts/array-of X}]
+```
+
+### JS objects are not CLJS maps
+
+If a function returns `#js {}` or another native JS object, do not use `[:map ...]` as the runtime schema. Use:
+
+```clojure
+[:any {:ts/object-of [:map ...]}]
+```
+
+### Keyword key formatting depends on runtime conversion
+
+By default, keyword map keys are emitted using `(name k)`, so `:lib/uuid` becomes `uuid`. If runtime output preserves qualified names like `"lib/uuid"`, use explicit string keys in the JS-facing schema:
+
+```clojure
+[:map ["lib/uuid" :string]]
+```
+
+If runtime output camelCases keys, use `:ts/key-transform :camelCase`.
+
+### Multi-arity `mu/defn`
+
+For multi-arity functions, the return schema appears after the function name. Argument schemas come from each arity’s arglist when present; missing arg schemas become `unknown`.
+
+## Current limitations / precision opportunities
+
+1. **`::lib.schema.ref/ref` is still broad.** It currently expands to a large MBQL clause union because the schema is an `:and` over broad `::mbql-clause/clause` plus a hierarchy predicate. A structural ref union would improve many frontend overloads.
+
+2. **Seqex tuple rest is not precise yet.** Schemas such as `[:cat tag opts [:+ {:min 2} arg]]` currently generate a nested array element, not tuple rest elements. A direct tuple-rest implementation caused frontend overload-resolution fallout, so it needs coordinated work with display-info overloads and discriminants.
+
+3. **Recursive metric math expressions are only partially typed.** JS-facing metric definitions currently type the top-level arithmetic tuple, while nested operands remain broad.
+
+4. **Overload generation is still manual.** APIs such as `display-info` return different shapes by input type. Frontend wrappers still provide overloads manually.
+
+5. **Normalization functions are not inferred.** `:decode/normalize` and `:encode/serialize` can change data shape, but the generator does not inspect arbitrary functions. Use explicit JS-facing schemas or TS metadata when exported runtime shape differs from the raw schema.

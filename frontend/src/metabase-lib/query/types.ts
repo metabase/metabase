@@ -131,7 +131,7 @@ export type Limit = number | null;
 
 export type ColumnMetadata = Metabase_Lib_Schema_Metadata_Column;
 
-export type ColumnTypeInfo = ColumnMetadata;
+export type ColumnTypeInfo = ReturnType<typeof ML.legacy_column__GT_type_info>;
 
 export type ColumnGroup = ReturnType<
   typeof ColumnGroupLib.group_columns
