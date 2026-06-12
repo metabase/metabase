@@ -4,6 +4,7 @@ import { CacheProvider } from "@emotion/react";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { color } from "metabase/ui/colors";
 import { getCspNonce } from "metabase/utils/csp";
@@ -62,7 +63,17 @@ function BundleHost({ name, cache }: BundleHostProps) {
         return;
       }
 
-      const { component, theme } = instantiateDataAppBundle(code, name, window);
+      const { component, theme, allowedCustomVisualizations } =
+        instantiateDataAppBundle(code, name, window);
+
+      // The SDK's custom-viz gating reads the allowlist from the
+      // MetabaseProvider props store; data apps have no MetabaseProvider,
+      // so mirror the factory-declared allowlist into the store directly.
+      if (allowedCustomVisualizations) {
+        ensureMetabaseProviderPropsStore().setProps({
+          allowedCustomVisualizations,
+        });
+      }
 
       setLoaded({ component, theme });
     };

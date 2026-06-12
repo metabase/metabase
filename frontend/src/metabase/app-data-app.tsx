@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { api } from "metabase/api/client";
 import { DataAppIframeApp } from "metabase/data_apps/DataAppIframeApp";
 import registerVisualizations from "metabase/visualizations/register";
+// Resolves to metabase-enterprise/sdk-plugins in EE builds, a noop in OSS.
+import { initializePlugins } from "sdk-ee-plugins";
 
 /**
  * Entry point loaded by `data-app.html` and served from `/embed/data-app/:name`.
@@ -24,6 +26,9 @@ function _init() {
   document.body.style.margin = "0";
 
   registerVisualizations();
+  // SDK EE plugin overrides (custom viz, …). Token features are available
+  // synchronously — data-app.html embeds the bootstrap JSON.
+  initializePlugins();
 
   const rootElement = document.getElementById("root");
 

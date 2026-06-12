@@ -60,6 +60,11 @@ import { makeDistortionCallback } from "./sandbox/distortions";
 export type DataAppFactory = () => {
   component: React.ComponentType<Record<string, unknown>>;
   theme?: MetabaseTheme;
+  /**
+   * Allowlist of custom-viz plugin identifiers the app may render,
+   * mirroring the `allowedCustomVisualizations` MetabaseProvider prop.
+   */
+  allowedCustomVisualizations?: string[];
 };
 
 function isLiveTarget(target: object): boolean {

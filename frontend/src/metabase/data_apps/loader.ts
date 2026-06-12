@@ -8,6 +8,7 @@ import { createDataAppSandbox } from "./sandbox";
 export interface LoadedDataApp {
   component: React.ComponentType<Record<string, unknown>>;
   theme?: MetabaseTheme;
+  allowedCustomVisualizations?: string[];
 }
 
 /**
@@ -50,5 +51,9 @@ export function instantiateDataAppBundle(
     );
   }
 
-  return { component: def.component, theme: def.theme };
+  return {
+    component: def.component,
+    theme: def.theme,
+    allowedCustomVisualizations: def.allowedCustomVisualizations,
+  };
 }
