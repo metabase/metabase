@@ -38,9 +38,7 @@ async function setup({ comments }: { comments: Comment[] }) {
 
 describe("commentApi cache updates", () => {
   afterEach(() => {
-    // Drop the store's RTK Query subscriptions before pulling the fetch routes:
-    // this aborts in-flight queries so the global afterEach `flush()` settles,
-    // and stops orphaned subscriptions refetching against removed routes.
+    // Abort in-flight queries before removing the fetch routes.
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
@@ -53,9 +51,7 @@ describe("commentApi cache updates", () => {
     const newComment = createMockComment({ id: 2, ...LIST_REQUEST });
     fetchMock.post("path:/api/comment", newComment);
 
-    // Park a never-settling query in flight — RTK's default "delayed"
-    // invalidation behavior postpones all tag-driven refetches until it
-    // settles, so the cache patch is the only way the new comment can appear.
+    // simulate never-resolving query
     fetchMock.get("path:/api/card/1", new Promise(() => {}));
     store.dispatch(cardApi.endpoints.getCard.initiate({ id: 1 }));
 
