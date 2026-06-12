@@ -1,4 +1,5 @@
-(ns metabase.view-log.events.view-log-test
+(ns ^:synchronous metabase.view-log.events.view-log-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.view-log.events.view-log-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -15,6 +16,10 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                        (thunk))))
 
 (defn latest-view
   "Returns the most recent view for a given user and model ID"

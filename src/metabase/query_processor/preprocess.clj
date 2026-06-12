@@ -31,6 +31,7 @@
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
+   [metabase.query-processor.middleware.prefetch-metadata :as prefetch-metadata]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
    [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
@@ -64,6 +65,7 @@
    #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
+   #'prefetch-metadata/prefetch-metadata
    #'fetch-source-query/resolve-source-cards
    #'drop-fields-in-summaries/drop-fields-in-summaries
    #'expand-aggregations/expand-aggregations
