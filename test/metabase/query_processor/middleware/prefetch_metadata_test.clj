@@ -1,4 +1,8 @@
 (ns metabase.query-processor.middleware.prefetch-metadata-test
+  ;; these tests count real app-DB calls, so they have to use the real application-database metadata provider (and
+  ;; `with-temp` for source cards) rather than a mock metadata provider
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                                   toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
@@ -24,6 +28,13 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                     (lib/limit 1))]
+      ;; the baseline:
+      ;; - fetch the Database
+      ;; - fetch the Tables in bulk
+      ;; - fetch the Tables' columns in bulk
+      ;; - the permissions check
+      ;; - the database-routing check
+      ;; - the table-remapping check
       (is (= 6 (preprocess-app-db-call-count query))))))
 
 (deftest prefetch-metadata-mbql-three-tables-call-count-test
@@ -37,6 +48,8 @@
                                                [(lib/= (lib.metadata/field mp (mt/id :orders :user_id))
                                                        (lib.metadata/field mp (mt/id :people :id)))]))
                     (lib/limit 1))]
+      ;; the same number of calls as for a single-table query: all the referenced tables and their columns are
+      ;; bulk-loaded, so the count does not depend on the number of tables
       (is (= 6 (preprocess-app-db-call-count query))))))
 
 (deftest prefetch-metadata-native-one-field-filter-call-count-test
@@ -53,6 +66,8 @@
                     (assoc :parameters [{:type   :id
                                          :target [:dimension [:template-tag "ff1"]]
                                          :value  [1]}]))]
+      ;; one more call than for MBQL queries: the fields referenced by the template tags are bulk-loaded by ID, which
+      ;; is also how their tables are discovered
       (is (= 7 (preprocess-app-db-call-count query))))))
 
 (deftest prefetch-metadata-native-three-field-filters-call-count-test
@@ -73,4 +88,44 @@
                     (assoc :parameters [{:type   :id
                                          :target [:dimension [:template-tag "ff1"]]
                                          :value  [1]}]))]
+      ;; the same calls as with a single field filter: all the template-tag Fields are loaded with a single bulk
+      ;; call, while without prefetching parameter substitution would resolve them one at a time
       (is (= 7 (preprocess-app-db-call-count query))))))
+
+(deftest prefetch-metadata-card-source-call-count-test
+  (mt/dataset test-data
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+        (let [query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                        (lib/limit 1))]
+          ;; two more calls than for a plain table query: resolving the source card fetches the Card, and the Card's
+          ;; column references are bulk-loaded by ID (which is also how their Tables are discovered)
+          ;; the baseline calls, plus:
+          ;; - fetch the source Card
+          ;; - fetch the Fields referenced by the Card's query by id in bulk (also used to discover their Tables)
+          (is (= 8 (preprocess-app-db-call-count query))))))))
+
+(deftest prefetch-metadata-nested-card-source-call-count-test
+  (mt/dataset test-data
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card inner-card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+        (mt/with-temp [:model/Card outer-card {:dataset_query (lib/query mp (lib.metadata/card mp (:id inner-card)))}]
+          (let [query (-> (lib/query mp (lib.metadata/card mp (:id outer-card)))
+                          (lib/limit 1))]
+            ;; the same calls as for a single source card, plus:
+            ;; - fetch the inner Card: source cards are resolved recursively, so each level of nesting fetches its
+            ;;   card individually
+            (is (= 9 (preprocess-app-db-call-count query)))))))))
+
+(deftest prefetch-metadata-card-source-with-join-call-count-test
+  (mt/dataset test-data
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card card {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
+        (let [query (-> (lib/query mp (lib.metadata/card mp (:id card)))
+                        (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                   [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                           (lib.metadata/field mp (mt/id :categories :id)))]))
+                        (lib/limit 1))]
+          ;; the same calls as for a plain source card: the joined Table and its columns are folded into the same
+          ;; bulk calls
+          (is (= 8 (preprocess-app-db-call-count query))))))))
