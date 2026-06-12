@@ -103,7 +103,8 @@
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
                           purge-chan (a/chan 10)]
-    (mt/with-temporary-setting-values [query-caching-max-ttl 60]
+    (mt/with-temporary-setting-values [query-caching-max-ttl     60
+                                       synchronous-batch-updates true]
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
@@ -418,15 +419,18 @@
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
-          save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
-      (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
-                                                                           (swap! save-execution-metadata-count inc)
-                                                                           (apply save-execution-metadata-original args)
-                                                                           (deliver called-promise true))
-                    query/save-query-and-update-average-execution-time! (fn [& args]
-                                                                          (swap! update-avg-execution-count inc)
-                                                                          (apply save-query-update-avg-time-original args))]
+          save-execution-metadata-original    (mt/original-fn #'process-userland-query/save-execution-metadata!*)
+          save-query-update-avg-time-original (mt/original-fn #'query/save-queries-and-update-average-execution-times!)]
+      ;; save-execution-metadata!* and save-queries-and-update-average-execution-times! are invoked from
+      ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [process-userland-query/save-execution-metadata!*          (fn [& args]
+                                                                                (swap! save-execution-metadata-count inc)
+                                                                                (apply save-execution-metadata-original args)
+                                                                                (deliver called-promise true))
+                    query/save-queries-and-update-average-execution-times! (fn [entries]
+                                                                             (swap! update-avg-execution-count + (count entries))
+                                                                             (save-query-update-avg-time-original entries))]
         (let [query  (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]
