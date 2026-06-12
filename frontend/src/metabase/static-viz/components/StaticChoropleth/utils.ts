@@ -10,8 +10,7 @@ import type { GeoJSONData, RowValue } from "metabase-types/api";
 // Internal projection resolution, not output size — the SVG is rasterized at a fixed width downstream.
 export const MAP_WIDTH = 1000;
 
-// Batik (the SVG->PNG rasterizer) can't parse hsl(), so normalize every emitted color to rgb().
-// map.colors in particular can arrive as hsl().
+// Batik requires rgb colors
 export const toRgb = (color: string): string => Color(color).rgb().string();
 
 export function isFeatureCollection(

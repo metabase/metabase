@@ -131,6 +131,8 @@ describe("StaticChoropleth", () => {
     expect(svg).toContain("<text");
     // Legend bins span the two data points.
     expect(svg).toMatch(/25|100/);
+    // Legend labels use the rendering context color as-is (already Batik-safe hex), not re-converted.
+    expect(svg).toContain('fill="#888888"');
   });
 
   it("renders a custom (non-us_states) region via Mercator + fitWidth", () => {

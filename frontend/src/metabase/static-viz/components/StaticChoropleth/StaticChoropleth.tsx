@@ -4,18 +4,14 @@ import type { Feature } from "geojson";
 import {
   HEAT_MAP_ZERO_COLOR,
   buildColorScale,
+  getDefaultMapDimension,
+  getDefaultMapMetric,
   getLegendTitles,
 } from "metabase/visualizations/lib/choropleth";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import {
-  isCountry,
-  isDimension,
-  isMetric,
-  isState,
-} from "metabase-lib/v1/types/utils/isa";
 import type { GeoJSONData, RawSeries } from "metabase-types/api";
 
 import {
@@ -56,10 +52,8 @@ export const StaticChoropleth = ({
   // Fall back to the same defaults the live Map visualization computes, since a subscription card may
   // not have these settings persisted (the backend pins map.region for us).
   const dimensionName =
-    settings["map.dimension"] ??
-    cols.find((col) => isCountry(col) || isState(col))?.name ??
-    cols.find(isDimension)?.name;
-  const metricName = settings["map.metric"] ?? cols.find(isMetric)?.name;
+    settings["map.dimension"] ?? getDefaultMapDimension(cols);
+  const metricName = settings["map.metric"] ?? getDefaultMapMetric(cols);
   const dimensionIndex = cols.findIndex((col) => col.name === dimensionName);
   const metricIndex = cols.findIndex((col) => col.name === metricName);
 
@@ -77,7 +71,8 @@ export const StaticChoropleth = ({
 
   const domain = Array.from(new Set(Object.values(valuesMap)));
   const hasData = domain.length > 0;
-  const zeroColor = toRgb(HEAT_MAP_ZERO_COLOR);
+  // HEAT_MAP_ZERO_COLOR is already hex (Batik-safe); only map.colors below needs the hsl()->rgb() pass.
+  const zeroColor = HEAT_MAP_ZERO_COLOR;
 
   // buildColorScale runs ckmeans, which needs a non-empty domain — guard the no-data case so every
   // feature falls to zeroColor.
@@ -150,7 +145,7 @@ export const StaticChoropleth = ({
                   fontSize={fontSize}
                   fontFamily="Lato, sans-serif"
                   textAnchor="middle"
-                  fill={toRgb(renderingContext.getColor("text-secondary"))}
+                  fill={renderingContext.getColor("text-secondary")}
                 >
                   {title}
                 </text>
