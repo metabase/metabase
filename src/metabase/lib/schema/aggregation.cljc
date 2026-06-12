@@ -175,7 +175,7 @@
         :else
         (boolean (some has-unaggregated-ref? args))))))
 
-(mr/def ::aggregation-with-no-unnaggregated-refs
+(mr/def ::aggregation-with-no-unaggregated-refs
   "Stricter variant of ::aggregation used for query builder verification. Not enforced
   on whole queries, so saved questions with unaggregated fields keep working."
   [:and
