@@ -349,11 +349,14 @@ export async function loadCustomVizPlugin(
     } else if (currentHash) {
       params.v = currentHash;
     }
-    const res = await api.fetch({
-      method: "GET",
+
+    const init = {
+      method: "GET" as const,
       url: plugin.bundle_url,
       params,
-    });
+      cache: "no-store" as const,
+    };
+    const res = await api.fetch(init);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
