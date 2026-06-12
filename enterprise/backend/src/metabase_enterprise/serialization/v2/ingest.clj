@@ -85,7 +85,7 @@
   #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
 
 (defn- ingest-all
-  "Returns {:entities {unlabeled-hierarchy [hierarchy File]}, :errors [Exception...]}.
+  "Returns {:entities {unlabeled-hierarchy File}, :errors [Exception...]}.
   Dotfiles are silently skipped (editor temp files, see #41567).
   Non-dotfile YAML parse failures are collected in :errors."
   [^File root-dir]
@@ -104,7 +104,7 @@
                                                   (swap! errors conj (ex-info (format "Failed to parse file: %s" file-name) {:file file-name} e))
                                                   nil))]
                               :when hierarchy]
-                          [(strip-labels hierarchy) [hierarchy file]]))
+                          [(strip-labels hierarchy) file]))
      :errors  @errors}))
 
 (defn- populate-cache! [cache errors-atom ingest-fn]
@@ -129,11 +129,11 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [target (get @cache (strip-labels serdes-meta))]
+        (when-let [file (get @cache (strip-labels serdes-meta))]
           (try
-            (ingest-file (second target))
+            (ingest-file file)
             (catch Exception e
-              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
+              (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))
 
   (ingest-errors [_]
