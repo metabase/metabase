@@ -17,6 +17,28 @@ export interface TreemapNode {
   children?: TreemapNode[];
 }
 
+export interface TreemapSeriesNode {
+  id: string;
+  name: string;
+  value: number;
+  rawName: TreemapNode["rawName"];
+  rowIndices: number[];
+  itemStyle?: { color?: string; borderColor?: string };
+  label?: {
+    show?: boolean;
+    width?: number;
+    overflow?: "truncate" | "break";
+    formatter?: string;
+  };
+  upperLabel?: {
+    backgroundColor?: string;
+    color?: string;
+    formatter?: string;
+    rich?: Record<string, Record<string, unknown>>;
+  };
+  children?: TreemapSeriesNode[];
+}
+
 export type TreemapTree = TreemapNode[];
 
 export interface TreemapRect {

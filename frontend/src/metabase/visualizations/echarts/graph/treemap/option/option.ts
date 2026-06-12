@@ -12,39 +12,17 @@ import {
   type TreemapParentLabelLayout,
 } from "../model/labels";
 import { getTreemapNodeId } from "../model/tooltip";
-import type { TreemapNode, TreemapTree } from "../model/types";
+import type {
+  TreemapNode,
+  TreemapSeriesNode,
+  TreemapTree,
+} from "../model/types";
 import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
   groupHeader,
   leafBlock,
 } from "../style";
-
-export interface TreemapSeriesNode {
-  id: string;
-  name: string;
-  value: number;
-  rawName: TreemapNode["rawName"];
-  rowIndices: number[];
-  itemStyle?: { color?: string; borderColor?: string };
-  label?: {
-    show?: boolean;
-    width?: number;
-    overflow?: "truncate" | "break";
-    // Rich-text formatter for the `"full"` stacked block (name/value/percent);
-    // absent for the name-only label, which renders the node `name` directly.
-    formatter?: string;
-  };
-  upperLabel?: {
-    backgroundColor?: string;
-    color?: string;
-    // Rich-text formatter + styles for the `name … value pct` header, set only
-    // when the chip has room for the right-aligned value+percentage cluster.
-    formatter?: string;
-    rich?: Record<string, Record<string, unknown>>;
-  };
-  children?: TreemapSeriesNode[];
-}
 
 type TreemapChartSeriesOption = TreemapSeriesOption & {
   type: "treemap";
@@ -246,7 +224,7 @@ function getLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
-        formatter: getFullBlockFormatter(
+        formatter: formatters.getLeafFormatter(
           displayName,
           formatValue(value),
           formatShare(value),
@@ -316,19 +294,28 @@ function getLeafLabelRich(renderingContext: RenderingContext) {
   };
 }
 
-/**
- * The rich-text formatter string for a `"full"` tile: the name, value, and
- * percentage stacked on three lines, each tagged with its rich style (see
- * `getLeafLabelRich`). Note: a category name containing `{` or `}` would break
- * ECharts' rich-text parsing — acceptable for now (rare), flagged for review.
- */
-function getFullBlockFormatter(
-  name: string,
-  valueLabel: string,
-  percentLabel: string,
-): string {
-  return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
-}
+const formatters = {
+  /**
+   * Rich-text formatter for a `"full"` leaf tile: name, value, percentage
+   * stacked on separate lines. Note: names containing `{` or `}` can interfere
+   * with ECharts rich-text parsing.
+   */
+  getLeafFormatter(
+    name: string,
+    valueLabel: string,
+    percentLabel: string,
+  ): string {
+    return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
+  },
+
+  getHeaderFormatter(
+    displayName: string,
+    valueLabel: string,
+    percentLabel: string,
+  ): string {
+    return `{name|${displayName}}{value|${valueLabel}}{pct|${percentLabel}}`;
+  },
+};
 
 function getItemStyle({
   groupColor,
@@ -423,14 +410,6 @@ function getUpperLabel({
   return label;
 }
 
-/**
- * The `formatter` + `rich` for a group header that shows its value + percentage:
- * the name in a fixed-width left column (truncated), then the value (bold, like
- * the name) and the percentage (regular, secondary) flush right. The name
- * column's `width` plus the left paddings on the value/percentage push the
- * cluster to the chip's right edge. Colors go through `renderingContext.getColor`
- * to satisfy the no-color-literals rule.
- */
 function getHeaderValuePercent({
   displayName,
   valueLabel,
@@ -447,7 +426,11 @@ function getHeaderValuePercent({
   const textPrimary = renderingContext.getColor("text-primary");
   const textSecondary = renderingContext.getColor("text-secondary");
   return {
-    formatter: `{name|${displayName}}{value|${valueLabel}}{pct|${percentLabel}}`,
+    formatter: formatters.getHeaderFormatter(
+      displayName,
+      valueLabel,
+      percentLabel,
+    ),
     rich: {
       name: {
         width: nameColumnWidth,
