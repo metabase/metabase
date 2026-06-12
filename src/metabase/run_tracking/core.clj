@@ -43,11 +43,13 @@
     (apply t2/update! model :id [:in ids] (concat active [{heartbeat-column :%now}]))))
 
 (defn heartbeat-and-reconcile!
-  "Per-node tick for the runs this process owns: call `(heartbeat! ids)` to stamp them, then
-  `(on-gone id)` for each id whose row no longer matches `active` (kv-pairs, e.g. `[:is_active true]`)
-  — another path (reaper, timeout sweeper, force-cancel) has already moved it to a terminal state, so
-  the local work should stop. Only ids from the `ids` snapshot are reconciled; runs registered while
-  the tick is in flight are left for the next tick. No-op when `ids` is empty."
+  "Per-node tick for the runs this process owns: call `(heartbeat! ids)`, then `(on-gone id)` for
+  each id whose row no longer matches `active` (kv-pairs, e.g. `[:is_active true]`) — another path
+  (reaper, force-cancel) terminated it, so the local work should stop. Only the `ids` snapshot is
+  reconciled; runs registered mid-tick wait for the next one. No-op when `ids` is empty.
+
+  `on-gone` runs on the shared heartbeat thread and must not block: a slow callback delays
+  heartbeats for every run on this node, leaving them to be reaped as stale."
   [{:keys [model active ids heartbeat! on-gone]}]
   (when-let [ids (seq ids)]
     (heartbeat! ids)
