@@ -492,7 +492,7 @@ describe("scenarios > explorations > detail page", () => {
 
           metricHeading().should("be.visible");
           for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+            cy.findByText(`by ${dim.display_name}`).should("be.visible");
           }
 
           // Collapse the metric heading: aria-expanded flips and
@@ -502,13 +502,13 @@ describe("scenarios > explorations > detail page", () => {
             .click()
             .should("have.attr", "aria-expanded", "false");
           for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("not.exist");
+            cy.findByText(`by ${dim.display_name}`).should("not.exist");
           }
 
           // Re-expand: both leaves return.
           metricHeading().click().should("have.attr", "aria-expanded", "true");
           for (const dim of pickedDimensions) {
-            cy.findByText(`By ${dim.display_name}`).should("be.visible");
+            cy.findByText(`by ${dim.display_name}`).should("be.visible");
           }
         });
 
@@ -786,14 +786,12 @@ describe("scenarios > explorations > detail page", () => {
           }
         });
 
-      // Pre-completion: the AI Summary doc row shows the
-      // Loading spinner (aria-label "Loading…"). Scope the
-      // assertion to the sidebar (the `<nav>` element) so we
-      // don't accidentally match an app-bar Loader.
+      // Pre-completion: the AI Summary doc row reads as busy
+      // (loading renders as shimmering text + `aria-busy`, not
+      // a swapped-in spinner).
       cy.findByText("AI Summary")
         .closest('[role="treeitem"]')
-        .findByLabelText("Loading…")
-        .should("be.visible");
+        .should("have.attr", "aria-busy", "true");
 
       // Look up the AI Summary doc id so we can target the
       // doc-fetch intercept precisely.
@@ -831,8 +829,11 @@ describe("scenarios > explorations > detail page", () => {
           "be.visible",
         );
 
-        // Sidebar icon flips: the AI Summary doc row now
-        // exposes the `Ready` aria-label instead of `Loading…`.
+        // Sidebar row settles: the AI Summary doc row drops
+        // `aria-busy` and exposes the `Ready` icon label.
+        cy.findByText("AI Summary")
+          .closest('[role="treeitem"]')
+          .should("have.attr", "aria-busy", "false");
         cy.findByText("AI Summary")
           .closest('[role="treeitem"]')
           .findByLabelText("Ready")
