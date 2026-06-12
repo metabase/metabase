@@ -38,12 +38,15 @@
             tables-by-db))))
 
 (defn- route-metadata-by-table
-  "Route a metadata request to the appropriate database provider based on table-id."
-  [table->db-fn db-provider-fn {:keys [table-id], :as metadata-spec}]
-  (when table-id
-    (when-let [db-id (table->db-fn table-id)]
-      (when-let [provider (db-provider-fn db-id)]
-        (lib.metadata.protocols/metadatas provider metadata-spec)))))
+  "Route a metadata request to the appropriate database provider(s) based on its `:table-ids` set."
+  [table->db-fn db-provider-fn {table-ids :table-ids, :as metadata-spec}]
+  (when (seq table-ids)
+    (into []
+          (mapcat (fn [[db-id table-ids]]
+                    (when db-id
+                      (when-let [provider (db-provider-fn db-id)]
+                        (lib.metadata.protocols/metadatas provider (assoc metadata-spec :table-ids (set table-ids)))))))
+          (group-by table->db-fn table-ids))))
 
 (defn- route-card-metadata
   "Route card metadata request. Cards can span databases, so we need to handle this specially."
