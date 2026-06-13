@@ -58,7 +58,7 @@ export const OptionPopover = ({
 }: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
-  const [isOpened, { close, toggle }] = useDisclosure(false);
+  const [isOpened, { open, close, toggle }] = useDisclosure(false);
 
   const hasOptions = text.length > 0;
   const isDirty = text !== optionsToText(options);
@@ -100,7 +100,12 @@ export const OptionPopover = ({
   };
 
   return (
-    <Popover opened={isOpened} onClose={close} position="bottom-end" trapFocus>
+    <Popover
+      opened={isOpened}
+      onChange={(nextOpened) => (nextOpened ? open() : close())}
+      position="bottom-end"
+      trapFocus
+    >
       <Popover.Target>
         <UnstyledButton onClick={toggle}>
           <Icon name="list" size={20} tooltip={t`Change options`} />
