@@ -230,6 +230,7 @@
    [:id pos-int?]
    [:name {:optional true} [:maybe string?]]
    [:aggregation ::aggregation-node]
+   [:additional-aggregations {:optional true} [:maybe [:sequential ::aggregation-node]]]
    [:base-table ::table-node]
    [:source-card-id {:optional true} [:maybe pos-int?]]
    [:metadata {:optional true} [:maybe :map]]
