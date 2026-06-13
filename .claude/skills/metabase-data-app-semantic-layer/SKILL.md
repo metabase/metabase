@@ -85,6 +85,13 @@ Use keyed schema objects:
 
 Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions need generated UUID metadata.
 
+`useMetabaseQuery` and `useMetabaseQueryObject`/`createMetabaseQuery` take different shapes for tables:
+
+- `useMetabaseQuery` (row-data hook): `{ tableId: table.id, ... }`.
+- `useMetabaseQueryObject` / `createMetabaseQuery` (query-object for `InteractiveQuestion`/`StaticQuestion`): `{ table: table, ... }` — pass the full generated table object (it carries `databaseId`), not `tableId`.
+
+Passing `tableId` to `useMetabaseQueryObject` throws `Query creation requires a generated table schema, generated metric schema, or databaseId.` at runtime.
+
 ## Query Recipes
 
 ### Saved Questions
