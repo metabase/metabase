@@ -314,9 +314,12 @@ function EntityItemMenu({
         <Menu.Dropdown>
           {actions.map((action) => {
             const key = action.title;
+            const disabledProps = action.disabled
+              ? { "aria-disabled": true, "data-disabled": true }
+              : {};
             const menuItemProps = {
+              ...disabledProps,
               className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
-              disabled: action.disabled,
               leftSection: getLeftSection(action.icon),
             };
 
@@ -328,6 +331,12 @@ function EntityItemMenu({
                     component={Link}
                     data-testid="entity-menu-link"
                     to={action.link}
+                    onClick={(event) => {
+                      if (action.disabled) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }
+                    }}
                   >
                     {action.title}
                   </Menu.Item>
@@ -337,7 +346,18 @@ function EntityItemMenu({
 
             return (
               <MenuItemTooltip key={key} tooltip={action.tooltip}>
-                <Menu.Item {...menuItemProps} onClick={action.action}>
+                <Menu.Item
+                  {...menuItemProps}
+                  onClick={(event) => {
+                    if (action.disabled) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      return;
+                    }
+
+                    action.action?.();
+                  }}
+                >
                   {action.title}
                 </Menu.Item>
               </MenuItemTooltip>
