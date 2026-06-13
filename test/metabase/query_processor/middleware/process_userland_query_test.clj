@@ -34,22 +34,12 @@
       (with-redefs [qp.util/*execute-async?* false
                     process-userland-query/save-execution-metadata!*
                     (fn [query-executions]
+                      ;; only deliver the execution whose hash matches `query`: the grouper queue may still hold
+                      ;; stale executions submitted by earlier tests before this redef, and its periodic flush
+                      ;; hands them to this spy in the same batch.
                       (doseq [{qe-hash :hash, :as query-execution} query-executions
-                              :when qe-hash]
-                        (deliver
-                         result
-                         (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
-                           query-execution
-                           ;; if you're seeing this there is probably some
-                           ;; bug that is causing query hashes to get
-                           ;; calculated in an inconsistent manner; check
-                           ;; `:query` vs `:query-execution-query`
-                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
-                                    {:query                 query
-                                     :original-hash         (some-> original-hash codecs/bytes->hex)
-                                     :query-execution       query-execution
-                                     :query-execution-hash  (some-> ^bytes qe-hash codecs/bytes->hex)
-                                     :query-execution-query (:json_query query-execution)})))))]
+                              :when (and qe-hash (java.util.Arrays/equals ^bytes qe-hash original-hash))]
+                        (deliver result query-execution)))]
         (run
          (fn qe-result* []
            (let [qe (deref result 1000 ::timed-out)]
