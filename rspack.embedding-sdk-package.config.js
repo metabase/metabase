@@ -31,7 +31,7 @@ const BUILD_PATH = __dirname + "/resources/embedding-sdk";
 
 const EMBEDDING_SDK_BUNDLE_HOST = process.env.EMBEDDING_SDK_BUNDLE_HOST || "";
 
-const config = {
+const baseConfig = {
   context: SDK_PACKAGE_SRC_PATH,
 
   devtool: false,
@@ -88,4 +88,27 @@ const config = {
   ].filter(Boolean),
 };
 
-module.exports = config;
+const esmConfig = {
+  ...baseConfig,
+
+  entry: {
+    "main.esm": "./index.ts",
+    "data-app.esm": "./data-app.ts",
+  },
+
+  output: {
+    ...baseConfig.output,
+    filename: "[name].js",
+    library: {
+      type: "module",
+    },
+  },
+
+  externalsType: "module",
+
+  experiments: {
+    outputModule: true,
+  },
+};
+
+module.exports = [baseConfig, esmConfig];
