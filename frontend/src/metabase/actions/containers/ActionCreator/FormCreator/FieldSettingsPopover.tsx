@@ -33,10 +33,15 @@ export function FieldSettingsPopover({
   fieldSettings,
   onChange,
 }: FieldSettingsPopoverProps) {
-  const [isOpened, { close, toggle }] = useDisclosure(false);
+  const [isOpened, { open, close, toggle }] = useDisclosure(false);
 
   return (
-    <Popover opened={isOpened} onClose={close} position="bottom-end" trapFocus>
+    <Popover
+      opened={isOpened}
+      onChange={(nextOpened) => (nextOpened ? open() : close())}
+      position="bottom-end"
+      trapFocus
+    >
       <Popover.Target>
         <UnstyledButton onClick={toggle}>
           <SettingsTriggerIcon
