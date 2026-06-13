@@ -9,7 +9,6 @@ import {
   PLUGIN_CONTENT_TRANSLATION,
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
-import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 type EmbedType = "guest" | "static" | "public";
 
@@ -210,22 +209,6 @@ export const overrideRequests = async ({
   };
 };
 
-const setupRemappingUrls = (embedType: EmbedType) => {
-  const baseUrl = getBaseUrlByEmbedType(embedType);
-
-  PLUGIN_API.getRemappedDashboardParameterValueUrl = (
-    _dashboardId: DashboardId | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `${baseUrl}/dashboard/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
-
-  PLUGIN_API.getRemappedCardParameterValueUrl = (
-    _cardId: CardId | string | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `${baseUrl}/card/:entityIdentifier/params/${encodeURIComponent(parameterId)}/remapping`;
-};
-
 const EMBED_API_BASE_PATTERN = /^\/api\/embed(?=\/|$)/;
 const EMBED_PREVIEW_API_BASE = "/api/preview_embed";
 
@@ -263,7 +246,6 @@ export const setupEmbedPreviewRewrite = () => {
  * into guest embeds API requests.
  */
 export const overrideRequestsForGuestEmbeds = () => {
-  setupRemappingUrls("guest");
   setupEmbedPreviewRewrite();
 
   PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.overrideRequestsForGuestEmbeds =
@@ -281,8 +263,6 @@ export const overrideRequestsForGuestEmbeds = () => {
 export const overrideRequestsForPublicOrStaticEmbeds = (
   embedType: "static" | "public",
 ) => {
-  setupRemappingUrls(embedType);
-
   PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds = (data) =>
     overrideRequests({
       ...data,

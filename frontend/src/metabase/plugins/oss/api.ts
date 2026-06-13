@@ -1,7 +1,6 @@
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
-import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 const getDefaultPluginApi = () => ({
   onBeforeRequestHandlers: {
@@ -24,16 +23,6 @@ const getDefaultPluginApi = () => ({
         }
       },
   },
-  getRemappedCardParameterValueUrl: (
-    cardId: CardId | string | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/remapping`,
-  getRemappedDashboardParameterValueUrl: (
-    dashboardId: DashboardId | undefined,
-    parameterId: ParameterId,
-  ) =>
-    `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 });
 
 export const PLUGIN_API = getDefaultPluginApi();
