@@ -1,8 +1,7 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
+import { IFRAMED_IN_SELF } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
@@ -59,10 +58,6 @@ export class ApiClient extends EventEmitter<EventMap> {
 
     if (this.sessionToken) {
       headers["X-Metabase-Session"] = this.sessionToken;
-    }
-
-    if (isWithinIframe() && !isEmbeddingSdk()) {
-      headers["X-Metabase-Embedded"] = "true";
     }
 
     if (this.requestClient) {

@@ -40,6 +40,7 @@ export type OnBeforeRequestHandler = (
  */
 function getOnBeforeRequestHandlers(): OnBeforeRequestHandler[] {
   return [
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddedHeader,
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler,
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
       .getOrRefreshGuestSessionHandler,

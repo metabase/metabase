@@ -1,4 +1,6 @@
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 const getDefaultPluginApi = () => ({
@@ -9,6 +11,18 @@ const getDefaultPluginApi = () => ({
     rewriteEmbedPreviewUrl: async (
       _data: OnBeforeRequestHandlerConfig,
     ): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
+    // Tag requests from a non-SDK app running inside an iframe (interactive /
+    // static / public embedding) so the backend knows it's embedded. Lives here
+    // rather than in `metabase/api` so the client stays free of SDK imports.
+    setEmbeddedHeader:
+      async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {
+        if (isWithinIframe() && !isEmbeddingSdk()) {
+          return {
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+            headers: { "X-Metabase-Embedded": "true" },
+          };
+        }
+      },
   },
   getRemappedCardParameterValueUrl: (
     cardId: CardId | string | undefined,
