@@ -83,22 +83,18 @@ export function createDataAppSandbox(
         __metabase_sdk__: {
           // Data fetching
           useQuestionQuery,
-          useMetabaseQuery,
           useMetricQuery,
           // Custom actions
           useAction,
+
           // Query helpers
           avg,
-          breakout,
           count,
-          createMetabaseQuery,
           distinct,
-          filter,
           max,
           median,
           min,
           sum,
-          useMetabaseQueryObject,
           // Configuration helpers
           defineMetabaseAuthConfig,
           defineMetabaseTheme,
@@ -121,6 +117,13 @@ export function createDataAppSandbox(
           DataAppRouter,
           DataAppLink,
           useDataAppLocation,
+
+          // Query helpers
+          breakout,
+          createMetabaseQuery,
+          filter,
+          useMetabaseQuery,
+          useMetabaseQueryObject,
         },
         get __dataAppFactory__() {
           return captured;
