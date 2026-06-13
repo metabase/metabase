@@ -18,7 +18,7 @@ import {
   getGroupHeaderBgTint,
   groupHeader,
 } from "../style";
-import { getRichLeafLabel, getRichUpperLabel } from "../style-rich";
+import { getRichLeafLabel, getRichUpperLabel } from "../style.rich";
 
 type TreemapChartSeriesOption = TreemapSeriesOption & {
   type: "treemap";
