@@ -27,14 +27,6 @@ export const groupHeader = {
   valuePercentGap: 8,
 } as const;
 
-/**
- * Fonts and gaps for the inline "full" tile block — name / value / percentage
- * stacked inside a leaf tile when it's big enough (per Figma node 193:456). The
- * name matches the name-only label (bold 12); the value is the H3 style (bold
- * 20); the percentage is regular 12. `valueGap`/`percentGap` are the vertical
- * gaps (px) above the value and percentage lines. The gaps + line heights + the
- * `position` insets add up to `MIN_FULL_LABEL_TILE_HEIGHT` in `model/labels.ts`.
- */
 export const leafBlock = {
   name: { fontSize: 12, fontWeight: 700, height: 16 },
   value: { fontSize: 20, fontWeight: 700, height: 24 },

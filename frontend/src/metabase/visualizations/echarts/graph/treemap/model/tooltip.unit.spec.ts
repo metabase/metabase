@@ -7,7 +7,7 @@ import {
   getTreemapTooltipModel,
   isTreemapTooltipSuppressed,
 } from "./tooltip";
-import { getTreemapNodeId } from "./tree";
+import { getTreemapNodeId, parseTreemapNodeId } from "./tree";
 import type { TreemapNode, TreemapTree } from "./types";
 
 const formatValue = (value: number) => `$${value}`;
@@ -41,6 +41,14 @@ describe("getTreemapNodeId", () => {
     expect(getTreemapNodeId(0)).toBe("0");
     expect(getTreemapNodeId(2)).toBe("2");
     expect(getTreemapNodeId(0, 1)).toBe("0-1");
+  });
+});
+
+describe("parseTreemapNodeId", () => {
+  it("decodes top-level and leaf ids (inverse of getTreemapNodeId)", () => {
+    expect(parseTreemapNodeId("0")).toEqual({ rootIndex: 0 });
+    expect(parseTreemapNodeId("2")).toEqual({ rootIndex: 2 });
+    expect(parseTreemapNodeId("0-1")).toEqual({ rootIndex: 0, leafIndex: 1 });
   });
 });
 

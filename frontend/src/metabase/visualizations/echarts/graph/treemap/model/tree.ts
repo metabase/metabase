@@ -69,11 +69,26 @@ export function getNode(id: NodeId, tree: TreemapTree) {
   return getNodesFromPath(tree, id)?.at(-1);
 }
 
+const NODE_ID_SEP = "-";
+
 export function getTreemapNodeId(
   rootIndex: number,
   leafIndex?: number,
 ): string {
-  return leafIndex == null ? `${rootIndex}` : `${rootIndex}-${leafIndex}`;
+  return leafIndex == null
+    ? `${rootIndex}`
+    : `${rootIndex}${NODE_ID_SEP}${leafIndex}`;
+}
+
+export function parseTreemapNodeId(id: NodeId): {
+  rootIndex: number;
+  leafIndex?: number;
+} {
+  const [root, leaf] = id.split(NODE_ID_SEP);
+  return {
+    rootIndex: Number(root),
+    leafIndex: leaf == null ? undefined : Number(leaf),
+  };
 }
 
 export function hasChildren(
@@ -117,7 +132,7 @@ export function getNodesFromPath(
 ): TreemapNode[] | null {
   const path: TreemapNode[] = [];
   let nodes: TreemapTree | undefined = tree;
-  for (const segment of id.split("-")) {
+  for (const segment of id.split(NODE_ID_SEP)) {
     const index = Number(segment);
     const node: TreemapNode | undefined = Number.isInteger(index)
       ? nodes?.[index]

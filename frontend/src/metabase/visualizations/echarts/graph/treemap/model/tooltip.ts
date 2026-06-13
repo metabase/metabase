@@ -8,6 +8,7 @@ import type {
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
+import { getTreemapNodeId, parseTreemapNodeId } from "./tree";
 import type { TreemapNode, TreemapTree } from "./types";
 
 export interface TreemapTooltipContext {
@@ -48,8 +49,8 @@ export function isTreemapTooltipSuppressed(
   { fullLeafIds, valuePercentHeaderIds }: TreemapInlineValueIds,
 ): boolean {
   if (viewRootId == null && isTwoLevel) {
-    const [rootPart] = id.split("-");
-    return valuePercentHeaderIds.has(rootPart);
+    const { rootIndex } = parseTreemapNodeId(id);
+    return valuePercentHeaderIds.has(getTreemapNodeId(rootIndex));
   }
   return fullLeafIds.has(id);
 }
@@ -60,10 +61,10 @@ export function getTreemapTooltipContext(
   viewRootId: string | null,
   groupingHeader?: string,
 ): TreemapTooltipContext | null {
-  const [rootPart, leafPart] = id.split("-");
+  const { rootIndex, leafIndex } = parseTreemapNodeId(id);
 
   if (viewRootId == null) {
-    const focusedNode = tree[Number(rootPart)];
+    const focusedNode = tree[rootIndex];
     if (focusedNode == null) {
       return null;
     }
@@ -72,7 +73,7 @@ export function getTreemapTooltipContext(
 
   const root = tree[Number(viewRootId)];
   const siblings = root?.children;
-  const focusedNode = siblings?.[Number(leafPart)];
+  const focusedNode = siblings?.[leafIndex ?? -1];
   if (root == null || siblings == null || focusedNode == null) {
     return null;
   }
