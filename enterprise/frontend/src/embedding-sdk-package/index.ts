@@ -44,7 +44,21 @@ export type {
 } from "./hooks/public/use-action";
 export { useQuestionQuery } from "./hooks/public/use-question-query";
 export { useMetricQuery } from "./hooks/public/use-metric-query";
-export { useMetabaseQuery } from "./hooks/public/use-metabase-query";
+/** @internal */
+export {
+  avg,
+  breakout,
+  count,
+  createMetabaseQuery,
+  distinct,
+  filter,
+  max,
+  median,
+  min,
+  sum,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "./hooks/public/use-metabase-query";
 export { useAction } from "./hooks/public/use-action";
 export type {
   ActionExecuteError,
@@ -63,11 +77,12 @@ export type {
   AnyActionResult,
   UseActionResult,
 } from "./hooks/public/use-action";
+/** @internal */
 export type {
+  MetabaseBreakout,
   MetabaseQueryOptions,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
-
 export { defineMetabaseAuthConfig } from "./lib/public/define-metabase-auth-config";
 export { defineMetabaseTheme } from "./lib/public/define-metabase-theme";
 

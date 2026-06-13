@@ -1,260 +1,379 @@
 ---
 name: metabase-semantic-schema-data-apps
-description: Use when building React data apps from curated Metabase typed schema exports with the Embedding SDK query hook.
+description: Use when building React dashboards or data apps from a Metabase semantic layer, including generated schema files like metabase.data.ts or *.metabase.data.ts.
 ---
 
 # Metabase Semantic Schema Data Apps
 
-## Core Rule
+## Core Rules
 
 Keep the semantic layer and presentation layer separate.
 
-All Metabase instance context must come from the curated generated schema file, usually `src/metabase.data.ts`. Do not discover data, create questions, create metrics, create tables, or edit the semantic layer while building the React UI. Questions, tables, metrics, segments, and measures in the schema are curated upstream.
+- All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
+- Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
+- Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
+- Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
+- Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
+- Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
+- Never invent aggregation or measure objects such as `{ name: "count" }` or `{ name: "sum", field: ... }`. Measures must come from `schema.tables.*.measures.*`; metrics must come from `schema.metrics.*`.
+- Only render values returned by Metabase or deterministic transforms of returned values. Do not invent KPI values, trends, labels, statuses, ratings, timestamps, rankings, insights, customer segments, or chart series.
+- Visualization data must come from Metabase through `useMetabaseQuery`, `useMetabaseQueryObject` with `InteractiveQuestion`/`StaticQuestion`, or saved-question SDK components. Do not hardcode chart-ready arrays, sample data, demo values, or schema-shaped mock values.
+- Before rendering a field, verify it exists in the generated schema object and is returned by the query. Do not guess column names from business intuition or old mock data.
+- Avoid unsupported freshness or operational claims such as "real-time", "live", "understaffed", or "risk" unless the returned data or curated semantic-layer definition supports them.
+- Before claiming the work is done or preparing a final handoff, run a TypeScript type-only check and report the command/result. If the check fails, fix the type errors before any final summary.
 
-## Workflow
+## Generate Schema
 
-1. Ensure the app has a fresh schema export.
-   - If `src/metabase.data.ts` is missing or stale, ask the user for a Metabase API key.
-   - Generate the schema with e.g.:
+If the schema file is missing or stale, ask the user for a Metabase API key:
 
 ```bash
 curl \
-  -o src/metabase.data.ts
+  -o src/metabase.data.ts \
   -H "x-api-key: <YOUR_API_KEY>" \
   -H "Accept: text/typescript" \
   http://localhost:3000/api/typed-schemas/v1/typescript
 ```
 
-- Response is saved as `src/metabase.data.ts`.
-- To reduce schema size for apps backed by one database, add `?database=<DATABASE_NAME>`, for example `?database=Boba`.
-- Import it as `schema` in app code:
+Useful filters:
+
+- `?database=Boba` or `?database=1` for one database.
+- `?libraryCollections=24,25` for curated Data/Metrics library subcollections.
+- `?questionCollections=10,11` for saved questions from normal collections.
+
+Use `libraryCollections` for semantic-layer tables, segments, measures, and metrics. Use `questionCollections` for saved questions.
+
+## Standard Pattern
 
 ```ts
+import {
+  avg,
+  breakout,
+  count,
+  filter,
+  sum,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "@metabase/embedding-sdk-react/data-app";
 import schema from "../metabase.data";
+
+const lifetimeValueMetric = schema.metrics.customerLifetimeValue;
+const lifetimeValueTable = schema.tables.customerLifetimeValue;
+
+const { data, isLoading, error } = useMetabaseQuery({
+  metric: lifetimeValueMetric,
+  filters: [filter(lifetimeValueMetric.dimensions.orders, ">", 0)],
+  measures: [lifetimeValueTable.measures.totalLtv],
+  breakouts: [
+    breakout(lifetimeValueMetric.dimensions.lastOrderedAt, { bucket: "month" }),
+  ],
+});
 ```
 
-2. Choose semantic objects from the schema.
+Use keyed schema objects:
 
-   - Use `schema.questions.someQuestion` for saved question results.
-   - Use `schema.tables.someTable` for table-backed exploration with curated segments and measures.
-   - Use `schema.metrics.someMetric` for metric results.
-   - Inspect `columns`, table `fields`, table `segments`, table `measures`, metric `dimensions`, names, descriptions, and `jsType` to design the UI.
-   - Reference table fields and metric dimensions through keyed generated schema objects, such as `schema.tables.orders.fields.createdAt` or `schema.metrics.revenue.dimensions.createdAt`.
-   - Do not copy numeric IDs into constants. Pass generated schema object `.id` values inline.
-   - For each hook call, define a local type alias from the exact schema object, for example `type Customers = typeof schema.questions.koiBobaAppCustomersTable;`.
+- Saved questions: `questionId: schema.questions.someQuestion.id`
+- Tables: `tableId: table.id`, `table.fields.*`, `table.segments.*`, `table.measures.*`
+- Metrics: `metric: schema.metrics.someMetric`, `metric.dimensions.*`
 
-3. Render with the SDK query hook.
-   - Wrap the app once in `MetabaseProvider`.
-   - Use `useMetabaseQuery` for schema-backed data fetching.
-   - Do not use the older split hooks for new semantic-schema data apps.
-   - Call `useMetabaseQuery<SomeQuestion>({ questionId: schema.questions.someQuestion.id })` for question-backed views.
-   - Call `useMetabaseQuery<SomeTable>({ tableId: schema.tables.someTable.id, filters, measures, breakouts })` for table-backed views.
-   - Call `useMetabaseQuery<SomeMetric, Schema>({ metricId: schema.metrics.someMetric.id, filters, breakouts })` for metric-backed views when metric filters use table segments.
-   - For metric-backed views that add curated measures as extra series, pass table measures in `measures` and use table fields for `breakouts`.
-   - Handle `isLoading`, `error`, and empty data explicitly.
-   - Use `data.rows` directly. Only do presentation normalization inline when the UI needs labels, badges, numeric coercion, or null fallbacks.
-   - Build visuals from actual result shape and cardinality. If a result has one row, one bucket, or one category, prefer a KPI, ranked list, table, or another honest summary over forcing a trend or distribution chart.
+Do not pass raw dimension strings like `"created_at"` or `"segment"`. Metric dimensions need generated UUID metadata.
 
-## Presentation Layer
-
-The React app may group, sort, format, and derive display-only values from `data.rows`, but the underlying semantic objects still come only from `schema`.
-
-Good presentation transforms:
-
-- Group rows for visual summaries, such as revenue by franchise or customers by tier.
-- Sort and slice rows for ranked lists, such as top menu items.
-- Format values by domain: currency to at most 2 decimals, counts as whole numbers, dates as short readable labels.
-- Choose chart types from actual data shape: trends need multiple ordered buckets, distributions need multiple categories, and scalar values should stay scalar.
-
-If no curated schema entry supports the intended UI, leave the UI empty/error state or ask for the semantic layer to be curated. Do not invent mock data or create new Metabase questions from the app-building step.
-
-## Query Result Shape and Charts
-
-Always inspect the returned `columns` before mapping low-level `rawRows`.
-
-- Prefer keyed `data.rows` for saved questions and simple table or metric results.
-- Use `rawRows` only when the visualization needs positional access, such as multiple aggregation series.
-- For aggregation results, Metabase may name columns by aggregation aliases like `count`, `sum`, or `avg`, even when the curated measure is named differently. Match columns by `field_ref`, `name`, `display_name`, and `displayName`, then use a clear positional fallback only for a known query shape.
-- Metric-plus-measure queries commonly return `[breakout, metric aggregation, measure aggregation]`.
-- Grouped queries can include a `null` breakout bucket. Decide deliberately whether to render it as "Unknown" or filter it out. Do not accidentally treat it as the latest time bucket.
-- Multi-series charts with different units or magnitudes should use separate y-axes or per-series normalization. A single shared scale can flatten the smaller series even when the query is correct.
-- If an SVG chart uses `preserveAspectRatio="none"`, SVG circles will stretch with the chart. Render dots as CSS circles over the SVG, or use a non-stretched SVG coordinate system.
-
-## useMetabaseQuery
-
-`useMetabaseQuery` returns keyed rows inferred from the schema. The schema object is the static type source; `.id` is the runtime input.
+## Query Recipes
 
 ### Saved Questions
 
 ```ts
-import { useMetabaseQuery } from "@metabase/embedding-sdk-react";
-import schema from "../metabase.data";
+const customersQuestion = schema.questions.koiBobaAppCustomersTable;
+type CustomersQuestion = typeof customersQuestion;
 
-type Customers = typeof schema.questions.koiBobaAppCustomersTable;
-
-const { data, isLoading, error } = useMetabaseQuery<Customers>({
-  questionId: schema.questions.koiBobaAppCustomersTable.id,
+const { data } = useMetabaseQuery<CustomersQuestion>({
+  questionId: customersQuestion.id,
 });
-
-const customers = data?.rows ?? [];
 ```
 
-Rows are objects when a generated schema type is provided as the generic. Use `rawRows` only when positional arrays are needed for debugging or low-level rendering.
-
-Do not write a wrapper like `useQuestionRows`, and do not map every row through `toOrder` or `toCustomer` just to recover object fields. The schema object is the type source, and `.id` is the runtime argument.
-
-Preferred:
-
-```ts
-type Customers = typeof schema.questions.koiBobaAppCustomersTable;
-
-const { data } = useMetabaseQuery<Customers>({
-  questionId: schema.questions.koiBobaAppCustomersTable.id,
-});
-
-const customers = data?.rows ?? [];
-```
-
-Avoid:
-
-```ts
-function toCustomer(row: Record<string, unknown>) {
-  return {
-    id: Number(row.id),
-    name: String(row.name ?? ""),
-  };
-}
-
-const customers = rows.map(toCustomer);
-```
+Do not create row-mapping wrappers just to recover fields. The schema generic gives keyed rows.
 
 ### Tables
 
-Table queries can use curated table segments as `filters`, curated table measures as `measures`, and table fields as `breakouts`.
-
 ```ts
-import { useMetabaseQuery } from "@metabase/embedding-sdk-react";
-import schema from "../metabase.data";
+const ordersTable = schema.tables.orders;
+type OrdersTable = typeof ordersTable;
 
-type Orders = typeof schema.tables.orders;
-
-const { data } = useMetabaseQuery<Orders>({
-  tableId: schema.tables.orders.id,
-  filters: [schema.tables.orders.segments.completedOrders],
-  measures: [schema.tables.orders.measures.revenue],
-  breakouts: [
-    {
-      dimension: schema.tables.orders.fields.createdAt,
-      bucket: "month",
-    },
+const { data } = useMetabaseQuery<OrdersTable>({
+  tableId: ordersTable.id,
+  filters: [
+    ordersTable.segments.completedOrders,
+    filter(ordersTable.fields.total, ">", 100),
   ],
+  aggregations: [ordersTable.measures.revenue],
+  breakouts: [breakout(ordersTable.fields.createdAt, { bucket: "month" })],
 });
 ```
 
-Use segments and measures from the same table as `tableId`. Do not mix segments or measures from another table.
+For grouped counts, use `count()`:
+
+```ts
+useMetabaseQuery({
+  table: ordersTable,
+  filters: [ordersTable.segments.completedOrders],
+  aggregations: [count()],
+  breakouts: [breakout(ordersTable.fields.paymentMethod)],
+});
+```
+
+For basic field aggregations, use helpers such as `sum(field)`, `avg(field)`, `median(field)`, `distinct(field)`, `min(field)`, and `max(field)`:
+
+```ts
+useMetabaseQuery({
+  table: ordersTable,
+  aggregations: [sum(ordersTable.fields.total), avg(ordersTable.fields.total)],
+  breakouts: [breakout(ordersTable.fields.createdAt, { bucket: "month" })],
+});
+```
+
+Table fields, segments, and measure aggregations must come from the queried table.
+When table queries use `fields`, `segments`, `aggregations`, or `breakouts`, pass the table schema generic (`useMetabaseQuery<OrdersTable>`) so TypeScript can validate the query.
 
 ### Metrics
 
-Metric-only queries map to the metric dataset API definition, including `expression`, per-instance `filters`, and `projections` for breakouts.
-
 ```ts
-import { useMetabaseQuery } from "@metabase/embedding-sdk-react";
-import schema from "../metabase.data";
+const revenueMetric = schema.metrics.revenue;
 
-type Schema = typeof schema;
-type CustomerLifetimeValue = typeof schema.metrics.customerLifetimeValue;
-
-const { data } = useMetabaseQuery<CustomerLifetimeValue, Schema>({
-  metricId: schema.metrics.customerLifetimeValue.id,
-  filters: [schema.tables.customers.segments.hasOrders],
+const { data } = useMetabaseQuery({
+  metric: revenueMetric,
+  filters: [filter(revenueMetric.dimensions.state, "=", "CA")],
   breakouts: [
-    {
-      dimension: schema.metrics.customerLifetimeValue.dimensions.createdAt,
-      bucket: "month",
-    },
+    breakout(revenueMetric.dimensions.createdAt, { bucket: "month" }),
   ],
 });
-
-const customerSegments = (data?.rows ?? []).map((row) => ({
-  segment: row.segment,
-  count: row.count,
-}));
 ```
 
-Metric `dimension` values should come from the metric schema's keyed `dimensions` object. Segment filters should come from tables listed in the metric's `mappedTableIds`.
+Metric filters and breakouts should use dimensions from the same metric object.
 
-Preferred:
+### Metrics With Measures
 
 ```ts
-breakouts: [
-  {
-    dimension: schema.metrics.customerLifetimeValue.dimensions.segment,
-  },
+const lifetimeValueMetric = schema.metrics.customerLifetimeValue;
+const lifetimeValueTable = schema.tables.customerLifetimeValue;
+
+const { data } = useMetabaseQuery({
+  metric: lifetimeValueMetric,
+  measures: [lifetimeValueTable.measures.totalLtv],
+  breakouts: [
+    breakout(lifetimeValueMetric.dimensions.lastOrderedAt, { bucket: "month" }),
+  ],
+});
+```
+
+Measures must come from tables in the metric's `mappedTableIds`.
+
+## Interactive Metabase Views
+
+Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the UI can be expressed as a normal Metabase question visualization. Build a semantic query with `useMetabaseQueryObject`, then pass the query object to the SDK question component.
+
+`useMetabaseQueryObject` supports generated table objects and generated metric objects. Use `useMetabaseQuery` when custom React needs direct row data; use `useMetabaseQueryObject` when Metabase should render or manage the visualization.
+
+Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
+
+Prefer `InteractiveQuestion` for:
+
+- standard charts, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
+- trends, category comparisons, grouped summaries, geographic views, scatter plots, funnels, gauges, progress, waterfall, boxplot, and sankey-shaped queries
+- bar, line, area, row, and trend charts whenever a semantic query with measures and breakouts can produce the needed result
+- tables where users benefit from Metabase interactions such as sorting, column inspection, drill-through, downloading, or changing visualization settings
+- cases where Metabase visualization settings can handle the presentation, such as axes, labels, stacking, goals, trendlines, split panels, series settings, table columns, formatting, pie settings, pivot settings, and list settings
+
+Generated dashboards should use Metabase charts as much as possible. Do not replace a normal bar, line, area, row, trend, pivot, map, or sortable table with a custom SVG/React visualization just to make it look more bespoke.
+
+Use custom React visualizations only when the user's requested presentation does not fit Metabase display types or visualization settings.
+
+Good custom visualization reasons:
+
+- bespoke scorecards, alert panels, narrative layouts, or mixed-content cards that cannot be represented as a normal Metabase chart/table
+- combining multiple Metabase queries into one visual unit
+- custom interactions or product-specific UI that Metabase's chart/table chrome cannot express
+- unusual chart forms such as calendar grids, timelines, heat strips, radial views, custom maps, or domain-specific diagrams
+
+For custom charts, use an existing charting dependency when the app already has one. Otherwise, SVG charts are fine. Keep metric-only KPI cards and bespoke summaries on `useMetabaseQuery` when you need direct row data, but first consider whether an SDK scalar/smartscalar/gauge/progress view would be good enough.
+
+Chart only, without the toolbar:
+
+```tsx
+import {
+  InteractiveQuestion,
+  StaticQuestion,
+  breakout,
+  count,
+  useMetabaseQueryObject,
+} from "@metabase/embedding-sdk-react/data-app";
+
+const dailyRevenue = schema.tables.dailyStoreRevenue;
+
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return (
+  <InteractiveQuestion query={revenueQuery}>
+    <InteractiveQuestion.QuestionVisualization />
+  </InteractiveQuestion>
+);
+```
+
+Full interactive question, with the query toolbar:
+
+```tsx
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return <InteractiveQuestion query={revenueQuery} />;
+```
+
+Static question:
+
+```tsx
+const revenueQuery = useMetabaseQueryObject({
+  table: dailyRevenue,
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "month" })],
+});
+
+return <StaticQuestion query={revenueQuery} />;
+```
+
+Metric-backed SDK question:
+
+```tsx
+const revenueMetric = schema.metrics.revenue;
+const ordersTable = schema.tables.orders;
+
+const revenueByMonthQuery = useMetabaseQueryObject({
+  metric: revenueMetric,
+  measures: [ordersTable.measures.totalRevenue],
+  breakouts: [breakout(revenueMetric.dimensions.createdAt, { bucket: "month" })],
+});
+
+return (
+  <InteractiveQuestion query={revenueByMonthQuery}>
+    <InteractiveQuestion.QuestionVisualization />
+  </InteractiveQuestion>
+);
+```
+
+Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
+
+## Filters And Breakouts
+
+Use helpers because they give better autocomplete and shorter errors.
+
+```ts
+filter(metric.dimensions.orders, ">", 0);
+filter(metric.dimensions.segment, "contains", "delivery");
+filter(metric.dimensions.orders, "between", [10, 20]);
+filter(metric.dimensions.segment, "not-empty");
+
+breakout(metric.dimensions.createdAt, { bucket: "month" });
+breakout(metric.dimensions.amount, {
+  binning: { strategy: "num-bins", "num-bins": 10 },
+});
+breakout(metric.dimensions.state);
+```
+
+Filter operator rules:
+
+- string: `=`, `!=`, `contains`, `does-not-contain`, `starts-with`, `ends-with`, `is-empty`, `not-empty`, `is-null`, `not-null`
+- number: `=`, `!=`, `>`, `>=`, `<`, `<=`, `between`, `is-null`, `not-null`
+- date: `=`, `!=`, `>`, `>=`, `<`, `<=`, `between`, `time-interval`, `is-null`, `not-null`
+- boolean: `=`, `is-null`, `not-null`
+
+Only date dimensions can use `bucket`. Non-date dimensions can be used as breakouts without `bucket`; numeric dimensions can use `binning`.
+
+Segments are already filters:
+
+```ts
+filters: [
+  schema.tables.orders.segments.completedOrders,
+  filter(schema.tables.orders.fields.total, ">", 100),
 ];
 ```
 
-Avoid:
+Use curated segments first when they exactly match the product intent. Use `filter(...)` when the UI needs a threshold, category, date range, text match, boolean condition, or other narrowing that is not already represented by a curated segment.
 
 ```ts
-breakouts: [{ dimension: "segment" }];
-```
+const dailyRevenue = schema.tables.dailyStoreRevenue;
+type DailyRevenue = typeof dailyRevenue;
 
-Do not add local lookup helpers like `getMetricDimension(metric, "segment")` or `getTableField(table, "created_at")`. If a field or dimension is needed in app code, use the generated keyed schema object directly.
-
-Metric queries can also add curated table measures as additional aggregations in the same query stage. In that case, use the metric as the base aggregation, use table measures as extra aggregations, and use fields from the measure's table for breakouts:
-
-```ts
-type Schema = typeof schema;
-type CustomerLifetimeValue = typeof schema.metrics.customerLifetimeValue;
-
-const lifetimeValueTable = schema.tables.customerLifetimeValue;
-const lifetimeValueMetric = schema.metrics.customerLifetimeValue;
-
-const { data } = useMetabaseQuery<CustomerLifetimeValue, Schema>({
-  metricId: lifetimeValueMetric.id,
-  measures: [lifetimeValueTable.measures.totalLtv],
-  breakouts: [
-    {
-      dimension: lifetimeValueTable.fields.lastOrderedAt,
-      bucket: "month",
-    },
+const { data } = useMetabaseQuery<DailyRevenue>({
+  tableId: dailyRevenue.id,
+  filters: [
+    dailyRevenue.segments.ordersFromThisMonth,
+    filter(dailyRevenue.fields.netRevenue, ">", 1000),
   ],
+  aggregations: [dailyRevenue.measures.sumOfNetRevenue],
+  breakouts: [breakout(dailyRevenue.fields.orderDate, { bucket: "day" })],
 });
 ```
 
-Use measures from one compatible table. Do not mix measures from unrelated tables in a single metric query.
+## Result Shape And Charts
 
-## Debugging Checklist
+- Prefer keyed `data.rows`.
+- Inspect `data.columns` before mapping low-level `rawRows`.
+- Runtime row objects are keyed by returned Metabase column names, usually `column.name` such as `net_revenue` or `avg_rating`. Do not assume generated schema keys like `netRevenue` or `avgRating` are runtime row keys.
+- Treat row values as nullable. Guard before calling number/string methods such as `toFixed`, `toLocaleString`, or string transforms.
+- Use `rawRows` only for known positional shapes, such as multiple aggregation series.
+- Metric-plus-measure queries commonly return `[breakout, metric aggregation, measure aggregation]`.
+- Aggregation columns may be named `count`, `sum`, or `avg`; match metadata when needed.
+- Grouped queries can include a `null` breakout bucket. Render it as `"Unknown"` or filter it out deliberately.
+- Time-series charts need multiple ordered buckets. Do not fake sparklines for scalar or one-point results.
+- Multi-series charts with different units or magnitudes need separate axes or normalization.
+- Format user-facing values: currency to at most 2 decimals, counts as whole numbers, dates as readable labels.
+- Do not render ambiguous derived business metrics unless the semantic layer description or inspected sample values make the meaning and units obvious. This includes fields named like `margin`, `rate`, `score`, `percent`, `health`, `risk`, or `efficiency`.
+- Do not multiply by 100, add `%`, bucket into health/risk labels, or invent interpretation for ambiguous fields without evidence. Prefer omitting the field over guessing.
+- If a ratio is needed, derive it explicitly from returned numerator and denominator fields with clear labels. If the source value is an amount, format it as an amount.
+- Empty results are distinct from loading. After `isLoading` is false, render a clear empty state instead of leaving a skeleton or blank KPI.
 
-When the UI shows an empty state such as "No orders found":
+## Presentation Guidance
 
-1. Log the hook state: schema object `id`, `isLoading`, `error`, `Boolean(data)`.
-2. Log `data?.columns.map(c => c.name)` and `data?.rows.length`.
-3. Log the full first column object, first row object, and `data?.rawRows[0]` if positional debugging is needed.
-4. Confirm the component is rendered under `MetabaseProvider`.
-5. Confirm the generated schema entry has the expected `id`, `columns`, keyed table `fields`, table `segments`, table `measures`, and keyed metric `dimensions`.
-6. If the schema is stale, ask for an API key and regenerate `src/metabase.data.ts`.
+Prefer Metabase-rendered panels for chart-shaped and table-shaped data. The React app may group, sort, format, and derive display-only values from `data.rows` when a custom panel is justified, but do not make custom panels the default.
+
+Good transforms:
+
+- Group rows for summaries.
+- Sort and slice rows for ranked lists only when a custom list is clearly better than a Metabase row/bar/table visualization.
+- Pick chart types from actual data shape, and prefer Metabase `bar`, `line`, `area`, `row`, `combo`, `pivot`, and `table` displays before writing custom chart code.
+- Show loading, error, and empty states.
+- Bound dense result displays. Tables, alert lists, logs, and ranked lists should use a top-N slice, grouping, pagination, or a fixed/max-height scroll area so a large result set cannot stretch the entire page.
+
+When a page feels like a raw table browser, look for schema-backed ways to enrich it:
+
+- Use segments for curated subsets like active, completed, overdue, high-priority, or needs-attention records.
+- Use measures for curated aggregations instead of recalculating everything ad hoc in React.
+- Use filters to focus the query on the UI's intent.
+- Use breakouts to create trends, category comparisons, and grouped summaries.
+- If the enriched result is still a sortable/drillable table, render it with `InteractiveQuestion` instead of rebuilding table behavior in React.
+
+Avoid manual classification when the semantic layer already has the concept. Prefer curated segments, fields, metrics, or measures over string matching, threshold heuristics, or category reconstruction in React.
+
+If no curated schema entry supports the intended UI, leave the section out or ask for semantic-layer curation. Do not keep mock data or placeholder analytics in the finished app.
 
 ## Common Mistakes
 
-- Searching the Metabase instance or creating saved questions while building the UI. The semantic layer must already be curated.
-- Importing the older split query hooks for new semantic-schema apps. Use `useMetabaseQuery`.
-- Copying numeric IDs into constants. Use generated `.id` values inline in `useMetabaseQuery`.
-- Recreating a `useQuestionRows` wrapper. Use `useMetabaseQuery<SomeQuestion>({ questionId: schema.questions.someQuestion.id })` directly.
-- Mapping rows through `toX` adapter functions just to regain typed fields. The hook already returns typed row objects when given the generated schema type.
-- Hard-coding column indexes when keyed rows are available.
-- Inventing fields that are not present in `schema.questions.*.columns`, `schema.tables.*.fields`, or `schema.metrics.*.dimensions`.
-- Passing raw strings for metric dimensions. Use `schema.metrics.someMetric.dimensions.someDimension` so the SDK can send the generated dimension id expected by Metabase.
-- Passing raw strings for table fields. Use `schema.tables.someTable.fields.someField` so the SDK can send the generated field id expected by Metabase.
-- Adding local field or dimension lookup helpers in React components instead of using the keyed generated schema objects.
-- Mixing segments or measures from a different table than the queried `tableId`.
-- Mixing measures from multiple tables in one metric query.
-- Assuming measure result columns are named after the curated measure. Check returned aggregation column metadata; the API may use names like `sum`.
-- Letting a `null` breakout bucket become the last point in a time-series chart.
-- Plotting different-unit series on one shared scale when the intended comparison needs separate axes or normalized series.
-- Drawing SVG point markers inside a stretched SVG and accidentally turning circles into ovals.
-- Forcing a chart type without checking whether the result has enough rows or categories to support it.
-- Showing raw floating point values in user-facing UI. Format numbers according to their domain.
-- Keeping mock data or placeholder analytics when a curated schema entry can power the view.
+- Creating or searching for Metabase content during app building.
+- Importing older hooks instead of `useMetabaseQuery`.
+- Using `metricId` for new metric queries instead of `metric: schema.metrics.someMetric`.
+- Copying raw numeric IDs into constants instead of using generated `.id` values.
+- Inventing ad hoc measure objects such as `{ name: "count" }` or `{ name: "sum", field: fieldId }`.
+- Passing raw strings for metric dimensions or table fields.
+- Adding lookup helpers instead of using keyed generated schema objects.
+- Mixing fields, dimensions, segments, or measures from unrelated tables/metrics.
+- Assuming `filter(...)` fully validates value types.
+- Letting a `null` bucket become the latest time-series point.
+- Hardcoding business values, labels, timestamps, or rankings.
+- Creating chart-ready arrays by hand instead of deriving them from queried `data.rows`.
+- Rendering fields that are not present in the schema or returned query result.
 - Rendering `No data` while the SDK is still authenticating or loading.
-- Creating a nested `MetabaseProvider` per component instead of sharing one provider at the app boundary.
+- Creating nested `MetabaseProvider` instances instead of sharing one provider at the app boundary.
