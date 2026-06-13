@@ -42,7 +42,7 @@ module.exports = DataApp;
 `.trim();
 
 const dataApp_js = `
-export * from "./data-app.bundle.js";
+export * from "./data-app.esm.js";
 `.trim();
 
 writeToFile("data-app.cjs", dataApp_cjs);
@@ -92,7 +92,7 @@ try {
   console.warn("Metabase SDK: Failed to set dev mode flag", e);
 }
 
-module.exports = require("./main.bundle");
+export * from "./main.esm.js";
 `.trim();
 
 writeToFile("main.development.js", devMode_js);
