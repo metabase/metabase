@@ -46,17 +46,3 @@ export type CustomVizEvent =
   | CustomVizPluginToggledEvent
   | CustomVizPluginRefreshedEvent
   | CustomVizSelectedEvent;
-
-export type PublicLinkPasswordSetEvent = ValidateEvent<{
-  event: "public_link_password_set";
-  event_detail: "card" | "dashboard";
-}>;
-
-export type PublicLinkPasswordRemovedEvent = ValidateEvent<{
-  event: "public_link_password_removed";
-  event_detail: "card" | "dashboard";
-}>;
-
-export type PublicLinkPasswordEvent =
-  | PublicLinkPasswordSetEvent
-  | PublicLinkPasswordRemovedEvent;

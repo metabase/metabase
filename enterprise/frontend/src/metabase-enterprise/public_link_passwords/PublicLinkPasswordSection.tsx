@@ -17,10 +17,6 @@ import {
 
 import S from "./PublicLinkPasswordSection.module.css";
 import {
-  trackPublicLinkPasswordRemoved,
-  trackPublicLinkPasswordSet,
-} from "./analytics";
-import {
   useDeletePublicLinkPasswordMutation,
   useGetPublicLinkPasswordQuery,
   useRevealPublicLinkPasswordMutation,
@@ -108,7 +104,6 @@ export const PublicLinkPasswordSection = ({
   const handleToggle = useCallback(async () => {
     if (hasPassword) {
       await deletePassword({ entityType, entityId });
-      trackPublicLinkPasswordRemoved(entityType);
       resetDraft();
       setRevealedPassword(null);
     } else {
@@ -130,7 +125,6 @@ export const PublicLinkPasswordSection = ({
         entityId,
         password: inputValue,
       }).unwrap();
-      trackPublicLinkPasswordSet(entityType);
       // The admin just typed this value, so show it revealed without a separate
       // audited reveal.
       setRevealedPassword(inputValue);
