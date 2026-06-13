@@ -73,6 +73,7 @@ export type JsMetricDefinition = {
   expression: JsExpressionRef | unknown[];
   filters?: InstanceFilter[];
   projections?: TypedProjection[];
+  measures?: number[];
 };
 
 export type MetricDatasetRequest = {
