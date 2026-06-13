@@ -5,13 +5,6 @@ import {
 } from "./labels";
 import type { TreemapLayoutNode } from "./types";
 
-const config = {
-  minTileWidth: 100,
-  minTileHeight: 40,
-  minFullTileHeight: 100,
-  padding: 12,
-};
-
 function leaf(id: string, width: number, height: number): TreemapLayoutNode {
   return { id, rect: { width, height }, isLeaf: true };
 }
@@ -23,7 +16,10 @@ function group(id: string, width: number): TreemapLayoutNode {
 describe("getTreemapLabelLayout", () => {
   it("returns full detail for large tiles when the value block fits", () => {
     expect(
-      getTileLabelLayout({ width: 200, height: 120 }, 120, config),
+      getTileLabelLayout({
+        rect: { width: 200, height: 120 },
+        valueLabelWidth: 120,
+      }),
     ).toEqual({
       show: true,
       detail: "full",
@@ -33,14 +29,22 @@ describe("getTreemapLabelLayout", () => {
 
   it("degrades to labelOnly or none when constraints are not met", () => {
     expect(
-      getTileLabelLayout({ width: 200, height: 120 }, 200, config),
+      getTileLabelLayout({
+        rect: { width: 200, height: 120 },
+        valueLabelWidth: 200,
+      }),
     ).toEqual({
       show: true,
       detail: "labelOnly",
       width: 176,
     });
 
-    expect(getTileLabelLayout({ width: 80, height: 300 }, 0, config)).toEqual({
+    expect(
+      getTileLabelLayout({
+        rect: { width: 80, height: 300 },
+        valueLabelWidth: 0,
+      }),
+    ).toEqual({
       show: false,
       detail: "none",
       width: 56,
@@ -59,7 +63,6 @@ describe("getTreemapLabelLayouts", () => {
 
     expect(
       getAllTileLabelLayouts(nodes, {
-        ...config,
         getValueLabelWidth: (id) => valueWidths[id],
       }),
     ).toEqual({
@@ -78,7 +81,6 @@ describe("getTreemapLabelLayouts", () => {
 
     expect(
       getAllTileLabelLayouts(nodes, {
-        ...config,
         getValueLabelWidth,
       }),
     ).toEqual({
@@ -96,7 +98,6 @@ describe("getTreemapParentLabelLayouts", () => {
   const parentConfig = {
     measureTextWidth: (text: string) => text.length * 6,
     getLabel: (id: string) => labels[id],
-    padding: 12,
     getValuePercentWidth: () => 100,
   };
 

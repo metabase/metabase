@@ -1,17 +1,9 @@
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import {
-  LABEL_PADDING,
-  TREEMAP_CHART_STYLE,
-  groupHeader,
-  leafBlock,
-} from "../style";
+import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "../style";
 
 import type { TreemapFormatters } from "./formatters";
 import {
-  MIN_FULL_LABEL_TILE_HEIGHT,
-  MIN_LABEL_TILE_HEIGHT,
-  MIN_LABEL_TILE_WIDTH,
   type ParentLabelLayout,
   type TreemapLabelLayout,
   getAllParentLabelLayouts,
@@ -27,12 +19,7 @@ export interface TreemapMeasuredLabelLayouts {
 }
 
 /**
- * Second pass of the label layout: given the rendered tile rectangles, measure
- * each label at its real font and decide which tiles show the full stacked
- * block, the name alone, or nothing — and which group header chips show their
- * name and the right-aligned value+percentage cluster. Shared by the dynamic
- * chart (via `use-label-measurement`, off the `finished` event) and the static
- * renderer (which lays out, measures, and re-renders synchronously).
+ * Based on real rendered sizes of headers and tiles, decide which labels show
  */
 export function measureTreemapLabelLayouts({
   nodes,
@@ -51,17 +38,8 @@ export function measureTreemapLabelLayouts({
 }): TreemapMeasuredLabelLayouts {
   const formatShare = getTreemapPercentOfTotalFormatter(tree);
 
-  // Leaf tiles qualify for the "full" stacked block only when the value line
-  // (the widest, at the H3 font) fits the tile width, so measure it at that
-  // font. The value renders in the leaf-label font family (see the rich style
-  // in `option.ts`), so measure with the same family.
   const labelLayout = getAllTileLabelLayouts(nodes, {
-    minTileWidth: MIN_LABEL_TILE_WIDTH,
-    minTileHeight: MIN_LABEL_TILE_HEIGHT,
-    minFullTileHeight: MIN_FULL_LABEL_TILE_HEIGHT,
-    padding: LABEL_PADDING,
     getValueLabelWidth: (id) => {
-      // Setting off → never qualify for the "full" block (stay name-only).
       if (!showLeafValues) {
         return Infinity;
       }
@@ -77,11 +55,6 @@ export function measureTreemapLabelLayouts({
     },
   });
 
-  // Parent (group) header chips: a group node id is "0", "1", … — the index
-  // into the top-level tree. Measure each header's name at the chip's font
-  // style (too-narrow chips suppress the name); also measure the right-aligned
-  // value+percentage cluster (value bold + gap + percent regular) so the chip
-  // shows it only when there's room.
   const measureHeader = (text: string, weight: number) =>
     renderingContext.measureText(text, {
       size: groupHeader.fontSize,
@@ -92,7 +65,6 @@ export function measureTreemapLabelLayouts({
     getLabel: (id) => getNode(id, tree)?.displayName,
     measureTextWidth: (text) => measureHeader(text, groupHeader.fontWeight),
     getValuePercentWidth: (id) => {
-      // Setting off → header never shows the value+percentage cluster.
       if (!showParentValues) {
         return Infinity;
       }
@@ -106,7 +78,6 @@ export function measureTreemapLabelLayouts({
         measureHeader(formatShare(node.value), groupHeader.percentFontWeight)
       );
     },
-    padding: groupHeader.paddingX,
   });
 
   return { labelLayout, parentLabelLayout };

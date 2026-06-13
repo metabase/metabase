@@ -3,6 +3,8 @@ import { match } from "ts-pattern";
 
 import type { VisualizationProps } from "metabase/visualizations/types";
 
+import { LABEL_PADDING, groupHeader } from "../style";
+
 import type { TreemapLayoutNode } from "./types";
 
 export const PARENT_MIN_HEADER_VISIBLE_CHARS = 3;
@@ -15,13 +17,6 @@ export interface TreemapLabelLayout {
   show: boolean;
   detail: TreemapLabelDetail;
   width: number;
-}
-
-export interface TreemapLabelLayoutConfig {
-  minTileWidth: number;
-  minTileHeight: number;
-  minFullTileHeight: number;
-  padding: number;
 }
 
 export function shouldShowParentLabels(
@@ -45,7 +40,6 @@ export interface ParentLabelLayout {
 export interface ParentLabelLayoutConfig {
   measureTextWidth: (text: string) => number;
   getLabel: (id: string) => string | undefined;
-  padding: number;
   getValuePercentWidth?: (id: string) => number;
 }
 
@@ -62,7 +56,7 @@ export function getAllParentLabelLayouts(
     if (label == null) {
       continue;
     }
-    const available = node.rect.width - config.padding * 2;
+    const available = node.rect.width - groupHeader.paddingX * 2;
     const minReadable = label.slice(0, PARENT_MIN_HEADER_VISIBLE_CHARS);
     const minReadableWidth = config.measureTextWidth(minReadable);
     const showText = minReadableWidth <= available;
@@ -91,13 +85,18 @@ export const MIN_LABEL_TILE_WIDTH = 100;
 export const MIN_LABEL_TILE_HEIGHT = 40;
 export const MIN_FULL_LABEL_TILE_HEIGHT = 100;
 
-export interface TileLabelLayoutsConfig extends TreemapLabelLayoutConfig {
+export interface TileLabelLayoutsConfig {
   getValueLabelWidth?: (id: string) => number;
+}
+
+interface GetTileLabelLayoutArgs {
+  rect: { width: number; height: number };
+  valueLabelWidth: number;
 }
 
 export function getAllTileLabelLayouts(
   nodes: TreemapLayoutNode[],
-  { getValueLabelWidth = () => Infinity, ...config }: TileLabelLayoutsConfig,
+  { getValueLabelWidth = () => Infinity }: TileLabelLayoutsConfig,
 ): Record<string, TreemapLabelLayout> {
   const layouts: Record<string, TreemapLabelLayout> = {};
   for (const node of nodes) {
@@ -105,29 +104,28 @@ export function getAllTileLabelLayouts(
       continue;
     }
     const fitsLabel =
-      node.rect.width >= config.minTileWidth &&
-      node.rect.height >= config.minTileHeight;
-    const fitsFull = fitsLabel && node.rect.height >= config.minFullTileHeight;
-    layouts[node.id] = getTileLabelLayout(
-      node.rect,
-      fitsFull ? getValueLabelWidth(node.id) : Infinity,
-      config,
-    );
+      node.rect.width >= MIN_LABEL_TILE_WIDTH &&
+      node.rect.height >= MIN_LABEL_TILE_HEIGHT;
+    const fitsFull =
+      fitsLabel && node.rect.height >= MIN_FULL_LABEL_TILE_HEIGHT;
+    layouts[node.id] = getTileLabelLayout({
+      rect: node.rect,
+      valueLabelWidth: fitsFull ? getValueLabelWidth(node.id) : Infinity,
+    });
   }
   return layouts;
 }
 
-export function getTileLabelLayout(
-  rect: { width: number; height: number },
-  valueLabelWidth: number,
-  config: TreemapLabelLayoutConfig,
-): TreemapLabelLayout {
-  const innerWidth = Math.max(0, rect.width - config.padding * 2);
+export function getTileLabelLayout({
+  rect,
+  valueLabelWidth,
+}: GetTileLabelLayoutArgs): TreemapLabelLayout {
+  const innerWidth = Math.max(0, rect.width - LABEL_PADDING * 2);
   const fitsLabel =
-    rect.width >= config.minTileWidth && rect.height >= config.minTileHeight;
+    rect.width >= MIN_LABEL_TILE_WIDTH && rect.height >= MIN_LABEL_TILE_HEIGHT;
   const fitsFull =
     fitsLabel &&
-    rect.height >= config.minFullTileHeight &&
+    rect.height >= MIN_FULL_LABEL_TILE_HEIGHT &&
     innerWidth >= valueLabelWidth;
 
   const detail: TreemapLabelDetail = match({ fitsFull, fitsLabel })
