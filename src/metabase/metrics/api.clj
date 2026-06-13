@@ -123,10 +123,16 @@
    [:map
     [:expression  ::lib-metric.schema/metric-math-expression]
     [:filters     {:optional true} [:maybe ::lib-metric.schema/instance-filters]]
-    [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]]
+    [:projections {:optional true} [:maybe ::lib-metric.schema/typed-projections]]
+    [:measures    {:optional true} [:maybe ::lib-metric.schema/measure-references]]]
    [:fn {:error/message "Expression must contain at least one metric or measure"}
     (fn [{:keys [expression]}]
       (seq (collect-expression-leaves expression)))]
+   [:fn {:error/message "Measures can only be added to a single metric expression"}
+    (fn [{:keys [expression measures]}]
+      (or (empty? measures)
+          (and (= :metric (lib-metric/expression-leaf-type expression))
+               (= 1 (count (collect-expression-leaves expression))))))]
    [:fn {:error/message "All :lib/uuid values in expression must be unique"}
     (fn [{:keys [expression]}]
       (let [uuids (collect-expression-uuids expression)]
@@ -169,6 +175,11 @@
       :metric  (api/query-check (t2/select-one :model/Card :id source-id :type "metric"))
       :measure (api/query-check (t2/select-one :model/Measure :id source-id)))))
 
+(defn- check-measure-permissions
+  [measure-ids]
+  (doseq [measure-id measure-ids]
+    (api/query-check (t2/select-one :model/Measure :id measure-id))))
+
 (defn- from-api-definition
   "Create a MetricDefinition from API definition parameters.
 
@@ -177,14 +188,17 @@
 
    Permission checks are performed on all referenced entities in the expression."
   [provider definition]
-  (let [{:keys [expression filters projections]} definition]
+  (let [{:keys [expression filters projections measures]} definition]
     ;; Permission check all expression leaves
     (check-expression-permissions expression)
+    ;; Permission check additional measure aggregations
+    (check-measure-permissions measures)
     ;; Build MetricDefinition — format matches directly
     {:lib/type          :metric/definition
      :expression        expression
      :filters           (or filters [])
      :projections       (or projections [])
+     :measures          (or measures [])
      :metadata-provider provider}))
 
 (defn- with-metric-exec-info
@@ -227,7 +241,8 @@
    - expression: A metric math expression tree (leaf reference or arithmetic)
      Examples: [:metric {:lib/uuid \"a\"} 42], [:- {} [:metric {:lib/uuid \"a\"} 1] [:metric {:lib/uuid \"b\"} 2]]
    - filters (optional): Per-instance filters keyed by :lib/uuid from the expression
-   - projections (optional): Typed projections keyed by source type and ID"
+   - projections (optional): Typed projections keyed by source type and ID
+   - measures (optional): Measure IDs to add as extra aggregations to a single metric expression"
   [_route-params
    _query-params
    {:keys [definition]} :- ::DatasetRequest]

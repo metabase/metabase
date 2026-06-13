@@ -36,13 +36,13 @@ writeToFile("nextjs.js", nextjs_js);
 
 // Data-app specific imports
 const dataApp_cjs = `
-const { DataAppRouter, DataAppLink, useDataAppLocation } = require("./main.bundle");
+const DataApp = require("./data-app.bundle");
 
-module.exports = { DataAppRouter, DataAppLink, useDataAppLocation };
+module.exports = DataApp;
 `.trim();
 
 const dataApp_js = `
-export { DataAppRouter, DataAppLink, useDataAppLocation } from "./main.bundle.js";
+export * from "./data-app.bundle.js";
 `.trim();
 
 writeToFile("data-app.cjs", dataApp_cjs);
@@ -53,11 +53,29 @@ import {
   DataAppRouter as _DataAppRouter,
   DataAppLink as _DataAppLink,
   useDataAppLocation as _useDataAppLocation,
+  breakout as _breakout,
+  createMetabaseQuery as _createMetabaseQuery,
+  filter as _filter,
+  useMetabaseQuery as _useMetabaseQuery,
+  useMetabaseQueryObject as _useMetabaseQueryObject,
+} from './index.d.ts';
+import type {
+  MetabaseBreakout as _MetabaseBreakout,
+  MetabaseQueryOptions as _MetabaseQueryOptions,
+  UseMetabaseQueryResult as _UseMetabaseQueryResult,
 } from './index.d.ts';
 
 export declare const DataAppRouter: typeof _DataAppRouter;
 export declare const DataAppLink: typeof _DataAppLink;
 export declare const useDataAppLocation: typeof _useDataAppLocation;
+export declare const breakout: typeof _breakout;
+export declare const createMetabaseQuery: typeof _createMetabaseQuery;
+export declare const filter: typeof _filter;
+export declare const useMetabaseQuery: typeof _useMetabaseQuery;
+export declare const useMetabaseQueryObject: typeof _useMetabaseQueryObject;
+export type MetabaseBreakout = _MetabaseBreakout;
+export type MetabaseQueryOptions = _MetabaseQueryOptions;
+export type UseMetabaseQueryResult = _UseMetabaseQueryResult;
 `.trim();
 
 writeToFile("data-app.d.ts", dataApp_dts);

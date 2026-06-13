@@ -1,8 +1,10 @@
 (ns metabase.typed-schemas.api
   "/api/typed-schemas endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.actions.core :as actions]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
@@ -30,8 +32,41 @@
 (def ^:private typescript-response-headers
   (assoc javascript-response-headers "Content-Type" "text/typescript; charset=utf-8"))
 
-(def ^:private js-identifier-key-pattern
-  #"\"([A-Za-z_$][A-Za-z0-9_$]*)\"\s*:")
+(def ^:private js-identifier-pattern
+  #"[A-Za-z_$][A-Za-z0-9_$]*")
+
+(def ^:private schema-render-policy
+  {:question         {:runtime [:kind :id :name :display :columns :parameters]
+                      :comment [:key :entityId :description :verified]}
+   :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
+                      :comment [:key :entityId :description :databaseName :schemaName :tableName]}
+   :field            {:runtime [:name :jsType :fieldId :tableId :defaultTemporalBucket]
+                      :comment [:key :id :displayName :description :baseType :effectiveType :semanticType :unit]}
+   :segment          {:runtime [:kind :id :tableId :name]
+                      :comment [:key :entityId :description]}
+   :measure          {:runtime [:kind :id :tableId :name :columns]
+                      :comment [:key :entityId :description]}
+   :metric           {:runtime [:kind :id :name :databaseId :sourceTableId :mappedTableIds :columns :dimensions]
+                      :comment [:key :entityId :description :verified :sourceTable]}
+   :metric-dimension {:runtime [:id :fieldId :metricId :tableId :name :jsType :defaultTemporalBucket]
+                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
+   :column           {:runtime [:name :jsType]
+                      :comment [:displayName :description :baseType :effectiveType :semanticType :unit]}})
+
+(def ^:private comment-labels
+  {:baseType     "Base type"
+   :databaseName "Database"
+   :description  "Description"
+   :displayName  "Display name"
+   :effectiveType "Effective type"
+   :entityId     "Entity ID"
+   :key          "Generated key"
+   :schemaName   "Schema"
+   :semanticType "Semantic type"
+   :sourceTable  "Source table"
+   :tableName    "Table"
+   :unit         "Unit"
+   :verified     "Verified"})
 
 (defn- js-type
   [{:keys [type base_type effective_type] :as _column}]
@@ -83,33 +118,72 @@
       (str "entity" id)
       k)))
 
+(defn- pascal-case
+  [s]
+  (when-not (str/blank? s)
+    (str (u/upper-case-en (subs s 0 1))
+         (subs s 1))))
+
 (defn- keyed-map
   [entities]
-  (reduce (fn [m entity]
-            (let [base-key (:key entity)
-                  key      (if (contains? m base-key)
-                             (str base-key (:id entity))
-                             base-key)]
-              (assoc m key (assoc entity :key key))))
-          (sorted-map)
-          entities))
+  (let [entities          (vec entities)
+        base-key->count   (frequencies (map :key entities))
+        duplicate-key?    (fn [base-key]
+                            (> (get base-key->count base-key 0) 1))
+        candidate-key     (fn [entity]
+                            (let [base-key (:key entity)]
+                              (if-not (duplicate-key? base-key)
+                                base-key
+                                (str base-key (or (:keyDisambiguator entity)
+                                                  (:tableId entity)
+                                                  (:id entity))))))
+        candidate->count  (frequencies (map candidate-key entities))
+        disambiguated-key (fn [entity]
+                            (let [candidate (candidate-key entity)]
+                              (if (= 1 (get candidate->count candidate))
+                                candidate
+                                (str candidate (:id entity)))))]
+    (reduce (fn [m entity]
+              (let [key (disambiguated-key entity)]
+                (assoc m key (-> entity
+                                 (dissoc :keyDisambiguator)
+                                 (assoc :key key)))))
+            (sorted-map)
+            entities)))
 
-(defn- query-database-name
+(defn- query-param
+  [query-params k]
+  (or (get query-params k)
+      (get query-params (name k))))
+
+(defn- truthy-query-param?
+  [v]
+  (contains? #{true "true" "1"} v))
+
+(defn- query-database-value
   [query-params]
-  (some-> (or (:database query-params)
-              (get query-params "database")
-              (:database-name query-params)
-              (get query-params "database-name"))
+  (some-> (or (query-param query-params :database)
+              (query-param query-params :database-name))
           str/trim
           not-empty))
 
-(defn- database-ids-for-name
-  [database-name]
-  (when database-name
-    (->> (t2/select :model/Database :name database-name)
-         (filter mi/can-read?)
-         (map :id)
-         set)))
+(defn- parse-id
+  [s]
+  (try
+    (Long/parseLong s)
+    (catch NumberFormatException _
+      nil)))
+
+(defn- database-ids-for-value
+  [database-value]
+  (when database-value
+    (let [database-id (parse-id database-value)]
+      (->> (if database-id
+             (t2/select :model/Database :id database-id)
+             (t2/select :model/Database :name database-value))
+           (filter mi/can-read?)
+           (map :id)
+           set))))
 
 (defn- database-id-filter-clause
   [database-ids column]
@@ -118,16 +192,127 @@
       [:in column database-ids]
       [:= column -1])))
 
+(defn- id-filter-clause
+  [ids column]
+  (when ids
+    (if (seq ids)
+      [:in column ids]
+      [:= column -1])))
+
+(defn- query-library-value
+  [query-params]
+  (some-> (query-param query-params :library)
+          str/trim
+          not-empty))
+
+(defn- query-comma-separated-values
+  [query-params ks]
+  (when-let [value (some-> (->> ks
+                                (keep #(query-param query-params %))
+                                first)
+                           str/trim
+                           not-empty)]
+    (->> (str/split value #",")
+         (map str/trim)
+         (remove str/blank?)
+         seq)))
+
+(defn- query-library-collection-values
+  [query-params]
+  (query-comma-separated-values query-params [:library-collections
+                                              :libraryCollections
+                                              :collections]))
+
+(defn- query-question-collection-values
+  [query-params]
+  (query-comma-separated-values query-params [:question-collections
+                                              :questionCollections]))
+
+(defn- parse-collection-id
+  [collection-value]
+  (or (parse-id collection-value)
+      (api/check-400 false (format "Invalid collection id: %s" collection-value))))
+
+(defn- library-collection-for-value
+  [library-value]
+  (when library-value
+    (let [collection-id (parse-id library-value)]
+      (->> (if collection-id
+             (t2/select :model/Collection :id collection-id)
+             (t2/select :model/Collection :name library-value))
+           (filter #(contains? collection/library-collection-types (:type %)))
+           (filter mi/can-read?)
+           first))))
+
+(defn- library-collection-for-id
+  [collection-id]
+  (->> (t2/select :model/Collection :id collection-id)
+       (filter #(contains? collection/library-collection-types (:type %)))
+       (filter mi/can-read?)
+       first))
+
+(defn- collection-for-id
+  [collection-id]
+  (->> (t2/select :model/Collection :id collection-id)
+       (filter mi/can-read?)
+       first))
+
+(defn- collection-scope
+  [collection-values]
+  (when (seq collection-values)
+    (let [collections (for [collection-value collection-values]
+                        (or (collection-for-id (parse-collection-id collection-value))
+                            (api/check-404 false)))]
+      (->> collections
+           (mapcat #(cons % (collection/descendants-flat %)))
+           (map :id)
+           set))))
+
+(defn- library-collection-scope*
+  [library-collections]
+  (let [ids          (->> library-collections
+                          (mapcat #(cons % (collection/descendants-flat %)))
+                          (map :id)
+                          set)
+        rows         (t2/select [:model/Collection :id :type] :id [:in ids])
+        ids-for-type (fn [collection-type]
+                       (->> rows
+                            (filter #(= (:type %) collection-type))
+                            (map :id)
+                            set))]
+    {:library-collections  library-collections
+     :collection-ids        ids
+     :data-collection-ids   (ids-for-type collection/library-data-collection-type)
+     :metric-collection-ids (ids-for-type collection/library-metrics-collection-type)}))
+
+(defn- library-collection-scope
+  [library-value]
+  (when library-value
+    (let [library (or (library-collection-for-value library-value)
+                      (api/check-404 false))]
+      (library-collection-scope* [library]))))
+
+(defn- library-collections-scope
+  [collection-values]
+  (when (seq collection-values)
+    (let [collections (for [collection-value collection-values]
+                        (or (library-collection-for-id (parse-collection-id collection-value))
+                            (api/check-404 false)))]
+      (library-collection-scope* collections))))
+
 (defn- select-cards
-  [card-type database-ids]
-  (->> (t2/select :model/Card
-                  {:where    (cond-> [:and
-                                      [:= :type (name card-type)]
-                                      [:= :archived false]
-                                      (collection/visible-collection-filter-clause :collection_id)]
-                               database-ids (conj (database-id-filter-clause database-ids :database_id)))
-                   :order-by [[:name :asc] [:id :asc]]})
-       (filter mi/can-read?)))
+  ([card-type database-ids]
+   (select-cards card-type database-ids nil))
+  ([card-type database-ids collection-ids]
+   (->> (t2/select :model/Card
+                   {:where    (cond-> [:and
+                                       [:= :type (name card-type)]
+                                       [:= :archived false]
+                                       (collection/visible-collection-filter-clause :collection_id)]
+                                database-ids (conj (database-id-filter-clause database-ids :database_id))
+                                collection-ids (conj (id-filter-clause collection-ids :collection_id)))
+                    :order-by [[:name :asc] [:id :asc]]})
+        (filter mi/can-read?))))
 
 (defn- question-details
   [card]
@@ -323,29 +508,41 @@
      :semantic_type  (some-> (:semantic-type dimension) u/qualified-name)
      :field_id       field-id}))
 
+(defn- field-table-id
+  [field-id]
+  (when (integer? field-id)
+    (t2/select-one-fn :table_id :model/Field :id field-id)))
+
 (defn- dimension-schema
-  [{:keys [field_id] :as dimension}]
-  (let [dimension-id (or (:id dimension) field_id)
-        field-id     (or field_id (some-> dimension :sources first :field-id))
-        table-id     (or (:table_id dimension) (:table-id dimension))
-        column       (if (:sources dimension)
-                       (persisted-dimension->column dimension)
-                       dimension)]
-    (assoc-some
-     (assoc (column-schema column)
-            :key (generated-key (:name column) dimension-id)
-            :id (str dimension-id))
-     :tableId (when (integer? table-id) table-id)
-     :fieldId (when (integer? field-id) field-id))))
+  ([dimension metric-id]
+   (dimension-schema dimension metric-id {}))
+  ([{:keys [field_id] :as dimension} metric-id table-key-by-id]
+   (let [dimension-id (or (:id dimension) field_id)
+         field-id     (or field_id (some-> dimension :sources first :field-id))
+         table-id     (or (:table_id dimension) (:table-id dimension) (field-table-id field-id))
+         column       (if (:sources dimension)
+                        (persisted-dimension->column dimension)
+                        dimension)]
+     (assoc-some
+      (assoc (column-schema column)
+             :key (generated-key (:name column) dimension-id)
+             :id (str dimension-id))
+      :fieldId (when (integer? field-id) field-id)
+      :tableId (when (integer? table-id) table-id)
+      :metricId metric-id
+      :keyDisambiguator (when (integer? table-id)
+                          (get table-key-by-id table-id))))))
 
 (defn- field-schema
   [{:keys [id field_id] :as field}]
-  (let [field-id (or id field_id)]
+  (let [field-id (or id field_id)
+        table-id (or (:table_id field) (:table-id field) (field-table-id field-id))]
     (assoc-some
      (assoc (column-schema field)
             :key (generated-key (:name field) field-id)
             :id field-id)
      :fieldId (when (integer? field-id) field-id)
+     :tableId (when (integer? table-id) table-id)
      :defaultTemporalBucket (:unit field))))
 
 (defn- metric-dimensions
@@ -354,12 +551,27 @@
   (-> (t2/select-one [:model/Card :dimensions] :id id)
       :dimensions))
 
+(defn- table-key-disambiguators
+  [table-ids]
+  (when (seq table-ids)
+    (->> (t2/select [:model/Table :id :name :display_name] :id [:in table-ids])
+         (map (fn [{:keys [id name display_name]}]
+                [id (pascal-case (generated-key (or display_name name) id))]))
+         (into {}))))
+
 (defn- source-table-schema
   [[database-name schema-name table-name]]
   (when (and database-name table-name)
     {:databaseName database-name
      :schemaName   schema-name
      :tableName    table-name}))
+
+(defn- source-table-id
+  [card]
+  (let [source-table (or (get-in card [:dataset_query :query :source-table])
+                         (get-in card [:dataset_query :stages 0 :source-table]))]
+    (when (integer? source-table)
+      source-table)))
 
 (defn- fallback-metric-column
   [{:keys [name]}]
@@ -388,7 +600,16 @@
                           (fallback-metric-column details))
         dimensions    (or (seq (metric-dimensions details))
                           (:queryable-dimensions details))
-        dimension-schemas (mapv dimension-schema dimensions)
+        table-ids     (->> dimensions
+                           (keep (fn [{:keys [field_id] :as dimension}]
+                                   (let [field-id (or field_id (some-> dimension :sources first :field-id))]
+                                     (or (:table_id dimension)
+                                         (:table-id dimension)
+                                         (field-table-id field-id)))))
+                           (filter integer?)
+                           distinct)
+        table-key-by-id (table-key-disambiguators table-ids)
+        dimension-schemas (mapv #(dimension-schema % id table-key-by-id) dimensions)
         mapped-table-ids  (->> dimension-schemas
                                (keep :tableId)
                                distinct
@@ -400,6 +621,8 @@
       :id         id
       :name       name
       :columns    [result-column]}
+     :databaseId (:database_id card)
+     :sourceTableId (source-table-id card)
      :entityId portable_entity_id
      :description description
      :verified (when verified true)
@@ -408,10 +631,23 @@
      :dimensions (not-empty (keyed-map dimension-schemas)))))
 
 (defn- select-tables
-  [database-ids]
+  ([database-ids]
+   (select-tables database-ids nil))
+  ([database-ids table-ids]
+   (->> (t2/select :model/Table
+                   {:where    (cond-> [:and [:= :active true]]
+                                database-ids (conj (database-id-filter-clause database-ids :db_id))
+                                table-ids (conj (id-filter-clause table-ids :id)))
+                    :order-by [[:name :asc] [:id :asc]]})
+        (filter mi/can-read?))))
+
+(defn- select-library-tables
+  [{:keys [data-collection-ids]}]
   (->> (t2/select :model/Table
-                  {:where    (cond-> [:and [:= :active true]]
-                               database-ids (conj (database-id-filter-clause database-ids :db_id)))
+                  {:where    [:and
+                              [:= :active true]
+                              [:= :is_published true]
+                              (id-filter-clause data-collection-ids :collection_id)]
                    :order-by [[:name :asc] [:id :asc]]})
        (filter mi/can-read?)))
 
@@ -458,58 +694,271 @@
      :segments (not-empty segments-map)
      :measures (not-empty measures-map))))
 
+(defn- table-details
+  [table]
+  (some-> (entity-details/get-table-details
+           {:entity-type          :table
+            :entity-id            (:id table)
+            :with-fields?         true
+            :with-field-values?   false
+            :with-related-tables? false
+            :with-metrics?        false
+            :with-measures?       true
+            :with-segments?       true})
+          :structured-output))
+
+(defn- question-schemas
+  ([database-ids]
+   (question-schemas database-ids nil))
+  ([database-ids collection-ids]
+   (for [card (select-cards :question database-ids collection-ids)
+         :let [details (question-details card)]
+         :when details]
+     (question-schema details))))
+
+(defn- model-schemas
+  ([database-ids]
+   (model-schemas database-ids nil))
+  ([database-ids collection-ids]
+   (for [card (select-cards :model database-ids collection-ids)
+         :let [details (question-details card)]
+         :when details]
+     (model-schema details))))
+
+(defn- metric-schemas
+  ([database-ids]
+   (metric-schemas database-ids nil))
+  ([database-ids collection-ids]
+   (for [card (select-cards :metric database-ids collection-ids)
+         :let [details (metric-details card)]
+         :when details]
+     (metric-schema details card))))
+
+(defn- table-schemas
+  [tables]
+  (for [table tables
+        :let [details (table-details table)]
+        :when details]
+    (table-schema details)))
+
+(defn- base-schema
+  [questions models tables metrics]
+  (array-map
+   :schemaVersion 2
+   :generatedAt   (str (Instant/now))
+   :metabase      {:instanceUrl (system/site-url)}
+   :questions     (keyed-map questions)
+   :models        (keyed-map models)
+   :tables        (keyed-map tables)
+   :metrics       (keyed-map metrics)))
+
+(defn- validate-query-params!
+  [query-params]
+  (let [library-value              (query-library-value query-params)
+        library-collection-values  (query-library-collection-values query-params)
+        question-collection-values (query-question-collection-values query-params)
+        collection-scoped?         (or library-value library-collection-values question-collection-values)
+        database-value             (query-database-value query-params)
+        questions-only             (truthy-query-param? (query-param query-params :questions))]
+    (api/check-400
+     (not (and library-value library-collection-values))
+     "The library and library-collections query parameters are mutually exclusive.")
+    (api/check-400
+     (not (and collection-scoped? database-value))
+     "Collection-scoped query parameters and database query parameters are mutually exclusive.")
+    (api/check-400
+     (not (and collection-scoped? questions-only))
+     "Collection-scoped query parameters and the questions query parameter are mutually exclusive.")
+    (api/check-400
+     (not (and questions-only (nil? database-value)))
+     "The questions query parameter requires a database query parameter.")))
+
+(defn- typed-schema-for-library-scope
+  [library-scope models]
+  (let [{:keys [metric-collection-ids]} library-scope
+        metrics               (metric-schemas nil metric-collection-ids)
+        mapped-table-ids      (->> metrics (mapcat :mappedTableIds) set)
+        library-table-ids     (->> (select-library-tables library-scope) (map :id) set)
+        table-ids             (set/union library-table-ids mapped-table-ids)
+        tables                (table-schemas (select-tables nil table-ids))]
+    (base-schema [] models tables metrics)))
+
 (defn- typed-schema
   [query-params]
-  (let [database-ids (database-ids-for-name (query-database-name query-params))
-        questions    (for [card (select-cards :question database-ids)
-                           :let [details (question-details card)]
-                           :when details]
-                       (question-schema details))
-        models       (for [card (select-cards :model database-ids)
-                           :let [details (question-details card)]
-                           :when details]
-                       (model-schema details))
-        metrics      (for [card (select-cards :metric database-ids)
-                           :let [details (metric-details card)]
-                           :when details]
-                       (metric-schema details card))
-        tables       (for [table (select-tables database-ids)
-                           :let [details (entity-details/get-table-details
-                                          {:entity-type          :table
-                                           :entity-id            (:id table)
-                                           :with-fields?         true
-                                           :with-field-values?   false
-                                           :with-related-tables? false
-                                           :with-metrics?        false
-                                           :with-measures?       true
-                                           :with-segments?       true})
-                                 details (:structured-output details)]
-                           :when details]
-                       (table-schema details))]
-    (array-map
-     :schemaVersion 2
-     :generatedAt   (str (Instant/now))
-     :metabase      {:instanceUrl (system/site-url)}
-     :questions     (keyed-map questions)
-     :models        (keyed-map models)
-     :tables        (keyed-map tables)
-     :metrics       (keyed-map metrics))))
+  (validate-query-params! query-params)
+  (let [library-value              (query-library-value query-params)
+        library-collection-values  (query-library-collection-values query-params)
+        question-collection-values (query-question-collection-values query-params)
+        database-ids               (database-ids-for-value (query-database-value query-params))
+        question-collection-ids    (collection-scope question-collection-values)
+        models                     (cond
+                                     database-ids
+                                     (model-schemas database-ids)
 
-(defn- unquote-js-property-names
-  [s]
-  (str/replace s js-identifier-key-pattern "$1:"))
+                                     question-collection-ids
+                                     (model-schemas nil question-collection-ids)
 
-(defn- encode-pretty
+                                     :else
+                                     [])
+        questions-only             (truthy-query-param? (query-param query-params :questions))]
+    (cond
+      (or library-value library-collection-values question-collection-values)
+      (let [library-scope       (cond
+                                  library-value
+                                  (library-collection-scope library-value)
+
+                                  library-collection-values
+                                  (library-collections-scope library-collection-values))
+            questions           (if question-collection-values
+                                  (question-schemas nil question-collection-ids)
+                                  [])
+            library-schema      (some-> library-scope
+                                        (typed-schema-for-library-scope models))]
+        (base-schema questions
+                     models
+                     (-> library-schema :tables vals)
+                     (-> library-schema :metrics vals)))
+
+      questions-only
+      (base-schema (question-schemas database-ids) models [] [])
+
+      :else
+      (let [questions (question-schemas database-ids)
+            metrics   (metric-schemas database-ids)
+            tables    (table-schemas (select-tables database-ids))]
+        (base-schema questions models tables metrics)))))
+
+(defn- map-key-value
+  [m k]
+  (some (fn [[entry-key entry-value]]
+          (when (= entry-key k)
+            entry-value))
+        m))
+
+(defn- node-kind
+  [path value]
+  (when (map? value)
+    (let [kind (map-key-value value :kind)]
+      (cond
+        (= kind "question") :question
+        (= kind "table") :table
+        (= kind "segment") :segment
+        (= kind "measure") :measure
+        (= kind "metric") :metric
+        (= (last (butlast path)) :fields) :field
+        (= (last (butlast path)) :dimensions) :metric-dimension
+        (= (last (butlast path)) :columns) :column
+        :else nil))))
+
+(defn- policy-runtime-keys
+  [kind value]
+  (let [runtime-keys (get-in schema-render-policy [kind :runtime])]
+    (if runtime-keys
+      (->> runtime-keys
+           (filter #(contains? value %)))
+      (keys value))))
+
+(defn- policy-comment-keys
+  [kind value]
+  (->> (get-in schema-render-policy [kind :comment])
+       (filter #(contains? value %))))
+
+(defn- javascript-key
+  [k]
+  (let [s (name k)]
+    (if (re-matches js-identifier-pattern s)
+      s
+      (json/encode s))))
+
+(defn- primitive-value?
+  [value]
+  (or (nil? value)
+      (string? value)
+      (number? value)
+      (true? value)
+      (false? value)))
+
+(defn- comment-value
+  [value]
+  (cond
+    (nil? value) nil
+    (map? value) (->> [(:databaseName value) (:schemaName value) (:tableName value)]
+                      (keep identity)
+                      (str/join "."))
+    :else (str value)))
+
+(defn- comment-lines
+  [indent kind value]
+  (let [spaces (apply str (repeat indent " "))]
+    (for [k (policy-comment-keys kind value)
+          :let [v (comment-value (get value k))]
+          :when (not (str/blank? v))]
+      (str spaces "// " (get comment-labels k (name k)) ": " (str/replace v #"\R+" " ")))))
+
+(declare render-javascript-value)
+
+(defn- render-javascript-entry
+  [indent path k value]
+  (let [kind     (node-kind (conj path k) value)
+        comments (comment-lines indent kind value)
+        spaces   (apply str (repeat indent " "))]
+    (str (when (seq comments)
+           (str (str/join "\n" comments) "\n"))
+         spaces
+         (javascript-key k)
+         ": "
+         (render-javascript-value value indent (conj path k)))))
+
+(defn- render-javascript-map
+  [value indent path]
+  (let [kind    (node-kind path value)
+        entries (->> (policy-runtime-keys kind value)
+                     (map (fn [k] (render-javascript-entry (+ indent 2) path k (get value k)))))]
+    (if (seq entries)
+      (str "{\n" (str/join ",\n" entries) "\n" (apply str (repeat indent " ")) "}")
+      "{ }")))
+
+(defn- render-javascript-vector
+  [value indent path]
+  (cond
+    (empty? value)
+    "[ ]"
+
+    (every? primitive-value? value)
+    (str "[ " (str/join ", " (map json/encode value)) " ]")
+
+    :else
+    (let [entries (map-indexed
+                   (fn [i item]
+                     (let [kind     (node-kind (conj path i) item)
+                           comments (comment-lines (+ indent 2) kind item)
+                           spaces   (apply str (repeat (+ indent 2) " "))]
+                       (str (when (seq comments)
+                              (str (str/join "\n" comments) "\n"))
+                            spaces
+                            (render-javascript-value item (+ indent 2) (conj path i)))))
+                   value)]
+      (str "[\n" (str/join ",\n" entries) "\n" (apply str (repeat indent " ")) "]"))))
+
+(defn- render-javascript-value
+  [value indent path]
+  (cond
+    (map? value)    (render-javascript-map value indent path)
+    (vector? value) (render-javascript-vector value indent path)
+    (seq? value)    (render-javascript-vector (vec value) indent path)
+    :else           (json/encode value)))
+
+(defn- render-javascript-schema
   [schema]
-  (json/encode schema {:pretty true}))
+  (render-javascript-value schema 0 []))
 
 (defn- render-javascript
   [schema]
-  (str "export default " (unquote-js-property-names (encode-pretty schema)) ";\n"))
+  (str "export default " (render-javascript-schema schema) ";\n"))
 
 (defn- render-typescript
   [schema]
-  (str "export default " (unquote-js-property-names (encode-pretty schema)) " as const;\n"))
+  (str "export default " (render-javascript-schema schema) " as const;\n"))
 
 (api.macros/defendpoint :get "/v1/javascript" :- :any
   "Generate a JavaScript semantic schema module."

@@ -7,6 +7,7 @@ import {
 import {
   setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
+  setupCardDataset,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -51,6 +52,8 @@ import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
+  createMockDataset,
+  createMockDatasetData,
   createMockModelResult,
   createMockTokenFeatures,
   createMockUser,
@@ -202,6 +205,55 @@ describe("InteractiveQuestion", () => {
     ).toBeVisible();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
+    ).toBeVisible();
+  });
+
+  it("should render an ad hoc question from a dataset query object", async () => {
+    const { state } = setupSdkState();
+
+    setupNotificationChannelsEndpoints({ email: { configured: false } });
+    setupAdhocQueryMetadataEndpoint(
+      createMockCardQueryMetadata({ databases: [TEST_DB] }),
+    );
+    setupCardDataset({
+      dataset: createMockDataset({
+        data: createMockDatasetData({
+          cols: [TEST_COLUMN],
+          rows: [["Test Row"], ["Test Row 2"]],
+        }),
+      }),
+    });
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: 1 })],
+    });
+
+    renderWithSDKProviders(
+      <InteractiveQuestion
+        query={{
+          type: "query",
+          database: TEST_DB.id,
+          query: { "source-table": TEST_TABLE.id },
+          parameters: [],
+        }}
+      />,
+      {
+        componentProviderProps: {
+          authConfig: createMockSdkConfig(),
+        },
+        storeInitialState: state,
+      },
+    );
+
+    await waitForLoaderToBeRemoved();
+
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
+    expect(
+      within(screen.getByTestId("table-root")).getByText(
+        TEST_COLUMN.display_name,
+      ),
+    ).toBeVisible();
+    expect(
+      within(screen.getAllByRole("gridcell")[0]).getByText("Test Row"),
     ).toBeVisible();
   });
 

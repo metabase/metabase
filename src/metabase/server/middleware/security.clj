@@ -224,7 +224,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [nonce data-app-inline-styles?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -255,9 +255,14 @@
                   :child-src    ["'self'"
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 ;; See [[generate-nonce]]
-                                 (when nonce
+                                 ;; See [[generate-nonce]].
+                                 (when (and nonce (not data-app-inline-styles?))
                                    (format "'nonce-%s'" nonce))
+                                 ;; Custom data apps render into an isolated iframe whose outer document only owns
+                                 ;; the iframe boundary. Allowing inline styles here lets single-file uploaded apps
+                                 ;; style their own sandboxed document without relaxing script-src or the main app CSP.
+                                 (when data-app-inline-styles?
+                                   "'unsafe-inline'")
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    frontend-address)
@@ -313,8 +318,8 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce]
-  (update (content-security-policy-header nonce)
+  [frame-ancestors-mode nonce data-app-inline-styles?]
+  (update (content-security-policy-header nonce data-app-inline-styles?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
@@ -417,12 +422,12 @@
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
    embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache?]
-      :or   {frame-ancestors :none, allow-cache? false}}]
+  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-inline-styles?]
+      :or   {frame-ancestors :none, allow-cache? false, data-app-inline-styles? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce)
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-inline-styles?)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -444,20 +449,25 @@
        (or (= (:request-method request) :options)
            (contains? #{400 402} (:status response)))))
 
+(defn- data-app-iframe-request?
+  [request]
+  (str/starts-with? (:uri request) "/embed/data-app/"))
+
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
-                 :origin           (get (:headers request) "origin")
-                 :nonce            (:nonce request)
+                 :origin                      (get (:headers request) "origin")
+                 :nonce                       (:nonce request)
                  ;; The internal data-app iframe is only ever framed by the
                  ;; same-origin Metabase app, so restrict it to `'self'` rather
                  ;; than the open embedding `*`. Check it before the broader
                  ;; `embed?`, which `/embed/data-app/...` also matches.
-                 :frame-ancestors  (cond
-                                     (request/data-app? request)                       :self
-                                     ((some-fn request/public? request/embed?) request) :any
-                                     :else                                              :none)
-                 :allow-cache?     (request/cacheable? request))
+                 :frame-ancestors             (cond
+                                                (request/data-app? request)                       :self
+                                                ((some-fn request/public? request/embed?) request) :any
+                                                :else                                              :none)
+                 :allow-cache?                (request/cacheable? request)
+                 :data-app-inline-styles?     (data-app-iframe-request? request))
         cors-headers (when (always-allow-cors? request response)
                        {"Access-Control-Allow-Origin" "*"
                         "Access-Control-Allow-Headers" "*"
