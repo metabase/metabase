@@ -183,7 +183,7 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch == '0.63.0-data-apps' && 'master' || inputs.branch }}
+          ref: ${{ inputs.branch == '0.63.0-data-apps' && 'custom-data-apps-poc' || inputs.branch }}
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
@@ -203,7 +203,8 @@ jobs:
 
             const branch = "${{ inputs.branch }}";
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
-            const releaseBranch = branch === "0.63.0-data-apps" ? "master" : branch;
+            const releaseBranch =
+              branch === "0.63.0-data-apps" ? "custom-data-apps-poc" : branch;
 
             if (branch === "0.63.0-data-apps") {
               return {
@@ -330,6 +331,7 @@ jobs:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
     steps:
       - name: Check out branch to prepare for a SDK version bump PR
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -337,20 +339,23 @@ jobs:
           ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
 
       - name: Setup git user
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         run: |
           git config --global user.email "github-automation@metabase.com"
           git config --global user.name "Metabase Automation"
 
       - name: Update readme
-        if: needs.determine-sdk-version.outputs.release_branch != 'master'
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true' && needs.determine-sdk-version.outputs.release_branch != 'master'
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
 
       - name: Bump published npm package version
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
       - name: Create a PR updating readme + published version (using GitHub Metabase Automation account)
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
 
@@ -374,6 +379,7 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
           gh pr edit --add-reviewer albertoperdomo --add-label no-backport
@@ -381,12 +387,14 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Auto approve PR (using GitHub Actions account)
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         run: |
           gh pr review --approve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Enable Pull request auto-merge (using GitHub Metabase Automation account)
+        if: needs.determine-sdk-version.outputs.internal_testing_release != 'true'
         run: |
           gh pr merge --auto --squash
         env:
