@@ -90,7 +90,7 @@ describe(
           cy.wait("@setPassword");
           cy.wait("@getPassword");
 
-          cy.log("Password should be saved and displayed masked");
+          cy.log("Password should be saved and displayed");
           cy.findByTestId("public-link-password-display").should("be.visible");
 
           cy.log("Edit the password");
@@ -145,7 +145,7 @@ describe(
         cy.wait("@setPassword");
         cy.wait("@getPassword");
 
-        cy.log("Password should be saved and displayed masked");
+        cy.log("Password should be saved and displayed");
         cy.findByTestId("public-link-password-display").should("be.visible");
 
         cy.log("Edit the password");
@@ -176,6 +176,39 @@ describe(
         cy.findByTestId("public-link-password-toggle").should("exist");
         cy.findByTestId("public-link-password-display").should("not.exist");
       });
+    });
+
+    it("creator: the password is masked and only fetched on an explicit reveal", () => {
+      H.createQuestionAndDashboard({ questionDetails }).then(
+        ({ body: { dashboard_id } }) => {
+          cy.log("Create a public link and set a password via API");
+          cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`);
+          cy.request("PUT", `/api/dashboard/${dashboard_id}/public_password`, {
+            password: PASSWORD,
+          });
+
+          cy.intercept("POST", "/api/dashboard/*/public_password/reveal").as(
+            "revealPassword",
+          );
+
+          H.visitDashboard(dashboard_id);
+          H.openSharingMenu("Public link");
+
+          cy.log("Password is masked and the secret is not fetched on open");
+          cy.findByTestId("public-link-password-display")
+            .should("be.visible")
+            .and("not.have.value", PASSWORD);
+          cy.get("@revealPassword.all").should("have.length", 0);
+
+          cy.log("Clicking reveal fetches and shows the password");
+          cy.findByTestId("public-link-password-reveal").click();
+          cy.wait("@revealPassword");
+          cy.findByTestId("public-link-password-display").should(
+            "have.value",
+            PASSWORD,
+          );
+        },
+      );
     });
   },
 );
