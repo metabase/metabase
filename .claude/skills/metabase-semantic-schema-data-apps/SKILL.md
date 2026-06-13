@@ -1,6 +1,6 @@
 ---
 name: metabase-semantic-schema-data-apps
-description: Use when building React dashboards or data apps from a Metabase semantic layer, including generated schema files like metabase.data.ts or *.metabase.data.ts.
+description: Use when building, creating, or editing data apps that should use Metabase data, a Metabase semantic layer, or generated schema files like metabase.data.ts or *.metabase.data.ts.
 ---
 
 # Metabase Semantic Schema Data Apps
