@@ -142,6 +142,7 @@ export type ActionItem = {
   action: () => void;
 };
 
+// TODO: Reuse helpers from DetailView (@stasgavrylov / 13.06.26)
 export const getActionItems = ({
   actions,
   databases,

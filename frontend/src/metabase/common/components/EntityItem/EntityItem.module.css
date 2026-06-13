@@ -1,14 +1,11 @@
 .menuItem.menuItem {
-  color: var(--entity-item-menu-item-color, var(--mb-color-text-primary));
+  color: var(--mb-color-text-primary);
   font-weight: 700;
 }
 
 .menuItem.menuItem:hover:not([data-disabled="true"]) {
-  color: var(--entity-item-menu-item-hover-color, var(--mb-color-brand));
-  background-color: var(
-    --entity-item-menu-item-hover-bg-color,
-    var(--mb-color-background-secondary)
-  );
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .menuItem.menuItem[data-disabled="true"] {
@@ -18,4 +15,13 @@
 
 .menuItem.menuItem [data-position="left"] {
   color: inherit;
+}
+
+.dangerItem.dangerItem {
+  color: var(--mb-color-danger);
+}
+
+.dangerItem.dangerItem:hover:not([data-disabled="true"]) {
+  color: var(--mb-color-danger);
+  background-color: var(--mb-color-background-error);
 }

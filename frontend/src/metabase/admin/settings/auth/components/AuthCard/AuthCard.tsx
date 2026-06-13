@@ -161,11 +161,7 @@ const AuthCardMenu = ({
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <ActionIcon
-          aria-label={t`Actions`}
-          variant="subtle"
-          style={{ marginLeft: "auto" }}
-        >
+        <ActionIcon aria-label={t`Actions`} variant="subtle" ml="auto">
           <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>

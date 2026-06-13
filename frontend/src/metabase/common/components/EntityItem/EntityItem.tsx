@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
@@ -35,8 +35,6 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
-import { color } from "metabase/ui/utils/colors";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -139,36 +137,8 @@ type EntityItemMenuAction = {
   link?: string;
   tooltip?: ReactNode;
   disabled?: boolean;
-  color?: ColorName;
-  hoverColor?: ColorName;
-  hoverBgColor?: ColorName;
+  danger?: boolean;
 };
-
-type EntityItemMenuItemStyle = CSSProperties & {
-  "--entity-item-menu-item-color"?: string;
-  "--entity-item-menu-item-hover-color"?: string;
-  "--entity-item-menu-item-hover-bg-color"?: string;
-};
-
-function getItemStyle(
-  item: EntityItemMenuAction,
-): EntityItemMenuItemStyle | undefined {
-  const style: EntityItemMenuItemStyle = {};
-
-  if (item.color) {
-    style["--entity-item-menu-item-color"] = color(item.color);
-  }
-
-  if (item.hoverColor) {
-    style["--entity-item-menu-item-hover-color"] = color(item.hoverColor);
-  }
-
-  if (item.hoverBgColor) {
-    style["--entity-item-menu-item-hover-bg-color"] = color(item.hoverBgColor);
-  }
-
-  return Object.keys(style).length > 0 ? style : undefined;
-}
 
 function getLeftSection(icon: IconName) {
   return <Icon name={icon} aria-hidden />;
@@ -305,9 +275,7 @@ function EntityItemMenu({
         title: t`Delete permanently`,
         icon: "trash",
         action: onDeletePermanently,
-        color: "danger" as const,
-        hoverColor: "danger" as const,
-        hoverBgColor: "background-error" as const,
+        danger: true,
       });
     }
 
@@ -344,13 +312,12 @@ function EntityItemMenu({
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          {actions.map((action, index) => {
-            const key = action.title ?? index;
+          {actions.map((action) => {
+            const key = action.title;
             const menuItemProps = {
-              className: S.menuItem,
+              className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
               disabled: action.disabled,
               leftSection: getLeftSection(action.icon),
-              style: getItemStyle(action),
             };
 
             if (action.link) {

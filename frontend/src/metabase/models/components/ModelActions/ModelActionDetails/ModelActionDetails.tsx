@@ -127,11 +127,7 @@ function ModelActionDetails({ model }: Props) {
           {hasActionsMenu && (
             <Menu position="bottom-end">
               <Menu.Target>
-                <ActionIcon
-                  aria-label={t`Actions`}
-                  variant="subtle"
-                  style={{ marginLeft: "0.5rem" }}
-                >
+                <ActionIcon aria-label={t`Actions`} variant="subtle" ml="sm">
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>
