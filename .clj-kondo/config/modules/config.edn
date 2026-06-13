@@ -2420,7 +2420,9 @@
            system
            util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
+                    :model/Field
                     :model/Measure
                     :model/Table}}
 

@@ -336,6 +336,34 @@
       source-joins   (assoc :joins source-joins)
       source-filter  (assoc :filters source-filter))))
 
+(defn- measure-metadata
+  [metadata-provider measure-id]
+  (first (lib.metadata.protocols/metadatas
+          metadata-provider
+          {:lib/type :metadata/measure :id #{measure-id}})))
+
+(defn- measure-metadata->aggregation-node
+  [metadata-provider source-table-id measure-id]
+  (let [metadata   (measure-metadata metadata-provider measure-id)
+        measure-table-id (:table-id metadata)]
+    (when-not metadata
+      (throw (ex-info "Unable to resolve measure" {:measure-id measure-id})))
+    (when (and measure-table-id
+               source-table-id
+               (not= measure-table-id source-table-id))
+      (throw (ex-info "Measure must belong to the metric source table"
+                      {:measure-id       measure-id
+                       :measure-table-id measure-table-id
+                       :source-table-id  source-table-id})))
+    (let [mbql5-query (ensure-mbql5 metadata-provider (:definition metadata))]
+      (mbql-aggregation->node (first (lib/aggregations mbql5-query 0))))))
+
+(defn- additional-measure-aggregation-nodes
+  [metadata-provider source-table-id measure-ids]
+  (into []
+        (keep #(measure-metadata->aggregation-node metadata-provider source-table-id %))
+        measure-ids))
+
 ;;; -------------------- Main Construction --------------------
 
 (defn expression-leaf?
@@ -373,7 +401,7 @@
 (defn- build-leaf-ast
   "Build a complete single-source AST for one expression leaf.
    Extracted from from-definition for reuse in arithmetic expressions."
-  [leaf-type leaf-id leaf-uuid metadata-provider filters projections]
+  [leaf-type leaf-id leaf-uuid metadata-provider filters projections measures]
   (let [source-type    (case leaf-type :metric :source/metric :measure :source/measure)
         metadata-type  (case leaf-type :metric :metadata/metric :measure :metadata/measure)
         metadata       (first (lib.metadata.protocols/metadatas
@@ -385,6 +413,10 @@
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
         mbql5-query        (ensure-mbql5 metadata-provider raw-query)
+        source-table-id    (or (lib.util/source-table-id mbql5-query)
+                               (:table-id metadata))
+        extra-aggregations (when (seq measures)
+                             (additional-measure-aggregation-nodes metadata-provider source-table-id measures))
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))
@@ -398,7 +430,8 @@
         ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
         ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
     {:node/type         :ast/source-query
-     :source            (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
+     :source            (cond-> (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
+                          (seq extra-aggregations) (assoc :additional-aggregations extra-aggregations))
      :dimensions        (perf/mapv dimension-node (or dimensions []))
      :mappings          (perf/mapv dimension-mapping-node (or dimension-mappings []))
      :filter            ast-filter
@@ -415,7 +448,7 @@
    For numeric constants, produces :expression/constant.
    For leaves, calls build-leaf-ast and wraps in :expression/leaf.
    For arithmetic, recursively builds children and wraps in :expression/arithmetic."
-  [expression metadata-provider filters projections]
+  [expression metadata-provider filters projections measures]
   (cond
     (number? expression)
     {:node/type :expression/constant :value expression}
@@ -424,7 +457,7 @@
     (let [leaf-type (expression-leaf-type expression)
           leaf-id   (expression-leaf-id expression)
           leaf-uuid (expression-leaf-uuid expression)
-          sub-ast   (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections)]
+          sub-ast   (build-leaf-ast leaf-type leaf-id leaf-uuid metadata-provider filters projections measures)]
       {:node/type :expression/leaf
        :uuid      leaf-uuid
        :ast       sub-ast})
@@ -434,7 +467,7 @@
           children (drop 2 expression)]
       {:node/type :expression/arithmetic
        :operator  op
-       :children  (perf/mapv #(build-expression-ast % metadata-provider filters projections) children)})))
+       :children  (perf/mapv #(build-expression-ast % metadata-provider filters projections measures) children)})))
 
 (defn from-definition
   "Create complete AST from MetricDefinition.
@@ -446,8 +479,8 @@
    Always produces a unified root shape {:node/type :ast/root, :expression ...}.
    Single-leaf definitions become a single :expression/leaf node."
   [definition]
-  (let [{:keys [expression metadata-provider filters projections]} definition
-        expr-ast (build-expression-ast expression metadata-provider filters projections)]
+  (let [{:keys [expression metadata-provider filters projections measures]} definition
+        expr-ast (build-expression-ast expression metadata-provider filters projections measures)]
     {:node/type         :ast/root
      :expression        expr-ast
      :metadata-provider metadata-provider}))
