@@ -2,14 +2,16 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "../style";
 
-import type { TreemapFormatters } from "./formatters";
+import {
+  type TreemapFormatters,
+  getTreemapPercentOfTotalFormatter,
+} from "./formatters";
 import {
   type ParentLabelLayout,
   type TreemapLabelLayout,
   getAllParentLabelLayouts,
   getAllTileLabelLayouts,
 } from "./labels";
-import { getTreemapPercentOfTotalFormatter } from "./share";
 import { getNode } from "./tree";
 import type { NodeId, TreemapLayoutNode, TreemapTree } from "./types";
 

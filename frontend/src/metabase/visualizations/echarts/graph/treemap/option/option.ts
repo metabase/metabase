@@ -5,8 +5,8 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
+import { getTreemapPercentOfTotalFormatter } from "../model/formatters";
 import type { ParentLabelLayout, TreemapLabelLayout } from "../model/labels";
-import { getTreemapPercentOfTotalFormatter } from "../model/share";
 import { getTreemapNodeId } from "../model/tooltip";
 import { hasChildren } from "../model/tree";
 import type {

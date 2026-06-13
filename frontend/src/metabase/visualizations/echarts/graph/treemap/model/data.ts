@@ -125,6 +125,10 @@ export function getTreemapData(
   return Array.from(rootByKey.values());
 }
 
+export function getTreemapTotal(tree: TreemapTree) {
+  return tree.reduce((sum, node) => sum + node.value, 0);
+}
+
 function getOrCreateNode({
   map,
   rawName,

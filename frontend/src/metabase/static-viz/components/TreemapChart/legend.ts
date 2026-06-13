@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
 import { formatPercent } from "metabase/static-viz/lib/numbers";
-import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import {
-  getTreemapPercentOfTotalFormatter,
+  getTreemapNodeKey,
   getTreemapTotal,
-} from "metabase/visualizations/echarts/graph/treemap/model/share";
+} from "metabase/visualizations/echarts/graph/treemap/model/data";
+import { getTreemapPercentOfTotalFormatter } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 
 /** Legend column width (px), from the Figma static-export spec. */
