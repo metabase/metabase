@@ -14,24 +14,11 @@ export interface TreemapTooltipContext {
   header?: string;
   siblings: TreemapTree;
   focusedNode: TreemapNode;
-  // Present for leaf-level tooltips: siblings share the parent's color.
   parentNode?: TreemapNode;
 }
 
-export function getTreemapNodeId(
-  rootIndex: number,
-  leafIndex?: number,
-): string {
-  return leafIndex == null ? `${rootIndex}` : `${rootIndex}-${leafIndex}`;
-}
-
 export interface TreemapInlineValueIds {
-  /**
-   * Leaf ids ("i-j", or "i" in a 1-level treemap) rendering the `"full"` stacked
-   * block (their own value + percentage inline).
-   */
   fullLeafIds: Set<string>;
-  /** Group ids ("i") whose header renders the right-aligned value+percentage. */
   valuePercentHeaderIds: Set<string>;
 }
 

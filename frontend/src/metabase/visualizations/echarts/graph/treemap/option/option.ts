@@ -7,8 +7,7 @@ import { getTreemapColors } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
 import { getTreemapPercentOfTotalFormatter } from "../model/formatters";
 import type { ParentLabelLayout, TreemapLabelLayout } from "../model/labels";
-import { getTreemapNodeId } from "../model/tooltip";
-import { hasChildren } from "../model/tree";
+import { getTreemapNodeId, hasChildren } from "../model/tree";
 import type {
   TreemapNode,
   TreemapSeriesNode,

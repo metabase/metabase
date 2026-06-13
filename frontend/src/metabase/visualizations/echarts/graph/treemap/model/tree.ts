@@ -69,6 +69,13 @@ export function getNode(id: NodeId, tree: TreemapTree) {
   return getNodesFromPath(tree, id)?.at(-1);
 }
 
+export function getTreemapNodeId(
+  rootIndex: number,
+  leafIndex?: number,
+): string {
+  return leafIndex == null ? `${rootIndex}` : `${rootIndex}-${leafIndex}`;
+}
+
 export function hasChildren(
   node: TreemapNode,
 ): node is TreemapNode & { children: NonNullable<TreemapNode["children"]> } {

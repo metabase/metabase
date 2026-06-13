@@ -3,11 +3,11 @@ import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import {
   getTreemapInlineValueIds,
-  getTreemapNodeId,
   getTreemapTooltipContext,
   getTreemapTooltipModel,
   isTreemapTooltipSuppressed,
 } from "./tooltip";
+import { getTreemapNodeId } from "./tree";
 import type { TreemapNode, TreemapTree } from "./types";
 
 const formatValue = (value: number) => `$${value}`;
