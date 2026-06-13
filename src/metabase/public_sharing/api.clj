@@ -11,7 +11,13 @@
   [_model _id _password]
   (throw (ex-info (tru "Setting passwords on public links is a paid feature.") {:status-code 402})))
 
-(defenterprise get-public-link-password
+(defenterprise get-public-link-password-existence
+  "Return whether a public link has a password set, without exposing the secret. OSS: throws 402."
+  metabase-enterprise.public-link-passwords.core
+  [_model _id]
+  (throw (ex-info (tru "Public link passwords is a paid feature.") {:status-code 402})))
+
+(defenterprise get-public-link-password-value
   "Return the decrypted plaintext password for a public link. OSS: throws 402."
   metabase-enterprise.public-link-passwords.core
   [_model _id]

@@ -5,7 +5,11 @@ type EntityParams = {
   entityId: number;
 };
 
-type PasswordResponse = {
+type PasswordStatusResponse = {
+  has_password: boolean;
+};
+
+type RevealPasswordResponse = {
   password: string;
 };
 
@@ -17,7 +21,9 @@ function entityUrl({ entityType, entityId }: EntityParams) {
 
 export const publicLinkPasswordsApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getPublicLinkPassword: builder.query<PasswordResponse, EntityParams>({
+    // Returns whether a password is set, without exposing the secret. Safe to
+    // call when the sharing popover opens (not audit-logged).
+    getPublicLinkPassword: builder.query<PasswordStatusResponse, EntityParams>({
       query: (params) => ({
         method: "GET",
         url: entityUrl(params),
@@ -28,6 +34,19 @@ export const publicLinkPasswordsApi = Api.injectEndpoints({
           id: `${params.entityType}-${params.entityId}`,
         },
       ],
+    }),
+
+    // Fetches the plaintext secret. This is the audited "reveal" action, so it
+    // is only triggered by an explicit user action (reveal/copy/edit), never on
+    // mount.
+    revealPublicLinkPassword: builder.mutation<
+      RevealPasswordResponse,
+      EntityParams
+    >({
+      query: (params) => ({
+        method: "POST",
+        url: `${entityUrl(params)}/reveal`,
+      }),
     }),
 
     setPublicLinkPassword: builder.mutation<
@@ -64,6 +83,7 @@ export const publicLinkPasswordsApi = Api.injectEndpoints({
 
 export const {
   useGetPublicLinkPasswordQuery,
+  useRevealPublicLinkPasswordMutation,
   useSetPublicLinkPasswordMutation,
   useDeletePublicLinkPasswordMutation,
 } = publicLinkPasswordsApi;

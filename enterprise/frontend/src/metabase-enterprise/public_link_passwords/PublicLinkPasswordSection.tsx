@@ -19,6 +19,7 @@ import S from "./PublicLinkPasswordSection.module.css";
 import {
   useDeletePublicLinkPasswordMutation,
   useGetPublicLinkPasswordQuery,
+  useRevealPublicLinkPasswordMutation,
   useSetPublicLinkPasswordMutation,
 } from "./api";
 
@@ -54,14 +55,15 @@ export const PublicLinkPasswordSection = ({
 
   const [setPassword] = useSetPublicLinkPasswordMutation();
   const [deletePassword] = useDeletePublicLinkPasswordMutation();
+  const [revealPassword] = useRevealPublicLinkPasswordMutation();
 
-  const is404 = (fetchError as any)?.status === 404;
-  const hasPassword = !!passwordData?.password && !fetchError;
-  const currentPassword = passwordData?.password ?? "";
+  const hasPassword = !!passwordData?.has_password && !fetchError;
 
   const [mode, setMode] = useState<PasswordMode>(null);
   const [inputValue, setInputValue] = useState("");
-  const [revealed, setRevealed] = useState(false);
+  // The plaintext secret, once revealed. `null` means hidden — the value is
+  // never fetched on mount, only on an explicit (audited) reveal/edit.
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
 
   const isEditing = mode === "setting" || mode === "editing";
   const isViewing = hasPassword && mode === null;
@@ -70,18 +72,40 @@ export const PublicLinkPasswordSection = ({
     : undefined;
   const canSave =
     inputValue.length >= MIN_PASSWORD_LENGTH &&
-    (mode !== "editing" || inputValue !== currentPassword);
+    (mode !== "editing" || inputValue !== revealedPassword);
 
   const resetDraft = useCallback(() => {
     setMode(null);
     setInputValue("");
   }, []);
 
+  // Fetch the plaintext secret — the audited "reveal" action. Reuses the value
+  // if it is already revealed in memory, so copying/editing an already-revealed
+  // password does not re-trigger the audit event.
+  const fetchPassword = useCallback(async () => {
+    if (revealedPassword != null) {
+      return revealedPassword;
+    }
+    const { password } = await revealPassword({
+      entityType,
+      entityId,
+    }).unwrap();
+    return password;
+  }, [revealedPassword, revealPassword, entityType, entityId]);
+
+  const handleReveal = useCallback(async () => {
+    try {
+      setRevealedPassword(await fetchPassword());
+    } catch {
+      // Stay masked if the reveal fails.
+    }
+  }, [fetchPassword]);
+
   const handleToggle = useCallback(async () => {
     if (hasPassword) {
       await deletePassword({ entityType, entityId });
       resetDraft();
-      setRevealed(false);
+      setRevealedPassword(null);
     } else {
       setMode(mode === "setting" ? null : "setting");
       setInputValue("");
@@ -101,23 +125,34 @@ export const PublicLinkPasswordSection = ({
         entityId,
         password: inputValue,
       }).unwrap();
-      setRevealed(true);
+      // The admin just typed this value, so show it revealed without a separate
+      // audited reveal.
+      setRevealedPassword(inputValue);
       resetDraft();
     } catch {
       // Keep the user in the input so they can retry.
     }
   }, [canSave, inputValue, setPassword, entityType, entityId, resetDraft]);
 
-  const handleEdit = useCallback(() => {
-    setMode("editing");
-    setInputValue(currentPassword);
-  }, [currentPassword]);
+  const handleEdit = useCallback(async () => {
+    try {
+      // Editing needs the current secret to pre-fill and to detect changes —
+      // this counts as a reveal.
+      const password = await fetchPassword();
+      setRevealedPassword(password);
+      setInputValue(password);
+      setMode("editing");
+    } catch {
+      // Leave the user in the viewing state if the reveal fails.
+    }
+  }, [fetchPassword]);
 
-  if (isLoading || (fetchError && !is404)) {
+  if (isLoading || fetchError) {
     return null;
   }
 
   const toggleOn = hasPassword || mode === "setting";
+  const isRevealed = revealedPassword != null;
 
   return (
     <Box mt="md">
@@ -173,16 +208,20 @@ export const PublicLinkPasswordSection = ({
 
           {isViewing && (
             <TextInput
-              value={revealed ? currentPassword : "••••••••"}
+              value={isRevealed ? revealedPassword : "••••••••"}
               readOnly
               data-testid="public-link-password-display"
               rightSection={
                 <Group gap={12} wrap="nowrap">
                   <IconButton
-                    icon={revealed ? "eye_crossed_out" : "eye"}
-                    onClick={() => setRevealed((r) => !r)}
+                    icon={isRevealed ? "eye_crossed_out" : "eye"}
+                    onClick={
+                      isRevealed
+                        ? () => setRevealedPassword(null)
+                        : handleReveal
+                    }
                     aria-label={
-                      revealed ? t`Hide password` : t`Reveal password`
+                      isRevealed ? t`Hide password` : t`Reveal password`
                     }
                     data-testid="public-link-password-reveal"
                   />
@@ -194,7 +233,13 @@ export const PublicLinkPasswordSection = ({
                       data-testid="public-link-password-edit"
                     />
                   )}
-                  <CopyButton value={currentPassword} />
+                  <CopyButton
+                    value={fetchPassword}
+                    className={cx(S.iconButton, S.iconButtonBrandHover)}
+                    target={<Icon name="copy" size={16} />}
+                    aria-label={t`Copy password`}
+                    data-testid="public-link-password-copy"
+                  />
                 </Group>
               }
             />

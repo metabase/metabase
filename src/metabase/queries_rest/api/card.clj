@@ -1025,12 +1025,22 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:card-id/public_password"
+  "Return whether a Card's public link has a password set, without exposing the secret. Visible to any user
+  who can see the Card. Requires premium token."
+  [{:keys [card-id]} :- [:map
+                         [:card-id ms/PositiveInt]]]
+  (api/read-check :model/Card card-id)
+  (public-sharing.api/get-public-link-password-existence :model/Card card-id))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:card-id/public_password/reveal"
   "Reveal the plaintext password for a Card's public link. Visible to any user who can see the Card.
   Requires premium token. Audit-logged."
   [{:keys [card-id]} :- [:map
                          [:card-id ms/PositiveInt]]]
   (api/read-check :model/Card card-id)
-  (public-sharing.api/get-public-link-password :model/Card card-id))
+  (public-sharing.api/get-public-link-password-value :model/Card card-id))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}

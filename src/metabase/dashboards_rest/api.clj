@@ -1198,12 +1198,22 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/public_password"
+  "Return whether a Dashboard's public link has a password set, without exposing the secret. Visible to any
+  user who can see the Dashboard. Requires premium token."
+  [{:keys [dashboard-id]} :- [:map
+                              [:dashboard-id ms/PositiveInt]]]
+  (api/read-check :model/Dashboard dashboard-id)
+  (public-sharing.api/get-public-link-password-existence :model/Dashboard dashboard-id))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:dashboard-id/public_password/reveal"
   "Reveal the plaintext password for a Dashboard's public link. Visible to any user who can see the Dashboard.
   Requires premium token. Audit-logged."
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
   (api/read-check :model/Dashboard dashboard-id)
-  (public-sharing.api/get-public-link-password :model/Dashboard dashboard-id))
+  (public-sharing.api/get-public-link-password-value :model/Dashboard dashboard-id))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
