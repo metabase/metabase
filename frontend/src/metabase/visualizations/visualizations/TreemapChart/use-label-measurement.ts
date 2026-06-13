@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type {
+  ParentLabelLayout,
   TreemapLabelLayout,
-  TreemapParentLabelLayout,
 } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { measureTreemapLabelLayouts } from "metabase/visualizations/echarts/graph/treemap/model/measure";
 import { getTreemapLayoutNodes } from "metabase/visualizations/echarts/graph/treemap/model/tree";
@@ -30,7 +30,7 @@ interface MeasuredLayouts {
   tree: TreemapTree | null;
   viewRootId: NodeId | null;
   labelLayout: Record<NodeId, TreemapLabelLayout>;
-  parentLabelLayout: Record<NodeId, TreemapParentLabelLayout>;
+  parentLabelLayout: Record<NodeId, ParentLabelLayout>;
 }
 
 const EMPTY_MEASURED: MeasuredLayouts = {

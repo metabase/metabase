@@ -7,7 +7,7 @@ import type {
 } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
-import type { TreemapLabelLayout, TreemapParentLabelLayout } from "./labels";
+import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
 import type { TreemapNode, TreemapTree } from "./types";
 
 export interface TreemapTooltipContext {
@@ -43,7 +43,7 @@ export interface TreemapInlineValueIds {
  */
 export function getTreemapInlineValueIds(
   labelLayout: Record<string, TreemapLabelLayout>,
-  parentLabelLayout: Record<string, TreemapParentLabelLayout>,
+  parentLabelLayout: Record<string, ParentLabelLayout>,
 ): TreemapInlineValueIds {
   const fullLeafIds = new Set<string>();
   for (const [id, layout] of Object.entries(labelLayout)) {

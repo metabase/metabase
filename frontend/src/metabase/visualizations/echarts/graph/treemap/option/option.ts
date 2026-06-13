@@ -5,10 +5,7 @@ import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
-import type {
-  TreemapLabelLayout,
-  TreemapParentLabelLayout,
-} from "../model/labels";
+import type { ParentLabelLayout, TreemapLabelLayout } from "../model/labels";
 import { getTreemapPercentOfTotalFormatter } from "../model/share";
 import { getTreemapNodeId } from "../model/tooltip";
 import { hasChildren } from "../model/tree";
@@ -51,7 +48,7 @@ export function getTreemapChartOption({
   showLeafLabels?: boolean;
   showParentLabels?: boolean;
   labelLayout?: Record<string, TreemapLabelLayout>;
-  parentLabelLayout?: Record<string, TreemapParentLabelLayout>;
+  parentLabelLayout?: Record<string, ParentLabelLayout>;
   renderingContext: RenderingContext;
 }): {
   series: TreemapChartSeriesOption;
@@ -121,7 +118,7 @@ function toSeriesData({
   isDrilled: boolean;
   showLeafLabels: boolean;
   labelLayout: Record<string, TreemapLabelLayout>;
-  parentLabelLayout: Record<string, TreemapParentLabelLayout>;
+  parentLabelLayout: Record<string, ParentLabelLayout>;
   formatValue: (value: number) => string;
   renderingContext: RenderingContext;
 }): TreemapSeriesNode[] {
@@ -165,7 +162,7 @@ function toGroupSeriesNode({
   isDrilled: boolean;
   showLeafLabels: boolean;
   labelLayout: Record<string, TreemapLabelLayout>;
-  parentLabelLayout: Record<string, TreemapParentLabelLayout>;
+  parentLabelLayout: Record<string, ParentLabelLayout>;
   formatValue: (value: number) => string;
   formatPercentOfTotal: (value: number) => string;
   renderingContext: RenderingContext;
@@ -389,7 +386,7 @@ function getUpperLabelOverride({
 }: {
   groupTint: string | undefined;
   hasChildren: boolean;
-  layout: TreemapParentLabelLayout | undefined;
+  layout: ParentLabelLayout | undefined;
   displayName: string;
   valueLabel: string;
   percentLabel: string;

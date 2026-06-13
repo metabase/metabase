@@ -5,10 +5,10 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 
 import type { TreemapLayoutNode } from "./types";
 
-export const MIN_LABEL_TILE_WIDTH = 100;
-export const MIN_LABEL_TILE_HEIGHT = 40;
-export const MIN_FULL_LABEL_TILE_HEIGHT = 100;
-
+export const PARENT_MIN_HEADER_VISIBLE_CHARS = 3;
+export const PARENT_HEADER_VALUE_PERCENT_GAP = 8;
+const PARENT_LABEL_MIN_GRID_WIDTH = 12;
+const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
 export type TreemapLabelDetail = "full" | "labelOnly" | "none";
 
 export interface TreemapLabelLayout {
@@ -24,22 +24,31 @@ export interface TreemapLabelLayoutConfig {
   padding: number;
 }
 
-export function getTreemapLabelLayout(
+export function shouldShowParentLabels(
+  gridSize: VisualizationGridSize | undefined,
+  settings: VisualizationProps["settings"],
+) {
+  const fitsParentLabels =
+    gridSize === undefined ||
+    (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
+      gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
+
+  return (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels;
+}
+
+export function getParentLabelLayout(
   rect: { width: number; height: number },
   valueLabelWidth: number,
-  {
-    minTileWidth,
-    minTileHeight,
-    minFullTileHeight,
-    padding,
-  }: TreemapLabelLayoutConfig,
+  config: TreemapLabelLayoutConfig,
 ): TreemapLabelLayout {
-  const innerWidth = Math.max(0, rect.width - padding * 2);
-  const fitsLabel = rect.width >= minTileWidth && rect.height >= minTileHeight;
+  const innerWidth = Math.max(0, rect.width - config.padding * 2);
+  const fitsLabel =
+    rect.width >= config.minTileWidth && rect.height >= config.minTileHeight;
   const fitsFull =
     fitsLabel &&
-    rect.height >= minFullTileHeight &&
+    rect.height >= config.minFullTileHeight &&
     innerWidth >= valueLabelWidth;
+
   const detail: TreemapLabelDetail = match({ fitsFull, fitsLabel })
     .with({ fitsFull: true }, () => "full" as const)
     .with({ fitsLabel: true }, () => "labelOnly" as const)
@@ -47,58 +56,29 @@ export function getTreemapLabelLayout(
   return { show: detail !== "none", detail, width: innerWidth };
 }
 
-export interface TreemapLabelLayoutsConfig extends TreemapLabelLayoutConfig {
-  getValueLabelWidth?: (id: string) => number;
-}
-
-export function getTreemapLabelLayouts(
-  nodes: TreemapLayoutNode[],
-  { getValueLabelWidth = () => Infinity, ...config }: TreemapLabelLayoutsConfig,
-): Record<string, TreemapLabelLayout> {
-  const layouts: Record<string, TreemapLabelLayout> = {};
-  for (const node of nodes) {
-    if (!node.isLeaf) {
-      continue;
-    }
-    layouts[node.id] = getTreemapLabelLayout(
-      node.rect,
-      getValueLabelWidth(node.id),
-      config,
-    );
-  }
-  return layouts;
-}
-
-export const MIN_HEADER_VISIBLE_CHARS = 3;
-export const HEADER_VALUE_PERCENT_GAP = 8;
-
-export interface TreemapParentLabelLayout {
+export interface ParentLabelLayout {
   showText: boolean;
   showValuePercent: boolean;
   nameColumnWidth?: number;
 }
 
-export interface TreemapParentLabelLayoutConfig {
+export interface ParentLabelLayoutConfig {
   measureTextWidth: (text: string) => number;
   getLabel: (id: string) => string | undefined;
   padding: number;
-  minVisibleChars?: number;
   getValuePercentWidth?: (id: string) => number;
-  valuePercentGap?: number;
 }
 
-export function getTreemapParentLabelLayouts(
+export function getAllParentLabelLayouts(
   nodes: TreemapLayoutNode[],
   {
     measureTextWidth,
     getLabel,
     padding,
-    minVisibleChars = MIN_HEADER_VISIBLE_CHARS,
     getValuePercentWidth = () => Infinity,
-    valuePercentGap = HEADER_VALUE_PERCENT_GAP,
-  }: TreemapParentLabelLayoutConfig,
-): Record<string, TreemapParentLabelLayout> {
-  const layouts: Record<string, TreemapParentLabelLayout> = {};
+  }: ParentLabelLayoutConfig,
+): Record<string, ParentLabelLayout> {
+  const layouts: Record<string, ParentLabelLayout> = {};
   for (const node of nodes) {
     if (node.isLeaf) {
       continue;
@@ -108,39 +88,57 @@ export function getTreemapParentLabelLayouts(
       continue;
     }
     const available = node.rect.width - padding * 2;
-    // Require only a readable prefix to fit, not the whole label — ECharts
-    // truncates the rest with an ellipsis.
-    const minReadable = label.slice(0, minVisibleChars);
+    const minReadable = label.slice(0, PARENT_MIN_HEADER_VISIBLE_CHARS);
     const minReadableWidth = measureTextWidth(minReadable);
     const showText = minReadableWidth <= available;
-    const clusterWidth = getValuePercentWidth(node.id);
-    const showValuePercent =
-      showText &&
-      minReadableWidth + valuePercentGap + clusterWidth <= available;
+    let showValuePercent = false;
+    let nameColumnWidth: number | undefined;
+    if (showText) {
+      const clusterWidth = getValuePercentWidth(node.id);
+      showValuePercent =
+        minReadableWidth + PARENT_HEADER_VALUE_PERCENT_GAP + clusterWidth <=
+        available;
+      if (showValuePercent) {
+        // The name column takes the slack so the cluster sits flush right.
+        nameColumnWidth =
+          available - PARENT_HEADER_VALUE_PERCENT_GAP - clusterWidth;
+      }
+    }
     layouts[node.id] = {
       showText,
       showValuePercent,
-      // The name column takes the slack so the cluster sits flush right; only
-      // meaningful when the cluster renders.
-      ...(showValuePercent
-        ? { nameColumnWidth: available - valuePercentGap - clusterWidth }
-        : {}),
+      ...(nameColumnWidth != null ? { nameColumnWidth } : {}),
     };
   }
   return layouts;
 }
 
-export function shouldShowParentLabels(
-  gridSize: VisualizationGridSize | undefined,
-  settings: VisualizationProps["settings"],
-) {
-  const PARENT_LABEL_MIN_GRID_WIDTH = 12;
-  const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
+export const MIN_LABEL_TILE_WIDTH = 100;
+export const MIN_LABEL_TILE_HEIGHT = 40;
+export const MIN_FULL_LABEL_TILE_HEIGHT = 100;
 
-  const fitsParentLabels =
-    gridSize === undefined ||
-    (gridSize.width >= PARENT_LABEL_MIN_GRID_WIDTH &&
-      gridSize.height >= PARENT_LABEL_MIN_GRID_HEIGHT);
+export interface TileLabelLayoutsConfig extends TreemapLabelLayoutConfig {
+  getValueLabelWidth?: (id: string) => number;
+}
 
-  return (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels;
+export function getAllTileLabelLayouts(
+  nodes: TreemapLayoutNode[],
+  { getValueLabelWidth = () => Infinity, ...config }: TileLabelLayoutsConfig,
+): Record<string, TreemapLabelLayout> {
+  const layouts: Record<string, TreemapLabelLayout> = {};
+  for (const node of nodes) {
+    if (!node.isLeaf) {
+      continue;
+    }
+    const fitsLabel =
+      node.rect.width >= config.minTileWidth &&
+      node.rect.height >= config.minTileHeight;
+    const fitsFull = fitsLabel && node.rect.height >= config.minFullTileHeight;
+    layouts[node.id] = getParentLabelLayout(
+      node.rect,
+      fitsFull ? getValueLabelWidth(node.id) : Infinity,
+      config,
+    );
+  }
+  return layouts;
 }

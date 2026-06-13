@@ -1,7 +1,7 @@
 import {
-  getTreemapLabelLayout,
-  getTreemapLabelLayouts,
-  getTreemapParentLabelLayouts,
+  getAllParentLabelLayouts,
+  getAllTileLabelLayouts,
+  getParentLabelLayout,
 } from "./labels";
 import type { TreemapLayoutNode } from "./types";
 
@@ -23,7 +23,7 @@ function group(id: string, width: number): TreemapLayoutNode {
 describe("getTreemapLabelLayout", () => {
   it("returns full detail for large tiles when the value block fits", () => {
     expect(
-      getTreemapLabelLayout({ width: 200, height: 120 }, 120, config),
+      getParentLabelLayout({ width: 200, height: 120 }, 120, config),
     ).toEqual({
       show: true,
       detail: "full",
@@ -33,20 +33,20 @@ describe("getTreemapLabelLayout", () => {
 
   it("degrades to labelOnly or none when constraints are not met", () => {
     expect(
-      getTreemapLabelLayout({ width: 200, height: 120 }, 200, config),
+      getParentLabelLayout({ width: 200, height: 120 }, 200, config),
     ).toEqual({
       show: true,
       detail: "labelOnly",
       width: 176,
     });
 
-    expect(
-      getTreemapLabelLayout({ width: 80, height: 300 }, 0, config),
-    ).toEqual({
-      show: false,
-      detail: "none",
-      width: 56,
-    });
+    expect(getParentLabelLayout({ width: 80, height: 300 }, 0, config)).toEqual(
+      {
+        show: false,
+        detail: "none",
+        width: 56,
+      },
+    );
   });
 });
 
@@ -60,7 +60,7 @@ describe("getTreemapLabelLayouts", () => {
     const valueWidths: Record<string, number> = { "0-0": 100, "0-1": 500 };
 
     expect(
-      getTreemapLabelLayouts(nodes, {
+      getAllTileLabelLayouts(nodes, {
         ...config,
         getValueLabelWidth: (id) => valueWidths[id],
       }),
@@ -68,6 +68,28 @@ describe("getTreemapLabelLayouts", () => {
       "0-0": { show: true, detail: "full", width: 176 },
       "0-1": { show: true, detail: "labelOnly", width: 176 },
     });
+  });
+
+  it("measures leaf value width only when a tile can show full detail", () => {
+    const nodes: TreemapLayoutNode[] = [
+      leaf("0-0", 80, 120),
+      leaf("0-1", 200, 80),
+      leaf("0-2", 200, 120),
+    ];
+    const getValueLabelWidth = jest.fn(() => 100);
+
+    expect(
+      getAllTileLabelLayouts(nodes, {
+        ...config,
+        getValueLabelWidth,
+      }),
+    ).toEqual({
+      "0-0": { show: false, detail: "none", width: 56 },
+      "0-1": { show: true, detail: "labelOnly", width: 176 },
+      "0-2": { show: true, detail: "full", width: 176 },
+    });
+    expect(getValueLabelWidth).toHaveBeenCalledTimes(1);
+    expect(getValueLabelWidth).toHaveBeenCalledWith("0-2");
   });
 });
 
@@ -82,13 +104,26 @@ describe("getTreemapParentLabelLayouts", () => {
 
   it("shows text and value-percent only when both prefix and cluster fit", () => {
     expect(
-      getTreemapParentLabelLayouts(
-        [group("0", 200), group("1", 60)],
-        parentConfig,
-      ),
+      getAllParentLabelLayouts([group("0", 200), group("1", 60)], parentConfig),
     ).toEqual({
       "0": { showText: true, showValuePercent: true, nameColumnWidth: 68 },
       "1": { showText: true, showValuePercent: false },
     });
+  });
+
+  it("skips value-percent measurement when the label text does not fit", () => {
+    const getValuePercentWidth = jest.fn(() => 100);
+
+    expect(
+      getAllParentLabelLayouts([group("0", 200), group("1", 30)], {
+        ...parentConfig,
+        getValuePercentWidth,
+      }),
+    ).toEqual({
+      "0": { showText: true, showValuePercent: true, nameColumnWidth: 68 },
+      "1": { showText: false, showValuePercent: false },
+    });
+    expect(getValuePercentWidth).toHaveBeenCalledTimes(1);
+    expect(getValuePercentWidth).toHaveBeenCalledWith("0");
   });
 });

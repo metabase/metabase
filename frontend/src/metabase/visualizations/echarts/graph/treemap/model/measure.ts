@@ -12,10 +12,10 @@ import {
   MIN_FULL_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_HEIGHT,
   MIN_LABEL_TILE_WIDTH,
+  type ParentLabelLayout,
   type TreemapLabelLayout,
-  type TreemapParentLabelLayout,
-  getTreemapLabelLayouts,
-  getTreemapParentLabelLayouts,
+  getAllParentLabelLayouts,
+  getAllTileLabelLayouts,
 } from "./labels";
 import { getTreemapPercentOfTotalFormatter } from "./share";
 import { getNode } from "./tree";
@@ -23,7 +23,7 @@ import type { NodeId, TreemapLayoutNode, TreemapTree } from "./types";
 
 export interface TreemapMeasuredLabelLayouts {
   labelLayout: Record<NodeId, TreemapLabelLayout>;
-  parentLabelLayout: Record<NodeId, TreemapParentLabelLayout>;
+  parentLabelLayout: Record<NodeId, ParentLabelLayout>;
 }
 
 /**
@@ -55,7 +55,7 @@ export function measureTreemapLabelLayouts({
   // (the widest, at the H3 font) fits the tile width, so measure it at that
   // font. The value renders in the leaf-label font family (see the rich style
   // in `option.ts`), so measure with the same family.
-  const labelLayout = getTreemapLabelLayouts(nodes, {
+  const labelLayout = getAllTileLabelLayouts(nodes, {
     minTileWidth: MIN_LABEL_TILE_WIDTH,
     minTileHeight: MIN_LABEL_TILE_HEIGHT,
     minFullTileHeight: MIN_FULL_LABEL_TILE_HEIGHT,
@@ -88,7 +88,7 @@ export function measureTreemapLabelLayouts({
       family: renderingContext.fontFamily,
       weight,
     });
-  const parentLabelLayout = getTreemapParentLabelLayouts(nodes, {
+  const parentLabelLayout = getAllParentLabelLayouts(nodes, {
     getLabel: (id) => getNode(id, tree)?.displayName,
     measureTextWidth: (text) => measureHeader(text, groupHeader.fontWeight),
     getValuePercentWidth: (id) => {

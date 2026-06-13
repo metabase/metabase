@@ -1,6 +1,6 @@
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { HEADER_VALUE_PERCENT_GAP } from "./model/labels";
+import { PARENT_HEADER_VALUE_PERCENT_GAP } from "./model/labels";
 import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "./style";
 
 export function getRichLeafLabel(renderingContext: RenderingContext) {
@@ -84,7 +84,7 @@ export function getRichUpperLabel({
         fontSize: groupHeader.fontSize,
         fontWeight: groupHeader.fontWeight,
         // Gap between the name column and the value.
-        padding: [0, 0, 0, HEADER_VALUE_PERCENT_GAP],
+        padding: [0, 0, 0, PARENT_HEADER_VALUE_PERCENT_GAP],
       },
       pct: {
         color: textSecondary,
