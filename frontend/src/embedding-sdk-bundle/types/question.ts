@@ -4,7 +4,11 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type InternalQuestion from "metabase-lib/v1/Question";
-import type { Card, ParameterValuesMap } from "metabase-types/api";
+import type {
+  Card,
+  ParameterValuesMap,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
 
 import type { SdkDashboardId } from "./dashboard";
 import type { SdkEntityId, SdkEntityToken } from "./entity";
@@ -35,6 +39,17 @@ export type SdkQuestionId =
   | "new-native" // Create new native SQL question
   | SdkEntityId; // Entity ID string (e.g., "abc123def456")
 
+/**
+ * A table-backed ad hoc question query.
+ *
+ * @notExported StructuredDatasetQuery
+ */
+export type SdkQuestionQuery = StructuredDatasetQuery;
+
+/**
+ * @notExported SdkQuestionQuery
+ * @notExported StructuredDatasetQuery
+ */
 export type SdkQuestionEntityPublicProps =
   | {
       /**
@@ -61,11 +76,19 @@ export type SdkQuestionEntityPublicProps =
        */
       token: SdkEntityToken | null;
       query?: never;
+    }
+  | {
+      questionId?: never;
+      token?: never;
+      /**
+       * A table-backed ad hoc query created with `createMetabaseQuery`.
+       */
+      query: SdkQuestionQuery;
     };
 
 /**
- * Internal type that adds the `query` prop used by the `useMetabot` hook. Not
- * re-exported from the public SDK package entry point.
+ * Internal type that adds the string `query` prop used by the `useMetabot`
+ * hook. Not re-exported from the public SDK package entry point.
  */
 export type SdkQuestionEntityInternalProps =
   | SdkQuestionEntityPublicProps
