@@ -25,28 +25,43 @@
 (defn do-with-query-execution! [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
-          result        (promise)]
-      ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
-      ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
-      ;; `*execute-async?*` is redef'd (not bound) for the same reason: it makes the save happen synchronously
-      ;; on whatever thread runs the query instead of going through the (batched, async) grouper queue.
-      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
-      (with-redefs [qp.util/*execute-async?* false
-                    process-userland-query/save-execution-metadata!*
-                    (fn [query-executions]
-                      ;; only deliver the execution whose hash matches `query`: the grouper queue may still hold
-                      ;; stale executions submitted by earlier tests before this redef, and its periodic flush
-                      ;; hands them to this spy in the same batch.
-                      (doseq [{qe-hash :hash, :as query-execution} query-executions
-                              :when (and qe-hash (java.util.Arrays/equals ^bytes qe-hash original-hash))]
-                        (deliver result query-execution)))]
-        (run
-         (fn qe-result* []
-           (let [qe (deref result 1000 ::timed-out)]
-             (cond-> qe
-               (:running_time qe) (update :running_time int?)
-               (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                  (some-> a-hash codecs/bytes->hex)))))))))))
+          result        (promise)
+          mismatched    (atom [])]
+      ;; `synchronous-batch-updates` makes the grouper invoke the handler synchronously with just the submitted
+      ;; execution, so the spy below sees our execution as soon as the query finishes instead of going through the
+      ;; (batched, async) grouper queue. Callers whose queries run on server threads must be wrapped in
+      ;; [[mt/test-helpers-set-global-values!]] for the setting to be visible there.
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
+        ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
+        ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+        (with-redefs [process-userland-query/save-execution-metadata!*
+                      (fn [query-executions]
+                        (doseq [{qe-hash :hash, :as query-execution} query-executions
+                                :when qe-hash]
+                          (if (java.util.Arrays/equals ^bytes qe-hash original-hash)
+                            (deliver result query-execution)
+                            ;; an execution with a different hash is usually a stale execution flushed from the
+                            ;; grouper queue (submitted by an earlier test before this redef took effect); it only
+                            ;; indicates a hash-computation bug if the matching execution never arrives, so it is
+                            ;; surfaced in `qe-result*` only when `result` times out.
+                            (swap! mismatched conj query-execution))))]
+          (run
+           (fn qe-result* []
+             (let [qe (deref result 1000 ::timed-out)]
+               (if (and (= qe ::timed-out) (seq @mismatched))
+                 ;; if you're seeing this there is probably some bug that is causing query hashes to get
+                 ;; calculated in an inconsistent manner; check `:query` vs `:query-execution-query`
+                 (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
+                          {:query                   query
+                           :original-hash           (some-> original-hash codecs/bytes->hex)
+                           :query-executions        @mismatched
+                           :query-execution-hashes  (map #(some-> ^bytes (:hash %) codecs/bytes->hex) @mismatched)
+                           :query-execution-queries (map :json_query @mismatched)})
+                 (cond-> qe
+                   (:running_time qe) (update :running_time int?)
+                   (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                      (some-> a-hash codecs/bytes->hex)))))))))))))
 
 (defmacro with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
