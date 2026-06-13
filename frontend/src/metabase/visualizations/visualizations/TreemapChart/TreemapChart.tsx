@@ -15,7 +15,6 @@ import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/tr
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
 import type { NodeId } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
-import { getTreemapTooltipOption } from "metabase/visualizations/echarts/graph/treemap/option/tooltip";
 import { getChartPadding } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
   useCloseTooltipOnScroll,
@@ -33,6 +32,7 @@ import {
   hideTreemapHoverOverlay,
   useChartEvents,
 } from "./events";
+import { getTreemapTooltipOption } from "./tooltip";
 import { useLabelMeasurement } from "./use-label-measurement";
 
 export const TreemapChart = ({
