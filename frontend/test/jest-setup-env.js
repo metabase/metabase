@@ -6,8 +6,18 @@ import fetchMock from "fetch-mock";
 Object.assign(navigator, {
   clipboard: {
     writeText: jest.fn(() => Promise.resolve()),
+    write: jest.fn(() => Promise.resolve()),
   },
 });
+
+// jsdom does not implement ClipboardItem, used by the async CopyButton path.
+if (typeof global.ClipboardItem === "undefined") {
+  global.ClipboardItem = class ClipboardItem {
+    constructor(items) {
+      this.items = items;
+    }
+  };
+}
 
 beforeEach(() => {
   fetchMock.mockGlobal();
