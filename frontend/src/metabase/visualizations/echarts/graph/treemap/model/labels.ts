@@ -36,26 +36,6 @@ export function shouldShowParentLabels(
   return (settings["treemap.show_parent_labels"] ?? true) && fitsParentLabels;
 }
 
-export function getParentLabelLayout(
-  rect: { width: number; height: number },
-  valueLabelWidth: number,
-  config: TreemapLabelLayoutConfig,
-): TreemapLabelLayout {
-  const innerWidth = Math.max(0, rect.width - config.padding * 2);
-  const fitsLabel =
-    rect.width >= config.minTileWidth && rect.height >= config.minTileHeight;
-  const fitsFull =
-    fitsLabel &&
-    rect.height >= config.minFullTileHeight &&
-    innerWidth >= valueLabelWidth;
-
-  const detail: TreemapLabelDetail = match({ fitsFull, fitsLabel })
-    .with({ fitsFull: true }, () => "full" as const)
-    .with({ fitsLabel: true }, () => "labelOnly" as const)
-    .otherwise(() => "none");
-  return { show: detail !== "none", detail, width: innerWidth };
-}
-
 export interface ParentLabelLayout {
   showText: boolean;
   showValuePercent: boolean;
@@ -71,35 +51,29 @@ export interface ParentLabelLayoutConfig {
 
 export function getAllParentLabelLayouts(
   nodes: TreemapLayoutNode[],
-  {
-    measureTextWidth,
-    getLabel,
-    padding,
-    getValuePercentWidth = () => Infinity,
-  }: ParentLabelLayoutConfig,
+  config: ParentLabelLayoutConfig,
 ): Record<string, ParentLabelLayout> {
   const layouts: Record<string, ParentLabelLayout> = {};
   for (const node of nodes) {
     if (node.isLeaf) {
       continue;
     }
-    const label = getLabel(node.id);
+    const label = config.getLabel(node.id);
     if (label == null) {
       continue;
     }
-    const available = node.rect.width - padding * 2;
+    const available = node.rect.width - config.padding * 2;
     const minReadable = label.slice(0, PARENT_MIN_HEADER_VISIBLE_CHARS);
-    const minReadableWidth = measureTextWidth(minReadable);
+    const minReadableWidth = config.measureTextWidth(minReadable);
     const showText = minReadableWidth <= available;
     let showValuePercent = false;
     let nameColumnWidth: number | undefined;
     if (showText) {
-      const clusterWidth = getValuePercentWidth(node.id);
+      const clusterWidth = config.getValuePercentWidth?.(node.id) ?? Infinity;
       showValuePercent =
         minReadableWidth + PARENT_HEADER_VALUE_PERCENT_GAP + clusterWidth <=
         available;
       if (showValuePercent) {
-        // The name column takes the slack so the cluster sits flush right.
         nameColumnWidth =
           available - PARENT_HEADER_VALUE_PERCENT_GAP - clusterWidth;
       }
@@ -134,11 +108,31 @@ export function getAllTileLabelLayouts(
       node.rect.width >= config.minTileWidth &&
       node.rect.height >= config.minTileHeight;
     const fitsFull = fitsLabel && node.rect.height >= config.minFullTileHeight;
-    layouts[node.id] = getParentLabelLayout(
+    layouts[node.id] = getTileLabelLayout(
       node.rect,
       fitsFull ? getValueLabelWidth(node.id) : Infinity,
       config,
     );
   }
   return layouts;
+}
+
+export function getTileLabelLayout(
+  rect: { width: number; height: number },
+  valueLabelWidth: number,
+  config: TreemapLabelLayoutConfig,
+): TreemapLabelLayout {
+  const innerWidth = Math.max(0, rect.width - config.padding * 2);
+  const fitsLabel =
+    rect.width >= config.minTileWidth && rect.height >= config.minTileHeight;
+  const fitsFull =
+    fitsLabel &&
+    rect.height >= config.minFullTileHeight &&
+    innerWidth >= valueLabelWidth;
+
+  const detail: TreemapLabelDetail = match({ fitsFull, fitsLabel })
+    .with({ fitsFull: true }, () => "full" as const)
+    .with({ fitsLabel: true }, () => "labelOnly" as const)
+    .otherwise(() => "none");
+  return { show: detail !== "none", detail, width: innerWidth };
 }

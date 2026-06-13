@@ -1,7 +1,7 @@
 import {
   getAllParentLabelLayouts,
   getAllTileLabelLayouts,
-  getParentLabelLayout,
+  getTileLabelLayout,
 } from "./labels";
 import type { TreemapLayoutNode } from "./types";
 
@@ -23,7 +23,7 @@ function group(id: string, width: number): TreemapLayoutNode {
 describe("getTreemapLabelLayout", () => {
   it("returns full detail for large tiles when the value block fits", () => {
     expect(
-      getParentLabelLayout({ width: 200, height: 120 }, 120, config),
+      getTileLabelLayout({ width: 200, height: 120 }, 120, config),
     ).toEqual({
       show: true,
       detail: "full",
@@ -33,20 +33,18 @@ describe("getTreemapLabelLayout", () => {
 
   it("degrades to labelOnly or none when constraints are not met", () => {
     expect(
-      getParentLabelLayout({ width: 200, height: 120 }, 200, config),
+      getTileLabelLayout({ width: 200, height: 120 }, 200, config),
     ).toEqual({
       show: true,
       detail: "labelOnly",
       width: 176,
     });
 
-    expect(getParentLabelLayout({ width: 80, height: 300 }, 0, config)).toEqual(
-      {
-        show: false,
-        detail: "none",
-        width: 56,
-      },
-    );
+    expect(getTileLabelLayout({ width: 80, height: 300 }, 0, config)).toEqual({
+      show: false,
+      detail: "none",
+      width: 56,
+    });
   });
 });
 
