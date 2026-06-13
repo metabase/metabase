@@ -199,8 +199,8 @@
                                     frontend-address)
                                   ;; for react dev tools to work in Firefox until resolution of
                                   ;; https://github.com/facebook/react/issues/17997
-                                  (when config/is-dev?
-                                    "'unsafe-inline'")]
+                                 (when config/is-dev?
+                                   "'unsafe-inline'")]
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
