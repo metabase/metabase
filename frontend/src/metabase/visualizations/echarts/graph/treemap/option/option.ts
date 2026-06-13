@@ -25,21 +25,7 @@ type TreemapChartSeriesOption = TreemapSeriesOption & {
   data: TreemapSeriesNode[];
 };
 
-const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
-  label: { show: false },
-};
-
-export function getTreemapChartOption({
-  tree,
-  colors = getTreemapColors(tree),
-  isDrilled = false,
-  showParentLabels = true,
-  showLeafLabels = true,
-  labelLayout = {},
-  parentLabelLayout = {},
-  formatValue = (value: number) => String(value),
-  renderingContext,
-}: {
+export type TreemapChartOptionConfig = {
   tree: TreemapTree;
   colors?: Record<string, string>;
   isDrilled?: boolean;
@@ -49,9 +35,34 @@ export function getTreemapChartOption({
   labelLayout?: Record<string, TreemapLabelLayout>;
   parentLabelLayout?: Record<string, ParentLabelLayout>;
   renderingContext: RenderingContext;
-}): {
+};
+
+type TreemapSeriesBuildConfig = {
+  colors: Record<string, string>;
+  isDrilled: boolean;
+  showLeafLabels: boolean;
+  labelLayout: Record<string, TreemapLabelLayout>;
+  parentLabelLayout: Record<string, ParentLabelLayout>;
+  formatValue: (value: number) => string;
+  formatPercentOfTotal: (value: number) => string;
+  headerTintTarget: string;
+  renderingContext: RenderingContext;
+};
+
+const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
+  label: { show: false },
+};
+
+export function getTreemapChartOption(config: TreemapChartOptionConfig): {
   series: TreemapChartSeriesOption;
 } {
+  const {
+    tree,
+    showParentLabels = true,
+    isDrilled = false,
+    renderingContext,
+  } = config;
+  const buildConfig = createSeriesBuildConfig(config);
   const hasNestedChildren = tree.some(hasChildren);
 
   const groupUpperLabel = getUpperLabelDefault({
@@ -77,7 +88,10 @@ export function getTreemapChartOption({
     roam: false,
     emphasis: { disabled: true }, // We're adding custom hover effect to be able to highlight the whole group.
     breadcrumb: { show: false },
-    label: getTileLabelDefault({ showLeafLabels, renderingContext }),
+    label: getTileLabelDefault({
+      showLeafLabels: buildConfig.showLeafLabels,
+      renderingContext,
+    }),
     upperLabel: { show: false },
     top: 0,
     left: 0,
@@ -87,85 +101,65 @@ export function getTreemapChartOption({
     visibleMin: 25 * 25,
     childrenVisibleMin: 25 * 25,
     levels: hasNestedChildren ? [rootLevel, groupLevel] : [rootLevel],
-    data: toSeriesData({
-      tree,
-      colors,
-      isDrilled,
-      showLeafLabels,
-      labelLayout,
-      parentLabelLayout,
-      formatValue,
-      renderingContext,
-    }),
+    data: toSeriesData({ tree, config: buildConfig }),
   };
 
   return { series };
 }
 
+function createSeriesBuildConfig({
+  tree,
+  colors = getTreemapColors(tree),
+  isDrilled = false,
+  showLeafLabels = true,
+  labelLayout = {},
+  parentLabelLayout = {},
+  formatValue = (value: number) => String(value),
+  renderingContext,
+}: TreemapChartOptionConfig): TreemapSeriesBuildConfig {
+  return {
+    colors,
+    isDrilled,
+    showLeafLabels,
+    labelLayout,
+    parentLabelLayout,
+    formatValue,
+    formatPercentOfTotal: getTreemapPercentOfTotalFormatter(tree),
+    headerTintTarget: renderingContext.getColor("white"),
+    renderingContext,
+  };
+}
+
 function toSeriesData({
   tree,
-  colors,
-  isDrilled,
-  showLeafLabels,
-  labelLayout,
-  parentLabelLayout,
-  formatValue,
-  renderingContext,
+  config,
 }: {
   tree: TreemapTree;
-  colors: Record<string, string>;
-  isDrilled: boolean;
-  showLeafLabels: boolean;
-  labelLayout: Record<string, TreemapLabelLayout>;
-  parentLabelLayout: Record<string, ParentLabelLayout>;
-  formatValue: (value: number) => string;
-  renderingContext: RenderingContext;
+  config: TreemapSeriesBuildConfig;
 }): TreemapSeriesNode[] {
-  const headerTintTarget = renderingContext.getColor("white");
-  const formatPercentOfTotal = getTreemapPercentOfTotalFormatter(tree);
-
   return tree.map((node, rootIndex) =>
-    toGroupSeriesNode({
-      node,
-      rootIndex,
-      colors,
-      headerTintTarget,
-      isDrilled,
-      showLeafLabels,
-      labelLayout,
-      parentLabelLayout,
-      formatValue,
-      formatPercentOfTotal,
-      renderingContext,
-    }),
+    toGroupSeriesNode({ config, node, rootIndex }),
   );
 }
 
 function toGroupSeriesNode({
+  config,
   node,
   rootIndex,
-  colors,
-  headerTintTarget,
-  isDrilled,
-  showLeafLabels,
-  labelLayout,
-  parentLabelLayout,
-  formatValue,
-  formatPercentOfTotal,
-  renderingContext,
 }: {
+  config: TreemapSeriesBuildConfig;
   node: TreemapNode;
   rootIndex: number;
-  colors: Record<string, string>;
-  headerTintTarget: string;
-  isDrilled: boolean;
-  showLeafLabels: boolean;
-  labelLayout: Record<string, TreemapLabelLayout>;
-  parentLabelLayout: Record<string, ParentLabelLayout>;
-  formatValue: (value: number) => string;
-  formatPercentOfTotal: (value: number) => string;
-  renderingContext: RenderingContext;
 }): TreemapSeriesNode {
+  const {
+    colors,
+    headerTintTarget,
+    isDrilled,
+    parentLabelLayout,
+    formatValue,
+    formatPercentOfTotal,
+    renderingContext,
+  } = config;
   const groupColor = colors[getTreemapNodeKey(node)];
   const groupTint = getGroupHeaderBgTint(groupColor, headerTintTarget);
   const groupId = getTreemapNodeId(rootIndex);
@@ -204,13 +198,10 @@ function toGroupSeriesNode({
     return {
       ...groupNode,
       ...getTileLabelOverride({
+        config,
         id: groupId,
         value: node.value,
         displayName: node.displayName,
-        showLeafLabels,
-        labelLayout,
-        formatValue,
-        formatPercentOfTotal,
       }),
     };
   }
@@ -218,35 +209,21 @@ function toGroupSeriesNode({
   return {
     ...groupNode,
     children: node.children.map((leaf, leafIndex) =>
-      toLeafSeriesNode({
-        leaf,
-        rootIndex,
-        leafIndex,
-        showLeafLabels,
-        labelLayout,
-        formatValue,
-        formatPercentOfTotal,
-      }),
+      toLeafSeriesNode({ config, leaf, rootIndex, leafIndex }),
     ),
   };
 }
 
 function toLeafSeriesNode({
+  config,
   leaf,
   rootIndex,
   leafIndex,
-  showLeafLabels,
-  labelLayout,
-  formatValue,
-  formatPercentOfTotal,
 }: {
+  config: TreemapSeriesBuildConfig;
   leaf: TreemapNode;
   rootIndex: number;
   leafIndex: number;
-  showLeafLabels: boolean;
-  labelLayout: Record<string, TreemapLabelLayout>;
-  formatValue: (value: number) => string;
-  formatPercentOfTotal: (value: number) => string;
 }): TreemapSeriesNode {
   const leafId = getTreemapNodeId(rootIndex, leafIndex);
 
@@ -257,13 +234,10 @@ function toLeafSeriesNode({
     rawName: leaf.rawName,
     rowIndices: leaf.rowIndices,
     ...getTileLabelOverride({
+      config,
       id: leafId,
       value: leaf.value,
       displayName: leaf.displayName,
-      showLeafLabels,
-      labelLayout,
-      formatValue,
-      formatPercentOfTotal,
     }),
   };
 }
@@ -314,22 +288,18 @@ function getTileLabelDefault({
 }
 
 function getTileLabelOverride({
+  config,
   id,
   value,
   displayName,
-  showLeafLabels,
-  labelLayout,
-  formatValue,
-  formatPercentOfTotal,
 }: {
+  config: TreemapSeriesBuildConfig;
   id: string;
   value: number;
   displayName: string;
-  showLeafLabels: boolean;
-  labelLayout: Record<string, TreemapLabelLayout>;
-  formatValue: (value: number) => string;
-  formatPercentOfTotal: (value: number) => string;
 }): Pick<TreemapSeriesNode, "label"> {
+  const { showLeafLabels, labelLayout, formatValue, formatPercentOfTotal } =
+    config;
   if (!showLeafLabels) {
     return HIDDEN_LABEL_OVERRIDE;
   }
