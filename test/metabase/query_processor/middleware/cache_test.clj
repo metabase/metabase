@@ -76,15 +76,14 @@
               max-age-ms (* (:multiplier strategy)
                             (:avg-execution-ms strategy))]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
-                                                                               (when (= hash hex-hash)
-                                                                                 entry))
-                                                                             @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/millis max-age-ms)))
-                                      results))]
-            (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is))
-            (respond nil))))
+          (if-let [{:keys [created results]} (some (fn [[hash entry]]
+                                                     (when (= hash hex-hash) entry))
+                                                   @store)]
+            (let [^bytes result-bytes results
+                  stale? (not (t/after? created (t/minus (t/instant) (t/millis max-age-ms))))]
+              (with-open [is (java.io.ByteArrayInputStream. result-bytes)]
+                (respond is stale?)))
+            (respond nil false))))
 
       (save-results! [this query-hash results]
         (let [hex-hash (codecs/bytes->hex query-hash)]
@@ -292,7 +291,7 @@
         (testing "Cached results should exist"
           (is (true?
                (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                                 some?))))
+                                 (fn [is _stale?] (some? is))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -308,7 +307,8 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :cache-hash some?}
+                                   :cache-hash some?
+                                   :stale?     false}
                    :row_count     8
                    :status        :completed}
                   result)))))))

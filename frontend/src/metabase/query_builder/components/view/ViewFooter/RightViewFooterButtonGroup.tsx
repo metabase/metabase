@@ -1,5 +1,6 @@
 import cx from "classnames";
 
+import { QuestionLastUpdated } from "metabase/common/components/QuestionLastUpdated/QuestionLastUpdated";
 import CS from "metabase/css/core/index.css";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
@@ -11,7 +12,6 @@ import { useSelector } from "metabase/redux";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";
-import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";
 import { QuestionRowCount } from "../QuestionRowCount";
 import { QuestionTimelineWidget } from "../QuestionTimelineWidget";
 

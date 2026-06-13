@@ -36,24 +36,36 @@
   results)
 
 (defn select-cache
-  "Select the result form the cache"
-  [query-hash updated-at]
-  (t2/select-one-fn results-as-bytes :model/QueryCache
-                    {:select [:results]
-                     :where [:and
-                             [:= :query_hash query-hash]
-                             [:>= :updated_at updated-at]]
-                     :order-by [[:updated_at :desc]]}))
+  "Select the most recent cache entry for the query hash, regardless of age.
+  Returns a map with `:bytes` (the result bytes) and `:updated_at` (the timestamp when it was stored),
+  or nil if no entry exists."
+  [query-hash]
+  (when-let [row (t2/select-one :model/QueryCache
+                                {:select [:results :updated_at]
+                                 :where  [:= :query_hash query-hash]
+                                 :order-by [[:updated_at :desc]]})]
+    {:bytes      (results-as-bytes row)
+     :updated_at (:updated_at row)}))
+
+(defn select-cache-for-cutoff
+  "Return the most recent cache entry for `query-hash` annotated with `:stale?` = true when the
+  entry is older than `cutoff`, or nil if no entry exists."
+  [query-hash cutoff]
+  (when-let [{:keys [bytes updated_at]} (select-cache query-hash)]
+    {:bytes  bytes
+     :stale? (t/before? updated_at cutoff)}))
 
 (defn fetch-cache-stmt-ttl
-  "Make a prepared statement for :ttl caching strategy"
+  "Fetch a cache entry for :ttl caching strategy. Returns a map with `:bytes` and `:stale?`,
+  or nil when no entry exists."
   [strategy query-hash]
   (if-not (:avg-execution-ms strategy)
     (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
-    (let [max-age-ms     (* (:multiplier strategy)
-                            (:avg-execution-ms strategy))
-          invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
-      (select-cache query-hash invalidated-at))))
+    (let [max-age-ms (* (:multiplier strategy)
+                        (:avg-execution-ms strategy))
+          cutoff     (cond-> (ms-ago max-age-ms)
+                       (:invalidated-at strategy) (t/max (:invalidated-at strategy)))]
+      (select-cache-for-cutoff query-hash cutoff))))
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
@@ -63,10 +75,10 @@
     (fetch-cache-stmt-ttl strategy hash)))
 
 (defn- cached-results [query-hash strategy respond]
-  (if-let [cached (fetch-cache-stmt strategy query-hash)]
-    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. cached))]
-      (respond is))
-    (respond nil)))
+  (if-let [{:keys [bytes stale?]} (fetch-cache-stmt strategy query-hash)]
+    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. bytes))]
+      (respond is (boolean stale?)))
+    (respond nil false)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."

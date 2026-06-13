@@ -112,6 +112,11 @@ export const runDirtyQuestionQuery =
     return dispatch(runQuestionQuery({ shouldUpdateUrl }));
   };
 
+// AbortController for any in-progress background stale refresh. Aborted when
+// the user triggers a new explicit run so the stale refresh doesn't clobber
+// the running state.
+let _staleRefreshAbortController: AbortController | null = null;
+
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
@@ -126,6 +131,11 @@ export const runQuestionQuery = ({
   overrideWithQuestion?: Question | null;
 } = {}) => {
   return async (dispatch: Dispatch, getState: GetState) => {
+    // Cancel any silent background stale refresh before showing the running overlay.
+    if (_staleRefreshAbortController) {
+      _staleRefreshAbortController.abort();
+      _staleRefreshAbortController = null;
+    }
     dispatch(loadStartUIControls());
 
     const question = overrideWithQuestion
@@ -243,8 +253,44 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
       },
     });
     dispatch(loadCompleteUIControls());
+
+    if (queryResults[0]?.stale) {
+      dispatch(refreshStaleQueryResult(question));
+    }
   };
 };
+
+// Re-run a stale cached result silently in the background. Unlike
+// runQuestionQuery, this never dispatches RUN_QUERY, so isRunning stays false
+// and the "Doing science…" overlay won't cover the data that is already on
+// screen. The footer's QuestionLastUpdated component shows "Refreshing…" via
+// result.stale while the fresh query is in flight.
+const refreshStaleQueryResult =
+  (question: Question) => async (dispatch: Dispatch) => {
+    _staleRefreshAbortController?.abort();
+    const controller = new AbortController();
+    _staleRefreshAbortController = controller;
+
+    try {
+      const freshResults = await apiRunQuestionQuery(question, {
+        dispatch,
+        signal: controller.signal,
+        ignoreCache: true,
+        isDirty: false,
+      });
+      if (_staleRefreshAbortController === controller) {
+        _staleRefreshAbortController = null;
+      }
+      // Guard against infinite loop if the server still returns stale data.
+      if (!freshResults[0]?.stale) {
+        dispatch(queryCompleted(question, freshResults));
+      }
+    } catch (error) {
+      if (!isAbortError(error)) {
+        console.error("Background stale refresh failed:", error);
+      }
+    }
+  };
 
 export const queryErrored = createThunkAction(
   QUERY_ERRORED_TYPE,
