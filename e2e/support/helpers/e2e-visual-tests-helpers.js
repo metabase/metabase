@@ -11,11 +11,11 @@ import {
 import { isFixedPositionElementVisible } from "./e2e-element-visibility-helpers";
 
 export function ensureChartIsActive() {
-  cy.findByTestId("debounced-frame-root").should(
-    "not.have.css",
-    "pointer-events",
-    "none",
-  );
+  cy.findAllByTestId("debounced-frame-root").each(($el) => {
+    cy.wrap($el).should("not.have.css", "pointer-events", "none");
+  });
+  cy.wait(500); // Let DebouncedFrame transitions settle
+  ensureEchartsContainerHasSvg();
 }
 
 export function echartsContainer() {

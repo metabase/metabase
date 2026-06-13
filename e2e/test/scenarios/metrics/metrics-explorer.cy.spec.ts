@@ -2109,13 +2109,13 @@ describe("scenarios > metrics > explorer", () => {
   describe("Drill through", () => {
     beforeEach(() => {
       H.MetricsViewer.goToViewer();
+      addMetricInputSequence([{ nameOrPath: "Count of orders" }]);
       addMetricInputSequence([
-        { nameOrPath: "Count of orders" },
         ",",
         { nameOrPath: "Count of orders" },
         "+",
         { nameOrPath: testMeasurePath },
-      ]); // Expected result: "Count of orders, Count of orders + Test Measure"
+      ]);
     });
 
     it("should drill into more granular time dimensions on timeseries chart", () => {
@@ -2125,13 +2125,12 @@ describe("scenarios > metrics > explorer", () => {
       H.ensureChartIsActive();
       H.cartesianChartCircles()
         .eq(4)
-        .wait(200) // Not cool, but it seems the chart component can update quickly after the first render
-        .realHover();
-      H.cartesianChartCircles().eq(4).should("be.visible").click();
+        .should("be.visible")
+        .click({ force: true });
       H.popover()
         .findByText("See this month by week")
         .should("be.visible")
-        .realClick();
+        .click({ force: true });
 
       H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /by week/ })
