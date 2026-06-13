@@ -20,6 +20,13 @@
       (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
       first))
 
+(defn- csp-directive-from-response
+  [response directive]
+  (-> (get-in response [:headers "Content-Security-Policy"])
+      (str/split #"; *")
+      (as-> xs (filter #(str/starts-with? % (str directive " ")) xs))
+      first))
+
 (defn- x-frame-options-header
   []
   (get (mw.security/security-headers) "X-Frame-Options"))
@@ -130,6 +137,30 @@
             (is (str/includes? style-src (str "nonce-" nonce))))
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
+
+(deftest data-app-inline-style-csp-test
+  (testing "Only data-app iframe responses allow inline styles"
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            app-response    (wrapped-handler {:uri "/"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            data-response   (wrapped-handler {:uri "/embed/data-app/boba"
+                                              :headers {}}
+                                             identity
+                                             identity)
+            app-style-src   (csp-directive-from-response app-response "style-src")
+            data-style-src  (csp-directive-from-response data-response "style-src")
+            data-script-src (csp-directive-from-response data-response "script-src")]
+        (is (str/includes? app-style-src "'nonce-"))
+        (is (not (str/includes? app-style-src "'unsafe-inline'")))
+        (is (str/includes? data-style-src "'unsafe-inline'"))
+        (is (not (str/includes? data-style-src "'nonce-")))
+        (is (str/includes? data-script-src "'nonce-"))
+        (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"

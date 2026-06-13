@@ -32,13 +32,13 @@ import {
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
 import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
+import { getCardFromSdkQuestionQuery } from "embedding-sdk-bundle/lib/sdk-question-query";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -69,6 +69,8 @@ type StaticQuestionBaseProps = PropsWithChildren<
  * @interface
  * @expand
  * @category StaticQuestion
+ * @notExported SdkQuestionQuery
+ * @notExported StructuredDatasetQuery
  */
 export type StaticQuestionProps = StaticQuestionBaseProps &
   SdkQuestionEntityPublicProps;
@@ -155,7 +157,7 @@ const StaticQuestionInner = (
   );
 
   const deserializedCard = useMemo(
-    () => (query ? deserializeCardFromQuery(query) : undefined),
+    () => getCardFromSdkQuestionQuery(query),
     [query],
   );
 

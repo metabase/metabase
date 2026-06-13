@@ -33,11 +33,11 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { getCardFromSdkQuestionQuery } from "embedding-sdk-bundle/lib/sdk-question-query";
 import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
@@ -56,6 +56,8 @@ export type InteractiveQuestionBaseProps = Omit<
  * @interface
  * @expand
  * @category InteractiveQuestion
+ * @notExported SdkQuestionQuery
+ * @notExported StructuredDatasetQuery
  */
 export type InteractiveQuestionProps = InteractiveQuestionBaseProps &
   SdkQuestionEntityPublicProps;
@@ -115,7 +117,7 @@ function InteractiveQuestionInner(props: InteractiveQuestionInternalProps) {
   } = props;
 
   const deserializedCard = useMemo(
-    () => (query ? deserializeCardFromQuery(query) : undefined),
+    () => getCardFromSdkQuestionQuery(query),
     [query],
   );
 
