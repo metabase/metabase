@@ -5,12 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
+        description: "Branch or custom SDK version to release"
         type: choice
         required: true
         default: "master"
         options:
           - master
+          - 0.63.0-data-apps
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -175,11 +176,14 @@ jobs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
       major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
       pre_release_label: ${{ fromJson(steps.new-sdk-version.outputs.result).preReleaseLabel }}
+      npm_tag: ${{ fromJson(steps.new-sdk-version.outputs.result).npmTag }}
+      release_branch: ${{ fromJson(steps.new-sdk-version.outputs.result).releaseBranch }}
+      internal_testing_release: ${{ fromJson(steps.new-sdk-version.outputs.result).internalTestingRelease }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ inputs.branch == '0.63.0-data-apps' && 'master' || inputs.branch }}
 
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
@@ -199,13 +203,28 @@ jobs:
 
             const branch = "${{ inputs.branch }}";
             const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
+            const releaseBranch = branch === "0.63.0-data-apps" ? "master" : branch;
+
+            if (branch === "0.63.0-data-apps") {
+              return {
+                version: branch,
+                preReleaseLabel: "",
+                majorVersion: "63",
+                npmTag: "63-data-apps",
+                releaseBranch,
+                internalTestingRelease: true,
+              };
+            }
 
             const result = getNextSdkVersion(branch, currentVersion);
 
             return {
               version: result.version,
               preReleaseLabel: result.preReleaseLabel,
-              majorVersion: result.majorVersion
+              majorVersion: result.majorVersion,
+              npmTag: result.preReleaseLabel || "nightly",
+              releaseBranch,
+              internalTestingRelease: false,
             };
 
       - name: Append workflow summary
@@ -216,6 +235,9 @@ jobs:
           - \`current_version\`: "${{ steps.current-sdk-version.outputs.sdk_current_version }}"
           - \`next_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).version }}"
           - \`major_version\`: "${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}"
+          - \`npm_tag\`: "${{ fromJson(steps.new-sdk-version.outputs.result).npmTag }}"
+          - \`release_branch\`: "${{ fromJson(steps.new-sdk-version.outputs.result).releaseBranch }}"
+          - \`internal_testing_release\`: "${{ fromJson(steps.new-sdk-version.outputs.result).internalTestingRelease }}"
           EOF
 
   check-git-tag:
@@ -228,7 +250,7 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -243,14 +265,14 @@ jobs:
           fi
 
   test:
-    needs: check-git-tag
+    needs: [check-git-tag, determine-sdk-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -269,7 +291,7 @@ jobs:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
           fetch-depth: 0
           fetch-tags: true
 
@@ -312,7 +334,7 @@ jobs:
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           # when we created version update PR, it would only have diff from 2 files SDK readme and SDK package.json template
-          ref: ${{ inputs.branch}}
+          ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
 
       - name: Setup git user
         run: |
@@ -320,7 +342,7 @@ jobs:
           git config --global user.name "Metabase Automation"
 
       - name: Update readme
-        if: inputs.branch != 'master'
+        if: needs.determine-sdk-version.outputs.release_branch != 'master'
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
 
@@ -332,7 +354,7 @@ jobs:
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
 
-          if [ "${{ inputs.branch }}" = "master" ]; then
+          if [ "${{ needs.determine-sdk-version.outputs.release_branch }}" = "master" ]; then
             COMMIT_MSG="chore(sdk): Update published npm version to ${{ env.sdk_version }}"
             PR_TITLE="chore(sdk): Update SDK version to ${{ env.sdk_version }}"
             PR_BODY="Update published npm package version to ${{ env.sdk_version }}"
@@ -344,7 +366,7 @@ jobs:
 
           git commit -a -m "$COMMIT_MSG"
           git push origin HEAD
-          gh pr create --base "${{ inputs.branch }}" \
+          gh pr create --base "${{ needs.determine-sdk-version.outputs.release_branch }}" \
                        --assignee "${GITHUB_ACTOR}" \
                        --title "$PR_TITLE" \
                        --body "$PR_BODY"
@@ -376,15 +398,6 @@ jobs:
           name: metabase-sdk
           path: sdk
 
-      - name: Compute master tag
-        id: compute-tag
-        run: |
-          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
-            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
-          else
-            echo "masterTag=nightly" >> $GITHUB_OUTPUT
-          fi
-
       # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
       # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
       - name: Setup Node.js for npm publish with trusted publishing
@@ -396,7 +409,7 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          TAG="${{ steps.compute-tag.outputs.masterTag }}"
+          TAG="${{ needs.determine-sdk-version.outputs.npm_tag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
@@ -404,7 +417,7 @@ jobs:
   tag-latest:
     name: Tag npm release as latest
     # Pre-gold: remove `if: false` once this branch becomes gold.
-    if: false
+    if: ${{ false && needs.determine-sdk-version.outputs.internal_testing_release != 'true' }}
     needs: [publish-npm, determine-sdk-version]
     uses: ./.github/workflows/embedding-sdk-tag-latest.yml
     with:
@@ -423,7 +436,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          ref: ${{ inputs.branch }}
+          ref: ${{ needs.determine-sdk-version.outputs.release_branch }}
 
       - name: Setup git user
         run: |
@@ -436,7 +449,7 @@ jobs:
           git push origin ${{ env.tag }}
 
       - name: Create and push SDK stable version tag
-        if: ${{ startsWith(inputs.branch, 'release-x.') }}
+        if: ${{ startsWith(needs.determine-sdk-version.outputs.release_branch, 'release-x.') && needs.determine-sdk-version.outputs.internal_testing_release != 'true' }}
         run: |
           git tag -a -f ${{ env.stable_tag }} -m "Tagging SDK stable version ${{ env.stable_tag }}"
           git push origin -f ${{ env.stable_tag }}

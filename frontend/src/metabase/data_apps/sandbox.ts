@@ -17,9 +17,28 @@ import {
 // eslint-disable-next-line no-restricted-imports
 import { useAction } from "embedding-sdk-package/hooks/public/use-action";
 // eslint-disable-next-line no-restricted-imports
-import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
+import {
+  avg,
+  breakout,
+  count,
+  createMetabaseQuery,
+  distinct,
+  filter,
+  max,
+  median,
+  min,
+  sum,
+  useMetabaseQuery,
+  useMetabaseQueryObject,
+} from "embedding-sdk-package/hooks/public/use-metabase-query";
+// eslint-disable-next-line no-restricted-imports
+import { useMetricQuery } from "embedding-sdk-package/hooks/public/use-metric-query";
 // eslint-disable-next-line no-restricted-imports
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
+// eslint-disable-next-line no-restricted-imports
+import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
+// eslint-disable-next-line no-restricted-imports
+import { defineMetabaseTheme } from "embedding-sdk-package/lib/public/define-metabase-theme";
 import {
   DataAppLink,
   DataAppRouter,
@@ -65,8 +84,24 @@ export function createDataAppSandbox(
           // Data fetching
           useQuestionQuery,
           useMetabaseQuery,
+          useMetricQuery,
           // Custom actions
           useAction,
+          // Query helpers
+          avg,
+          breakout,
+          count,
+          createMetabaseQuery,
+          distinct,
+          filter,
+          max,
+          median,
+          min,
+          sum,
+          useMetabaseQueryObject,
+          // Configuration helpers
+          defineMetabaseAuthConfig,
+          defineMetabaseTheme,
           // Question components
           InteractiveQuestion,
           StaticQuestion,

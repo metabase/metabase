@@ -30,12 +30,14 @@ const TEST_SCHEMA = {
   dimensions: {
     price: {
       id: "dimension-price",
+      metricId: TEST_METRIC_ID,
       name: "price",
       displayName: "Price",
       jsType: "number",
     },
     createdAt: {
       id: "dimension-created-at",
+      metricId: TEST_METRIC_ID,
       name: "createdAt",
       displayName: "Created At",
       jsType: "Date",
