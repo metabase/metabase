@@ -86,7 +86,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 ## Step 5 — Pull the typed schema
 
 Generate `src/metabase.data.ts` by invoking the
-[`metabase-semantic-schema-data-apps`](../metabase-semantic-schema-data-apps/SKILL.md)
+[`metabase-data-app-semantic-layer`](../metabase-data-app-semantic-layer/SKILL.md)
 skill. It prompts the user for an API key, hits
 `/api/typed-schemas/v1/typescript` on the target Metabase, and writes the file.
 
@@ -112,7 +112,7 @@ Before writing a single component, confirm the app's scope with the user **and c
 
 Replace `src/App.tsx`'s starter content with the screens the user described. **Structure the project properly from the start** — don't stuff everything into `App.tsx`. Each screen/page becomes its own file under `src/pages/` (or wherever fits the app's shape), shared UI lives in `src/components/`, data-fetching hooks in `src/hooks/`, derived/computed helpers in `src/lib/`, types in `src/types/`. `App.tsx` should end up small: routing + composition of the page components, not implementation. Vite bundles everything reachable from `src/index.tsx` into the one IIFE.
 
-**Reference Metabase data through the schema, never with raw IDs.** Import `schema` from `src/metabase.data.ts` and pass `schema.questions.<name>.id`, `schema.tables.<t>.id`, `schema.metrics.<m>.id` to the data hooks. For query patterns (typed row shapes, `useMetabaseQuery` generics, segments / measures / breakouts, debugging), follow the `metabase-semantic-schema-data-apps` skill — it owns the data-side conventions; this skill owns the project-side conventions.
+**Reference Metabase data through the schema, never with raw IDs.** Import `schema` from `src/metabase.data.ts` and pass `schema.questions.<name>.id`, `schema.tables.<t>.id`, `schema.metrics.<m>.id` to the data hooks. For query patterns (typed row shapes, `useMetabaseQuery` generics, segments / measures / breakouts, debugging), follow the `metabase-data-app-semantic-layer` skill — it owns the data-side conventions; this skill owns the project-side conventions.
 
 **Do not modify `src/index.tsx`, `src/dev.tsx`, `vite.config.ts`, `tsconfig.json`, or `index.html` unless the change is genuinely required.** They encode the bundle contract with the host (factory shape, externals, document shell). Tweaks here drift the dev preview from production — the iframe doesn't read your `index.html`, the host serves a byte-for-byte template — and silently break things like drill popups and routing.
 
@@ -228,7 +228,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
-| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-semantic-schema-data-apps` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
+| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 | `useQuestionQuery` | Question-only data-fetching hook (`useQuestionQuery(questionId, options?)` returning `{ data, isLoading, error, refetch }`). The bare numeric id is the first arg; optional `{ initialSqlParameters?, enabled? }` is the second. Must be called under `<MetabaseProvider>`. Use when you need a quick question fetch without going through the schema layer (e.g. ad-hoc tooling, pre-schema apps); prefer `useMetabaseQuery` for new schema-backed work. |
 | `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction<TParameters, TKind>(actionId)` — the runtime arg is the action's numeric **id** (read from `schema.models.<m>.actions.<a>.id`), or its `entity_id` string, or `null`. Typing comes from the two generics: `ActionParametersFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types `execute`'s parameters object, and `ActionKindFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types the discriminated `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
 
@@ -258,7 +258,7 @@ This is a per-rendering decision, not a project-wide one:
 
 **Call each schema entry at most once per render tree.** Multiple `useMetabaseQuery` calls on the same `questionId` (or same `tableId` + identical filters/measures/breakouts) mount independent subscriptions, fire duplicate queries, and let consumers disagree mid-load. Lift the call to the highest component that needs the data; pass `data` / `isLoading` / `error` down as props. Different ids — or the same id with different filters / breakouts — are different data sources; call them separately.
 
-(For the hook contract itself — generics, table-vs-metric variants, segments / measures / breakouts, debugging — see the `metabase-semantic-schema-data-apps` skill.)
+(For the hook contract itself — generics, table-vs-metric variants, segments / measures / breakouts, debugging — see the `metabase-data-app-semantic-layer` skill.)
 
 ## SDK component sizing
 
