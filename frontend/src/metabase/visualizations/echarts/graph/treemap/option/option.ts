@@ -56,18 +56,13 @@ const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
 export function getTreemapChartOption(config: TreemapChartOptionConfig): {
   series: TreemapChartSeriesOption;
 } {
-  const {
-    tree,
-    showParentLabels = true,
-    isDrilled = false,
-    renderingContext,
-  } = config;
+  const { tree, showParentLabels = true, renderingContext } = config;
   const buildConfig = createSeriesBuildConfig(config);
   const hasNestedChildren = tree.some(hasChildren);
 
   const groupUpperLabel = getUpperLabelDefault({
     showParentLabels,
-    isDrilled,
+    isDrilled: buildConfig.isDrilled,
     renderingContext,
   });
 
