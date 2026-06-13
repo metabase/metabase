@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
   Card,
@@ -153,13 +152,18 @@ export const cardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedCardParameterValueRequest
       >({
-        query: ({ card_id, parameter_id, ...params }) => ({
+        query: ({ card_id, entityIdentifier, parameter_id, ...params }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedCardParameterValueUrl(
-            card_id,
-            parameter_id,
-          ),
-          params,
+          url: "/api/card/:cardId/params/:paramId/remapping",
+          // Embed requests carry an entity identifier (uuid/token) instead of
+          // the real card id; the embed override rewrites `:cardId` →
+          // `:entityIdentifier` (see override-requests-for-embeds). Mirrors the
+          // `cardId`/`entityIdentifier` switch in `parameters/actions`.
+          params: {
+            ...params,
+            paramId: parameter_id,
+            ...(entityIdentifier ? { entityIdentifier } : { cardId: card_id }),
+          },
         }),
         providesTags: (_response, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),

@@ -1,4 +1,3 @@
-import { PLUGIN_API } from "metabase/plugins";
 import { DashboardSchema, QueryMetadataSchema } from "metabase/schema";
 import type {
   CopyDashboardRequest,
@@ -144,13 +143,25 @@ export const dashboardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
-        query: ({ dashboard_id, parameter_id, ...params }) => ({
+        query: ({
+          dashboard_id,
+          entityIdentifier,
+          parameter_id,
+          ...params
+        }) => ({
           method: "GET",
-          url: PLUGIN_API.getRemappedDashboardParameterValueUrl(
-            dashboard_id,
-            parameter_id,
-          ),
-          params,
+          url: "/api/dashboard/:dashId/params/:paramId/remapping",
+          // Embed requests carry an entity identifier (uuid/token) instead of
+          // the real dashboard id; the embed override rewrites `:dashId` →
+          // `:entityIdentifier` (see override-requests-for-embeds). Mirrors the
+          // `dashId`/`entityIdentifier` switch in `parameters/actions`.
+          params: {
+            ...params,
+            paramId: parameter_id,
+            ...(entityIdentifier
+              ? { entityIdentifier }
+              : { dashId: dashboard_id }),
+          },
         }),
         providesTags: (_response, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),
