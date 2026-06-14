@@ -5,6 +5,18 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CopyButton } from "./CopyButton";
 
 describe("CopyButton", () => {
+  // The async copy path uses `navigator.clipboard.write` + `ClipboardItem`, which
+  // jsdom doesn't implement. Stub them here (not in the global jest setup) so we
+  // don't shadow the clipboard that @testing-library/user-event installs for
+  // other tests.
+  beforeAll(() => {
+    globalThis.ClipboardItem =
+      class {} as unknown as typeof globalThis.ClipboardItem;
+    Object.assign(navigator.clipboard, {
+      write: jest.fn(() => Promise.resolve()),
+    });
+  });
+
   beforeEach(() => {
     jest.mocked(navigator.clipboard.writeText).mockClear();
     jest.mocked(navigator.clipboard.write).mockClear();
