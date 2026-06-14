@@ -84,6 +84,14 @@
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
   #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
 
+(defn- intern!
+  "Returns the canonical instance equal to `x` already held by `m`, storing `x` as that
+  instance the first time it is seen. `m` must be a value-keyed map (a Clojure value as key),
+  so structurally-equal arguments collapse to one shared object."
+  [^java.util.HashMap m x]
+  (or (.get m x)
+      (do (.put m x x) x)))
+
 (defn- path-interner
   "Returns a function that interns `:serdes/meta` path vectors.
 
@@ -96,16 +104,13 @@
   []
   (let [seg-table  (java.util.HashMap.)
         str-table  (java.util.HashMap.)
-        intern-str (fn [s]
-                     (if (string? s)
-                       (or (.get str-table s) (do (.put str-table s s) s))
-                       s))
+        intern-str (fn [s] (if (string? s) (intern! str-table s) s))
+        canon-seg  (fn [seg]
+                     (cond-> (update seg :model intern-str)
+                       (string? (:id seg)) (update :id intern-str)))
         intern-seg (fn [seg]
                      (or (.get seg-table seg)
-                         (let [canon (cond-> (update seg :model intern-str)
-                                       (string? (:id seg)) (update :id intern-str))]
-                           (.put seg-table canon canon)
-                           canon)))]
+                         (intern! seg-table (canon-seg seg))))]
     (fn intern-path [hierarchy]
       (mapv intern-seg hierarchy))))
 
