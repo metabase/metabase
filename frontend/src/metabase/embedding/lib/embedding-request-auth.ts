@@ -1,12 +1,10 @@
 /* eslint-disable metabase/no-literal-metabase-strings -- request header names */
 import type {
+  OnBeforeRequestHandler,
   OnBeforeRequestHandlerConfig,
   RequestClientInfo,
 } from "metabase/api/client";
 import { IFRAMED_IN_SELF } from "metabase/utils/iframe";
-
-type EmbeddingRequestHandler =
-  () => Promise<Partial<OnBeforeRequestHandlerConfig> | void>;
 
 /**
  * Factories for the embedding-only request-header plugin handlers. Each closes
@@ -25,7 +23,7 @@ type EmbeddingRequestHandler =
  * keeping these embedding concerns out of the generic api client.
  */
 export const setApiKeyHeader =
-  (apiKey: string): EmbeddingRequestHandler =>
+  (apiKey: string): OnBeforeRequestHandler =>
   async () => ({ headers: { "X-Api-Key": apiKey } });
 
 export const sessionTokenHeaders = (
@@ -35,12 +33,12 @@ export const sessionTokenHeaders = (
 });
 
 export const setSessionTokenHeader =
-  (sessionToken: string): EmbeddingRequestHandler =>
+  (sessionToken: string): OnBeforeRequestHandler =>
   async () =>
     sessionTokenHeaders(sessionToken);
 
 export const setRequestClientHeaders =
-  (requestClient: RequestClientInfo): EmbeddingRequestHandler =>
+  (requestClient: RequestClientInfo): OnBeforeRequestHandler =>
   async () => {
     const headers: Record<string, string> = {};
 
@@ -61,7 +59,7 @@ export const setRequestClientHeaders =
  * embed flows — static and full-app deliberately don't tag preview requests
  * (see EMB-930 in `metabase/embedding/config`).
  */
-export const setEmbedPreviewHeader: EmbeddingRequestHandler = async () => {
+export const setEmbedPreviewHeader: OnBeforeRequestHandler = async () => {
   if (IFRAMED_IN_SELF) {
     return { headers: { "X-Metabase-Embedded-Preview": "true" } };
   }

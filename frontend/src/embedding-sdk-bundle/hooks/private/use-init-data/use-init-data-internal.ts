@@ -17,7 +17,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-me
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import {
-  type OnBeforeRequestHandlerConfig,
+  type OnBeforeRequestHandler,
   type RequestClientInfo,
   api,
 } from "metabase/api/client";
@@ -33,9 +33,9 @@ import {
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import registerVisualizations from "metabase/visualizations/register";
 
-const reactSdkEmbedReferrerHandler = async (
-  config: OnBeforeRequestHandlerConfig,
-): Promise<OnBeforeRequestHandlerConfig | void> => ({
+const reactSdkEmbedReferrerHandler: OnBeforeRequestHandler = async (
+  config,
+) => ({
   ...config,
   headers: {
     ...config.headers,
