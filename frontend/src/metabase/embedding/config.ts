@@ -1,4 +1,7 @@
-import { setRequestClientHeaders } from "metabase/embedding/lib/embedding-request-auth";
+import {
+  setEmbedPreviewHeader,
+  setRequestClientHeaders,
+} from "metabase/embedding/lib/embedding-request-auth";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { PLUGIN_API } from "metabase/plugins";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
@@ -16,6 +19,8 @@ const EMBEDDING_CONFIG: InternalEmbeddingConfig = {
 export function setIsPublicEmbedding() {
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
     setRequestClientHeaders({ name: "embedding-public" });
+  PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+    setEmbedPreviewHeader;
 
   EMBEDDING_CONFIG.isPublicEmbedding = true;
 }

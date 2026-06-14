@@ -17,6 +17,7 @@ type EmbeddingRequestHandler =
  *    (whichever auth method is in use; the session strategy is re-installed on
  *    refresh with the new token)
  *  - `setRequestClientHeaders` onto its own slot
+ *  - `setEmbedPreviewHeader` onto its own slot (public + SDK flows only)
  *
  * In the normal app none are installed, so no embedding headers are emitted —
  * keeping these embedding concerns out of the generic api client.
@@ -34,9 +35,6 @@ export const setRequestClientHeaders =
   async () => {
     const headers: Record<string, string> = {};
 
-    if (IFRAMED_IN_SELF) {
-      headers["X-Metabase-Embedded-Preview"] = "true";
-    }
     if (requestClient.name) {
       headers["X-Metabase-Client"] = requestClient.name;
     }
@@ -46,3 +44,16 @@ export const setRequestClientHeaders =
 
     return { headers };
   };
+
+/**
+ * Tag requests coming from an embed preview (the page is iframed into itself).
+ * Kept separate from `setRequestClientHeaders` because preview mode is
+ * orthogonal to which client is embedding. Installed only by the public and SDK
+ * embed flows — static and full-app deliberately don't tag preview requests
+ * (see EMB-930 in `metabase/embedding/config`).
+ */
+export const setEmbedPreviewHeader: EmbeddingRequestHandler = async () => {
+  if (IFRAMED_IN_SELF) {
+    return { headers: { "X-Metabase-Embedded-Preview": "true" } };
+  }
+};

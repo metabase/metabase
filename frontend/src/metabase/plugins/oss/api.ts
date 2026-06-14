@@ -27,6 +27,12 @@ const getDefaultPluginApi = () => ({
     // embedding-only headers out of the generic api client.
     setRequestClientHeaders:
       async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
+    // Emit the embed-preview header (`X-Metabase-Embedded-Preview`). A no-op
+    // slot: the public and SDK embed flows install `setEmbedPreviewHeader` here,
+    // which tags requests when running inside an embed preview (see
+    // `embedding-request-auth`).
+    setEmbedPreviewHeader:
+      async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
     // Emit the embedding auth header (`X-Api-Key` or `X-Metabase-Session`). A
     // no-op slot: the embedding auth flow installs exactly one strategy here —
     // `setApiKeyHeader` or `setSessionTokenHeader` — based on the auth method in

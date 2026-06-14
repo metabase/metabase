@@ -22,7 +22,10 @@ import {
   api,
 } from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
-import { setRequestClientHeaders } from "metabase/embedding/lib/embedding-request-auth";
+import {
+  setEmbedPreviewHeader,
+  setRequestClientHeaders,
+} from "metabase/embedding/lib/embedding-request-auth";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
@@ -68,6 +71,8 @@ const setSdkRequestClientHeadersOnce = _.once(
   (requestClient: RequestClientInfo) => {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
       setRequestClientHeaders(requestClient);
+    PLUGIN_API.onBeforeRequestHandlers.setEmbedPreviewHeader =
+      setEmbedPreviewHeader;
   },
 );
 
