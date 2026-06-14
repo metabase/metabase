@@ -2227,12 +2227,15 @@
   ;; index is rebuilt. New/edited documents are kept in sync by the model's before-insert /
   ;; before-update hooks.
   (run! (fn [{:keys [id document]}]
-          (let [text (try (-> document json/decode+kw document-ast->body-text not-empty)
-                          (catch Throwable _ nil))]
-            (when text
-              (t2/query {:update :document
-                         :set    {:body_text text}
-                         :where  [:= :id id]}))))
+          (when-let [text (try
+                            (-> document
+                                json/decode+kw
+                                document-ast->body-text
+                                not-empty)
+                            (catch Throwable _ nil))]
+            (t2/query {:update :document
+                       :set    {:body_text text}
+                       :where  [:= :id id]})))
         (t2/reducible-query {:select [:id :document]
                              :from   [:document]
                              :where  [:and

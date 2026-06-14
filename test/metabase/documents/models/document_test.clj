@@ -807,22 +807,19 @@
               (t2/update! :model/Document doc-id {:name "Deserialized Name"}))
             (is (empty? @events-published))))))))
 
-(defn- raw-body-text [doc-id]
-  (:body_text (t2/query-one {:select [:body_text] :from [:document] :where [:= :id doc-id]})))
-
 (deftest body-text-derived-from-document-test
   (testing "body_text mirrors the document body for search indexing (UXW-4199)"
     (mt/with-temp [:model/Document {doc-id :id}
                    {:name "Doc"
                     :document (documents.test-util/text->prose-mirror-ast "hello searchable world")}]
       (testing "populated from the body on insert and stored in the DB"
-        (is (= "hello searchable world" (raw-body-text doc-id))))
+        (is (= "hello searchable world" (documents.test-util/raw-body-text doc-id))))
       (testing "kept out of model selects and API responses"
         (is (not (contains? (t2/select-one :model/Document :id doc-id) :body_text))))
       (testing "re-derived on update when the body changes"
         (t2/update! :model/Document doc-id
                     {:document (documents.test-util/text->prose-mirror-ast "updated body content")})
-        (is (= "updated body content" (raw-body-text doc-id))))
+        (is (= "updated body content" (documents.test-util/raw-body-text doc-id))))
       (testing "left untouched by updates that don't change the body"
         (t2/update! :model/Document doc-id {:name "Renamed"})
-        (is (= "updated body content" (raw-body-text doc-id)))))))
+        (is (= "updated body content" (documents.test-util/raw-body-text doc-id)))))))

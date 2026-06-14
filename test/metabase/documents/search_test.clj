@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -11,16 +12,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(defn- text->prose-mirror-ast
-  "Convert plain text to a ProseMirror AST structure."
-  [text]
-  (if (empty? text)
-    {:type "doc" :content []}
-    {:type "doc"
-     :content [{:type "paragraph"
-                :content [{:type "text"
-                           :text text}]}]}))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -39,7 +30,7 @@
           regular-card-name (str card-name "-regular")]
       (search.tu/with-temp-index-table
         (mt/with-temp [:model/Document document {:name "Test Document"
-                                                 :document (text->prose-mirror-ast "")}
+                                                 :document (documents.test-util/text->prose-mirror-ast "")}
                        :model/Card document-card (-> (card-with-name-and-query card-name)
                                                      (assoc :document_id (u/the-id document)))
                        :model/Card regular-card (card-with-name-and-query regular-card-name)]
@@ -59,14 +50,14 @@
                        :model/Collection {private-coll-id :id} {}
                        :model/Document {doc-in-public-coll :id} {:name "Public Document"
                                                                  :collection_id coll-id
-                                                                 :document (text->prose-mirror-ast "content")}
+                                                                 :document (documents.test-util/text->prose-mirror-ast "content")}
                        :model/Document {doc-in-private-coll :id} {:name "Private Document"
                                                                   :collection_id private-coll-id
-                                                                  :document (text->prose-mirror-ast "content")}
+                                                                  :document (documents.test-util/text->prose-mirror-ast "content")}
                        :model/Document {doc-archived :id} {:name "Archived Document"
                                                            :collection_id coll-id
                                                            :archived true
-                                                           :document (text->prose-mirror-ast "content")}]
+                                                           :document (documents.test-util/text->prose-mirror-ast "content")}]
           ;; Give user read access to first collection only
           (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
           (testing "Regular user sees only documents in accessible collections"
@@ -98,7 +89,7 @@
 (deftest document-view-tracking-integration-test
   (testing "Document view tracking integrates with search"
     (mt/with-temp [:model/Document {doc-id :id} {:name "Viewed Document"
-                                                 :document (text->prose-mirror-ast "content")
+                                                 :document (documents.test-util/text->prose-mirror-ast "content")
                                                  :view_count 0}]
       (testing "Document has initial state"
         (let [doc (t2/select-one :model/Document :id doc-id)]
@@ -140,10 +131,29 @@
   (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
-                                                   :document (text->prose-mirror-ast "quarterly revenue projections and growth")}]
+                                                   :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
         (testing "found by a term that appears only in the body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
         (testing "still found by its name"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Annual" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))))))
+
+(deftest document-content-search-on-update-test
+  (testing "Editing a document's body re-indexes its content for search (UXW-4199)"
+    ;; the search-term field (:body_text) is derived by before-update, not supplied by the caller, so the
+    ;; realtime after-update reindex only fires if that derived field reaches (t2/changes instance) — guard it.
+    (search.tu/with-temp-index-table
+      (mt/with-temp [:model/Document {doc-id :id} {:name "Quarterly Report"
+                                                   :document (documents.test-util/text->prose-mirror-ast "initial draft contents")}]
+        (testing "found by an original body term before the edit"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
+            (is (contains? (set (map :id (:data results))) doc-id))))
+        (t2/update! :model/Document doc-id
+                    {:document (documents.test-util/text->prose-mirror-ast "revised projections and forecasts")})
+        (testing "found by a term that appears only in the revised body"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "forecasts" :models "document")]
+            (is (contains? (set (map :id (:data results))) doc-id))))
+        (testing "no longer found by the replaced body term"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
+            (is (not (contains? (set (map :id (:data results))) doc-id)))))))))

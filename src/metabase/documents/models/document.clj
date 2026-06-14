@@ -108,7 +108,7 @@
   ;; never expose it through the app or API, where it would just duplicate the document body.
   (-> document
       (dissoc :body_text)
-      (public-sharing/remove-public-uuid-if-public-sharing-is-disabled)))
+      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -244,16 +244,25 @@
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
+(defn- with-body-text
+  "Assoc the search-indexed `:body_text` onto `model`, derived from its prose-mirror body `ast`.
+  A no-op for non-prose-mirror documents, whose body carries no extractable text (gated like the
+  export/import/deps paths above)."
+  [model ast]
+  (cond-> model
+    (= (:content_type model) prose-mirror/prose-mirror-content-type)
+    (assoc :body_text (prose-mirror/ast->text ast))))
+
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
   (cond-> model
     (some? (:document model))
-    (assoc :body_text (prose-mirror/ast->text (:document model)))))
+    (with-body-text (:document model))))
 
 (t2/define-before-update :model/Document [model]
-  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  ;; keep the search-indexed body text in sync whenever the body itself changes
   (let [changes (t2/changes model)]
+    (collection/check-allowed-content :model/Document (:collection_id changes))
+    ;; keep the search-indexed body text in sync whenever the body itself changes
     (cond-> model
       (contains? changes :document)
-      (assoc :body_text (prose-mirror/ast->text (:document changes))))))
+      (with-body-text (:document changes)))))
