@@ -1118,19 +1118,20 @@
       (is (string? (some-> resp :via first :error)))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
-    ;; written. Verify a row lands and carries the agent context. The QueryExecution
-    ;; insert is async, so poll for the new row.
-    (let [before (t2/count :model/QueryExecution)]
-      (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
-                            {:database_id (mt/id)
-                             :sql         "SELECT 1 AS audit_probe"})
-      (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
-                                                               {:order-by [[:started_at :desc]]}))
-                            :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
-                            :timeout-ms  5000
-                            :interval-ms 50})]
-        (is (some? latest) "QueryExecution row should be inserted within 5s")
-        (is (= :agent (:context latest)))))))
+    ;; written. Verify a row lands and carries the agent context. QueryExecutions are saved in async batches by
+    ;; default, so save them synchronously to be able to assert on them right away.
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (let [before (t2/count :model/QueryExecution)]
+        (mt/user-http-request :crowberto :post 202 "agent/v1/execute-sql"
+                              {:database_id (mt/id)
+                               :sql         "SELECT 1 AS audit_probe"})
+        (let [latest (u/poll {:thunk       (fn [] (t2/select-one :model/QueryExecution
+                                                                 {:order-by [[:started_at :desc]]}))
+                              :done?       (fn [_qe] (> (t2/count :model/QueryExecution) before))
+                              :timeout-ms  5000
+                              :interval-ms 50})]
+          (is (some? latest) "QueryExecution row should be inserted within 5s")
+          (is (= :agent (:context latest))))))))
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 

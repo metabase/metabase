@@ -35,7 +35,7 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   color: var(--mb-color-text-tertiary);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
   ${(props) => props.direction}: 0;
 

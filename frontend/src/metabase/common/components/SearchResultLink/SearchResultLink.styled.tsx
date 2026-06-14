@@ -17,7 +17,7 @@ export const ResultLink = styled.a<ResultLinkProps>`
         &:hover,
         &:focus,
         &:focus-within {
-          color: var(--mb-color-brand);
+          color: var(--mb-color-core-brand);
           outline: 0;
         }
       `

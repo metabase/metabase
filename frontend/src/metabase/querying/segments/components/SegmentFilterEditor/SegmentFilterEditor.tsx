@@ -72,7 +72,7 @@ export function SegmentFilterEditor({
         items={filters}
         initialAddText={t`Add filters to narrow your answer`}
         readOnly={readOnly}
-        color="filter"
+        color="core-filter"
         isLastOpened={false}
         renderName={renderFilterName}
         renderPopover={({ item: filter, index, onClose }) =>

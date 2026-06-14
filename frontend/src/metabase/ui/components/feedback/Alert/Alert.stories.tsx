@@ -74,7 +74,7 @@ const multiColor = (args: AlertProps) => {
           data access for the entire database to Blocked.
         </Text>
       </Alert>
-      <Alert {...args} color="brand">
+      <Alert {...args} color="core-brand">
         <Text>
           In a future release, if a group’s View data access for a database (or
           any of its schemas or tables) is still set to No self-service

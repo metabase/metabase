@@ -41,6 +41,7 @@ export * from "./models";
 export * from "./moderation";
 export * from "./notification";
 export * from "./notification-channels";
+export * from "./oauth";
 export * from "./pagination";
 export * from "./parameters";
 export * from "./performance";

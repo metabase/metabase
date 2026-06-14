@@ -1410,6 +1410,7 @@
   binning
   with-binning]
  [metabase.lib.card
+  ->card-metadata-columns
   card->underlying-query
   model-preserved-keys]
  [lib.column-group

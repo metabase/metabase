@@ -1,12 +1,15 @@
 import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { MiniPicker } from "metabase/common/components/Pickers/MiniPicker";
 import type { MiniPickerPickableItem } from "metabase/common/components/Pickers/MiniPicker/types";
 import { useDispatch } from "metabase/redux";
 import { Button, FixedSizeIcon, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { isNamelessSchema } from "metabase-lib/v1/metadata/utils/schema";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import S from "./SchemaPickerInput.module.css";
@@ -45,7 +48,20 @@ export function SchemaPickerInput({
     [dispatch, onSchemaChange],
   );
 
-  const hasSchema = schema != null && schema.length > 0;
+  const hasNamedSchema = schema != null && schema.length > 0;
+  // Schema-less DBs (MySQL, Mongo, …) report a single nameless schema.
+  // For this scenario we want to display DB name instead of the schema name.
+  const hasNamelessSchema = isNamelessSchema(schema) && databaseId != null;
+
+  const { data: database } = useGetDatabaseQuery(
+    hasNamelessSchema ? { id: databaseId } : skipToken,
+  );
+
+  const isInputEmpty = !hasNamedSchema && !hasNamelessSchema;
+  const label = match({ hasNamedSchema, hasNamelessSchema })
+    .with({ hasNamedSchema: true }, () => schema)
+    .with({ hasNamelessSchema: true }, () => database?.name)
+    .otherwise(() => null);
 
   return (
     <MiniPicker
@@ -67,23 +83,23 @@ export function SchemaPickerInput({
         leftSection={
           <FixedSizeIcon
             name="database"
-            c={hasSchema ? undefined : "text-tertiary"}
+            c={isInputEmpty ? "text-tertiary" : undefined}
           />
         }
         rightSection={
           <FixedSizeIcon
             name="chevrondown"
-            c={hasSchema ? undefined : "text-tertiary"}
+            c={isInputEmpty ? "text-tertiary" : undefined}
           />
         }
         data-testid="schema-picker-button"
       >
-        {hasSchema ? (
-          schema
-        ) : (
+        {isInputEmpty ? (
           <Text c="text-secondary" fw={700}>
             {t`Pick a schema to view`}
           </Text>
+        ) : (
+          label
         )}
       </Button>
     </MiniPicker>

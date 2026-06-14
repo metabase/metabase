@@ -18,7 +18,7 @@
 
 .dimensionList {
   max-width: 100%;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .accordionItem {
