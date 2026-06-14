@@ -37,13 +37,11 @@ export const setRequestClientHeaders =
     if (IFRAMED_IN_SELF) {
       headers["X-Metabase-Embedded-Preview"] = "true";
     }
-    if (typeof requestClient === "object") {
+    if (requestClient.name) {
       headers["X-Metabase-Client"] = requestClient.name;
-      if (requestClient.version) {
-        headers["X-Metabase-Client-Version"] = requestClient.version;
-      }
-    } else {
-      headers["X-Metabase-Client"] = requestClient;
+    }
+    if (requestClient.version) {
+      headers["X-Metabase-Client-Version"] = requestClient.version;
     }
 
     return { headers };

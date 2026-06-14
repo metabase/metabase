@@ -15,7 +15,7 @@ const EMBEDDING_CONFIG: InternalEmbeddingConfig = {
 
 export function setIsPublicEmbedding() {
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
-    setRequestClientHeaders("embedding-public");
+    setRequestClientHeaders({ name: "embedding-public" });
 
   EMBEDDING_CONFIG.isPublicEmbedding = true;
 }
@@ -28,7 +28,7 @@ export function setIsStaticEmbedding() {
    */
   if (!isEmbedPreview()) {
     PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
-      setRequestClientHeaders("embedding-iframe-static");
+      setRequestClientHeaders({ name: "embedding-iframe-static" });
   }
   EMBEDDING_CONFIG.isStaticEmbedding = true;
 }

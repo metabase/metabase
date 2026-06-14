@@ -30,7 +30,7 @@ const NOT_AUTHORIZED_TRIGGERS = [
  */
 if (isWithinIframe() && !IFRAMED_IN_SELF) {
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
-    setRequestClientHeaders("embedding-iframe-full-app");
+    setRequestClientHeaders({ name: "embedding-iframe-full-app" });
 }
 
 init(mainReducers, getRoutes, (store) => {
