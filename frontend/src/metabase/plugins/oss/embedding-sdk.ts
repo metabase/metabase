@@ -3,7 +3,8 @@ import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 const getDefaultPluginEmbeddingSdk = () => ({
   isEnabled: () => false,
   onBeforeRequestHandlers: {
-    getOrRefreshSessionHandler: async () => {},
+    getOrRefreshSessionHandler:
+      async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
     getOrRefreshGuestSessionHandler: async (
       _data: OnBeforeRequestHandlerConfig,
     ): Promise<OnBeforeRequestHandlerConfig | void> => {},

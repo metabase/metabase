@@ -14,8 +14,10 @@ type EmbeddingRequestHandler =
  * installs the handlers it needs onto the plugin slots:
  *
  *  - `setApiKeyHeader` / `setSessionTokenHeader` onto `setEmbeddingRequestAuthHeaders`
- *    (whichever auth method is in use; the session strategy is re-installed on
- *    refresh with the new token)
+ *    for static auth (an API key, or a session token that never refreshes — e.g.
+ *    MCP). A refreshing SSO session instead emits its header from
+ *    `getOrRefreshSessionHandler` via `sessionTokenHeaders`, so the refreshed
+ *    token applies to the request that triggered the refresh.
  *  - `setRequestClientHeaders` onto its own slot
  *  - `setEmbedPreviewHeader` onto its own slot (public + SDK flows only)
  *
@@ -26,9 +28,16 @@ export const setApiKeyHeader =
   (apiKey: string): EmbeddingRequestHandler =>
   async () => ({ headers: { "X-Api-Key": apiKey } });
 
+export const sessionTokenHeaders = (
+  sessionToken: string,
+): Partial<OnBeforeRequestHandlerConfig> => ({
+  headers: { "X-Metabase-Session": sessionToken },
+});
+
 export const setSessionTokenHeader =
   (sessionToken: string): EmbeddingRequestHandler =>
-  async () => ({ headers: { "X-Metabase-Session": sessionToken } });
+  async () =>
+    sessionTokenHeaders(sessionToken);
 
 export const setRequestClientHeaders =
   (requestClient: RequestClientInfo): EmbeddingRequestHandler =>

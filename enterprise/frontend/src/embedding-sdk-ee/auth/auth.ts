@@ -30,8 +30,8 @@ import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
 import {
+  sessionTokenHeaders,
   setApiKeyHeader,
-  setSessionTokenHeader,
 } from "metabase/embedding/lib/embedding-request-auth";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
@@ -68,6 +68,15 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   // remove any stale tokens that might be there from a previous session
   samlTokenStorage.remove();
 
+  // Resolve the SSO session token (refreshing it when expired) and emit it as
+  // the X-Metabase-Session header. This runs on the refresh-handler slot, which
+  // is ordered after the static auth-header slot, so a freshly refreshed token
+  // applies to the very request that triggered the refresh.
+  const sessionTokenHandler = async () => {
+    const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
+    return session?.id ? sessionTokenHeaders(session.id) : undefined;
+  };
+
   // Check if we can use the auth pre-fetched by the bootstrap chunk
   const earlyAuthStatus = getAuthState()?.status;
   if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
@@ -87,8 +96,6 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       authState.user &&
       authState.siteSettings
     ) {
-      PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-        setSessionTokenHeader(authState.session.id);
       // Store the session token in Redux so getOrRefreshSession finds it
       // and doesn't trigger a redundant token refresh on the first API call.
       dispatch(
@@ -100,17 +107,10 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       dispatch(loadSettings(authState.siteSettings as Settings));
       MetabaseSettings.setAll(authState.siteSettings as Settings);
 
-      // Set up the refresh handler so API calls can renew the token later.
+      // The session handler emits the X-Metabase-Session header on every API
+      // call, renewing the token when it expires.
       PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-        async () => {
-          const session = await dispatch(
-            getOrRefreshSession(authConfig),
-          ).unwrap();
-          if (session?.id) {
-            PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-              setSessionTokenHeader(session.id);
-          }
-        };
+        sessionTokenHandler;
 
       return;
     }
@@ -136,22 +136,15 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
-    // SSO setup. Refresh the session and install the session-token strategy with
-    // the resulting token, re-installing it on every later refresh. Running it
-    // eagerly below means the initial user/settings requests already carry the
-    // header.
-    const refreshAndInstallSessionToken = async () => {
-      const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
-      if (session?.id) {
-        PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-          setSessionTokenHeader(session.id);
-      }
-    };
+    // SSO setup. The session handler sets the X-Metabase-Session header on every
+    // request and refreshes the token when it expires; later API calls pick it
+    // up because the handler runs in the request pipeline. Call it once eagerly
+    // to verify the session is valid before the app renders.
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-      refreshAndInstallSessionToken;
+      sessionTokenHandler;
     try {
       // verify that the session is actually valid before proceeding
-      await refreshAndInstallSessionToken();
+      await sessionTokenHandler();
     } catch (e) {
       // TODO (Oisin 2025-05-27): Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
