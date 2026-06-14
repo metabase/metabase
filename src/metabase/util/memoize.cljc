@@ -4,7 +4,9 @@
   In CLJ this re-exports some of the public functions from `clojure.core.memoize`.
   In CLJS it implements the same design in CLJS.
 
-  There are also some extra memoization tools here, like [[fast-memo]] and [[fast-bounded]]."
+  There are also extra caching primitives here: [[fast-memo]] and [[fast-bounded]] for
+  memoization, and [[fast-interner]] for interning (deduping equal values to one shared
+  instance, rather than caching a function's outputs)."
   (:require
    #?@(:clj  ([clojure.core.memoize :as memoize])
        :cljs ([metabase.util.memoize.impl.js :as memoize]))
