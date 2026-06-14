@@ -136,21 +136,22 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
-    // SSO setup. The session-token strategy is installed by the refresh handler
-    // below once it has a token, and re-installed with each refreshed token.
+    // SSO setup. Refresh the session and install the session-token strategy with
+    // the resulting token, re-installing it on every later refresh. Running it
+    // eagerly below means the initial user/settings requests already carry the
+    // header.
+    const refreshAndInstallSessionToken = async () => {
+      const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
+      if (session?.id) {
+        PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+          setSessionTokenHeader(session.id);
+      }
+    };
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
-      async () => {
-        const session = await dispatch(
-          getOrRefreshSession(authConfig),
-        ).unwrap();
-        if (session?.id) {
-          PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
-            setSessionTokenHeader(session.id);
-        }
-      };
+      refreshAndInstallSessionToken;
     try {
       // verify that the session is actually valid before proceeding
-      await dispatch(getOrRefreshSession(authConfig)).unwrap();
+      await refreshAndInstallSessionToken();
     } catch (e) {
       // TODO (Oisin 2025-05-27): Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
       // but due to time constraints this is what we have to do to make sure tests pass.
