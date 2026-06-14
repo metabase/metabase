@@ -334,10 +334,20 @@
                 (formatter (streaming.common/format-value value)))))
           indexes)))
 
-(defn make-formatters
+(mu/defn make-formatters :- [:map
+                             [:row-formatters [:sequential ifn?]]
+                             [:col-formatters [:sequential ifn?]]
+                             [:val-formatters [:sequential ifn?]]]
   "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
-  Shared by the CSV export and static-viz pivot render paths."
-  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
+  Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
+  indexes into `columns`."
+  [columns      :- [:sequential :map]
+   row-indexes  :- [:sequential :int]
+   col-indexes  :- [:sequential :int]
+   val-indexes  :- [:sequential :int]
+   settings     :- [:maybe :map]
+   timezone     :- [:maybe :string]
+   format-rows? :- :boolean]
   {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
    :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
    :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
