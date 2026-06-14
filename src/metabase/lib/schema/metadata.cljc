@@ -345,6 +345,8 @@
     [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
     ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
     [:database-type  {:optional true} [:maybe :string]]
+    ;; for 1D array columns, the base type of individual elements (e.g. `:type/Text` for Postgres `_text`)
+    [:array-element-type {:optional true} [:maybe ::lib.schema.common/base-type]]
     [:active         {:optional true} :boolean]
     [:visibility-type {:optional true} [:maybe ::column.visibility-type]]
     ;; if this is a field from another table (implicit join), this is the field in the current table that should be

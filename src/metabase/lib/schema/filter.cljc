@@ -31,7 +31,7 @@
 
 (def predicate-operators
   "Set of predicate operators that can be user in filter clauses."
-  #{:and :or :not := :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside})
+  #{:and :or :not := :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside :array-contains})
 
 (mr/def ::default-filter-operator
   "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and
@@ -91,6 +91,9 @@
 (doseq [op [:= :!= :in :not-in]]
   (mbql-clause/define-catn-mbql-clause op :- :type/Boolean
     [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]]))
+
+(mbql-clause/define-catn-mbql-clause :array-contains :- :type/Boolean
+  [:args [:repeat {:min 2} [:schema [:ref ::expression/equality-comparable]]]])
 
 (doseq [op [:< :<= :> :>=]]
   (mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1]})

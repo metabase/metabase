@@ -81,6 +81,7 @@
                               :expressions/float              true
                               :expressions/integer            true
                               :expressions/text               true
+                              :filter/array-elements             true
                               :identifiers-with-spaces        true
                               :metadata/table-existence-check true
                               :now                            true
@@ -727,6 +728,34 @@
   [driver [_ _opts text divider position]]
   ((get-method sql.qp/->honeysql [:postgres :split-part]) driver [:split-part text divider position]))
 
+(defmethod sql.qp/array-unnest-from :postgres
+  [_driver table-honeysql col-identifier]
+  (let [[col-sql] (sql/format-expr col-identifier {:nested true})]
+    ;; Double-wrap `table-honeysql` so HoneySQL treats it as a single expression
+    ;; rather than a `[table alias ...]` pair (the identifier vector would otherwise
+    ;; be destructured as `[:h2x/identifier :table extras…]` → illegal syntax).
+    [[table-honeysql] [[:raw (format "UNNEST(%s) AS _elem" col-sql)]]]))
+
+(defn- array-contains->honeysql
+  [driver field values]
+  (let [field-honeysql (sql.qp/->honeysql driver field)
+        [col-sql & col-args] (sql/format-expr field-honeysql {:nested true})
+        any-expr (into [:raw (format "ANY(%s)" col-sql)] col-args)]
+    (if (= 1 (count values))
+      [:= (sql.qp/->honeysql driver (first values)) any-expr]
+      (into [:or]
+            (map (fn [value]
+                   [:= (sql.qp/->honeysql driver value) any-expr]))
+            values))))
+
+(defmethod sql.qp/->honeysql [:postgres :array-contains]
+  [driver [_tag field & values]]
+  (array-contains->honeysql driver field values))
+
+(defmethod sql.qp/->honeysql [:postgres-mbql5 :array-contains]
+  [driver [_tag _opts field & values]]
+  (array-contains->honeysql driver field values))
+
 (defmethod sql.qp/->honeysql [:postgres :text]
   [driver [_ value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
@@ -1006,9 +1035,27 @@
               (map #(vector % :type/PostgresEnum)))
              database-types)))))
 
+(defn- array-element-base-type
+  "Given a Postgres array `database-type` like `_text` or `_int4`, return the base type of the array elements."
+  [database-type]
+  (when database-type
+    (let [db-type-name (cond
+                         (keyword? database-type) (name database-type)
+                         (string? database-type)  database-type
+                         :else                    (str database-type))]
+      (when (str/starts-with? db-type-name "_")
+        (let [element-db-type (keyword (subs db-type-name 1))]
+          (or (default-base-types element-db-type) :type/Text))))))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver database-type]
-  (default-base-types database-type))
+  (or (default-base-types database-type)
+      (when (str/starts-with? (name database-type) "_")
+        :type/Array)))
+
+(defmethod driver/array-element-base-type :postgres
+  [_driver database-type]
+  (array-element-base-type database-type))
 
 (defmethod sql-jdbc.sync/column->semantic-type :postgres
   [_driver database-type _column-name]

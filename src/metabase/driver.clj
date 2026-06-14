@@ -897,12 +897,30 @@
     ;; Does this driver provide :database-is-generated on (describe-fields) or (describe-table)
     :describe-is-generated
     ;;
+    ;; Does this driver support filtering 1-dimensional array columns (e.g. `value = ANY(array_col)`)?
+    ;; When supported, equality filters on array columns are rewritten to `:array-contains` (e.g. `value = ANY(col)` in
+    ;; Postgres). Also enables UNNEST-based distinct value fetching for FieldValues.
+    :filter/array-elements
+    ;;
     ;; Does this driver support the workspace feature
     :workspace
     ;;
     ;; Does this driver support table references in native queries -- for example, "select * from {{table}}" where
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference})
+
+(defmulti array-element-base-type
+  "Given a raw `database-type` string (e.g. `_text` in Postgres), returns the Metabase base type of the individual
+  elements (e.g. `:type/Text`). Used at sync time to populate `:array-element-type` on column metadata and at query time
+  for value decoding. Returns `nil` for non-array database types."
+  {:arglists '([driver database-type])}
+  (fn [driver _database-type]
+    (dispatch-on-initialized-driver driver))
+  :hierarchy #'hierarchy)
+
+(defmethod array-element-base-type :default
+  [_driver _database-type]
+  nil)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

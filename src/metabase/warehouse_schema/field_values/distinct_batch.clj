@@ -27,7 +27,9 @@
   chain-filter → params.field-values → field → field-values) would form a cycle if these
   requires lived in `metabase.warehouse-schema.models.field-values`."
   (:require
+   [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -65,6 +67,24 @@
                                         (catch NumberFormatException _ s))
     :else                          s))
 
+(defn can-batch-distinct?
+  "Can `table`'s database use the UNION ALL distinct-batch query? Requires a SQL-derived driver, the `:nested-queries`
+  feature, and a table that does not require a partition filter. Partitioned BigQuery tables fail without a `WHERE` on
+  the partition column; the per-field MBQL path injects one via middleware, but `run-distinct-batch` runs as native SQL
+  that bypasses it."
+  [table]
+  (let [database (t2/select-one :model/Database :id (:db_id table))
+        engine   (:engine database)]
+    (and (isa? driver/hierarchy engine :sql)
+         (driver.u/supports? engine :nested-queries database)
+         (not (:database_require_filter table)))))
+
+(defn- field-value-base-type
+  [driver field]
+  (if (isa? (:base_type field) :type/Array)
+    (or (driver/array-element-base-type driver (:database_type field)) :type/Text)
+    (:base_type field)))
+
 (defn- table-honeysql
   "Driver-aware HoneySQL identifier for `table`. Routes through `sql.qp/->honeysql` so drivers
   that need to qualify table identifiers further (e.g. BigQuery's project-id prefix) get their
@@ -82,8 +102,13 @@
                      (sql.qp/mbql-clause driver ::sql.qp/cast-to-text
                                          (h2x/identifier :field col-name))))
 
-(defn- build-arm
-  "HoneySQL for one UNION arm."
+(defn- array-field?
+  [driver database field]
+  (and (isa? (:base_type field) :type/Array)
+       (driver.u/supports? driver :filter/array-elements database)))
+
+(defn- build-arm-scalar
+  "HoneySQL for one UNION arm over a scalar column."
   [driver table field]
   (let [cast-expr (cast-to-text-honeysql driver (:name field))
         inner     {:select   [[[:inline (:name field)] :field_name]
@@ -103,10 +128,35 @@
     {:select [:*]
      :from   [[limited :_arm]]}))
 
+(defn- build-arm-array
+  "HoneySQL for one UNION arm over a 1D array column. Generates
+  `SELECT DISTINCT CAST(elem AS text) FROM table, UNNEST(array_col) AS elem LIMIT N`, producing the individual values
+  stored inside array cells for FieldValues filter pickers."
+  [driver table field]
+  (let [elem-id   (h2x/identifier :field "_elem")
+        cast-expr (sql.qp/->honeysql driver
+                                     (sql.qp/mbql-clause driver ::sql.qp/cast-to-text elem-id))
+        inner     {:select   [[[:inline (:name field)] :field_name]
+                              [cast-expr :value_out]]
+                   :from     (sql.qp/array-unnest-from driver
+                                                       (table-honeysql driver table)
+                                                       (h2x/identifier :field (:name field)))
+                   :group-by [cast-expr]}
+        limited   (sql.qp/apply-top-level-clause driver :limit inner {:limit field-values/*distinct-limit*})]
+    {:select [:*]
+     :from   [[limited :_arm]]}))
+
+(defn- build-arm
+  "HoneySQL for one UNION arm."
+  [driver database table field]
+  (if (array-field? driver database field)
+    (build-arm-array driver table field)
+    (build-arm-scalar driver table field)))
+
 (defn- build-union
   "Build the full HoneySQL form for one batch of fields. Single field → no UNION wrapper."
-  [driver table fields]
-  (let [arms (mapv #(build-arm driver table %) fields)]
+  [driver database table fields]
+  (let [arms (mapv #(build-arm driver database table %) fields)]
     (if (= 1 (count arms))
       (first arms)
       {:union-all arms})))
@@ -124,8 +174,9 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (t2/select-one :model/Database :id db-id))
-        hsql           (build-union driver table fields)
+        database       (t2/select-one :model/Database :id db-id)
+        driver         (:engine database)
+        hsql           (build-union driver database table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)
         result         (qp/process-query
                         {:database db-id
@@ -135,7 +186,7 @@
         by-name        (into {} (map (juxt :name identity)) fields)]
     (reduce (fn [acc [field-name value-str]]
               (let [field (get by-name field-name)
-                    v     (decode-value (:base_type field) value-str)]
+                    v     (decode-value (field-value-base-type driver field) value-str)]
                 (-> acc
                     (update-in [(:id field) :values] (fnil conj []) v)
                     (update-in [(:id field) :raw-count] (fnil inc 0)))))

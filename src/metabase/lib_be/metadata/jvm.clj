@@ -7,6 +7,7 @@
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -168,6 +169,7 @@
                 :field/settings
                 :field/table_id
                 :field/visibility_type
+                :database/engine
                 :dimension/human_readable_field_id
                 :dimension/id
                 :dimension/name
@@ -177,6 +179,8 @@
     :from      [[(t2/table-name :model/Field) :field]]
     :left-join [[(t2/table-name :model/Table) :table]
                 [:= :field/table_id :table/id]
+                [(t2/table-name :model/Database) :database]
+                [:= :database/id :table/db_id]
                 [(t2/table-name :model/Dimension) :dimension]
                 [:and
                  [:= :dimension/field_id :field/id]
@@ -188,13 +192,19 @@
 
 (t2/define-after-select :metadata/column
   [field]
-  (let [field          (instance->metadata field :metadata/column)
-        dimension-type (some-> (:dimension/type field) keyword)]
+  (let [driver         (:database/engine field)
+        field          (instance->metadata field :metadata/column)
+        dimension-type (some-> (:dimension/type field) keyword)
+        array-element-type (when (and driver (isa? (:base-type field) :type/Array))
+                             (driver/array-element-base-type driver (:database-type field)))]
     (merge
      (dissoc field
              :table
+             :database/engine
              :dimension/human-readable-field-id :dimension/id :dimension/name :dimension/type
              :values/human-readable-values :values/values)
+     (when array-element-type
+       {:array-element-type array-element-type})
      (when (and (= dimension-type :external)
                 (:dimension/human-readable-field-id field))
        {:lib/external-remap {:lib/type :metadata.column.remapping/external

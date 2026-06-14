@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -41,7 +42,11 @@ export function FilterPickerBody({
   onBack,
   readOnly,
 }: FilterPickerBodyProps) {
-  const FilterWidget = getFilterWidget(column);
+  const filterColumn = useMemo(
+    () => Lib.columnForFilterWidget(column),
+    [column],
+  );
+  const FilterWidget = getFilterWidget(filterColumn);
   if (!FilterWidget) {
     return null;
   }
@@ -52,7 +57,7 @@ export function FilterPickerBody({
         autoFocus={autoFocus}
         query={query}
         stageIndex={stageIndex}
-        column={column}
+        column={filterColumn}
         filter={filter}
         isNew={isNew}
         withAddButton={withAddButton}

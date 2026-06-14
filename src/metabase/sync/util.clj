@@ -742,7 +742,8 @@
   [base-type semantic-type]
   (not
    (or (isa? base-type :type/Temporal)
-       (isa? base-type :type/Collection)
+       (and (isa? base-type :type/Collection)
+            (not (isa? base-type :type/Array)))
        (isa? base-type :type/Float)
        ;; Don't let IDs become list Fields (they already can't become categories, because they already have a semantic
        ;; type). It just doesn't make sense to cache a sequence of numbers since they aren't inherently meaningful

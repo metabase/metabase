@@ -24,6 +24,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.types.array :as lib.types.array]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -282,6 +283,15 @@
   (and (lib.util/ref-clause? maybe-ref)
        (some #(lib.util/original-isa? maybe-ref %) types)))
 
+(defn- ref-matches-filter-widget-types?
+  "Whether the column referenced by `maybe-ref` should use filter widgets for `types`, including array columns whose
+  elements match `types`."
+  [query stage-number maybe-ref types]
+  (if-let [col (column-metadata-from-ref query stage-number maybe-ref)]
+    (let [filter-col (lib.types.array/column-for-filter-widget col)]
+      (some #(clojure.core/isa? (:effective-type filter-col) %) types))
+    (ref-clause-with-type? maybe-ref types)))
+
 (def ^:private StringFilterParts
   [:map
    [:operator ::lib.schema.filter/string-filter-operator]
@@ -310,7 +320,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        string-col? #(ref-clause-with-type? % [:type/Text :type/TextLike])
+        string-col? #(ref-matches-filter-widget-types? query stage-number % [:type/Text :type/TextLike])
         result (fn [op col-ref args options]
                  {:operator op, :column (ref->col col-ref), :values (vec args), :options options})]
     (match/match-one filter-clause
@@ -324,6 +334,13 @@
 
       ;; multiple arguments, `:!=`
       [(op :guard #{:!= :not-in}) _ (col-ref :guard string-col?) & (args :guard (every? string? args))]
+      (result :!= col-ref args {})
+
+      ;; array contains
+      [:array-contains _ (col-ref :guard string-col?) & (args :guard (every? string? args))]
+      (result := col-ref args {})
+
+      [:not _ [:array-contains _ (col-ref :guard string-col?) & (args :guard (every? string? args))]]
       (result :!= col-ref args {})
 
       ;; multiple arguments with options
@@ -374,7 +391,7 @@
    stage-number  :- :int
    filter-clause :- ::lib.schema.expression/expression]
   (let [ref->col    #(column-metadata-from-ref query stage-number %)
-        number-col? #(ref-clause-with-type? % [:type/Number])
+        number-col? #(ref-matches-filter-widget-types? query stage-number % [:type/Number])
         number-arg? #(some? (expression-arg->number %))]
     (match/match-one filter-clause
       (:or
@@ -389,6 +406,16 @@
        ;; exactly 2 arguments
        [(op :guard #{:between})           _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))])
       {:operator ({:in :=, :not-in :!=} op op)
+       :column   (ref->col col-ref)
+       :values   (mapv expression-arg->number args)}
+
+      [:array-contains _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]
+      {:operator :=
+       :column   (ref->col col-ref)
+       :values   (mapv expression-arg->number args)}
+
+      [:not _ [:array-contains _ (col-ref :guard number-col?) & (args :guard (every? number-arg? args))]]
+      {:operator :!=
        :column   (ref->col col-ref)
        :values   (mapv expression-arg->number args)}
 

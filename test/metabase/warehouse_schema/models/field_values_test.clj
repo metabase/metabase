@@ -6,10 +6,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.serialization :as serdes]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -25,7 +27,6 @@
 (def ^:private base-types-without-field-values
   #{:type/*
     :type/JSON
-    :type/Array
     :type/DruidJSON
     :type/Dictionary
     :type/Structured
@@ -708,4 +709,32 @@
             (let [{:keys [values raw-count]} (get results (:id source-field))]
               (is (< raw-count field-values/*distinct-limit*)
                   "source has few enough distinct values to not hit the LIMIT")
-              (is (every? string? values)))))))))
+              (is (every? string? values))))))))
+  (deftest ^:mb/driver-tests distinct-values-array-field-test
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "array_field_values_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "array_field_values_test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/execute! spec ["CREATE TABLE array_tags (
+                             id SERIAL PRIMARY KEY,
+                             tags TEXT[]);"
+                             "INSERT INTO array_tags (tags) VALUES
+                             (ARRAY['alpha','beta','gamma']),
+                             (ARRAY['gamma','delta']);"])
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (let [table-id   (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "array_tags")
+                  tags-field (t2/select-one :model/Field :table_id table-id :name "tags")]
+              (is (= :type/Array (:base_type tags-field)))
+              (is (= "_text" (:database_type tags-field)))
+              (testing "distinct-values returns individual array elements"
+                (let [{:keys [values]} (field-values/distinct-values tags-field)]
+                  (is (= #{"alpha" "beta" "gamma" "delta"}
+                         (set (map first values))))))
+              (testing "create-or-update-full-field-values! persists unnested values"
+                (field-values/clear-field-values-for-field! tags-field)
+                (field-values/create-or-update-full-field-values! tags-field)
+                (let [fv (field-values/get-latest-full-field-values (:id tags-field))]
+                  (is (= #{"alpha" "beta" "gamma" "delta"}
+                         (set (:values fv)))))))))))))

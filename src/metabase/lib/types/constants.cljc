@@ -16,6 +16,7 @@
      (def ^:export key-string "JS-friendly access for the string type" ::string)
      (def ^:export key-string-like "JS-friendly access for the string-like type" ::string-like)
      (def ^:export key-boolean "JS-friendly access for the boolean type" ::boolean)
+     (def ^:export key-array "JS-friendly access for the array type" ::array)
      (def ^:export key-temporal "JS-friendly access for the temporal type" ::temporal)
      (def ^:export key-location "JS-friendly access for the location type" ::location)
      (def ^:export key-coordinate "JS-friendly access for the coordinate type" ::coordinate)
@@ -40,6 +41,7 @@
    ::string      {:effective-type [:type/Text]}
    ::string_like {:effective-type [:type/TextLike]}
    ::boolean     {:effective-type [:type/Boolean]}
+   ::array       {:effective-type [:type/Array]}
    ::coordinate  {:semantic-type [:type/Coordinate]}
    ::location    {:semantic-type [:type/Address]}
    ::entity      {:semantic-type [:type/FK :type/PK :type/Name]}

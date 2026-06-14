@@ -263,7 +263,8 @@
         ;; preview_display is set to false by sync for fields that shouldn't have FieldValues
         ;; (e.g. long text fields, JSON columns, auto-cruft columns). Defaults to true if not provided.
         (not (false? preview-display))
-        (not (isa? (keyword base-type) :type/field-values-unsupported))
+        (or (not (isa? (keyword base-type) :type/field-values-unsupported))
+            (isa? (keyword base-type) :type/Array))
         (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
 
@@ -378,6 +379,32 @@
           (recur new-str-length (conj acc (first values)) (rest values)))))))
 
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
+(defn- field->model
+  [field]
+  (cond
+    (t2/model field) field
+    (:id field)      (t2/select-one :model/Field :id (:id field))
+    :else            nil))
+
+(defn- distinct-scalar-values
+  [field]
+  (let [column (cond-> field
+                 (t2/model field) (lib-be/instance->metadata :metadata/column))
+        result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                (:table-id column)
+                (fn [query]
+                  (-> query
+                      (lib/breakout column)
+                      (lib/limit *distinct-limit*)))
+                qp.reducible/default-rff)]
+    {:values (-> result :data :rows)}))
+
+(defn- distinct-values-via-batch
+  [field table]
+  (let [run-distinct-batch (requiring-resolve 'metabase.warehouse-schema.field-values.distinct-batch/run-distinct-batch)]
+    {:values (mapv vector (get-in (run-distinct-batch table [field])
+                                  [(:id field) :values]))}))
+
 (mu/defn distinct-values
   "Fetch raw distinct values for `field` from the warehouse, row-capped at
   `*distinct-limit*`. Returns `{:values rows-as-1-tuples}`.
@@ -390,16 +417,14 @@
              (ms/InstanceOf :model/Field)
              ::lib.schema.metadata/column]]
   (try
-    (let [field  (cond-> field
-                   (t2/model field) (lib-be/instance->metadata :metadata/column))
-          result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
-                  (:table-id field)
-                  (fn [query]
-                    (-> query
-                        (lib/breakout field)
-                        (lib/limit *distinct-limit*)))
-                  qp.reducible/default-rff)]
-      {:values (-> result :data :rows)})
+    (let [field-model (or (field->model field) field)
+          table-id    (or (:table_id field-model) (:table-id field-model))
+          table       (when table-id (t2/select-one :model/Table :id table-id))]
+      (if (and field-model table
+               ((requiring-resolve 'metabase.warehouse-schema.field-values.distinct-batch/can-batch-distinct?)
+                table))
+        (distinct-values-via-batch field-model table)
+        (distinct-scalar-values field)))
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))

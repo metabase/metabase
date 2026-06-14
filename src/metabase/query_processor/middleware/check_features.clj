@@ -31,6 +31,8 @@
      (fn [_query _path-type _stage-or-join-path clause]
        (when (lib/clause-of-type? clause :stddev)
          (vswap! required-features conj! :standard-deviation-aggregations))
+       (when (lib/clause-of-type? clause :array-contains)
+         (vswap! required-features conj! :filter/array-elements))
        nil))
     (lib.walk/walk
      query

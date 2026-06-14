@@ -45,3 +45,12 @@
            clojure.lang.ExceptionInfo
            #"\Qstandard-deviation-aggregations is not supported by mock-driver driver.\E"
            (check-features/check-features query))))))
+
+(deftest ^:parallel check-array-contains-test
+  (driver/with-driver ::mock-driver
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/array-contains (meta/field-metadata :venues :name) "foo")))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"\Qarray-elements is not supported by mock-driver driver.\E"
+           (check-features/check-features query))))))

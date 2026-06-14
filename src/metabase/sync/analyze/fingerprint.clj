@@ -173,8 +173,9 @@
     [:not (app-db/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not-in :base_type (conj (app-db/type-keyword->descendants :type/fingerprint-unsupported)
-                             (u/qualified-name :type/*))]])
+   [:not-in :base_type (disj (into #{(u/qualified-name :type/*)}
+                                   (app-db/type-keyword->descendants :type/fingerprint-unsupported))
+                             (u/qualified-name :type/Array))]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already

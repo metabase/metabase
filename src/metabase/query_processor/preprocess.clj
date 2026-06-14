@@ -38,6 +38,7 @@
    [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
    [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
+   [metabase.query-processor.middleware.rewrite-array-filters :as qp.rewrite-array-filters]
    [metabase.query-processor.middleware.validate :as validate]
    [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
@@ -104,6 +105,7 @@
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-clauses/optimize-temporal-clauses
+   #'qp.rewrite-array-filters/rewrite-array-filters
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'qp.middleware.enterprise/apply-workspace-remapping
