@@ -15,7 +15,7 @@
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot.core]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
@@ -479,19 +479,19 @@
 (defn- pivot-table-content
   "Assemble a `:pivot` card's flat (pivot-grouping) result into a Hiccup pivot table, or nil if it can't be
   assembled — no column split, a native pivot without a pivot-grouping column, etc. Reuses the pivot-export
-  assembly ([[qp.pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
+  assembly ([[pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
   pivot QP already computed in `:pivot-export-options`."
   [card dashcard {:keys [cols pivot-export-options] :as data}]
   (let [settings (merge (:visualization_settings card) (:visualization_settings dashcard))
         split    (setting-value settings :pivot_table.column_split)
-        pg-idx   (qp.pivot.postprocess/pivot-grouping-index (mapv :name cols))]
+        pg-idx   (pivot.postprocess/pivot-grouping-index (mapv :name cols))]
     (when (and split pivot-export-options pg-idx)
       (let [columns  (pivot.core/columns-without-pivot-group cols)
             row-idxs (vec (:pivot-rows pivot-export-options))
             col-idxs (vec (:pivot-cols pivot-export-options))
             ;; The pivot QP only fills :pivot-measures when the split's measure names resolve to result
             ;; columns; when they don't (e.g. a casing mismatch) default to every non row/col column,
-            ;; mirroring qp.pivot.postprocess/add-pivot-measures.
+            ;; mirroring pivot.postprocess/add-pivot-measures.
             val-idxs (if-let [measures (seq (:pivot-measures pivot-export-options))]
                        (vec measures)
                        (into [] (remove (set (concat row-idxs col-idxs))) (range (count columns))))]
@@ -506,7 +506,7 @@
                 fmts   {:row-formatters (pivot-formatters columns row-idxs tz settings fr?)
                         :col-formatters (pivot-formatters columns col-idxs tz settings fr?)
                         :val-formatters (pivot-formatters columns val-idxs tz settings fr?)}
-                output (qp.pivot.postprocess/build-pivot-output
+                output (pivot.postprocess/build-pivot-output
                         {:data data :settings settings :format-rows? fr? :pivot-export-options peo}
                         fmts)
                 ;; Build a color selector from the card's conditional formatting, over the displayed data

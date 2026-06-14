@@ -9,7 +9,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.pivot.core :as pivot]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -615,9 +615,9 @@
         agg-fns (mapv col->aggregation-fn cols)]
     (-> pivot-opts
         (assoc :column-titles titles)
-        qp.pivot.postprocess/add-pivot-measures
+        pivot.postprocess/add-pivot-measures
         (assoc :aggregation-functions agg-fns)
-        (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-index titles)))))
+        (assoc :pivot-grouping-key (pivot.postprocess/pivot-grouping-index titles)))))
 
 (defn- track-n-cols-for-autosizing!
   [n sheet]
@@ -685,7 +685,7 @@
                                                                  :pivot-rows []}
                                                                 (m/filter-vals some? pivot-export-options)) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
-          (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
+          (vreset! pivot-grouping-index (pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
             (vreset! pivot-data
@@ -719,7 +719,7 @@
           (if @pivot-data
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
-                      (= qp.pivot.postprocess/non-pivot-row-group (int group)))
+                      (= pivot.postprocess/non-pivot-row-group (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)
@@ -743,7 +743,7 @@
                                             settings
                                             timezone
                                             format-rows?)
-                output (qp.pivot.postprocess/build-pivot-output
+                output (pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)
                 sheet (init-workbook {:workbook     workbook

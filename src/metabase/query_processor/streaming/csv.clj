@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.pivot.core :as pivot]
-   [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
@@ -94,7 +94,7 @@
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
         (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
-              pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index col-names)]
+              pivot-grouping-index (pivot.postprocess/pivot-grouping-index col-names)]
           (cond
             (and pivot? pivot-export-options)
             (vreset! pivot-data
@@ -128,7 +128,7 @@
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (if pivot-group
               ;; Non-pivoted pivot table: we have to remove the pivot-grouping column
-              (when (= qp.pivot.postprocess/non-pivot-row-group (int pivot-group))
+              (when (= pivot.postprocess/non-pivot-row-group (int pivot-group))
                 (let [formatted-row (->> (mapv (fn [formatter r]
                                                  (formatter (streaming.common/format-value r)))
                                                @ordered-formatters ordered-row)
@@ -146,7 +146,7 @@
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
                 columns (pivot/columns-without-pivot-group (:cols data))
                 formatters (make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
-                output (qp.pivot.postprocess/build-pivot-output
+                output (pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)]
             (doseq [xf-row output]
