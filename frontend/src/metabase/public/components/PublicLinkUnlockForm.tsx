@@ -1,10 +1,11 @@
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import { useUnlockPublicLinkMutation } from "metabase/api/public";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
-import { PublicApi } from "metabase/services";
 import { Box, Button, Card, Stack, Text, TextInput } from "metabase/ui";
+import { reload } from "metabase/utils/dom";
 
 import S from "./PublicLinkUnlockForm.module.css";
 
@@ -13,25 +14,27 @@ interface PublicLinkUnlockFormProps {
   entityType: "card" | "dashboard";
 }
 
+function getUnlockErrorMessage(error: unknown): string {
+  const data = (error as { data?: { error?: string } })?.data;
+  return data?.error ?? t`Incorrect password.`;
+}
+
 export const PublicLinkUnlockForm = ({
   uuid,
   entityType,
 }: PublicLinkUnlockFormProps) => {
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [unlock, { isLoading, error }] = useUnlockPublicLinkMutation();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setIsLoading(true);
 
     try {
-      await PublicApi.unlock({ uuid, entityType, password });
-      window.location.reload();
-    } catch (err: any) {
-      setError(err?.data?.error ?? t`Incorrect password.`);
-      setIsLoading(false);
+      await unlock({ uuid, entityType, password }).unwrap();
+      // A full reload lets the freshly-set unlock cookie through.
+      reload();
+    } catch {
+      // The failure is surfaced to the user via the mutation's `error`.
     }
   };
 
@@ -56,7 +59,7 @@ export const PublicLinkUnlockForm = ({
                 value={password}
                 onChange={(e) => setPassword(e.currentTarget.value)}
                 placeholder={t`Shhh...`}
-                error={error}
+                error={error ? getUnlockErrorMessage(error) : null}
                 autoFocus
                 data-testid="unlock-password-input"
               />

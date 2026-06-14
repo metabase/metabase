@@ -42,8 +42,6 @@ export const PublicApi = {
     `/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
   document: GET(`/api/public/document/:uuid`),
-  unlock: ({ uuid, entityType, password }) =>
-    POST(`/api/public/${entityType}/${uuid}/unlock`)({ password }),
 };
 
 // `/api/embed` is rewritten to `/api/preview_embed` by the request middleware

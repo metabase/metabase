@@ -28,13 +28,15 @@ function mapStateToProps(state: State) {
   };
 }
 
-function parsePublicEntity(pathname: string): {
+export function parsePublicEntity(pathname: string): {
   uuid: string;
   entityType: "card" | "dashboard";
 } | null {
-  const cardMatch = pathname.match(/\/public\/(?:question|card)\/([^/]+)/);
-  if (cardMatch) {
-    return { uuid: cardMatch[1], entityType: "card" };
+  // Public questions are served from `/public/question/:uuid` (there is no
+  // `/public/card` route); the backend entity is still a card.
+  const questionMatch = pathname.match(/\/public\/question\/([^/]+)/);
+  if (questionMatch) {
+    return { uuid: questionMatch[1], entityType: "card" };
   }
   const dashMatch = pathname.match(/\/public\/dashboard\/([^/]+)/);
   if (dashMatch) {

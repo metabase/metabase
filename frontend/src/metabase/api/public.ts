@@ -23,6 +23,12 @@ export type PublicDocumentCardQueryRequest = {
   cardId: CardId;
 };
 
+export type UnlockPublicLinkRequest = {
+  uuid: string;
+  entityType: "card" | "dashboard";
+  password: string;
+};
+
 const PIVOT_PREFIX = "/api/public/pivot";
 
 export const publicApi = Api.injectEndpoints({
@@ -74,6 +80,13 @@ export const publicApi = Api.injectEndpoints({
         url: `/api/public/document/${uuid}/card/${cardId}`,
       }),
     }),
+    unlockPublicLink: builder.mutation<void, UnlockPublicLinkRequest>({
+      query: ({ uuid, entityType, password }) => ({
+        method: "POST",
+        url: `/api/public/${entityType}/${uuid}/unlock`,
+        body: { password },
+      }),
+    }),
   }),
 });
 
@@ -83,4 +96,5 @@ export const {
   useGetPublicDashcardQueryQuery,
   useGetPublicDashcardQueryPivotQuery,
   useGetPublicDocumentCardQueryQuery,
+  useUnlockPublicLinkMutation,
 } = publicApi;
