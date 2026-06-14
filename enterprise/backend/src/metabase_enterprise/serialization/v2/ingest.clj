@@ -10,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as u.memo]
    [metabase.util.yaml :as yaml]
    [potemkin.types :as p])
   (:import (java.io File)))
@@ -84,33 +85,21 @@
   We support both \"python-libraries\" and \"python_libraries\" for backwards compatibility. The modern name is \"python_libraries\"."
   #{"actions" "channels" "collections" "custom_viz_plugins" "databases" "embedding_themes" "glossary" "metabots" "python_libraries" "python-libraries" "snippets" "transforms"})
 
-(defn- intern!
-  "Returns the canonical instance equal to `x` already held by `m`, storing `x` as that
-  instance the first time it is seen. `m` must be a value-keyed map (a Clojure value as key),
-  so structurally-equal arguments collapse to one shared object."
-  [^java.util.HashMap m x]
-  (or (.get m x)
-      (do (.put m x x) x)))
-
 (defn- path-interner
   "Returns a function that interns `:serdes/meta` path vectors.
 
   Every parsed file allocates fresh copies of its path maps and strings, but the
   `[db schema table]` prefix segments recur once per sibling file (a million-field instance
-  has ~#tables distinct prefixes). Canonicalizing each segment through the interner's tables
-  makes index keys share that structure — value equality is unchanged, so lookups and
-  `:seen`-set comparisons behave identically. The tables live only as long as the returned
-  function is reachable; do not hold it past index construction."
+  has ~#tables distinct prefixes). Interning each segment (and its strings) collapses those
+  duplicates to shared objects, so index keys share structure — value equality is unchanged,
+  so lookups and `:seen`-set comparisons behave identically. The interner caches live only as
+  long as the returned function is reachable; do not hold it past index construction."
   []
-  (let [seg-table  (java.util.HashMap.)
-        str-table  (java.util.HashMap.)
-        intern-str (fn [s] (if (string? s) (intern! str-table s) s))
-        canon-seg  (fn [seg]
-                     (cond-> (update seg :model intern-str)
-                       (string? (:id seg)) (update :id intern-str)))
-        intern-seg (fn [seg]
-                     (or (.get seg-table seg)
-                         (intern! seg-table (canon-seg seg))))]
+  (let [intern-str (u.memo/fast-interner)
+        intern-seg (u.memo/fast-interner
+                    (fn [seg]
+                      (cond-> (update seg :model intern-str)
+                        (string? (:id seg)) (update :id intern-str))))]
     (fn intern-path [hierarchy]
       (mapv intern-seg hierarchy))))
 
