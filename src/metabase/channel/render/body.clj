@@ -434,15 +434,6 @@
     (string? x) x
     :else       (or (:num-str x) (:text-str x) (str x))))
 
-(defn- pivot-formatters
-  "Per-column value formatters for the given column `indexes`, matching the pivot export path."
-  [columns indexes timezone settings format-rows?]
-  (let [formatter-for (memoize (fn [col] (formatter/create-formatter timezone col settings format-rows?)))]
-    (mapv (fn [idx]
-            (let [fmt (formatter-for (nth columns idx))]
-              (fn [value] (fmt (streaming.common/format-value value)))))
-          indexes)))
-
 (defn- pivot->hiccup
   "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
   `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
@@ -503,9 +494,7 @@
                 peo    {:pivot-rows     row-idxs
                         :pivot-cols     col-idxs
                         :pivot-measures val-idxs}
-                fmts   {:row-formatters (pivot-formatters columns row-idxs tz settings fr?)
-                        :col-formatters (pivot-formatters columns col-idxs tz settings fr?)
-                        :val-formatters (pivot-formatters columns val-idxs tz settings fr?)}
+                fmts   (formatter/make-formatters columns row-idxs col-idxs val-idxs settings tz fr?)
                 output (pivot.postprocess/build-pivot-output
                         {:data data :settings settings :format-rows? fr? :pivot-export-options peo}
                         fmts)

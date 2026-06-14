@@ -60,29 +60,6 @@
                                 string))
                (when must-quote (.write writer "\"")))))
 
-(defn get-formatter
-  "Returns a memoized formatter for a column"
-  [timezone settings format-rows?]
-  (memoize
-   (fn [column]
-     (formatter/create-formatter timezone column settings format-rows?))))
-
-(defn- create-formatters
-  [columns indexes timezone settings format-rows?]
-  (let [formatter-fn (get-formatter timezone settings format-rows?)]
-    (mapv (fn [idx]
-            (let [column (nth columns idx)
-                  formatter (formatter-fn column)]
-              (fn [value]
-                (formatter (streaming.common/format-value value)))))
-          indexes)))
-
-(defn- make-formatters
-  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
-  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
-   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
-   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
-
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer                  (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -145,7 +122,7 @@
           (let [{:keys [data settings timezone format-rows? pivot-export-options]} @pivot-data
                 {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
                 columns (pivot/columns-without-pivot-group (:cols data))
-                formatters (make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
+                formatters (formatter/make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
                 output (pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)]

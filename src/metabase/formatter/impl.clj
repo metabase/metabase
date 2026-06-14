@@ -316,6 +316,32 @@
          (->TextWrapper (str value) value))
        identity))))
 
+(defn get-formatter
+  "Returns a memoized fn that builds a column formatter (via [[create-formatter]]) for a column."
+  [timezone settings format-rows?]
+  (memoize
+   (fn [column]
+     (create-formatter timezone column settings format-rows?))))
+
+(defn- create-formatters
+  "Value formatters for the columns at `indexes`; each formats a raw value via
+  [[metabase.query-processor.streaming.common/format-value]] then the column's formatter."
+  [columns indexes timezone settings format-rows?]
+  (let [formatter-fn (get-formatter timezone settings format-rows?)]
+    (mapv (fn [idx]
+            (let [formatter (formatter-fn (nth columns idx))]
+              (fn [value]
+                (formatter (streaming.common/format-value value)))))
+          indexes)))
+
+(defn make-formatters
+  "Row/col/measure value formatters for a pivot export, keyed by `:row-formatters`/`:col-formatters`/`:val-formatters`.
+  Shared by the CSV export and static-viz pivot render paths."
+  [columns row-indexes col-indexes val-indexes settings timezone format-rows?]
+  {:row-formatters (create-formatters columns row-indexes timezone settings format-rows?)
+   :col-formatters (create-formatters columns col-indexes timezone settings format-rows?)
+   :val-formatters (create-formatters columns val-indexes timezone settings format-rows?)})
+
 (defn NumericWrapper?
   "Is `x` an instance of `NumericWrapper`?"
   [x]
