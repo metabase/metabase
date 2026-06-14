@@ -199,3 +199,27 @@
    :max-height "30px"
    :object-fit "contain"
    :display    "block"})
+
+(defn pivot-table-style
+  "Style for the `<table>` element of a rendered `:pivot` table."
+  []
+  (merge (font-style)
+         {:border-collapse :collapse
+          :font-size       (format "%spx" font-size)}))
+
+(defn pivot-cell-style
+  "Style for one cell of a rendered `:pivot` table. `header?`/`label?` select the cell role; `bg`, when
+  non-nil, is the conditional-formatting background color for a value cell."
+  [header? label? bg]
+  (merge {:border      (str "1px solid " color-border)
+          :padding     "5px 10px"
+          :white-space :nowrap}
+         (cond
+           header? {:background  color-pivot-header-bg
+                    :font-weight 700
+                    :text-align  :left}
+           label?  {:background  color-pivot-label-bg
+                    :font-weight 600
+                    :text-align  :left}
+           :else   {:text-align :right})
+         (when bg {:background-color bg})))

@@ -1260,8 +1260,7 @@
                {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
         ;; the pivot QP populates :pivot-export-options with the row/col/measure column indices
         ;; (into the pivot-grouping-free column space: R=0, C=1, m=2)
-        peo   {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]
-               :show-row-totals false :show-column-totals false}
+        peo   {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}
         data  {:cols                 cols
                :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
                :format-rows?         true
@@ -1300,3 +1299,24 @@
               h     (html (:content (body/render :pivot :inline "UTC" pcard nil data)))]
           ;; numeric cells get the (stubbed) conditional-formatting background; headers/labels don't
           (is (str/includes? h "rgb(1, 2, 3)")))))))
+
+(deftest render-pivot-conditional-formatting-test
+  (testing "pivot value cells get value-based conditional-formatting colors via the real shared color JS"
+    (let [split       {:rows ["R"] :columns ["C"] :values ["m"]}
+          cols        [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
+                       {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+          data        {:cols                 cols
+                       :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
+                       :format-rows?         true
+                       :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}}
+          render-with (fn [formatting]
+                        (let [settings (cond-> {:pivot_table.column_split split}
+                                         formatting (assoc :table.column_formatting formatting))]
+                          (html (:content (body/render :pivot :inline "UTC"
+                                                       {:display :pivot :visualization_settings settings}
+                                                       nil data)))))]
+      (testing "a `>` rule colors the matching measure cells"
+        (is (str/includes? (render-with [{:type "single" :columns ["m"] :color "#ff0000" :operator ">" :value 25}])
+                           "background-color")))
+      (testing "no conditional formatting means no cell background colors"
+        (is (not (str/includes? (render-with nil) "background-color")))))))
