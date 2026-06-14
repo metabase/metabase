@@ -1,3 +1,4 @@
+/* eslint-disable metabase/no-literal-metabase-strings -- request header names */
 import type { OnBeforeRequestHandlerConfig } from "metabase/api/client";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isWithinIframe } from "metabase/utils/iframe";
@@ -16,12 +17,22 @@ const getDefaultPluginApi = () => ({
     setEmbeddedHeader:
       async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {
         if (isWithinIframe() && !isEmbeddingSdk()) {
-          return {
-            // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-            headers: { "X-Metabase-Embedded": "true" },
-          };
+          return { headers: { "X-Metabase-Embedded": "true" } };
         }
       },
+    // Emit the embedding client headers (`X-Metabase-Client` / `-Version` /
+    // `-Embedded-Preview`). A no-op slot: the embedding setup flow installs
+    // `setRequestClientHeaders` here, closing over the active client (see
+    // `embedding-request-auth`). Untouched in the normal app — keeping these
+    // embedding-only headers out of the generic api client.
+    setRequestClientHeaders:
+      async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
+    // Emit the embedding auth header (`X-Api-Key` or `X-Metabase-Session`). A
+    // no-op slot: the embedding auth flow installs exactly one strategy here —
+    // `setApiKeyHeader` or `setSessionTokenHeader` — based on the auth method in
+    // use (see `embedding-request-auth`).
+    setEmbeddingRequestAuthHeaders:
+      async (): Promise<Partial<OnBeforeRequestHandlerConfig> | void> => {},
   },
 });
 

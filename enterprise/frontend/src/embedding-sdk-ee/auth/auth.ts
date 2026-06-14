@@ -28,8 +28,11 @@ import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import {
+  setApiKeyHeader,
+  setSessionTokenHeader,
+} from "metabase/embedding/lib/embedding-request-auth";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -37,7 +40,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -84,7 +87,8 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
       authState.user &&
       authState.siteSettings
     ) {
-      api.sessionToken = authState.session.id;
+      PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+        setSessionTokenHeader(authState.session.id);
       // Store the session token in Redux so getOrRefreshSession finds it
       // and doesn't trigger a redundant token refresh on the first API call.
       dispatch(
@@ -103,7 +107,8 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
             getOrRefreshSession(authConfig),
           ).unwrap();
           if (session?.id) {
-            api.sessionToken = session.id;
+            PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+              setSessionTokenHeader(session.id);
           }
         };
 
@@ -126,18 +131,21 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
 
   if (isValidApiKeyConfig) {
     // API key setup
-    api.apiKey = apiKey;
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+      setApiKeyHeader(apiKey);
   } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
     // Use existing user session. Do nothing.
   } else if (isValidInstanceUrl) {
-    // SSO setup
+    // SSO setup. The session-token strategy is installed by the refresh handler
+    // below once it has a token, and re-installed with each refreshed token.
     PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler =
       async () => {
         const session = await dispatch(
           getOrRefreshSession(authConfig),
         ).unwrap();
         if (session?.id) {
-          api.sessionToken = session.id;
+          PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+            setSessionTokenHeader(session.id);
         }
       };
     try {

@@ -1,7 +1,6 @@
 /* eslint-disable metabase/no-literal-metabase-strings */
 import EventEmitter from "events";
 
-import { IFRAMED_IN_SELF } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { retry } from "metabase/utils/retry";
 
@@ -15,7 +14,6 @@ import {
 } from "./middleware";
 import type {
   EventMap,
-  RequestClientInfo,
   RequestInit,
   RequestOptions,
   ResponseFor,
@@ -31,9 +29,6 @@ const MAX_RETRIES = 10;
 
 export class ApiClient extends EventEmitter<EventMap> {
   basename = "";
-  apiKey = "";
-  sessionToken: string | undefined;
-  requestClient: RequestClientInfo | undefined;
 
   private buildUrl(
     template: string,
@@ -51,28 +46,6 @@ export class ApiClient extends EventEmitter<EventMap> {
       Accept: "application/json",
       "Content-Type": "application/json",
     };
-
-    if (this.apiKey) {
-      headers["X-Api-Key"] = this.apiKey;
-    }
-
-    if (this.sessionToken) {
-      headers["X-Metabase-Session"] = this.sessionToken;
-    }
-
-    if (this.requestClient) {
-      if (IFRAMED_IN_SELF) {
-        headers["X-Metabase-Embedded-Preview"] = "true";
-      }
-      if (typeof this.requestClient === "object") {
-        headers["X-Metabase-Client"] = this.requestClient.name;
-        if (this.requestClient.version) {
-          headers["X-Metabase-Client-Version"] = this.requestClient.version;
-        }
-      } else {
-        headers["X-Metabase-Client"] = this.requestClient;
-      }
-    }
 
     const locale = getLocaleHeader();
     if (locale) {

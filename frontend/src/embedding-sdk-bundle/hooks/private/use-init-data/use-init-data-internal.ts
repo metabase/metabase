@@ -16,13 +16,18 @@ import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
-import { type OnBeforeRequestHandlerConfig, api } from "metabase/api/client";
+import {
+  type OnBeforeRequestHandlerConfig,
+  type RequestClientInfo,
+  api,
+} from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import { setRequestClientHeaders } from "metabase/embedding/lib/embedding-request-auth";
 import {
   EMBEDDING_SDK_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import registerVisualizations from "metabase/visualizations/register";
 
 const reactSdkEmbedReferrerHandler = async (
@@ -55,6 +60,15 @@ const sdkResponseErrorHandler = ({
 const registerVisualizationsOnce = _.once(registerVisualizations);
 const registerDashboardVisualizationsOnce = _.once(
   registerDashboardVisualizations,
+);
+
+// Install the SDK's request-client header strategy once; re-renders keep the
+// first-set client (matching the previous set-once-if-unset behaviour).
+const setSdkRequestClientHeadersOnce = _.once(
+  (requestClient: RequestClientInfo) => {
+    PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
+      setRequestClientHeaders(requestClient);
+  },
 );
 
 interface InitDataLoaderParameters {
@@ -107,13 +121,11 @@ export const useInitDataInternal = ({
     api.basename = authConfig.metabaseInstanceUrl;
   }
 
-  if (!api.requestClient) {
-    api.requestClient = {
-      name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
-      // Note: this is *package* version, it's undefined in EAJS
-      version: sdkPackageVersion,
-    };
-  }
+  setSdkRequestClientHeadersOnce({
+    name: EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader,
+    // Note: this is *package* version, it's undefined in EAJS
+    version: sdkPackageVersion,
+  });
 
   // For the React SDK, send the host page URL as the embed referrer in a
   // header on every request. The EAJS iframe installs its own handler in
