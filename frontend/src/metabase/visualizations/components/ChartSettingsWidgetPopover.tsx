@@ -48,12 +48,7 @@ export const ChartSettingsWidgetPopover = ({
     <PopoverWithRef
       anchorEl={anchor}
       opened={!!anchor && widgets.length > 0}
-      onChange={(opened) => {
-        if (!opened) {
-          onClose();
-        }
-      }}
-      trapFocus
+      onDismiss={onClose}
       position="right"
       offset={{ mainAxis: 10, crossAxis: 10 }}
       middlewares={{
