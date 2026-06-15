@@ -740,6 +740,7 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboard,
+            { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
             {
@@ -749,6 +750,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
+            { signal: fetchDashboardCancellation.signal },
           ),
         ]);
         result = {
