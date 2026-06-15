@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -57,7 +58,7 @@ export const OptionPopover = ({
 }: OptionEditorProps) => {
   const [text, setText] = useState(optionsToText(options));
   const [error, setError] = useState<string | null>(null);
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, { open, close, toggle }] = useDisclosure(false);
 
   const hasOptions = text.length > 0;
   const isDirty = text !== optionsToText(options);
@@ -94,25 +95,25 @@ export const OptionPopover = ({
       setError(error);
     } else {
       onChange(nextOptions);
-      setIsOpened(false);
+      close();
     }
   };
 
   return (
     <Popover
       opened={isOpened}
-      onChange={setIsOpened}
+      onChange={(nextOpened) => (nextOpened ? open() : close())}
       position="bottom-end"
       trapFocus
     >
       <Popover.Target>
-        <UnstyledButton onClick={() => setIsOpened((opened) => !opened)}>
+        <UnstyledButton onClick={toggle}>
           <Icon name="list" size={20} tooltip={t`Change options`} />
         </UnstyledButton>
       </Popover.Target>
       <Popover.Dropdown
         // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={() => setIsOpened(false)}
+        setupSequencedCloseHandler={close}
         maw={400}
       >
         <OptionEditorContainer>

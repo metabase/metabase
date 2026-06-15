@@ -97,6 +97,46 @@ export const setupRemoteSyncImportEndpoint = ({
 };
 
 /**
+ * Setup the remote-sync export POST endpoint
+ */
+export const setupRemoteSyncExportEndpoint = ({
+  task_id = 789,
+}: { task_id?: number } = {}) => {
+  fetchMock.removeRoute("remote-sync-export");
+  fetchMock.post(
+    "path:/api/ee/remote-sync/export",
+    { message: "Export task started", task_id },
+    { name: "remote-sync-export" },
+  );
+};
+
+export interface RemoteSyncExportPreflightResponse {
+  has_changes: boolean;
+  clean: boolean;
+  conflicts: string[];
+  summary: { added: number; updated: number; removed: number };
+  reason: string | null;
+}
+
+/**
+ * Setup the remote-sync export-preflight endpoint (drives the push decision)
+ */
+export const setupRemoteSyncExportPreflightEndpoint = ({
+  has_changes = false,
+  clean = true,
+  conflicts = [],
+  summary = { added: 0, updated: 0, removed: 0 },
+  reason = null,
+}: Partial<RemoteSyncExportPreflightResponse> = {}) => {
+  fetchMock.removeRoute("remote-sync-export-preflight");
+  fetchMock.get(
+    "path:/api/ee/remote-sync/export-preflight",
+    { has_changes, clean, conflicts, summary, reason },
+    { name: "remote-sync-export-preflight" },
+  );
+};
+
+/**
  * Setup the remote-sync cancel task endpoint
  */
 export const setupRemoteSyncCancelTaskEndpoint = ({
@@ -153,6 +193,7 @@ export const setupRemoteSyncEndpoints = ({
   hasRemoteChanges = false,
   hasRemoteChangesDelay = 0,
   hasRemoteChangesError = false,
+  exportPreflight,
   settingsResponse = { success: true },
   testConnectionError,
 }: {
@@ -162,6 +203,7 @@ export const setupRemoteSyncEndpoints = ({
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
   hasRemoteChangesError?: boolean;
+  exportPreflight?: Partial<RemoteSyncExportPreflightResponse>;
   settingsResponse?: Partial<RemoteSyncSettingsResponse> & {
     error?: { status: number; message: string };
   };
@@ -171,6 +213,8 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncDirtyEndpoint({ dirty, changedCollections });
   setupRemoteSyncCurrentTaskEndpoint("idle");
   setupRemoteSyncImportEndpoint();
+  setupRemoteSyncExportEndpoint();
+  setupRemoteSyncExportPreflightEndpoint(exportPreflight);
   setupRemoteSyncSettingsEndpoint(settingsResponse);
   setupRemoteSyncTestConnectionEndpoint({ error: testConnectionError });
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});

@@ -30,7 +30,16 @@
 
      Takes a source instance implementing this protocol.
 
-     Returns a SourceSnapshot instance representing a point-in-time view of the source."))
+     Returns a SourceSnapshot instance representing a point-in-time view of the source.")
+
+  (snapshot-at [source version]
+    "Creates a snapshot of the source at a specific historical version.
+
+     Takes a source instance implementing this protocol and a version identifier (e.g. a git SHA).
+
+     Returns a SourceSnapshot for that version, or nil if the version cannot be resolved (e.g. it was
+     orphaned by a force-push or rebase). Unlike `snapshot`, this does not fetch from the remote; it
+     resolves against already-fetched local state."))
 
 (defprotocol SourceSnapshot
   (list-files [snapshot]

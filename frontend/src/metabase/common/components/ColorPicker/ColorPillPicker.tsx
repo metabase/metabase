@@ -1,5 +1,5 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { type Ref, forwardRef, useState } from "react";
+import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
+import { type Ref, forwardRef } from "react";
 
 import { Group, Popover } from "metabase/ui";
 
@@ -44,18 +44,18 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
 ) {
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
   const color = previewValue ?? originalColor;
-  const [isOpened, setIsOpened] = useState(false);
+  const [isOpened, { open, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened} position="bottom-start">
+    <Popover opened={isOpened} onClose={close} position="bottom-start">
       <Popover.Target>
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={color} onClick={() => setIsOpened(true)} />
+          <ColorPill color={color} onClick={open} />
         </Group>
       </Popover.Target>
       <Popover.Dropdown
         // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={() => setIsOpened(false)}
+        setupSequencedCloseHandler={close}
         className={S.ColorPillPicker}
       >
         <ColorPickerContent

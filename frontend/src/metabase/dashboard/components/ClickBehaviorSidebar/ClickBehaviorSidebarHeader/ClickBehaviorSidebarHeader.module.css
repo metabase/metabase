@@ -1,5 +1,5 @@
 .ItemName {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .ColumnClickBehaviorHeader {
@@ -8,7 +8,7 @@
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

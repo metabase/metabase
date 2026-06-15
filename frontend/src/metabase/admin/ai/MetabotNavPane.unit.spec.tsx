@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -14,11 +15,13 @@ const setup = ({
   aiControlsEnabled = false,
   auditAppEnabled = false,
   isConfigured = true,
+  initialRoute = "/admin/metabot",
 }: {
   aiFeaturesEnabled?: boolean;
   aiControlsEnabled?: boolean;
   auditAppEnabled?: boolean;
   isConfigured?: boolean;
+  initialRoute?: string;
 } = {}) => {
   mockSettings({
     "ai-features-enabled?": aiFeaturesEnabled,
@@ -34,7 +37,7 @@ const setup = ({
     <Route path="/admin/metabot*" component={MetabotNavPane} />,
     {
       withRouter: true,
-      initialRoute: "/admin/metabot",
+      initialRoute,
       storeInitialState: {
         settings: createMockSettingsState({
           "ai-features-enabled?": aiFeaturesEnabled,
@@ -95,10 +98,7 @@ describe("MetabotNavPane", () => {
     setup({ aiControlsEnabled: false, aiFeaturesEnabled: true });
 
     expect(await screen.findByText("AI Settings")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /MCP/ })).toHaveAttribute(
-      "href",
-      "/admin/metabot/mcp",
-    );
+    expect(screen.getByText("MCP")).toBeInTheDocument();
 
     expect(
       screen.getByRole("link", { name: /Usage controls/ }),
@@ -113,6 +113,15 @@ describe("MetabotNavPane", () => {
     expect(
       screen.getByRole("link", { name: /System prompts/ }),
     ).toHaveAttribute("href", "/admin/metabot/system-prompts/metabot-chat");
+
+    await userEvent.click(await screen.findByText("MCP"));
+
+    expect(
+      await screen.findByRole("link", { name: "Settings" }),
+    ).toHaveAttribute("href", "/admin/metabot/mcp");
+    expect(
+      screen.getByRole("link", { name: "Authorizations" }),
+    ).toHaveAttribute("href", "/admin/metabot/mcp/authorizations");
   });
 
   it("displays the usage auditing upsell link when audit app is available and ai controls is unavailable", async () => {

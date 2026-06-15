@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { HTMLAttributes, Ref } from "react";
-import { forwardRef, useState } from "react";
+import { forwardRef } from "react";
 
 import { Popover } from "metabase/ui";
 
@@ -22,10 +23,10 @@ export const ColorPicker = forwardRef(function ColorPicker(
   { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [isOpened, setIsOpened] = useState(false);
+  const [opened, { open, close }] = useDisclosure(false);
 
   return (
-    <Popover opened={isOpened} onChange={setIsOpened} position="bottom-start">
+    <Popover opened={opened} onClose={close} position="bottom-start">
       <Popover.Target>
         <ColorPickerTrigger
           {...props}
@@ -33,13 +34,13 @@ export const ColorPicker = forwardRef(function ColorPicker(
           value={value}
           placeholder={placeholder}
           isAuto={isAuto}
-          onClick={() => setIsOpened(true)}
+          onClick={open}
           onChange={onChange}
         />
       </Popover.Target>
       <Popover.Dropdown
         // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-        setupSequencedCloseHandler={() => setIsOpened(false)}
+        setupSequencedCloseHandler={close}
       >
         <ColorPickerContent value={value} onChange={onChange} />
       </Popover.Dropdown>

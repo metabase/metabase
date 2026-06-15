@@ -146,6 +146,21 @@
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
+(deftest entity-counts-report-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection coll {:name "Some Collection"}
+                         :model/Card       _    {:name "Some Card" :collection_id (:id coll)}]
+        (let [export   (into [] (extract/extract {:no-data-model true :no-transforms true}))
+              models   (map #(-> % :serdes/meta last :model) export)
+              expected (cond-> (frequencies (remove #{"Setting"} models))
+                         (some #{"Setting"} models) (assoc "Setting" 1))
+              report   (storage/store! export (storage.files/file-writer dump-dir))]
+          (testing ":entity-counts is a {model count} map, with all settings tallied as a single entry"
+            (is (= expected (:entity-counts report)))
+            (is (pos? (get-in report [:entity-counts "Setting"] 0))
+                "settings should be part of this export, to exercise the Setting tally")))))))
+
 (deftest yaml-sorted-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!

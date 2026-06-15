@@ -473,12 +473,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").uncheck();
             });
 
-            cy.log(
-              "close the field settings popover - its dropdown also has the dialog role",
-            );
-            cy.realPress("Escape");
-
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Save").click();
             });
 
@@ -537,12 +532,7 @@ const MODEL_NAME = "Test Action Model";
               cy.findByLabelText("Required").check();
             });
 
-            cy.log(
-              "close the field settings popover - its dropdown also has the dialog role",
-            );
-            cy.realPress("Escape");
-
-            cy.findByRole("dialog").within(() => {
+            H.modal().within(() => {
               cy.findByText("Update").click();
             });
 

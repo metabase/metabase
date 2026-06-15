@@ -77,6 +77,7 @@ export function renderMetabotProfileLabel(id: string): string {
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
+  NLQ: "nlq",
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;

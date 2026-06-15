@@ -7,7 +7,10 @@ import ActionParametersInputForm, {
 } from "metabase/actions/containers/ActionParametersInputForm";
 import { useActionInitialValues } from "metabase/actions/hooks/use-action-initial-values";
 import { getFormTitle, isImplicitUpdateAction } from "metabase/actions/utils";
-import { ActionsApi, PublicApi } from "metabase/services";
+import { actionApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { useDispatch } from "metabase/redux";
+import { PublicApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import { getDashboardType } from "metabase/utils/dashboard";
 import type {
@@ -57,6 +60,7 @@ function ActionVizForm({
 
   onActionEdit,
 }: ActionFormProps) {
+  const dispatch = useDispatch();
   const [showFormModal, setShowFormModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const title = getFormTitle(action);
@@ -86,23 +90,30 @@ function ActionVizForm({
   };
 
   const fetchInitialValues = useCallback(async () => {
-    const prefetchDashcardValues =
-      getDashboardType(dashboard.id) === "public"
-        ? PublicApi.prefetchDashcardValues
-        : ActionsApi.prefetchDashcardValues;
-
     const canPrefetch = Object.keys(dashcardParamValues).length > 0;
 
     if (!canPrefetch) {
       return {};
     }
 
-    return prefetchDashcardValues({
-      dashboardId: dashboard.id,
-      dashcardId: dashcard.id,
-      parameters: JSON.stringify(dashcardParamValues),
-    });
-  }, [dashboard.id, dashcard.id, dashcardParamValues]);
+    if (getDashboardType(dashboard.id) === "public") {
+      return PublicApi.prefetchDashcardValues({
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+        parameters: JSON.stringify(dashcardParamValues),
+      });
+    }
+
+    return runRtkEndpoint(
+      {
+        dashboardId: dashboard.id,
+        dashcardId: dashcard.id,
+        parameters: dashcardParamValues,
+      },
+      dispatch,
+      actionApi.endpoints.prefetchDashcardValues,
+    );
+  }, [dashboard.id, dashcard.id, dashcardParamValues, dispatch]);
 
   const shouldPrefetch = isImplicitUpdateAction(action);
 

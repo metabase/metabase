@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 
@@ -47,15 +48,18 @@ export const ChartSettingsWidgetPopover = ({
     <PopoverWithRef
       anchorEl={anchor}
       opened={!!anchor && widgets.length > 0}
-      onChange={(opened) => {
-        if (!opened) {
-          onClose();
-        }
-      }}
-      trapFocus
+      onDismiss={onClose}
       position="right"
       offset={{ mainAxis: 10, crossAxis: 10 }}
-      middlewares={{ shift: { padding: 16 }, flip: true, size: { padding: 5 } }}
+      middlewares={{
+        shift: { padding: 16 },
+        flip: { fallbackStrategy: "initialPlacement" },
+        size: { padding: 5 },
+      }}
+      {...(isEmbeddingSdk() && {
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      })}
     >
       <Box
         pt={hasMultipleSections ? 0 : undefined}

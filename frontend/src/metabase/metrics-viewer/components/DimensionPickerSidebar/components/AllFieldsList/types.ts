@@ -5,5 +5,6 @@ export type AllFieldsMetricGroup = {
   name: string;
   colors?: string[];
   isExpressionToken: boolean;
+  occurrenceCount?: number;
   sections: DimensionPickerSection[];
 };

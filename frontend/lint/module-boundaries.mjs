@@ -95,8 +95,6 @@ const elements = [
   }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
-  createElement({ type: "shared", name: "metrics" }),
-  createElement({ type: "shared", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
@@ -115,7 +113,6 @@ const elements = [
     mode: "full",
     enforceOutgoing: false,
   }),
-  createElement({ type: "shared", name: "search" }),
   createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
@@ -139,9 +136,12 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "metrics" }),
+  createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "query_builder" }),
   createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "search" }),
 
   // app
   ...[
@@ -153,6 +153,7 @@ const elements = [
     "frontend/src/metabase/AppComponent.tsx",
     "frontend/src/metabase/App.styled.tsx",
     "frontend/src/metabase/AppKBarProvider.tsx",
+    "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/reducers-main.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",

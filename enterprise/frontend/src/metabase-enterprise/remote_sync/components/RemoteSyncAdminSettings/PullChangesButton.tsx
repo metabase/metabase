@@ -21,7 +21,12 @@ export const PullChangesButton = (props: PullChangesButtonProps) => {
 
   const handlePullChanges = useCallback(async () => {
     try {
-      await importChanges({ branch, force: forcePull }).unwrap();
+      // In admin settings the configured branch is the operational target and the assertion.
+      await importChanges({
+        branch,
+        force: forcePull,
+        expected_branch: branch,
+      }).unwrap();
 
       trackPullChanges({
         triggeredFrom: "admin-settings",

@@ -73,7 +73,7 @@ export const LicenseTokenForm = ({
                         size="1rem"
                         name="info"
                         aria-label={t`Token details information`}
-                        c="brand"
+                        c="core-brand"
                       />
                     </HoverCard.Target>
                     <HoverCard.Dropdown>

@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { render, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
@@ -84,7 +84,7 @@ const defaultProps: ActionFormProps = {
 function setup(options?: Partial<ActionFormProps>) {
   setupPrefetch();
 
-  render(<ActionVizForm {...defaultProps} {...options} />);
+  renderWithProviders(<ActionVizForm {...defaultProps} {...options} />);
 }
 
 describe("Actions > ActionVizForm", () => {

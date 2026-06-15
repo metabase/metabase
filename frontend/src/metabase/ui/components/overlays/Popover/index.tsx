@@ -3,6 +3,7 @@ import { Popover as MantinePopover } from "@mantine/core";
 import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
 import { type Ref, type RefObject, forwardRef, useEffect, useRef } from "react";
+import { useLatest } from "react-use";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { PreventEagerPortal } from "metabase/ui";
@@ -42,8 +43,7 @@ const SequencedCloseHandlerSetup = ({
 }: SequencedCloseHandlerSetupProps) => {
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const onCloseRef = useLatest(onClose);
 
   useEffect(() => {
     const dropdownEl = dropdownRef.current;
@@ -54,7 +54,7 @@ const SequencedCloseHandlerSetup = ({
       : null;
     setupCloseHandler(dropdownEl, () => onCloseRef.current(), targetEl);
     return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler, dropdownRef]);
+  }, [setupCloseHandler, removeCloseHandler, dropdownRef, onCloseRef]);
 
   return null;
 };

@@ -52,7 +52,7 @@ export const TransformsSettingUpModal = ({
             bg="background-secondary"
             style={{ borderRadius: "50%" }}
           >
-            <Icon name="table2" size={48} c="brand" />
+            <Icon name="table2" size={48} c="core-brand" />
           </Flex>
 
           {isSettingUp && (

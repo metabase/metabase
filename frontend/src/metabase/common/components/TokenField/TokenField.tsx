@@ -49,7 +49,7 @@ export type TokenFieldProps = {
   optionRenderer?: (option: any) => React.ReactNode;
   valueRenderer?: (value: any) => React.ReactNode;
   layoutRenderer?: (args: LayoutRendererArgs) => React.ReactNode;
-  color?: "brand";
+  color?: "core-brand";
   style?: React.CSSProperties;
   className?: string;
   valueStyle?: React.CSSProperties;
@@ -489,7 +489,7 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         <DefaultTokenFieldLayout {...props} />
       ),
 
-      color = "brand",
+      color = "core-brand",
 
       style = {},
       className,
