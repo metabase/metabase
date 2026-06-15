@@ -142,8 +142,9 @@
        :model/Collection examples  {:name "Examples",   :is_sample true}
        :model/Collection ecommerce {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
        :model/Collection keep-coll {:name "Keep me"}]
-      (let [extract-called? (atom false)]
-        (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
+      (let [bundled-engine (#'sample-data/sample-database-engine)
+            synced-db-ids  (atom [])]
+        (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [db] (swap! synced-db-ids conj (:id db)) db)]
           (#'sample-data/update-sample-database-if-needed! old-sample))
         (testing "the old sample DB is deleted, cascading to its cards"
           (is (not (t2/exists? :model/Database :id (:id old-sample))))
@@ -157,8 +158,13 @@
           (is (not (t2/exists? :model/Collection :id (:id examples))))
           (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
           (is (t2/exists? :model/Collection :id (:id keep-coll))))
-        (testing "the new bundled sample DB is extracted and synced"
-          (is (true? @extract-called?)))))))
+        (testing "a new sample database with the bundled engine is created and synced"
+          (let [new-db (t2/select-one :model/Database :is_sample true)]
+            (is (some? new-db))
+            (is (not= (:id old-sample) (:id new-db)))
+            (is (= bundled-engine (:engine new-db)))
+            (testing "the new database (not the old one) is what gets synced, after the swap commits"
+              (is (= [(:id new-db)] @synced-db-ids)))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"

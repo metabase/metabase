@@ -157,15 +157,24 @@
   [old-sample-db]
   (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
              (:engine old-sample-db) (sample-database-engine))
-  (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
-    (t2/delete! :model/Database (:id old-sample-db))
-    (delete-emptied-dashboards! dashboard-ids)
-    (t2/delete! :model/Collection :is_sample true))
-  (when (config/load-sample-content?)
-    (extract-and-sync-sample-database!)
-    (when-not (config/config-bool :mb-enable-test-endpoints)
-      (when-let [new-db-id (t2/select-one-pk :model/Database :is_sample true)]
-        (example-content/recreate-example-content! new-db-id)))))
+  (let [new-db (t2/with-transaction [_conn]
+                 (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
+                   (t2/delete! :model/Database (:id old-sample-db))
+                   (delete-emptied-dashboards! dashboard-ids)
+                   (t2/delete! :model/Collection :is_sample true))
+                 (when (config/load-sample-content?)
+                   (first (t2/insert-returning-instances! :model/Database
+                                                          :name      sample-database-name
+                                                          :details   (try-to-extract-sample-database!)
+                                                          :engine    (sample-database-engine)
+                                                          :is_sample true))))]
+    (when new-db
+      (try
+        (sync/sync-database! new-db)
+        (catch Throwable e
+          (log/error e "Failed to sync the replacement sample database")))
+      (when-not (config/config-bool :mb-enable-test-endpoints)
+        (example-content/recreate-example-content! (:id new-db))))))
 
 (defn update-sample-database-if-needed!
   "Reconcile the existing sample database with the bundled one. When the bundled engine changed
