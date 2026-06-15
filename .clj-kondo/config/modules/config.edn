@@ -3450,6 +3450,7 @@
            settings
            sso
            system
+           task
            util
            enterprise/scim}
    :model-imports #{:model/PermissionsGroup :model/Session}}
