@@ -42,18 +42,26 @@
 
 (defn upsert-analysis!
   "Given the details of an AnalysisFinding row, upsert the data into the actual db.
-   Also writes individual errors to the analysis_finding_error table with source information."
-  [type instance-id result finding-details]
+   Also writes individual errors to the analysis_finding_error table with source information.
+
+   `output-hash` is a token for the entity's output identity (see
+   [[metabase-enterprise.dependencies.analysis/output-hash]]). Returns `true` when it differs from
+   the stored hash — or there was no prior finding — and `false` when the entity's output is
+   unchanged; callers propagate staleness to dependents only on `true`."
+  [type instance-id result finding-details output-hash]
   (t2/with-transaction [_conn]
-    (let [update {:analyzed_at (mi/now)
-                  :analysis_version *current-analysis-finding-version*
-                  :result result
-                  :stale false}
-          existing-id (t2/select-one-fn :id [:model/AnalysisFinding :id]
-                                        :analyzed_entity_type type
-                                        :analyzed_entity_id instance-id)]
-      (if existing-id
-        (t2/update! :model/AnalysisFinding existing-id update)
+    (let [existing (t2/select-one [:model/AnalysisFinding :id :output_hash]
+                                  :analyzed_entity_type type
+                                  :analyzed_entity_id instance-id)
+          changed? (or (nil? existing)
+                       (not= (:output_hash existing) output-hash))
+          update   {:analyzed_at (mi/now)
+                    :analysis_version *current-analysis-finding-version*
+                    :result result
+                    :stale false
+                    :output_hash output-hash}]
+      (if (:id existing)
+        (t2/update! :model/AnalysisFinding (:id existing) update)
         (t2/insert! :model/AnalysisFinding
                     (assoc update
                            :analyzed_entity_type type
@@ -61,7 +69,8 @@
       (deps.analysis-finding-error/replace-errors-for-entity!
        type
        instance-id
-       (map error->finding-error-row finding-details)))))
+       (map error->finding-error-row finding-details))
+      changed?)))
 
 (def ^:private mark-stale-batch-size
   "Maximum number of entity IDs to process in a single query to avoid parameter limits."
@@ -76,11 +85,6 @@
                 :analyzed_entity_type entity-type
                 :analyzed_entity_id [:in batch]
                 {:stale true})))
-
-(defn has-stale-entities?
-  "Check if there are any stale analysis records."
-  []
-  (t2/exists? :model/AnalysisFinding :stale true))
 
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,

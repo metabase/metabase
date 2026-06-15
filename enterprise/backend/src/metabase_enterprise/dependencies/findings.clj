@@ -44,10 +44,19 @@
     [(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
          (assoc :source-entity-type :transform :source-entity-id id))]))
 
+(def ^:private unanalyzable-output-hash
+  "Stable output-hash token for entities we can't characterize an output for (no resolvable
+  database, or a structural pre-analysis error). Distinct from any real output hash, so an entity
+  re-propagates exactly once if it later becomes analyzable."
+  "unanalyzable")
+
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
-  If any row exists already, it is replaced. If it does not exist, it is created."
+  If any row exists already, it is replaced. If it does not exist, it is created.
+
+  Returns `true` if the analysis changed the stored finding for the entity, `false` otherwise
+  (see [[deps.analysis-finding/upsert-analysis!]])."
   [toucan-instance]
   (when-not (lib-be/metadata-provider-cache)
     (throw (ex-info "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"
@@ -56,15 +65,33 @@
         entity-type (deps.dependency-types/model->dependency-type model)
         instance-id (:id toucan-instance)]
     (if-let [errors (seq (pre-analysis-errors toucan-instance))]
-      (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
-      (when-let [db-id (instance-db-id toucan-instance)]
+      (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors unanalyzable-output-hash)
+      (if-let [db-id (instance-db-id toucan-instance)]
         (let [mp (lib-be/application-database-metadata-provider db-id)
               results (try (deps.analysis/check-entity mp entity-type instance-id)
                            (catch Exception e
                              (log/error e "Error analyzing entity")
                              [(lib/validation-exception-error (.getMessage e))]))
               success (empty? results)]
-          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))))))
+          (deps.analysis-finding/upsert-analysis!
+           entity-type instance-id success results
+           ;; Guarded like `check-entity` above: `output-hash` runs the analyzer's
+           ;; `returned-columns`, which can throw on a broken-but-db-resolvable query (e.g. a
+           ;; transform referencing a dropped column). An unguarded throw here would roll back the
+           ;; whole analysis and leave the entity stale forever — the very non-termination this
+           ;; change exists to prevent (#75748). Fall back to the stable unanalyzable token.
+           (try (deps.analysis/output-hash mp entity-type instance-id)
+                (catch Exception e
+                  (log/error e "Error computing output hash")
+                  unanalyzable-output-hash))))
+        ;; No resolvable database and no pre-analysis error already explaining it: record a
+        ;; terminal error so the entity gets a finding (clearing its stale flag) instead of
+        ;; silently no-oping and being re-selected forever (#75748). Its output is unknowable, so
+        ;; it carries the stable unanalyzable token — it re-propagates once if it later resolves.
+        (deps.analysis-finding/upsert-analysis!
+         entity-type instance-id false
+         [(lib/validation-exception-error "Could not resolve a database for this entity.")]
+         unanalyzable-output-hash)))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."
@@ -165,23 +192,25 @@
     (mark-supported-dependents-stale! dependents)))
 
 (defn- analyze-and-propagate!
-  "Analyze an entity and mark its immediate dependents as stale.
-  Wrapped in a transaction so that if marking dependents fails, the analysis
-  is rolled back and the entity stays stale for retry on the next pass.
-  The newly-stale dependents are picked up by the job's loop in
-  `task.entity-check/check-entities!`, which drains all stale entities
-  before returning — no need to re-trigger the job."
+  "Analyze an entity and, *only if its output changed*, mark its immediate dependents stale.
+  Propagating only on change is what bounds the staleness wave — see
+  [[task.entity-check/check-entities!]] for the termination guarantee (#75748)."
   [instance]
   (let [entity-type (deps.dependency-types/model->dependency-type (t2/model instance))]
+    ;; in a transaction so a failure to mark dependents rolls the analysis back too, leaving the
+    ;; entity stale for retry on the next pass rather than cleared-but-unpropagated
     (t2/with-transaction [_conn]
-      (upsert-analysis! instance)
-      (mark-immediate-dependents-stale! entity-type (:id instance)))))
+      (when (upsert-analysis! instance)
+        (mark-immediate-dependents-stale! entity-type (:id instance))))))
 
-(mu/defn analyze-batch! :- nat-int?
+(mu/defn analyze-batch! :- [:set pos-int?]
   "Add or update analyses for a batch of entities.
 
-  Takes in an entity type and batch size, and looks for a batch of entities with missing or out of date
-  AnalysisFindings and then upsert new analyses for them."
+  Looks for a batch of entities of `type` (up to `batch-size`) with missing, outdated, or stale
+  AnalysisFindings, analyzes each, and returns the set of entity ids processed. Ids are returned
+  even for entities whose analysis threw (the failure is logged and caught) — they have still been
+  attempted this run, which is what the entity-check loop's per-run `seen` set needs to bound
+  itself."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]
@@ -191,4 +220,4 @@
              (catch Exception e
                (log/errorf e "Analyzing entity %s %s failed"
                            (t2/model instance) (:id instance))))))
-    (count instances)))
+    (into #{} (map :id) instances)))

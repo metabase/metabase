@@ -19,7 +19,7 @@
 
 (defn- backfill-all-entity-analyses! []
   (doseq [model [:card :transform :segment]]
-    (while (pos? (deps.findings/analyze-batch! model 100)))))
+    (while (pos? (count (deps.findings/analyze-batch! model 100))))))
 
 (deftest ^:sequential can-analyze-entity-batches-test
   (backfill-all-entity-analyses!)
@@ -31,7 +31,7 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                      :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
-        (is (= 2 (deps.findings/analyze-batch! :card 2)))
+        (is (= 2 (count (deps.findings/analyze-batch! :card 2))))
         (is (= #{models.analysis-finding/*current-analysis-finding-version*}
                (t2/select-fn-set :analysis_version
                                  :model/AnalysisFinding
@@ -48,8 +48,8 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp products)}
                      :model/Card _ {:dataset_query (lib/query mp orders)}]
-        (is (= 2 (deps.findings/analyze-batch! :card 2)))
-        (is (= 0 (deps.findings/analyze-batch! :card 2)))))))
+        (is (= 2 (count (deps.findings/analyze-batch! :card 2))))
+        (is (= 0 (count (deps.findings/analyze-batch! :card 2))))))))
 
 (deftest ^:sequential re-analyze-entities-when-analysis-version-bumped-test
   (backfill-all-entity-analyses!)
@@ -59,10 +59,10 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card _ {:dataset_query (lib/query mp products)}
                      :model/Card _ {:dataset_query (lib/query mp orders)}]
-        (is (= 2 (deps.findings/analyze-batch! :card 2)))
-        (is (= 0 (deps.findings/analyze-batch! :card 2)))
+        (is (= 2 (count (deps.findings/analyze-batch! :card 2))))
+        (is (= 0 (count (deps.findings/analyze-batch! :card 2))))
         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-          (is (= 2 (deps.findings/analyze-batch! :card 2))))))))
+          (is (= 2 (count (deps.findings/analyze-batch! :card 2)))))))))
 
 (deftest ^:sequential does-analyze-native-entities-test
   (testing "failed analysis result is appropriately stored in the appdb"
@@ -70,7 +70,7 @@
     (let [mp (mt/metadata-provider)]
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/native-query mp "utter nonsense")}]
-          (is (= 1 (deps.findings/analyze-batch! :card 1)))
+          (is (= 1 (count (deps.findings/analyze-batch! :card 1))))
           (is (= [models.analysis-finding/*current-analysis-finding-version* false]
                  (t2/select-one-fn (juxt :analysis_version :result)
                                    :model/AnalysisFinding
@@ -90,7 +90,7 @@
           query   (lib/with-fields base (conj cols bad-col))]
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-          (is (= 1 (deps.findings/analyze-batch! :card 1)))
+          (is (= 1 (count (deps.findings/analyze-batch! :card 1))))
           (is (= [models.analysis-finding/*current-analysis-finding-version* false]
                  (t2/select-one-fn (juxt :analysis_version :result)
                                    :model/AnalysisFinding
@@ -150,7 +150,7 @@
                                    :analyzed_entity_id card-id))))
             (testing "analyze-batch! creates analysis for the card"
               (lib-be/with-metadata-provider-cache
-                (is (pos? (deps.findings/analyze-batch! :card 10)))))
+                (is (pos? (count (deps.findings/analyze-batch! :card 10))))))
             (testing "card now has an analysis finding"
               (is (t2/exists? :model/AnalysisFinding
                               :analyzed_entity_type :card
@@ -206,37 +206,98 @@
                        (stale-map [grandparent-id parent-id child-id]))
                     "grandparent should NOT be stale, parent and child should be stale (transitive)")))))))))
 
-(deftest ^:sequential wave-propagation-via-entity-check-test
-  (testing "analyze-and-propagate! marks immediate dependents stale, and the job loop drains them in waves"
+(defn- analyzed-at [card-id]
+  (t2/select-one-fn :analyzed_at :model/AnalysisFinding
+                    :analyzed_entity_type :card :analyzed_entity_id card-id))
+
+(def ^:private past-sentinel
+  "A fixed past timestamp used to make re-analysis observable within a single test transaction."
+  #t "2000-01-01T00:00:00Z")
+
+(defn- stamp-analyzed-at-to-past!
+  "Stamp `card-id`'s `analyzed_at` to `past-sentinel` and return the stored value, so a later
+  re-analysis is observable: it overwrites the sentinel, while no re-analysis leaves it unchanged."
+  [card-id]
+  ;; `mi/now` is Postgres `now()` = transaction-start time, and the whole test runs in one
+  ;; rolled-back transaction, so a plain before/after snapshot is identical whether or not the
+  ;; entity was re-analyzed. The past sentinel breaks that tie. Read the value back rather than
+  ;; comparing to the literal: the appdb round-trips ZonedDateTime -> OffsetDateTime, never `=` to
+  ;; the literal even at the same instant.
+  (t2/update! :model/AnalysisFinding
+              :analyzed_entity_type :card :analyzed_entity_id card-id
+              {:analyzed_at past-sentinel})
+  (analyzed-at card-id))
+
+(deftest ^:sequential reanalysis-without-output-change-does-not-cascade-test
+  (testing "Re-analyzing a stale entity whose output is unchanged clears it but does NOT cascade to its dependents (#75748)"
+    ;; Propagation is gated on the entity's output identity changing. Marking p stale when nothing
+    ;; about p's output changed must clear p without re-checking c — otherwise an upstream cycle or
+    ;; a sync that touched nothing would fan re-analysis through the whole closure (the old bug).
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
       (mt/with-premium-features #{:dependencies}
-        (lib-be/with-metadata-provider-cache
-          (mt/with-model-cleanup [:model/AnalysisFinding]
-            (mt/with-temp [:model/Card {gp-id :id :as gp-card} {:dataset_query (lib/query mp products)}
-                           :model/Card {p-id :id :as p-card} {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
-                           :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
-                           :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
-                                                :to_entity_type :card :to_entity_id gp-id}
-                           :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
-                                                :to_entity_type :card :to_entity_id p-id}]
-              ;; Analyze all three so they have findings
-              (run! deps.findings/upsert-analysis! [gp-card p-card c-card])
-              (is (= {gp-id false, p-id false, c-id false}
-                     (stale-map [gp-id p-id c-id]))
-                  "all should start as not stale")
-              ;; Mark only the immediate dependents of grandparent (just parent, not child)
-              (deps.findings/mark-immediate-dependents-stale! :card gp-id)
-              (is (= {gp-id false, p-id true, c-id false}
-                     (stale-map [gp-id p-id c-id]))
-                  "only parent should be stale (immediate), child should NOT be stale yet")
-              ;; Run the entity-check job loop — it should analyze parent, which marks child stale,
-              ;; then analyze child in the next wave
+        (mt/with-model-cleanup [:model/AnalysisFinding]
+          (mt/with-temp [:model/Card {gp-id :id :as gp-card} {:dataset_query (lib/query mp products)}
+                         :model/Card {p-id :id :as p-card} {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
+                         :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                              :to_entity_type :card :to_entity_id gp-id}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                              :to_entity_type :card :to_entity_id p-id}]
+            ;; cache only the initial analysis; the job manages its own per-batch caches, and
+            ;; wrapping it in an outer cache would serve it stale metadata after the updates below
+            (lib-be/with-metadata-provider-cache
+              (run! deps.findings/upsert-analysis! [gp-card p-card c-card]))
+            ;; stamp c's analyzed_at to a past sentinel so a re-analysis is observable; "no cascade"
+            ;; means it stays the sentinel (see stamp-analyzed-at-to-past! for the rationale) (#75748)
+            (let [sentinel (stamp-analyzed-at-to-past! c-id)]
+              ;; mark p stale without changing anything about p's output
+              (models.analysis-finding/mark-stale! :card [p-id])
               (#'task.entity-check/check-entities!)
               (is (= {gp-id false, p-id false, c-id false}
                      (stale-map [gp-id p-id c-id]))
-                  "after check-entities!, all should be re-analyzed (not stale) — wave propagation worked"))))))))
+                  "p is re-analyzed and cleared; the loop terminates with nothing stale")
+              (is (= sentinel (analyzed-at c-id))
+                  "c was NOT re-analyzed — p's output didn't change, so the wave did not cascade"))))))))
+
+(deftest ^:sequential output-change-cascades-through-entity-check-test
+  (testing "When an upstream's output changes, the entity-check wave re-checks transitive dependents (#75748)"
+    ;; The positive counterpart: a real output change at gp must reach c. We give each card an
+    ;; explicit result-metadata (what dependents resolve against) and then drop a column from gp's
+    ;; and p's stored metadata — exactly what metadata propagation does after an upstream column is
+    ;; removed — and assert the wave reaches c.
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          rmeta [{:name "A" :base_type :type/Integer :display_name "A"}
+                 {:name "B" :base_type :type/Integer :display_name "B"}
+                 {:name "C" :base_type :type/Integer :display_name "C"}]]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding]
+          (mt/with-temp [:model/Card {gp-id :id :as gp-card} {:dataset_query (lib/query mp products) :result_metadata rmeta}
+                         :model/Card {p-id :id :as p-card} {:dataset_query (lib/query mp products) :result_metadata rmeta}
+                         :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp products) :result_metadata rmeta}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                              :to_entity_type :card :to_entity_id gp-id}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                              :to_entity_type :card :to_entity_id p-id}]
+            (lib-be/with-metadata-provider-cache
+              (run! deps.findings/upsert-analysis! [gp-card p-card c-card]))
+            ;; stamp c's analyzed_at to a past sentinel so a re-analysis is observable; a real
+            ;; cascade overwrites it (see stamp-analyzed-at-to-past! for the rationale) (#75748)
+            (let [sentinel (stamp-analyzed-at-to-past! c-id)]
+              ;; an upstream column drop, propagated to each level's stored metadata. Done outside
+              ;; any provider cache so the job sees the new metadata (it makes fresh per-batch caches).
+              (t2/update! :model/Card gp-id {:result_metadata (vec (take 2 rmeta))})
+              (t2/update! :model/Card p-id {:result_metadata (vec (take 2 rmeta))})
+              (models.analysis-finding/mark-stale! :card [gp-id])
+              (#'task.entity-check/check-entities!)
+              (is (= {gp-id false, p-id false, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "the wave drains and the loop terminates")
+              (is (not= sentinel (analyzed-at c-id))
+                  "c was re-analyzed — gp's output change cascaded gp→p→c"))))))))
 
 (deftest ^:sequential wave-propagation-through-non-analyzable-entity-test
   (testing "Wave propagation skips non-analyzable intermediaries (e.g., tables) and reaches cards beyond them"

@@ -1,0 +1,30 @@
+## Add output_hash column to analysis_finding for change-gated dependency propagation (#75748)
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v62.2026-06-15T00:00:00
+      author: tsdean
+      comment: >-
+        Add output_hash to analysis_finding. The entity-check job propagates staleness to an
+        entity's dependents only when the entity's output identity (the columns/types dependents
+        resolve against) actually changes; output_hash is the change-detection token it compares.
+        Nullable so existing findings re-propagate once on first re-analysis after upgrade.
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: analysis_finding
+                columnName: output_hash
+      changes:
+        - addColumn:
+            tableName: analysis_finding
+            columns:
+              - column:
+                  name: output_hash
+                  type: ${text.type}
+                  remarks: Hash of the entity's output identity; dependents are re-checked only when it changes (#75748)
+      rollback:
+        - dropColumn:
+            tableName: analysis_finding
+            columnName: output_hash

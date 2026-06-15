@@ -4,7 +4,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
-   [metabase-enterprise.dependencies.models.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.premium-features.core :as premium-features]
@@ -14,30 +13,40 @@
 (set! *warn-on-reflection* true)
 
 (defn- process-one-batch!
-  "Process one batch of entities. Returns true if the full batch was used."
+  "Process one batch across all analyzable entity types. Returns the set of `[entity-type id]`
+  pairs processed in this batch."
   []
-  (-> (reduce (fn [batch-size entity-type]
-                (if (< batch-size 1)
-                  (reduced 0)
-                  (let [processed (deps.findings/analyze-batch! entity-type batch-size)]
-                    (when (pos? processed)
-                      (log/info "Updated" processed "entities of type" entity-type))
-                    (- batch-size processed))))
-              (deps.settings/dependency-entity-check-batch-size)
-              deps.findings/analyzable-entities)
-      (< 1)))
+  ;; Thread the remaining budget and the accumulated id-set through one accumulator; stop early
+  ;; once the budget is spent.
+  (:processed
+   (reduce (fn [{:keys [budget] :as acc} entity-type]
+             (if (< budget 1)
+               (reduced acc)
+               (let [ids (deps.findings/analyze-batch! entity-type budget)]
+                 (when (seq ids)
+                   (log/info "Updated" (count ids) "entities of type" entity-type))
+                 (-> acc
+                     (update :budget - (count ids))
+                     (update :processed into (map (fn [id] [entity-type id])) ids)))))
+           {:budget (deps.settings/dependency-entity-check-batch-size) :processed #{}}
+           deps.findings/analyzable-entities)))
 
 (defn- check-entities!
-  "Process entities, draining all stale entities before returning.
-  Continues looping as long as there are stale entities — this is important because
-  [[deps.findings/analyze-and-propagate!]] marks immediate dependents stale during processing,
-  which need to be picked up in subsequent waves."
+  "Drain stale/outdated entities until the run converges, then return.
+
+  Guaranteed to terminate even when the dependency graph contains a cycle or an entity that can
+  never clear its stale flag — earlier this could spin until the instance ran out of memory
+  (#75748)."
   []
   (when (premium-features/has-feature? :dependencies)
-    (loop []
-      (process-one-batch!)
-      (when (deps.analysis-finding/has-stale-entities?)
-        (recur)))))
+    ;; Each pass analyzes a batch and (via analyze-and-propagate!) marks the dependents of *changed*
+    ;; entities stale, to be picked up next pass. `seen` bounds the run: it grows monotonically and
+    ;; is capped by the entity count, and we recur only while a batch turns up an entity not already
+    ;; analyzed this run — so a cycle (or an unclearable entity) re-treads `seen` and stops.
+    (loop [seen #{}]
+      (let [processed (process-one-batch!)]
+        (when (some (complement seen) processed)
+          (recur (into seen processed)))))))
 
 (declare schedule-run!)
 
