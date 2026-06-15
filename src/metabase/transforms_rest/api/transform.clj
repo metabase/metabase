@@ -327,16 +327,27 @@
   500 — internal error: unexpected failure; the caller cannot fix this.
 
   Any unrecognised `:error-type` is re-thrown (→ 500 from the framework)."
-  {:metabase.transforms.test-run.inputs/missing-fixtures         400
-   :metabase.transforms.test-run.inputs/unknown-fixture-keys     400
+  {;; Fixture errors — 400: caller supplied wrong CSV content.
+   :metabase.transforms.test-run.fixtures/header-mismatch        400
+   :metabase.transforms.test-run.fixtures/unparseable-cell        400
+   ;; Diff errors — 400: caller supplied bad options.
+   :metabase.transforms.test-run.diff/unknown-ignore-columns      400
+   :metabase.transforms.test-run.diff/unsupported-option          400
+   ;; Input resolution errors — 400 or 422.
+   :metabase.transforms.test-run.inputs/missing-fixtures          400
+   :metabase.transforms.test-run.inputs/unknown-fixture-keys      400
    :metabase.transforms.test-run.inputs/unsupported-transform-type 422
-   :metabase.transforms.test-run.inputs/cannot-determine-inputs  422
-   :metabase.transforms.test-run.inputs/table-not-found          422
+   :metabase.transforms.test-run.inputs/cannot-determine-inputs   422
+   :metabase.transforms.test-run.inputs/table-not-found           422
    :metabase.transforms.test-run.inputs/transform-dep-not-supported 422
-   :metabase.transforms.test-run.resolve/cannot-test-run         422
+   ;; Resolve errors — 422.
+   :metabase.transforms.test-run.resolve/cannot-test-run          422
    :metabase.transforms.test-run.resolve/unsupported-transform-type 422
-   :metabase.transforms.test-run.core/pre-execution-guard-failed 500
-   :metabase.transforms.test-run.core/execution-failed           500})
+   ;; Execution errors — 500.
+   :metabase.transforms.test-run.scratch/seed-failed              500
+   :metabase.transforms.test-run.core/missing-database-id         422
+   :metabase.transforms.test-run.core/pre-execution-guard-failed  500
+   :metabase.transforms.test-run.core/execution-failed            500})
 
 (defn- parse-input-table-ids
   "Parse multipart-params map and extract input fixture files.

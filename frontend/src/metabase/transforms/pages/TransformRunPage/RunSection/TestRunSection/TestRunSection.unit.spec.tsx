@@ -145,9 +145,7 @@ describe("TestRunSection", () => {
           "cell-mismatches": [
             {
               column: "order_count",
-              "actual-raw": "2",
               "actual-canonical": "2",
-              "expected-raw": "99",
               "expected-canonical": "99",
             },
           ],

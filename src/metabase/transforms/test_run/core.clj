@@ -73,6 +73,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor.core :as qp]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.test-run.diff :as diff]
@@ -154,11 +155,20 @@
 (defn- read-back-output
   "Read all rows from the scratch output table via a QP native SELECT *.
   Returns the full QP result map (status :completed + :data {:cols ... :rows ...}).
-  Throws on QP error."
-  [db-id output-target]
+  Throws on QP error.
+
+  `drv` is the driver keyword, used to produce properly quoted identifier names.
+  Schema and table are IDENTIFIERS, not values — they must be driver-quoted, not
+  passed as JDBC parameters.  `sql.u/quote-name` produces the driver-appropriate
+  quoting (double quotes for Postgres/ANSI, backticks for MySQL, etc.)."
+  [db-id drv output-target]
   (let [schema (:schema output-target)
         table  (:table output-target)
-        sql    (str "SELECT * FROM " (if schema (str schema "." table) table))
+        sql    (if schema
+                 (str "SELECT * FROM "
+                      (sql.u/quote-name drv :table schema table))
+                 (str "SELECT * FROM "
+                      (sql.u/quote-name drv :table table)))
         result (qp/process-query {:database db-id
                                   :type     :native
                                   :native   {:query sql}})]
@@ -265,7 +275,7 @@
                 _            (binding [driver.settings/*query-timeout-ms* timeout-ms]
                                (driver/run-transform! drv transform-details {:overwrite? true}))
                 ;; Step 8: read back the scratch output.
-                qp-result    (read-back-output db-id output-spec)
+                qp-result    (read-back-output db-id drv output-spec)
                 actual-cols  (get-in qp-result [:data :cols])
                 actual-rows  (get-in qp-result [:data :rows])
                 ;; Step 9: parse expected CSV against actual output column types.

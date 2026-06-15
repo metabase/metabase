@@ -288,15 +288,20 @@
   schemas, potentially hundreds of tables) and requires a full DB-level driver
   call. A scoped information_schema query is cheaper, schema-specific, and works
   correctly on Postgres and most SQL databases without driver-specific code.
-  This is used only by the janitor, which is an admin/maintenance operation."
+  This is used only by the janitor, which is an admin/maintenance operation.
+
+  The schema name is passed as a JDBC parameter (`?`), not interpolated into the
+  SQL string, to avoid SQL injection / malformed-SQL errors when the schema name
+  contains single quotes or other SQL metacharacters."
   [db-id ^String schema]
   (let [result (qp/process-query
                 {:database db-id
                  :type     :native
-                 :native   {:query (str "SELECT table_name"
-                                        " FROM information_schema.tables"
-                                        " WHERE table_schema = '" schema "'"
-                                        " ORDER BY table_name")}})]
+                 :native   {:query  (str "SELECT table_name"
+                                         " FROM information_schema.tables"
+                                         " WHERE table_schema = ?"
+                                         " ORDER BY table_name")
+                            :params [schema]}})]
     (mapv first (get-in result [:data :rows]))))
 
 (defn cleanup-all-test-tables!

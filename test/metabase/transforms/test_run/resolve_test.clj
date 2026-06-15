@@ -418,3 +418,37 @@
         (is false "should have thrown")
         (catch clojure.lang.ExceptionInfo e
           (is (= ::resolve/unsupported-transform-type (:error-type (ex-data e)))))))))
+
+;;; ===========================================================================
+;;; Minor-2 regression — Guard 1 must not reject zero-input transforms
+;;; ===========================================================================
+
+(deftest guard-1-passes-zero-table-transform-test
+  ;; Minor-2 regression: the old Guard 1 fired whenever refs was empty, regardless
+  ;; of whether mapping was also empty.  A zero-table transform (SELECT 1 AS x, no
+  ;; real input tables) has an empty mapping AND yields empty refs from
+  ;; referenced-tables-raw.  Guard 1 must only fire when mapping is non-empty AND
+  ;; refs is empty (that pattern implies a parse failure lost references that existed).
+  ;; When mapping is empty AND refs is empty it is vacuously safe — there is nothing
+  ;; to protect, and Guard 2 still catches any stray refs.
+  (testing "SELECT 1 AS x with empty mapping → verify returns the SQL (not ::non-empty-refs)"
+    ;; This FAILS before the fix (throws ::non-empty-refs).
+    (let [sql "SELECT 1 AS x"]
+      (is (= sql (resolve/verify :postgres {} sql))
+          "zero-table transform with empty mapping must pass Guard 1")))
+  (testing "SELECT 1 AS x with non-empty mapping → verify throws ::non-empty-refs"
+    ;; Guard 1 DOES fire when mapping is non-empty and refs is empty — that means the
+    ;; parser lost references from a non-trivial SQL (a real safety concern).
+    (is (cannot-test-run?
+         #(resolve/verify :postgres orders->scratch "SELECT 1 AS x")
+         ::resolve/non-empty-refs)
+        "non-empty mapping + empty refs must still fire Guard 1"))
+  (testing "non-empty mapping + non-empty unmapped refs → Guard 2 fires (not Guard 1)"
+    ;; Confirm Guard 2 still covers the complementary case: mapping non-empty but
+    ;; the ref isn't in the scratch set.  If Guard 1 were to swallow this, Guard 2
+    ;; wouldn't reach it — but since refs IS non-empty here, Guard 1 passes, Guard 2
+    ;; fires.  This verifies we haven't broken Guard 2 by fixing Guard 1.
+    (is (cannot-test-run?
+         #(resolve/verify :postgres orders->scratch "SELECT * FROM widgets")
+         ::resolve/refs-subset-scratch)
+        "unmapped ref must still fire Guard 2")))

@@ -275,9 +275,7 @@ export type TestRunInput = {
 
 export type TestRunCellMismatch = {
   column: string;
-  "actual-raw": string;
   "actual-canonical": string;
-  "expected-raw": string;
   "expected-canonical": string;
 };
 

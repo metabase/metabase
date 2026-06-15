@@ -477,3 +477,41 @@
             (is (string? (:table scratch-spec))  "scratch-spec :table is a string"))
           (finally
             (scratch/cleanup! db-id db mapping nil)))))))
+
+;;; ---------------------------------------------------------------------------
+;;; Regression — Major-3 site 1: list-tables-in-schema must NOT interpolate schema
+;;; ---------------------------------------------------------------------------
+
+(deftest list-tables-in-schema-uses-parameterized-query-test
+  ;; Major-3 regression: list-tables-in-schema was building SQL by string-interpolating
+  ;; the schema name directly into the WHERE clause: `WHERE table_schema = '<schema>'`.
+  ;; A schema value like "pub'lic" would produce malformed SQL (`... = 'pub'lic'`),
+  ;; causing a syntax error that crashes the janitor without cleaning up old test tables.
+  ;; Fix: use a parameterized query `{:query "... WHERE table_schema = ?" :params [schema]}`.
+  ;;
+  ;; Since list-tables-in-schema is private, we intercept qp/process-query to inspect
+  ;; the query map it actually submits.
+  (testing "list-tables-in-schema submits a parameterized query (schema in :params, not interpolated)"
+    (let [captured-queries (atom [])
+          ;; Intercept qp/process-query to capture the query map without executing
+          fake-process (fn [query]
+                         (swap! captured-queries conj query)
+                         ;; Return a minimal successful result so the caller can proceed
+                         {:status :completed
+                          :data   {:cols [{:name "table_name"}]
+                                   :rows []}})]
+      (with-redefs [qp/process-query fake-process]
+        ;; cleanup-all-test-tables! calls list-tables-in-schema internally
+        ;; Use a schema string with a single quote — this is the injection vector
+        (scratch/cleanup-all-test-tables! 1 {:engine "postgres"} "pub'lic" {}))
+      (is (= 1 (count @captured-queries))
+          "exactly one query should have been submitted")
+      (let [q (first @captured-queries)
+            native (:native q)]
+        ;; The schema must appear in :params, NOT embedded in the :query string
+        (is (= ["pub'lic"] (:params native))
+            "schema string must be a parameter, not interpolated into SQL")
+        (is (not (str/includes? (:query native) "pub'lic"))
+            "the schema value must NOT appear literally in the query string")
+        (is (str/includes? (:query native) "?")
+            "the query must use a ? placeholder for the schema parameter")))))

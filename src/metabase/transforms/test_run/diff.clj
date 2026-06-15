@@ -75,11 +75,8 @@
    :extra-rows      [[display-cell ...] ...]   ; actual rows absent from expected
    ;; display cells are the canonicalized values in report form (BigDecimal as
    ;; plain string, temporals as UTC ISO strings) — never internal multiset keys
-   :cell-mismatches [{:row        [canonical-cell ...]
-                      :column     <str>
-                      :actual-raw <str>
-                      :actual-canonical <str>
-                      :expected-raw <str>
+   :cell-mismatches [{:column             <str>
+                      :actual-canonical   <str>
                       :expected-canonical <str>} ...]
    :row-counts      {:actual N :expected N}
    :truncated       N}   ; count of mismatches/rows beyond the cap (0 when not truncated)
@@ -319,21 +316,24 @@
 
 (defn- cell-mismatch-detail
   "Produce cell-mismatch detail entries for a single pair of (actual, expected) canonical rows.
-  Returns a seq of mismatch maps."
-  [col-names actual-row expected-row base-types actual-raw expected-raw]
-  (mapcat (fn [col-name base-type actual-canon expected-canon av ev]
+  Returns a seq of mismatch maps.
+
+  Reports `:actual-canonical` and `:expected-canonical` only.  There are no
+  `:actual-raw` / `:expected-raw` fields: the raw pre-canonicalization values are
+  discarded at canonicalization time and cannot be recovered here, so including them
+  would always produce values identical to the canonical fields — a correctness
+  failure for date columns where raw \"2024-03-15\" becomes canonical
+  \"2024-03-15T00:00:00Z\"."
+  [col-names actual-row expected-row base-types]
+  (mapcat (fn [col-name base-type actual-canon expected-canon]
             (when-not (cells-equal? actual-canon expected-canon)
               [{:column             col-name
-                :actual-raw         (canonical->report-str av)
                 :actual-canonical   (canonical->report-str actual-canon)
-                :expected-raw       (canonical->report-str ev)
                 :expected-canonical (canonical->report-str expected-canon)}]))
           col-names
           base-types
           actual-row
-          expected-row
-          actual-raw
-          expected-raw))
+          expected-row))
 
 (defn- attempt-cell-mismatches
   "When missing and extra counts are equal and both are within the cap, attempt stable-sort
@@ -351,8 +351,7 @@
     (let [sorted-missing (sort-by row-key missing-rows)
           sorted-extra   (sort-by row-key extra-rows)]
       (mapcat (fn [expected-canon actual-canon]
-                (cell-mismatch-detail col-names actual-canon expected-canon
-                                      base-types actual-canon expected-canon))
+                (cell-mismatch-detail col-names actual-canon expected-canon base-types))
               sorted-missing
               sorted-extra))))
 

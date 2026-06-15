@@ -2275,6 +2275,81 @@
                       (str "Expected :passed with ts ignored; diff: "
                            (pr-str (:diff resp)))))))))))))
 
+;; ---------------------------------------------------------------------------
+;; Regression — Major-1: error-type→HTTP gaps (missing entries in dispatch table)
+;; ---------------------------------------------------------------------------
+
+(deftest test-run-header-mismatch-400-test
+  ;; Major-1 regression: ::fixtures/header-mismatch was missing from test-run-error-http-status,
+  ;; so a CSV with wrong column headers caused a raw 500 instead of a 400 with the typed envelope.
+  ;; The fix adds it to the dispatch table.
+  (testing "POST /:id/test-run — CSV with wrong headers → 400 + error envelope (::fixtures/header-mismatch)"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [;; Wrong headers: orders fixture must have exact column names from the real table.
+                 ;; Using "wrong_col_a,wrong_col_b" will mismatch the schema.
+                 orders-f   "wrong_col_a,wrong_col_b\n1,2\n"
+                 expected-f "user_id,order_count\n1,1\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 400 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f})]
+                  (testing "response status is error"
+                    (is (= "error" (:status resp))
+                        "header-mismatch must return the error envelope, not a raw 500"))
+                  (testing "error envelope has type and message"
+                    (is (some? (get-in resp [:error :type]))
+                        "error.type must be present")
+                    (is (some? (get-in resp [:error :message]))
+                        "error.message must be present"))
+                  (testing "error type indicates header mismatch"
+                    (is (= (pr-str :metabase.transforms.test-run.fixtures/header-mismatch)
+                           (get-in resp [:error :type])))))))))))))
+
+(deftest test-run-unknown-ignore-columns-400-test
+  ;; Major-1 regression: ::diff/unknown-ignore-columns was missing from test-run-error-http-status,
+  ;; so specifying a nonexistent column in ignore_columns caused a raw 500 instead of a 400 with envelope.
+  (testing "POST /:id/test-run — ignore_columns with nonexistent column → 400 + error envelope"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id, COUNT(*) AS order_count FROM orders GROUP BY user_id")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (with-temp-csv-files
+                [orders-f   orders-3-rows
+                 expected-f "user_id,order_count\n1,2\n2,1\n"]
+                (let [resp (mt/user-http-request
+                            :crowberto :post 400 (test-run-url (:id transform))
+                            multipart-content-type
+                            {(str "input-" orders-id) orders-f
+                             "expected"               expected-f
+                             ;; "nonexistent_col" is not in the transform output columns.
+                             "options"                "{\"ignore_columns\":[\"nonexistent_col\"]}"})]
+                  (testing "response status is error"
+                    (is (= "error" (:status resp))
+                        "unknown-ignore-columns must return the error envelope, not a raw 500"))
+                  (testing "error envelope has type and message"
+                    (is (some? (get-in resp [:error :type]))
+                        "error.type must be present")
+                    (is (some? (get-in resp [:error :message]))
+                        "error.message must be present"))
+                  (testing "error type indicates unknown ignore columns"
+                    (is (= (pr-str :metabase.transforms.test-run.diff/unknown-ignore-columns)
+                           (get-in resp [:error :type])))))))))))))
+
 ;;; ============================================================
 ;;; GET /:id/test-run/inputs — required input tables endpoint
 ;;; ============================================================

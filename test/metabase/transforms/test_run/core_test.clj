@@ -398,6 +398,44 @@
                   "No TransformRun row after timeout"))))))))
 
 ;;; ===========================================================================
+;;; Regression — Major-3 site 2: read-back-output must use quoted identifiers
+;;; ===========================================================================
+
+(deftest read-back-output-uses-quoted-identifiers-test
+  ;; Major-3 regression: read-back-output was building SELECT * FROM <schema>.<table>
+  ;; by string interpolation: (str "SELECT * FROM " schema "." table).
+  ;; A schema with a single quote (e.g. "pub'lic") produces malformed SQL.
+  ;; Since schema and table are IDENTIFIERS (not values), the fix must use driver-level
+  ;; identifier quoting (sql.u/quote-name), not ? parameterization.
+  ;;
+  ;; We intercept qp/process-query and inspect the submitted SQL to verify it uses
+  ;; properly quoted identifiers instead of raw interpolation.
+  (testing "read-back-output submits a SELECT with properly quoted schema.table identifiers"
+    (let [captured-queries (atom [])
+          fake-process     (fn [q]
+                             (swap! captured-queries conj q)
+                             {:status :completed
+                              :data   {:cols [] :rows []}})]
+      (with-redefs [qp/process-query fake-process]
+        ;; Call the private function via the public run-test! path by using an output-spec
+        ;; with a tricky schema name.  We use with-driver :postgres so quote-name resolves correctly.
+        ;; Since run-test! calls cleanup! which also queries qp, we test read-back-output directly
+        ;; by constructing its call signature via the #'var accessor.
+        (mt/with-driver :postgres
+          (#'test-run.core/read-back-output 999 :postgres {:schema "pub'lic" :table "mb_transform_temp_table_test_abc_xyz_out"})))
+      (is (= 1 (count @captured-queries))
+          "exactly one query submitted")
+      (let [sql (get-in (first @captured-queries) [:native :query])]
+        ;; The query must NOT contain the raw single-quote character inside the schema/table identifiers
+        (is (not (re-find #"FROM pub'lic" sql))
+            "raw interpolation of schema with quote must not appear in SQL")
+        ;; The query must use double-quote quoting (Postgres style) around the identifiers
+        (is (re-find #"\"pub'lic\"" sql)
+            "schema must be double-quote quoted in the SQL (Postgres identifier quoting)")
+        (is (string? sql)
+            "SQL must be a string")))))
+
+;;; ===========================================================================
 ;;; :ignore-columns passes through a noisy NOW() column
 ;;; ===========================================================================
 

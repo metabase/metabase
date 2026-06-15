@@ -245,8 +245,11 @@
   - `final-sql` — the rewritten / override-compiled SQL string."
   [driver mapping final-sql]
   (let [refs (sql-tools/referenced-tables-raw driver final-sql)]
-    ;; Guard 1: non-empty refs (a parse error returns [], which must NOT pass vacuously).
-    (when (empty? refs)
+    ;; Guard 1: non-empty refs — but only when mapping is non-empty.
+    ;; A parse error on a rewritten SQL loses refs that existed (guard must fire).
+    ;; A zero-table transform has an empty mapping AND empty refs vacuously — safe,
+    ;; nothing to protect; Guard 2 still catches any stray refs if they appear.
+    (when (and (seq mapping) (empty? refs))
       (cannot-test-run!
        (str "This transform can't be test-run: the rewritten SQL has no resolvable"
             " table references (it may have failed to parse).")
