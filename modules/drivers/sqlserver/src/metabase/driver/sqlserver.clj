@@ -869,6 +869,17 @@
 ;;
 ;; The ORDER BY clause is invalid in views, inline functions, derived tables, subqueries, and common table
 ;; expressions, unless TOP, OFFSET or FOR XML is also specified.
+;;
+;; To fix this :
+;;
+;; - Remove `:order-by` without a corresponding `:limit` inside a `:join` (since it usually doesn't really accomplish
+;;   anything anyway; if you really need it you can always specify a limit yourself)
+;;
+;;   TODO - I'm not actually sure about this. What about a RIGHT JOIN? Postgres at least seems to ignore the ORDER BY
+;;   inside a subselect RIGHT JOIN, altho I can imagine other DBMSes actually returning results in that order. I guess
+;;   we will see what happens down the road.
+;;
+;; - Add a max-results `:limit` to source queries if there's not already one
 
 (defn- fix-order-bys [inner-query]
   (letfn [;; `in-source-query?` = whether the DIRECT parent is `:source-query`. This is only called on maps that have
