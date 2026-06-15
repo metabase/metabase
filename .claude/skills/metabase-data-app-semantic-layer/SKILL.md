@@ -12,6 +12,7 @@ Keep the semantic layer and presentation layer separate.
 - All Metabase context must come from the generated schema file, usually `src/metabase.data.ts` or `src/*.metabase.data.ts`.
 - Do not discover data through MCP tools, create questions, create metrics, create tables, or edit the semantic layer while building the React UI.
 - Use `useMetabaseQuery`, `useMetabaseQueryObject`, `filter(...)`, and `breakout(...)` from `@metabase/embedding-sdk-react/data-app`.
+- Data apps must install the published data-app SDK tag: `npm install @metabase/embedding-sdk-react@63-data-apps`.
 - Prefer generated schema objects over raw IDs or strings. Extract local constants for top-level semantic objects.
 - Prefer semantically rich queries over shallow table dumps. Use curated metrics, table measures, segments, filters, and breakouts when they make the generated app more useful.
 - Prefer semantic-layer definitions over React-side inference. If the schema has a segment or measure for a concept, use it in the query instead of manually recreating the concept from raw rows.
@@ -54,11 +55,8 @@ Other useful filters:
 
 ```ts
 import {
-  avg,
   breakout,
-  count,
   filter,
-  sum,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
@@ -124,23 +122,26 @@ const { data } = useMetabaseQuery<RecordsTable>({
 });
 ```
 
-For grouped counts, use `count()`:
+For grouped counts, use a curated count measure from the generated schema:
 
 ```ts
-useMetabaseQuery({
-  table: recordsTable,
+useMetabaseQuery<RecordsTable>({
+  tableId: recordsTable.id,
   filters: [recordsTable.segments.activeRecords],
-  aggregations: [count()],
+  aggregations: [recordsTable.measures.recordCount],
   breakouts: [breakout(recordsTable.fields.category)],
 });
 ```
 
-For basic field aggregations, use helpers such as `sum(field)`, `avg(field)`, `median(field)`, `distinct(field)`, `min(field)`, and `max(field)`:
+For basic field aggregations, use curated measures from the generated schema. If the app needs `sum`, `avg`, `median`, `distinct`, `min`, or `max` and the schema does not expose a matching measure, stop and ask the user to add that measure upstream before continuing.
 
 ```ts
-useMetabaseQuery({
-  table: recordsTable,
-  aggregations: [sum(recordsTable.fields.amount), avg(recordsTable.fields.amount)],
+useMetabaseQuery<RecordsTable>({
+  tableId: recordsTable.id,
+  aggregations: [
+    recordsTable.measures.totalAmount,
+    recordsTable.measures.averageAmount,
+  ],
   breakouts: [breakout(recordsTable.fields.createdAt, { bucket: "month" })],
 });
 ```
@@ -216,8 +217,9 @@ Chart only, without the toolbar:
 import {
   InteractiveQuestion,
   StaticQuestion,
+} from "@metabase/embedding-sdk-react";
+import {
   breakout,
-  count,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 
