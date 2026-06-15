@@ -54,6 +54,7 @@ export function TreemapChart({
     rawSeriesWithRemappings,
     treemapColumns,
     treemapRows,
+    settings,
   );
   const hasChildren = tree.some((node) => node.children != null);
   // A 2-level treemap colors each group with its own palette hue (matching the

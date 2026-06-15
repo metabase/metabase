@@ -10,6 +10,7 @@ import type {
   TreemapRow,
 } from "metabase-types/api";
 
+import { getTreemapColumnFormatter } from "./formatters";
 import type { TreemapChartColumns, TreemapNode, TreemapTree } from "./types";
 
 /**
@@ -61,6 +62,7 @@ export function getTreemapData(
   rawSeries: RawSeries,
   treemapColumns: TreemapChartColumns,
   treemapRows?: TreemapRow[],
+  settings?: Pick<ComputedVisualizationSettings, "column">,
 ): TreemapTree {
   const [
     {
@@ -68,6 +70,14 @@ export function getTreemapData(
     },
   ] = rawSeries;
   const { grouping, subGrouping, value } = treemapColumns;
+  const formatGroupingName = getTreemapColumnFormatter(
+    grouping.column,
+    settings,
+  );
+  const formatSubGroupingName =
+    subGrouping != null
+      ? getTreemapColumnFormatter(subGrouping.column, settings)
+      : null;
 
   const rowNameByKey = new Map<string, string>(
     (treemapRows ?? []).map((row) => [row.key, row.name]),
@@ -95,7 +105,7 @@ export function getTreemapData(
       rawName: groupingValue,
       displayName:
         rowNameByKey.get(getKeyFromDimensionValue(groupingValue)) ??
-        displayName(groupingValue),
+        formatGroupingName(groupingValue),
       withChildren: subGrouping != null,
     });
     addRowMetric(rootNode, metricValue, rowIndex);
@@ -113,7 +123,8 @@ export function getTreemapData(
     const { node: leaf, wasCreated } = getOrCreateNode({
       map: leafMap,
       rawName: subGroupingValue,
-      displayName: displayName(subGroupingValue),
+      displayName:
+        formatSubGroupingName?.(subGroupingValue) ?? NULL_DISPLAY_VALUE,
       withChildren: false,
     });
     addRowMetric(leaf, metricValue, rowIndex);
@@ -123,10 +134,6 @@ export function getTreemapData(
   });
 
   return Array.from(rootByKey.values());
-}
-
-export function getTreemapTotal(tree: TreemapTree) {
-  return tree.reduce((sum, node) => sum + node.value, 0);
 }
 
 function getOrCreateNode({
@@ -162,8 +169,4 @@ function addRowMetric(
 ): void {
   node.value = sumMetric(node.value, metricValue) ?? node.value;
   node.rowIndices.push(rowIndex);
-}
-
-function displayName(value: RowValue): string {
-  return value == null ? NULL_DISPLAY_VALUE : String(value);
 }

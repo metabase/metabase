@@ -43,6 +43,26 @@ const columnsWithSub: DatasetColumn[] = [
   }),
 ];
 
+const columnsWithNumericSub: DatasetColumn[] = [
+  createMockColumn({
+    name: "Category",
+    display_name: "Category",
+    base_type: "type/Text",
+  }),
+  createMockColumn({
+    name: "SubAmount",
+    display_name: "Sub-Amount",
+    base_type: "type/Number",
+    semantic_type: "type/Number",
+  }),
+  createMockColumn({
+    name: "Amount",
+    display_name: "Amount",
+    base_type: "type/Number",
+    semantic_type: "type/Number",
+  }),
+];
+
 const treemapColumns: TreemapChartColumns = {
   grouping: { index: 0, column: columns[0] },
   value: { index: 1, column: columns[1] },
@@ -52,6 +72,12 @@ const treemapColumnsWithSub: TreemapChartColumns = {
   grouping: { index: 0, column: columnsWithSub[0] },
   subGrouping: { index: 1, column: columnsWithSub[1] },
   value: { index: 2, column: columnsWithSub[2] },
+};
+
+const treemapColumnsWithNumericSub: TreemapChartColumns = {
+  grouping: { index: 0, column: columnsWithNumericSub[0] },
+  subGrouping: { index: 1, column: columnsWithNumericSub[1] },
+  value: { index: 2, column: columnsWithNumericSub[2] },
 };
 
 function makeRawSeries1Level(rows: RowValue[][]) {
@@ -68,6 +94,15 @@ function makeRawSeries2Level(rows: RowValue[][]) {
     {
       card: createMockCard({ name: "Treemap card" }),
       data: createMockDatasetData({ rows, cols: columnsWithSub }),
+    },
+  ];
+}
+
+function makeRawSeries2LevelWithNumericSub(rows: RowValue[][]) {
+  return [
+    {
+      card: createMockCard({ name: "Treemap card" }),
+      data: createMockDatasetData({ rows, cols: columnsWithNumericSub }),
     },
   ];
 }
@@ -213,6 +248,43 @@ describe("treemap data model", () => {
             displayName: "x",
             value: 2,
             rowIndices: [3],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("formats 2-level sub-grouping leaf display names from column settings", () => {
+    const result = getTreemapData(
+      makeRawSeries2LevelWithNumericSub([
+        ["A", 1000, 1],
+        ["A", 2500, 2],
+      ]),
+      treemapColumnsWithNumericSub,
+      undefined,
+      {
+        column: (column) =>
+          column.name === "SubAmount" ? { prefix: "$" } : {},
+      },
+    );
+
+    expect(result).toMatchObject([
+      {
+        rawName: "A",
+        value: 3,
+        rowIndices: [0, 1],
+        children: [
+          {
+            rawName: 1000,
+            displayName: "$1,000",
+            value: 1,
+            rowIndices: [0],
+          },
+          {
+            rawName: 2500,
+            displayName: "$2,500",
+            value: 2,
+            rowIndices: [1],
           },
         ],
       },

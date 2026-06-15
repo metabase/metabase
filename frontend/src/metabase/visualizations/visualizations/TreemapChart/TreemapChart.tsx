@@ -70,6 +70,7 @@ export const TreemapChart = ({
       rawSeriesWithRemappings,
       treemapColumns,
       treemapRows,
+      settings,
     );
     const colors = getTreemapColors(tree, treemapRows);
     return { tree, colors, treemapColumns };
