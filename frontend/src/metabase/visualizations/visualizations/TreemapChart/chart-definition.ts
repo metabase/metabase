@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
@@ -159,24 +158,10 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   "treemap.rows": {
     getHidden: () => true,
-    getValue: _.memoize(
-      (series: RawSeries, settings: ComputedVisualizationSettings) =>
-        getTreemapRows(series, settings, (value, options) =>
-          String(formatValue(value, options)),
-        ),
-      ([{ data }]: RawSeries, settings: ComputedVisualizationSettings) =>
-        JSON.stringify({
-          cols: data.cols,
-          rows: data.rows,
-          settings: _.pick(
-            settings,
-            "treemap.grouping",
-            "treemap.sub_grouping",
-            "treemap.value",
-            "treemap.rows",
-          ),
-        }),
-    ),
+    getValue: (series: RawSeries, settings: ComputedVisualizationSettings) =>
+      getTreemapRows(series, settings, (value, options) =>
+        String(formatValue(value, options)),
+      ),
     readDependencies: [
       "treemap.grouping",
       "treemap.sub_grouping",
