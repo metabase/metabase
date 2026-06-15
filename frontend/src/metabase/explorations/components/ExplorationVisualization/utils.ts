@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
+import { createSeriesCard } from "metabase/common/utils/series";
 import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/constants";
-import { createSeriesCard } from "metabase/metrics/utils/series";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";

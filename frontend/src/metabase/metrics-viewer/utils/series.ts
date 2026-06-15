@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import { getDimensionIcon } from "metabase/common/utils/columns";
-import { createSeriesCard } from "metabase/metrics/utils/series";
+import { createSeriesCard } from "metabase/common/utils/series";
 import type {
   DimensionPillBarItem,
   ExpressionDimensionItem,
