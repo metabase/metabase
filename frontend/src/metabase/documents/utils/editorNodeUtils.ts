@@ -46,14 +46,14 @@ export function isTopLevel({
   getPos,
 }: Pick<NodeViewProps, "editor" | "getPos">) {
   if (!editor || !getPos) {
-    return true;
+    return false;
   }
 
   const { doc } = editor.state;
   const pos = getPos();
 
   if (pos === null || pos === undefined || pos < 0 || pos > doc.content.size) {
-    return true;
+    return false;
   }
 
   const resolvedPos = doc.resolve(pos);
