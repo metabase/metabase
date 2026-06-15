@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
 import { Group, Stack, Text } from "metabase/ui";
+import { getSubpathSafeUrl } from "metabase/urls";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppIcon } from "./DataAppIcon";
@@ -37,11 +37,26 @@ export function DataAppSummary({ app }: Props) {
     <Group align="flex-start" flex="1" wrap="nowrap">
       <DataAppIcon app={app} />
       <Stack flex="1" gap="xs" py="xs">
-        <Link to={`/data-app/${encodeURIComponent(app.name)}`}>
-          <Text fw={700} c="brand">
+        {app.enabled ? (
+          <Text
+            component="a"
+            href={getSubpathSafeUrl(
+              `/data-app/${encodeURIComponent(app.name)}`,
+            )}
+            target="_blank"
+            rel="noreferrer"
+            fw={700}
+            c="brand"
+          >
             {app.display_name}
           </Text>
-        </Link>
+        ) : (
+          // Disabled apps aren't reachable (the route 404s), so the name is
+          // plain text rather than a dead link.
+          <Text fw={700} c="text-secondary">
+            {app.display_name}
+          </Text>
+        )}
         <Group gap="xs" align="center">
           <Text size="sm" c="text-tertiary" ff="monospace">
             {`/data-app/${app.name}`}
