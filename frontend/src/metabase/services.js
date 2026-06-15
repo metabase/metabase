@@ -21,12 +21,6 @@ export const EmbedApi = {
   dashboard: GET("/api/embed/dashboard/:token"),
 };
 
-/// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
-export const PulseUnsubscribeApi = {
-  unsubscribe: POST("/api/pulse/unsubscribe"),
-  undo_unsubscribe: POST("/api/pulse/unsubscribe/undo"),
-};
-
 // also unauthenticated
 export const NotificationUnsubscribeApi = {
   unsubscribe: POST("/api/notification/unsubscribe"),

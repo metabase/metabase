@@ -3,6 +3,10 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import {
+  useUndoUnsubscribeFromPulseMutation,
+  useUnsubscribeFromPulseMutation,
+} from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
@@ -10,10 +14,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import {
-  NotificationUnsubscribeApi,
-  PulseUnsubscribeApi,
-} from "metabase/services";
+import { NotificationUnsubscribeApi } from "metabase/services";
 import { Button, Center, Stack, Text } from "metabase/ui";
 
 import {
@@ -180,6 +181,9 @@ function useUnsubscribeRequest({
     return undefined;
   }, [hash, email, pulseId, notificationHandlerId]);
 
+  const [unsubscribeFromPulse] = useUnsubscribeFromPulseMutation();
+  const [undoUnsubscribeFromPulse] = useUndoUnsubscribeFromPulseMutation();
+
   const {
     value: data,
     loading: isLoading,
@@ -189,17 +193,26 @@ function useUnsubscribeRequest({
       throw new Error(ERRORS.MISSING_REQUIRED_PARAMETERS);
     }
 
-    const api = notificationHandlerId
-      ? NotificationUnsubscribeApi
-      : PulseUnsubscribeApi;
+    const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
-    const method =
-      subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE
-        ? api.unsubscribe
-        : api.undo_unsubscribe;
+    if (notificationHandlerId) {
+      const method = isUnsubscribe
+        ? NotificationUnsubscribeApi.unsubscribe
+        : NotificationUnsubscribeApi.undo_unsubscribe;
+      return await method(params);
+    }
 
-    return await method(params);
-  }, [params, subscriptionChange]);
+    const unsubscribe = isUnsubscribe
+      ? unsubscribeFromPulse
+      : undoUnsubscribeFromPulse;
+    return await unsubscribe(params).unwrap();
+  }, [
+    params,
+    subscriptionChange,
+    notificationHandlerId,
+    unsubscribeFromPulse,
+    undoUnsubscribeFromPulse,
+  ]);
 
   return { data, isLoading, error };
 }
