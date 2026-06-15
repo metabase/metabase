@@ -22,7 +22,7 @@
 
 .input:focus {
   outline: none;
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
   transition: border 0.3s linear;
   color: var(--mb-color-text-primary);
 }

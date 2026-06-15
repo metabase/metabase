@@ -3,7 +3,7 @@
 }
 
 .label {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   padding-top: 1rem;
   padding-bottom: 1rem;

@@ -19,7 +19,7 @@ export const SelectedOption = styled(PermissionsSelectOption)`
   transition: color 200ms;
 
   &:hover {
-    color: var(--mb-color-filter);
+    color: var(--mb-color-core-filter);
   }
 `;
 

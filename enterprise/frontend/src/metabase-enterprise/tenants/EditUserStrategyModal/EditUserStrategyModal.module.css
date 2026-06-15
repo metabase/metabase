@@ -4,9 +4,9 @@
 }
 
 .radioCard[data-checked] {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .radioCard[data-checked] .radioCardTitle {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }

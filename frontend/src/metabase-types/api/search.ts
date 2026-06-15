@@ -122,6 +122,11 @@ export interface SearchResult<
   collection_id?: CollectionId;
 }
 
+/**
+ * Model retrieved through the search endpoint
+ */
+export type ModelResult = SearchResult<number, "dataset">;
+
 // The frontend surface that issued a search request; the backend uses it to pick ranking weights and
 // filter defaults. Keep in sync with `metabase.search.config/ui-contexts`.
 export type SearchContext =

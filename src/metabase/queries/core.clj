@@ -44,7 +44,7 @@
  [metabase.queries.models.query
   average-execution-time-ms
   query->database-and-table-ids
-  save-query-and-update-average-execution-time!])
+  save-queries-and-update-average-execution-times!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

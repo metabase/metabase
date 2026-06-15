@@ -1,5 +1,5 @@
 .todoContainer {
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
   background-color: var(--mb-color-background-highlight);
 }
 
@@ -22,11 +22,11 @@
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: 2px;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
 }
 
 .pendingIndicator {
-  border: 1.5px solid var(--mb-color-brand);
+  border: 1.5px solid var(--mb-color-core-brand);
   margin-top: 1px;
   background: none;
 }

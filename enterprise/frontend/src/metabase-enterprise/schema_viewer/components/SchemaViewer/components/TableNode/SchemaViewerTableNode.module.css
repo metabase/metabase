@@ -10,7 +10,7 @@
 }
 
 .card.selected {
-  --node-border-color: var(--mb-color-brand);
+  --node-border-color: var(--mb-color-core-brand);
 }
 
 .header {

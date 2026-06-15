@@ -53,7 +53,7 @@
 }
 
 .borderBrand {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--mb-color-core-brand) !important;
 }
 
 .borderTransparent {

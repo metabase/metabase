@@ -19,7 +19,7 @@ export const StatusHeader = styled.div`
   display: flex;
   align-items: center;
   padding: 0.625rem 1rem;
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 `;
 
 export const StatusTitle = styled.div`
@@ -60,7 +60,7 @@ export const StatusCardIcon = styled.div`
   width: 2rem;
   height: 2rem;
   border-radius: 1rem;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background-brand);
 `;
 
@@ -84,7 +84,7 @@ export const StatusCardSpinner = styled(LoadingSpinner)`
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 interface StatusCardIconContainerProps {

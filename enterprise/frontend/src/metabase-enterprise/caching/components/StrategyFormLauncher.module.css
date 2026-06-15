@@ -30,7 +30,7 @@
 
 .token[data-variant="filled"],
 .token[data-variant="outline"] {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .token :global(.mantine-Button-inner) {

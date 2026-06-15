@@ -5,7 +5,6 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,13 +24,13 @@ import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal"
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
   setTemplateTagConfig,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
+import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -313,6 +312,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   } = props;
 
   const dispatch = useDispatch();
+  const visualizationResultProps = useVisualizationResultQBProps();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
@@ -487,23 +487,14 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   };
 
   const saveButtonRef = useRef<ActionButtonHandle>(null);
-  const {
-    checkData,
-    isConfirmationShown,
-    handleInitialSave,
-    handleSaveAfterConfirmation,
-    handleCloseConfirmation,
-  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
-    onSave: async (question) => {
+  const handleInitialSave = useCallback(
+    async (question: Question) => {
       await onSave(question, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     },
-  });
-
-  useLayoutEffect(() => {
-    saveButtonRef.current?.resetState();
-  }, [isConfirmationShown]);
+    [onSave, setQueryBuilderMode, runQuestionQuery],
+  );
 
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
@@ -755,6 +746,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               ) : (
                 <QueryVisualization
                   {...props}
+                  {...visualizationResultProps}
                   rawSeries={tempRawSeries}
                   className={CS.spread}
                   noHeader
@@ -782,15 +774,6 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         onConfirm={handleCancelEdit}
         onClose={closeModal}
       />
-
-      {isConfirmationShown && checkData != null && (
-        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
-          checkData={checkData}
-          opened
-          onSave={handleSaveAfterConfirmation}
-          onClose={handleCloseConfirmation}
-        />
-      )}
     </>
   );
 };

@@ -25,7 +25,7 @@ const getBackgroundColor = ({
   currentColor,
 }: ToggleRootProps): string => {
   if (checked) {
-    return currentColor ?? color("brand");
+    return currentColor ?? color("core-brand");
   } else {
     return "var(--mb-color-background-tertiary)";
   }
@@ -35,7 +35,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   appearance: none;
   position: relative;
   display: inline-block;
-  color: ${(props) => props.currentColor ?? color("brand")};
+  color: ${(props) => props.currentColor ?? color("core-brand")};
   cursor: pointer;
   width: ${(props) => (props.small ? "28px" : "48px")};
   height: ${(props) => (props.small ? "17px" : "24px")};
@@ -64,5 +64,5 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
     box-shadow: 2px 2px 6px var(--mb-color-shadow);
   }
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 `;

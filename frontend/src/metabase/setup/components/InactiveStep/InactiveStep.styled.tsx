@@ -18,7 +18,8 @@ export const StepRoot = styled.section<Props>`
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${(props) => (props.isCompleted ? color("success") : color("brand"))};
+  color: ${(props) =>
+    props.isCompleted ? color("success") : color("core-brand")};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -43,7 +44,7 @@ export const StepLabel = styled.div<Props>`
 `;
 
 export const StepLabelText = styled.span`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: 700;
   line-height: 1;
 `;

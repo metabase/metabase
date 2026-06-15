@@ -5,11 +5,11 @@
 
   --border-color: var(--mb-color-border-brand);
   --background-color: transparent;
-  --icon-color: var(--mb-color-brand);
+  --icon-color: var(--mb-color-core-brand);
 }
 
 .Root[data-status="complete"] {
-  --border-color: var(--mb-color-brand);
+  --border-color: var(--mb-color-core-brand);
   --background-color: var(--mb-color-success);
   --icon-color: var(--mb-color-text-primary-inverse);
 }

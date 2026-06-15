@@ -92,7 +92,7 @@ export const NotificationRunSummaryLog = ({
         <Anchor
           component={Link}
           to={viewAllUrl}
-          c="brand"
+          c="core-brand"
           fz="md"
           lh="1rem"
           fw="bold"

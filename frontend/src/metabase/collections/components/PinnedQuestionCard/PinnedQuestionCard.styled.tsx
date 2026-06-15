@@ -47,11 +47,11 @@ export const CardRoot = styled(
     }
 
     ${LegendLabel} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     ${ChartSkeleton.Title} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
 
     ${ChartSkeleton.Description} {

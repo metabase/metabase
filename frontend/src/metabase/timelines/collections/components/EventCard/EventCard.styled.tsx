@@ -20,7 +20,7 @@ export const CardThread = styled.div`
 `;
 
 export const CardThreadIcon = styled(Icon)`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 1rem;
   height: 1rem;
 `;
@@ -52,7 +52,7 @@ interface CardTitleProps {
 
 const cardTitleHoverStyles = css`
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -72,7 +72,7 @@ export const CardDescription = styled(Markdown)`
 `;
 
 export const CardDateInfo = styled.div`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-size: 0.75rem;
   line-height: 1.5rem;
   font-weight: bold;

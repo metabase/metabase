@@ -38,6 +38,15 @@
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
+(mu/defn- mark-fingerprinting-failed!
+  "Advance `fingerprint_version` to the latest version for `fields` without saving a fingerprint. Called when
+  fingerprinting fails for a non-transient reason, so that the Fields are not re-selected by [[fields-to-fingerprint]]
+  and retried on every subsequent sync. Transient failures (see [[metabase.sync.util/transient-exception?]]) are
+  left untouched so they are retried."
+  [fields :- [:maybe [:sequential i/FieldInstance]]]
+  (when-let [ids (seq (map u/the-id fields))]
+    (t2/update! :model/Field :id [:in ids] {:fingerprint_version i/*latest-fingerprint-version*})))
+
 (mr/def ::FingerprintStats
   [:map
    [:no-data-fingerprints   ms/IntGreaterThanOrEqualToZero]
@@ -69,7 +78,9 @@
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
                              (instance? Throwable fingerprint)
-                             (update count-info :failed-fingerprints inc)
+                             (do
+                               (mark-fingerprinting-failed! [field])
+                               (update count-info :failed-fingerprints inc))
 
                              (some-> fingerprint :global :distinct-count zero?)
                              (update count-info :no-data-fingerprints inc)
@@ -202,8 +213,13 @@
         (let [stats
               (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
                 (fingerprint-fields! table fields))]
-          (if (:throwable stats)
-            (merge (empty-stats-map 0) stats)
+          (if-let [throwable (:throwable stats)]
+            (do
+              ;; transient connection/environment errors abort this run and retry on the next sync; for any other
+              ;; (permanent) error, give up so we don't re-attempt every sync.
+              (when-not (sync-util/transient-exception? throwable)
+                (mark-fingerprinting-failed! fields))
+              (merge (empty-stats-map 0) stats))
             stats)))
       (empty-stats-map 0))))
 

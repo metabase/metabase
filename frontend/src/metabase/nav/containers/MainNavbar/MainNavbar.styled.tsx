@@ -98,7 +98,7 @@ export const LoadingAndErrorContent = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-align: center;
 `;
 

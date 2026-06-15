@@ -13,7 +13,7 @@
 
   &[data-clickable] .icon,
   &[data-clickable] .clickableName {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

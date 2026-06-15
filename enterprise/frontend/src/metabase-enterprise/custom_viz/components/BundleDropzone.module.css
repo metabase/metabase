@@ -19,7 +19,7 @@
 .dropzone:focus-visible,
 .dropzone.dropzoneActive {
   background-color: var(--mb-color-background-hover);
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .dropzone.dropzoneError {

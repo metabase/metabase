@@ -287,6 +287,7 @@ export type IconName =
   | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
+  | "workspace"
   | "10k"
   | "1m"
   | "zap"

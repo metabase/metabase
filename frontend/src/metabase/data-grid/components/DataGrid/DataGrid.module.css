@@ -88,7 +88,7 @@
   &.active {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-brand),
+      var(--mb-color-core-brand),
       transparent 90%
     );
   }
@@ -137,12 +137,12 @@
 
 .resizer:hover {
   opacity: 1;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
 }
 
 .resizer:active {
   opacity: 1;
-  background: var(--mb-color-brand);
+  background: var(--mb-color-core-brand);
 }
 
 .headerWrapper {

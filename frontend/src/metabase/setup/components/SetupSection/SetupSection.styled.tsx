@@ -31,7 +31,7 @@ export const SectionDescription = styled.div`
 `;
 
 export const SectionButton = styled(Button)`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   width: 2.5rem;
   height: 2.5rem;
 `;

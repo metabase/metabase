@@ -216,7 +216,7 @@ export const SdkQuestionDefaultView = ({
               {isEditorOpen ? (
                 <PopoverBackButton
                   onClick={toggleEditor}
-                  c="brand"
+                  c="core-brand"
                   fz="md"
                   ml="sm"
                 >

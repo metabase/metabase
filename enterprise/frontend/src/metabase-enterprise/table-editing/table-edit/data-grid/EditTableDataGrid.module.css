@@ -32,7 +32,7 @@
   background-color: var(--cell-bg-color);
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 
@@ -60,7 +60,7 @@
 
 .pencilIcon {
   cursor: pointer;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   visibility: hidden;
 }
 

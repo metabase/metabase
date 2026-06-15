@@ -7,7 +7,7 @@
     text-decoration: underline solid var(--mb-color-border-neutral) 1px;
 
     &:hover {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 }
@@ -17,7 +17,7 @@
   border: 1px solid var(--mb-color-border-neutral);
 
   &:hover {
-    color: var(--mb-color-brand) !important;
+    color: var(--mb-color-core-brand) !important;
   }
 }
 

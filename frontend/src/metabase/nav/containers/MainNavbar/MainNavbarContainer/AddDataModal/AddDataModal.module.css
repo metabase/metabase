@@ -3,7 +3,7 @@
   border-radius: var(--mantine-radius-md);
 
   &[data-active="true"] {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     background-color: var(--mb-color-background-selected);
   }
 }

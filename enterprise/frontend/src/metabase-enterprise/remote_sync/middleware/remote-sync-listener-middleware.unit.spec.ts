@@ -204,6 +204,7 @@ describe("remote-sync-listener-middleware", () => {
       store.dispatch(
         remoteSyncApi.endpoints.importChanges.initiate({
           branch: "main",
+          expected_branch: "main",
         }),
       );
 
@@ -232,6 +233,7 @@ describe("remote-sync-listener-middleware", () => {
       store.dispatch(
         remoteSyncApi.endpoints.importChanges.initiate({
           branch: "main",
+          expected_branch: "main",
         }),
       );
 
@@ -275,6 +277,32 @@ describe("remote-sync-listener-middleware", () => {
           "setup",
         );
       });
+    });
+
+    it("does NOT open the setup modal when an export task ends in conflict", async () => {
+      // Export conflicts are surfaced as a toast by GitSyncControls (which can use the useToast hook),
+      // not by the middleware — so the middleware must not route them to the setup-conflict modal.
+      fetchMock.get("path:/api/ee/remote-sync/current-task", {
+        status: 200,
+        body: { status: "conflict", sync_task_type: "export" },
+      });
+
+      const store = createTestStore();
+
+      store.dispatch(
+        remoteSyncApi.endpoints.getRemoteSyncCurrentTask.initiate(),
+      );
+
+      await waitForCondition(() =>
+        fetchMock.callHistory.done("path:/api/ee/remote-sync/current-task"),
+      );
+
+      await waitFor(() => {
+        expect(store.getState().remoteSyncPlugin?.showModal).toBe(false);
+      });
+      expect(store.getState().remoteSyncPlugin?.syncConflictVariant).not.toBe(
+        "setup",
+      );
     });
   });
 

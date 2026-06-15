@@ -27,20 +27,22 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   align-items: center;
   border: 1px solid
     ${({ hasValue, highlighted }) =>
-      hasValue && highlighted ? color("brand") : color("border-neutral")};
+      hasValue && highlighted ? color("core-brand") : color("border-neutral")};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("background-primary")};
+    hasValue && highlighted
+      ? color("core-brand")
+      : color("background-primary")};
   border-radius: var(--mantine-spacing-sm);
   font-weight: 700;
   min-width: 104px;
   color: ${getColor};
 
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 
   &:focus {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
     outline: 2px solid var(--mb-color-focus);
   }
 

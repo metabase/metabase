@@ -65,7 +65,7 @@
   padding: 0 0.25rem;
   background: var(--mb-color-background-hover);
   border-radius: 0.25rem;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-decoration: none;
   font-weight: 500;
   vertical-align: baseline;

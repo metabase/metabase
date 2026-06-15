@@ -31,9 +31,9 @@
 }
 
 .PickerTrigger:hover {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .AddTableButton {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }

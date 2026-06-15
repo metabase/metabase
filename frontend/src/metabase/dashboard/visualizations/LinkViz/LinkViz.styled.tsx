@@ -34,7 +34,7 @@ export const CardLink = styled(Link)`
   font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 
@@ -49,7 +49,7 @@ export const ExternalLink = styled(BaseExternalLink)`
   font-weight: bold;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 

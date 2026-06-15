@@ -43,7 +43,7 @@ export const CollectionHeaderButton = styled(
   width: 2rem;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     background-color: var(--mb-color-background-tertiary);
   }
 

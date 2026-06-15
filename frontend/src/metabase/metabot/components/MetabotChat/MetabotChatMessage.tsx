@@ -45,6 +45,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "transform_suggestion" }, () => true)
     .with({ type: "navigate_to" }, () => true)
     .with({ type: "code_edit" }, () => true)
+    .with({ type: "generated_entity" }, () => true)
     .with({ type: "adhoc_viz" }, () => false)
     .with({ type: "static_viz" }, () => false)
     .exhaustive();
@@ -158,7 +159,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
         <Icon
           name={icon}
           size="1rem"
-          c={hasBeenClicked ? "brand" : "currentColor"}
+          c={hasBeenClicked ? "core-brand" : "currentColor"}
         />
       </ActionIcon>
     );

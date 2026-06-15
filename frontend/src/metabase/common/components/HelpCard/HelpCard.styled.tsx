@@ -45,14 +45,14 @@ export const CardHeaderLink = styled(ExternalLink)`
 export const CardTitle = styled.span`
   display: block;
   flex: 1 1 auto;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: bold;
   margin: 0 0.5rem;
 `;
 
 export const CardIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const CardMessage = styled.div`
@@ -69,7 +69,7 @@ export const CardMessage = styled.div`
   }
 
   a {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     cursor: pointer;
     font-weight: bold;
   }

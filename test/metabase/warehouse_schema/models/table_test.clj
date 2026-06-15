@@ -743,3 +743,23 @@
               (serdes/load-one! ingested table)
               (is (= (keyword expected)
                      (t2/select-one-fn :data_layer :model/Table :id table-id))))))))))
+
+(deftest curation-column-defaults-test
+  (testing "a new table gets consistent non-null data_layer and data_authority defaults"
+    (testing "via the model before-insert (the path sync uses)"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}]
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority] :id table-id)))))
+    (testing "via the DB-level column default when before-insert is bypassed (raw insert)"
+      ;; Exercises the non-model insert path, guarding the migration that asserts the DB-level defaults.
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (t2/query-one {:insert-into :metabase_table
+                       :values      [{:name       "raw-insert-probe"
+                                      :db_id      db-id
+                                      :active     true
+                                      :created_at :%now
+                                      :updated_at :%now}]})
+        (is (=? {:data_layer :internal :data_authority :unconfigured}
+                (t2/select-one [:model/Table :data_layer :data_authority]
+                               :name "raw-insert-probe" :db_id db-id)))))))

@@ -34,7 +34,7 @@ export function MetabotChatInput() {
         {metabot.isDoingScience ? (
           <Loader size="sm" />
         ) : (
-          <Icon name="ai" c="brand" size="1rem" />
+          <Icon name="ai" c="core-brand" size="1rem" />
         )}
       </Flex>
 

@@ -38,7 +38,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
         style.pointerEvents = "none";
         return style;
       } else if (highlightedForDrag) {
-        style.border = "2px solid var(--mb-color-brand)";
+        style.border = "2px solid var(--mb-color-core-brand)";
         style.boxShadow = "0px 1px 4px 1px var(--mb-color-shadow)";
         style.cursor = "grab";
         style.backgroundColor = "var(--mb-color-background-secondary)";

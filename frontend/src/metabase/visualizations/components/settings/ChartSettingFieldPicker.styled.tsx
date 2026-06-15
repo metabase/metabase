@@ -18,7 +18,7 @@ export const ChartSettingFieldPickerRoot = styled(Group, {
 
   &:hover {
     ${GrabberHandle} {
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
     }
   }
 `;

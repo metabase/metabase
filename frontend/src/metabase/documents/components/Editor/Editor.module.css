@@ -207,7 +207,7 @@
   margin: 1rem auto;
 
   &:global(.ProseMirror-selectednode) {
-    box-shadow: 0 0 0 1px var(--mb-color-brand);
+    box-shadow: 0 0 0 1px var(--mb-color-core-brand);
     border-radius: var(--mantine-radius-xs);
   }
 }

@@ -22,7 +22,7 @@ const options: PermissionOption[] = [
     label: "Limited",
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
-    iconColor: "brand",
+    iconColor: "core-brand",
   },
   {
     label: "No access",

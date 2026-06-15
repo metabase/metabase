@@ -19,7 +19,7 @@ interface EntityNameCellProps {
 export const EntityNameCell = memo(function EntityNameCell({
   icon,
   name,
-  iconColor = "brand",
+  iconColor = "core-brand",
   wrap = false,
   tooltipOpenDelay = 600,
   ellipsifiedProps,

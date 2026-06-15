@@ -13,7 +13,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
   border: 2px solid
     ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
-        ? "var(--mb-color-brand)"
+        ? "var(--mb-color-core-brand)"
         : "var(--mb-color-border-neutral)"};
   margin: 0;
   padding: 0.5rem 0.75rem;
@@ -35,7 +35,7 @@ export const DropdownFieldSet = styled(FieldSet)<{
   &,
   legend {
     color: ${({ fieldHasValueOrFocus }) =>
-      fieldHasValueOrFocus && "var(--mb-color-brand)"};
+      fieldHasValueOrFocus && "var(--mb-color-core-brand)"};
   }
 `;
 

@@ -13,7 +13,7 @@
 }
 
 .menuItem[aria-selected="true"] {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background-hover);
 }
 
@@ -34,7 +34,7 @@
 
 .menuItemWithBorder:hover,
 .menuItemWithBorder[aria-selected="true"] {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   background-color: var(--mb-color-background-hover);
 }
 

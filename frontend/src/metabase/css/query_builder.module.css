@@ -339,7 +339,7 @@
     &:hover {
       background-color: color-mix(
         in srgb,
-        var(--mb-color-brand) 3%,
+        var(--mb-color-core-brand) 3%,
         color-mix(in srgb, var(--mb-color-background-primary) 75%, transparent)
       );
     }

@@ -28,11 +28,11 @@
 }
 
 .sourceFeedbackButton[data-active="true"] {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .sourceItemLink:hover .sourceItemTitleText {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .sourceItemLink:focus-visible {

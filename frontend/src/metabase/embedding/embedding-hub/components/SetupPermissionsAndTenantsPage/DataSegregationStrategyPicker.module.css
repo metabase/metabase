@@ -4,15 +4,15 @@
 }
 
 .radioCard[data-checked] {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
   background: var(--mb-color-background-hover);
 }
 
 .radioCard[data-checked] .radioCardTitle {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .cardIcon {
   flex-shrink: 0;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
