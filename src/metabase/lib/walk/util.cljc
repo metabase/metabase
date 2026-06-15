@@ -276,10 +276,12 @@
         table-columns (when (seq source-table-ids)
                         (lib.metadata.protocols/metadatas provider {:lib/type :metadata/column, :table-ids source-table-ids}))
         cards         (lib.metadata/bulk-metadata metadata-providerable :metadata/card source-card-ids)
+        result-cols   (mapcat :result-metadata cards)
         card-columns  (lib.metadata/bulk-metadata metadata-providerable :metadata/column
-                                                  (into #{} (comp (mapcat :result-metadata) (keep :id)) cards))
+                                                  (into #{} (keep :id) result-cols))
         fk-fields     (lib.metadata/bulk-metadata metadata-providerable :metadata/column
-                                                  (into #{} (keep :fk-target-field-id) (concat table-columns card-columns)))]
+                                                  (into #{} (keep :fk-target-field-id)
+                                                        (concat table-columns card-columns result-cols)))]
     (into #{} (keep :table-id) fk-fields)))
 
 (mu/defn all-referenced-entity-ids :- ::referenced-entity-ids

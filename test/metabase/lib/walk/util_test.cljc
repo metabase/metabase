@@ -369,3 +369,27 @@
       (is (= #{(meta/id :people) (meta/id :products)}
              (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
           "with the option, the Card columns' FK-target Tables are included"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-result-metadata-fk-override-test
+  (testing ":include-implicitly-joinable? follows an FK target set on a Card's result metadata even when the raw Field
+            has no such FK"
+    (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+          returned       (lib/returned-columns products-query)
+          plain-mp       (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 products-query)
+          override-mp    (lib.tu/metadata-provider-with-card-from-query
+                          meta/metadata-provider 2 products-query
+                          {:result-metadata (mapv (fn [col]
+                                                    (cond-> col
+                                                      (= (:id col) (meta/id :products :price))
+                                                      (assoc :fk-target-field-id (meta/id :people :id))))
+                                                  returned)})]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query plain-mp (lib.metadata/card plain-mp 1))]
+                      {:include-implicitly-joinable? true})))
+          "PRODUCTS columns have no raw FKs, so nothing is implicitly joinable")
+      (is (= #{(meta/id :people)}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query override-mp (lib.metadata/card override-mp 2))]
+                      {:include-implicitly-joinable? true})))
+          "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))
