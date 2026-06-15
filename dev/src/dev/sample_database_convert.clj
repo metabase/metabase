@@ -157,6 +157,13 @@
      :values      [(vec (repeat (count cols) [:raw "?"]))]}
     {:dialect :ansi :quoted true})))
 
+(defn- select-sql [schema table cols]
+  (first
+   (sql/format
+    {:select (mapv (comp keyword :name) cols)
+     :from   [(keyword (str schema "." table))]}
+    {:dialect :ansi :quoted true})))
+
 (defn- coerce-value
   "Coerce H2 values to types SQLite-JDBC accepts cleanly."
   [v]
@@ -184,10 +191,7 @@
     (jdbc/execute! sqlite [ddl])
     (let [row-count (atom 0)]
       (with-open [conn (jdbc/get-connection h2)]
-        (let [ps (.prepareStatement conn (format "SELECT %s FROM \"%s\".\"%s\""
-                                                 (str/join ", "
-                                                           (map #(format "\"%s\"" (:name %)) cols))
-                                                 schema table))]
+        (let [ps (.prepareStatement conn (select-sql schema table cols))]
           (with-open [^ResultSet rs (.executeQuery ps)]
             (with-open [scon (jdbc/get-connection sqlite)]
               (.setAutoCommit scon false)
