@@ -36,7 +36,7 @@ interface MeasurementKey {
 }
 
 interface MeasuredLayouts extends MeasurementKey {
-  labelLayout: Record<NodeId, TreemapLabelLayout>;
+  leafLabelLayout: Record<NodeId, TreemapLabelLayout>;
   parentLabelLayout: Record<NodeId, ParentLabelLayout>;
 }
 
@@ -47,7 +47,7 @@ const EMPTY_MEASURED: MeasuredLayouts = {
   formatters: null,
   showLeafValues: false,
   showParentValues: false,
-  labelLayout: {},
+  leafLabelLayout: {},
   parentLabelLayout: {},
 };
 
@@ -89,7 +89,7 @@ export function useLabelMeasurement({
       showLeafValues,
       showParentValues,
     };
-    const { labelLayout, parentLabelLayout } = measureTreemapLabelLayouts({
+    const { leafLabelLayout, parentLabelLayout } = measureTreemapLabelLayouts({
       nodes: getTreemapLayoutNodes(chart),
       tree,
       formatters,
@@ -99,10 +99,10 @@ export function useLabelMeasurement({
     });
     setMeasured((prev) =>
       isMeasuredFor(prev, key) &&
-      _.isEqual(prev.labelLayout, labelLayout) &&
+      _.isEqual(prev.leafLabelLayout, leafLabelLayout) &&
       _.isEqual(prev.parentLabelLayout, parentLabelLayout)
         ? prev
-        : { ...key, labelLayout, parentLabelLayout },
+        : { ...key, leafLabelLayout: leafLabelLayout, parentLabelLayout },
     );
   }, [
     chartRef,
@@ -125,7 +125,9 @@ export function useLabelMeasurement({
   });
 
   return {
-    labelLayout: isStale ? EMPTY_MEASURED.labelLayout : measured.labelLayout,
+    labelLayout: isStale
+      ? EMPTY_MEASURED.leafLabelLayout
+      : measured.leafLabelLayout,
     parentLabelLayout: isStale
       ? EMPTY_MEASURED.parentLabelLayout
       : measured.parentLabelLayout,

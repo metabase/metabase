@@ -16,7 +16,7 @@ import { getNode } from "./tree";
 import type { NodeId, TreemapLayoutNode, TreemapTree } from "./types";
 
 export interface TreemapMeasuredLabelLayouts {
-  labelLayout: Record<NodeId, TreemapLabelLayout>;
+  leafLabelLayout: Record<NodeId, TreemapLabelLayout>;
   parentLabelLayout: Record<NodeId, ParentLabelLayout>;
 }
 
@@ -85,5 +85,5 @@ export function measureTreemapLabelLayouts({
     },
   });
 
-  return { labelLayout, parentLabelLayout };
+  return { leafLabelLayout: labelLayout, parentLabelLayout };
 }

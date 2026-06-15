@@ -45,17 +45,18 @@ export function getTreemapChartColumns<TColumn extends DatasetColumn>(
     return null;
   }
 
-  if (subGroupingColumnName != null) {
-    const subGrouping = getColumnDescriptors(
-      [subGroupingColumnName],
-      columns,
-    )[0];
-    if (subGrouping?.column) {
-      return { grouping, subGrouping, value };
-    }
-  }
+  const subGroupingCandidate =
+    subGroupingColumnName != null
+      ? getColumnDescriptors([subGroupingColumnName], columns)[0]
+      : undefined;
 
-  return { grouping, value };
+  return {
+    grouping,
+    subGrouping: subGroupingCandidate?.column
+      ? subGroupingCandidate
+      : undefined,
+    value,
+  };
 }
 
 export function getTreemapData(
