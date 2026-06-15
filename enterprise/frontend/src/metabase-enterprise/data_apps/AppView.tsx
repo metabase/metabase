@@ -1,88 +1,26 @@
+import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
+import { GenericError, NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Box, Text } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/urls";
+import CS from "metabase/css/core/index.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import { Box, Flex } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
-import { DATA_APP_EMBED_PREFIX } from "./constants";
+import S from "./AppView.module.css";
+import {
+  DATA_APP_ERROR_MESSAGE_TYPE,
+  type DataAppBundleErrorMessage,
+} from "./constants";
+import { attachIframeUrlMirror } from "./lib/attach-iframe-url-mirror";
+import { deriveIframeSrc } from "./lib/derive-iframe-src";
 
 interface AppViewProps {
   params: { name: string };
-}
-
-/**
- * Maps the parent's `/data-app/:name(/sub/route)` path to the iframe's
- * `/embed/data-app/:name(/sub/route)` path.
- *
- * The sub-path is read from `window.location.pathname` at component init
- * (it is later changed *from inside the iframe*, never from the parent's
- * own URL — we intentionally don't re-sync the parent → iframe direction
- * after initial mount). Trailing characters after the name segment are
- * preserved verbatim.
- */
-function deriveIframeSrc(name: string): string {
-  const prefix = `/data-app/${encodeURIComponent(name)}`;
-  const path = window.location.pathname;
-  const i = path.indexOf(prefix);
-  const tail = i >= 0 ? path.slice(i + prefix.length) : "";
-  return getSubpathSafeUrl(
-    `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(name)}${tail}`,
-  );
-}
-
-/**
- * Mirrors the iframe's URL into the parent's URL bar (no page reload).
- *
- * Same-origin frame, so we monkey-patch the iframe's `History` methods
- * directly — no `postMessage` bridge. Wrapping `pushState`/`replaceState`
- * catches programmatic nav; `popstate` catches browser back/forward
- * inside the iframe. Each change is mirrored via the parent's
- * `replaceState` (not `pushState`) so iframe-internal navigations don't
- * clutter the parent's back-history with one entry each.
- *
- * Returns a cleanup that restores the originals.
- */
-function attachIframeUrlMirror(
-  iframeWindow: Window,
-  parentName: string,
-): () => void {
-  const iframePrefix = `${DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`;
-  const parentPrefix = `/data-app/${encodeURIComponent(parentName)}`;
-
-  const mirror = () => {
-    const iframePath = iframeWindow.location.pathname;
-    const tail = iframePath.startsWith(iframePrefix)
-      ? iframePath.slice(iframePrefix.length)
-      : "";
-    const parentTarget =
-      parentPrefix + tail + window.location.search + window.location.hash;
-    const parentCurrent =
-      window.location.pathname + window.location.search + window.location.hash;
-    if (parentCurrent !== parentTarget) {
-      window.history.replaceState(window.history.state, "", parentTarget);
-    }
-  };
-
-  const history = iframeWindow.history;
-  const origPush = history.pushState;
-  const origReplace = history.replaceState;
-  history.pushState = function (...args) {
-    origPush.apply(this, args);
-    mirror();
-  };
-  history.replaceState = function (...args) {
-    origReplace.apply(this, args);
-    mirror();
-  };
-  iframeWindow.addEventListener("popstate", mirror);
-
-  return () => {
-    history.pushState = origPush;
-    history.replaceState = origReplace;
-    iframeWindow.removeEventListener("popstate", mirror);
-  };
 }
 
 /**
@@ -109,6 +47,17 @@ export function AppView({ params }: AppViewProps) {
   // resolves), so a `useEffect` keyed on `[name, validName]` alone would
   // run before the iframe exists and silently skip.
   const [iframeEl, setIframeEl] = useState<HTMLIFrameElement | null>(null);
+
+  // Errors that happen *inside* the iframe (bundle fetch failed, or the bundle
+  // crashed at runtime) are reported up to here via `postMessage` so we can
+  // render the failure screen in the host realm — where it matches the rest of
+  // the app's theme exactly, instead of fighting the SDK theme inside the frame.
+  const [bundleError, setBundleError] =
+    useState<DataAppBundleErrorMessage | null>(null);
+
+  // Reset whenever we navigate to a different app so a stale error doesn't stick.
+  // Note: this currently is not possible, but may happen if we show apps in the left nav menu
+  useEffect(() => setBundleError(null), [name]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const src = useMemo(
@@ -150,11 +99,38 @@ export function AppView({ params }: AppViewProps) {
     };
   }, [iframeEl, name, validName]);
 
+  useEffect(() => {
+    if (!iframeEl) {
+      return undefined;
+    }
+
+    const onMessage = (event: MessageEvent) => {
+      // Only trust messages from our own iframe
+      if (event.source !== iframeEl.contentWindow) {
+        return;
+      }
+
+      const data = event.data as Partial<DataAppBundleErrorMessage> | null;
+
+      if (data?.type === DATA_APP_ERROR_MESSAGE_TYPE) {
+        setBundleError({
+          type: DATA_APP_ERROR_MESSAGE_TYPE,
+          notReady: Boolean(data.notReady),
+          message: typeof data.message === "string" ? data.message : undefined,
+          stack: typeof data.stack === "string" ? data.stack : undefined,
+        });
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [iframeEl]);
+
   if (!validName) {
     return (
-      <Box p="md">
-        <Text c="error">{t`Invalid data app name.`}</Text>
-      </Box>
+      <NotFound
+        title={t`Data app not found`}
+        message={t`This data app doesn’t exist or has been disabled.`}
+      />
     );
   }
 
@@ -163,10 +139,71 @@ export function AppView({ params }: AppViewProps) {
   }
 
   if (metaError || !meta) {
+    // A disabled or non-existent app 404s from the metadata endpoint; anything
+    // else is an unexpected failure.
+    const status =
+      metaError && typeof metaError === "object" && "status" in metaError
+        ? (metaError as { status?: unknown }).status
+        : undefined;
+
+    if (!metaError || status === 404) {
+      return (
+        <NotFound
+          title={t`Data app not found`}
+          message={t`This data app doesn’t exist or has been disabled.`}
+        />
+      );
+    }
+
     return (
-      <Box p="md">
-        <Text c="error">{t`Data app not found.`}</Text>
-      </Box>
+      <GenericError
+        title={t`Couldn’t load this data app`}
+        message={t`We ran into an error loading this data app. Try refreshing the page, or go back.`}
+        details={metaError}
+      />
+    );
+  }
+
+  if (bundleError) {
+    if (bundleError.notReady) {
+      return (
+        <NotFound
+          title={t`This data app isn’t ready yet`}
+          message={t`Its bundle hasn’t finished syncing from the connected repository. Try again in a moment.`}
+        />
+      );
+    }
+
+    return (
+      <Flex
+        direction="column"
+        w="100%"
+        h="100%"
+        justify="center"
+        align="center"
+      >
+        <EmptyState
+          title={t`This data app couldn’t be loaded`}
+          message={
+            bundleError.message ||
+            t`Something went wrong while loading this app. Try refreshing the page.`
+          }
+          illustrationElement={
+            <div
+              className={cx(
+                QueryBuilderS.QueryErrorImage,
+                QueryBuilderS.QueryErrorImageServerError,
+              )}
+            />
+          }
+        />
+
+        <ErrorDetails
+          className={CS.pt2}
+          errorBoxClassName={S.stackTrace}
+          details={bundleError.stack}
+        />
+      </Flex>
     );
   }
 
