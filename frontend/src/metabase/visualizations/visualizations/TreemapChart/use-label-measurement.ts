@@ -26,9 +26,16 @@ interface UseLabelMeasurementOptions {
   showParentValues: boolean;
 }
 
-interface MeasuredLayouts {
+interface MeasurementKey {
   tree: TreemapTree | null;
   viewRootId: NodeId | null;
+  renderingContext: RenderingContext | null;
+  formatters: TreemapFormatters | null;
+  showLeafValues: boolean;
+  showParentValues: boolean;
+}
+
+interface MeasuredLayouts extends MeasurementKey {
   labelLayout: Record<NodeId, TreemapLabelLayout>;
   parentLabelLayout: Record<NodeId, ParentLabelLayout>;
 }
@@ -36,21 +43,28 @@ interface MeasuredLayouts {
 const EMPTY_MEASURED: MeasuredLayouts = {
   tree: null,
   viewRootId: null,
+  renderingContext: null,
+  formatters: null,
+  showLeafValues: false,
+  showParentValues: false,
   labelLayout: {},
   parentLabelLayout: {},
 };
 
-/**
- * Second pass of the label layout: after ECharts finishes laying out (or
- * re-laying out on drill/resize), read each tile's rendered size and recompute
- * which labels show and how wide they wrap (see `measureTreemapLabelLayouts`).
- * Changing only `label.show`/`width` never changes tile geometry, so the next
- * `finished` reads identically — the deep-equal guard returns the same state
- * reference, React bails, and the loop converges in one extra pass.
- *
- * Wire `handleLabelMeasure` to the chart's `finished` event and feed the
- * returned layouts back into the option builder.
- */
+function isMeasuredFor(
+  measured: MeasuredLayouts,
+  key: MeasurementKey,
+): boolean {
+  return (
+    measured.tree === key.tree &&
+    measured.viewRootId === key.viewRootId &&
+    measured.renderingContext === key.renderingContext &&
+    measured.formatters === key.formatters &&
+    measured.showLeafValues === key.showLeafValues &&
+    measured.showParentValues === key.showParentValues
+  );
+}
+
 export function useLabelMeasurement({
   chartRef,
   tree,
@@ -67,6 +81,14 @@ export function useLabelMeasurement({
     if (!chart || !tree || !formatters) {
       return;
     }
+    const key: MeasurementKey = {
+      tree,
+      viewRootId,
+      renderingContext,
+      formatters,
+      showLeafValues,
+      showParentValues,
+    };
     const { labelLayout, parentLabelLayout } = measureTreemapLabelLayouts({
       nodes: getTreemapLayoutNodes(chart),
       tree,
@@ -76,12 +98,11 @@ export function useLabelMeasurement({
       showParentValues,
     });
     setMeasured((prev) =>
-      prev.tree === tree &&
-      prev.viewRootId === viewRootId &&
+      isMeasuredFor(prev, key) &&
       _.isEqual(prev.labelLayout, labelLayout) &&
       _.isEqual(prev.parentLabelLayout, parentLabelLayout)
         ? prev
-        : { tree, viewRootId, labelLayout, parentLabelLayout },
+        : { ...key, labelLayout, parentLabelLayout },
     );
   }, [
     chartRef,
@@ -93,8 +114,15 @@ export function useLabelMeasurement({
     showParentValues,
   ]);
 
-  // Measurements are only valid for the exact tree and view root they were measured at
-  const isStale = measured.tree !== tree || measured.viewRootId !== viewRootId;
+  // Measurements are only valid for the exact inputs they were measured at.
+  const isStale = !isMeasuredFor(measured, {
+    tree,
+    viewRootId,
+    renderingContext,
+    formatters,
+    showLeafValues,
+    showParentValues,
+  });
 
   return {
     labelLayout: isStale ? EMPTY_MEASURED.labelLayout : measured.labelLayout,

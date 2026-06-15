@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
+import type { TreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -59,7 +60,15 @@ function createMockChartRef(
   return { current: chart } as MutableRefObject<EChartsType | undefined>;
 }
 
-function setup({ viewRootId = null }: { viewRootId?: string | null } = {}) {
+type HookOverrides = Partial<{
+  viewRootId: string | null;
+  renderingContext: RenderingContext;
+  formatters: TreemapFormatters;
+  showLeafValues: boolean;
+  showParentValues: boolean;
+}>;
+
+function setup(initialProps: HookOverrides = {}) {
   const chartRef = createMockChartRef({
     "0": { width: 600, height: 400 },
     "0-0": { width: 400, height: 400 },
@@ -67,17 +76,18 @@ function setup({ viewRootId = null }: { viewRootId?: string | null } = {}) {
   });
 
   return renderHook(
-    (props: { viewRootId: string | null }) =>
+    (props: HookOverrides) =>
       useLabelMeasurement({
         chartRef,
         tree: TREE,
         formatters,
         renderingContext,
-        viewRootId: props.viewRootId,
+        viewRootId: null,
         showLeafValues: true,
         showParentValues: true,
+        ...props,
       }),
-    { initialProps: { viewRootId } },
+    { initialProps },
   );
 }
 
