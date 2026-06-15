@@ -80,6 +80,10 @@ export function getTreemapNodeId(
     : `${rootIndex}${NODE_ID_SEP}${leafIndex}`;
 }
 
+export function getTreemapRootNodeId(id: NodeId): NodeId {
+  return id.split(NODE_ID_SEP)[0];
+}
+
 export function parseTreemapNodeId(id: NodeId): {
   rootIndex: number;
   leafIndex?: number;

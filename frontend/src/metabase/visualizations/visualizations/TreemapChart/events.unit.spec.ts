@@ -1,5 +1,6 @@
 import type { EChartsType } from "echarts/core";
 
+import { getTreemapRootNodeId } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
   TreemapRect,
@@ -22,7 +23,6 @@ import {
   type TreemapHoverOverlayRef,
   dispatchTreemapViewRoot,
   getTreemapClickData,
-  getTreemapDrillTargetNodeId,
   getTreemapEventHandlers,
   hideTreemapHoverOverlay,
 } from "./events";
@@ -142,15 +142,15 @@ function makeOverlayRef(): TreemapHoverOverlayRef {
   return { current: null };
 }
 
-describe("getTreemapDrillTargetNodeId", () => {
+describe("getTreemapRootNodeId", () => {
   it("returns the id unchanged for a top-level grouping node", () => {
-    expect(getTreemapDrillTargetNodeId("0")).toBe("0");
-    expect(getTreemapDrillTargetNodeId("2")).toBe("2");
+    expect(getTreemapRootNodeId("0")).toBe("0");
+    expect(getTreemapRootNodeId("2")).toBe("2");
   });
 
   it("returns the grouping segment for a sub-group leaf node", () => {
-    expect(getTreemapDrillTargetNodeId("0-1")).toBe("0");
-    expect(getTreemapDrillTargetNodeId("3-12")).toBe("3");
+    expect(getTreemapRootNodeId("0-1")).toBe("0");
+    expect(getTreemapRootNodeId("3-12")).toBe("3");
   });
 });
 

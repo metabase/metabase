@@ -5,6 +5,7 @@ import { isNative } from "metabase/common/utils/card";
 import {
   getNodesFromPath,
   getTreemapNodeRectById,
+  getTreemapRootNodeId,
 } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
@@ -27,32 +28,10 @@ import type { RawSeries, RowValue } from "metabase-types/api";
 
 type TreemapSeriesMouseEvent = EChartsSeriesMouseEvent<{ id?: unknown }>;
 
-/**
- * The hover overlay element: a zrender `Rect` we add to the chart's zrender
- * layer directly (never via `setOption` — a `setOption` re-renders the treemap
- * at its absolute root, which would undo any drill). Held in a ref so successive
- * `mouseover`s reposition the same element and `globalout` can remove it.
- */
 export type TreemapHoverOverlay = InstanceType<typeof graphic.Rect>;
 export type TreemapHoverOverlayRef =
   MutableRefObject<TreemapHoverOverlay | null>;
 
-/**
- * Treemap series nodes carry path-encoded ids: `"0"` for a top-level grouping,
- * `"0-1"` for a sub-group leaf. Drilling always targets the top-level grouping,
- * so we take the first path segment.
- */
-export function getTreemapDrillTargetNodeId(nodeId: string): string {
-  return String(nodeId).split("-")[0];
-}
-
-/**
- * Re-apply the current drill to the chart. The view root lives in React state
- * (so the breadcrumb and the bottom inset can react to it); after each
- * `setOption` the chart is back at the absolute root, so for a drilled-in view
- * we dispatch `treemapRootToNode` to restore it. `null` is the overview, which
- * `setOption` already renders — nothing to dispatch.
- */
 export function dispatchTreemapViewRoot(
   chartRef: MutableRefObject<EChartsType | undefined>,
   viewRootId: string | null,
@@ -225,7 +204,7 @@ export function getTreemapClickHandler({
       }
       // Sub-grouping + overview: clicking drills down into the group (unchanged).
       if (hasChildren && !isDrilled) {
-        onDrillToGroup(getTreemapDrillTargetNodeId(id));
+        onDrillToGroup(getTreemapRootNodeId(id));
         return;
       }
       // Otherwise the clicked node is a leaf with no further drill-down — a
@@ -274,7 +253,7 @@ export function getTreemapHoverHandlers({
         }
         // Overview: wash the whole top-level section. Drilled: the section is
         // the canvas, so wash just the hovered tile.
-        const targetId = isDrilled ? id : getTreemapDrillTargetNodeId(id);
+        const targetId = isDrilled ? id : getTreemapRootNodeId(id);
         showTreemapHoverOverlay(chartRef, overlayRef, targetId);
       },
     },
