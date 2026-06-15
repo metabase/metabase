@@ -13,7 +13,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.memoize :as memo])
   (:import
-   (java.awt Color Font)
+   (java.awt Color)
    (java.awt.geom PathIterator Rectangle2D)
    (java.io ByteArrayOutputStream StringReader)
    (org.apache.batik.parser AWTPathProducer)
@@ -101,26 +101,20 @@
         (is (pos? (.getWidth b)) (str "path has width: " d))
         (is (pos? (.getHeight b)) (str "path has height: " d))))))
 
-(deftest ^:parallel branding-text-fallback-runs-test
-  (testing "the localized prefix splits into font runs: Lato covers Latin+Cyrillic, CJK falls back to Noto"
-    (let [runs (#'pdf/brand-text-runs "Made Сделано 作成")]
-      (is (= ["Made Сделано " "作成"] (mapv :text runs)) "Latin+Cyrillic share a run; CJK splits off")
-      (is (re-find #"Lato" (.getFamily ^Font (:font (first runs)))))
-      (is (re-find #"Noto" (.getFamily ^Font (:font (second runs))))))))
-
-;; not ^:parallel: exercises the real PDFBox path-drawing pipeline (content stream + Lato outline
-;; with quadratic segments + SVG cubic paths), which the deftest linter treats as side-effecting
+;; not ^:parallel: exercises the real PDFBox rendering path (font registry + content-stream text and
+;; SVG-vector logo), which the deftest linter treats as side-effecting
 (deftest branding-badge-render-smoke-test
-  (testing "draw-brand-badge! streams vectors into a real content stream and yields a saveable PDF"
+  (testing "draw-brand-badge! draws the localized prefix (body face) + SVG-vector logo into a saveable PDF"
     (with-open [doc (PDDocument.)]
-      (let [page (PDPage. PDRectangle/A4)]
-        (.addPage doc page)
-        (with-open [cs (PDPageContentStream. doc page)]
-          ;; right edge near the A4 content margin, badge in the top margin band
-          (#'pdf/draw-brand-badge! cs 559.0 800.0))
-        (let [baos (ByteArrayOutputStream.)]
-          (.save doc baos)
-          (is (pos? (count (.toByteArray baos)))))))))
+      (binding [pdf/*fonts* (#'pdf/load-fonts! doc)]
+        (let [page (PDPage. PDRectangle/A4)]
+          (.addPage doc page)
+          (with-open [cs (PDPageContentStream. doc page)]
+            ;; right edge near the A4 content margin, badge in the top margin band
+            (#'pdf/draw-brand-badge! cs 559.0 800.0))
+          (let [baos (ByteArrayOutputStream.)]
+            (.save doc baos)
+            (is (pos? (count (.toByteArray baos))))))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; `segment` -- greedy streaming grouping transducer
@@ -161,6 +155,43 @@
       (is (= [[3 4] [5 5]] (into [] (comp (pack 10) (take 2)) [3 4 5 5 2]))))
     (testing "composes/streams via sequence too, flushing the final open group"
       (is (= [[3 4] [5 5] [2]] (sequence (pack 10) [3 4 5 5 2]))))))
+
+(deftest ^:parallel segment-partition-all-test
+  (letfn [(part-all [n]
+            (#'pdf/segment (fn
+                             ([item] [item])
+                             ([acc item]
+                              (if (= n (count acc))
+                                ::pdf/reject
+                                (conj acc item))))))]
+    (are [n xs] (= (into [] (partition-all n) xs)
+                   (into [] (part-all n) xs))
+      3 (range 10)
+      3 (range 11)
+      3 (range 12)
+      3 (range 13)
+      1 (range 10)
+      1 (range 1)
+      3 []
+      1 [])))
+
+(deftest ^:parallel segment-partition-by-test
+  (letfn [(part-by [kf]
+            (#'pdf/segment (fn
+                             ([item] [(kf item) [item]])
+                             ([[old-key acc] item]
+                              (let [new-key (kf item)]
+                                (if (not= old-key new-key)
+                                  ::pdf/reject
+                                  [old-key (conj acc item)]))))
+                           second))]
+    (are [xs] (= (into [] (partition-by even?) xs)
+                 (into [] (part-by even?) xs))
+      (range 10)
+      (range 12)
+      (range 1)
+      []
+      [1 3 5 4 2 6 7 9 10 11 12])))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Link cards render as clickable markdown text cells

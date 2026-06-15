@@ -40,39 +40,29 @@
    [medley.core :as m]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.util :as render.util]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
-   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text ArabicShaping Bidi)
-   (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList Code Emphasis FencedCodeBlock
-                             HardLineBreak Heading Image IndentedCodeBlock Link MailLink OrderedList
-                             Paragraph SoftLineBreak StrongEmphasis Text ThematicBreak)
-   (com.vladsch.flexmark.ext.autolink AutolinkExtension)
-   (com.vladsch.flexmark.parser Parser)
-   (com.vladsch.flexmark.util.ast Node)
-   (com.vladsch.flexmark.util.data MutableDataSet)
-   (java.awt Color Font RenderingHints)
-   (java.awt.font FontRenderContext GlyphVector)
+   (java.awt Color)
    (java.awt.geom AffineTransform PathIterator)
-   (java.awt.image BufferedImage)
-   (java.io ByteArrayInputStream ByteArrayOutputStream StringReader)
-   (javax.imageio ImageIO ImageReader)
+   (java.io ByteArrayOutputStream StringReader)
    (org.apache.batik.parser AWTPathProducer)
    (org.apache.fontbox.ttf CmapLookup TrueTypeFont TTFParser)
    (org.apache.pdfbox.io RandomAccessReadBuffer)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
    (org.apache.pdfbox.pdmodel.font PDFont PDType0Font)
-   (org.apache.pdfbox.pdmodel.graphics.image LosslessFactory PDImageXObject)
+   (org.apache.pdfbox.pdmodel.graphics.image PDImageXObject)
    (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
    (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink PDBorderStyleDictionary)))
 
@@ -157,13 +147,25 @@
   "Physical font keyword -> classpath resource. The fonts are TrueType (glyf) format, so PDFBox can subset them and
   the output PDF only carries the glyphs actually used.
 
-  Noto Sans covers Latin/Cyrillic/Greek; the per-region Noto Sans JP/KR/SC faces cover Japanese, Korean and Simplified
-  Chinese; Noto Sans Arabic/Hebrew cover those scripts (see [[visual-order]] for RTL shaping/reordering)."
+  Lato regular and bold are preferred, as that's the Metabase UI's main body text, as well as the font for our logo and
+  other branding. Noto Sans has further coverage of Latin accents and special characters, plus Devanagari (Hindi et al),
+  Cyrillic and Greek. Hebrew and Arabic are handled by specific font faces, and finally the per-region Noto Sans
+  JP/KR/SC faces cover Japanese, Korean and Simplified Chinese.
+
+  See [[visual-order]] for RTL reordering for Hebrew and Arabic, and for *shaping* of Arabic."
   {:noto-regular     "fonts/pdf/NotoSans-Regular.ttf"
    :noto-bold        "fonts/pdf/NotoSans-Bold.ttf"
    :noto-italic      "fonts/pdf/NotoSans-Italic.ttf"
    :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
    :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
+
+   ;; TODO: (bshepherdson 2026-06-11) We reuse the FE's bundled Lato asset directly rather than duplicating it into a
+   ;; BE-owned path (it has full Latin/Cyrillic/Greek/Vietnamese coverage and is already shipped). This couples us to
+   ;; the `frontend_client` asset layout. These files should be moved to a BE-owned part of `resources/` and the static
+   ;; asset serving adjusted to preserve the FE URLs.
+   :brand-regular    "frontend_client/app/fonts/Lato/Lato-Regular.ttf"
+   :brand-bold       "frontend_client/app/fonts/Lato/lato-v16-latin-700.ttf"
+
    :arabic-regular   "fonts/pdf/NotoSansArabic-Regular.ttf"
    :arabic-bold      "fonts/pdf/NotoSansArabic-Bold.ttf"
    :hebrew-regular   "fonts/pdf/NotoSansHebrew-Regular.ttf"
@@ -176,10 +178,12 @@
    :sc-bold          "fonts/pdf/NotoSansSC-Bold.ttf"})
 
 (def ^:dynamic *fonts*
-  "Per-document map of `{face-keyword {:primary <phys> :fallbacks [<phys> ...]} ...}`, where each `<phys>` is
-  `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are tied
-  to a specific `PDDocument`; see [[load-fonts!]]. Latin keeps the Noto Sans look across all styles; the CJK regional
-  faces are ordered fallbacks so mixed English/Japanese text renders per-glyph from the right font.
+  "Per-document map of `{face-keyword {:fallbacks [<phys> ...]} ...}`, where each `<phys>` is
+  `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are
+  tied to a specific `PDDocument`; see [[load-fonts!]].
+
+  Latin keeps the Lato (or Noto Sans) look across all styles; the CJK regional faces are ordered fallbacks so mixed
+  English/Japanese text renders per-glyph from the right font.
 
   CJK has no italic, so italic CJK falls back to the upright CJK face."
   nil)
@@ -201,18 +205,19 @@
   [^PDDocument doc]
   (let [phys  (update-vals physical-font-resources #(load-phys doc %))
         ;; `:id` is a stable keyword identifying the face -- used as a cheap cache key (see
-        ;; [[*width-cache*]]) instead of the heavy `{:primary ... :fallbacks ...}` map.
-        face* (fn [id primary & fallbacks]
+        ;; [[*em-width*]]) instead of the heavy `{:fallbacks ...}` map.
+        face* (fn [id & fallbacks]
                 {:id        id
-                 :primary   (phys primary)
-                 :fallbacks (mapv phys fallbacks)})]
+                 :fallbacks (mapv phys (flatten fallbacks))})
+        regulars [:hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular]
+        bolds    [:hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold]]
     ;; The fallback order for each style is important: first ordering by preference in case they overlap; and then
     ;; where there's no overlap (especially CJK) to put the heaviest fonts last.
-    {:regular     (face* :regular     :noto-regular     :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
-     :bold        (face* :bold        :noto-bold        :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
-     :italic      (face* :italic      :noto-italic      :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)
-     :bold-italic (face* :bold-italic :noto-bold-italic :hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold)
-     :mono        (face* :mono        :noto-mono        :hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular)}))
+    {:regular     (face* :regular     :brand-regular :noto-regular regulars)
+     :bold        (face* :bold        :brand-bold    :noto-bold    bolds)
+     :italic      (face* :italic      :noto-italic                 regulars)
+     :bold-italic (face* :bold-italic :noto-bold-italic            bolds)
+     :mono        (face* :mono        :noto-mono                   regulars)}))
 
 (defn- face [k]
   (get *fonts* k))
@@ -296,27 +301,21 @@
 (defn- cp-font
   "Given a face and a codepoint, returns the physical font with the best matching glyph for the given codepoint.
 
-  The `:primary` font is preferred, then the `:fallbacks` in order. If none of the fonts has a glyph for this
-  codepoint, returns nil."
-  [{:keys [primary fallbacks] :as _face} cp]
-  (or (when (covers? primary cp) primary)
-      (m/find-first #(covers? % cp) fallbacks)))
-
-;; FIXME: I think it's dumb to distinguish `:primary` and `:fallbacks` - if they're always checked in this order, then
-;; the `:primary` distinction is pointless.
+  Checks each of the `:fallbacks` in order. If none of the fonts has a glyph for this codepoint, returns nil."
+  [{:keys [fallbacks] :as _face} cp]
+  (m/find-first #(covers? % cp) fallbacks))
 
 (defn- font-runs
   "Split `s` into maximal `[phys ^String chunk]` runs that all use the same physical font.
 
   For each codepoint, the physical font chosen is the first one in this order that has the glyph:
 
-  - the face's `:primary` font
-  - each of the `:fallbacks` in order
-  - abandon this codepoint, and fall back to `?` from the `:primary` font as a placeholder.
+  - each of face's the `:fallbacks` in order
+  - abandon this codepoint, and fall back to ASCII `?`, and repeat the search.
 
   Since every codepoint is resolved to some glyph, `showText` will never throw."
-  ;; TODO: (bshepherdson, 2026-06-09) Consider using the "tofu" placeholder box ☐ or Unicode REPLACEMENT CHARACTER �
-  [{:keys [primary] :as face} ^String s]
+  ;; TODO: (bshepherdson, 2026-06-09) Consider using the "tofu" placeholder box ☐ instead.
+  [face ^String s]
   (let [n    (.length s)
         emit (fn [out cur ^StringBuilder sb]
                (cond-> out
@@ -331,9 +330,9 @@
         :let [cp   (.codePointAt s i)
               phys (cp-font face cp)
               ;; If the codepoint doesn't have a matching glyph in any font, phys is nil. In that case, default `ch`
-              ;; to `?` and `phys` to the `:primary` font.
+              ;; to `?` and search for `phys` again.
               ch   (if phys cp (int \?))
-              phys (or phys primary)]
+              phys (or phys (cp-font face ch))]
         ;; At this point, `phys` is a physical font and `ch` is the codepoint to use within that font.
         ;; `cp` itself holds the proper input codepoint, which we still need to gets its `charCount` and advance the
         ;; right distance through the input string.
@@ -397,10 +396,6 @@
   inner function."
   raw-em-width-inner)
 
-;; FIXME: If [[font-runs]] is only called in a transducing context, it could be rewritten into a reducible for better
-;; memory use and allocation performance. (Note `draw-line!` also calls it once per drawn line; only the *measurement*
-;; side is cached above, since that is what gets repeated.)
-
 (defn- text-width
   "Width in points of `s` drawn with `face` at `font-pt`. The per-glyph measurement lives in (cached) [[*em-width*]];
   this just scales it by the font size."
@@ -430,7 +425,7 @@
 ;; --------------------------------------------------------------------------------------------
 ;; Greedy streaming grouping (`segment`)
 ;;
-;; A reusable transducer for greedily "packing" input items into grouped output items, a
+;; A stateful transducer for greedily "packing" input items into grouped output items; a
 ;; generalized `partition-by`. Think packing words on a line of text, dashcards into pages, etc.
 ;;
 ;; User code (*policy*) is controlled by two (three) functions: opening a new group, including or
@@ -439,27 +434,25 @@
 ;; --------------------------------------------------------------------------------------------
 
 (defn- segment
-  "A stateful transducer that greedily groups a stream of items. `collect` is the *policy*, given as
-  two arities, and this transducer is the *mechanism* that drives them:
+  "A stateful transducer that greedily groups a stream of items. `collect` is the *policy*, given as two arities,
+  and this transducer is the *mechanism* that drives them:
 
-    (collect item)      -- OPEN: start a new group seeded with `item`. Must always succeed, so a
-                           group always holds at least one item (the progress guarantee -- pre-split
-                           any atom that can't stand alone, the way oversize words are char-split).
-    (collect acc item)  -- ADD: fold `item` into the open group `acc`, returning either
-                             the new accumulator -- accept: the group stays open;
-                             `::reject`          -- close the group, then REOPEN it seeded with
-                                                    `item` (e.g. `item` would overflow the line); or
-                             `::break`           -- close the group and DROP `item`, a consumed seam
-                                                    (e.g. collapsing the whitespace between words).
+  - `(collect item)` is **open**: start a new group seeded with `item`. Must always succeed, so a group always holds
+    at least one item. This guarantees progress - if the item passed to **open** is too big even for a fresh group
+    (e.g. a word too long for a line all by itself) then **open** should forcibly split it.
+  - `(collect acc item)` is **add**: fold `item` into the open group `acc`. Returns one of three things:
+    - An updated `acc`: accepts the new item
+    - `::reject`: the new `item` cannot fit! The current group is closed, and `item` is passed to **open** to become
+      the first item in a new group.
+    - `::break`: `item` represents the end of a group (e.g. a hard line break) and therefore the current group should
+      be closed (if any) and `item` *dropped*. The next input item (if any) is used to **open** the next group.
 
-  `close` (default `identity`) realizes a finished accumulator into the emitted value -- e.g. trim
-  and RTL-reorder a packed line, or `str` a `StringBuilder`. The reject/break sentinels are this
-  namespace's `::reject`/`::break`; a policy in another namespace returns the fully-qualified
-  keywords.
+  `close` (default `identity`) realizes a finished accumulator into the emitted value -- e.g. trim and RTL-reorder
+  a packed line, or `str` a `StringBuilder`.
 
-  Honors downstream `reduced?` (early termination) and flushes the still-open group in the
-  completion step. Equivalent to `partition-by` when `collect` opens `[item]`, accepts while a
-  key-fn is unchanged (else `::reject`), and `close` is `identity`."
+  Honors downstream `reduced?` (early termination) and flushes any open group in the transducer's completion step.
+
+  See the tests for reimplementations of [[partition-all]] and [[partition-by]] using `segment`."
   ([collect] (segment collect identity))
   ([collect close]
    (fn [rf]
@@ -494,18 +487,16 @@
   "True if `cp` is a CJK character that must not start a line (closing punctuation, small kana), so
   it sticks to the previous break-unit. A simplified kinsoku rule (see [[no-break-before-chars]])."
   [cp]
-  (and (<= (int cp) 0xFFFF) (contains? no-break-before-chars (char cp))))
+  (and (<= (int cp) 0xFFFF)
+       (contains? no-break-before-chars (char cp))))
 
 (defn- text->codepoint-items
   "`text` as a seq of `{:cp <codepoint>}` items, one per codepoint (surrogate pairs kept intact) --
-  the input stream to the [[tokenize-units]] pipeline."
+  the input stream to the [[runs->words]] pipeline. `.toArray` materialises the codepoint
+  `IntStream` into an `int[]` (a `java.util.stream.IntStream` isn't directly reducible)."
   [^String text]
-  (let [n (.length text)]
-    (loop [i 0, acc (transient [])]
-      (if (>= i n)
-        (persistent! acc)
-        (let [cp (.codePointAt text i)]
-          (recur (+ i (Character/charCount cp)) (conj! acc {:cp cp})))))))
+  (into [] (map (fn [cp] {:cp cp}))
+        (.toArray (.codePoints text))))
 
 (defn- run-style
   "The style map carried on each piece of a run -- everything but the structural keys, plus `:link?`
@@ -515,9 +506,9 @@
     (:href r) (assoc :link? true)))
 
 (defn- run->items
-  "Expand one run into the [[runs->words]] input stream: a `:break?`/`:ruby?` run becomes a single
-  atomic item; a text run becomes one `{:cp _ :style _}` item per codepoint, each tagged with the
-  run's style so a [[collect-word]] word can carry pieces from more than one run."
+  "Expand one run into the [[runs->words]] input stream: a `:break?`/`:ruby?` run becomes a single atomic item;
+  a text run becomes one `{:cp _ :style _}` item per codepoint, each tagged with the run's style so a
+  [[collect-word]] word can carry pieces from more than one run."
   [r]
   (cond
     (:break? r) [{:break? true}]
@@ -526,78 +517,75 @@
                   (map #(assoc % :style style) (text->codepoint-items (str (:text r "")))))))
 
 (defn- mark-space-before
-  "Stateful transducer over run items: drops whitespace codepoint items and stamps every surviving
-  item with `:space-before?` -- true iff whitespace immediately preceded it. This is where the old
-  `pending` bookkeeping lives now; running over the whole run stream at once, it threads spacing
-  across run boundaries for free. A `:break?` carries no space and resets the pending state."
-  [pending]
+  "Stateful transducer over run items: drops whitespace codepoint items and stamps every surviving item with
+  `:space-before?` -- true iff whitespace immediately preceded it.
+
+  Accepts an initial `:space-before?` value, since some contexts start with leading space.
+
+  A `:break?` clears `:space-before?` - it represents a hard line break or similar, and the next unit is therefore
+  flush with the start."
+  [init-space-before?]
   (fn [rf]
-    (let [pend (volatile! (boolean pending))]
+    (let [space-before? (volatile! (boolean init-space-before?))]
       (fn
         ([] (rf))
         ([result] (rf result))
         ([result item]
          (cond
            (and (:cp item) (Character/isWhitespace (int (:cp item))))
-           (do (vreset! pend true) result)
+           (do (vreset! space-before? true) result)
 
            (:break? item)
-           (do (vreset! pend false) (rf result item))
+           (do (vreset! space-before? false) (rf result item))
 
            :else
-           (let [sb @pend]
-             (vreset! pend false)
+           (let [sb @space-before?]
+             (vreset! space-before? false)
              (rf result (assoc item :space-before? sb)))))))))
 
-(defn- word-append
-  "Append codepoint `cp` (drawn in `style`) to the open word `acc`: extend its last piece if the
-  style is unchanged, else start a new styled piece. A word is thus a vector of same-style runs."
-  [acc style cp]
-  (let [cp     (int cp)
-        pieces (:pieces acc)
-        last-p (peek pieces)]
-    (if (= (:style last-p) style)
-      (do (.appendCodePoint ^StringBuilder (:cps last-p) cp) acc)
-      (assoc acc :pieces (conj pieces {:style style :cps (doto (StringBuilder.) (.appendCodePoint cp))})))))
-
 (defn- collect-word
-  "[[segment]] policy grouping the run-item stream into break-units (words) that can't break across a
-  line. The word boundary is *whitespace* (and CJK char boundaries) -- NOT a style change -- so a
-  word holds 1+ styled `:pieces` and `\"**bo**ld\"` stays one indivisible word. Each CJK character is
-  its own word; a no-break-before character ([[no-break-before?]]) glues onto the open word
-  (kinsoku). `:break?`/`:ruby?` items are atomic words. Accumulator:
-  `{:space-before? _ :pieces [{:style _ :cps <StringBuilder>}…] :cjk-unit? _}` (or `{:atomic item}`);
-  `:cjk-unit?` means the word can no longer take an ordinary character."
+  "[[segment]] policy for grouping the run-item stream into break-units (words) that can't break across a line. This
+  decides *word* boundaries only: the boundaries are whitespace and CJK char boundaries, NOT style changes, so
+  `\"**bo**ld\"` stays one indivisible word. Each CJK character is its own word, except for a few no-break-before
+  characters ([[no-break-before?]]) which stick onto the end of the open word (kinsoku). `:break?`/`:ruby?` items are
+  atomic words. The accumulator just collects the word's raw codepoint items in `:cps` -- splitting them into styled
+  `:pieces` is [[close-word]]'s job. `:cjk-unit?` means the word can no longer take an ordinary character."
   ([item]
    (if-let [cp (:cp item)]
-     (let [cp (int cp)]
-       {:space-before? (boolean (:space-before? item))
-        :pieces        [{:style (:style item) :cps (doto (StringBuilder.) (.appendCodePoint cp))}]
-        :cjk-unit?     (cjk-char? cp)})
+     {:space-before? (boolean (:space-before? item))
+      :cps           [item]
+      :cjk-unit?     (cjk-char? (int cp))}
      {:atomic item}))
   ([acc item]
    (cond
      (:atomic acc)    ::reject
      (not (:cp item)) ::reject                          ; a ruby/break can't join a word
      :else
-     (let [cp (int (:cp item)), style (:style item)]
+     (let [cp (int (:cp item))]
        (cond
          ;; a no-break-before char glues onto the open word even across a space (kinsoku wins)
-         (no-break-before? cp) (word-append (assoc acc :cjk-unit? true) style cp)
+         (no-break-before? cp) (-> acc (assoc :cjk-unit? true) (update :cps conj item))
          (:space-before? item) ::reject               ; whitespace preceded -> new word
          (cjk-char? cp)        ::reject               ; each CJK char is its own word
          (:cjk-unit? acc)      ::reject
-         :else                 (word-append acc style cp))))))
+         :else                 (update acc :cps conj item))))))
+
+(defn- codepoints->string
+  ^String [items]
+  (let [sb (StringBuilder.)]
+    (doseq [{:keys [cp]} items] (.appendCodePoint sb (int cp)))
+    (.toString sb)))
 
 (defn- close-word
   "Realise a [[collect-word]] accumulator into a word token: an atomic `:break?`/`:ruby?` item passes
-  through; a char word becomes `{:space-before? _ :pieces [{:style _ :text _}…]}`."
+  through; a char word splits its codepoints into same-style `:pieces` (`partition-by :style` -- the
+  one place piece boundaries are decided), each `{:style _ :text _}`."
   [acc]
   (if-let [item (:atomic acc)]
     item
     {:space-before? (:space-before? acc)
-     :pieces        (mapv (fn [p] {:style (:style p) :text (.toString ^StringBuilder (:cps p))})
-                          (:pieces acc))}))
+     :pieces        (mapv (fn [grp] {:style (:style (first grp)) :text (codepoints->string grp)})
+                          (partition-by :style (:cps acc)))}))
 
 (defn- item-codepoint-count
   "Number of codepoints across all of a measured word item's `:pieces`."
@@ -609,67 +597,79 @@
   "Split an over-wide measured word into one measured item per codepoint (each a single-piece word
   carrying its source piece's font/colour), so the wrapper can break inside it. The first keeps the
   word's `:space-before?`. Used to hard-break a token wider than the whole line."
-  [item]
-  (let [sb    (boolean (:space-before? item))
-        sp    (:sp item)
-        chars (for [{:keys [font pt color href] :as _piece} (:pieces item)
-                    cp (iterator-seq (.iterator (.codePoints ^String (:text _piece))))
-                    :let [text (String. (Character/toChars (int cp)))]]
-                {:font font :pt pt :color color :href href :text text :ww (text-width font pt text)})]
-    (map-indexed (fn [i p]
-                   {:space-before? (and (zero? i) sb) :sp sp :pieces [p] :ww (:ww p)})
-                 chars)))
+  [{:keys [pieces sp space-before?] :as _item}]
+  (->> (for [{:keys [font pt] :as piece} pieces
+             cp                          (seq (.codePoints ^String (:text piece)))
+             :let [text (String. (Character/toChars (int cp)))]]
+         (merge (select-keys piece [:font :pt :color :href])
+                {:text text
+                 :ww   (text-width font pt text)}))
+       (map-indexed (fn [i p]
+                      {:space-before? (and space-before? (zero? i))
+                       :sp            sp
+                       :pieces        [p]
+                       :ww            (:ww p)}))))
 
 (defn- split-word-into-chars
-  "The `split-fn` for [[pack-units->lines]]: break a too-wide word into per-codepoint pieces, leaving
-  ruby groups and single-codepoint words atomic."
+  "The `split-fn` for [[pack-units->lines]]: break a too-wide word into per-codepoint pieces, leaving ruby groups
+  and single-codepoint words atomic."
   [item]
-  (if (or (:ruby? item) (<= (item-codepoint-count item) 1))
+  (if (or (:ruby? item)
+          (<= (item-codepoint-count item) 1))
     [item]
     (split-into-chars item)))
 
 (defn- pack-units->lines
-  "Greedily pack pre-measured `units` into lines no wider than `max-w`. This is the shared word-wrap
-  algorithm behind [[words->lines]], through which all text -- Markdown cards and plain titles /
-  headings / parameters alike -- is wrapped.
+  "Greedily pack pre-measured `units` into lines no wider than `max-w`. This is the shared word-wrap algorithm behind
+  [[words->lines]], through which all text (Markdown cards, plain titles, headings, parameters) is wrapped.
 
-  Each unit is a map carrying `:ww` (its drawn width), `:sp` (the width of one leading space), and
-  `:space-before?` (whether the source had whitespace before it). A unit may instead be a
-  `{:break? true}` marker, which forces a line break. A unit that alone exceeds `max-w` is broken
-  via `split-fn` (a unit -> a seq of narrower pre-measured units; it returns the unit unchanged when
-  it can't be split further, e.g. a single glyph).
+  Each unit is a map carrying `:ww` (its drawn width), `:sp` (the width of one leading space), and `:space-before?`
+  (whether the source had whitespace before it). A unit may instead be a `{:break? true}` marker, which forces a line
+  break. A unit that alone exceeds `max-w` is broken via `split-fn` (a unit -> a seq of narrower pre-measured units;
+  it returns the unit unchanged when it can't be split further, e.g. a single glyph).
 
-  Returns a vector of lines, each a vector of (the same, opaque) units, with each unit's
-  `:space-before?` updated to whether *this line* draws a space before it -- false at the start of a
-  line, so callers don't have to special-case the first unit."
+  Returns a seq of lines, where each line is a seq of the same opaque input units, with each unit's `:space-before?`
+  updated to whether *this line* draws a space before it. It's always false at the start of a line, so callers don't
+  have to special-case the first unit.
+
+  Note that while this resembles the shape that [[segment]] is for, there are two problems. First, [[segment]] is
+  about grouping an input stream into *runs* with some property (e.g. text style) all the same; this function is
+  about greedy bin-packing. Critically, atoms in this function are not *quite* indivisible! A single atom that is too
+  big for a line by itself must be *divided* by [[split-word-into-chars]] to force a line break. There's no way to
+  include that in the policy for [[segment]] without making it so intricate as to remove its value. An alternative
+  HOF or transducer for bin-packing could be written, but this would be the only caller."
   [units max-w split-fn]
-  (loop [units units, line [], line-w 0.0, lines (transient [])]
+  (loop [[{:keys [break? sp space-before? ww] :as u} :as units] units
+         line                                                   []
+         line-w                                                 0.0
+         lines                                                  (transient [])]
     (b/cond
-      (empty? units)
-      (-> lines (cond-> (seq line) (conj! line)) persistent!)
-
-      :let [u (first units)]
+      (empty? units)  (cond-> lines
+                        (seq line) (conj! line)
+                        :always    persistent!)
 
       ;; a hard break flushes the current line (which may be empty -> a blank line)
-      (:break? u)
-      (recur (rest units) [] 0.0 (conj! lines line))
+      break?          (recur (rest units) [] 0.0 (conj! lines line))
 
-      :let [add-space? (boolean (and (seq line) (:space-before? u)))
-            advance    (+ (if add-space? (:sp u) 0.0) (double (:ww u)))
+      :let [add-space? (and (seq line) space-before?)
+            advance    (+ ww (if add-space? sp 0.0))
             ;; a unit alone on its line and wider than the whole line is a split candidate
-            parts      (when (and (empty? line) (> (double (:ww u)) max-w))
+            parts      (when (and (empty? line)
+                                  (> ww max-w))
                          (split-fn u))]
 
       ;; the candidate actually split into more than one piece: retry with those in front
-      (next parts)
-      (recur (concat parts (rest units)) line line-w lines)
+      (next parts)                       (recur (concat parts (rest units))
+                                                line line-w lines)
 
       ;; the line is nonempty and the next unit won't fit: break here and retry the unit
-      (and (seq line) (> (+ line-w advance) max-w))
-      (recur units [] 0.0 (conj! lines line))
+      (and (seq line)
+           (> (+ line-w advance) max-w)) (recur units [] 0.0 (conj! lines line))
 
-      :else
-      (recur (rest units) (conj line (assoc u :space-before? add-space?)) (+ line-w advance) lines))))
+      :else                              (recur (rest units)
+                                                (conj line (assoc u :space-before? (boolean add-space?)))
+                                                (+ line-w advance)
+                                                lines))))
 
 (defn- draw-line!
   "Draw a single line of text with `face` at a baseline, switching physical fonts as needed so mixed-script text
@@ -681,197 +681,6 @@
     (.setFont cs ^PDFont (:font phys) (float font-pt))
     (.showText cs chunk))
   (.endText cs))
-
-;; --------------------------------------------------------------------------------------------
-;; Markdown image fetching. Markdown text cards can reference remote images, which means fetching
-;; user-provided URLs server-side -- the classic SSRF risk. The SSRF-hardened fetch itself lives in
-;; [[metabase.util.http/fetch-bytes]]; here we only add the image-specific decoding: restrict to
-;; raster content-types and reject over-large images (decompression-bomb guard) before decoding.
-;; Any failure returns nil and the caller renders a Markdown link instead.
-;; --------------------------------------------------------------------------------------------
-
-(def ^:private image-max-megapixels 24)
-(def ^:private allowed-image-content-types #{"image/png" "image/jpeg" "image/gif"})
-
-(defn- decode-image
-  "Decode `bytes` into a `PDImageXObject` embedded in `doc`, rejecting images over the megapixel cap
-  (decompression-bomb guard) by reading dimensions before the full decode. Returns nil on failure."
-  [^PDDocument doc ^bytes bytes]
-  (try
-    (with-open [iis (ImageIO/createImageInputStream (ByteArrayInputStream. bytes))]
-      (let [readers (ImageIO/getImageReaders iis)]
-        (when (.hasNext readers)
-          (let [^ImageReader rdr (.next readers)]
-            (try
-              (.setInput rdr iis)
-              (let [w (.getWidth rdr 0), h (.getHeight rdr 0)]
-                (when (and (pos? w) (pos? h)
-                           (<= (* (long w) (long h)) (* image-max-megapixels 1000000)))
-                  (let [^BufferedImage bi (.read rdr 0)]
-                    (LosslessFactory/createFromImage doc bi))))
-              (finally (.dispose rdr)))))))
-    (catch Throwable _ nil)))
-
-(defn- fetch-image!
-  "SSRF-safely fetch + decode a remote image URL into a `PDImageXObject`, or nil if anything fails."
-  [^PDDocument doc url]
-  (when-let [bytes (:bytes (u.http/fetch-bytes url {:allowed-content-types allowed-image-content-types}))]
-    (decode-image doc bytes)))
-
-;; --------------------------------------------------------------------------------------------
-;; Markdown -> styled runs (text cards). We parse with flexmark (the same library the email
-;; pipeline uses) but walk the AST ourselves, emitting block + inline-run structure that maps to
-;; PDFBox fonts/colors -- since PDFBox has no HTML engine, the email's HTML output is no use here.
-;; --------------------------------------------------------------------------------------------
-
-(def ^:private md-parser
-  (delay (-> (MutableDataSet.)
-             (.set Parser/EXTENSIONS [(AutolinkExtension/create)])
-             (Parser/builder)
-             (.build))))
-
-(defn- node-children [^Node node]
-  ;; getChildren returns an Iterable, which `seq` supports out of the box.
-  (seq (.getChildren node)))
-
-(defn- md-unescape
-  "Resolve CommonMark backslash escapes (`\\,` -> `,`) the way flexmark's HtmlRenderer does -- `.getChars` on a Text
-  node returns the raw source, escapes included. Parameter substitution escapes interpolated values, so e.g. a
-  multi-value filter arrives as `A\\, B\\, and C`."
-  [s]
-  (str/replace (str s) #"\\(\p{Punct})" "$1"))
-
-(declare ^:private inline-runs)
-
-(defn- parse-ruby
-  "Split plain text into runs, turning `{base|reading}` furigana shorthand into ruby runs
-  (`{:ruby? true :base … :reading …}`) and leaving the rest as ordinary text runs."
-  [text style href]
-  (let [s (str text)
-        m (re-matcher #"\{([^{}|]+)\|([^{}|]+)\}" s)]
-    (loop [last 0
-           out  []]
-      (if (.find m)
-        (recur (.end m)
-               (cond-> out
-                 (< last (.start m)) (conj (assoc style :text (subs s last (.start m)) :href href))
-                 true                (conj (assoc style :ruby? true :base (.group m 1)
-                                                  :reading (.group m 2) :href href))))
-        (cond-> out
-          (< last (count s)) (conj (assoc style :text (subs s last) :href href)))))))
-
-(defn- inline-node->runs
-  "Convert a single inline node into styled runs. Images nested in inline content degrade to their alt text; top-level
-  paragraph images are pulled out as `:image` blocks (see `paragraph->blocks`)."
-  [^Node c style href]
-  (condp instance? c
-    Text           (-> (.getChars c) md-unescape (parse-ruby style href))
-    StrongEmphasis (inline-runs c (assoc style :bold?   true) href)
-    Emphasis       (inline-runs c (assoc style :italic? true) href)
-    Link           (inline-runs c style                       (str (.getUrl ^Link c)))
-    Code           [(assoc style
-                           :code? true
-                           :text  (str (.getText ^Code c))
-                           :href  href)]
-    AutoLink       (let [u (str (.getText ^AutoLink c))]
-                     [(assoc style :text u :href u)])
-    MailLink       (let [u (str (.getText ^MailLink c))]
-                     [(assoc style :text u :href (str "mailto:" u))])
-    Image          (let [alt (str (.getText ^Image c))]
-                     [(assoc style
-                             :text (if (str/blank? alt) "[image]" alt)
-                             :href (str (.getUrl ^Image c)))])
-    SoftLineBreak  [{:text " " :space? true}]
-    HardLineBreak  [{:break? true}]
-    (if (.getFirstChild c)
-      (inline-runs c style href)
-      (-> (.getChars c) md-unescape (parse-ruby style href)))))
-
-(defn- inline-runs
-  "Flatten a block node's inline children into styled runs: each is `{:text :bold? :italic? :code? :href}`, plus
-  `{:break? true}` for a hard line break."
-  ([^Node node] (inline-runs node {} nil))
-  ([^Node node style href]
-   (into [] (mapcat #(inline-node->runs % style href))
-         (node-children node))))
-
-;; FIXME: There are so many `loop`s in all this code. Either we should suck it up and use mapcat and flatten and other
-;; Clojure niceties without worrying about performance, *or* these should be written as reducibles that stream their
-;; results into a sink, rather than all this conditional `conj` onto `out` etc.
-(defn- paragraph->blocks
-  "A paragraph normally becomes one `:paragraph` block, but top-level images are pulled out as standalone `:image`
-  blocks, interleaved with the surrounding text."
-  [^Node node]
-  (loop [children (node-children node)
-         runs     []
-         out      []]
-    (if (empty? children)
-      (cond-> out (seq runs) (conj {:kind :paragraph :runs runs}))
-      (let [^Node c (first children)]
-        (if (instance? Image c)
-          (recur (rest children) []
-                 (cond-> out
-                   (seq runs) (conj {:kind :paragraph :runs runs})
-                   true       (conj {:kind :image
-                                     :src  (str (.getUrl ^Image c))
-                                     :alt  (str (.getText ^Image c))})))
-          (recur (rest children) (into runs (inline-node->runs c {} nil)) out))))))
-
-(declare ^:private block->blocks)
-
-;; FIXME: Use this for a few of the other "first one only" things like this. There's at least two others IIRC.
-(defn- on-first
-  "Returns a stateful transducer that applies `(f x)` only to the first element in the sequence. Passes through all
-  subsequent elements unchanged."
-  [f]
-  (fn [xf]
-    (let [seen? (volatile! false)]
-      (fn
-        ([] (xf))
-        ([res] (xf res))
-        ([res x]
-         (xf res (if @seen?
-                   x
-                   (do (vreset! seen? true)
-                       (f x)))))))))
-
-(defn- list->blocks [^Node list-node depth ordered?]
-  (into [] (comp (map-indexed
-                  (fn [idx ^Node item]
-                    (into [] (comp (mapcat #(block->blocks % (inc depth)))
-                                   (on-first #(cond-> %
-                                                (= :paragraph (:kind %)) (assoc :kind   :list-item
-                                                                                :indent depth
-                                                                                :marker (if ordered?
-                                                                                          (str (inc idx) ". ")
-                                                                                          "- ")))))
-                          (node-children item))))
-                 cat)
-        (node-children list-node)))
-
-(defn- block->blocks
-  "Convert a flexmark block node into a flat vector of layout blocks `{:kind :runs ...}`."
-  [^Node node depth]
-  (condp instance? node
-    Heading           [{:kind :heading :level (.getLevel ^Heading node) :runs (inline-runs node)}]
-    Paragraph         (paragraph->blocks node)
-    BulletList        (list->blocks node depth false)
-    OrderedList       (list->blocks node depth true)
-    FencedCodeBlock   [{:kind :code-block :text (str (.getContentChars ^FencedCodeBlock node))}]
-    IndentedCodeBlock [{:kind :code-block :text (str (.getContentChars ^IndentedCodeBlock node))}]
-    BlockQuote        (into [] (comp (mapcat #(block->blocks % depth))
-                                     (map #(update % :indent (fnil inc 0))))
-                            (node-children node))
-    ThematicBreak     [{:kind :hr}]
-    (if (.getFirstChild node)
-      (into [] (mapcat #(block->blocks % depth))
-            (node-children node))
-      [])))
-
-(defn- parse-markdown-blocks [text]
-  (->> (.parse ^Parser @md-parser (str text))
-       node-children
-       (into [] (mapcat #(block->blocks % 0)))))
 
 (defn- run-font [{:keys [bold? italic? code?]}]
   (face (cond
@@ -887,10 +696,6 @@
     2 13.5
     3 12.0
     11.5))
-
-;; FIXME: Big picture, all the Markdown code is repeatedly pouring nested stuff into a top-level, flattened list.
-;; It seems like it would be much more efficient, and probably easier to read too, if the whole thing were written
-;; as a reducible pipeline, streaming the results into a final sink.
 
 ;; All text -- Markdown cards and plain titles/headings alike -- funnels through `runs->words` ->
 ;; `->measured-item` -> `pack-units->lines` -> `draw-item-lines!`. Plain text (see `draw-text-block!`)
@@ -922,6 +727,7 @@
   ready for [[pack-units->lines]]. A furigana group becomes an atomic item whose width is the wider
   of its base and reading; a `{:break? true}` marker passes through unchanged. `:space-before?` is
   left as the source-level flag here -- `pack-units->lines` finalises it per line."
+  {:arglists '([word-token base-pt heading?])}
   (fn [w _base-pt _heading?]
     (cond
       (:break? w) :break
@@ -1055,10 +861,10 @@
   "Record a clickable rectangle for link `href`, covering text drawn at `[x, baseline]`."
   [x baseline width pt href]
   (when (and *link-rects* (clickable-href? href))
-    (swap! *link-rects* conj {:x0 (double x)
-                              :y0 (- (double baseline) (* 0.2 pt))
-                              :x1 (+ (double x) width)
-                              :y1 (+ (double baseline) (* 0.85 pt))
+    (swap! *link-rects* conj {:x0   (double x)
+                              :y0   (- (double baseline) (* 0.2 pt))
+                              :x1   (+ (double x) width)
+                              :y1   (+ (double baseline) (* 0.85 pt))
                               :href href})))
 
 (defn- item-text [{:keys [base text pieces] :as _item}]
@@ -1120,63 +926,85 @@
                        (double ww))))
              + 0.0 items))
 
+(defn- draw-md-ruby-item!
+  "Draw a Markdown item with a single part of main text and a *ruby* reading written smaller above it.
+
+  Returns the `x` coordinate after this item."
+  [^PDPageContentStream cs x baseline {:keys [base base-ww color font pt reading reading-ww ruby-pt ww] :as item}]
+  ;; Either the base or the reading might be longer! `ww` is the greater of the two widths, and we center both
+  ;; reading and base text inside a box of width `ww`.
+  (let [base-x (+ x (/ (- ww base-ww) 2.0))
+        read-x (+ x (/ (- ww reading-ww) 2.0))]
+    (.setNonStrokingColor cs ^Color color)
+    (draw-line! cs font pt base-x baseline base)
+    (draw-line! cs font ruby-pt read-x (+ baseline pt 1.0) reading)
+    (when-let [href (:href item)]
+      (record-link! x baseline ww pt href))
+    (+ x ww)))
+
+(defn- draw-md-basic-item!
+  "Draws a Markdown item for a possibly multi-part styled word.
+
+  Returns the `x` coordinate after this item."
+  [^PDPageContentStream cs x baseline item]
+  (reduce (fn [px {:keys [^Color color font href pt text ww]}]
+            (.setNonStrokingColor cs color)
+            (draw-line! cs font pt px baseline text)
+            (when href
+              (record-link! px baseline ww pt href))
+            (+ px ww))
+          x (:pieces item)))
+
+(defn- draw-md-item!
+  "Draw one markdown text item at `x` and `baseline`.
+
+  This actually only handles any leading space and then hands off to handlers for *ruby* \"readings\" or a regular
+  item."
+  [^PDPageContentStream cs x baseline {:keys [ruby? sp space-before?] :as item}]
+  (let [x (+ x (if space-before? sp 0.0))]
+    (if ruby?
+      (draw-md-ruby-item! cs x baseline item)
+      (draw-md-basic-item! cs x baseline item))))
+
 (defn- draw-md-line!
   "Draw one wrapped markdown line within the box `[x, x+content-w]`.
 
-  When `rtl?`, the line is laid out flush-right within that box. Word order is already visual via
-  [[reorder-bidi-items]]."
+  When `rtl?`, the line is laid out flush-right within that box. The `items` (words) are reordered to their
+  left-to-right *visual* order on the page via [[reorder-bidi-items]]."
   [^PDPageContentStream cs x content-w rtl? baseline items]
-  (loop [items (reorder-bidi-items items)
-         cx    (if rtl?
-                 (+ (double x)
-                    (max 0.0 (- (double content-w)
-                                (md-line-width items))))
-                 (double x))]
-    (when-let [{:keys [base base-ww color font pt reading reading-ww
-                       ruby? ruby-pt space-before? sp pieces ww] :as item} (first items)]
-      (let [cx2 (+ cx (if space-before? sp 0.0))]
-        (if ruby?
-          ;; base centered in the unit at the baseline; reading centered just above it
-          (let [base-x (+ cx2 (/ (- ww base-ww) 2.0))
-                read-x (+ cx2 (/ (- ww reading-ww) 2.0))]
-            (.setNonStrokingColor cs ^Color color)
-            (draw-line! cs font pt base-x baseline base)
-            (draw-line! cs font ruby-pt read-x (+ baseline pt 1.0) reading)
-            (when-let [href (:href item)] (record-link! cx2 baseline ww pt href)))
-          ;; a multi-piece word: draw each styled piece contiguously, no inter-piece space
-          (loop [pcs pieces, px cx2]
-            (when-let [{:keys [^Color color font href pt text ww]} (first pcs)]
-              (.setNonStrokingColor cs color)
-              (draw-line! cs font pt px baseline text)
-              (when href (record-link! px baseline ww pt href))
-              (recur (rest pcs) (+ px ww)))))
-        (recur (rest items) (+ cx2 ww))))))
+  (reduce #(draw-md-item! cs %1 baseline %2)
+          ;; Starting `x` depends on `rtl?`: flush left for LTR, or inset from left to make the line flush right.
+          (if rtl?
+            (+ (double x)
+               (max 0.0 (- (double content-w)
+                           (md-line-width items))))
+            (double x))
+          (reorder-bidi-items items)))
 
 (defn- draw-item-lines!
   "Draw already-wrapped `lines` (each a vector of measured items) top-down from `top-y`, laying each out within
   `[content-x, content-x+content-w]` and stopping before `bottom`. `rtl?` right-aligns. On the first line, `marker`
   (if non-nil) is drawn at `marker-x` in `marker-font`.
 
+  Note that `y` decreases downwards in PDFs; reversed from the convention on the web.
+
   Returns the y just below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
   [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
   (let [lh (* base-pt line-height-factor)]
-    (loop [lines  lines
-           y      (double top-y)
-           first? true]
-      (if (empty? lines)
-        y
-        ;; lines with furigana need extra space above the base for the reading; lower the baseline
-        ;; into that band and grow the line advance to match.
-        (let [extra    (line-extra (first lines) base-pt)
-              baseline (- y extra base-pt)
-              adv      (+ lh extra)]
-          (if (< (- y adv) bottom)
-            y
-            (do
-              (when (and first? marker)
-                (draw-line! cs marker-font base-pt marker-x baseline marker))
-              (draw-md-line! cs content-x content-w rtl? baseline (first lines))
-              (recur (rest lines) (- y adv) false))))))))
+    (when marker
+      (draw-line! cs marker-font base-pt marker-x (- top-y base-pt) marker))
+    (reduce (fn [y line]
+              ;; lines with furigana need extra space above the base for the reading; lower the baseline
+              ;; into that band and grow the line advance to match.
+              (let [extra    (line-extra line base-pt)
+                    baseline (- y extra base-pt)
+                    adv      (+ lh extra)
+                    y'       (- y adv)]
+                (when (>= y' bottom)
+                  (draw-md-line! cs content-x content-w rtl? baseline (first lines)))
+                y'))
+            (double top-y)
+            lines)))
 
 (def ^:private face-id->style
   "Inverse of [[run-font]]: the run style that selects each face. Lets plain text drawn with an explicit face be
@@ -1211,19 +1039,21 @@
       (- (double top-y) y))))
 
 (defn- draw-code-block!
-  [^PDPageContentStream cs block x top-y _cell-w bottom scale]
+  "Draws a monospaced code block.
+
+  Returns the `y` below the block. Restores the font and color."
+  [^PDPageContentStream cs block x top-y _cell-w _bottom scale]
+  (.setNonStrokingColor cs ^Color code-color)
   (let [font (face :mono)
         pt   (* 9.0 scale)
-        lh   (* pt line-height-factor)]
-    (.setNonStrokingColor cs ^Color code-color)
-    (loop [ls (str/split-lines (str (:text block)))
-           y  (double top-y)]
-      (if (or (empty? ls)
-              (< (- y lh) bottom))
-        (do (.setNonStrokingColor cs Color/BLACK)
-            (- y 2.0))
-        (do (draw-line! cs font pt (+ x 4.0) (- y pt) (first ls))
-            (recur (rest ls) (- y lh)))))))
+        lh   (* pt line-height-factor)
+        y    (reduce (fn [y line]
+                       (draw-line! cs font pt (+ x 4.0) (- y pt) line)
+                       (- y lh))
+                     (double top-y)
+                     (str/split-lines (str (:text block))))]
+    (.setNonStrokingColor cs Color/BLACK)
+    (- y 2.0)))
 
 (defn- inner-draw-image!
   "Inner function to draw an image from a Markdown doc into the PDF. Call [[draw-image-block!]] instead.
@@ -1264,7 +1094,7 @@
   remaining height). If the fetch fails for any reason, fall back to a Markdown link (the alt text
   or URL, in link color). Returns the y below the block."
   [^PDDocument doc ^PDPageContentStream cs block x top-y cell-w bottom scale]
-  (if-let [^PDImageXObject img (fetch-image! doc (:src block))]
+  (if-let [^PDImageXObject img (md/fetch-image! doc (:src block))]
     (inner-draw-image! img cs x top-y cell-w bottom)
     (inner-draw-image-fallback! cs block x top-y cell-w bottom scale)))
 
@@ -1298,13 +1128,11 @@
                       0.0)
         content-x   (+ indent-x marker-w)
         content-w   (- (+ (double x) cell-w) content-x)
-        block-text  (apply str (map item-text runs))
         ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
         ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
-        rtl?        (and (nil? marker) (base-rtl? block-text))
+        rtl?        (and (nil? marker)
+                         (base-rtl? (apply str (map item-text runs))))
         lines       (words->lines (runs->words runs) base-pt heading? content-w)]
-    ;; FIXME: This is suspicious, a lot of the above code is familiar but I'm not sure if it's duplicated or just
-    ;; something else that was wrangling the same blocks.
     (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font)))
 
 (defn- draw-block!
@@ -1320,19 +1148,20 @@
     (draw-paragraph-block! cs block x top-y cell-w bottom scale)))
 
 (defn- draw-markdown-in-cell!
-  "Render markdown `text` top-down within a cell rectangle. Shrinks the font (down to a floor) so the content fits
-  the cell height instead of clipping; clips only if even the floor overflows."
+  "Render markdown `text` top-down within a cell rectangle.
+
+  Shrinks the font (down to a floor, see [[fit-scale]]) so the content fits the cell height instead of clipping.
+  If it doesn't fit even at the limit of scaling down, we do clip the output."
   [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
-  (let [blocks (parse-markdown-blocks text)
+  (let [blocks (md/parse-markdown-blocks text)
         scale  (fit-scale blocks cell-w cell-h)
         bottom (- (double top-y) cell-h)]
-    (loop [blocks blocks
-           y      (double top-y)]
-      (when (and (seq blocks)
-                 (> y (+ bottom 2.0)))
-        (recur (rest blocks)
-               (- (draw-block! doc cs (first blocks) x y cell-w bottom scale)
-                  (* 4.0 scale)))))))
+    (reduce (fn [y block]
+              (if (<= y (+ bottom 2.0))
+                y
+                (- (draw-block! doc cs block x y cell-w bottom scale)
+                   (* 4.0 scale))))
+            top-y blocks)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Cell building -- turn dashcards into renderable cells, preserving grid geometry
@@ -1340,8 +1169,9 @@
 
 (defn- iframe-url
   "Extract the target URL from an iframe card's `:iframe` setting, which is either a bare URL or an
-  `<iframe src=\"...\">` embed snippet (mirrors the frontend's handling). Adds an `https://` scheme
-  if missing. Returns nil if no URL can be found."
+  `<iframe src=\"...\">` embed snippet (mirrors the frontend's handling). Adds an `https://` scheme if missing.
+
+  Returns nil if no URL can be found."
   [iframe-setting]
   (when-let [s (some-> iframe-setting str str/trim not-empty)]
     (when-let [raw (some-> (if (str/starts-with? s "<iframe")
@@ -1354,8 +1184,10 @@
         (str "https://" (str/replace raw #"^//" ""))))))
 
 (defn- resolve-inline-params
-  "The full parameter definitions (carrying values) for a dashcard's inline parameters, matching
-  how email subscriptions resolve them. Returns only those with a value, in `parameters` order."
+  "The full parameter definitions (carrying values) for a dashcard's inline parameters, matching how email
+  subscriptions resolve them.
+
+  Returns only those with a value, in `parameters` order."
   [dashcard parameters]
   (when-let [ids (not-empty (set (:inline_parameters dashcard)))]
     (not-empty (filterv #(and (ids (:id %))
@@ -1411,73 +1243,38 @@
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
                   0)]
-    (into [] (keep #(some-> (dashcard->cell % parameters)
-                            (update :row - min-row)))
+    (into [] (comp (keep #(dashcard->cell % parameters))
+                   (map  #(update % :row - min-row)))
           sorted)))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Pagination -- slice a section's cells into pages, breaking before a card that won't fit
 ;; --------------------------------------------------------------------------------------------
 
-(defn- pack-pages
-  [total-rows first-header-rows]
-  (fn [xf]
-    (let [current-page (volatile! nil)]
-      (fn
-        ([]   (xf))
-        ([res] (if-let [c @current-page]
-                 (xf (xf res c))
-                 (xf res)))
-        ([res c]
-         (b/cond
-           :let [{:keys [base header-rows] :as page} @current-page]
-
-           ;; Nothing accumulated currently, so create a new one page and don't emit yet.
-           (not page) (do (vreset! current-page
-                                   {:base        (:row c)
-                                    :header-rows first-header-rows
-                                    :cards       [c]})
-                          res)
-
-           :let [page-size  (- total-rows header-rows)
-                 abs-bottom (+ (:row c) (:size_y c))
-                 rel-bottom (- abs-bottom base)]
-
-           ;; It fits on this page, so add it to the list.
-           (<= rel-bottom page-size) (vswap! current-page update :cards conj c)
-           ;; Otherwise, emit the current page and start another.
-           (do (vreset! current-page {:base        (:row c)
-                                      :header-rows 0
-                                      :cards       [c]})
-               (xf res page))))))))
-;; XXX: START HERE: I think I can rework this into a reusable "greedy packing" transducer, since there are several
-;; layers of that here. Then again, I'm not sure they're really any simpler than the loops were.
-
 (defn- paginate
-  "Greedily pack `cells` (sorted, row-normalized) into pages of `total-rows` usable rows.
+  "Stateful transducer for greedily packing input *cells* (sorted, row-normalized dashboard contents) into pages of
+  `total-rows` usable rows.
 
   The first page of the section reserves `first-header-rows` for the dashboard/tab heading; continuation pages
   reserve none. A card that won't fit in the current page's remaining rows starts a new page; we never split a card
   across pages. Each page records its `:base` row so cells can be positioned relative to the top of the page's card
   area."
-  [cells total-rows first-header-rows]
-  (loop [cells cells
-         pages []
-         cur   nil]
-    (if (empty? cells)
-      (cond-> pages
-        cur (conj cur))
-      (let [c    (first cells)
-            cbot (+ (:row c) (:size_y c))]
-        (if (nil? cur)
-          (recur (rest cells) pages {:base        (:row c)
-                                     :header-rows first-header-rows
-                                     :cards       [c]})
-          (let [cap (- total-rows (:header-rows cur))]
-            (if (<= (- cbot (:base cur)) cap)
-              (recur (next cells) pages (update cur :cards conj c))
-              (recur (next cells) (conj pages cur)
-                     {:base (:row c) :header-rows 0 :cards [c]}))))))))
+  [total-rows first-header-rows]
+  (let [first? (volatile! true)]
+    (segment
+     (fn
+       ([c]                                     ; open a page
+        (let [hr (if @first? first-header-rows 0)]
+          (vreset! first? false)
+          {:base        (:row c)
+           :cards       [c]
+           :header-rows hr}))
+       ([{:keys [base header-rows] :as page} c] ; add this cell, or start a new page
+        (let [cbot (+ (:row c) (:size_y c))]
+          (if (<= (- cbot base)
+                  (- total-rows header-rows))
+            (update page :cards conj c)
+            ::reject)))))))
 
 (defn- pages-for-section
   "Produce positioned pages for one section (a tab, or the whole untabbed dashboard). `idx` is the section's index;
@@ -1485,28 +1282,33 @@
   carries the tab title."
   [section idx {:keys [unit rows]} tabbed? dash-name param-table param-rows]
   (let [dash-rows (rows-for-pt (header-block-pt dashboard-title-pt) unit)
-        tab-rows  (rows-for-pt (header-block-pt tab-title-pt) unit)
+        tab-rows  (rows-for-pt (header-block-pt tab-title-pt)       unit)
         ;; the parameter table shows once, on the dashboard's very first page (section 0)
-        first-hdr (+ (if (zero? idx) (+ dash-rows param-rows) 0)
-                     (if tabbed? tab-rows 0))]
-    (map-indexed
-     (fn [pi pg]
-       (merge pg
-              (when (and (zero? idx) (zero? pi))
-                {:dashboard-title dash-name
-                 :param-table     param-table})
-              (when (and tabbed? (zero? pi))
-                {:tab-name section})))
-     (paginate (:cells section) rows first-hdr))))
+        first-hdr (cond-> 0
+                    (zero? idx) (+ dash-rows param-rows)
+                    tabbed?     (+ tab-rows))]
+    (into [] (comp (paginate rows first-hdr)
+                   (map-indexed
+                    (fn [pi page]
+                      (merge page
+                             (when (and (zero? idx)
+                                        (zero? pi))
+                               {:dashboard-title dash-name
+                                :param-table     param-table})
+                             (when (and tabbed? (zero? pi))
+                               {:tab-name section})))))
+          (:cells section))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Drawing
 ;; --------------------------------------------------------------------------------------------
 
 (defn- card-body-png
-  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or
-  description -- those are drawn natively at the PDF level. Used for card types that can't fill
-  an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); fit preserving aspect."
+  "Rasterize a `:card` part's body (chart/table/scalar) to PNG bytes, WITHOUT its title or description -- those are
+  drawn natively at the PDF level.
+
+  Used for card types that can't fill an arbitrary box (pie, gauge, funnel, progress, scalar, table, ...); resize
+  to fit while preserving aspect."
   ^bytes [timezone {:keys [card dashcard result]} px-width]
   (-> (render.card/render-pulse-card :inline timezone card dashcard result
                                      {:channel.render/include-title?       false
@@ -1514,65 +1316,79 @@
       (render.card/png-from-render-info px-width)))
 
 (defn- draw-image-in-cell!
-  "Draw `img` fit (preserving aspect) within a cell rectangle, horizontally centered and
-  top-anchored. Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...);
-  centering keeps a narrow scalar (e.g. a big number) from hugging the left edge of its cell."
+  "Draw `img`, resizing to fit (preserving aspect) within a cell rectangle, horizontally centered and top-anchored.
+  Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...). Horizontal centering keeps a narrow
+  scalar (e.g. a big number) from hugging the left edge of its cell."
   [^PDPageContentStream cs ^PDImageXObject img x top-y cell-w cell-h]
   (let [iw    (double (.getWidth img))
         ih    (double (.getHeight img))
         scale (min (/ cell-w iw) (/ cell-h ih))
         dw    (* iw scale)
         dh    (* ih scale)
-        dx    (+ (double x) (/ (- (double cell-w) dw) 2.0))]
-    (.drawImage cs img (float dx) (float (- (double top-y) dh)) (float dw) (float dh))))
+        dx    (+ x (/ (- cell-w dw)
+                      2.0))]
+    (.drawImage cs img (float dx) (float (- top-y dh)) (float dw) (float dh))))
 
-(defn- pt->px [pt] (long (Math/round (* (double pt) (/ dpi 72.0)))))
+(defn- pt->px [pt]
+  (-> pt double (* dpi) (/ 72.0) Math/round long))
 
 (defn- card-title [card dashcard]
-  (or (get-in dashcard [:visualization_settings :card.title]) (:name card)))
+  (or (get-in dashcard [:visualization_settings :card.title])
+      (:name card)))
 
 (defn- effective-display
-  "The display type the card actually renders as. A visualizer dashcard overrides the underlying
-  card's `:display` (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display
-  when present -- matching `render.card/visualizer-display-type`."
+  "The display type the card actually renders as. A visualizer dashcard overrides the underlying card's `:display`
+  (e.g. a smartscalar card shown as a `bar`), so prefer the visualizer display when present. This is the same
+  logic as `render.card/visualizer-display-type`."
   [card dashcard]
   (or (when (render.util/is-visualizer-dashcard? dashcard)
-        (some-> (get-in dashcard [:visualization_settings :visualization :display]) keyword))
+        (some-> dashcard :visualization_settings :visualization :display keyword))
       (keyword (:display card))))
 
 (defn- cards-with-data
-  "Replicate the multi-series data shape `body/render :javascript_visualization` feeds to
-  static-viz (sans timeline events, which static-viz never officially used)."
+  "Replicate the multi-series data shape `body/render :javascript_visualization` feeds to static-viz, except timeline
+  events, which static-viz never officially used."
   [card dashcard data]
   (->> (:series-results dashcard)
-       (map (fn [m] (-> m (assoc :data (get-in m [:result :data])) (dissoc :result))))
-       (cons {:card card :data data})
+       (map (fn [m]
+              (-> m
+                  (assoc :data (get-in m [:result :data]))
+                  (dissoc :result))))
+       (cons {:card card
+              :data data})
        (m/distinct-by #(get-in % [:card :id]))))
 
 (defn- sized-chart-png
-  "Render an isomorphic chart to a PNG, telling static-viz to lay the chart out into a `w-px` x
-  `h-px` logical box (so it fills it the way the frontend does), rasterized at
-  [[chart-supersample]] times that pixel size for crispness. Used for rectangular charts and for
-  square/wide pies (which then place their legend to the side). Returns nil if the chart doesn't
-  produce an SVG."
+  "Render an isomorphic chart to a PNG, telling static-viz to lay the chart out into a `w-px` x `h-px` logical box
+  (so it fills it the way the frontend does), rasterized at [[chart-supersample]] times that pixel size for crispness.
+
+  Used for rectangular charts and for square/wide pies (which then place their legend to the side).
+
+  Returns nil if the chart doesn't produce an SVG."
   ^bytes [card dashcard data w-px h-px]
-  (binding [js.svg/*chart-size* {:width w-px :height h-px :scale chart-supersample}]
-    (let [viz (or (:visualization_settings dashcard) (:visualization_settings card))
-          {t :type c :content} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
-      (when (= :svg t)
-        (js.svg/svg-string->bytes c)))))
+  (binding [js.svg/*chart-size* {:width  w-px
+                                 :height h-px
+                                 :scale  chart-supersample}]
+    (let [viz                    (or (:visualization_settings dashcard)
+                                     (:visualization_settings card))
+          {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
+      (when (= :svg type)
+        (js.svg/svg-string->bytes content)))))
 
 (defn- text-block-height
-  "Vertical points a wrapped text block would consume (without drawing), bounded by `max-h`. Uses the
-  same single-styled-run item pipeline as [[draw-text-block!]]."
+  "Vertical points a wrapped text block would consume (without drawing), bounded by `max-h`.
+
+  Uses the same single-styled-run item pipeline as [[draw-text-block!]]."
   [face font-pt max-w max-h text]
   (if (str/blank? (str text))
     0.0
     (let [lh    (* font-pt line-height-factor)
-          runs  [(merge {:text (str text)} (get face-id->style (:id face) {}))]
+          runs  [(merge {:text (str text)}
+                        (get face-id->style (:id face)))]
           lines (words->lines (runs->words runs) font-pt false max-w)
-          fit   (long (Math/floor (/ (double max-h) lh)))]
-      (min (lines-height lines font-pt) (* (max 0 fit) lh)))))
+          fit   (-> (/ max-h lh) double Math/floor long (max 0))]
+      (min (lines-height lines font-pt)
+           (* fit lh)))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Parameters. The dashboard's active filter values are shown once at the very top, as a two-column
@@ -1582,18 +1398,23 @@
 ;; --------------------------------------------------------------------------------------------
 
 (defn- min-column-width
-  "The narrowest width (<= `max-w`) at which `units` still pack into the *fewest* lines they would take
-  at `max-w`. This is the bottleneck variant of word-wrap (minimise the max line width for a fixed
-  line count); we solve it by binary search using the greedy [[pack-units->lines]] as a monotonic
-  feasibility oracle (a wider column never needs more lines), bottoming out at the widest single unit.
-  Cheap -- a handful of greedy wraps, each measurement cached (see [[*width-cache*]])."
+  "The narrowest width (<= `max-w`) at which `units` still pack into the *fewest* lines they would take at `max-w`.
+
+  This is the *bottleneck* variant of word-wrap: given that at least N lines are required, minimise the max width
+  for that fixed line count. We solve it by binary search using the greedy [[pack-units->lines]] as a monotonic
+  feasibility oracle. (Monotonic because a wider column never needs more lines.)
+
+  The search bottoms out at the widest single unit (= word).
+
+  Inexpensive -- a handful of greedy line wrap calls, with each unit's measurements cached (see [[*em-width*]])."
   [units max-w split-fn]
   (if (empty? units)
     0.0
     (let [lines-at (fn [w] (count (pack-units->lines units w split-fn)))
           target   (lines-at max-w)
-          lo0      (reduce max 0.0 (map :ww units))]
-      (loop [lo lo0, hi (double max-w)]
+          lo0      (transduce (map :ww) max 0.0 units)]
+      (loop [lo lo0
+             hi (double max-w)]
         (if (< (- hi lo) 0.5)
           hi
           (let [mid (/ (+ lo hi) 2.0)]
@@ -1610,7 +1431,8 @@
                :when (some? (:value p))
                :let  [v (some-> (shared.params/value-string p locale) str str/trim)]
                :when (not (str/blank? v))]
-           {:name (str (:name p)) :value v}))))
+           {:name  (str (:name p))
+            :value v}))))
 
 (defn- dashboard-param-entries
   "Entries for the dashboard-wide filter table: only top-level (non-inline) parameters. Inline
@@ -1619,184 +1441,202 @@
   (param-entries (remove #(contains? inline-ids (:id %)) params)))
 
 (defn- styled-run-lines
-  "Wrap a single styled run (`text` with `style`, e.g. {:bold? true} or {:color ...}) to `max-w` at
-  `param-pt`, returning drawable item-lines via the shared pipeline."
+  "Wrap a single styled run (`text` with `style`, e.g. {:bold? true} or {:color ...}) to `max-w` at `param-pt`,
+  returning drawable item-lines via the shared pipeline."
   [text style max-w]
-  (words->lines (runs->words [(merge {:text (str text)} style)]) param-pt false max-w))
+  (-> [(merge {:text (str text)}
+              style)]
+      runs->words
+      (words->lines param-pt false max-w)))
 
 (defn- measured-name-units
   "Pre-measured word items for a parameter name (bold, `param-pt`) -- input to [[min-column-width]].
-  Runs through the same words pipeline as everything else, as a single bold run."
+  Runs through the same words pipeline as everything else, as a single run of bold text."
   [name]
   (mapv #(->measured-item % param-pt false)
-        (runs->words [{:text (normalize-ws name) :bold? true}])))
+        (runs->words [{:text  (normalize-ws name)
+                       :bold? true}])))
 
 (defn- layout-param-table
-  "Lay out filter `entries` as a two-column (name | value) table within `avail-w` starting at `x`. The
-  names column is sized by [[min-column-width]] (capped at 40% of `avail-w`); the rest goes to values.
+  "Lay out filter `entries` as a two-column (name | value) table within `avail-w` starting at `x`.
+
+  The names column is sized by [[min-column-width]] (capped at 40% of `avail-w`); the rest goes to values.
   The columns swap (values left, names right) when the first parameter's name reads right-to-left.
-  Returns nil when there are no valued parameters, else a layout map with the column geometry, the
-  wrapped lines per row, and the total `:height`."
+
+  Returns nil when there are no valued parameters, else a layout map with the column geometry, the wrapped lines
+  per row, and the total `:height`."
   [entries avail-w x]
   (when (seq entries)
     (let [rtl?     (base-rtl? (:name (first entries)))
           max-nw   (* 0.4 avail-w)
-          name-w   (min max-nw (reduce max 0.0 (map #(min-column-width (measured-name-units (:name %))
-                                                                       max-nw split-word-into-chars)
-                                                    entries)))
+          name-w   (min max-nw (transduce (map #(min-column-width (measured-name-units (:name %))
+                                                                  max-nw split-word-into-chars))
+                                          max 0.0 entries))
           value-w  (- avail-w name-w param-chip-gap)
-          name-x   (if rtl? (+ (double x) value-w param-chip-gap) (double x))
-          value-x  (if rtl? (double x) (+ (double x) name-w param-chip-gap))
-          rows     (mapv (fn [e]
-                           (let [nl (styled-run-lines (:name e) {:bold? true} name-w)
-                                 vl (styled-run-lines (:value e) {:color body-color} value-w)]
-                             {:name-lines nl :value-lines vl
-                              :height (max (lines-height nl param-pt) (lines-height vl param-pt))}))
+          name-x   (cond-> (double x)
+                     rtl? (+ value-w param-chip-gap))
+          value-x  (cond-> (double x)
+                     (not rtl?) (+ name-w param-chip-gap))
+          rows     (mapv (fn [{:keys [name value]}]
+                           (let [nl (styled-run-lines name  {:bold? true}       name-w)
+                                 vl (styled-run-lines value {:color body-color} value-w)]
+                             {:name-lines  nl
+                              :value-lines vl
+                              :height      (max (lines-height nl param-pt)
+                                                (lines-height vl param-pt))}))
                          entries)]
-      {:name-x name-x :name-w name-w :value-x value-x :value-w value-w
-       :rows rows :height (reduce + 0.0 (map :height rows))})))
+      {:name-x  name-x  :name-w  name-w
+       :value-x value-x :value-w value-w
+       :rows    rows
+       :height  (transduce (map :height) + 0.0 rows)})))
 
 (defn- param-table-rows
   "Whole grid rows the parameter table consumes (0 when there is none)."
   [table unit]
-  (if table (rows-for-pt (+ (:height table) header-pad-pt) unit) 0))
+  (if table
+    (rows-for-pt (+ (:height table)
+                    header-pad-pt)
+                 unit)
+    0))
+
+(defn- lines-rtl?
+  "Given a seq of lines, check if the first line starts with RTL characters."
+  [lines]
+  (-> lines ffirst :text (or "") base-rtl?))
 
 (defn- draw-param-table!
-  "Draw the parameter `table` from `top-y` (the columns already hold absolute x positions). Returns
-  the y below it."
+  "Draw the parameter `table` from `top-y` (the columns already hold absolute x positions).
+
+  Returns the y below it."
   [^PDPageContentStream cs table top-y]
   (let [{:keys [name-x name-w value-x value-w rows]} table]
-    (loop [rows rows, y (double top-y)]
-      (if (empty? rows)
-        (- y 4.0)
-        (let [{:keys [name-lines value-lines height]} (first rows)
-              bottom (- y height 1.0)]
-          (draw-item-lines! cs name-lines name-x name-w y bottom param-pt
-                            (base-rtl? (or (:text (ffirst name-lines)) "")) nil name-x nil)
-          (draw-item-lines! cs value-lines value-x value-w y bottom param-pt
-                            (base-rtl? (or (:text (ffirst value-lines)) "")) nil value-x nil)
-          (recur (rest rows) (- y height)))))))
+    (- (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
+                 (let [bottom (- y height 1.0)]
+                   (draw-item-lines! cs name-lines name-x name-w y bottom param-pt
+                                     (lines-rtl? name-lines) nil name-x nil)
+                   (draw-item-lines! cs value-lines value-x value-w y bottom param-pt
+                                     (lines-rtl? value-lines) nil value-x nil)
+                   (- y height)))
+               (double top-y)
+               rows)
+       4.0)))
 
 (defn- inline-param-lines
   "Wrapped item-lines for a card's inline parameters, flowing inline as `Name: value`, `Name2: value2`,
   ... (bold names, gray values), greedily wrapped to `cell-w` (preserving the previous flow behaviour).
   Returns nil when there are none."
   [inline-params cell-w]
-  (let [entries (param-entries inline-params)]
-    (when (seq entries)
-      (let [runs (vec (mapcat (fn [i e]
-                                (concat (when (pos? i) [{:text "  "}]) ; gap before each param after the first
-                                        [{:text (:name e) :bold? true}
-                                         {:text ": "}
-                                         {:text (:value e) :color body-color}]))
-                              (range) entries))]
-        (words->lines (runs->words runs) param-pt false cell-w)))))
+  (when-let [entries (seq (param-entries inline-params))]
+    (-> (into [] (comp (map-indexed (fn [i e]
+                                      (concat (when (pos? i)
+                                                [{:text "  "}]) ; gap before each param after the first
+                                              [{:text (:name e) :bold? true}
+                                               {:text ": "}
+                                               {:text (:value e) :color body-color}])))
+                       cat)
+              entries)
+        runs->words
+        (words->lines param-pt false cell-w))))
 
 (defn- inline-params-height
   "Vertical points a card's inline parameter lines consume (0 when there are none)."
   [lines]
-  (if (seq lines)
-    (+ (lines-height lines param-pt) 4.0)
-    0.0))
+  (if (empty? lines)
+    0.0
+    (+ 4.0 (lines-height lines param-pt))))
 
 (defn- draw-inline-params!
   "Draw inline-parameter `lines` from `top-y` within `[x, x+content-w]`."
   [^PDPageContentStream cs lines x content-w top-y]
   (when (seq lines)
-    (draw-item-lines! cs lines x content-w top-y (- (double top-y) (lines-height lines param-pt) 1.0)
-                      param-pt (base-rtl? (or (:text (ffirst lines)) "")) nil x nil)))
+    (draw-item-lines! cs lines x content-w top-y (- (double top-y)
+                                                    (lines-height lines param-pt)
+                                                    1.0)
+                      param-pt (lines-rtl? lines) nil x nil)))
 
 (defn- fill-rect!
   "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
   Used for the [[*debug-boxes*]] overlays drawn behind content."
   [^PDPageContentStream cs ^Color color x top-y w h]
   (.setNonStrokingColor cs color)
-  (.addRect cs (float x) (float (- (double top-y) (double h))) (float w) (float h))
+  (.addRect cs (float x) (float (- top-y h)) (float w) (float h))
   (.fill cs)
   (.setNonStrokingColor cs Color/BLACK))
 
 (defn- render-card-cell!
-  "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level
-  (crisp text) and the space it consumes is reserved before the body is rendered. (Card
-  descriptions are intentionally omitted -- they vary from the frontend dashboard and add little
-  in a static export.) Rectangular (ECharts/visx) charts are then rendered to exactly fill the
-  remaining body area (matching the frontend); other types render their body title-less and fit
-  preserving aspect into the body area."
+  "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level (crisp text) and
+  the space it consumes is reserved before the body is rendered. Card descriptions are intentionally omitted -- they
+  vary from the frontend dashboard and add little in a static export.
+
+  Rectangular (ECharts/visx) charts are then rendered to exactly fill the remaining body area (matching the frontend);
+  other types render their body title-less and resized (preserving aspect) to fit into the body area."
   [^PDDocument doc ^PDPageContentStream cs timezone
-   {:keys [card dashcard inline-params] :as part} x top-y cell-w cell-h]
-  (let [data       (get-in part [:result :data])
-        title      (card-title card dashcard)
-        th         (text-block-height (face :bold) chart-title-pt cell-w (* 0.5 cell-h) title)
-        ;; Inline parameters (filters attached to this card) render between the title and the
-        ;; chart body, like the email subscription does.
+   {:keys [card dashcard inline-params]
+    {:keys [data]} :result
+    :as part}
+   x top-y cell-w cell-h]
+  (let [title      (card-title card dashcard)
+        title-h    (text-block-height (face :bold) chart-title-pt cell-w (* 0.5 cell-h) title)
+        ;; Inline parameters (filters attached to this card) render between the title and the chart body,
+        ;; like the email subscription does.
         ip-lines   (inline-param-lines inline-params cell-w)
         iph        (inline-params-height ip-lines)
-        header     (+ th iph (if (or (pos? th) (pos? iph)) 4.0 0.0))
-        body-top   (- (double top-y) header)
+        header     (+ title-h iph (if (or (pos? title-h)
+                                          (pos? iph))
+                                    4.0
+                                    0.0))
+        top-y      (double top-y)
+        body-top   (- top-y header)
         body-h     (- cell-h header)
         display    (effective-display card dashcard)
         ;; Rectangular charts always fill their box; pies fill (and move their legend to the
         ;; side) only when the body area is square-or-wider, otherwise they keep a bottom legend.
         fill?      (or (contains? rectangular-displays display)
-                       (and (= :pie display) (>= cell-w body-h)))]
+                       (and (= :pie display)
+                            (>= cell-w body-h)))]
     ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
     ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
     (when *debug-boxes*
-      (when (pos? th) (fill-rect! cs debug-heading-color x top-y cell-w th))
+      (when (pos? title-h)  (fill-rect! cs debug-heading-color x top-y cell-w title-h))
       (when (> body-h 12.0) (fill-rect! cs debug-chart-color x body-top cell-w body-h)))
     ;; Native title for every card type.
     (draw-text-block! cs (face :bold) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
+    ;; Inline parameters.
     (when (seq ip-lines)
-      (draw-inline-params! cs ip-lines x cell-w (- (double top-y) th)))
+      (draw-inline-params! cs ip-lines x cell-w (- top-y title-h)))
     (when (> body-h 12.0)
       ;; in debug mode render charts transparently, so the red box behind them shows through the
       ;; whitespace ECharts/visx leave inside the image.
-      (binding [js.svg/*svg-background-color* (if *debug-boxes* nil js.svg/*svg-background-color*)]
+      (binding [js.svg/*svg-background-color* (when-not *debug-boxes*
+                                                js.svg/*svg-background-color*)]
         (if-let [png (when fill?
                        (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
-          ;; rendered at exactly cell-w x body-h px -> draw to fill the body area exactly
+          ;; Rendered at exactly cell-w x body-h px -> draw to fill the body area exactly.
           (.drawImage cs (PDImageXObject/createFromByteArray doc png "chart")
-                      (float x) (float (- body-top body-h)) (float cell-w) (float body-h))
-          ;; fallback: title-less body PNG, fit preserving aspect into the body area
-          (when-let [body (card-body-png timezone part (long (max 240 (min 2200 (pt->px cell-w)))))]
-            (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card") x body-top cell-w body-h)))))))
+                      (float x) (float (- body-top body-h))
+                      (float cell-w) (float body-h))
+          ;; Fallback: title-less body PNG, fit preserving aspect into the body area
+          (when-let [body (card-body-png timezone part (-> cell-w pt->px (min 2200) (max 240) long))]
+            (draw-image-in-cell! cs (PDImageXObject/createFromByteArray doc body "card")
+                                 x body-top cell-w body-h)))))))
 
 (defn- line-start-x
   "Start x for drawing a single line of `text` (measured with `face`/`font-pt`) within the box
   `[x, x+box-w]`: flush-right when the text's base direction is RTL, flush-left otherwise."
   [face font-pt x box-w ^String text]
-  (if (base-rtl? text)
-    (+ (double x) (max 0.0 (- (double box-w) (text-width face font-pt text))))
-    (double x)))
+  (cond-> (double x)
+    (base-rtl? text) (+ (max 0.0 (- box-w (text-width face font-pt text))))))
 
 ;; --------------------------------------------------------------------------------------------
-;; "Made with Metabase" branding badge -- drawn top-right of every page as true PDF vectors (no
-;; rasterization, no embedded fonts). The logo + "Metabase" wordmark come from an SVG whose glyphs
-;; are already `<path>` outlines; "Made with" is outlined from Lato via `java.awt.Font`. Both are
-;; streamed into the content stream as moveTo/lineTo/curveTo/fill, so they stay crisp at any zoom
-;; and add nothing to the document's font table. The badge sits in the empty top margin band, so it
-;; never collides with the dashboard title (left) or the first card row.
+;; "Made with Metabase" branding badge -- drawn top-right of every page. The logo + "Metabase"
+;; wordmark come from an SVG whose glyphs are already `<path>` outlines, streamed into the content
+;; stream as moveTo/lineTo/curveTo/fill so they stay crisp at any zoom. The "Made with" prefix is
+;; ordinary text in the regular body face (Lato, with the usual per-glyph Noto/CJK fallback -- see
+;; [[load-fonts!]] and [[font-runs]]). The badge sits in the empty top margin band, so it never
+;; collides with the dashboard title (left) or the first card row.
 ;; --------------------------------------------------------------------------------------------
 
 (def ^:private brand-logo-resource "fonts/pdf/metabase_logo_with_text.svg")
-
-;; TODO (bshepherdson 2026-06-11) -- we reuse the FE's bundled Lato asset directly rather than
-;; duplicating it into a BE-owned path (it has full Latin/Cyrillic/Greek/Vietnamese coverage and is
-;; already shipped). This couples us to the `frontend_client` asset layout. If/when this graduates,
-;; move the file to a BE-owned resource path and adjust the static asset serving so the existing FE
-;; URL is preserved (don't break the FE's font URL).
-(def ^:private brand-lato-resource "frontend_client/app/fonts/Lato/Lato-Regular.ttf")
-
-(def ^:private brand-text-font-resources
-  "Ordered fallback chain of TrueType resources for the localized 'Made with' prefix: Lato (the
-  brand font) first, then Noto Sans and the regional Noto faces so a translated prefix in another
-  script still renders. See [[brand-text-runs]]. Realized lazily and per-face (see [[brand-fonts]]),
-  so the common Latin case only ever loads Lato."
-  [brand-lato-resource
-   "fonts/pdf/NotoSans-Regular.ttf"
-   "fonts/pdf/NotoSansJP-Regular.ttf"
-   "fonts/pdf/NotoSansKR-Regular.ttf"
-   "fonts/pdf/NotoSansSC-Regular.ttf"])
 
 (def ^:private brand-svg-colors
   "Resolves the logo SVG's `var(--mb-color-logo-*)` CSS variables to the Metabase brand colors."
@@ -1808,11 +1648,6 @@
 (def ^:private brand-logo-pt 13.0)
 (def ^:private brand-text-pt 9.0)
 (def ^:private brand-gap-pt 5.0)
-
-(def ^:private ^FontRenderContext brand-frc
-  (FontRenderContext. (AffineTransform.)
-                      RenderingHints/VALUE_TEXT_ANTIALIAS_ON
-                      RenderingHints/VALUE_FRACTIONALMETRICS_ON))
 
 (defn- resolve-svg-color ^Color [fill]
   (if-let [[_ v] (re-matches #"var\((--[^)]+)\)" fill)]
@@ -1831,54 +1666,6 @@
        :groups (vec (for [[_ fill body] (re-seq #"(?s)<g fill=\"([^\"]+)\">(.*?)</g>" svg)]
                       {:color (resolve-svg-color fill)
                        :ds    (mapv second (re-seq #"d=\"([^\"]+)\"" body))}))})))
-
-(defn- load-awt-font ^Font [resource-path]
-  (with-open [is (io/input-stream (io/resource resource-path))]
-    (Font/createFont Font/TRUETYPE_FONT is)))
-
-(def ^:private brand-fonts
-  "The [[brand-text-font-resources]] chain as a vector of per-face delays of `java.awt.Font`. Each
-  face is loaded only when [[brand-font-for]] actually needs it, so the common (Lato-covered) case
-  never loads the heavy CJK faces. The fonts are used to outline the 'Made with' prefix into vector
-  paths -- they are NOT embedded in the PDF, only their glyph outlines are streamed."
-  (delay (mapv (fn [path] (delay (load-awt-font path))) brand-text-font-resources)))
-
-(defn- brand-font-for
-  "The first font in the fallback chain that can display codepoint `cp` (realizing fallback faces
-  lazily and in order), or Lato as a last resort (renders `.notdef`)."
-  ^Font [cp]
-  (let [chain @brand-fonts]
-    (or (some (fn [d] (let [^Font f @d] (when (.canDisplay f (int cp)) f))) chain)
-        @(first chain))))
-
-(defn- brand-text-runs
-  "Split `s` into `[{:font <Font> :text <substring>} ...]`, each a maximal run displayable by one
-  font in the fallback chain, so a localized prefix renders across scripts. Walks by codepoint to
-  keep surrogate pairs intact."
-  [^String s]
-  (let [len (.length s)]
-    (loop [i 0, runs [], cur nil, ^StringBuilder buf nil]
-      (if (>= i len)
-        (cond-> runs buf (conj {:font cur :text (.toString buf)}))
-        (let [cp (.codePointAt s i)
-              n  (Character/charCount cp)
-              f  (brand-font-for cp)]
-          (if (= f cur)
-            (do (.appendCodePoint buf cp) (recur (+ i n) runs cur buf))
-            (recur (+ i n)
-                   (cond-> runs buf (conj {:font cur :text (.toString buf)}))
-                   f
-                   (doto (StringBuilder.) (.appendCodePoint cp)))))))))
-
-(defn- brand-text-glyphs
-  "Localized prefix `s` as `[{:gv <GlyphVector> :w <advance>} ...]`, one per fallback-font run,
-  sized to `pt`. Pre-built so the badge can measure the total width (to right-align) and then draw
-  each run without re-shaping."
-  [^String s pt]
-  (mapv (fn [{:keys [^Font font ^String text]}]
-          (let [gv ^GlyphVector (.createGlyphVector (.deriveFont font (float pt)) brand-frc text)]
-            {:gv gv :w (.getWidth (.getLogicalBounds gv))}))
-        (brand-text-runs s)))
 
 (def ^:private two-thirds (/ 2.0 3.0))
 
@@ -1929,25 +1716,23 @@
     (* vw scale)))
 
 (defn- draw-brand-badge!
-  "Draw the 'Made with [logo] Metabase' badge as vectors, right-aligned to `right`, with the logo's
-  top at `logo-top` (placed in the page's top margin band). The 'Made with' prefix is localized to
-  the current user's locale ([[tru]]) and outlined with the Lato->Noto fallback chain so it renders
-  across scripts; the logo + 'Metabase' wordmark are locale-independent."
+  "Draw the 'Made with [logo] Metabase' badge, right-aligned to `right`, with the logo's top at
+  `logo-top` (placed in the page's top margin band). The 'Made with' prefix is localized to the
+  current user's locale ([[tru]]) and drawn in the regular body face -- Lato, with the usual
+  per-glyph Noto/CJK fallback (see [[font-runs]]) -- so it renders across scripts; the logo +
+  'Metabase' wordmark are locale-independent SVG vectors."
   [^PDPageContentStream cs right logo-top]
   (let [{:keys [vw vh]} @brand-logo
-        logo-w   (* brand-logo-pt (/ (double vw) (double vh)))
-        glyphs   (brand-text-glyphs (str (tru "Made with")) brand-text-pt)
-        text-w   (transduce (map :w) + 0.0 glyphs)
-        logo-x   (- (double right) logo-w)
-        text-x   (- logo-x brand-gap-pt text-w)
+        text-face (face :regular)
+        prefix    (str (tru "Made with"))
+        logo-w    (* brand-logo-pt (/ (double vw) (double vh)))
+        text-w    (text-width text-face brand-text-pt prefix)
+        logo-x    (- (double right) logo-w)
+        text-x    (- logo-x brand-gap-pt text-w)
         ;; vertically center the text's cap (~0.7*pt tall) on the logo's middle
-        baseline (- (double logo-top) (/ brand-logo-pt 2.0) (* brand-text-pt 0.35))]
+        baseline  (- (double logo-top) (/ brand-logo-pt 2.0) (* brand-text-pt 0.35))]
     (.setNonStrokingColor cs brand-text-color)
-    (reduce (fn [ax {:keys [^GlyphVector gv w]}]
-              (emit-shape! cs (.getOutline gv 0.0 0.0)
-                           (AffineTransform. 1.0 0.0 0.0 -1.0 (+ (double text-x) (double ax)) baseline))
-              (+ (double ax) (double w)))
-            0.0 glyphs)
+    (draw-line! cs text-face brand-text-pt text-x baseline prefix)
     (.setNonStrokingColor cs Color/BLACK)
     (draw-brand-logo! cs logo-x logo-top brand-logo-pt)))
 
