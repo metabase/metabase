@@ -142,7 +142,14 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
   }
   return (
     <>
-      <Button variant="subtle" onClick={() => setShowErrorModal(true)}>
+      <Button
+        variant="subtle"
+        size="xs"
+        h="1rem"
+        p={0}
+        fz="sm"
+        onClick={() => setShowErrorModal(true)}
+      >
         {t`Show error details`}
       </Button>
       {showErrorModal && (
