@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
@@ -7,15 +6,24 @@ import { useUpdateSnippetMutation } from "metabase/api";
 import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 import { Ellipsified, Flex, Icon } from "metabase/ui";
+import type { NativeQuerySnippet } from "metabase-types/api";
 
 import SnippetRowS from "./SnippetRow.module.css";
+
+interface SnippetRowProps {
+  item: NativeQuerySnippet;
+  // absent in the archived snippets view
+  insertSnippet?: (snippet: NativeQuerySnippet) => void;
+  setModalSnippet?: (snippet: NativeQuerySnippet) => void;
+  canWrite: boolean;
+}
 
 export function SnippetRow({
   item: snippet,
   insertSnippet,
   setModalSnippet,
   canWrite,
-}) {
+}: SnippetRowProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [updateSnippet] = useUpdateSnippetMutation();
 
@@ -52,7 +60,7 @@ export function SnippetRow({
               ? () => setIsOpen(true)
               : (e) => {
                   e.stopPropagation();
-                  insertSnippet(snippet);
+                  insertSnippet?.(snippet);
                 }
           }
           miw={0}
@@ -102,7 +110,7 @@ export function SnippetRow({
               onClick={
                 snippet.archived
                   ? () => updateSnippet({ id: snippet.id, archived: false })
-                  : () => setModalSnippet(snippet)
+                  : () => setModalSnippet?.(snippet)
               }
               borderless
               medium

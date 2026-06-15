@@ -63,8 +63,10 @@ import {
 } from "metabase-lib/v1/metadata/utils/models";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
+  CollectionId,
   DatasetColumn,
   Field,
+  NativeQuerySnippet,
   RawSeries,
   ResultsMetadata,
   VisualizationDisplay,
@@ -127,6 +129,11 @@ export type DatasetEditorInnerProps = {
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
+  setModalSnippet: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  snippetCollectionId: CollectionId | null;
+  setSnippetCollectionId?: (id: CollectionId | null) => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
 
   dataReferenceStack: DataReferenceItem[];
