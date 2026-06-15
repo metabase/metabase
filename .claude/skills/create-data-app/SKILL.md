@@ -64,7 +64,13 @@ Do **not** use `gh repo create --template` or `git clone` here — a data app is
 Once the template is in `<repo>/data_apps/<slug>/` (run everything below from that directory):
 
 1. Edit `package.json` `name` to match the slug.
-2. Pin `@metabase/embedding-sdk-react` (the template ships with `*`). The version is always `0.<metabase-major>.<patch>` — the leading `0.` is permanent and the minor matches your Metabase major. So Metabase 63 → `"^0.63.0"`, Metabase 52 → `"^0.52.0"`. **Not** `63.0.0`, `1.52.0`, or any `1.x`/`63.x` — those don't exist. If unsure, use `"latest"`. Floor is `0.63.0` (earlier versions lack the data-app contract surface).
+2. Pin `@metabase/embedding-sdk-react` to the published data-apps tag (the template ships with `*`):
+
+   ```bash
+   npm install @metabase/embedding-sdk-react@63-data-apps
+   ```
+
+   This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint and data-app sandbox contract. Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
 3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
 4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
 5. **Fix `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
@@ -165,14 +171,18 @@ src/
 
 Vite bundles everything reachable from `src/index.tsx` into a single `dist/index.js` IIFE — the folder layout is purely for your own readability.
 
-### 3. Import SDK values from `@metabase/embedding-sdk-react` directly
+### 3. Import SDK values from the correct SDK entrypoint
 
 `vite.config.ts` externalizes `@metabase/embedding-sdk-react` and `@metabase/embedding-sdk-react/data-app`, so production maps them to host-realm globals (`__metabase_sdk__` / `__metabase_data_app__`); the Vite dev server resolves them to the real npm package.
 
 ```tsx
 // ✅ correct
-import { StaticQuestion, useMetabaseQuery } from "@metabase/embedding-sdk-react";
-import { DataAppRouter, DataAppLink } from "@metabase/embedding-sdk-react/data-app";
+import { StaticQuestion } from "@metabase/embedding-sdk-react";
+import {
+  DataAppRouter,
+  DataAppLink,
+  useMetabaseQuery,
+} from "@metabase/embedding-sdk-react/data-app";
 
 // ❌ wrong — no globalThis pattern; you'd be reading nothing
 const { MetabaseProvider, StaticQuestion } = globalThis;
@@ -228,7 +238,7 @@ The bundle imports normally from `@metabase/embedding-sdk-react`. Vite externali
 | `StaticDashboard`, `InteractiveDashboard`, `EditableDashboard` | Dashboard variants. |
 | `CreateDashboardModal` | Modal for new-dashboard flow. |
 | `CollectionBrowser` | Collection picker. |
-| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
+| `useMetabaseQuery` | Schema-backed data-fetching hook for questions / tables / metrics. Import from `@metabase/embedding-sdk-react/data-app`, not the main SDK entrypoint. **The `metabase-data-app-semantic-layer` skill owns the full hook contract** — signature, generics, table-vs-metric variants, segments / measures / breakouts, debugging. Don't reinvent its rules here. |
 | `useQuestionQuery` | Question-only data-fetching hook (`useQuestionQuery(questionId, options?)` returning `{ data, isLoading, error, refetch }`). The bare numeric id is the first arg; optional `{ initialSqlParameters?, enabled? }` is the second. Must be called under `<MetabaseProvider>`. Use when you need a quick question fetch without going through the schema layer (e.g. ad-hoc tooling, pre-schema apps); prefer `useMetabaseQuery` for new schema-backed work. |
 | `useAction` | Hook that triggers a pre-existing Metabase **action** (basic CRUD or custom SQL) and returns `{ execute, isExecuting, result, error, reset }`. Use for any write/mutation interaction — form submit, "Save" / "Update" / "Delete" buttons. **Signature:** `useAction<TParameters, TKind>(actionId)` — the runtime arg is the action's numeric **id** (read from `schema.models.<m>.actions.<a>.id`), or its `entity_id` string, or `null`. Typing comes from the two generics: `ActionParametersFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types `execute`'s parameters object, and `ActionKindFromDataAppSchema<typeof schema.models.<m>.actions.<a>>` types the discriminated `result`. `execute(parameters)` is called from an event handler. Must be called inside a component rendered under `MetabaseProvider`. For full usage patterns and the critical post-action refresh rule, invoke the `metabase-data-app-actions` skill. |
 
