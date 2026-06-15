@@ -116,6 +116,22 @@ describe("McpAppsSettings", () => {
     });
   });
 
+  it("shows 'Install in Cursor' link only when the Cursor and VS Code switch is enabled", async () => {
+    await setup();
+
+    expect(
+      screen.queryByRole("link", { name: "Install in Cursor" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole("switch", { name: "Cursor and VS Code" }),
+    );
+
+    expect(
+      await screen.findByRole("link", { name: "Install in Cursor" }),
+    ).toBeInTheDocument();
+  });
+
   it("can update custom origins on blur", async () => {
     await setup();
 
