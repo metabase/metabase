@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -127,9 +128,11 @@
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
-        dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
-                                      (t2/hydrate :resolved-params)
-                                      (api/check-404))
+        dashboard                 (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
+        dashcard                  (api/check-404 (t2/select-one [:model/DashboardCard :id :card_id :dashboard_id :parameter_mappings]
+                                                                :id dashcard-id
+                                                                :dashboard_id dashboard-id))
+        resolved-params           (dashboard/dashboard->resolved-params (assoc dashboard :dashcards [dashcard]))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass
@@ -139,7 +142,7 @@
                                         ;; more information.
                                         (map (fn [[param-id param]]
                                                [param-id (dissoc param :default)]))
-                                        (:resolved-params dashboard))
+                                        resolved-params)
         ;; ignore default values in request params as well. (#20516)
         request-param-id->param   (into {} (map (juxt :id #(dissoc % :default))) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)

@@ -167,7 +167,7 @@
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Table :model/User}}
 
   analytics
   {:team "UX West"
@@ -855,6 +855,7 @@
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
+           batch-processing
            settings
            util}
    :model-imports #{:model/Action

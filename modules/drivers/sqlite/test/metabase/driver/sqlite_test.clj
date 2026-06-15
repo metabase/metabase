@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,6 +14,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -21,6 +23,14 @@
   (mt/test-driver :sqlite
     (is (= "UTC"
            (driver/db-default-timezone :sqlite (mt/db))))))
+
+(deftest ^:parallel hour-bucketing-time-without-database-type-test
+  (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
+                "fields referenced by name from a source query, #75193) should use the time-aware path "
+                "and not produce a DATETIME-format result")
+    (let [expr (h2x/with-type-info :test_col {:effective-type :type/Time})]
+      (is (= ["TIME(STRFTIME('%H:00', \"test_col\"))"]
+             (sql.qp/format-honeysql :sqlite (sql.qp/date :sqlite :hour expr)))))))
 
 (deftest current-user-table-privileges-test
   (testing "SQLite table privileges normalization"
