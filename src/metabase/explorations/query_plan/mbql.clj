@@ -7,8 +7,7 @@
    [metabase.lib-metric.core :as lib-metric]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.metrics.core :as metrics]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.metrics.core :as metrics]))
 
 (set! *warn-on-reflection* true)
 

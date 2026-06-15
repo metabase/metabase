@@ -151,7 +151,9 @@
                                          :database_id (mt/id) :dataset_query (venues-count-query)}
                      :model/Exploration e {:name "shared" :creator_id (mt/user->id :lucky) :collection_id (:id coll)}
                      :model/ExplorationThread th {:exploration_id (:id e)}
+                     :model/ExplorationThreadGroup g {:exploration_thread_id (:id th)}
                      :model/ExplorationQuery q {:exploration_thread_id (:id th)
+                                                :group_id (:id g)
                                                 :card_id (:id metric)
                                                 :dimension_id "d1"
                                                 :status "pending"

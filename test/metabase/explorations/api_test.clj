@@ -1306,8 +1306,8 @@
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u {}))))
-          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
-              "the composite StoredResult is rolled back when a later write fails")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the source snapshot remains — no composite StoredResult leaks from the rolled-back append")
           (is (zero? (t2/count :model/Card :document_id doc-id))
               "no ephemeral Card leaks from the rolled-back append")
           (is (zero? (t2/count :model/StoredResultUse :stored_result_id
@@ -1348,8 +1348,8 @@
               use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
           (is (= src-sr-id (:stored-result-id result))
               "the embed points back at the source stored_result rather than a fresh copy")
-          (is (zero? (t2/count :model/StoredResult :creator_id (:id u)))
-              "no duplicate composite StoredResult is created for a single-query embed")
+          (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
+              "only the reused source snapshot exists — no duplicate composite StoredResult is created for a single-query embed")
           (is (= [src-sr-id] (mapv :stored_result_id use-rows))
               "exactly one stored_result_use row, pointing at the source snapshot"))))))
 
