@@ -7,12 +7,6 @@ export const GTAPApi = {
   validate: POST("/api/mt/gtap/validate"),
 };
 
-export const CollectionsApi = {
-  get: GET("/api/collection/:id"),
-  graph: GET("/api/collection/graph"),
-  updateGraph: PUT("/api/collection/graph?skip-graph=true"),
-};
-
 export const PublicApi = {
   action: GET(`/api/public/action/:uuid`),
   executeDashcardAction: POST(

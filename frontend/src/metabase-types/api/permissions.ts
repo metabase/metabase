@@ -147,6 +147,12 @@ export type FieldsPermissions =
   | DataPermissionValue.SANDBOXED
   | DataPermissionValue.BLOCKED;
 
+export type UpdateCollectionPermissionsGraphRequest = {
+  namespace?: string | null;
+  revision: number;
+  groups: CollectionPermissions;
+};
+
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;
   revision: number;
