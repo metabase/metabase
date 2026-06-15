@@ -43,16 +43,6 @@ export function dispatchTreemapViewRoot(
   });
 }
 
-/**
- * Build a Metabase drill-through `ClickObject` from a clicked tile. The clicked
- * node id ("0" for a 1-level grouping node, "0-1" for a drilled-in leaf) is
- * resolved to its tree path: `path[0]` is the top-level grouping, `path.at(-1)`
- * is the clicked node. The dimensions carry the grouping (and, for a 2-level
- * leaf, the sub-grouping) value so filter/See-records drills work; the value +
- * value column carry the clicked node's metric. Returns `null` when the id
- * doesn't resolve (e.g. a background click). Mirrors Sankey's
- * `createSankeyClickData`: dimensions are omitted for native cards.
- */
 export function getTreemapClickData({
   tree,
   id,
@@ -118,17 +108,6 @@ export function getTreemapClickData({
   return clickData;
 }
 
-/**
- * The `click` handler either drills down (zoom) or drills through, depending on
- * state. With sub-grouping, clicking at the overview drills *down* into the
- * clicked element's grouping (ECharts can't natively show two levels initially
- * and drill on click — see option.ts `leafDepth`/`nodeClick` — so native click
- * is disabled and we report the new view root, navigated via
- * `dispatchTreemapViewRoot` in TreemapChart). Once drilled into a group,
- * clicking a leaf tile fires Metabase *drill-through* via `onVisualizationClick`.
- * A 1-level treemap (no sub-grouping) has no zoom, so clicking a node always
- * drills through.
- */
 export function getTreemapClickHandler({
   hasChildren,
   isDrilled,
@@ -155,16 +134,17 @@ export function getTreemapClickHandler({
       if (typeof id !== "string") {
         return;
       }
-      // Sub-grouping + overview: clicking drills down into the group (unchanged).
+
+      // Sub-grouping + overview
       if (hasChildren && !isDrilled) {
         onDrillToGroup(getTreemapRootNodeId(id));
         return;
       }
-      // Otherwise the clicked node is a leaf with no further drill-down — a
-      // 1-level node, or a leaf inside the drilled-in group — so drill through.
+
       if (treemapColumns == null) {
         return;
       }
+
       const clickData = getTreemapClickData({
         tree,
         id,
@@ -180,13 +160,7 @@ export function getTreemapClickHandler({
   };
 }
 
-/**
- * The `mouseover` handler washes the hovered tile with a 10% black overlay;
- * `globalout` clears it when the cursor leaves the chart. At the overview the
- * wash covers the hovered element's whole top-level section (its tiles, gaps,
- * and group header); while drilled, where a section fills the canvas, it covers
- * just the hovered leaf tile.
- */
+/* Custom hover overlay. ECharts doesn't support hover overlays on whole groups. */
 export function getTreemapHoverHandlers({
   chartRef,
   overlayRef,
@@ -204,8 +178,6 @@ export function getTreemapHoverHandlers({
         if (typeof id !== "string") {
           return;
         }
-        // Overview: wash the whole top-level section. Drilled: the section is
-        // the canvas, so wash just the hovered tile.
         const targetId = isDrilled ? id : getTreemapRootNodeId(id);
         showTreemapHoverOverlay(chartRef, overlayRef, targetId);
       },
