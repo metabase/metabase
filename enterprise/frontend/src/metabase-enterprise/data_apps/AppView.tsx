@@ -48,6 +48,11 @@ export function AppView({ params }: AppViewProps) {
   // run before the iframe exists and silently skip.
   const [iframeEl, setIframeEl] = useState<HTMLIFrameElement | null>(null);
 
+  // The iframe is blank until its document + bundles finish downloading (the
+  // in-iframe `BundleHost` loader only appears once its React app mounts), so we
+  // cover it with a loader here until its `load` event fires.
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+
   // Errors that happen *inside* the iframe (bundle fetch failed, or the bundle
   // crashed at runtime) are reported up to here via `postMessage` so we can
   // render the failure screen in the host realm — where it matches the rest of
@@ -79,6 +84,7 @@ export function AppView({ params }: AppViewProps) {
     let detach: (() => void) | null = null;
 
     const onLoad = () => {
+      setIframeLoaded(true);
       const win = iframeEl.contentWindow;
       if (!win) {
         return;
@@ -208,7 +214,13 @@ export function AppView({ params }: AppViewProps) {
   }
 
   return (
-    <Box style={{ height: "100%", minHeight: "100vh" }}>
+    <Box pos="relative" h="100%">
+      {!iframeLoaded && (
+        <Box pos="absolute" style={{ inset: 0, zIndex: 1 }}>
+          <LoadingAndErrorWrapper loading />
+        </Box>
+      )}
+
       <iframe
         ref={setIframeEl}
         title={meta.display_name}
@@ -218,7 +230,6 @@ export function AppView({ params }: AppViewProps) {
           display: "block",
           width: "100%",
           height: "100%",
-          minHeight: "100vh",
           border: 0,
         }}
       />
