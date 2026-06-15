@@ -63,8 +63,8 @@ export function getMcpChartTypes({
     // Slot 2: sensible visualization that isn't already the default
     candidates.find((type) => sensibleVisualizations.includes(type)) ?? null,
 
-    // Slot 3: show table if we can, otherwise show area as the fallback
-    canShowTable ? "table" : "area",
+    // Slot 3: show table when it has enough data to be useful.
+    canShowTable ? "table" : null,
   ];
 
   return Array.from(new Set(chartTypes))

@@ -24,16 +24,15 @@ export function useChartTypes(
   const queryResult = queryResults?.[0] ?? null;
   const currentDisplay = question?.display() ?? null;
 
-  const defaultDisplayRef = useRef<{
-    queryResult: Dataset | null;
-    display: CardDisplayType | null;
-  } | null>(null);
+  const defaultDisplayRef = useRef<CardDisplayType | null>(null);
 
-  if (defaultDisplayRef.current?.queryResult !== queryResult) {
-    defaultDisplayRef.current = {
-      queryResult,
-      display: currentDisplay,
-    };
+  if (
+    queryResult &&
+    currentDisplay != null &&
+    (defaultDisplayRef.current == null ||
+      (defaultDisplayRef.current === "table" && currentDisplay !== "table"))
+  ) {
+    defaultDisplayRef.current = currentDisplay;
   }
 
   const { sensibleVisualizations } = useMemo(
@@ -44,7 +43,7 @@ export function useChartTypes(
   const rowCount = queryResult?.data?.rows?.length ?? 0;
 
   const sensibleChartTypes = getMcpChartTypes({
-    defaultDisplay: defaultDisplayRef.current?.display ?? null,
+    defaultDisplay: defaultDisplayRef.current,
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
     canShowTable: rowCount >= 2,
   });
