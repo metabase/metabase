@@ -44,9 +44,6 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       );
       return firstDimension?.name;
     },
-    // The groups list renders directly beneath as its own widget — collapse
-    // the standard inter-widget gap so the two read as one control, like
-    // pie's dimension picker + rows list.
     getWrapperStyle: (
       _series: RawSeries,
       vizSettings: ComputedVisualizationSettings,
@@ -58,8 +55,6 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   "treemap._groups_widget": {
     getSection: () => t`Data`,
     widget: TreemapGroupsPicker,
-    // The list's own bottom padding and the last row's margin already add up
-    // to roughly the standard 1.5rem inter-widget gap before Sub-grouping.
     getWrapperStyle: () => ({ marginBottom: 0 }),
     getProps: (
       rawSeries: RawSeries,
@@ -180,8 +175,6 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     index: 0,
     getDefault: () => true,
     inline: true,
-    // The parent labels are the top-level group header chips, which only exist
-    // in a 2-level treemap — hide the setting until a sub-grouping is selected.
     getHidden: (
       _series: RawSeries,
       vizSettings: ComputedVisualizationSettings,
@@ -242,8 +235,6 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     index: 1,
     getDefault: () => true,
     inline: true,
-    // Leaf values render as part of the leaf tile label, so they have no effect
-    // when leaf labels are off — disable the toggle then.
     getProps: (
       _series: RawSeries,
       vizSettings: ComputedVisualizationSettings,
@@ -279,6 +270,19 @@ export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
     if (rows.length === 0) {
       return;
     }
+
+    const hasPotentialMetricColumn = cols.some(
+      (col) => isMetric(col) && col.name !== settings["treemap.grouping"],
+    );
+    if (!hasPotentialMetricColumn) {
+      throw new ChartSettingsError(
+        t`Add at least one metric column to use as the value.`,
+        {
+          section: "Data",
+        },
+      );
+    }
+
     const treemapColumns = getTreemapChartColumns(cols, settings);
     if (!treemapColumns) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
