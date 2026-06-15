@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
@@ -90,6 +89,7 @@ export function getTreemapTooltipModel(
   context: TreemapTooltipContext,
   getColor: (node: TreemapNode) => string | undefined,
   formatValue: (value: number) => string,
+  formatPercent: (ratio: number) => string,
 ): EChartsTooltipModel {
   const { header, siblings, focusedNode } = context;
   const total = siblings.reduce((sum, node) => sum + node.value, 0);

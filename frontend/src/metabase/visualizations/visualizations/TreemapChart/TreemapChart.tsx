@@ -112,6 +112,7 @@ export const TreemapChart = ({
       labelLayout,
       parentLabelLayout,
       formatValue: formatters.value,
+      formatPercent: formatters.percent,
       renderingContext,
     });
 
@@ -121,6 +122,7 @@ export const TreemapChart = ({
         tree,
         colors,
         formatters.value,
+        formatters.percent,
         containerRef,
         () => viewRootIdRef.current,
         getTreemapInlineValueIds(labelLayout, parentLabelLayout),

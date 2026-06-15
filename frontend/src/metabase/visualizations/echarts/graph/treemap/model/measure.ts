@@ -38,7 +38,10 @@ export function measureTreemapLabelLayouts({
   showLeafValues: boolean;
   showParentValues: boolean;
 }): TreemapMeasuredLabelLayouts {
-  const formatShare = getTreemapPercentOfTotalFormatter(tree);
+  const formatShare = getTreemapPercentOfTotalFormatter(
+    tree,
+    formatters.percent,
+  );
 
   const labelLayout = getAllTileLabelLayouts(nodes, {
     getValueLabelWidth: (id) => {

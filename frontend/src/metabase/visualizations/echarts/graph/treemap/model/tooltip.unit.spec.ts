@@ -118,7 +118,12 @@ describe("getTreemapTooltipModel", () => {
 
   it("builds one row per sibling with name, formatted value, and percent of total, sorted by value descending", () => {
     const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
-    const model = getTreemapTooltipModel(context, getColor, formatValue);
+    const model = getTreemapTooltipModel(
+      context,
+      getColor,
+      formatValue,
+      formatPercent,
+    );
 
     expect(model.header).toBe("Category");
     expect(model.rows).toHaveLength(2);
@@ -171,7 +176,12 @@ describe("getTreemapTooltipModel", () => {
     ];
     // Drilled into group "0" (Legumes), hovering its first sub-group.
     const context = getTreemapTooltipContext(tree, "0-0", "0")!;
-    const model = getTreemapTooltipModel(context, () => undefined, formatValue);
+    const model = getTreemapTooltipModel(
+      context,
+      () => undefined,
+      formatValue,
+      formatPercent,
+    );
 
     expect(model.rows.map((row) => row.name)).toEqual([
       "Chickpeas",
@@ -188,7 +198,12 @@ describe("getTreemapTooltipModel", () => {
 
   it("adds a Total footer when there is more than one sibling", () => {
     const context = getTreemapTooltipContext(TWO_LEVEL, "0", null, "Category")!;
-    const model = getTreemapTooltipModel(context, getColor, formatValue);
+    const model = getTreemapTooltipModel(
+      context,
+      getColor,
+      formatValue,
+      formatPercent,
+    );
 
     expect(model.footer).toMatchObject({
       values: ["$100", formatPercent(1)],
@@ -200,7 +215,12 @@ describe("getTreemapTooltipModel", () => {
       { rawName: "A", displayName: "A", value: 5, rowIndices: [0] },
     ];
     const context = getTreemapTooltipContext(single, "0", null)!;
-    const model = getTreemapTooltipModel(context, () => undefined, formatValue);
+    const model = getTreemapTooltipModel(
+      context,
+      () => undefined,
+      formatValue,
+      formatPercent,
+    );
 
     expect(model.footer).toBeUndefined();
     expect(model.rows[0].markerColorClass).toBeUndefined();
@@ -212,7 +232,12 @@ describe("getTreemapTooltipModel", () => {
       { rawName: "B", displayName: "B", value: 0, rowIndices: [1] },
     ];
     const context = getTreemapTooltipContext(zero, "0", null)!;
-    const model = getTreemapTooltipModel(context, () => undefined, formatValue);
+    const model = getTreemapTooltipModel(
+      context,
+      () => undefined,
+      formatValue,
+      formatPercent,
+    );
 
     expect(model.rows[0].values[1]).toBe(formatPercent(0));
   });

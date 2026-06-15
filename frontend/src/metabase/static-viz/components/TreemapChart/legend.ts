@@ -1,12 +1,10 @@
 import { t } from "ttag";
 
-import { formatPercent } from "metabase/static-viz/lib/numbers";
-import {
-  getTreemapNodeKey,
-  getTreemapTotal,
-} from "metabase/visualizations/echarts/graph/treemap/model/data";
+import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
+import { getTreemapNodeKey } from "metabase/visualizations/echarts/graph/treemap/model/data";
 import { getTreemapPercentOfTotalFormatter } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import type { TreemapTree } from "metabase/visualizations/echarts/graph/treemap/model/types";
+import { getTreemapTotal } from "metabase/visualizations/echarts/graph/treemap/model/value";
 
 /** Legend column width (px), from the Figma static-export spec. */
 export const TREEMAP_LEGEND_WIDTH = 363;
@@ -81,9 +79,10 @@ export function getTreemapLegendModel(
   tree: TreemapTree,
   colors: Record<string, string>,
   formatValue: (value: number) => string,
+  formatPercent: (ratio: number) => string = formatPercentDefault,
 ): TreemapLegendModel {
   const total = getTreemapTotal(tree);
-  const formatShare = getTreemapPercentOfTotalFormatter(tree);
+  const formatShare = getTreemapPercentOfTotalFormatter(tree, formatPercent);
   const hasChildren = tree.some((node) => node.children != null);
 
   const rows: TreemapLegendRow[] = [];

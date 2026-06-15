@@ -16,7 +16,10 @@ const renderingContext: RenderingContext = {
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
-const formatters = { value: (value: number) => String(value) };
+const formatters = {
+  value: (value: number) => String(value),
+  percent: (ratio: number) => `${ratio * 100}%`,
+};
 
 const TREE: TreemapTree = [
   {
@@ -91,8 +94,12 @@ describe("useLabelMeasurement", () => {
 
     act(() => result.current.handleLabelMeasure());
 
-    expect(result.current.labelLayout["0-0"]).toMatchObject({ show: true });
-    expect(result.current.labelLayout["0-1"]).toMatchObject({ show: true });
+    expect(result.current.labelLayout["0-0"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
+    expect(result.current.labelLayout["0-1"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
     expect(result.current.parentLabelLayout["0"]).toMatchObject({
       showText: true,
     });
@@ -106,13 +113,17 @@ describe("useLabelMeasurement", () => {
     expect(result.current.parentLabelLayout).toEqual({});
 
     act(() => result.current.handleLabelMeasure());
-    expect(result.current.labelLayout["0-0"]).toMatchObject({ show: true });
+    expect(result.current.labelLayout["0-0"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
 
     rerender({ viewRootId: null });
     expect(result.current.labelLayout).toEqual({});
 
     act(() => result.current.handleLabelMeasure());
 
-    expect(result.current.labelLayout["0-1"]).toMatchObject({ show: true });
+    expect(result.current.labelLayout["0-1"]).toMatchObject({
+      detail: expect.not.stringMatching("none"),
+    });
   });
 });

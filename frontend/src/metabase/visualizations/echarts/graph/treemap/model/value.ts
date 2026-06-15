@@ -1,5 +1,3 @@
-import { formatPercent } from "metabase/static-viz/lib/numbers";
-
 import type { TreemapTree } from "./types";
 
 export function getTreemapTotal(tree: TreemapTree) {
@@ -11,11 +9,13 @@ export function getLeafPercentLabel({
   value,
   parentValue,
   formatPercentOfTotal,
+  formatPercent,
 }: {
   isDrilled: boolean;
   value: number;
   parentValue?: number;
   formatPercentOfTotal: (value: number) => string;
+  formatPercent: (ratio: number) => string;
 }): string {
   if (!isDrilled || parentValue == null) {
     return formatPercentOfTotal(value);

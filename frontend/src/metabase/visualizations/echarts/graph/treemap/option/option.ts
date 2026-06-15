@@ -1,6 +1,7 @@
 import type { TreemapSeriesOption } from "echarts/charts";
 import { match } from "ts-pattern";
 
+import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { getTreemapColors } from "../model/colors";
@@ -31,6 +32,7 @@ export type TreemapChartOptionConfig = {
   colors?: Record<string, string>;
   isDrilled?: boolean;
   formatValue?: (value: number) => string;
+  formatPercent?: (ratio: number) => string;
   showLeafLabels?: boolean;
   showParentLabels?: boolean;
   labelLayout?: Record<string, TreemapLabelLayout>;
@@ -45,6 +47,7 @@ type TreemapSeriesBuildConfig = {
   labelLayout: Record<string, TreemapLabelLayout>;
   parentLabelLayout: Record<string, ParentLabelLayout>;
   formatValue: (value: number) => string;
+  formatPercent: (ratio: number) => string;
   formatPercentOfTotal: (value: number) => string;
   headerTintTarget: string;
   renderingContext: RenderingContext;
@@ -111,6 +114,7 @@ function createSeriesBuildConfig({
   labelLayout = {},
   parentLabelLayout = {},
   formatValue = (value: number) => String(value),
+  formatPercent = formatPercentDefault,
   renderingContext,
 }: TreemapChartOptionConfig): TreemapSeriesBuildConfig {
   return {
@@ -120,7 +124,11 @@ function createSeriesBuildConfig({
     labelLayout,
     parentLabelLayout,
     formatValue,
-    formatPercentOfTotal: getTreemapPercentOfTotalFormatter(tree),
+    formatPercent,
+    formatPercentOfTotal: getTreemapPercentOfTotalFormatter(
+      tree,
+      formatPercent,
+    ),
     headerTintTarget: renderingContext.getColor("white"),
     renderingContext,
   };
@@ -310,6 +318,7 @@ function getTileLabelOverride({
     isDrilled,
     labelLayout,
     formatValue,
+    formatPercent,
     formatPercentOfTotal,
   } = config;
   if (!showLeafLabels) {
@@ -334,6 +343,7 @@ function getTileLabelOverride({
             value,
             parentValue,
             formatPercentOfTotal,
+            formatPercent,
           }),
         ),
       },

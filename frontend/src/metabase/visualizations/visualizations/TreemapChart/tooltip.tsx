@@ -19,6 +19,7 @@ export function getTreemapTooltipOption(
   tree: TreemapTree,
   colors: Record<string, string>,
   formatValue: (value: number) => string,
+  formatPercent: (ratio: number) => string,
   containerRef: React.RefObject<HTMLDivElement>,
   getViewRootId: () => string | null,
   inlineValueIds: TreemapInlineValueIds,
@@ -57,7 +58,12 @@ export function getTreemapTooltipOption(
 
       return reactNodeToHtmlString(
         <EChartsTooltip
-          {...getTreemapTooltipModel(context, getColor, formatValue)}
+          {...getTreemapTooltipModel(
+            context,
+            getColor,
+            formatValue,
+            formatPercent,
+          )}
         />,
       );
     },

@@ -79,6 +79,7 @@ export function TreemapChart({
         labelLayout: layouts.labelLayout,
         parentLabelLayout: layouts.parentLabelLayout,
         formatValue: formatters.value,
+        formatPercent: formatters.percent,
         renderingContext,
       }),
     });
@@ -108,7 +109,12 @@ export function TreemapChart({
   chart.setOption(buildOption(layouts));
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
 
-  const legendModel = getTreemapLegendModel(tree, colors, formatters.value);
+  const legendModel = getTreemapLegendModel(
+    tree,
+    colors,
+    formatters.value,
+    formatters.percent,
+  );
   const width = CHART_WIDTH + LEGEND_GAP + TREEMAP_LEGEND_WIDTH;
   const height = Math.max(CHART_HEIGHT, legendModel.height);
 
