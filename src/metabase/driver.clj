@@ -844,6 +844,12 @@
     ;; Does this driver support executing python transforms?
     :transforms/python
     ;;
+    ;; Does this driver support creating an index (in the broad sense -- see the comment above
+    ;; [[supported-index-methods]]) as a standalone statement after the transform target table already exists?
+    ;; Drivers with this feature implement [[supported-index-methods]] and [[compile-create-index]]. Contrast with
+    ;; drivers that inline indexes into the table-creation statement itself (e.g. Redshift sortkeys).
+    :index/standalone-create
+    ;;
     ;; Does this driver support calculating dependencies of native queries?
     :dependencies/native
     ;;
@@ -1542,6 +1548,48 @@
   {:added "0.58.0", :arglists '([driver database-id schema table-name index-name column-names & args])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; "Index" is used in the broad sense here: anything that shapes the physical layout of a transform's target table.
+;; Postgres/MySQL use real indexes, Snowflake/BigQuery clustering keys, Redshift sort/dist keys.
+
+(defmulti supported-index-methods
+  "Return the index methods this driver supports for transform target tables, as a map of `index-kind` -> metadata map.
+  Each metadata map carries at least `:lifecycle`, one of `:standalone` (applied as a separate statement after the
+  table exists) or `:inline` (inlined into the table-creation statement), e.g. `{:btree {:lifecycle :standalone}}`.
+
+  Defaults to `{}` for drivers with no index support."
+  {:added "0.63.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod supported-index-methods :default
+  [_driver _database]
+  {})
+
+(defmulti compile-create-index
+  "Render a `:standalone` index into the DDL statement(s) that create it on the existing `table` in `schema`.
+  `structured` is the index description, e.g. `{:kind :btree, :name \"foo_bar\", :columns [{:name \"bar\"}]}`; it may
+  also carry `:unique` and `:if-not-exists` booleans. The index's `:name` is rendered verbatim as the physical name.
+
+  Returns a vector of `[sql-string & params]` queries suitable for [[execute-raw-queries!]]."
+  {:added "0.63.0", :arglists '([driver schema table structured])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti refresh-table-stats!
+  "Refresh the database's table statistics (e.g. `ANALYZE`) for `table` after a transform run materializes it, so
+  query planners see fresh stats. Defaults to a no-op."
+  {:added "0.63.0", :arglists '([driver database schema table transform-type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod refresh-table-stats! :default
+  [_driver _database _schema _table _transform-type]
+  nil)
 
 (defmulti drop-table!
   "Drop a table named `table-name`. If the table doesn't exist it will not be dropped. `table-name` may be qualified
