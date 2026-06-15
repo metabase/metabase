@@ -1,8 +1,12 @@
+import { StaticVisualization } from "../../StaticVisualization";
 import { data } from "../stories-data";
 
-import { Template, comboChartMeta, renderingContext } from "./shared";
+import { Template, renderingContext } from "./shared";
 
-export default comboChartMeta;
+export default {
+  title: "Viz/Static Viz/ComboChart",
+  component: StaticVisualization,
+};
 
 export const Bar45DegreeLabels = {
   render: Template,

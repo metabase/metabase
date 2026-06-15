@@ -2,11 +2,20 @@ import { updateIn } from "icepick";
 
 import { color } from "metabase/ui/colors";
 
+import { StaticVisualization } from "../../StaticVisualization";
 import { data } from "../stories-data";
 
-import { Template, comboChartMeta, renderingContext } from "./shared";
+import { Template, renderingContext } from "./shared";
 
-export default comboChartMeta;
+export default {
+  title: "Viz/Static Viz/ComboChart",
+  component: StaticVisualization,
+};
+
+// ================================
+// the Loki stress test workflow runs on entire files, not individual stories, so stress testing this file is extremely slow
+// add new stories to their own file, see Bar45DegreeLabels.stories.tsx for an example
+// ================================
 
 export const LineLinearXScale = {
   render: Template,
@@ -1093,3 +1102,8 @@ export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
     renderingContext,
   },
 };
+
+// ================================
+// the Loki stress test workflow runs on entire files, not individual stories, so stress testing this file is extremely slow
+// add new stories to their own file, see Bar45DegreeLabels.stories.tsx for an example
+// ================================

@@ -11,11 +11,6 @@ import type { RenderingContext } from "metabase/visualizations/types";
 import type { StaticChartProps } from "../../StaticVisualization";
 import { StaticVisualization } from "../../StaticVisualization";
 
-export const comboChartMeta = {
-  title: "Viz/Static Viz/ComboChart",
-  component: StaticVisualization,
-};
-
 export const Template: StoryFn<StaticChartProps> = (args) => {
   return (
     <div style={{ border: "1px solid black", display: "inline-block" }}>
