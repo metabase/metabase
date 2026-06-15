@@ -510,6 +510,61 @@
                      :error-code "metabase_transforms_locked"}])
     (run-test-run! transform multipart-params)))
 
+;;; ---------------------------------------------------------------------------
+;;; GET /:id/test-run/inputs — required input tables for the test-run UI
+;;; ---------------------------------------------------------------------------
+
+(def ^:private InputTableResponse
+  "Malli schema for a single entry in the inputs response.
+
+  `:table_id` — app-DB Table id (integer); the key to use in `input-<table-id>` multipart parts.
+  `:schema`   — DB schema string (e.g. \"public\").
+  `:name`     — physical table name string (e.g. \"orders\").
+  `:columns`  — ordered list of column name strings the fixture CSV header must contain."
+  [:map {:closed true}
+   [:table_id pos-int?]
+   [:schema   :string]
+   [:name     :string]
+   [:columns  [:sequential :string]]])
+
+(api.macros/defendpoint :get "/:id/test-run/inputs" :- [:map
+                                                        [:status pos-int?]
+                                                        [:body :any]]
+  "Return the required input tables for a transform's test run.
+
+  The response is a vector of table descriptors — one per input table the
+  transform depends on. Each descriptor carries the information the frontend
+  needs to render an upload dropzone labelled with the table name and the
+  exact column headers the user's CSV must contain.
+
+  Error → HTTP status mapping:
+  - 402: feature flag off (transforms premium feature not enabled).
+  - 403: caller lacks read access to the transform.
+  - 422: transform type not supported (e.g. Python); cannot determine input
+         tables; referenced table not synced."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [transform (api/read-check :model/Transform id)]
+    (transforms.core/check-feature-enabled! transform)
+    (try
+      (let [transform-value {:source (:source transform)
+                             :target (:target transform)}
+            tables          (transforms.core/required-input-tables transform-value)]
+        {:status 200
+         :body   (mapv (fn [t]
+                         {:table_id (:id t)
+                          :schema   (:schema t)
+                          :name     (:name t)
+                          :columns  (mapv :name (:columns t))})
+                       tables)})
+      (catch clojure.lang.ExceptionInfo e
+        (let [error-type  (:error-type (ex-data e))
+              http-status (get test-run-error-http-status error-type)]
+          (if http-status
+            {:status http-status
+             :body   (error->response e)}
+            (throw e)))))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."
   (handlers/routes

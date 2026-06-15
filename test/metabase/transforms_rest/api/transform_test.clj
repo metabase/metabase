@@ -2,6 +2,7 @@
   "Tests for /api/transform endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.transforms-rest.api.transform-test]}}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -2273,3 +2274,147 @@
                   (is (= "passed" (:status resp))
                       (str "Expected :passed with ts ignored; diff: "
                            (pr-str (:diff resp)))))))))))))
+
+;;; ============================================================
+;;; GET /:id/test-run/inputs — required input tables endpoint
+;;; ============================================================
+
+(defn- test-run-inputs-url [transform-id]
+  (format "transform/%d/test-run/inputs" transform-id))
+
+;; ---------------------------------------------------------------------------
+;; Happy path — native SQL with 2 input tables
+;; ---------------------------------------------------------------------------
+
+(deftest inputs-happy-path-native-two-tables-test
+  (testing "GET /:id/test-run/inputs — native JOIN (orders + people) → 200, both tables with columns"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)
+                people-id (mt/id :people)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp
+                                     "SELECT o.user_id FROM orders o JOIN people p ON o.user_id = p.id")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (let [resp (mt/user-http-request
+                          :crowberto :get 200 (test-run-inputs-url (:id transform)))]
+                (testing "response is a vector of 2 entries"
+                  (is (= 2 (count resp))))
+                (let [by-name (into {} (map (juxt :name identity)) resp)]
+                  (testing "contains orders entry with correct table_id"
+                    (let [entry (get by-name "orders")]
+                      (is (some? entry))
+                      (is (= orders-id (:table_id entry)))
+                      (is (= "public" (:schema entry)))
+                      (is (= ["id" "user_id" "product_id" "subtotal" "tax"
+                              "total" "discount" "created_at" "quantity"]
+                             (:columns entry)))))
+                  (testing "contains people entry with correct table_id"
+                    (let [entry (get by-name "people")]
+                      (is (some? entry))
+                      (is (= people-id (:table_id entry)))
+                      (is (= "public" (:schema entry)))
+                      (is (= ["id" "address" "email" "password" "name" "city"
+                              "longitude" "state" "source" "birth_date" "zip"
+                              "latitude" "created_at"]
+                             (:columns entry))))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Happy path — MBQL transform (1 table)
+;; ---------------------------------------------------------------------------
+
+(deftest inputs-happy-path-mbql-test
+  (testing "GET /:id/test-run/inputs — MBQL transform → 200, single table with columns"
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp        (mt/metadata-provider)
+                orders-id (mt/id :orders)]
+            (mt/with-temp [:model/Transform transform
+                           {:source {:type  "query"
+                                     :query (lib/query mp (lib.metadata/table mp orders-id))}
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (let [resp (mt/user-http-request
+                          :crowberto :get 200 (test-run-inputs-url (:id transform)))]
+                (testing "response is a vector of 1 entry"
+                  (is (= 1 (count resp))))
+                (let [entry (first resp)]
+                  (testing "entry has required keys"
+                    (is (= #{:table_id :schema :name :columns} (set (keys entry)))))
+                  (testing "table_id matches orders"
+                    (is (= orders-id (:table_id entry))))
+                  (testing "schema is public"
+                    (is (= "public" (:schema entry))))
+                  (testing "name is orders"
+                    (is (= "orders" (:name entry))))
+                  (testing "columns is a non-empty sequential of strings"
+                    (is (sequential? (:columns entry)))
+                    (is (seq (:columns entry)))
+                    (is (every? string? (:columns entry))))
+                  (testing "columns start with id"
+                    (is (= "id" (first (:columns entry))))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Error case — 422 (cannot determine inputs)
+;; ---------------------------------------------------------------------------
+
+(deftest inputs-cannot-determine-inputs-422-test
+  (testing "GET /:id/test-run/inputs — cannot-determine-inputs error → 422"
+    ;; Mock required-input-tables to throw ::cannot-determine-inputs so we can test the HTTP
+    ;; mapping without needing a real broken transform. Uses a plain native transform so
+    ;; read-check passes without premium-feature complications.
+    (mt/with-premium-features #{}
+      (mt/test-drivers #{:postgres}
+        (mt/dataset test-data
+          (let [mp (mt/metadata-provider)]
+            (mt/with-temp [:model/Transform transform
+                           {:source (make-native-transform-source
+                                     mp "SELECT user_id FROM orders")
+                            :target {:schema "public" :type "table" :name (mt/random-name)}}]
+              (mt/with-dynamic-fn-redefs
+                [transforms.core/required-input-tables
+                 (fn [_]
+                   (throw (ex-info "Cannot determine inputs for this transform."
+                                   {:error-type :metabase.transforms.test-run.inputs/cannot-determine-inputs})))]
+                (let [resp (mt/user-http-request
+                            :crowberto :get 422 (test-run-inputs-url (:id transform)))]
+                  (testing "status is error"
+                    (is (= "error" (:status resp))))
+                  (testing "error type is cannot-determine-inputs"
+                    (is (string? (get-in resp [:error :type])))
+                    (is (str/includes? (get-in resp [:error :type]) "cannot-determine-inputs"))))))))))))
+
+;; ---------------------------------------------------------------------------
+;; Permissions — 403 for user without read access
+;; ---------------------------------------------------------------------------
+
+(deftest inputs-permissions-403-test
+  (testing "GET /:id/test-run/inputs — user without read access → 403"
+    (mt/with-premium-features #{}
+      ;; :rasta has no transforms permission.
+      (mt/with-temp [:model/Transform transform {}]
+        (mt/user-http-request
+         :rasta :get 403 (test-run-inputs-url (:id transform)))))))
+
+;; ---------------------------------------------------------------------------
+;; Feature flag — 402 when feature disabled
+;; ---------------------------------------------------------------------------
+
+(deftest inputs-feature-flag-402-test
+  (testing "GET /:id/test-run/inputs — feature not enabled → 402"
+    (mt/test-drivers #{:postgres}
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Transform transform
+                         {:source (make-native-transform-source
+                                   mp "SELECT 1 AS x")
+                          :target {:schema "public" :type "table" :name (mt/random-name)}}]
+            (mt/with-dynamic-fn-redefs
+              [transforms.core/check-feature-enabled!
+               (fn [_] (throw (ex-info "Premium features required."
+                                       {:status-code 402})))]
+              (mt/user-http-request
+               :crowberto :get 402 (test-run-inputs-url (:id transform))))))))))

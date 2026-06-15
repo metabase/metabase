@@ -266,6 +266,56 @@ export type RunTransformResponse = {
   message?: string;
 };
 
+export type TestRunInput = {
+  table_id: ConcreteTableId;
+  schema: SchemaName | null;
+  name: string;
+  columns: string[];
+};
+
+export type TestRunCellMismatch = {
+  column: string;
+  "actual-raw": string;
+  "actual-canonical": string;
+  "expected-raw": string;
+  "expected-canonical": string;
+};
+
+export type TestRunColumnIssue = {
+  type: "missing" | "extra";
+  "column-name": string;
+};
+
+export type TransformTestRunDiff = {
+  status: "passed" | "failed";
+  "column-issues": TestRunColumnIssue[];
+  "missing-rows": string[][];
+  "extra-rows": string[][];
+  "cell-mismatches": TestRunCellMismatch[];
+  "row-counts": {
+    actual: number;
+    expected: number;
+  };
+  truncated: number;
+};
+
+export type TestRunError = {
+  type: string;
+  message: string;
+};
+
+export type TestRunResponse = {
+  status: "passed" | "failed" | "error";
+  diff?: TransformTestRunDiff;
+  error?: TestRunError;
+  test_run_id: TransformRunId | null;
+};
+
+export type TestRunTransformRequest = {
+  transformId: TransformId;
+  formData: FormData;
+};
+
 export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];

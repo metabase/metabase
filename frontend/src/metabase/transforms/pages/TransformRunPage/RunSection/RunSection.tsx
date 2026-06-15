@@ -27,6 +27,7 @@ import { RunStatus } from "../../../components/RunStatus";
 import { TagMultiSelect } from "../../../components/TagMultiSelect";
 
 import { LogOutput } from "./LogOutput";
+import { TestRunSection } from "./TestRunSection";
 
 type RunSectionProps = {
   transform: Transform;
@@ -47,6 +48,7 @@ export function RunSection({ transform, readOnly, noTitle }: RunSectionProps) {
           <RunButtonSection transform={transform} readOnly={readOnly} />
         </Group>
         <RunOutputSection transform={transform} />
+        <TestRunSection transformId={transform.id} />
       </Stack>
       <Divider />
       <Group p="lg" gap="lg">

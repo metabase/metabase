@@ -16,6 +16,7 @@
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.test-run.core]
+   [metabase.transforms.test-run.inputs]
    [metabase.transforms.usage]
    [metabase.transforms.util]
    [potemkin :as p]))
@@ -82,4 +83,6 @@
   tag-name-exists?
   tag-name-exists-excluding?]
  [metabase.transforms.test-run.core
-  run-test!])
+  run-test!]
+ [metabase.transforms.test-run.inputs
+  required-input-tables])

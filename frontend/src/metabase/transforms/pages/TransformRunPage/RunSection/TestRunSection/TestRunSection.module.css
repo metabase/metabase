@@ -1,0 +1,37 @@
+.dropzone {
+  border: 1px dashed var(--mb-color-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  background-color: var(--mb-color-background);
+}
+
+.dropzoneActive {
+  border-color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-hover);
+}
+
+.dropzoneFilled {
+  border-style: solid;
+  border-color: var(--mb-color-success);
+}
+
+.resultTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.resultTable th,
+.resultTable td {
+  border: 1px solid var(--mb-color-border);
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+  font-family: var(--mb-default-monospace-font-family);
+}
+
+.resultTable th {
+  background-color: var(--mb-color-background-secondary);
+  font-weight: bold;
+}
