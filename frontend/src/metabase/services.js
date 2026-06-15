@@ -1,12 +1,5 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 
-// only available with token loaded
-export const GTAPApi = {
-  list: GET("/api/mt/gtap"),
-  attributes: GET("/api/mt/user/attributes"),
-  validate: POST("/api/mt/gtap/validate"),
-};
-
 export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
 };
