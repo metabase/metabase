@@ -75,11 +75,7 @@ describe("scenarios > embedding-sdk > analytics — per-mount component events",
     const capturedEvents: SdkEventData[] = [];
     cy.intercept("POST", "/api/analytics-proxy", (request) => {
       capturedEvents.push(...sdkEventsFromProxyBody(request.body));
-      // Reply immediately rather than forwarding to the real proxy. The Snowplow
-      // queue is serialized: event N+1 only fires after event N's XHR response
-      // arrives. Forwarding to the real server in CI can take 10+ seconds, which
-      // blocks the queue and causes subsequent events to miss the wait timeout.
-      request.reply({ statusCode: 200 });
+      request.continue();
     }).as("analyticsProxy");
     return capturedEvents;
   };
