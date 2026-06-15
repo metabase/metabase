@@ -152,22 +152,17 @@ export const cardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedCardParameterValueRequest
       >({
-        query: ({ card_id, entityIdentifier, parameter_id, ...params }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
           url: "/api/card/:cardId/params/:paramId/remapping",
-          // Pass both ids; in an embed the override rewrites `:cardId` →
-          // `:entityIdentifier` and drops the real `cardId` from the params
-          // (see override-requests-for-embeds), and a null `entityIdentifier`
-          // never reaches the querystring.
-          params: {
-            ...params,
-            paramId: parameter_id,
-            cardId: card_id,
-            ...(entityIdentifier && { entityIdentifier }),
-          },
+          // In an embed the override rewrites `:cardId` → `:entityIdentifier` and
+          // drops the real `cardId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       createCard: builder.mutation<Card, CreateCardRequest>({
         query: (body) => ({

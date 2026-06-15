@@ -509,9 +509,9 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id?: CardId | EntityToken;
+  cardId?: CardId | EntityToken;
   entityIdentifier?: EntityUuid | EntityToken | null;
-  parameter_id: ParameterId;
+  paramId: ParameterId;
   value: ParameterValueOrArray;
 };
 

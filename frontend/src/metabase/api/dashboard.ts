@@ -143,27 +143,17 @@ export const dashboardApi = Api.injectEndpoints({
         FieldValue,
         GetRemappedDashboardParameterValueRequest
       >({
-        query: ({
-          dashboard_id,
-          entityIdentifier,
-          parameter_id,
-          ...params
-        }) => ({
+        query: ({ entityIdentifier, ...params }) => ({
           method: "GET",
           url: "/api/dashboard/:dashId/params/:paramId/remapping",
-          // Pass both ids; in an embed the override rewrites `:dashId` →
-          // `:entityIdentifier` and drops the real `dashId` from the params
-          // (see override-requests-for-embeds), and a null `entityIdentifier`
-          // never reaches the querystring.
-          params: {
-            ...params,
-            paramId: parameter_id,
-            dashId: dashboard_id,
-            ...(entityIdentifier && { entityIdentifier }),
-          },
+          // In an embed the override rewrites `:dashId` → `:entityIdentifier` and
+          // drops the real `dashId` from the params (see
+          // override-requests-for-embeds); a null `entityIdentifier` is omitted
+          // so it never reaches the querystring.
+          params: { ...params, ...(entityIdentifier && { entityIdentifier }) },
         }),
-        providesTags: (_response, _error, { parameter_id }) =>
-          provideParameterValuesTags(parameter_id),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       getDashboardParameterValues: builder.query<
         ParameterValues,
