@@ -14,40 +14,17 @@
 
   The `:compiled` map is `qp.compile/compile`'s output carried **intact** — the
   same `{:query <sql-string> :params <vec> :lib/type ...}` shape the production
-  execute path consumes. We modify it only via `(update compiled :query ...)`,
-  mirroring the workspace hook idiom at `transforms_base/query.clj:104-107`. We
-  never deconstruct it or hand-rebuild a `:lib/type` map. Step 6 hands `:compiled`
-  to `driver/run-transform!` verbatim.
+  execute path consumes. The orchestrator passes `:compiled` to `driver/run-transform!`
+  verbatim.
 
-  ## Two compile paths (see the Native/MBQL split decision in the plan)
+  ## Two compile paths
 
-  - **Native-SQL transforms** compile via `transforms-base.u/compile-source`,
-    then the compiled SQL string is rewritten with
-    `sql-tools/replace-names` to point input-table references at scratch tables.
-    Table-qualified-column native SQL (`SELECT orders.id FROM orders`) leaves a
-    dangling qualifier after the FROM-only rewrite; guard 3 (token-survival)
-    catches that and fails closed with a typed error — an accepted PoC
-    limitation.
+  Native-SQL transforms are rewritten by string replacement; MBQL transforms are
+  compiled under a metadata-provider override. Both paths run the same three
+  verify guards (defense-in-depth).
 
-  - **MBQL transforms** compile under a metadata-provider override: the input
-    tables' `:name`/`:schema` are overridden to their scratch specs *before*
-    compilation, so the compiler emits scratch-qualified SQL natively. No string
-    rewrite. (Validated by the plan's Step 0b2 spike.)
-
-  Both paths run the same three verify guards (defense-in-depth).
-
-  ## Verify — three guards (both paths)
-
-  1. **non-empty refs.** `sql-tools/referenced-tables-raw` of the final SQL must
-     be non-empty. (A parse error returns `[]`, which must FAIL, not pass
-     vacuously.)
-  2. **refs ⊆ scratch.** Every referenced table, after normalization (nil schema
-     → driver default schema; lowercase fold), must be a scratch table.
-  3. **token-survival.** No original (real) schema/table identifier may survive
-     anywhere in the final SQL, identifier-boundary-aware (underscore is an
-     identifier char; quoted identifiers count). String-literal occurrences
-     (`WHERE x = 'orders'`) fail closed BY DESIGN — the error names the surviving
-     token.
+  `verify` runs three defense-in-depth guards over the final SQL; see its
+  docstring and the guard comments.
 
   Any guard failure, or any compile/rewrite failure, becomes ONE typed error:
   `ex-info` with `:error-type ::cannot-test-run` (plus `:guard` and the offending
@@ -112,8 +89,8 @@
   the pinned parser backend (used only for error reporting). Wraps backend-specific
   parse exceptions into the typed `::cannot-test-run` error.
 
-  Public so the native rewrite can be exercised directly (the Step 0b SQL-shape
-  catalogue) without a live compile."
+  Public so the native rewrite can be exercised directly in tests
+  without a live compile."
   [driver sql mapping backend]
   (try
     (sql-tools/replace-names driver sql (mapping->replacements mapping))
@@ -145,8 +122,8 @@
 (defn- override-provider
   "Wrap the BASE application-database provider for `db-id` with a
   `transforming-metadata-provider` that overrides each mapped input table's
-  `:name`/`:schema` to its scratch spec. Bound ONCE by the caller (we own the
-  outer binding, so no DANGER flag is needed)."
+  `:name`/`:schema` to its scratch spec. The caller binds this provider exactly
+  once via `qp.store/with-metadata-provider`."
   [db-id id->override]
   (lib.metadata/transforming-metadata-provider
    (table-override-fn id->override)
@@ -170,7 +147,7 @@
 (defn- normalize-ref
   "Normalize a `referenced-tables-raw` entry to a `{:schema :table}` tuple for
   set comparison: nil schema → driver default schema; lowercase fold of both
-  parts (Step 0b rule — sufficient for system-generated lowercase scratch names)."
+  parts (sufficient because scratch names are system-generated lowercase)."
   [driver {:keys [schema table]}]
   {:schema (str/lower-case (or schema (sql.normalize/default-schema driver)))
    :table  (str/lower-case table)})
@@ -186,7 +163,7 @@
   For each mapping entry the real TABLE name is always forbidden (the scratch
   name differs by construction). The real SCHEMA is forbidden only when the
   scratch table lives in a DIFFERENT schema — when scratch tables share the real
-  schema (the common PoC case: same `public`), that schema legitimately appears
+  schema (the common case: same `public`), that schema legitimately appears
   in scratch-qualified output and must not be flagged."
   [mapping]
   (reduce-kv
@@ -223,12 +200,10 @@
   "True when `token` survives in `sql` as a whole identifier (identifier-boundary
   aware: underscore is an identifier char), matched CASE-SENSITIVELY.
 
-  This is the residual string-based guard that catches a real table token
-  surviving in a SQL string literal (`WHERE x = 'orders'`) — a fail-closed-by-
-  design false positive, documented. Case-sensitive matching avoids colliding
-  with case-different quoted identifiers (a `\"Products\"` join alias must not
-  match a lowercased `products` token); genuine dangling QUALIFIERS are caught
-  precisely by [[dangling-qualifier-tokens]] regardless of case."
+  String-literal occurrences (`WHERE x = 'orders'`) fail closed by design — the
+  caller names this guard explicitly for that reason. Case-sensitive matching
+  avoids false-positives on case-different quoted identifiers; genuine dangling
+  qualifiers are caught precisely by [[dangling-qualifier-tokens]]."
   [^String token ^String sql]
   (let [pat (re-pattern (str "(?<![A-Za-z0-9_])"
                              (java.util.regex.Pattern/quote token)
@@ -335,9 +310,13 @@
         compiled
         (if native?
           ;; Native path: compile, then rewrite the SQL string to scratch names.
+          ;; Carry qp.compile's output intact; only rewrite :query. Never deconstruct or
+          ;; rebuild the :lib/type map (mirrors the workspace hook in transforms_base/query.clj).
           (let [compiled (transforms-base.u/compile-source transform nil)]
             (update compiled :query #(rewrite-native-sql driver % mapping backend)))
           ;; MBQL path: compile under a metadata-provider override (no string rewrite).
+          ;; Input tables' :name/:schema are overridden to their scratch specs before
+          ;; compilation, so the compiler emits scratch-qualified SQL natively.
           (let [db-id    (-> transform :source :query :database)
                 provider (override-provider db-id (id->override input-tables mapping))]
             (qp.store/with-metadata-provider provider

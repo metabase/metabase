@@ -7,7 +7,7 @@
     input tables fail-closed. Any extraction or resolution failure throws a
     typed error. Never returns a partial set. Each table-info carries:
     `:id` (app-DB Table id), `:schema` (string), `:name` (string), and
-    `:columns` — the Step-1-shaped column schema:
+    `:columns` — the column schema:
     `[{:name <string> :base-type <kw> :nullable? <bool>} ...]`.
 
   - [[match-fixtures]] — given the required-tables list and the set of fixture
@@ -20,19 +20,11 @@
   Only `:query`-type transforms (native SQL and MBQL) are supported. Python
   transforms and any other source type throw `::unsupported-transform-type`.
 
-  ## Source-card transforms
-
-  When an MBQL transform references a source card (`{:source-table \"card__N\"}`),
-  `qp.preprocess/preprocess` (called inside `transforms-base.i/table-dependencies`)
-  resolves the card inline before `lib/all-source-table-ids` extracts the physical
-  table IDs. Transitive resolution is therefore already handled by the existing
-  dependency machinery — no special-casing required here. The resolved deps come
-  back as `{:table <physical-table-id>}` entries, which we resolve normally.
-
   ## Error taxonomy (`:error-type` keys in ex-data)
 
-  All errors are `ex-info` with a namespaced `:error-type` keyword. Step 7 maps
-  these to HTTP response codes and user-facing messages.
+  All errors are `ex-info` with a namespaced `:error-type` keyword. The API
+  layer (`transforms_rest.api.transform`) maps these to HTTP response codes and
+  user-facing messages.
 
   | `:error-type`                        | Meaning |
   |--------------------------------------|---------|
@@ -60,7 +52,7 @@
   (-> transform :source :type keyword))
 
 (defn- field->column
-  "Convert a :model/Field row to a Step-1-shaped column descriptor."
+  "Convert a :model/Field row to a column descriptor `{:name :base-type :nullable?}`."
   [field]
   {:name      (:name field)
    :base-type (:base_type field)
@@ -69,7 +61,7 @@
    :nullable? (not (false? (:database_is_nullable field)))})
 
 (defn- table-row->table-info
-  "Resolve a :model/Table row to a table-info map including its Step-1 column schema."
+  "Resolve a :model/Table row to a table-info map including its column schema."
   [table]
   (let [fields (t2/select :model/Field
                           :table_id (:id table)
@@ -176,6 +168,9 @@
               {:error-type      ::unsupported-transform-type
                :source-type     stype}))))
   ;; Extract deps strictly: any exception from table-dependencies is wrapped.
+  ;; Source-card MBQL transforms ({:source-table "card__N"}) are resolved
+  ;; transitively here by table-dependencies (via qp.preprocess); deps come back
+  ;; as {:table <physical-id>}, resolved normally — no special-casing needed.
   (let [raw-deps (try
                    (transforms-base.i/table-dependencies transform)
                    (catch Throwable e

@@ -14,9 +14,7 @@
 
   Any cell whose string value is blank (empty string or whitespace-only) is
   returned as `nil` (SQL NULL).  Non-blank cells are parsed according to the
-  column type.  Zero (`0`) and `false` are NOT blank and are preserved as their
-  parsed values.  This matches the behaviour of the upload `parse-rows` path and
-  is the only safe default for `driver/insert-from-source!` insertion.
+  column type.  Zero (`0`) and `false` are NOT blank and are preserved.
 
   ## Case-sensitivity rule for header matching
 
@@ -149,6 +147,7 @@
   "Parse a single CSV cell string `s` using `parser`.
   Returns nil for blank cells; throws `::unparseable-cell` on parse failure."
   [parser row-index column-name s]
+  ;; Blank → nil mirrors the upload parse-rows path; required by insert-from-source!
   (if (str/blank? s)
     nil
     (try

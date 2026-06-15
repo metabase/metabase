@@ -323,10 +323,11 @@
   400 — caller error (bad input): the caller can fix by changing the request.
   422 — unprocessable: the transform or its environment prevents a test run;
         the caller may need to change the transform definition.
-  408 — timeout: the transform execution exceeded the statement timeout.
   500 — internal error: unexpected failure; the caller cannot fix this.
 
-  Any unrecognised `:error-type` is re-thrown (→ 500 from the framework)."
+  Any unrecognised `:error-type` is re-thrown (→ 500 from the framework). A
+  statement timeout throws an untyped exception (no `:error-type`), so it is not
+  in this map and currently surfaces as a generic 500."
   {;; Fixture errors — 400: caller supplied wrong CSV content.
    :metabase.transforms.test-run.fixtures/header-mismatch        400
    :metabase.transforms.test-run.fixtures/unparseable-cell        400
@@ -413,7 +414,8 @@
   "Convert a successful run-record (from `run-test!`) to the HTTP response body.
 
   Status keywords are converted to strings (`\"passed\"` / `\"failed\"`) for
-  JSON serialisation. `:test_run_id` is nil (reserved for the async future)."
+  JSON serialisation. `:test_run_id` is nil (reserved for a future async polling
+  variant)."
   [record]
   {:status       (name (:status record))
    :diff         (:diff record)

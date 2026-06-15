@@ -6,7 +6,7 @@
   ## Inputs
 
   - `actual-cols`  — QP `[:data :cols]` shape: `[{:name <str> :base_type <kw> ...} ...]`
-  - `actual-rows`  — QP row vectors; temporal values are ISO-8601 Z strings (Step 0a):
+  - `actual-rows`  — QP row vectors; temporal values are ISO-8601 Z strings:
                      `\"2024-03-15T00:00:00Z\"`, `\"2024-01-15T10:30:00Z\"` etc.
   - `expected`     — output of [[metabase.transforms.test-run.fixtures/parse-fixture]]:
                      `{:columns [{:name <str> :base-type <kw> :nullable? <bool>} ...]
@@ -33,19 +33,13 @@
   | :type/Text, others                           | String (identity for strings; nil)    |
   | nil (SQL NULL)                               | nil                                   |
 
-  Note: `:type/DateTimeWithTZ` and `:type/DateTimeWithLocalTZ` are treated identically —
-  both `timestamptz` after the Postgres round-trip; the QP always returns `DateTimeWithLocalTZ`.
-
   ## Float equality
 
   EXACT, always — after converting both sides to `BigDecimal`, scale-independently
-  (so `3.5` == `3.50`, and int/long/BigInteger widen safely). There is deliberately
-  NO approximate-equality option (decision 2026-06-11): an absolute epsilon cannot
-  express the relative-difference intuition users actually have, and designing an
-  approximation-strategy API belongs to the Track-2 assertion framework. The PoC
-  workflow for float noise: use `:ignore-columns` for genuinely noisy columns, or
+  (`3.5` == `3.50`; int/long/BigInteger widen safely). There is no
+  approximate-equality option; for noisy float columns use `:ignore-columns`, or
   copy the exact actual value from the cell-mismatch report into the expected CSV.
-  Passing the removed `:float-tolerance` option throws (fail closed, not silent).
+  Passing `:float-tolerance` throws (fail closed, not silent).
 
   ## Multiset semantics
 
@@ -84,12 +78,7 @@
 
   `:cell-mismatches` are produced when missing-rows and extra-rows counts match and rows
   can be sorted into stable pairs. They are capped at [[mismatch-cap]] entries.
-  `:missing-rows` and `:extra-rows` are each capped at [[mismatch-cap]] entries.
-
-  ## JSON-ability
-
-  All temporal canonical forms are strings. Keywords, numbers, booleans, nil, strings, and
-  vectors of those are JSON-serializable. No Java objects survive into the report."
+  `:missing-rows` and `:extra-rows` are each capped at [[mismatch-cap]] entries."
   (:require
    [clojure.string :as str])
   (:import
@@ -113,16 +102,16 @@
 ;; ---------------------------------------------------------------------------
 
 (def ^:private date-like-types
-  "Base types for which the QP returns a midnight-UTC string and Step-1 produces a LocalDate."
+  "Base types the QP returns as a midnight-UTC string and the fixture parser produces as a LocalDate."
   #{:type/Date})
 
 (def ^:private datetime-like-types
-  "Base types for which the QP returns a Z-suffixed string and Step-1 produces a LocalDateTime."
+  "Base types the QP returns as a Z-suffixed ISO-8601 string and the fixture parser produces as a LocalDateTime."
   #{:type/DateTime})
 
 (def ^:private tz-aware-types
   "Base types treated as tz-aware datetimes. Both DateTimeWithTZ and DateTimeWithLocalTZ are
-  equivalent after the Postgres timestamptz round-trip (Step 0a SURPRISE 2)."
+  equivalent after the Postgres timestamptz round-trip (the QP always returns DateTimeWithLocalTZ)."
   #{:type/DateTimeWithTZ :type/DateTimeWithLocalTZ})
 
 (def ^:private numeric-types
@@ -158,7 +147,7 @@
              DateTimeFormatter/ISO_OFFSET_DATE_TIME)
 
     (instance? LocalDateTime v)
-    ;; LocalDateTime treated as UTC (Step 0a: no-TZ column values come back with Z)
+    ;; LocalDateTime treated as UTC (the QP returns no-TZ column values with a Z suffix)
     (.format (.atOffset ^LocalDateTime v ZoneOffset/UTC) DateTimeFormatter/ISO_OFFSET_DATE_TIME)
 
     (instance? OffsetDateTime v)
@@ -316,15 +305,12 @@
 
 (defn- cell-mismatch-detail
   "Produce cell-mismatch detail entries for a single pair of (actual, expected) canonical rows.
-  Returns a seq of mismatch maps.
-
-  Reports `:actual-canonical` and `:expected-canonical` only.  There are no
-  `:actual-raw` / `:expected-raw` fields: the raw pre-canonicalization values are
-  discarded at canonicalization time and cannot be recovered here, so including them
-  would always produce values identical to the canonical fields — a correctness
-  failure for date columns where raw \"2024-03-15\" becomes canonical
-  \"2024-03-15T00:00:00Z\"."
+  Returns a seq of mismatch maps. Reports `:actual-canonical` and `:expected-canonical` only."
   [col-names actual-row expected-row base-types]
+  ;; No :actual-raw / :expected-raw fields: raw pre-canonicalization values are discarded at
+  ;; canonicalization time and cannot be recovered here. Including them would always produce
+  ;; values identical to the canonical fields — a correctness failure for date columns where
+  ;; raw "2024-03-15" becomes canonical "2024-03-15T00:00:00Z".
   (mapcat (fn [col-name base-type actual-canon expected-canon]
             (when-not (cells-equal? actual-canon expected-canon)
               [{:column             col-name
@@ -371,11 +357,7 @@
   Returns a JSON-serializable report map; see namespace docstring for shape."
   [actual-cols actual-rows expected opts]
   (when (contains? opts :float-tolerance)
-    (throw (ex-info (str ":float-tolerance was removed (decision 2026-06-11): float "
-                         "comparison is always exact. Use :ignore-columns for noisy "
-                         "float columns, or copy the exact actual value from the "
-                         "cell-mismatch report into the expected CSV. Approximate "
-                         "equality belongs to the Track-2 assertion framework.")
+    (throw (ex-info ":float-tolerance is not supported; float comparison is exact. Use :ignore-columns for noisy columns."
                     {:error-type ::unsupported-option
                      :option     :float-tolerance})))
   (let [ignore-cols    (set (:ignore-columns opts))

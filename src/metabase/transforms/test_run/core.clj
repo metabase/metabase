@@ -22,11 +22,11 @@
   finally: cleanup! always (all paths, including exceptions and timeout)
   ```
 
-  ## Error-handling choice (Step 7 contract)
+  ## Error-handling choice
 
   `run-test!` propagates typed `ex-info` for error cases — it does NOT catch
-  them into a `{:status :error ...}` envelope internally. The callers (Step 7
-  API handler) catch and map via the error taxonomy:
+  them into a `{:status :error ...}` envelope internally. The API handler catches
+  and maps via the error taxonomy:
 
   - `::metabase.transforms.test-run.inputs/unsupported-transform-type`   → 422
   - `::metabase.transforms.test-run.inputs/cannot-determine-inputs`      → 422
@@ -50,17 +50,13 @@
   to [[default-test-run-timeout-ms]]) before calling `driver/run-transform!`. The
   JDBC layer enforces the statement timeout; on expiry the driver throws an
   exception that propagates through `run-transform!` into the `try/finally`, and
-  `finally` still drops all scratch tables. No virtual-thread cancellation is
-  implemented — this matches the synchronous nature of the endpoint.
-
-  Default timeout: 5 minutes. Rationale: interactive test runs should complete
-  quickly; 5 minutes is generous for fixture-sized data. The scheduled-transform
-  default (240 minutes) is appropriate for production ETL, not interactive testing.
+  `finally` still drops all scratch tables. See [[default-test-run-timeout-ms]]
+  for the default value and rationale.
 
   ## No TransformRun row
 
-  `driver/run-transform!` is the seam below the TransformRun/event/sync layer.
-  This is verified empirically (Step 0c) and asserted in the test suite.
+  `driver/run-transform!` is the seam below the TransformRun/event/sync layer,
+  so a test run creates no TransformRun row (asserted in the test suite).
 
   ## Scratch table safety
 
@@ -132,16 +128,16 @@
   `db`           — `:model/Database` row.
   `driver`       — driver keyword.
 
-  Note: `:conn-spec` is built INSIDE `with-transform-connection` (Step 0c seam
-  pattern, `transforms_base/query.clj:112`). The connection-spec construction
-  reads `:details` from `db`; `with-transform-connection` binds
-  `*connection-type* :transform` before this call so `effective-details`
-  resolves the write-data credentials and routes through the `:transform` pool."
+  Precondition: call inside `with-transform-connection`, which binds
+  `*connection-type* :transform` so the conn-spec resolves write-data credentials."
   [compiled output-target db-id db drv]
   {:db-id          db-id
    :database       db
    :transform-id   nil
    :transform-type :table
+   ;; conn-spec is built here, inside with-transform-connection; effective-details
+   ;; reads *connection-type* = :transform to resolve write-data credentials and
+   ;; route through the :transform JDBC pool.
    :conn-spec      (driver/connection-spec drv db)
    :query          compiled
    :output-schema  (:schema output-target)
@@ -182,7 +178,7 @@
     result))
 
 (defn- actual->schema
-  "Derive the Step-1 target-schema shape from QP result cols.
+  "Derive the `parse-fixture` target-schema shape (`{:name :base-type :nullable?}`) from QP result cols.
   Maps `:base_type` → `:base-type` (underscore → hyphen); keeps `:name` and
   sets `:nullable? true` (we cannot determine constraints from QP metadata)."
   [cols]
@@ -208,7 +204,7 @@
     - `:ignore-columns`  — `#{\"col-name\" ...}` — columns excluded from the diff.
     - `:timeout-ms`      — statement-level timeout in ms (default: [[default-test-run-timeout-ms]]).
 
-  Returns a run-record map (JSON-serializable, shaped for Step 7's HTTP response):
+  Returns a run-record map (JSON-serializable):
   ```
   {:status          :passed | :failed
    :diff            <diff-report>   ; from diff/diff
@@ -217,7 +213,7 @@
   ```
 
   On error, propagates a typed `ex-info` — see ns docstring for the taxonomy.
-  The API layer (Step 7) catches and maps these to HTTP responses.
+  The API layer catches and maps these to HTTP responses.
 
   Cleanup (drop all scratch tables) runs in `finally`, guaranteeing it executes
   regardless of success, failure, or timeout."

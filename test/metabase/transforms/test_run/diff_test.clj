@@ -230,13 +230,13 @@
       (is (= :passed (:status report))))))
 
 (deftest float-tolerance-option-removed-test
-  (testing ":float-tolerance was removed (decision 2026-06-11) — passing it throws,
-            never silently ignores (the option must not appear to work)"
+  (testing "passing :float-tolerance throws (fail closed) — it must never silently
+            appear to work, since float comparison is exact-only"
     (let [actual-cols [(col "f" :type/Float)]
           actual-rows [[3.0]]
           expected    (fixture [(schema-col "f" :type/Float)]
                                [[3.0]])
-          e           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"float-tolerance was removed"
+          e           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"float-tolerance is not supported"
                                             (diff/diff actual-cols actual-rows expected
                                                        {:float-tolerance 0.01})))]
       (is (= ::diff/unsupported-option (-> e ex-data :error-type))))))

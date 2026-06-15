@@ -29,9 +29,9 @@
   ## Caller contract (connection context)
 
   Functions in this namespace do NOT bind `driver.conn/with-transform-connection`.
-  Step 6 wraps the whole run (including seed! and cleanup!) in the canonical
-  connection context. Callers must supply a live `db-id` and `:model/Database`
-  `db` row obtained within that context.
+  The orchestrator (`test-run.core/run-test!`) wraps the whole run (including
+  seed! and cleanup!) in the canonical connection context. Callers must supply a
+  live `db-id` and `:model/Database` `db` row obtained within that context.
 
   ## Public API summary
 
@@ -74,10 +74,9 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn new-nonce
-  "Generate a unique 8-character nonce for a test run.
-  Uses the first 8 chars of a random UUID (hex digits) — same convention as
-  `transforms-base.u/temp-table-name`."
+  "Generate a unique 8-character nonce for a test run."
   []
+  ;; First 8 hex chars of a random UUID — same convention as transforms-base.u/temp-table-name.
   (subs (str/replace (str (UUID/randomUUID)) "-" "") 0 8))
 
 (defn scratch-table-name
@@ -159,7 +158,7 @@
   `nonce`  — 8-char nonce for this run (from [[new-nonce]]).
 
   Returns `{:schema <string> :table <string>}`, the output table spec that
-  `cleanup!` and Step 6's read-back query consume."
+  `cleanup!` and the orchestrator's read-back query consume."
   [^String schema ^String nonce]
   {:schema schema
    :table  (scratch-table-name nonce "out")})
@@ -188,15 +187,15 @@
   - `db-id`       — integer database id.
   - `db`          — `:model/Database` row; `:engine` is used to resolve the driver.
   - `schema`      — schema string in which to create scratch tables (e.g. `\"public\"`).
-  - `seed-inputs` — sequence of `{:table-info <Step-2 shape> :fixture <Step-1 shape>}` maps.
+  - `seed-inputs` — sequence of `{:table-info <table-info map> :fixture <parse-fixture output>}` maps.
   - `nonce`       — 8-char string from [[new-nonce]]; unique per run.
 
   Returns a mapping `{real-spec → scratch-spec}` where each spec is
   `{:schema <string> :table <string>}`.
 
   The real-spec keys are `{:schema (:schema table-info) :table (:name table-info)}`.
-  Step 4's verify normalization expects exactly this shape
-  (nil-schema → default-schema; lowercase compare — see Step 0b findings).
+  `resolve`'s verify normalization compares against exactly this shape
+  (nil schema → driver default schema; lowercase fold).
 
   On partial failure (some tables created, then an error): drops all already-created
   scratch tables (best-effort, logs failures) then rethrows a typed ex-info."
@@ -281,19 +280,13 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- list-tables-in-schema
-  "Return a seq of table name strings in `schema` on `db-id`, via QP native query
-  against information_schema.tables.
-
-  Choice rationale: `driver/describe-database` lists the entire database (all
-  schemas, potentially hundreds of tables) and requires a full DB-level driver
-  call. A scoped information_schema query is cheaper, schema-specific, and works
-  correctly on Postgres and most SQL databases without driver-specific code.
-  This is used only by the janitor, which is an admin/maintenance operation.
-
-  The schema name is passed as a JDBC parameter (`?`), not interpolated into the
-  SQL string, to avoid SQL injection / malformed-SQL errors when the schema name
-  contains single quotes or other SQL metacharacters."
+  "Return a seq of table-name strings in `schema` on `db-id`."
   [db-id ^String schema]
+  ;; Uses information_schema rather than driver/describe-database: describe-database
+  ;; lists the entire database (all schemas, potentially hundreds of tables) and requires
+  ;; a full DB-level driver call. A scoped information_schema query is cheaper,
+  ;; schema-specific, and works correctly on Postgres and most SQL databases without
+  ;; driver-specific code. Used only by the janitor (admin/maintenance operation).
   (let [result (qp/process-query
                 {:database db-id
                  :type     :native
@@ -301,6 +294,9 @@
                                          " FROM information_schema.tables"
                                          " WHERE table_schema = ?"
                                          " ORDER BY table_name")
+                            ;; Schema passed as JDBC parameter, not interpolated, to avoid
+                            ;; SQL injection / malformed-SQL when the schema name contains
+                            ;; single quotes or other SQL metacharacters.
                             :params [schema]}})]
     (mapv first (get-in result [:data :rows]))))
 
@@ -314,9 +310,7 @@
 
   Safe by construction:
   - Young test tables (timestamp < min-age) are skipped.
-  - Production transform temp tables (`mb_transform_temp_table_<hex-millis>`, no
-    `_test_` segment) do not parse as test names — never touched.
-  - Ordinary tables do not parse as test names — never touched.
+  - Non-test names never parse and are never touched (see ns docstring naming convention).
   - Drop is best-effort (logs, continues).
 
   Arguments:
