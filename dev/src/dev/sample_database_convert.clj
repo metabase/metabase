@@ -46,6 +46,27 @@
                       {:builder-fn rs/as-unqualified-maps})
        (map (juxt :TABLE_SCHEMA :TABLE_NAME))))
 
+(def ^:private jdbc-type-code->sqlite-type
+  "Fallback declared SQLite type by JDBC type code (`java.sql.Types`), used only when H2 returns a blank type name."
+  {Types/INTEGER                 "INTEGER"
+   Types/BIGINT                  "BIGINT"
+   Types/SMALLINT                "SMALLINT"
+   Types/TINYINT                 "TINYINT"
+   Types/BOOLEAN                 "BOOLEAN"
+   Types/BIT                     "BOOLEAN"
+   Types/REAL                    "REAL"
+   Types/FLOAT                   "FLOAT"
+   Types/DOUBLE                  "DOUBLE PRECISION"
+   Types/DECIMAL                 "DECIMAL"
+   Types/NUMERIC                 "NUMERIC"
+   Types/DATE                    "DATE"
+   Types/TIME                    "TIME"
+   Types/TIMESTAMP               "TIMESTAMP"
+   Types/TIMESTAMP_WITH_TIMEZONE "TIMESTAMP"
+   Types/BLOB                    "BLOB"
+   Types/VARBINARY               "BLOB"
+   Types/BINARY                  "BLOB"})
+
 (defn- h2-type->sqlite
   "Pass the H2 declared type name through verbatim. SQLite stores the declared
   type string in `sqlite_master` / `PRAGMA table_info` and Metabase's
@@ -58,26 +79,7 @@
   the H2 metadata returns a blank type name."
   [^long jdbc-type ^String h2-type-name]
   (if (str/blank? h2-type-name)
-    (case (int jdbc-type)
-      4 "INTEGER"        ;; Types/INTEGER
-      -5 "BIGINT"        ;; Types/BIGINT
-      5 "SMALLINT"       ;; Types/SMALLINT
-      -6 "TINYINT"       ;; Types/TINYINT
-      16 "BOOLEAN"       ;; Types/BOOLEAN
-      -7 "BOOLEAN"       ;; Types/BIT
-      7 "REAL"           ;; Types/REAL
-      6 "FLOAT"          ;; Types/FLOAT
-      8 "DOUBLE PRECISION" ;; Types/DOUBLE
-      3 "DECIMAL"        ;; Types/DECIMAL
-      2 "NUMERIC"        ;; Types/NUMERIC
-      91 "DATE"          ;; Types/DATE
-      92 "TIME"          ;; Types/TIME
-      93 "TIMESTAMP"     ;; Types/TIMESTAMP
-      2014 "TIMESTAMP"   ;; Types/TIMESTAMP_WITH_TIMEZONE
-      2004 "BLOB"        ;; Types/BLOB
-      -3 "BLOB"          ;; Types/VARBINARY
-      -2 "BLOB"          ;; Types/BINARY
-      "TEXT")
+    (get jdbc-type-code->sqlite-type (int jdbc-type) "TEXT")
     h2-type-name))
 
 (defn- column-defs
