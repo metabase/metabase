@@ -414,17 +414,10 @@ describe("TablePicker", () => {
       await waitLoading();
 
       // The auto-expansion re-renders the tree with the tables after
-      // waitLoading resolves, so wait for the data-layer badges to appear.
-      // Use an extended timeout because the virtualizer's async layout cycle
-      // can take longer than the default 1000ms under CI load.
-      await waitFor(
-        () => {
-          expect(screen.getAllByTestId("table-data-layer")).toHaveLength(2);
-        },
-        { timeout: 5000 },
-      );
-
-      expect(item(hiddenTable)).toBeInTheDocument();
+      // waitLoading resolves, so wait for the first table to appear.
+      await waitFor(() => {
+        expect(item(hiddenTable)).toBeInTheDocument();
+      });
       expect(item(finalTable)).toBeInTheDocument();
 
       const labels = screen

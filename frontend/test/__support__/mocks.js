@@ -18,12 +18,44 @@ global.window.HTMLElement.prototype.scrollTo = jest.fn();
  */
 global.window.HTMLElement.prototype.scrollIntoView = jest.fn();
 
+// jsdom lacks ResizeObserver, and a no-op stub never measures (so consumers like
+// @tanstack/react-virtual render nothing); fire one initial callback per observe.
 global.window.ResizeObserver = class ResizeObserver {
-  observe() {}
+  constructor(callback) {
+    this._callback = callback;
+    this._elements = new Set();
+  }
 
-  unobserve() {}
+  observe(element) {
+    this._elements.add(element);
+    queueMicrotask(() => {
+      if (!this._elements.has(element)) {
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      this._callback(
+        [
+          {
+            target: element,
+            contentRect: rect,
+            borderBoxSize: [{ inlineSize: rect.width, blockSize: rect.height }],
+            contentBoxSize: [
+              { inlineSize: rect.width, blockSize: rect.height },
+            ],
+          },
+        ],
+        this,
+      );
+    });
+  }
 
-  disconnect() {}
+  unobserve(element) {
+    this._elements.delete(element);
+  }
+
+  disconnect() {
+    this._elements.clear();
+  }
 };
 
 jest.mock("metabase/analytics");
