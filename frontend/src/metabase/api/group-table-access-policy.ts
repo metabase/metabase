@@ -31,10 +31,23 @@ export const groupTableAccessPolicyApi = Api.injectEndpoints({
       }),
       providesTags: () => [listTag("group-table-access-policy")],
     }),
+    // Validate a sandbox without saving it. This runs the same validation that
+    // happens on save, so it does not mutate any cached data.
+    validateGroupTableAccessPolicy: builder.mutation<
+      void,
+      GroupTableAccessPolicy
+    >({
+      query: (policy) => ({
+        method: "POST",
+        url: "/api/mt/gtap/validate",
+        body: policy,
+      }),
+    }),
   }),
 });
 
 export const {
   useListGroupTableAccessPoliciesQuery,
   useGetGroupTableAccessPolicyQuery,
+  useValidateGroupTableAccessPolicyMutation,
 } = groupTableAccessPolicyApi;
