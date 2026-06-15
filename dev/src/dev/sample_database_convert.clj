@@ -12,6 +12,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.driver-api.core :as driver-api]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -130,20 +131,21 @@
          (mapv :column_name))))
 
 (defn- create-table-sql [table cols fks pks]
-  (format "CREATE TABLE \"%s\" (%s)"
-          table
-          (str/join ", "
-                    (concat
-                     (for [{:keys [name sqlite-type]} cols]
-                       (format "\"%s\" %s" name sqlite-type))
-                     (when (seq pks)
-                       [(format "PRIMARY KEY (%s)"
-                                (str/join ", " (map #(format "\"%s\"" %) pks)))])
-                     (for [{:keys [fk-cols pk-table pk-cols]} fks]
-                       (format "FOREIGN KEY (%s) REFERENCES \"%s\" (%s)"
-                               (str/join ", " (map #(format "\"%s\"" %) fk-cols))
-                               pk-table
-                               (str/join ", " (map #(format "\"%s\"" %) pk-cols))))))))
+  ;; Identifiers are simple uppercase H2 names (no dots), so plain `keyword` is safe; `:quoted true` double-quotes
+  ;; them. The declared SQLite type is emitted raw because it is an arbitrary string (e.g. "DOUBLE PRECISION").
+  (first
+   (sql/format
+    {:create-table (keyword table)
+     :with-columns
+     (concat
+      (for [{:keys [name sqlite-type]} cols]
+        [(keyword name) [:raw sqlite-type]])
+      (when (seq pks)
+        [[(into [:primary-key] (map keyword) pks)]])
+      (for [{:keys [fk-cols pk-table pk-cols]} fks]
+        [(into [:foreign-key] (map keyword) fk-cols)
+         (into [:references (keyword pk-table)] (map keyword) pk-cols)]))}
+    {:dialect :ansi :quoted true})))
 
 (defn- insert-sql [table cols]
   (format "INSERT INTO \"%s\" (%s) VALUES (%s)"
