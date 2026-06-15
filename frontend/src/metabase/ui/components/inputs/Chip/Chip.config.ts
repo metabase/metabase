@@ -20,11 +20,14 @@ export const chipOverrides: MantineThemeOverride["components"] = {
       checkIcon: S.ChipCheckIcon,
     },
     vars: (_theme, props) => {
-      const size = SIZE_VARS[props.size as string] ?? SIZE_VARS.md;
+      const { height, paddingInline } =
+        props.size !== undefined && Object.hasOwn(SIZE_VARS, props.size)
+          ? SIZE_VARS[props.size]
+          : SIZE_VARS.md;
       return {
         root: {
-          "--chip-size": size.height,
-          "--chip-padding": size.paddingInline,
+          "--chip-size": height,
+          "--chip-padding": paddingInline,
         },
       };
     },
