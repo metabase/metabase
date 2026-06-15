@@ -186,8 +186,8 @@ done
 
 ## Phase 4 — Wait + interpret (gh only)
 
-- **Auto-poll** with `ScheduleWakeup` (~900s / 15 min cadence; setup alone is ~15–20 min)
-  until **both** runs leave `queued`/`in_progress`. Pass the same `/fix-flaky-test $ARGUMENTS`
+- **Auto-poll** with `ScheduleWakeup` (~900s / 15 min cadence) until **both** runs leave
+  `queued`/`in_progress`. Pass the same `/fix-flaky-test $ARGUMENTS`
   back so the loop resumes; re-read the state file on each wake (a manual wake must also
   work). Don't poll faster than ~900s.
 - When both finish, read each conclusion:
