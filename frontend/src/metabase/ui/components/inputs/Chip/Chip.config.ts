@@ -19,11 +19,8 @@ export const chipOverrides: MantineThemeOverride["components"] = {
       iconWrapper: S.ChipIconWrapper,
       checkIcon: S.ChipCheckIcon,
     },
-    vars: (_theme, props) => {
-      const { height, paddingInline } =
-        props.size !== undefined && Object.hasOwn(SIZE_VARS, props.size)
-          ? SIZE_VARS[props.size]
-          : SIZE_VARS.md;
+    vars: (_theme, { size = "md" }) => {
+      const { height, paddingInline } = SIZE_VARS[size];
       return {
         root: {
           "--chip-size": height,
