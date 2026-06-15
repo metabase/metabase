@@ -61,6 +61,7 @@
       (doseq [value ["Omer" ["Omer"] ["Omer" "Clovis"]]]
         (testing (str "with value " (pr-str value))
           (are [op] (some? (#'chain-filter/add-filter
+                            #(lib.metadata/field mp %)
                             (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                             (mt/id :venues)
                             {:field-id (mt/id :venues :name)
@@ -881,13 +882,14 @@
                                     [:field {} (mt/id :checkins :date)]
                                     -32
                                     :week]]}]}
-              (#'chain-filter/add-filter
-               (let [mp (mt/metadata-provider)]
-                 (lib/query mp (lib.metadata/table mp (mt/id :checkins))))
-               $$checkins
-               {:field-id %checkins.date
-                :op       :=
-                :value    "past32weeks"}))))))
+              (let [mp (mt/metadata-provider)]
+                (#'chain-filter/add-filter
+                 #(lib.metadata/field mp %)
+                 (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                 $$checkins
+                 {:field-id %checkins.date
+                  :op       :=
+                  :value    "past32weeks"})))))))
 
 (mt/defdataset nil-values-dataset
   [["tbl"

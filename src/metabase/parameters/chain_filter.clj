@@ -121,39 +121,31 @@
 (defn- joined-table-alias [table-id]
   (format "table_%d" table-id))
 
-(def ^:private ^{:arglists '([field-id])} memoized-field-types-by-id
-  "Return field types by id. Cached for 10 minutes to avoid hitting the DB too much since this is unlike to change
-  often, if ever."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[field-id]]
-                         [(mdb/unique-identifier) field-id])}
-   (fn [field-id]
-     (t2/select-one [:model/Field :base_type :semantic_type] :id field-id))
-   :ttl/threshold (u/minutes->ms 10)))
-
 (mu/defn- add-filter :- ::lib.schema/query
-  "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
-  [query                               :- ::lib.schema/query
+  "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection).
+  `id->field` looks up prefetched Field metadata by id (see [[add-filters]])."
+  [id->field                           :- ifn?
+   query                               :- ::lib.schema/query
    source-table-id                     :- ::lib.schema.id/table
    {:keys [field-id op value options]} :- ::constraint]
-  (let [field-metadata      (lib.metadata/field query field-id)
-        this-field-table-id (:table-id field-metadata)
-        field     (cond-> field-metadata
-                    (not= this-field-table-id source-table-id)
-                    (lib/with-join-alias (joined-table-alias this-field-table-id)))
-        filter-op (if (and (lib.types.isa/temporal? field)
-                           (string? value))
-                    (try
-                      (params.dates/date-string->filter value field-id)
-                      (catch Throwable e
-                        (log/error e "Error creating filter for date string")
-                        nil))
-                    ;; we don't want to skip our value, even if its nil
-                    (let [values (if (nil? value) [nil] (u/one-or-many value))]
-                      {:lib/type :lib/external-op
-                       :operator op
-                       :options  options
-                       :args     (cons field values)}))]
+  (let [field          (id->field field-id)
+        field-table-id (:table-id field)
+        field          (cond-> field
+                         (not= field-table-id source-table-id)
+                         (lib/with-join-alias (joined-table-alias field-table-id)))
+        filter-op      (if (and (lib.types.isa/temporal? field)
+                                (string? value))
+                         (try
+                           (params.dates/date-string->filter value field-id)
+                           (catch Throwable e
+                             (log/error e "Error creating filter for date string")
+                             nil))
+                         ;; we don't want to skip our value, even if its nil
+                         (let [values (if (nil? value) [nil] (u/one-or-many value))]
+                           {:lib/type :lib/external-op
+                            :operator op
+                            :options  options
+                            :args     (cons field values)}))]
     (when filter-op
       (log/tracef "Adding filter clause: %s" (pr-str filter-op)))
     (cond-> query
@@ -180,27 +172,29 @@
    source-table-id   :- ::lib.schema.id/table
    joined-table-ids  :- [:set ::lib.schema.id/table]
    constraints       :- [:maybe ::constraints]]
-  (reduce
-   (fn [query {:keys [field-id] :as constraint}]
-     ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
-     ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
-     ;; it.
-     (let [field-table-id (:table-id (lib.metadata/field query field-id))]
-       (if (or (= field-table-id source-table-id)
-               (contains? joined-table-ids field-table-id))
-         (do
-           (log/tracef "Added filter clause for %s %s with constraint %s"
-                       (name-for-logging :model/Table field-table-id)
-                       (name-for-logging :model/Field field-id)
-                       (pr-str constraint))
-           (add-filter query source-table-id constraint))
-         (do
-           (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
-                       (name-for-logging :model/Table field-table-id)
-                       (name-for-logging :model/Field field-id))
-           query))))
-   query
-   constraints))
+  (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
+                                                              (into #{} (map :field-id) constraints)))]
+    (reduce
+     (fn [query {:keys [field-id] :as constraint}]
+       ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
+       ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
+       ;; it.
+       (let [field-table-id (:table-id (id->field field-id))]
+         (if (or (= field-table-id source-table-id)
+                 (contains? joined-table-ids field-table-id))
+           (do
+             (log/tracef "Added filter clause for %s %s with constraint %s"
+                         (name-for-logging :model/Table field-table-id)
+                         (name-for-logging :model/Field field-id)
+                         (pr-str constraint))
+             (add-filter id->field query source-table-id constraint))
+           (do
+             (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
+                         (name-for-logging :model/Table field-table-id)
+                         (name-for-logging :model/Field field-id))
+             query))))
+     query
+     constraints)))
 
 (def ^:private find-joins-cache-duration-ms
   "Amount of time to cache results of `find-joins`. Since FK relationships in Tables are unlikely to change very
@@ -364,8 +358,9 @@
    database-id           :- ::lib.schema.id/database
    source-table-id       :- ::lib.schema.id/table
    field-ids             :- [:set ::lib.schema.id/field]]
-  (when-let [other-table-ids (not-empty (disj (into #{} (map #(:table-id (lib.metadata/field metadata-providerable %)))
-                                                    field-ids)
+  (when-let [other-table-ids (not-empty (disj (into #{}
+                                                    (map :table-id)
+                                                    (lib.metadata/bulk-metadata metadata-providerable :metadata/column field-ids))
                                               source-table-id))]
     (find-all-joins* database-id source-table-id field-ids other-table-ids *enable-reverse-joins*)))
 
@@ -388,24 +383,30 @@
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
    joins]
-  (reduce
-   (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
-     (let [lhs-field (lib.metadata/field query lhs-field-id)
-           rhs-field (lib.metadata/field query rhs-field-id)
-           rhs-table (lib.metadata/table query rhs-table-id)
-           join      (-> (lib/join-clause rhs-table)
-                         (lib/with-join-alias (joined-table-alias rhs-table-id))
-                         (lib/with-join-conditions [(lib/=
-                                                     (cond-> lhs-field
-                                                       (not= lhs-table-id source-table-id)
-                                                       (lib/with-join-alias (joined-table-alias lhs-table-id)))
-                                                     (-> rhs-field
-                                                         (lib/with-join-alias (joined-table-alias rhs-table-id))))]))]
-       (log/tracef "Adding join against %s\n%s"
-                   (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
-       (lib/join query join)))
-   query
-   joins))
+  (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
+                                                              (into #{} (mapcat (juxt #(get-in % [:lhs :field])
+                                                                                      #(get-in % [:rhs :field])))
+                                                                    joins)))
+        id->table (u/index-by :id (lib.metadata/bulk-metadata query :metadata/table
+                                                              (into #{} (map #(get-in % [:rhs :table])) joins)))]
+    (reduce
+     (fn [query {{lhs-table-id :table, lhs-field-id :field} :lhs, {rhs-table-id :table, rhs-field-id :field} :rhs}]
+       (let [lhs-field (id->field lhs-field-id)
+             rhs-field (id->field rhs-field-id)
+             rhs-table (id->table rhs-table-id)
+             join      (-> (lib/join-clause rhs-table)
+                           (lib/with-join-alias (joined-table-alias rhs-table-id))
+                           (lib/with-join-conditions [(lib/=
+                                                       (cond-> lhs-field
+                                                         (not= lhs-table-id source-table-id)
+                                                         (lib/with-join-alias (joined-table-alias lhs-table-id)))
+                                                       (-> rhs-field
+                                                           (lib/with-join-alias (joined-table-alias rhs-table-id))))]))]
+         (log/tracef "Adding join against %s\n%s"
+                     (name-for-logging :model/Table rhs-table-id) (u/cprint-to-str join))
+         (lib/join query join)))
+     query
+     joins)))
 
 (mu/defn- tighten-join-projections :- ::lib.schema/query
   "Narrow each join's inner-stage `:fields` to exactly the field-ids `query` references whose `:table-id` matches the
@@ -818,12 +819,14 @@
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
-        the-remapped-field-id (delay (let [{:keys [base_type effective_type]} (memoized-field-types-by-id field-id)]
+        the-remapped-field-id (delay (let [metadata-provider (lib-be/application-database-metadata-provider
+                                                              (field/field-id->database-id field-id))
+                                           {:keys [base-type effective-type]} (lib.metadata/field metadata-provider field-id)]
                                        (binding [*allow-implicit-uuid-field-remapping*
                                                  ;; For the details on following condition see the dynamic var's
                                                  ;; docstring.
                                                  (or *allow-implicit-uuid-field-remapping*
-                                                     (not (isa? (or effective_type base_type) :type/UUID)))]
+                                                     (not (isa? (or effective-type base-type) :type/UUID)))]
                                          (remapped-field-id field-id))))]
     (cond
       (str/blank? query-string)
