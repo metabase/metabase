@@ -118,9 +118,8 @@
 
 (deftest ^:parallel openai-response-failed-surfaces-error-test
   (testing "a terminal response.failed event is surfaced as an :error chunk (not silently dropped)"
-    ;; The error detail lives under the response item, unlike a top-level `error` event. This is what
-    ;; Bedrock's mantle /openai/v1/responses returns when a model errors mid-stream (e.g. gpt-5.5 in
-    ;; us-east-2): without this the stream ends silently after :start with no error shown to the user.
+    ;; The error detail lives nested under `response.error`, unlike a top-level `error` event. Without
+    ;; this branch a mid-stream failure ends silently after :start, with no error shown to the user.
     (let [raw [{:type "response.created"     :response {:id "resp_1" :model "gpt-5.5"}}
                {:type "response.in_progress" :response {:id "resp_1"}}
                {:type "response.failed"
@@ -142,6 +141,30 @@
               (into [] (openai/openai->aisdk-chunks-xf) code-only)))
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
               (into [] (openai/openai->aisdk-chunks-xf) bare))))))
+
+(deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
+  (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"
+    ;; An incomplete response (e.g. truncated at max_output_tokens) has valid partial output, so we record
+    ;; its usage like a completed response rather than discarding it or surfacing an error.
+    (let [raw-chunks (fixture "openai-text"
+                              {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; turn the terminal response.completed into a response.incomplete carrying the same usage
+          patched    (mapv (fn [chunk]
+                             (if (= (:type chunk) "response.completed")
+                               (-> chunk
+                                   (assoc :type "response.incomplete")
+                                   (assoc-in [:response :incomplete_details] {:reason "max_output_tokens"}))
+                               chunk))
+                           raw-chunks)
+          parts      (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)]
+      (is (=? [{:type :start}
+               {:type :text :text string?}
+               {:type  :usage
+                :usage {:promptTokens     pos-int?
+                        :completionTokens pos-int?}}]
+              parts))
+      (testing "no error chunk is produced for an incomplete (partial-but-valid) response"
+        (is (empty? (filter #(= :error (:type %)) parts)))))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
