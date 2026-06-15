@@ -13,7 +13,8 @@ export const progressOverrides: MantineThemeOverride["components"] = {
     // @ts-expect-error - mantine sets this variable in 'section', which doesn't allow us to use it for setting a border color
     vars: (theme, props) => ({
       root: {
-        "--progress-section-color": props.color ?? theme.colors.brand[0],
+        "--progress-section-color":
+          props.color ?? theme.colors["core-brand"][0],
       },
     }),
   }),

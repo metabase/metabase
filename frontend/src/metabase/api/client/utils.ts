@@ -183,16 +183,13 @@ async function readBody(response: Response): Promise<ResponseResult> {
   return { ok, status, body };
 }
 
-// URL template tags:
-// - `:tag`  — value is URL-encoded (default; slashes become %2F).
-// - `:tag*` — value is substituted raw (slashes preserved), for endpoints
-//             whose route includes a multi-segment path parameter.
-const URL_TAG_REGEX = /:\w+\*?/g;
+// `:tag` placeholders are URL-encoded (slashes become %2F).
+const URL_TAG_REGEX = /:\w+/g;
 
 /**
- * Replace `:tag` / `:tag*` placeholders in a URL template with values pulled
- * from `data` (params) first, then falling back to `body` fields — this is how
- * an embed `:token` gets filled from the request body. The key is consumed from
+ * Replace `:tag` placeholders in a URL template with values pulled from `data`
+ * (params) first, then falling back to `body` fields — this is how an embed
+ * `:token` gets filled from the request body. The key is consumed from
  * whichever bag held it, so the caller can use any leftovers as querystring
  * params (from `data`) or as the JSON body (from `body`).
  */
@@ -202,8 +199,7 @@ export function substituteUrlTags(
   body?: Record<string, unknown>,
 ): string {
   return url.replace(URL_TAG_REGEX, (tag) => {
-    const isRaw = tag.endsWith("*");
-    const paramName = tag.slice(1, isRaw ? -1 : undefined);
+    const paramName = tag.slice(1);
     let value: unknown;
     for (const bag of [data, body]) {
       if (bag && paramName in bag) {
@@ -220,6 +216,6 @@ export function substituteUrlTags(
       console.warn("Warning: calling", url, "without", tag);
       return "";
     }
-    return isRaw ? String(value) : encodeURIComponent(String(value));
+    return encodeURIComponent(String(value));
   });
 }

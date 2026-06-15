@@ -272,11 +272,20 @@ describe("scenarios > organization > timelines > question", () => {
         events: [{ name: "RC1", timestamp: "2027-10-20T00:00:00Z" }],
       });
 
+      cy.intercept("GET", "/api/timeline?include=events").as("getTimelines");
+
+      // Aggregate by month so the result is a deterministic ~48-row series that
+      // spans the full ORDERS date range. A raw `SELECT TOTAL, CREATED_AT FROM
+      // ORDERS` is truncated to the first 2000 (unordered) rows, so the chart's
+      // x-domain was non-deterministic and often fell short of the event date
+      // (2027-10-20); the event then landed outside the domain, was filtered out
+      // of the visible timeline events, and the star marker never rendered.
       H.visitQuestionAdhoc({
         dataset_query: {
           type: "native",
           native: {
-            query: "SELECT TOTAL, CREATED_AT FROM ORDERS",
+            query:
+              "SELECT DATE_TRUNC('month', CREATED_AT) AS CREATED_AT, COUNT(*) AS TOTAL FROM ORDERS GROUP BY DATE_TRUNC('month', CREATED_AT) ORDER BY 1",
           },
           database: SAMPLE_DB_ID,
         },
@@ -289,6 +298,8 @@ describe("scenarios > organization > timelines > question", () => {
 
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visualization").should("be.visible");
+      cy.wait("@getTimelines");
+
       H.echartsIcon("star").should("be.visible");
     });
 

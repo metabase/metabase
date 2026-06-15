@@ -1,6 +1,7 @@
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   getCommentSidebarOpen,
@@ -87,8 +88,11 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const originalQuestion = useSelector(getOriginalQuestion);
 
   const { pathname } = props.location;
-  const dashboard =
-    pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined;
+  const isOnQuestionPage = pathname && isQuestionPath(pathname);
+  const dashboardId = isOnQuestionPage ? question?.dashboard()?.id : undefined;
+  const { data: dashboard } = useGetDashboardQuery(
+    dashboardId != null ? { id: dashboardId } : skipToken,
+  );
 
   const locationState = props.location.state as { cardId?: number } | undefined;
 
@@ -105,7 +109,11 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     <AppBarView
       {...props}
       collectionId={collectionId}
-      collectionBreadcrumbs={<CollectionBreadcrumbs dashboard={dashboard} />}
+      collectionBreadcrumbs={
+        <CollectionBreadcrumbs
+          dashboard={dashboardId != null ? dashboard : undefined}
+        />
+      }
       questionLineage={
         <QuestionLineage
           question={question}

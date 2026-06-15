@@ -5,6 +5,7 @@ import {
   setupEnterpriseOnlyPlugin,
   setupEnterprisePlugins,
 } from "__support__/enterprise";
+import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
@@ -47,6 +48,8 @@ interface SetupOpts {
   showDataStudioLink?: boolean;
   collectionType?: CollectionType | null;
   withModal?: boolean;
+  auditAppEnabled?: boolean;
+  hasUsageAnalyticsAccess?: boolean;
 }
 
 function setup({
@@ -56,6 +59,8 @@ function setup({
   showDataStudioLink = false,
   collectionType = null,
   withModal = false,
+  auditAppEnabled = false,
+  hasUsageAnalyticsAccess = false,
 }: SetupOpts = {}) {
   setupEnterpriseOnlyPlugin("library");
 
@@ -77,6 +82,7 @@ function setup({
     "token-features": createMockTokenFeatures({
       library: true,
       cache_granular_controls: true,
+      audit_app: auditAppEnabled,
     }),
   });
 
@@ -85,8 +91,13 @@ function setup({
     currentUser: user,
   });
 
+  if (auditAppEnabled) {
+    setupEnterprisePlugins();
+  }
+
   setupBookmarksEndpoints([]);
   setupListNotificationEndpoints({ card_id: card.id }, []);
+  setupAuditInfoEndpoint(hasUsageAnalyticsAccess ? {} : { auditInfo: {} });
   if (withModal) {
     setupPerformanceEndpoints([]);
   }
@@ -261,6 +272,43 @@ describe("MetricToolbar", () => {
       setup({ canWrite: true });
 
       expect(screen.queryByTestId("explore-link")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("usage analytics", () => {
+    it("should show 'Metric usage analytics' with a divider for users with usage analytics access", async () => {
+      setup({ auditAppEnabled: true, hasUsageAnalyticsAccess: true });
+      await openMenu();
+
+      expect(
+        await screen.findByText("Metric usage analytics"),
+      ).toBeInTheDocument();
+      // Bookmark/Move/Duplicate ─ Add-to-dash/Alert ─ Caching ─ Insights ─ Trash
+      expect(getDividers()).toHaveLength(4);
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should not render an extra divider for users without usage analytics access", async () => {
+      setup({ auditAppEnabled: true, hasUsageAnalyticsAccess: false });
+      await openMenu();
+
+      expect(
+        screen.queryByText("Metric usage analytics"),
+      ).not.toBeInTheDocument();
+      expect(getDividers()).toHaveLength(3);
+      expectNoConsecutiveOrTrailingDividers();
+    });
+
+    it("should not render a trailing divider for read-only users without usage analytics access", async () => {
+      setup({
+        auditAppEnabled: true,
+        hasUsageAnalyticsAccess: false,
+        canWrite: false,
+      });
+      await openMenu();
+
+      expect(getDividers()).toHaveLength(1);
+      expectNoConsecutiveOrTrailingDividers();
     });
   });
 });

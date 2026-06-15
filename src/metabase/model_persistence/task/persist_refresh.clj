@@ -204,14 +204,14 @@
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
-  [database-id refresher]
+  [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
   (let [database  (t2/select-one :model/Database :id database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
-                            {:success 0, :error 0, :trigger "Scheduled"}
+                            {:success 0, :error 0, :trigger trigger}
                             persisted))
         {:keys [error success]} (save-task-history! "persist-refresh" database-id thunk)]
     (log/infof "Finished persisted model refresh task for Database %s with %s successes and %s errors."
@@ -219,7 +219,7 @@
 
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
-  [persisted-info-id refresher]
+  [persisted-info-id refresher trigger]
   (let [persisted-info (t2/select-one :model/PersistedInfo :id persisted-info-id)
         database       (when persisted-info
                          (t2/select-one :model/Database :id (:database_id persisted-info)))]
@@ -229,7 +229,7 @@
                             (partial refresh-with-stats!
                                      refresher
                                      database
-                                     {:success 0 :error 0, :trigger "Manual"}
+                                     {:success 0 :error 0, :trigger trigger}
                                      persisted-info))
         (log/infof "Finished updated model-id %s from persisted-info %s."
                    (:card_id persisted-info) (u/the-id persisted-info)))
@@ -237,11 +237,12 @@
 
 (defn- refresh-job-fn!
   "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`."
-  [job-context]
-  (let [{:strs [type db-id persisted-id] :as _payload} (job-context->job-type job-context)]
+  [^org.quartz.JobExecutionContext job-context]
+  (let [{:strs [type db-id persisted-id] :as _payload} (job-context->job-type job-context)
+        trigger                                        (.getTrigger job-context)]
     (case type
-      "database"   (refresh-tables!     db-id        dispatching-refresher)
-      "individual" (refresh-individual! persisted-id dispatching-refresher)
+      "database"   (refresh-tables!     db-id        dispatching-refresher trigger)
+      "individual" (refresh-individual! persisted-id dispatching-refresher trigger)
       (log/infof "Unknown payload type %s" type))))
 
 (defn- prune-job-fn!

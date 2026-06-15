@@ -104,7 +104,7 @@ export const AppearanceCard = () => {
               <Icon
                 name="revert"
                 size={16}
-                c="brand"
+                c="core-brand"
                 onClick={resetTheme}
                 aria-label={t`Reset colors`}
                 style={{ cursor: "pointer" }}

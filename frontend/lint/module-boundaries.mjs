@@ -52,7 +52,7 @@ const elements = [
   createElement({ type: "shared", name: "api" }),
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
-  createElement({ type: "shared", name: "browse" }),
+  createElement({ type: "feature", name: "browse" }),
   createElement({ type: "shared", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
   createElement({ type: "shared", name: "common" }),
@@ -95,8 +95,6 @@ const elements = [
   }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
-  createElement({ type: "shared", name: "metrics" }),
-  createElement({ type: "shared", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
@@ -106,6 +104,7 @@ const elements = [
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
   createElement({ type: "shared", name: "questions" }),
+  createElement({ type: "shared", name: "redux" }),
   createElement({ type: "shared", name: "router" }),
   createElement({
     type: "shared",
@@ -114,8 +113,7 @@ const elements = [
     mode: "full",
     enforceOutgoing: false,
   }),
-  createElement({ type: "shared", name: "search" }),
-  createElement({ type: "shared", name: "setup" }),
+  createElement({ type: "feature", name: "setup" }),
   createElement({ type: "shared", name: "status" }),
   createElement({ type: "shared", name: "styled-components" }),
   createElement({ type: "shared", name: "timelines" }),
@@ -138,9 +136,12 @@ const elements = [
     pattern: "enterprise/frontend/src/metabase-enterprise/**",
     mode: "full",
   }),
+  createElement({ type: "feature", name: "metrics" }),
+  createElement({ type: "feature", name: "metrics-viewer" }),
   createElement({ type: "feature", name: "public" }),
   createElement({ type: "feature", name: "query_builder" }),
   createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "search" }),
 
   // app
   ...[

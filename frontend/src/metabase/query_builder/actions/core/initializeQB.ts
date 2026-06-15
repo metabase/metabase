@@ -1,7 +1,7 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
-import { cardApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   cardIsEquivalent,
@@ -15,7 +15,11 @@ import {
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import type { DispatchFn } from "metabase/redux/hooks";
-import { fetchTableMetadata, updateMetadata } from "metabase/redux/metadata";
+import {
+  fetchDatabaseMetadata,
+  fetchTableMetadata,
+  updateMetadata,
+} from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
 import type {
   Dispatch,
@@ -286,6 +290,20 @@ async function handleQBInit(
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  // Preload the full database list up front so the data selector already has it
+  // when it mounts
+  const databasesPromise = runRtkEndpoint(
+    { "can-query": true },
+    dispatch,
+    databaseApi.endpoints.listDatabases,
+    { forceRefetch: false },
+  ).catch((error) => {
+    console.error(
+      "Failed to load database list during QB initialization",
+      error,
+    );
+  });
+
   const queryParams = location.query;
   const isTableRoute = location.pathname?.startsWith("/table");
   const slugEntityId = Urls.extractEntityId(params.slug);
@@ -303,6 +321,10 @@ async function handleQBInit(
     const table = getMetadata(getState()).table(slugEntityId);
     if (!table) {
       dispatch(setErrorPage(NOT_FOUND_ERROR));
+      return;
+    }
+    await dispatch(fetchDatabaseMetadata(table.db_id));
+    if (isStale()) {
       return;
     }
     // The /table URL only carries the table id; resolve its db so the QB can
@@ -446,6 +468,13 @@ async function handleQBInit(
 
   uiControls.notebookNativePreviewSidebarWidth =
     getNotebookNativePreviewSidebarWidth(getState());
+
+  // make sure db list is loaded
+  await databasesPromise;
+
+  if (isStale()) {
+    return;
+  }
 
   dispatch({
     type: INITIALIZE_QB,

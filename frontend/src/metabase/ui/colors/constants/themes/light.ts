@@ -17,11 +17,11 @@ const deprecatedColors = {
   "background-disabled-inverse": baseColors.orionAlphaInverse[10],
   "background-error-secondary": baseColors.lobster[5],
   "background-highlight":
-    "color-mix(in srgb, var(--mb-color-brand) 7%, transparent)",
+    "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
   "background-hover":
-    "color-mix(in srgb, var(--mb-color-brand) 7%, transparent)",
+    "color-mix(in srgb, var(--mb-color-core-brand) 7%, transparent)",
   "background-selected":
-    "color-mix(in srgb, var(--mb-color-brand) 21%, transparent)",
+    "color-mix(in srgb, var(--mb-color-core-brand) 21%, transparent)",
   "background-primary": baseColors.white,
   "background-secondary": baseColors.orion[5],
   "background-tertiary": baseColors.orion[10],

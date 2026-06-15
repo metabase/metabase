@@ -51,7 +51,12 @@
       (is (= {:global {:text 5 :exact 9}} (normalize {:type-filter {:text 5} :global {:exact 9}}))))
     (testing "the :default base and un-remapped contexts pass through untouched"
       (is (= {:default {:text 7} :entity-picker {:exact 3}}
-             (normalize {:default {:text 7} :entity-picker {:exact 3}})))))
+             (normalize {:default {:text 7} :entity-picker {:exact 3}}))))
+    (testing "legacy flat overrides (bare weights, not per-context maps) fold into the :default base"
+      (is (= {:default {:text 7.0 :exact 3.0}} (normalize {:text 7.0 :exact 3.0})))
+      (is (= {:global {:exact 1} :default {:text 7.0}} (normalize {:command-palette {:exact 1} :text 7.0}))))
+    (testing "an explicit :default context override wins over a legacy flat weight for the same scorer"
+      (is (= {:default {:text 5.0 :exact 9}} (normalize {:text 5.0 :exact 1.0 :default {:exact 9}})))))
   (testing "several aliases collapsing to one normalized context resolve deterministically, regardless of
             input order (the lowest-sorted alias wins among aliases)"
     (let [normalize #'search.config/normalize-override-keys]
@@ -79,4 +84,11 @@
     (is (= 80 (search.config/weight {:context :data-picker} :library))))
   (testing "in the data picker, an exact name match can overpower the library boost"
     (is (> (search.config/weight {:context :data-picker} :exact)
-           (search.config/weight {:context :data-picker} :library)))))
+           (search.config/weight {:context :data-picker} :library))))
+  (testing "curation badges are tie-breakers by default; the data picker boosts them, but the library boost
+            outweighs both badges combined"
+    (is (= 1 (search.config/weight {:context :global} :official-collection)))
+    (is (= 1 (search.config/weight {:context :global} :verified)))
+    (is (> (search.config/weight {:context :data-picker} :library)
+           (+ (search.config/weight {:context :data-picker} :official-collection)
+              (search.config/weight {:context :data-picker} :verified))))))

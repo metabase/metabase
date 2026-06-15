@@ -1,7 +1,7 @@
 .horizontalButton[data-variant="inverse"] {
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
 
     .clickActionButtonIcon,
     .clickActionButtonTextIcon {

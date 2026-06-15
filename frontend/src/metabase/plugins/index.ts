@@ -151,10 +151,6 @@ export {
 export {
   PLUGIN_DEPENDENCIES,
   type DependencyGraphPageContextType,
-  type CheckDependenciesFormProps,
-  type CheckDependenciesModalProps,
-  type UseCheckDependenciesProps,
-  type UseCheckDependenciesResult,
 } from "./oss/dependencies";
 export { PLUGIN_UPLOAD_MANAGEMENT } from "./oss/upload-management";
 export { PLUGIN_WHITELABEL } from "./oss/whitelabel";
@@ -164,7 +160,7 @@ export {
 } from "./oss/writable-connection";
 export {
   PLUGIN_WORKSPACES,
-  type AdminConnectionInfoSectionProps,
+  type WorkspaceDatabaseSectionProps,
 } from "./oss/workspaces";
 export { PLUGIN_SECURITY_CENTER } from "./oss/security-center";
 export { PLUGIN_AI_CONTROLS, type AiControlsPlugin } from "./oss/ai-controls";

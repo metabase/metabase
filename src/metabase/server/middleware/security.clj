@@ -357,9 +357,7 @@
                                                           (setting/get-value-of-type :string :embedding-app-origins-interactive))]
                                           (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
                                           "DENY")})
-   {;; Tell browser to block suspected XSS attacks
-    "X-XSS-Protection"                  "1; mode=block"
-    ;; Prevent Flash / PDF files from including content from site.
+   {;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
     "X-Content-Type-Options"            "nosniff"}

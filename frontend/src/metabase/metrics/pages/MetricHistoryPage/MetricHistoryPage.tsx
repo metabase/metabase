@@ -1,10 +1,10 @@
+import type { MetricPageProps } from "metabase/common/metrics/types";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { Box, Card } from "metabase/ui";
 
 import { MetricActivityTimeline } from "../../components/MetricActivityTimeline";
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
-import type { MetricPageProps } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 
 import S from "./MetricHistoryPage.module.css";

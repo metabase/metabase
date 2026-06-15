@@ -4,13 +4,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { datasetApi, skipToken, useListActionsQuery } from "metabase/api";
+import {
+  actionApi,
+  datasetApi,
+  skipToken,
+  useListActionsQuery,
+} from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
-import { ActionsApi } from "metabase/services";
 import { Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -281,11 +285,15 @@ export function ObjectDetailPanel({
       return {};
     }
 
-    return ActionsApi.prefetchValues({
-      id: actionId,
-      parameters: JSON.stringify({ id: String(zoomedRowID) }),
-    });
-  }, [actionId, zoomedRowID]);
+    return runRtkEndpoint(
+      {
+        id: actionId,
+        parameters: { id: String(zoomedRowID) },
+      },
+      dispatch,
+      actionApi.endpoints.prefetchActionValues,
+    );
+  }, [actionId, zoomedRowID, dispatch]);
 
   const initialValues = useMemo(
     () => ({ id: zoomedRowID ?? null }),

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import { t } from "ttag";
 
 import {
@@ -17,7 +17,6 @@ type MetricEditorHeaderProps = {
   question: Question;
   isDirty: boolean;
   isRunnable: boolean;
-  isConfirmationShown: boolean;
   onCreate: (question: Question) => void;
   onSave: (question: Question) => Promise<void>;
   onCancel: () => void;
@@ -27,7 +26,6 @@ export function MetricEditorHeader({
   question,
   isDirty,
   isRunnable,
-  isConfirmationShown,
   onCreate,
   onSave,
   onCancel,
@@ -35,10 +33,6 @@ export function MetricEditorHeader({
   const saveButtonRef = useRef<ActionButtonHandle>(null);
   const handleCreate = () => onCreate(question);
   const handleSave = () => onSave(question);
-
-  useLayoutEffect(() => {
-    saveButtonRef.current?.resetState();
-  }, [isConfirmationShown]);
 
   return (
     <EditBar
