@@ -2,6 +2,8 @@ import { screen } from "@testing-library/react";
 
 import { renderWithProviders } from "__support__/ui";
 import type { DimensionPillBarItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import { MetricsViewerProvider } from "metabase/metrics-viewer/context";
+import { createMockMetricsViewerResult } from "metabase/metrics-viewer/test-utils";
 import type { MetricsViewerDimensionBreakoutState } from "metabase/metrics-viewer/types/viewer-state";
 import { createMockColumn } from "metabase-types/api/mocks";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
@@ -63,27 +65,28 @@ describe("MetricsViewerVisualization", () => {
       availableOptions: [],
     };
 
+    const chartColumnLabelsByEntityIndex = new Map([
+      [0, firstLabel],
+      [1, secondLabel],
+    ]);
+
+    const metricsViewerResult = createMockMetricsViewerResult({
+      series: [createMapSeries(100, "Orders"), createMapSeries(200, "ARR")],
+      definitions: {},
+      formulaEntities: [],
+      metricSlots: [],
+      activeDimensionBreakout: dimensionBreakout,
+      cardIdToEntityIndex: { 100: 0, 200: 1 },
+      queriesAreLoading: false,
+      queriesError: null,
+    });
+
     renderWithProviders(
-      <MetricsViewerVisualization
-        rawSeries={[
-          createMapSeries(100, "Orders"),
-          createMapSeries(200, "ARR"),
-        ]}
-        definitions={{}}
-        formulaEntities={[]}
-        metricSlots={[]}
-        dimensionBreakout={dimensionBreakout}
-        onDimensionBreakoutUpdate={jest.fn()}
-        cardIdToEntityIndex={{ 100: 0, 200: 1 }}
-        queriesAreLoading={false}
-        queriesError={null}
-        chartColumnLabelsByEntityIndex={
-          new Map([
-            [0, firstLabel],
-            [1, secondLabel],
-          ])
-        }
-      />,
+      <MetricsViewerProvider value={metricsViewerResult}>
+        <MetricsViewerVisualization
+          chartColumnLabelsByEntityIndex={chartColumnLabelsByEntityIndex}
+        />
+      </MetricsViewerProvider>,
     );
 
     expect(screen.getAllByTestId("visualization")).toHaveLength(2);

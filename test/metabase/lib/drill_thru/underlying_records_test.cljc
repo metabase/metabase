@@ -576,6 +576,43 @@
                   first
                   lib.join/join-fields))))))
 
+(deftest ^:parallel preserve-column-selection-after-drill-thru-test
+  (testing "underlying records should keep the join's column selection (#69105)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (-> (lib/join-clause (meta/table-metadata :products))
+                                         (lib/with-join-fields [(meta/field-metadata :products :id)
+                                                                (meta/field-metadata :products :category)])))
+                           (lib/aggregate (lib/count)))
+          query        (lib/breakout query (m/find-first #(= (:name %) "CATEGORY")
+                                                         (lib/breakoutable-columns query)))
+          count-col    (m/find-first #(= (:name %) "count")
+                                     (lib/returned-columns query))
+          category-col (m/find-first #(= (:name %) "CATEGORY")
+                                     (lib/returned-columns query))
+          context      {:column     count-col
+                        :column-ref (lib/ref count-col)
+                        :value      4939
+                        :row        [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      "Gadget"}
+                                     {:column     count-col
+                                      :column-ref (lib/ref count-col)
+                                      :value      4939}]
+                        :dimensions [{:column     category-col
+                                      :column-ref (lib/ref category-col)
+                                      :value      "Gadget"}]}
+          drill        (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                     (lib/available-drill-thrus query context))
+          drilled      (lib/drill-thru query drill)]
+      (is (=? [[:field {} (meta/id :products :id)]
+               [:field {} (meta/id :products :category)]]
+              (-> drilled lib.join/joins first lib.join/join-fields)))
+      (is (= #{(meta/id :products :id) (meta/id :products :category)}
+             (into #{}
+                   (comp (filter #(= (:table-id %) (meta/id :products)))
+                         (map :id))
+                   (lib/returned-columns drilled)))))))
+
 (deftest ^:parallel breakout-by-expression-test
   (testing "underlying records for a query with a breakout on an expression should produce a correct ref (#59005)"
     (let [base               (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

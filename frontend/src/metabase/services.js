@@ -1,11 +1,5 @@
 import { DELETE, GET, POST, PUT } from "metabase/api/legacy-client";
 
-export const ActivityApi = {
-  most_recently_viewed_dashboard: GET(
-    "/api/activity/most_recently_viewed_dashboard",
-  ),
-};
-
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
@@ -49,11 +43,6 @@ export const PublicApi = {
 export const EmbedApi = {
   card: GET("/api/embed/card/:token"),
   dashboard: GET("/api/embed/dashboard/:token"),
-};
-
-export const AutoApi = {
-  // `:subPath*` keeps slashes in subPath unencoded (multi-segment path).
-  dashboard: GET("/api/automagic-dashboards/:subPath*"),
 };
 
 export const ParameterApi = {

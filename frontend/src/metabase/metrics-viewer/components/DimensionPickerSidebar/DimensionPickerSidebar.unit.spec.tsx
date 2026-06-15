@@ -332,7 +332,9 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
 
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();
-    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
+    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(updaterFn(timeDimensionBreakout)).toMatchObject({
       label: "Order Date",
       dimensionMapping: { 0: "dim-order-date" },
     });
@@ -394,7 +396,21 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
     await userEvent.click(screen.getByRole("button", { name: "Birth Date" }));
 
-    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
+    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(
+      updaterFn({
+        id: "dim-created-at",
+        type: "time",
+        label: "Created At",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-created-at",
+          1: "second-dim-created-at",
+        },
+        projectionConfig: {},
+      }),
+    ).toMatchObject({
       label: "Birth Date",
       dimensionMapping: {
         0: "dim-birth-date",
@@ -457,7 +473,21 @@ describe("DimensionPickerSidebar", () => {
     await userEvent.click(screen.getByRole("button", { name: "See all" }));
     await userEvent.click(screen.getByRole("button", { name: "Birth Date" }));
 
-    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
+    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(
+      updaterFn({
+        id: "second-dim-created-at",
+        type: "time",
+        label: "Created At",
+        display: "line",
+        dimensionMapping: {
+          0: "dim-birth-date",
+          1: "second-dim-created-at",
+        },
+        projectionConfig: {},
+      }),
+    ).toMatchObject({
       label: "Birth Date",
       dimensionMapping: {
         0: "dim-birth-date",
@@ -1493,7 +1523,9 @@ describe("DimensionPickerSidebar", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Order Date" }));
 
-    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalledWith({
+    expect(onUpdateActiveDimensionBreakout).toHaveBeenCalled();
+    const updaterFn = onUpdateActiveDimensionBreakout.mock.calls[0][0];
+    expect(updaterFn(timeDimensionBreakout)).toMatchObject({
       dimensionMapping: { 0: "dim-order-date" },
     });
     expect(onSelectDimensionBreakout).not.toHaveBeenCalled();

@@ -1,7 +1,7 @@
 import {
   DIMENSION_PREDICATES,
   getGeoSubtype,
-} from "metabase/metrics/common/utils/dimension-types";
+} from "metabase/common/metrics/utils/dimension-types";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getBreakoutSeriesName } from "metabase/visualizations/echarts/cartesian/model/series";
 import type { DimensionMetadata } from "metabase-lib/metric";

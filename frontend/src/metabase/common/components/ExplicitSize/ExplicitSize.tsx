@@ -268,6 +268,26 @@ export function ExplicitSize<T>({
           this.setState({ width, height }, () => this.props?.onUpdateSize?.());
         }
       };
+
+      _setElementRef = (el: HTMLDivElement | null) => {
+        const { forwardedRef } = this.props;
+        if (forwardedRef) {
+          if (typeof forwardedRef === "function") {
+            forwardedRef(el);
+          } else {
+            forwardedRef.current = el;
+          }
+        }
+
+        // Measure when the element first appears: it can attach after mount
+        // (e.g. async content swapping out a placeholder)
+        const elementAttached = el != null && this.elementRef.current == null;
+        this.elementRef.current = el;
+        if (elementAttached) {
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
+      };
+
       render() {
         const { forwardedRef, ...props } = this.props;
         if (wrapped) {
@@ -290,17 +310,7 @@ export function ExplicitSize<T>({
         } else {
           return (
             <ComposedComponent
-              ref={(el: HTMLDivElement) => {
-                if (forwardedRef) {
-                  if (typeof forwardedRef === "function") {
-                    forwardedRef(el);
-                  } else {
-                    forwardedRef.current = el;
-                  }
-                }
-
-                this.elementRef.current = el;
-              }}
+              ref={this._setElementRef}
               {...(props as unknown as T)}
               {...this.state}
             />

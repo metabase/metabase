@@ -9,6 +9,7 @@ import {
   useListNotificationsQuery,
 } from "metabase/api";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import {
@@ -29,8 +30,6 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
-
-import type { MetricUrls } from "../../../types";
 
 import S from "./MetricToolbar.module.css";
 
