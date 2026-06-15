@@ -78,10 +78,3 @@ export const SettingsApi = {
   put: PUT("/api/setting/:key"),
   putAll: PUT("/api/setting"),
 };
-
-export const PermissionsApi = {
-  graph: GET("/api/permissions/graph"),
-  graphForGroup: GET("/api/permissions/graph/group/:groupId"),
-  graphForDB: GET("/api/permissions/graph/db/:databaseId"),
-  updateGraph: PUT("/api/permissions/graph"),
-};

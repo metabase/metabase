@@ -31,7 +31,7 @@ import {
   createThunkAction,
 } from "metabase/redux";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
-import { CollectionsApi, PermissionsApi } from "metabase/services";
+import { CollectionsApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
@@ -69,7 +69,12 @@ export const LOAD_DATA_PERMISSIONS =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
 export const loadDataPermissions = createThunkAction(
   LOAD_DATA_PERMISSIONS,
-  () => async () => PermissionsApi.graph(),
+  () => async (dispatch) =>
+    runRtkEndpoint(
+      undefined,
+      dispatch,
+      permissionApi.endpoints.getPermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsAction(
   action: UnknownAction,
@@ -94,8 +99,12 @@ const LOAD_DATA_PERMISSIONS_FOR_GROUP =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_GROUP";
 export const loadDataPermissionsForGroup = createThunkAction(
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
-  (groupId: number | undefined) => async () =>
-    PermissionsApi.graphForGroup({ groupId }),
+  (groupId: number | undefined) => async (dispatch) =>
+    runRtkEndpoint(
+      groupId,
+      dispatch,
+      permissionApi.endpoints.getGroupPermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsForGroupAction(
   action: UnknownAction,
@@ -109,8 +118,12 @@ const LOAD_DATA_PERMISSIONS_FOR_DB =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS_FOR_DB";
 export const loadDataPermissionsForDb = createThunkAction(
   LOAD_DATA_PERMISSIONS_FOR_DB,
-  (databaseId: number | undefined) => async () =>
-    PermissionsApi.graphForDB({ databaseId }),
+  (databaseId: number | undefined) => async (dispatch) =>
+    runRtkEndpoint(
+      databaseId,
+      dispatch,
+      permissionApi.endpoints.getDatabasePermissionsGraph,
+    ),
 );
 function isLoadDataPermissionsForDbAction(
   action: UnknownAction,
@@ -261,7 +274,7 @@ export const SAVE_DATA_PERMISSIONS =
   "metabase/admin/permissions/data/SAVE_DATA_PERMISSIONS";
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
-  () => async (_dispatch, getState) => {
+  () => async (dispatch, getState) => {
     const state = getState();
     const allGroupIds = selectGroupList(state).map((group) => String(group.id));
     const {
@@ -293,11 +306,15 @@ export const saveDataPermissions = createThunkAction(
     );
     const modifiedGroupIds = Object.keys(modifiedGroups);
 
-    const response = await PermissionsApi.updateGraph({
-      groups: modifiedGroups,
-      revision: dataPermissionsRevision,
-      ...advancedPermissions.permissions,
-    });
+    const response = await runRtkEndpoint(
+      {
+        groups: modifiedGroups,
+        revision: dataPermissionsRevision,
+        ...advancedPermissions.permissions,
+      },
+      dispatch,
+      permissionApi.endpoints.updatePermissionsGraph,
+    );
 
     return {
       ...response,
