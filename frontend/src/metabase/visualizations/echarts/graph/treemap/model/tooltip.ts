@@ -9,6 +9,7 @@ import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
 import { getTreemapNodeId, parseTreemapNodeId } from "./tree";
 import type { TreemapNode, TreemapTree } from "./types";
+import { getTreemapTotal } from "./value";
 
 export interface TreemapTooltipContext {
   header?: string;
@@ -92,10 +93,8 @@ export function getTreemapTooltipModel(
   formatPercent: (ratio: number) => string,
 ): EChartsTooltipModel {
   const { header, siblings, focusedNode } = context;
-  const total = siblings.reduce((sum, node) => sum + node.value, 0);
+  const total = getTreemapTotal(siblings);
 
-  // Order rows by the chosen measure, largest first, so the tooltip ranks the
-  // groups/sub-groups by magnitude regardless of the tree's source-row order.
   const sortedSiblings = [...siblings].sort((a, b) => b.value - a.value);
 
   const rows: EChartsTooltipRow[] = sortedSiblings.map((node) => {
