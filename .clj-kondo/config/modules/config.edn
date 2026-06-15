@@ -760,16 +760,6 @@
                     :model/Table
                     :model/User}}
 
-  data-apps
-  {:team "Gadget"
-   :api  #{metabase.data-apps.api
-           metabase.data-apps.init
-           metabase.data-apps.sync}
-   :uses #{api
-           models
-           settings
-           util}}
-
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -2982,6 +2972,17 @@
            util}
    :model-exports #{:model/CustomVizPlugin}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           settings
+           util}
+   :model-exports #{:model/DataApp}}
+
   enterprise/dashboard-subscription-filters
   {:team "Graphy"
    :api  #{}
@@ -3269,7 +3270,6 @@
            api
            app-db
            collections
-           data-apps
            events
            models
            premium-features
@@ -3278,6 +3278,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}

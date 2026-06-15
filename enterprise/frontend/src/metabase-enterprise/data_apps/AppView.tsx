@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useGetDataAppQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DATA_APP_EMBED_PREFIX } from "metabase/data_apps/constants";
 import { Box, Text } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
+import { useGetDataAppQuery } from "metabase-enterprise/api";
+
+import { DATA_APP_EMBED_PREFIX } from "./constants";
 
 interface AppViewProps {
   params: { name: string };
