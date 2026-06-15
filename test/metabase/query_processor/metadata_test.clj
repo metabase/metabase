@@ -121,6 +121,7 @@
               ((get-method driver/query-result-metadata :default) :h2 query))))))
 
 (deftest ^:parallel combine-metadata-test
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (are [old-metadata new-metadata expected] (= expected (qp.util/combine-metadata new-metadata old-metadata))
     ;; columns get the correct display name after columns with the same name are removed
     [{:name "id",   :display_name "ID",            :lib/desired-column-alias "id"}
