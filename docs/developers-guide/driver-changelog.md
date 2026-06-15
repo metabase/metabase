@@ -43,9 +43,10 @@ title: Driver interface changelog
   statistics (e.g. `ANALYZE`) after a transform run. Defaults to a no-op.
 
 - Added the `:index/inline-create` driver feature flag, for drivers that inline an index into the table-creation
-  statement itself (e.g. Redshift `SORTKEY`) rather than creating it afterwards. Such drivers render the index in
-  `metabase.driver/compile-transform`, reading it from the `:indexes` key of the transform details. Redshift supports
-  it.
+  statement itself (e.g. Redshift `SORTKEY`) rather than creating it afterwards. Such drivers render the index from
+  the `:indexes` key of the transform details when they build the creation statement: in
+  `metabase.driver/compile-transform` (the CTAS for a SQL transform) and/or `metabase.driver/create-table!` (the
+  CREATE TABLE for a Python transform). Redshift supports it.
 
 ## Metabase 0.62.0
 

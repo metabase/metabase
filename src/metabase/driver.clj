@@ -852,7 +852,8 @@
     ;;
     ;; Does this driver inline an index into the table-creation statement itself (e.g. Redshift SORTKEY, BigQuery
     ;; CLUSTER BY) rather than creating it afterwards? Drivers with this feature implement [[supported-index-methods]]
-    ;; and render the index in [[compile-transform]].
+    ;; and render the index in [[compile-transform]] (the CTAS for a SQL transform) and/or [[create-table!]] (the
+    ;; CREATE TABLE for a Python transform).
     :index/inline-create
     ;;
     ;; Does this driver support calculating dependencies of native queries?
