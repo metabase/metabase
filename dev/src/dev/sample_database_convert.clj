@@ -16,10 +16,19 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
+   [next.jdbc.prepare :as prepare]
    [next.jdbc.result-set :as rs])
   (:import
-   (java.sql Clob Date ResultSet ResultSetMetaData Time Timestamp Types)
+   (java.sql Clob Date ResultSetMetaData Time Timestamp Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime)))
+
+;; A Clob is a LOB handle tied to the open result set; `jdbc/execute!` with `rs/as-arrays` realizes rows for use
+;; after the set is consumed, so decode it to a String at read time (while the handle is valid) rather than later in
+;; `coerce-value`. Uses the same helper as the H2 driver; otherwise SQLite-JDBC stores the Clob's toString.
+(extend-protocol rs/ReadableColumn
+  Clob
+  (read-column-by-label [^Clob v _]   (driver-api/clob->str v))
+  (read-column-by-index [^Clob v _ _] (driver-api/clob->str v)))
 
 (set! *warn-on-reflection* true)
 
@@ -177,7 +186,6 @@
     (instance? Timestamp v) (str (.toLocalDateTime ^Timestamp v))
     (instance? Date v) (str (.toLocalDate ^Date v))
     (instance? Time v) (str (.toLocalTime ^Time v))
-    (instance? Clob v) (driver-api/clob->str v)
     :else v))
 
 (defn- copy-table!
@@ -189,27 +197,13 @@
         ins-sql  (insert-sql table cols)]
     (log/info "  Creating table" table "with" (count cols) "columns")
     (jdbc/execute! sqlite [ddl])
-    (let [row-count (atom 0)]
-      (with-open [conn (jdbc/get-connection h2)]
-        (let [ps (.prepareStatement conn (select-sql schema table cols))]
-          (with-open [^ResultSet rs (.executeQuery ps)]
-            (with-open [scon (jdbc/get-connection sqlite)]
-              (.setAutoCommit scon false)
-              (with-open [insert-ps (.prepareStatement scon ins-sql)]
-                (while (.next rs)
-                  (doseq [i (range 1 (inc (count cols)))]
-                    (let [raw (.getObject rs ^int i)
-                          v   (coerce-value raw)]
-                      (if (nil? v)
-                        (.setNull insert-ps ^int i Types/NULL)
-                        (.setObject insert-ps ^int i v))))
-                  (.addBatch insert-ps)
-                  (swap! row-count inc)
-                  (when (zero? (mod @row-count 5000))
-                    (.executeBatch insert-ps)))
-                (.executeBatch insert-ps))
-              (.commit scon)))))
-      (log/info "  Wrote" @row-count "rows to" table))))
+    (let [rows (->> (jdbc/execute! h2 [(select-sql schema table cols)] {:builder-fn rs/as-arrays})
+                    rest                                    ; Skip column header
+                    (mapv #(mapv coerce-value %)))]
+      (jdbc/with-transaction [tx sqlite]
+        (with-open [ps (jdbc/prepare tx [ins-sql])]
+          (prepare/execute-batch! ps rows {:batch-size 5000})))
+      (log/info "  Wrote" (count rows) "rows to" table))))
 
 (defn convert!
   "Run the H2 -> SQLite conversion. Deletes any existing SQLite file first."
