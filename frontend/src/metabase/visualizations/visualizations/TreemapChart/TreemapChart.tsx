@@ -142,6 +142,10 @@ export const TreemapChart = ({
     chartRef.current = chart;
   }, []);
 
+  const handleResize = useCallback((_width: number, _height: number) => {
+    hideTreemapHoverOverlay(chartRef, overlayRef);
+  }, []);
+
   const hasChildren = Boolean(
     chartData?.tree.some((node) => node.children != null),
   );
@@ -216,6 +220,7 @@ export const TreemapChart = ({
           option={option}
           eventHandlers={allEventHandlers}
           onInit={handleInit}
+          onResize={handleResize}
         />
         {colorsCss}
       </Box>
