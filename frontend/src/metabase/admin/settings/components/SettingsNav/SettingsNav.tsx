@@ -4,16 +4,13 @@ import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import {
-  PLUGIN_DATA_APPS,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_SECURITY_CENTER,
-} from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
+import { DataAppsNav } from "./DataAppsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -83,9 +80,7 @@ export function SettingsNav() {
       />
       {/* do not allow users with "Settings access" permissions to access custom viz pages */}
       {isAdmin && <CustomVisualizationsNav />}
-      {isAdmin && PLUGIN_DATA_APPS.isEnabled && (
-        <PLUGIN_DATA_APPS.DataAppsNav />
-      )}
+      {isAdmin && <DataAppsNav />}
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
