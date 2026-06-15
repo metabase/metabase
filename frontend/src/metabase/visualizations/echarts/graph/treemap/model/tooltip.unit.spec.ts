@@ -139,7 +139,7 @@ describe("getTreemapTooltipModel", () => {
     });
   });
 
-  it("sorts the sub-group breakdown by value descending when drilled in", () => {
+  it("uses the drilled group total denominator when drilled in", () => {
     const tree: TreemapTree = [
       {
         rawName: "Legumes",
@@ -167,6 +167,7 @@ describe("getTreemapTooltipModel", () => {
           },
         ],
       },
+      { rawName: "Grains", displayName: "Grains", value: 40, rowIndices: [3] },
     ];
     // Drilled into group "0" (Legumes), hovering its first sub-group.
     const context = getTreemapTooltipContext(tree, "0-0", "0")!;
@@ -177,6 +178,12 @@ describe("getTreemapTooltipModel", () => {
       "Edamame",
       "Lentils",
     ]);
+    expect(model.rows[0].values[1]).toBe(formatPercent(35 / 60));
+    expect(model.rows[1].values[1]).toBe(formatPercent(15 / 60));
+    expect(model.rows[2].values[1]).toBe(formatPercent(10 / 60));
+    expect(model.footer).toMatchObject({
+      values: ["$60", formatPercent(1)],
+    });
   });
 
   it("adds a Total footer when there is more than one sibling", () => {

@@ -88,6 +88,39 @@ describe("getTreemapChartOption", () => {
     });
   });
 
+  it("uses the drilled group total for full leaf label percentages", () => {
+    const tree: TreemapTree = [
+      {
+        rawName: "Group",
+        displayName: "Group",
+        value: 100,
+        rowIndices: [0, 1, 2, 3],
+        children: [
+          { rawName: "A", displayName: "A", value: 60, rowIndices: [0] },
+          { rawName: "B", displayName: "B", value: 40, rowIndices: [1] },
+        ],
+      },
+      { rawName: "Other", displayName: "Other", value: 300, rowIndices: [4] },
+    ];
+
+    const { series } = getTreemapChartOption({
+      tree,
+      isDrilled: true,
+      formatValue: (value) => `$${value}`,
+      labelLayout: {
+        "0-0": { show: true, detail: "full", width: 120 },
+      },
+      renderingContext,
+    });
+
+    expect(series.data[0].children?.[0].label).toEqual({
+      show: true,
+      width: 120,
+      overflow: "truncate",
+      formatter: `{name|A}\n{value|$60}\n{pct|${formatPercent(0.6)}}`,
+    });
+  });
+
   it("applies upper label defaults and per-group overrides", () => {
     const overview = getTreemapChartOption({
       tree: TWO_LEVEL_TREE,

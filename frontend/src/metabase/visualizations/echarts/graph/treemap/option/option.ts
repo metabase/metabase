@@ -13,6 +13,7 @@ import type {
   TreemapSeriesNode,
   TreemapTree,
 } from "../model/types";
+import { getLeafPercentLabel } from "../model/value";
 import {
   TREEMAP_CHART_STYLE,
   getGroupHeaderBgTint,
@@ -204,7 +205,13 @@ function toGroupSeriesNode({
   return {
     ...groupNode,
     children: node.children.map((leaf, leafIndex) =>
-      toLeafSeriesNode({ config, leaf, rootIndex, leafIndex }),
+      toLeafSeriesNode({
+        config,
+        leaf,
+        parentValue: node.value,
+        rootIndex,
+        leafIndex,
+      }),
     ),
   };
 }
@@ -212,11 +219,13 @@ function toGroupSeriesNode({
 function toLeafSeriesNode({
   config,
   leaf,
+  parentValue,
   rootIndex,
   leafIndex,
 }: {
   config: TreemapSeriesBuildConfig;
   leaf: TreemapNode;
+  parentValue: number;
   rootIndex: number;
   leafIndex: number;
 }): TreemapSeriesNode {
@@ -233,6 +242,7 @@ function toLeafSeriesNode({
       id: leafId,
       value: leaf.value,
       displayName: leaf.displayName,
+      parentValue,
     }),
   };
 }
@@ -287,14 +297,21 @@ function getTileLabelOverride({
   id,
   value,
   displayName,
+  parentValue,
 }: {
   config: TreemapSeriesBuildConfig;
   id: string;
   value: number;
   displayName: string;
+  parentValue?: number;
 }): Pick<TreemapSeriesNode, "label"> {
-  const { showLeafLabels, labelLayout, formatValue, formatPercentOfTotal } =
-    config;
+  const {
+    showLeafLabels,
+    isDrilled,
+    labelLayout,
+    formatValue,
+    formatPercentOfTotal,
+  } = config;
   if (!showLeafLabels) {
     return HIDDEN_LABEL_OVERRIDE;
   }
@@ -312,7 +329,12 @@ function getTileLabelOverride({
         formatter: formatters.getLeafFormatter(
           displayName,
           formatValue(value),
-          formatPercentOfTotal(value),
+          getLeafPercentLabel({
+            isDrilled,
+            value,
+            parentValue,
+            formatPercentOfTotal,
+          }),
         ),
       },
     }))
