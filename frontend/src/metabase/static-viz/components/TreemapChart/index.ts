@@ -1,1 +1,0 @@
-export { TreemapChart } from "./TreemapChart";
