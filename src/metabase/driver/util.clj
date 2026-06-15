@@ -599,22 +599,24 @@
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
   being returned, to handle any transformation between the server side and client side representation."
   []
-  (persistent!
-   (reduce (fn [acc driver]
-             (if-some [props (try
-                               (->> (driver/connection-properties driver)
-                                    (connection-props-server->client driver))
-                               (catch Throwable e
-                                 (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
-               ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-               (assoc! acc driver {:source {:type (driver-source (name driver))
-                                            :contact (driver/contact-info driver)}
-                                   :details-fields props
-                                   :driver-name    (driver/display-name driver)
-                                   :superseded-by  (driver/superseded-by driver)
-                                   :extra-info     (driver/extra-info driver)})
-               acc))
-           (transient {}) (available-drivers))))
+  (let [context {:hosted? (premium-features/is-hosted?)}]
+    (persistent!
+     (reduce (fn [acc driver]
+               (if-some [props (try
+                                 (->> (driver/connection-properties driver)
+                                      (connection-props-server->client driver))
+                                 (catch Throwable e
+                                   (log/errorf e "Unable to determine connection properties for driver %s" driver)))]
+                 ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
+                 (assoc! acc driver {:source         {:type    (driver-source (name driver))
+                                                      :contact (driver/contact-info driver)}
+                                     :details-fields props
+                                     :driver-name    (driver/display-name driver)
+                                     :superseded-by  (driver/superseded-by driver)
+                                     :creatable?     (driver/creatable? driver context)
+                                     :extra-info     (driver/extra-info driver)})
+                 acc))
+             (transient {}) (available-drivers)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             TLS Helpers                                                        |

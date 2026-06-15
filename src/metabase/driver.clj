@@ -1297,6 +1297,21 @@
   [_]
   nil)
 
+(defmulti creatable?
+  "Whether users may select this driver to create a new data warehouse connection, given `context` -- a map describing
+  the environment, currently `{:hosted? <boolean>}`. Defaults to true. A driver registered only to power an
+  internal/bundled database -- e.g. SQLite, which backs the bundled Sample Database but is not offered to Cloud users
+  as a warehouse -- returns false in the contexts where it is not user-creatable, so it is omitted from the
+  add-database engine list there. Affects only the engine list shown to users; the driver stays registered and
+  `available?` for internal use."
+  {:arglists '([driver context])}
+  (fn [driver _context] (dispatch-on-uninitialized-driver driver))
+  :hierarchy #'hierarchy)
+
+(defmethod creatable? :default
+  [_driver _context]
+  true)
+
 (defmulti execute-write-query!
   "Execute a writeback query e.g. one powering a custom `QueryAction` (see [[metabase.actions.models]]).
   Drivers that support `:actions/custom` must implement this method."

@@ -104,6 +104,10 @@
   [_]
   :sunday)
 
+(defmethod driver/creatable? :sqlite
+  [_driver {:keys [hosted?]}]
+  (not hosted?))
+
 (defn- read-only-open-mode
   "`open_mode` flag value that SQLite-JDBC uses for a read-only connection. Delegate to `SQLiteConfig` rather than
   hard-coding the bitmask so it tracks the driver's own definition."
