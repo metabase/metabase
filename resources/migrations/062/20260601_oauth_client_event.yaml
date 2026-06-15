@@ -3,7 +3,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v63.k7m2qd
+      id: v62.k7m2qd
       author: bshepherdson
       comment: Create oauth_client_event table to audit DCR registration and decision events
       changes:
@@ -46,7 +46,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v63.r9w4xb
+      id: v62.r9w4xb
       author: bshepherdson
       comment: Add index on oauth_client_event.oauth_client_id
       changes:
@@ -58,7 +58,7 @@ databaseChangeLog:
                   name: oauth_client_id
 
   - changeSet:
-      id: v63.x2d7kq
+      id: v62.x2d7kq
       author: bshepherdson
       comment: Add index on oauth_client_event.user_id
       changes:
@@ -70,7 +70,7 @@ databaseChangeLog:
                   name: user_id
 
   - changeSet:
-      id: v63.t3z8np
+      id: v62.t3z8np
       author: bshepherdson
       comment: Add FK on oauth_client_event.oauth_client_id
       changes:
@@ -83,7 +83,7 @@ databaseChangeLog:
             onDelete: SET NULL
 
   - changeSet:
-      id: v63.h5c1vj
+      id: v62.h5c1vj
       author: bshepherdson
       comment: Add FK on oauth_client_event.user_id
       changes:
