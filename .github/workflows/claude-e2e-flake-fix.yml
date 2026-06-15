@@ -172,13 +172,3 @@ jobs:
             exit 1
           fi
           echo "Flake-fix run completed (see the Linear issue for the audit trail and PR)."
-
-      - name: Upload run artifacts
-        if: always() && steps.dedup.outputs.exists == 'false'
-        uses: actions/upload-artifact@v7
-        with:
-          name: claude-e2e-flake-fix-${{ steps.ref.outputs.ref }}
-          if-no-files-found: ignore
-          path: |
-            local/claude/e2e-flake-fix/**
-            ${{ steps.claude.outputs.execution_file }}
