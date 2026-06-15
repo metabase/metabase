@@ -21,10 +21,8 @@
 
   Native-SQL transforms are rewritten by string replacement; MBQL transforms are
   compiled under a metadata-provider override. Both paths run the same three
-  verify guards (defense-in-depth).
-
-  `verify` runs three defense-in-depth guards over the final SQL; see its
-  docstring and the guard comments.
+  `verify` guards over the final SQL (defense-in-depth); see [[verify]] and its
+  guard comments.
 
   Any guard failure, or any compile/rewrite failure, becomes ONE typed error:
   `ex-info` with `:error-type ::cannot-test-run` (plus `:guard` and the offending
@@ -270,8 +268,8 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- source-driver
-  "Resolve the driver keyword from the transform's source query database id."
-  [transform db]
+  "Driver keyword for the run, read from the resolved Database row's `:engine`."
+  [db]
   (keyword (:engine db)))
 
 (defn resolve-test-transform
@@ -303,7 +301,7 @@
                  " (native SQL and MBQL) are supported.")
             {:error-type  ::unsupported-transform-type
              :source-type (-> transform :source :type keyword)})))
-  (let [driver  (source-driver transform db)
+  (let [driver  (source-driver db)
         ;; Pin + record the parser backend at resolve time.
         backend (sql-tools.settings/current-parser-backend)
         native? (transforms-base.u/native-query-transform? transform)

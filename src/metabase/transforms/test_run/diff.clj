@@ -35,11 +35,10 @@
 
   ## Float equality
 
-  EXACT, always — after converting both sides to `BigDecimal`, scale-independently
-  (`3.5` == `3.50`; int/long/BigInteger widen safely). There is no
-  approximate-equality option; for noisy float columns use `:ignore-columns`, or
-  copy the exact actual value from the cell-mismatch report into the expected CSV.
-  Passing `:float-tolerance` throws (fail closed, not silent).
+  EXACT, always — both sides convert to `BigDecimal` and compare scale-independently
+  (`3.5` == `3.50`; int/long/BigInteger widen safely). No approximate-equality
+  option: passing `:float-tolerance` throws (fail closed). For noisy columns use
+  `:ignore-columns`.
 
   ## Multiset semantics
 

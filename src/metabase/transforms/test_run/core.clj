@@ -22,27 +22,13 @@
   finally: cleanup! always (all paths, including exceptions and timeout)
   ```
 
-  ## Error-handling choice
+  ## Error handling
 
-  `run-test!` propagates typed `ex-info` for error cases — it does NOT catch
-  them into a `{:status :error ...}` envelope internally. The API handler catches
-  and maps via the error taxonomy:
-
-  - `::metabase.transforms.test-run.inputs/unsupported-transform-type`   → 422
-  - `::metabase.transforms.test-run.inputs/cannot-determine-inputs`      → 422
-  - `::metabase.transforms.test-run.inputs/table-not-found`              → 422
-  - `::metabase.transforms.test-run.inputs/transform-dep-not-supported`  → 422
-  - `::metabase.transforms.test-run.inputs/missing-fixtures`             → 400
-  - `::metabase.transforms.test-run.inputs/unknown-fixture-keys`         → 400
-  - `::metabase.transforms.test-run.resolve/cannot-test-run`             → 422
-  - `::metabase.transforms.test-run.resolve/unsupported-transform-type`  → 422
-  - `::metabase.transforms.test-run.core/pre-execution-guard-failed`     → 500
-    (internal invariant — should never reach the API caller; paged if it fires)
-  - `::metabase.transforms.test-run.core/execution-failed`               → 500
-  - Any un-typed exception                                               → 500
-
-  This design keeps error semantics in one place (the API layer) rather than
-  splitting them between core.clj and the API handler.
+  `run-test!` propagates typed `ex-info` for error cases — it does NOT catch them
+  into a `{:status :error ...}` envelope internally. The API handler maps each
+  `:error-type` to an HTTP status; `transforms-rest.api.transform`'s
+  `test-run-error-http-status` is the authoritative error→HTTP map. (Keeping the
+  mapping in one place, rather than copied here, is deliberate.)
 
   ## Timeout
 

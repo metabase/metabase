@@ -44,6 +44,15 @@
       (is (= "in_42" (:suffix parsed-in)))
       (is (= "out" (:suffix parsed-out))))))
 
+(deftest name-length-under-identifier-limit-test
+  (testing "worst-case scratch name (10-digit table-id) stays under the Postgres 63
+            and MySQL 64 identifier limits — pins the ns docstring's length claim so
+            it can't silently rot if the prefix or nonce length changes"
+    (let [;; longest realistic suffix: a 10-digit table id
+          name (scratch/scratch-table-name (scratch/new-nonce) (str "in_" 9999999999))]
+      (is (< (count name) 63)
+          (str "scratch name is " (count name) " chars (must be < 63): " name)))))
+
 (deftest name-age-computation-test
   (testing "timestamp encoded in name allows age computation from name alone"
     (let [;; Construct a name that appears to be 2 hours old

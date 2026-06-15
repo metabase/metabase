@@ -23,8 +23,8 @@
   The `_test_` segment cannot appear in a hex-only name, so there is zero risk
   that a janitor call drops a live production transform's temp table.
 
-  Length: max ≈ 58 chars (10-digit table-id) — under both Postgres (63) and
-  MySQL (64) identifier limits.
+  Length: comfortably under both the Postgres (63) and MySQL (64) identifier
+  limits even for a 10-digit table-id (pinned by a worst-case-length test).
 
   ## Caller contract (connection context)
 
