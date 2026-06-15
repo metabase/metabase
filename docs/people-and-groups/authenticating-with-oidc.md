@@ -107,7 +107,7 @@ If auto-provisioning is off, and no matching account exists, the person gets an 
 
 ### Switching from password to OIDC
 
-When an existing account (originally created with a username and password) is linked to an OIDC provider, the person can no longer sign in with their password—they'll need to use OIDC going forward. There's no UI option to revert this. To restore password authentication for an account, an admin must set the `sso_source` column to `null` in the `core_user` table of the application database, then reset the person's password.
+When an existing account (originally created with a username and password) is linked to an OIDC provider, the person can no longer sign in with their password—they'll need to use OIDC going forward. There's no UI option to revert this. To restore password authentication for an account, an admin must set the `sso_source` column to `null` in the `core_user` table of the application database, then reset the person's password. If you're on Metabase Cloud, [contact support](https://www.metabase.com/help) to make this change.
 
 ## Environment variables
 
