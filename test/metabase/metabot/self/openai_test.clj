@@ -116,6 +116,33 @@
                           :completionTokens pos-int?}}]
                 (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
 
+(deftest ^:parallel openai-response-failed-surfaces-error-test
+  (testing "a terminal response.failed event is surfaced as an :error chunk (not silently dropped)"
+    ;; The error detail lives under the response item, unlike a top-level `error` event. This is what
+    ;; Bedrock's mantle /openai/v1/responses returns when a model errors mid-stream (e.g. gpt-5.5 in
+    ;; us-east-2): without this the stream ends silently after :start with no error shown to the user.
+    (let [raw [{:type "response.created"     :response {:id "resp_1" :model "gpt-5.5"}}
+               {:type "response.in_progress" :response {:id "resp_1"}}
+               {:type "response.failed"
+                :response {:id    "resp_1"
+                           :error {:code    "server_error"
+                                   :message "The server had an error while processing your request. Sorry about that!"}}}]]
+      (is (=? [{:type :start}
+               {:type      :error
+                :errorText "The server had an error while processing your request. Sorry about that!"}]
+              (into [] (openai/openai->aisdk-chunks-xf) raw))))))
+
+(deftest ^:parallel openai-response-failed-without-message-test
+  (testing "response.failed with no message falls back to the error code, then a generic message"
+    (let [code-only [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error"}}}]
+          bare      [{:type "response.created" :response {:id "resp_1"}}
+                     {:type "response.failed"  :response {:id "resp_1"}}]]
+      (is (=? [{:type :start} {:type :error :errorText "server_error"}]
+              (into [] (openai/openai->aisdk-chunks-xf) code-only)))
+      (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
+              (into [] (openai/openai->aisdk-chunks-xf) bare))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────

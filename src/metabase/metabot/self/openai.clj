@@ -122,6 +122,12 @@
                                                      ;; non-standard extension, not in AISDK5
                                                      :id    (:id response)
                                                      :model @model-name})
+             ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
+             ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
+             (= t "response.failed")            (rf {:type      :error
+                                                     :errorText (or (get-in response [:error :message])
+                                                                    (get-in response [:error :code])
+                                                                    (tru "The model provider failed to complete the response"))})
              (= t "error")                      (rf {:type      :error
                                                      :errorText (or (:message error) (:message chunk))}))))))))
 
