@@ -51,10 +51,6 @@ export const NotificationUnsubscribeApi = {
   undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
 };
 
-export const RevisionsApi = {
-  get: GET("/api/revision/:entity/:id"),
-};
-
 export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
