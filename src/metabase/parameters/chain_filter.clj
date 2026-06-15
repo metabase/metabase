@@ -72,6 +72,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
@@ -93,7 +94,6 @@
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 ;; so the hydration method for name_field is loaded
@@ -136,10 +136,11 @@
   [query                               :- ::lib.schema/query
    source-table-id                     :- ::lib.schema.id/table
    {:keys [field-id op value options]} :- ::constraint]
-  (let [field     (let [this-field-table-id (field/field-id->table-id field-id)]
-                    (cond-> (lib.metadata/field query field-id)
-                      (not= this-field-table-id source-table-id)
-                      (lib/with-join-alias (joined-table-alias this-field-table-id))))
+  (let [field-metadata      (lib.metadata/field query field-id)
+        this-field-table-id (:table-id field-metadata)
+        field     (cond-> field-metadata
+                    (not= this-field-table-id source-table-id)
+                    (lib/with-join-alias (joined-table-alias this-field-table-id)))
         filter-op (if (and (lib.types.isa/temporal? field)
                            (string? value))
                     (try
@@ -184,7 +185,7 @@
      ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
      ;; the Table it belongs to. This Field might not even be part of the same Database in which case we can ignore
      ;; it.
-     (let [field-table-id (field/field-id->table-id field-id)]
+     (let [field-table-id (:table-id (lib.metadata/field query field-id))]
        (if (or (= field-table-id source-table-id)
                (contains? joined-table-ids field-table-id))
          (do
@@ -339,13 +340,12 @@
         (f database-id source-table-id other-table-id enable-reverse-joins?)))
      (meta f))))
 
-(def ^:private ^{:arglists '([source-table field-ids other-table-ids enable-reverse-joins?])} find-all-joins*
+(def ^:private ^{:arglists '([db-id source-table field-ids other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[source-table-id field-ids other-table-ids enable-reverse-joins?]]
-                         [(mdb/unique-identifier) source-table-id field-ids other-table-ids enable-reverse-joins?])}
-   (fn [source-table-id field-ids other-table-ids enable-reverse-joins?]
-     (let [db-id     (database/table-id->database-id source-table-id)
-           all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
+   ^{::memoize/args-fn (fn [[db-id source-table-id field-ids other-table-ids enable-reverse-joins?]]
+                         [(mdb/unique-identifier) db-id source-table-id field-ids other-table-ids enable-reverse-joins?])}
+   (fn [db-id source-table-id field-ids other-table-ids enable-reverse-joins?]
+     (let [all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
                              other-table-ids)]
        (when (seq all-joins)
          (log/tracef "Deduplicating for source %s; Tables to keep: %s\n%s"
@@ -360,11 +360,14 @@
 
 (mu/defn- find-all-joins
   "Find the complete set of joins we need to do for `source-table-id` to join against Fields in `field-ids`."
-  [source-table-id :- ::lib.schema.id/table
-   field-ids       :- [:set ::lib.schema.id/field]]
-  (when-let [other-table-ids (not-empty (disj (set (map field/field-id->table-id (set field-ids)))
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   database-id           :- ::lib.schema.id/database
+   source-table-id       :- ::lib.schema.id/table
+   field-ids             :- [:set ::lib.schema.id/field]]
+  (when-let [other-table-ids (not-empty (disj (into #{} (map #(:table-id (lib.metadata/field metadata-providerable %)))
+                                                    field-ids)
                                               source-table-id))]
-    (find-all-joins* source-table-id field-ids other-table-ids *enable-reverse-joins*)))
+    (find-all-joins* database-id source-table-id field-ids other-table-ids *enable-reverse-joins*)))
 
 (mu/defn- add-joins :- ::lib.schema/query
   "Add joins to the MBQL `query` we're generating. The Field for which we are returning values is the \"source Field\",
@@ -445,28 +448,30 @@
    constraints                       :- [:maybe ::constraints]
    {:keys [original-field-id limit]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
+  ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
+  ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `metadata-provider`.
   (let [database-id       (field/field-id->database-id field-id)
-        mp                (lib-be/application-database-metadata-provider database-id)
-        field-table-id    (field/field-id->table-id field-id)
-        original-table-id (when original-field-id (field/field-id->table-id original-field-id))
+        metadata-provider (lib-be/application-database-metadata-provider database-id)
+        field-table-id    (:table-id (lib.metadata/field metadata-provider field-id))
+        original-table-id (when original-field-id (:table-id (lib.metadata/field metadata-provider original-field-id)))
         ;; When the original (FK) field lives on a different table, reverse the join direction:
         ;; make the original field's table the source and join the label table. The original table
         ;; is typically the large fact table; putting it on the right side of a JOIN can OOM on
         ;; engines like ClickHouse that materialize the right side in memory.
         reversed?         (and original-table-id (not= original-table-id field-table-id))
         source-table-id   (if reversed? original-table-id field-table-id)
-        joins             (find-all-joins source-table-id
+        joins             (find-all-joins metadata-provider database-id source-table-id
                                           (cond-> (set (map :field-id constraints))
                                             reversed?       (conj field-id)
                                             (not reversed?) (cond-> original-field-id (conj original-field-id))))
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
-        field             (cond-> (lib.metadata/field mp field-id)
+        field             (cond-> (lib.metadata/field metadata-provider field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
         original-field    (when original-field-id
                             (if reversed?
                               ;; reversed: original field is on the source table, no alias
-                              (lib.metadata/field mp original-field-id)
-                              (cond-> (lib.metadata/field mp original-field-id)
+                              (lib.metadata/field metadata-provider original-field-id)
+                              (cond-> (lib.metadata/field metadata-provider original-field-id)
                                 (not= field-table-id original-table-id)
                                 (lib/with-join-alias (joined-table-alias original-table-id)))))]
     (when original-field-id
@@ -476,7 +481,7 @@
     (when (seq joins)
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                   (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
-    (-> (lib/query mp (lib.metadata/table mp source-table-id))
+    (-> (lib/query metadata-provider (lib.metadata/table metadata-provider source-table-id))
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)
