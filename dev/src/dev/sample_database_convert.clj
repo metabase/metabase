@@ -170,9 +170,6 @@
     (instance? Timestamp v) (str (.toLocalDateTime ^Timestamp v))
     (instance? Date v) (str (.toLocalDate ^Date v))
     (instance? Time v) (str (.toLocalTime ^Time v))
-    ;; CLOB columns (H2 CHARACTER LARGE OBJECT) come back as a java.sql.Clob, not a String. Decode with the
-    ;; same helper the H2 driver uses (read-column-thunk :h2); otherwise SQLite-JDBC stores the Clob's
-    ;; toString (H2's internal SCRIPT dump).
     (instance? Clob v) (driver-api/clob->str v)
     :else v))
 
