@@ -1337,6 +1337,13 @@ Popular MCP clients enabled for CORS, stored as CSV client keys (e.g. claude, vs
 
 Whether Metabot is enabled for regular usage.
 
+### `MB_METABOT_RECENT_VIEWS_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether the user's recently viewed items are included in the Metabot system prompt.
+
 ### `MB_METABOT_SLACK_SIGNING_SECRET`
 
 - Type: string
@@ -2782,7 +2789,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 ### `MB_PASSWORD_COMPLEXITY`
 
-Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`, `"strong-enough"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#mb_password_length)
@@ -2790,6 +2797,7 @@ Enforce a password complexity rule to increase security for regular logins. This
 - `weak` no character constraints
 - `normal` at least 1 digit
 - `strong` minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong-enough` minimum 15 characters
 
 ### `MB_PASSWORD_LENGTH`
 

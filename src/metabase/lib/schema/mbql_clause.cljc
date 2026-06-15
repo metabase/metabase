@@ -101,9 +101,12 @@
 
 (defn- normalize-clause [x]
   (when (sequential? x)
-    (if ((some-fn map? nil?) (second x))
-      x
-      (into [(first x) {:lib/uuid (str (random-uuid))}] (rest x)))))
+    ;; Coerce non-vector sequentials (e.g. LazySeqs from `json/decode+kw`) to vectors so downstream
+    ;; `:tuple` schemas match.
+    (let [x (if (vector? x) x (vec x))]
+      (if ((some-fn map? nil?) (second x))
+        x
+        (into [(first x) {:lib/uuid (str (random-uuid))}] (rest x))))))
 
 ;;; TODO: Support options more nicely - these don't allow for overriding the options, but we have a few cases where that
 ;;; is necessary. See for example the inclusion of `string-filter-options` in [[metabase.lib.filter]].

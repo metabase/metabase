@@ -453,17 +453,19 @@
             ;; if this is a column we're remapping FROM, we need to add information about which column we're remapping
             ;; TO
             (when (= dimension-id original-field-dimension-id)
-              {:remapped_to (or (some (fn [{{::keys [new-field-dimension-id]} :options, target-name :name}]
-                                        (when (= new-field-dimension-id dimension-id)
-                                          target-name))
+              {:remapped_to (or (some (fn [{{::keys [new-field-dimension-id]} :options, :as target-col}]
+                                        (when (and (= new-field-dimension-id dimension-id)
+                                                   (= (:lib/join-alias target-col) (:lib/join-alias column)))
+                                          (:name target-col)))
                                       columns)
                                 to-name)})
             ;; if this is a column we're remapping TO, we need to add information about which column we're remapping
             ;; FROM
             (when (= dimension-id new-field-dimension-id)
-              {:remapped_from (or (some (fn [{{::keys [original-field-dimension-id]} :options, source-name :name}]
-                                          (when (= original-field-dimension-id dimension-id)
-                                            source-name))
+              {:remapped_from (or (some (fn [{{::keys [original-field-dimension-id]} :options, :as source-col}]
+                                          (when (and (= original-field-dimension-id dimension-id)
+                                                     (= (:lib/join-alias source-col) (:lib/join-alias column)))
+                                            (:name source-col)))
                                         columns)
                                   from-name)
                :display_name  from-display-name}))

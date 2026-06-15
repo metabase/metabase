@@ -1128,6 +1128,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset", "metric"],
+      context: "data-picker",
     });
     let metadata;
     if (response) {
@@ -1146,9 +1147,9 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
-function withAllDatabases(WrappedComponent) {
-  return function DataSelectorWithAllDatabases(props) {
-    useListDatabasesQuery();
+function withDatabaseList(WrappedComponent) {
+  return function DataSelectorWithDatabaseList(props) {
+    useListDatabasesQuery({ "can-query": true });
     return <WrappedComponent {...props} />;
   };
 }
@@ -1157,7 +1158,7 @@ const isListDatabasesQuerySuccess = (state, query) =>
   databaseApi.endpoints.listDatabases.select(query)(state).isSuccess;
 
 const DataSelector = _.compose(
-  withAllDatabases,
+  withDatabaseList,
   withAvailableModels,
   withSchemaFetchers,
   connect(

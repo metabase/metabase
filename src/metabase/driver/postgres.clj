@@ -65,35 +65,34 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift
-(doseq [[feature supported?] {:connection-impersonation true
-                              :describe-fields          true
-                              :describe-fks             true
-                              :describe-indexes         true
-                              :describe-default-expr    true
-                              :describe-is-generated    true
-                              :describe-is-nullable     true
-                              :convert-timezone         true
-                              :datetime-diff            true
-                              :now                      true
-                              :rename                   true
-                              :atomic-renames           true
-                              :persist-models           true
-                              :schemas                  true
-                              :identifiers-with-spaces  true
-                              :uuid-type                true
-                              :split-part               true
-                              :uploads                  true
-                              :expression-literals      true
-                              :expressions/text         true
-                              :expressions/integer      true
-                              :expressions/float        true
-                              :expressions/date         true
-                              :database-routing         true
-                              :transforms/table         true
-                              :transforms/python        true
-                              :transforms/index-ddl     true
+(doseq [[feature supported?] {:atomic-renames                 true
+                              :connection-impersonation       true
+                              :convert-timezone               true
+                              :database-routing               true
+                              :datetime-diff                  true
+                              :describe-default-expr          true
+                              :describe-fields                true
+                              :describe-indexes               true
+                              :describe-is-generated          true
+                              :describe-is-nullable           true
+                              :expression-literals            true
+                              :expressions/date               true
+                              :expressions/float              true
+                              :expressions/integer            true
+                              :expressions/text               true
+                              :identifiers-with-spaces        true
                               :metadata/table-existence-check true
-                              :workspace                true}]
+                              :now                            true
+                              :persist-models                 true
+                              :rename                         true
+                              :schemas                        true
+                              :split-part                     true
+                              :transforms/index-ddl           true
+                              :transforms/python              true
+                              :transforms/table               true
+                              :uploads                        true
+                              :uuid-type                      true
+                              :workspace                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -535,20 +534,23 @@
 (mu/defn- date-trunc
   [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
    expr]
-  (condp = (h2x/database-type expr)
-    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
-    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
-    "time"
-    (time-trunc unit expr)
-
-    "timetz"
+  ;; Branches are ordered most-specific-first because `database-or-effective-type-isa?` checks `isa?` on the effective
+  ;; type fallback: `:type/TimeWithTZ` is a descendant of `:type/Time`, so the timetz branch must run first to avoid a
+  ;; nested-source-query `timetz` column being routed to the plain-time path (#75193, #68065).
+  (cond
+    (h2x/database-or-effective-type-isa? expr "timetz" :type/TimeWithTZ)
     (h2x/cast "timetz" (time-trunc unit expr))
 
+    ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
+    ;; but it returns an interval (??) and other insane things. This seems to be slightly less insane.
+    (h2x/database-or-effective-type-isa? expr "time" :type/Time)
+    (time-trunc unit expr)
+
     ;; postgres returns timestamp or timestamptz from `date_trunc`, so cast back if we've got a date column
-    "date"
+    (h2x/database-or-effective-type-isa? expr "date" :type/Date)
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
-    #_else
+    :else
     (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))

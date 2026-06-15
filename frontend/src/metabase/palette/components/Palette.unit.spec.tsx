@@ -40,7 +40,7 @@ const setup = ({
     <Route
       path={initialRoute ? "*" : "/"}
       component={Palette}
-      {...routeProps}
+      props={routeProps}
     />,
     {
       withKBar: true,

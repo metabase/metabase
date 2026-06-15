@@ -1,6 +1,14 @@
 import type { SortingState } from "@tanstack/react-table";
 import { t } from "ttag";
 
+import {
+  formatRunMethod,
+  formatStatus,
+  getRunDurationMs,
+  getTransformRunName,
+  isErrorStatus,
+  parseTimestampWithTimezone,
+} from "metabase/transforms/utils";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Box,
@@ -10,6 +18,8 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { EMPTY_CELL_PLACEHOLDER } from "metabase/utils/constants";
+import { formatDurationLong } from "metabase/utils/formatting/time";
 import {
   TRANSFORM_RUN_SORT_COLUMNS,
   type TransformRun,
@@ -18,13 +28,6 @@ import {
   type TransformTagId,
 } from "metabase-types/api";
 
-import {
-  formatRunMethod,
-  formatStatus,
-  getTransformRunName,
-  isErrorStatus,
-  parseTimestampWithTimezone,
-} from "../../../utils";
 import type { TransformRunSortOptions } from "../types";
 
 import { TagList } from "./TagList";
@@ -117,8 +120,33 @@ function getEndedAtColumn(
         : null;
     },
     cell: ({ getValue }) => {
-      const value = getValue();
-      return value != null ? <Ellipsified>{String(value)}</Ellipsified> : null;
+      const value = getValue<string | null>();
+      if (value == null) {
+        return EMPTY_CELL_PLACEHOLDER;
+      }
+      return <Ellipsified>{String(value)}</Ellipsified>;
+    },
+  };
+}
+
+function getDurationColumn(): TreeTableColumnDef<TransformRun> {
+  return {
+    id: "duration" satisfies TransformRunSortColumn,
+    header: ({ header }) => (
+      <SortableHeaderPill
+        name={t`Duration`}
+        sort={header.column.getIsSorted() || undefined}
+      />
+    ),
+    width: 120,
+    enableSorting: true,
+    accessorFn: (run) => getRunDurationMs(run),
+    cell: ({ getValue }) => {
+      const ms = getValue<number | null>();
+      if (ms == null) {
+        return EMPTY_CELL_PLACEHOLDER;
+      }
+      return <Ellipsified>{formatDurationLong(ms)}</Ellipsified>;
     },
   };
 }
@@ -200,6 +228,7 @@ export function getColumns(
     getTransformColumn(),
     getStartedAtColumn(systemTimezone),
     getEndedAtColumn(systemTimezone),
+    getDurationColumn(),
     getStatusColumn(),
     getRunMethodColumn(),
     getTransformTagsColumn(tagsById),

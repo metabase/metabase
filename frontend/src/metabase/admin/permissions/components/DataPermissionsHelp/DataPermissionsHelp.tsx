@@ -26,10 +26,6 @@ export const DataPermissionsHelp = () => {
     (state) => getSetting(state, "token-features").advanced_permissions,
   );
 
-  const isWorkspacesFeatureEnabled = useSelector(
-    (state) => getSetting(state, "token-features").workspaces,
-  );
-
   const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
     hasPermissionValueInGraph(
       state.admin.permissions.originalDataPermissions,
@@ -115,7 +111,7 @@ export const DataPermissionsHelp = () => {
               )}
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="brand"
+                iconColor="core-brand"
                 name={t`Row and column security (Pro)`}
                 description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
               />
@@ -209,13 +205,6 @@ export const DataPermissionsHelp = () => {
                   {jt`${(
                     <strong key="permission">{t`Transforms (Pro):`}</strong>
                   )} The group can create, edit, and run Transforms for a given database.`}
-                </Text>
-              )}
-              {isWorkspacesFeatureEnabled && (
-                <Text>
-                  {jt`${(
-                    <strong key="permission">{t`Workspaces:`}</strong>
-                  )} The group can add, edit, and remove the database from Workspaces.`}
                 </Text>
               )}
             </Stack>

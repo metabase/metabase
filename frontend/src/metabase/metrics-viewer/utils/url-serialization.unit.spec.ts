@@ -1,9 +1,15 @@
+import type {
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerPageState,
+} from "../types";
+
 import type { DimensionFilterValue } from "./dimension-filters";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
   deserializeFormulaEntities,
   encodeState,
+  stateToSerializedState,
 } from "./url-serialization";
 
 function encodeStateOrThrow(state: SerializedMetricsViewerPageState): string {
@@ -14,17 +20,44 @@ function encodeStateOrThrow(state: SerializedMetricsViewerPageState): string {
   return result;
 }
 
+function createBreakout(
+  overrides: Partial<MetricsViewerDimensionBreakoutState> = {},
+): MetricsViewerDimensionBreakoutState {
+  return {
+    id: "time",
+    type: "time",
+    label: "Time",
+    display: "line",
+    dimensionMapping: { 0: "created_at" },
+    projectionConfig: {},
+    ...overrides,
+  };
+}
+
+function createPageState(
+  overrides: Partial<MetricsViewerPageState> = {},
+): MetricsViewerPageState {
+  return {
+    definitions: {},
+    formulaEntities: [],
+    dimensionBreakouts: [],
+    selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
+    ...overrides,
+  };
+}
+
 describe("url-serialization", () => {
   describe("encodeState / decodeState round-trip", () => {
-    it("round-trips a state with formula entities and tabs", () => {
+    it("round-trips a state with formula entities and dimensionBreakouts", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [
           { type: "metric", id: 1, breakout: "dim-1" },
           { type: "measure", id: 42 },
         ],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-1",
+            id: "dimensionBreakout-1",
             type: "time",
             label: "By Month",
             display: "bar",
@@ -34,7 +67,28 @@ describe("url-serialization", () => {
             },
           },
         ],
-        selectedTabId: "tab-1",
+        selectedDimensionBreakoutId: "dimensionBreakout-1",
+      };
+
+      const hash = encodeStateOrThrow(state);
+      const decoded = decodeState(hash);
+      expect(decoded).toEqual(state);
+    });
+
+    it("round-trips enabled column labels", () => {
+      const state: SerializedMetricsViewerPageState = {
+        formulaEntities: [{ type: "metric", id: 1 }],
+        showColumnLabels: true,
+        dimensionBreakouts: [
+          {
+            id: "dimensionBreakout-1",
+            type: "time",
+            label: "By Month",
+            display: "line",
+            definitions: [{ slotIndex: 0, dimensionId: "created_at" }],
+          },
+        ],
+        selectedDimensionBreakoutId: "dimensionBreakout-1",
       };
 
       const hash = encodeStateOrThrow(state);
@@ -52,8 +106,8 @@ describe("url-serialization", () => {
             breakoutTemporalUnit: "year",
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -71,8 +125,8 @@ describe("url-serialization", () => {
             breakoutBinning: "50 bins",
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -91,8 +145,8 @@ describe("url-serialization", () => {
             breakoutBinning: "Auto bin",
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -103,8 +157,8 @@ describe("url-serialization", () => {
     it("round-trips an empty state", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -131,8 +185,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -149,8 +203,8 @@ describe("url-serialization", () => {
             segments: [42],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -167,8 +221,8 @@ describe("url-serialization", () => {
             segments: [11, 7, 23],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -200,8 +254,8 @@ describe("url-serialization", () => {
             segments: [42],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -227,8 +281,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -241,8 +295,8 @@ describe("url-serialization", () => {
       // round-trip still works and leaves segments undefined.
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1, breakout: "dim-1" }],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
       const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
@@ -256,8 +310,8 @@ describe("url-serialization", () => {
     it("propagates decoded segments into serializedDefinitionInfo on the entity", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 5, segments: [42] }],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
       const hash = encodeStateOrThrow(state);
       const decoded = decodeState(hash);
@@ -286,8 +340,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -316,8 +370,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -353,8 +407,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -367,16 +421,18 @@ describe("url-serialization", () => {
     it("returns empty state for empty string", () => {
       expect(decodeState("")).toEqual({
         formulaEntities: [],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 
     it("returns empty state for invalid base64", () => {
       expect(decodeState("!!!not-valid-base64!!!")).toEqual({
         formulaEntities: [],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 
@@ -384,8 +440,9 @@ describe("url-serialization", () => {
       const hash = btoa("not json");
       expect(decodeState(hash)).toEqual({
         formulaEntities: [],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+        showColumnLabels: false,
       });
     });
 
@@ -396,20 +453,128 @@ describe("url-serialization", () => {
     });
   });
 
+  describe("stateToSerializedState", () => {
+    it("serializes only the selected dimension breakout", () => {
+      const selectedBreakout = createBreakout({
+        id: "category",
+        type: "category",
+        label: "Category",
+        display: "bar",
+        dimensionMapping: { 0: "category" },
+      });
+      const state = createPageState({
+        dimensionBreakouts: [
+          createBreakout({ id: "time" }),
+          selectedBreakout,
+          createBreakout({ id: "geo", type: "geo", label: "Country" }),
+        ],
+        selectedDimensionBreakoutId: selectedBreakout.id,
+      });
+
+      expect(stateToSerializedState(state)).toEqual({
+        formulaEntities: [],
+        dimensionBreakouts: [
+          {
+            id: "category",
+            type: "category",
+            label: "Category",
+            display: "bar",
+            definitions: [{ slotIndex: 0, dimensionId: "category" }],
+          },
+        ],
+        selectedDimensionBreakoutId: "category",
+      });
+    });
+
+    it("preserves the selected dimension breakout configuration", () => {
+      const state = createPageState({
+        dimensionBreakouts: [
+          createBreakout({ id: "inactive" }),
+          createBreakout({
+            id: "selected",
+            label: "Orders by month",
+            display: "area",
+            dimensionMapping: { 0: "created_at", 1: null },
+            projectionConfig: {
+              temporalUnit: "month",
+              binningStrategy: "10 bins",
+              dimensionFilter: {
+                type: "string",
+                operator: "=",
+                values: ["Widget"],
+                options: {},
+              },
+            },
+            visualizationSettings: { "graph.show_values": true },
+          }),
+        ],
+        selectedDimensionBreakoutId: "selected",
+      });
+
+      expect(stateToSerializedState(state).dimensionBreakouts).toEqual([
+        {
+          id: "selected",
+          type: "time",
+          label: "Orders by month",
+          display: "area",
+          visualizationSettings: { "graph.show_values": true },
+          definitions: [
+            { slotIndex: 0, dimensionId: "created_at" },
+            { slotIndex: 1 },
+          ],
+          projectionConfig: {
+            temporalUnit: "month",
+            binning: "10 bins",
+            dimensionFilter: {
+              type: "string",
+              operator: "=",
+              values: ["Widget"],
+              options: {},
+            },
+          },
+        },
+      ]);
+    });
+
+    it("serializes no dimension breakouts when none is selected", () => {
+      const state = createPageState({
+        dimensionBreakouts: [createBreakout({ id: "time" })],
+        selectedDimensionBreakoutId: null,
+      });
+
+      expect(stateToSerializedState(state)).toMatchObject({
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+      });
+    });
+
+    it("clears the selected dimension breakout ID when it does not exist", () => {
+      const state = createPageState({
+        dimensionBreakouts: [createBreakout({ id: "time" })],
+        selectedDimensionBreakoutId: "missing",
+      });
+
+      expect(stateToSerializedState(state)).toMatchObject({
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
+      });
+    });
+  });
+
   describe("Unicode round-trip", () => {
-    it("survives non-ASCII metric labels in tabs", () => {
+    it("survives non-ASCII metric labels in dimensionBreakouts", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1 }],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-1",
+            id: "dimensionBreakout-1",
             type: "time",
             label: "Ré\u00e9venues par mois \u2014 \u00e9t\u00e9",
             display: "line",
             definitions: [],
           },
         ],
-        selectedTabId: "tab-1",
+        selectedDimensionBreakoutId: "dimensionBreakout-1",
       };
 
       const hash = encodeStateOrThrow(state);
@@ -420,16 +585,16 @@ describe("url-serialization", () => {
     it("survives CJK characters", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1 }],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-1",
+            id: "dimensionBreakout-1",
             type: "category",
             label: "\u6708\u5225\u58f2\u4e0a",
             display: "bar",
             definitions: [],
           },
         ],
-        selectedTabId: null,
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -440,16 +605,16 @@ describe("url-serialization", () => {
     it("survives emoji characters", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [{ type: "metric", id: 1 }],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-1",
+            id: "dimensionBreakout-1",
             type: "time",
             label: "\ud83d\udcc8 Revenue",
             display: "line",
             definitions: [],
           },
         ],
-        selectedTabId: null,
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -468,8 +633,8 @@ describe("url-serialization", () => {
             filters: [{ dimensionId: "created_at", value: filter }],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
       const decoded = decodeState(encodeStateOrThrow(state));
       const entity = decoded.formulaEntities[0];
@@ -495,8 +660,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
       const decoded = decodeState(encodeStateOrThrow(state));
       const entity = decoded.formulaEntities[0];
@@ -598,8 +763,8 @@ describe("url-serialization", () => {
             filters: [{ dimensionId: "price", value: filter }],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const decoded = decodeState(encodeStateOrThrow(state));
@@ -626,9 +791,9 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-time",
+            id: "dimensionBreakout-time",
             type: "time",
             label: "By Time",
             display: "line",
@@ -638,7 +803,7 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        selectedTabId: "tab-time",
+        selectedDimensionBreakoutId: "dimensionBreakout-time",
       };
 
       const hash = encodeStateOrThrow(state);
@@ -688,8 +853,8 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
       };
 
       const hash = encodeStateOrThrow(state);
@@ -697,7 +862,7 @@ describe("url-serialization", () => {
       expect(decoded).toEqual(state);
     });
 
-    it("preserves per-slot dimension mappings when same metric has different breakouts across multiple tabs", () => {
+    it("preserves per-slot dimension mappings when same metric has different breakouts across multiple dimensionBreakouts", () => {
       const state: SerializedMetricsViewerPageState = {
         formulaEntities: [
           {
@@ -711,9 +876,9 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-time",
+            id: "dimensionBreakout-time",
             type: "time",
             label: "By Time",
             display: "line",
@@ -723,7 +888,7 @@ describe("url-serialization", () => {
             ],
           },
           {
-            id: "tab-cat",
+            id: "dimensionBreakout-cat",
             type: "category",
             label: "By Category",
             display: "bar",
@@ -733,7 +898,7 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        selectedTabId: "tab-cat",
+        selectedDimensionBreakoutId: "dimensionBreakout-cat",
       };
 
       const hash = encodeStateOrThrow(state);
@@ -761,9 +926,9 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        tabs: [
+        dimensionBreakouts: [
           {
-            id: "tab-time",
+            id: "dimensionBreakout-time",
             type: "time",
             label: "By Month",
             display: "line",
@@ -774,7 +939,7 @@ describe("url-serialization", () => {
             ],
           },
         ],
-        selectedTabId: "tab-time",
+        selectedDimensionBreakoutId: "dimensionBreakout-time",
       };
 
       const hash = encodeStateOrThrow(state);
@@ -789,7 +954,7 @@ describe("url-serialization", () => {
       const second = decodeState("");
       expect(first).not.toBe(second);
       expect(first.formulaEntities).not.toBe(second.formulaEntities);
-      expect(first.tabs).not.toBe(second.tabs);
+      expect(first.dimensionBreakouts).not.toBe(second.dimensionBreakouts);
     });
   });
 
@@ -799,8 +964,8 @@ describe("url-serialization", () => {
     ): SerializedMetricsViewerPageState {
       return {
         formulaEntities: [],
-        tabs: [],
-        selectedTabId: null,
+        dimensionBreakouts: [],
+        selectedDimensionBreakoutId: null,
         ...overrides,
       };
     }
@@ -851,9 +1016,9 @@ describe("url-serialization", () => {
           type: "expression",
           name: "test",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "+" },
-            { type: "metric", sourceId: "metric:2", count: 1 },
+            { type: "metric", sourceId: "metric:2", occurrenceCount: 1 },
           ],
         },
       ]);
@@ -937,7 +1102,7 @@ describe("url-serialization", () => {
           type: "expression",
           name: "Total",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "+" },
             { type: "constant", value: 10 },
           ],
@@ -971,7 +1136,7 @@ describe("url-serialization", () => {
           type: "expression",
           name: "Total",
           tokens: [
-            { type: "metric", sourceId: "metric:1", count: 1 },
+            { type: "metric", sourceId: "metric:1", occurrenceCount: 1 },
             { type: "operator", op: "*" },
             { type: "constant", value: 2 },
           ],

@@ -10,9 +10,9 @@ import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
 import {
+  type MetricsViewerDimensionBreakoutState,
   type MetricsViewerFormulaEntity,
   type MetricsViewerPageState,
-  type MetricsViewerTabState,
   isExpressionEntry,
   isMetricEntry,
 } from "../types/viewer-state";
@@ -20,8 +20,8 @@ import { parseSourceId } from "../utils/source-ids";
 import {
   type SerializedMetricsViewerPageState,
   decodeState,
+  deserializeDimensionBreakout,
   deserializeFormulaEntities,
-  deserializeTab,
   encodeState,
   stateToSerializedState,
 } from "../utils/url-serialization";
@@ -62,8 +62,9 @@ export function useViewerUrl(
             : { type: "measure" as const, id: parseInt(measureId!, 10) };
           serializedState = {
             formulaEntities: [entity],
-            tabs: [],
-            selectedTabId: null,
+            dimensionBreakouts: [],
+            selectedDimensionBreakoutId: null,
+            showColumnLabels: false,
           };
           const encodedHash = encodeState(serializedState);
           if (encodedHash === undefined) {
@@ -84,15 +85,17 @@ export function useViewerUrl(
       }
       lastHashRef.current = hash;
 
-      if (serializedState.tabs.length > 0) {
-        const tabs: MetricsViewerTabState[] =
-          serializedState.tabs.map(deserializeTab);
+      if (serializedState.dimensionBreakouts.length > 0) {
+        const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] =
+          serializedState.dimensionBreakouts.map(deserializeDimensionBreakout);
 
         initialize({
           definitions: {},
           formulaEntities: [],
-          tabs,
-          selectedTabId: serializedState.selectedTabId,
+          dimensionBreakouts,
+          selectedDimensionBreakoutId:
+            serializedState.selectedDimensionBreakoutId,
+          showColumnLabels: serializedState.showColumnLabels ?? false,
         });
       }
 

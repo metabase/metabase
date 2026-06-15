@@ -12,17 +12,6 @@ export function trackWorkspaceCreated({
   });
 }
 
-export function trackWorkspaceDatabaseAdded({
-  workspaceId,
-}: {
-  workspaceId: WorkspaceId;
-}) {
-  trackSimpleEvent({
-    event: "workspaces_database_added",
-    target_id: workspaceId,
-  });
-}
-
 export function trackWorkspaceConfigDownloaded({
   workspaceId,
 }: {

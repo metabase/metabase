@@ -12,7 +12,7 @@ import {
   makePivotAwareQueryRunner,
   publicApi,
 } from "metabase/api";
-import { isAbortError } from "metabase/api/legacy-client";
+import { isAbortError } from "metabase/api/client";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
@@ -41,7 +41,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { AutoApi, DashboardApi, EmbedApi, PublicApi } from "metabase/services";
+import { DashboardApi, EmbedApi, PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -736,8 +736,10 @@ export const fetchDashboard = createAsyncThunk(
         const subPath = String(dashId).split("/").slice(3).join("/");
         const [entity, entityId] = subPath.split(/[/?]/);
         const [response] = await Promise.all([
-          AutoApi.dashboard(
+          runRtkEndpoint(
             { subPath, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboard,
             { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
@@ -748,6 +750,7 @@ export const fetchDashboard = createAsyncThunk(
             },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
+            { signal: fetchDashboardCancellation.signal },
           ),
         ]);
         result = {

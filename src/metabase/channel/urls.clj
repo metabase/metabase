@@ -23,12 +23,22 @@
   []
   (str (site-url) "/trash"))
 
+(defn dashboard-path
+  "Relative frontend path for a `Dashboard` with ID, e.g. \"/dashboard/10\"."
+  [^Integer id]
+  (format "/dashboard/%d" id))
+
+(defn card-path
+  "Relative frontend path for a `Card` with ID, e.g. \"/question/10\"."
+  [^Integer id]
+  (format "/question/%d" id))
+
 (defn dashboard-url
   "Return an appropriate URL for a `Dashboard` with ID.
 
      (dashboard-url 10) -> \"http://localhost:3000/dashboard/10\""
   ([^Integer id]
-   (format "%s/dashboard/%d" (site-url) id))
+   (str (site-url) (dashboard-path id)))
   ([^Integer id parameters & [tab-id]]
    (let [base-url   (dashboard-url id)
          url-params (cond-> (flatten
@@ -49,7 +59,7 @@
 
      (card-url 10) -> \"http://localhost:3000/question/10\""
   [^Integer id]
-  (format "%s/question/%d" (site-url) id))
+  (str (site-url) (card-path id)))
 
 (def ^:dynamic *dashcard-parameters*
   "Bind dashboard parameters for dashcard deeplinked urls"
