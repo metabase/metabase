@@ -1304,7 +1304,7 @@
   as a warehouse -- returns false in the contexts where it is not user-creatable, so it is omitted from the
   add-database engine list there. Affects only the engine list shown to users; the driver stays registered and
   `available?` for internal use."
-  {:arglists '([driver context])}
+  {:added "0.63.0" :arglists '([driver context])}
   (fn [driver _context] (dispatch-on-uninitialized-driver driver))
   :hierarchy #'hierarchy)
 
