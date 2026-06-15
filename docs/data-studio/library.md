@@ -131,11 +131,37 @@ You can [sync Library content to version control](../installation-and-operation/
 
 ## Library permissions
 
-Library is essentially just a special collection. Metabase uses the standard [collection permissions](../permissions/collections.md) to determine who can view and edit items in the Library.
-
-### Permissions to edit the Library
+Library is essentially a special collection. Metabase uses the standard [collection permissions](../permissions/collections.md) to determine who can view and edit items in the Library, with some caveats. Library collection permissions are only relevant to the Data and Metrics collections. Snippets permissions are handled by [permissions for snippet folders](../permissions/snippets.md).
 
 ![Library collection permissions](./images/library-permissions.png)
+
+To configure permissions for the library:
+
+1. Go to **Admin > Permissions**.
+2. Switch to **Collections** in the left sidebar.
+3. Select **Curate**, **View**, or **No access** permissions for the Library and its subcollecitons.
+
+   See below for the access that each permission level provides for each part of the Library.
+
+### Curate permissions
+
+- **Data** collection and its subcollections: The group can view tables in the Data collection, provided they have [data permissions](../permissions/data.md) for the tables. But they can't add, edit, or remove tables. The Admin and Data Analyst groups are the _only_ groups that can publish tables to the Library.
+- **Metrics** collection and its subcollections: the group can add, edit, and archive metrics. Groups don't need access to Data Studio to curate metrics.
+
+### View permissions
+
+Controls whether a group can view the Library and its items.
+
+- **Data** and its subcollections: The group can view tables in the Data collection, provided they have [data permissions](../permissions/data.md) for the tables.
+- **Metrics** and its subcollections: the group can view the metrics and use them in their queries.
+
+### No access
+
+Groups with **No access** won't even see the Library (including in the navigation sidebar and the query builder).
+
+The group may still have access to tables published to the Library, if they have [data permissions](../permissions/data.md) to those tables. Do not use collction permissions to **Library > Data** to block access to tables - use [data permissions](../permissions/data.md) instead.
+
+### Permissions to edit the Library
 
 Admins and people in the Data Analyst group always have Curate access to the Library.
 
