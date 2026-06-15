@@ -143,6 +143,9 @@
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
+        (= :pivot display-type)
+        (chart-type :pivot "display-type is pivot")
+
         :else
         (chart-type :table "no other chart types match")))))
 

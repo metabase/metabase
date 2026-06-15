@@ -1,4 +1,4 @@
-(ns metabase.query-processor.pivot.postprocess
+(ns metabase.pivot.postprocess
   "Post-process utils for pivot exports
 
   The shape returned by the pivot qp is not the same visually as what a pivot table looks like in the app.

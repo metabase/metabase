@@ -14,12 +14,15 @@
    [metabase.channel.settings :as channel.settings]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
+   [metabase.pivot.core :as pivot.core]
+   [metabase.pivot.postprocess :as pivot.postprocess]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
@@ -415,6 +418,112 @@
                  :src   (:image-src image-bundle)}]]})
       :html
       {:content [:div content] :attachments nil})))
+
+;;; ------------------------------------------------ pivot tables ------------------------------------------------
+
+(defn- setting-value
+  "Look up `k` in a viz-settings map that may be keyed by either keywords or strings."
+  [settings k]
+  (or (get settings k) (get settings (name k))))
+
+(defn- pivot-cell->str
+  "Display string for an assembled pivot cell (a formatter wrapper, a plain string, or nil)."
+  [x]
+  (cond
+    (nil? x)    ""
+    (string? x) x
+    :else       (or (:num-str x) (:text-str x) (str x))))
+
+(defn- pivot->hiccup
+  "Render the assembled 2D pivot `rows` (header row first, then data rows) as an HTML table. Cells are
+  `white-space: nowrap` so the table takes whatever width it needs (the surrounding pulse body provides
+  horizontal scrolling). `opts` may include `:color-selector` (from [[js.color/make-color-selector]]),
+  `:left-width` (number of leading row-label columns), and `:measure-names` (ordered measure column names)
+  to apply the card's conditional formatting to the measure value cells."
+  [rows {:keys [color-selector left-width measure-names]}]
+  (let [measure-count (max 1 (count measure-names))
+        cell-bg       (fn [cell ^long c]
+                        ;; value cells are NumericWrapper; map each value column back to its measure column
+                        ;; so the matching conditional-formatting rule applies. Row highlighting is disabled
+                        ;; for pivots (:table.pivot in pivot-table-content), so the row index is unused.
+                        (when (and color-selector (formatter/NumericWrapper? cell))
+                          (let [vpos (- c (long left-width))]
+                            (when (nat-int? vpos)
+                              (let [mname (nth measure-names (mod vpos measure-count))]
+                                (js.color/get-background-color color-selector cell mname 0))))))]
+    [:table {:style (style/style (style/pivot-table-style))}
+     [:tbody
+      (map-indexed
+       (fn [r row]
+         [:tr
+          (map-indexed
+           (fn [c cell]
+             (let [header? (zero? r)
+                   label?  (and (pos? r) (zero? c))
+                   bg      (cell-bg cell c)]
+               [(if (or header? label?) :th :td)
+                {:style (style/style (style/pivot-cell-style header? label? bg))}
+                (h (pivot-cell->str cell))]))
+           row)])
+       rows)]]))
+
+(defn- pivot-table-content
+  "Assemble a `:pivot` card's flat (pivot-grouping) result into a Hiccup pivot table, or nil if it can't be
+  assembled — no column split, a native pivot without a pivot-grouping column, etc. Reuses the pivot-export
+  assembly ([[pivot.postprocess/build-pivot-output]] + [[pivot.core]]) and the row/col/measure indices the
+  pivot QP already computed in `:pivot-export-options`."
+  [card dashcard {:keys [cols pivot-export-options] :as data}]
+  (let [settings (merge (:visualization_settings card) (:visualization_settings dashcard))
+        split    (setting-value settings :pivot_table.column_split)
+        pg-idx   (pivot.postprocess/pivot-grouping-index (mapv :name cols))]
+    (when (and split pivot-export-options pg-idx)
+      (let [columns  (pivot.core/columns-without-pivot-group cols)
+            row-idxs (vec (:pivot-rows pivot-export-options))
+            col-idxs (vec (:pivot-cols pivot-export-options))
+            ;; The pivot QP only fills :pivot-measures when the split's measure names resolve to result
+            ;; columns; when they don't (e.g. a casing mismatch) default to every non row/col column,
+            ;; mirroring pivot.postprocess/add-pivot-measures.
+            val-idxs (if-let [measures (seq (:pivot-measures pivot-export-options))]
+                       (vec measures)
+                       (into [] (remove (set (concat row-idxs col-idxs))) (range (count columns))))]
+        (when (and (seq val-idxs) (or (seq row-idxs) (seq col-idxs)))
+          (let [tz     (:results_timezone data)
+                fr?    (get data :format-rows? true)
+                ;; Totals visibility is read from `settings` (:pivot.show_row_totals / :pivot.show_column_totals)
+                ;; by build-pivot-output, not from pivot-export-options.
+                peo    {:pivot-rows     row-idxs
+                        :pivot-cols     col-idxs
+                        :pivot-measures val-idxs}
+                fmts   (formatter/make-formatters columns row-idxs col-idxs val-idxs settings tz fr?)
+                output (pivot.postprocess/build-pivot-output
+                        {:data data :settings settings :format-rows? fr? :pivot-export-options peo}
+                        fmts)
+                ;; Build a color selector from the card's conditional formatting, over the displayed data
+                ;; (group=0 rows with the pivot-grouping column removed, aligned with `columns`).
+                color-selector (when (seq (setting-value settings :table.column_formatting))
+                                 (let [base-rows (into [] (comp (filter #(zero? (nth % pg-idx)))
+                                                                (map #(vec (m/remove-nth pg-idx %))))
+                                                       (:rows data))]
+                                   ;; :table.pivot tells the shared color JS to skip row-highlight rules (which
+                                   ;; don't map onto an assembled pivot); only value/range cell rules run.
+                                   (js.color/make-color-selector {:cols columns :rows base-rows}
+                                                                 (assoc settings :table.pivot true))))]
+            ;; Unlike the flat :table path, a pivot aggregates all rows into a bounded grid rather than
+            ;; truncating displayed rows, so the flat-table row-count truncation warning doesn't apply.
+            (pivot->hiccup output {:color-selector color-selector
+                                   :left-width     (count row-idxs)
+                                   :measure-names  (mapv #(:name (nth columns %)) val-idxs)})))))))
+
+(mu/defmethod render :pivot :- ::RenderedPartCard
+  [_chart-type render-type timezone-id card dashcard data]
+  (or (try
+        (when-let [content (pivot-table-content card dashcard data)]
+          {:content content :attachments nil})
+        (catch Throwable e
+          (log/warn e "Failed to render pivot table; falling back to a flat table")
+          nil))
+      ;; Native pivots, field-ref splits, or assembly errors degrade to the existing flat table.
+      (render :table render-type timezone-id card dashcard data)))
 
 (defn- smart-scalar-comparison-statement
   [unit value]
