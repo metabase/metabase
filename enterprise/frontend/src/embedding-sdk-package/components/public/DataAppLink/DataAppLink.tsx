@@ -1,5 +1,5 @@
+import type { DataAppLinkProps } from "embedding-sdk-bundle/lib/data-app/router";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { DataAppLinkProps } from "metabase/data_apps/router";
 
 export const DataAppLink = ({ to, children, ...rest }: DataAppLinkProps) => {
   const BundleDataAppLink =

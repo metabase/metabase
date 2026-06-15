@@ -30,7 +30,6 @@ import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/Ar
 import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
-import { AppView as DataAppView } from "metabase/data_apps/AppView";
 import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
 import { CommentsSidesheet } from "metabase/documents/components/CommentsSidesheet";
 import { DocumentPageOuter } from "metabase/documents/routes";
@@ -44,6 +43,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DATA_APPS,
   PLUGIN_LANDING_PAGE,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
@@ -149,17 +149,14 @@ export const getRoutes = (store: AppStore) => {
         <Route component={IsAuthenticated}>
           {getMetabotRoutes()}
 
-          {/* Data-app host — admin-only; backend bundle endpoint is
-              superuser-only. Path can't be `/app/:name` because the server
-              reserves `/app/*` for static asset serving. */}
-          <Route path="data-app/:name" component={IsAdmin}>
-            <IndexRoute component={DataAppView} />
-            {/* Sub-paths under /data-app/:name are owned by the iframe's
-                router. Same component — `DataAppView` just keeps the
-                iframe mounted; the URL change is mirrored back from
-                inside the iframe via `history.replaceState`. */}
-            <Route path="*" component={DataAppView} />
-          </Route>
+          {/* Data-app host routes — provided by the enterprise data_apps
+              plugin, gated behind the `data-apps` premium feature. Admin-only;
+              the backend bundle endpoint is additionally superuser-only. Path
+              can't be `/app/:name` because the server reserves `/app/*` for
+              static asset serving. */}
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <Route component={IsAdmin}>{PLUGIN_DATA_APPS.getRoutes()}</Route>
+          )}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route

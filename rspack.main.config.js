@@ -33,7 +33,13 @@ const {
 const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
 const SRC_PATH = __dirname + "/frontend/src/metabase";
+const ENTERPRISE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+
+// Data apps are an enterprise plugin (the iframe entry + its template live in the
+// enterprise tree), so their build entries and HTML are only produced in EE builds.
+const isEEBuild = process.env.MB_EDITION === "ee";
 
 // For sharing the embedding snippets in the docs with the embedding
 // onboarding flow in the app to keep the snippets always in sync.
@@ -123,8 +129,10 @@ const config = {
     "app-embed-sdk": "./app-embed-sdk.tsx",
     "app-embed-mcp": "./app-embed-mcp.tsx",
     styles: "./css/index.module.css",
-    "app-data-app": "./app-data-app.tsx",
-    "data-app-vendors": "./data_apps/iframe-vendors.ts",
+    ...(isEEBuild && {
+      "app-data-app": ENTERPRISE_SRC_PATH + "/data_apps/app-data-app.tsx",
+      "data-app-vendors": ENTERPRISE_SRC_PATH + "/data_apps/iframe-vendors.ts",
+    }),
   },
 
   // we override it for dev mode below
@@ -311,12 +319,19 @@ const config = {
       chunks: ["vendor", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
-    new HtmlWebpackPlugin({
-      filename: "../../data-app.html",
-      chunksSortMode: "manual",
-      chunks: ["data-app-vendors", "app-data-app"],
-      template: __dirname + "/resources/frontend_client/data_app_template.html",
-    }),
+    // Enterprise-only: data apps are an enterprise plugin, so the iframe HTML is
+    // only emitted in EE builds (its chunks only exist there).
+    ...(isEEBuild
+      ? [
+          new HtmlWebpackPlugin({
+            filename: "../../data-app.html",
+            chunksSortMode: "manual",
+            chunks: ["data-app-vendors", "app-data-app"],
+            template:
+              __dirname + "/resources/frontend_client/data_app_template.html",
+          }),
+        ]
+      : []),
     new HtmlWebpackPlugin({
       filename: "../../embed-mcp.html",
       chunksSortMode: "manual",

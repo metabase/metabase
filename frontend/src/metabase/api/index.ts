@@ -14,7 +14,6 @@ export * from "./cloud-migration";
 export * from "./collection";
 export * from "./comment";
 export * from "./dashboard";
-export * from "./data-app";
 export * from "./database";
 export * from "./dataset";
 export * from "./document";
