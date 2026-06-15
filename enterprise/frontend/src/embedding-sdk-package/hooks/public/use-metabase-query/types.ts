@@ -502,7 +502,6 @@ export type MetricQuery<TMetric> = {
 };
 
 /**
- * @internal
  * @notExported MeasureReference
  * @notExported QuestionQuery
  * @notExported TableQuery
@@ -601,7 +600,6 @@ type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   : TEntity;
 
 /**
- * @internal
  * @notExported InferQuerySchema
  * @notExported QueryData
  */
@@ -613,7 +611,6 @@ export type UseMetabaseQueryResult<TEntity = unknown, TQuery = unknown> = {
 };
 
 /**
- * @internal
  * @notExported QueryEntity
  * @notExported QuestionSchema
  * @notExported TableSchema
