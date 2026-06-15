@@ -182,6 +182,16 @@ export const TreemapChart = ({
     dispatchTreemapViewRoot(chartRef, viewRootId);
   }, [option, viewRootId]);
 
+  // re-measure labels when the view root changes
+  const prevViewRootIdRef = useRef(viewRootId);
+  useEffect(() => {
+    const isDrillTransition = prevViewRootIdRef.current !== viewRootId;
+    prevViewRootIdRef.current = viewRootId;
+    if (!isDrillTransition) {
+      handleLabelMeasure();
+    }
+  }, [option, viewRootId, handleLabelMeasure]);
+
   const breadcrumb = chartData
     ? getTreemapBreadcrumbModel(chartData.tree, viewRootId)
     : null;
