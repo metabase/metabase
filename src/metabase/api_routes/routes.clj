@@ -23,7 +23,6 @@
    [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
-   [metabase.data-apps.api]
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
@@ -95,7 +94,6 @@
          metabase.comments.api/keep-me
          metabase.collections-rest.api/keep-me
          metabase.dashboards-rest.api/keep-me
-         metabase.data-apps.api/keep-me
          metabase.data-studio.api/keep-me
          metabase.documents.api/keep-me
          metabase.eid-translation.api/keep-me
@@ -189,10 +187,6 @@
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
-   ;; Data-app bundle hosting. Superuser-only inside the handler; the FE
-   ;; route lives at `/data-app/:name`. We can't use `/app/...` because
-   ;; the server reserves that prefix for static asset serving.
-   "/data-app"             (+auth 'metabase.data-apps.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    "/dataset"              (+auth 'metabase.query-processor.api)

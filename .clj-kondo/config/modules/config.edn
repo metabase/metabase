@@ -783,16 +783,6 @@
                     :model/Table
                     :model/User}}
 
-  data-apps
-  {:team "Gadget"
-   :api  #{metabase.data-apps.api
-           metabase.data-apps.init
-           metabase.data-apps.sync}
-   :uses #{api
-           models
-           settings
-           util}}
-
   data-studio
   {:team "Gadget"
    :api  #{metabase.data-studio.api}
@@ -3104,6 +3094,16 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-apps
+  {:team "Gadget"
+   :api  #{metabase-enterprise.data-apps.api
+           metabase-enterprise.data-apps.init
+           metabase-enterprise.data-apps.sync}
+   :uses #{api
+           models
+           settings
+           util}}
+
   enterprise/data-complexity-score
   {:team "Metabot"
    :api  #{metabase-enterprise.data-complexity-score.api
@@ -3443,7 +3443,6 @@
            api
            app-db
            collections
-           data-apps
            events
            models
            premium-features
@@ -3453,6 +3452,7 @@
            task
            task-history
            util
+           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms-python}
    :model-exports #{:model/RemoteSyncTask}

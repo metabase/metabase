@@ -372,6 +372,7 @@ export const tokenFeatures = [
   "etl_connections_pg",
   "table_data_editing",
   "remote_sync",
+  "data-apps",
   "dependencies",
   "schema-viewer",
   "semantic_search",

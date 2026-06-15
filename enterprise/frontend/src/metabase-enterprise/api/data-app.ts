@@ -4,14 +4,14 @@ import type {
   SetDataAppEnabledRequest,
 } from "metabase-types/api";
 
-import { Api } from "./api";
+import { EnterpriseApi } from "./api";
 import { idTag, invalidateTags, listTag } from "./tags";
 
 // Repo status is a single resource; tag it so it and the app list both refresh
 // when a sync changes things.
 const REPO_STATUS_TAG = idTag("data-app", "REPO-STATUS");
 
-export const dataAppApi = Api.injectEndpoints({
+export const dataAppApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
     listDataApps: builder.query<DataApp[], void>({
       query: () => ({
