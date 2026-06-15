@@ -46,20 +46,15 @@
   [metadata-providerable             :- ::lib.schema.metadata/metadata-providerable
    {:keys [parent-id], :as metadata} :- ::lib.schema.metadata/column]
   (if-some [parent-metadata (when parent-id (lib.metadata/field metadata-providerable parent-id))]
-    (let [{parent-name         :name
-           parent-nfc-path     :nfc-path
+    (let [{parent-nfc-path     :nfc-path
            parent-display-name :display-name} (add-parent-column-metadata metadata-providerable parent-metadata)
-          new-name                            (str parent-name
-                                                   \.
-                                                   ((some-fn :lib/original-name :name) metadata))
-          new-display-name                    (str parent-display-name
-                                                   ": "
-                                                   ((some-fn :lib/original-display-name :display-name)
-                                                    metadata))]
+          new-display-name (str parent-display-name
+                                ": "
+                                ((some-fn :lib/original-display-name :display-name) metadata))]
       (-> metadata
-          (assoc :name                                   new-name
-                 :nfc-path                               (conj (vec parent-nfc-path) (:name parent-metadata))
-                 :display-name                           new-display-name
+          (assoc :name                    (lib.field.util/parent-qualified-name metadata-providerable metadata)
+                 :nfc-path                (conj (vec parent-nfc-path) (:name parent-metadata))
+                 :display-name            new-display-name
                  ;; this is used by the `display-name-method` for `:metadata/column` in [[metabase.lib.field]]
                  :lib/simple-display-name new-display-name)))
     metadata))
