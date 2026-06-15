@@ -247,9 +247,9 @@ describe("getTreemapInlineValueIds", () => {
   it("collects full leaves and value+% headers into separate sets", () => {
     const ids = getTreemapInlineValueIds(
       {
-        "0-0": { show: true, detail: "full", width: 100 },
-        "0-1": { show: true, detail: "labelOnly", width: 100 },
-        "0-2": { show: false, detail: "none", width: 100 },
+        "0-0": { detail: "full", width: 100 },
+        "0-1": { detail: "labelOnly", width: 100 },
+        "0-2": { detail: "none", width: 100 },
       },
       {
         "0": { showText: true, showValuePercent: true, nameColumnWidth: 50 },

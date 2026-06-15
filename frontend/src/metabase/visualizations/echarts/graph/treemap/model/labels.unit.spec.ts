@@ -21,7 +21,6 @@ describe("getTreemapLabelLayout", () => {
         valueLabelWidth: 120,
       }),
     ).toEqual({
-      show: true,
       detail: "full",
       width: 176,
     });
@@ -34,7 +33,6 @@ describe("getTreemapLabelLayout", () => {
         valueLabelWidth: 200,
       }),
     ).toEqual({
-      show: true,
       detail: "labelOnly",
       width: 176,
     });
@@ -45,7 +43,6 @@ describe("getTreemapLabelLayout", () => {
         valueLabelWidth: 0,
       }),
     ).toEqual({
-      show: false,
       detail: "none",
       width: 56,
     });
@@ -66,8 +63,8 @@ describe("getTreemapLabelLayouts", () => {
         getValueLabelWidth: (id) => valueWidths[id],
       }),
     ).toEqual({
-      "0-0": { show: true, detail: "full", width: 176 },
-      "0-1": { show: true, detail: "labelOnly", width: 176 },
+      "0-0": { detail: "full", width: 176 },
+      "0-1": { detail: "labelOnly", width: 176 },
     });
   });
 
@@ -84,9 +81,9 @@ describe("getTreemapLabelLayouts", () => {
         getValueLabelWidth,
       }),
     ).toEqual({
-      "0-0": { show: false, detail: "none", width: 56 },
-      "0-1": { show: true, detail: "labelOnly", width: 176 },
-      "0-2": { show: true, detail: "full", width: 176 },
+      "0-0": { detail: "none", width: 56 },
+      "0-1": { detail: "labelOnly", width: 176 },
+      "0-2": { detail: "full", width: 176 },
     });
     expect(getValueLabelWidth).toHaveBeenCalledTimes(1);
     expect(getValueLabelWidth).toHaveBeenCalledWith("0-2");

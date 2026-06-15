@@ -11,10 +11,10 @@ export const PARENT_MIN_HEADER_VISIBLE_CHARS = 3;
 export const PARENT_HEADER_VALUE_PERCENT_GAP = 8;
 const PARENT_LABEL_MIN_GRID_WIDTH = 12;
 const PARENT_LABEL_MIN_GRID_HEIGHT = 8;
+
 export type TreemapLabelDetail = "full" | "labelOnly" | "none";
 
 export interface TreemapLabelLayout {
-  show: boolean;
   detail: TreemapLabelDetail;
   width: number;
 }
@@ -132,5 +132,5 @@ export function getTileLabelLayout({
     .with({ fitsFull: true }, () => "full" as const)
     .with({ fitsLabel: true }, () => "labelOnly" as const)
     .otherwise(() => "none");
-  return { show: detail !== "none", detail, width: innerWidth };
+  return { detail, width: innerWidth };
 }

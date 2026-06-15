@@ -69,9 +69,9 @@ describe("getTreemapChartOption", () => {
       tree,
       formatValue: (value) => `$${value}`,
       labelLayout: {
-        "0-1": { show: false, detail: "none", width: 40 },
-        "0-2": { show: true, detail: "labelOnly", width: 80 },
-        "0-3": { show: true, detail: "full", width: 120 },
+        "0-1": { detail: "none", width: 40 },
+        "0-2": { detail: "labelOnly", width: 80 },
+        "0-3": { detail: "full", width: 120 },
       },
       renderingContext,
     });
@@ -108,7 +108,7 @@ describe("getTreemapChartOption", () => {
       isDrilled: true,
       formatValue: (value) => `$${value}`,
       labelLayout: {
-        "0-0": { show: true, detail: "full", width: 120 },
+        "0-0": { detail: "full", width: 120 },
       },
       renderingContext,
     });
