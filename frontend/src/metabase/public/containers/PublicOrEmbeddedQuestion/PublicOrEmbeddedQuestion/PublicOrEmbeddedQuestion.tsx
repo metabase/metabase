@@ -18,7 +18,6 @@ import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { PublicApi } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -71,7 +70,11 @@ export const PublicOrEmbeddedQuestion = ({
           embedApi.endpoints.getEmbedCard,
         );
       } else if (uuid) {
-        card = await PublicApi.card({ uuid });
+        card = await runRtkEndpoint(
+          { uuid },
+          dispatch,
+          publicApi.endpoints.getPublicCard,
+        );
       } else {
         throw { status: 404 };
       }

@@ -41,7 +41,6 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -707,8 +706,10 @@ export const fetchDashboard = createAsyncThunk(
         };
         result = denormalize(dashId, dashboardSchema, entities);
       } else if (dashboardType === "public") {
-        result = await PublicApi.dashboard(
+        result = await runRtkEndpoint(
           { uuid: dashId, dashboard_load_id: dashboardLoadId },
+          dispatch,
+          publicApi.endpoints.getPublicDashboard,
           { signal: fetchDashboardCancellation.signal },
         );
         result = {
