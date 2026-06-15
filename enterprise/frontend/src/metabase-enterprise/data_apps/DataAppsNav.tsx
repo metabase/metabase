@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { SettingsNavItem } from "./SettingsNavItem";
+import { SettingsNavItem } from "metabase/admin/settings/components/SettingsNav";
 
 export const DataAppsNav = () => {
   return (

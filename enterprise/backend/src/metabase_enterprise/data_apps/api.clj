@@ -1,4 +1,4 @@
-(ns metabase.data-apps.api
+(ns metabase-enterprise.data-apps.api
   "Data-app endpoints, mounted at `/api/data-app`.
 
    Data apps come from the repository connected via the remote-sync feature. The
@@ -12,11 +12,11 @@
    `metabase.server.routes/static-files-handler`)."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.data-apps.models.data-app :as data-app]
-   [metabase.data-apps.sync :as data-app.sync]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
