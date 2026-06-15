@@ -126,7 +126,7 @@ export function initializeSdkCustomVizPlugin() {
       const result = eeUseCustomVizPlugins(opts);
       // Key on the allowlist contents, not the array identity: the host may
       // pass a new (inline) array on every render.
-      const allowlistKey = allowlist.join(",");
+      const allowlistKey = JSON.stringify(allowlist);
       // Memoized so consumers can use `plugins` as an effect dependency:
       // returning a fresh `.filter()` array on every render would re-trigger
       // those effects in a render loop.
