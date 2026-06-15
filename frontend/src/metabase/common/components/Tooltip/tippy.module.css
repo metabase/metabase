@@ -30,25 +30,3 @@
 :global(.tippy-box[data-theme~="no-padding"] .tippy-content) {
   padding: 0;
 }
-
-:global(.tippy-box[data-theme~="popover"]) {
-  font-size: inherit;
-  border: 1px solid var(--mb-color-border);
-  box-shadow: 0 4px 10px var(--mb-color-shadow);
-  background-color: var(--mb-color-background-primary);
-  border-radius: 6px;
-  overflow: auto;
-}
-
-:global(.tippy-box[data-theme~="popover"] .tippy-content) {
-  padding: 0;
-}
-
-/* Global id for an element used for positioning tooltips.
- * Check usage in metabase/utils/dom.ts when removing this component. */
-:global(#popover-event-target) {
-  position: fixed;
-  width: 6px;
-  height: 6px;
-  pointer-events: none;
-}
