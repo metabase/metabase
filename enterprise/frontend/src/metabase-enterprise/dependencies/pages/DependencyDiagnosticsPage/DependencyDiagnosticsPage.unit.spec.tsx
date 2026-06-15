@@ -150,7 +150,7 @@ describe("DependencyDiagnosticsPage", () => {
       const { history } = setup({
         mode: "broken",
         nodes: CARD_NODES,
-        urlParams: { groupTypes: ["table", "question"] },
+        urlParams: { groupTypes: ["table", "question", "transform"] },
       });
 
       await waitForListToLoad();
