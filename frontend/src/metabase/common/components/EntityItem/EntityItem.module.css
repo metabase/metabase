@@ -1,0 +1,27 @@
+.menuItem.menuItem {
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+}
+
+.menuItem.menuItem:hover:not([data-disabled="true"]) {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-secondary);
+}
+
+.menuItem.menuItem[data-disabled="true"] {
+  color: var(--mb-color-text-tertiary);
+  opacity: 1;
+}
+
+.menuItem.menuItem [data-position="left"] {
+  color: inherit;
+}
+
+.dangerItem.dangerItem {
+  color: var(--mb-color-danger);
+}
+
+.dangerItem.dangerItem:hover:not([data-disabled="true"]) {
+  color: var(--mb-color-danger);
+  background-color: var(--mb-color-background-error);
+}

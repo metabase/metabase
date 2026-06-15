@@ -1,4 +1,4 @@
-import { useWindowEvent } from "@mantine/hooks";
+import { useDisclosure, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -12,7 +12,6 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
@@ -32,6 +31,7 @@ import {
   Divider,
   Group,
   Icon,
+  Menu,
   Modal,
   Stack,
   Tooltip,
@@ -135,6 +135,8 @@ export function DetailViewSidesheet({
     onUpdate: (action) => setActionId(action.id),
   });
 
+  const [actionsMenuOpened, actionsMenu] = useDisclosure(false);
+
   const handleClose = () => {
     // prevent Esc key from closing both modal and the sidesheet
     if (!isModalOpen) {
@@ -190,32 +192,29 @@ export function DetailViewSidesheet({
     }
   }, [linkCopied]);
 
-  useWindowEvent(
-    "keydown",
-    (event) => {
-      const activeElement = document.activeElement;
-      const isInputFocused =
-        activeElement instanceof HTMLElement &&
-        (["INPUT", "TEXTAREA", "SELECT"].includes(activeElement.tagName) ||
-          activeElement.isContentEditable);
+  const isKeyboardNavigationEnabled =
+    isNavEnabled && !isModalOpen && !actionsMenuOpened;
 
-      if (isNavEnabled && !isInputFocused && !isModalOpen) {
-        if (event.key === "ArrowUp" && onPreviousClick) {
-          event.stopPropagation();
-          onPreviousClick();
+  useHotkeys([
+    [
+      "ArrowUp",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onPreviousClick?.();
         }
-
-        if (event.key === "ArrowDown" && onNextClick) {
-          event.stopPropagation();
-          onNextClick();
+      },
+      { preventDefault: false },
+    ],
+    [
+      "ArrowDown",
+      () => {
+        if (isKeyboardNavigationEnabled) {
+          onNextClick?.();
         }
-      }
-    },
-    {
-      // otherwise modals get closed earlier and isModalOpen evaluates to false in the handler
-      capture: true,
-    },
-  );
+      },
+      { preventDefault: false },
+    ],
+  ]);
 
   if (error || isLoading) {
     return (
@@ -281,9 +280,12 @@ export function DetailViewSidesheet({
             )}
 
             {actionItems.length > 0 && (
-              <EntityMenu
-                items={actionItems}
-                renderTrigger={({ onClick }: { onClick: () => void }) => (
+              <Menu
+                position="bottom-end"
+                onOpen={actionsMenu.open}
+                onClose={actionsMenu.close}
+              >
+                <Menu.Target>
                   <Tooltip label={t`Actions`}>
                     <Button
                       aria-label={t`Actions`}
@@ -294,11 +296,21 @@ export function DetailViewSidesheet({
                       p={0}
                       variant="subtle"
                       w={20}
-                      onClick={onClick}
                     />
                   </Tooltip>
-                )}
-              />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {actionItems.map((item) => (
+                    <Menu.Item
+                      key={item.title}
+                      leftSection={<Icon name={item.icon} aria-hidden />}
+                      onClick={item.action}
+                    >
+                      {item.title}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
             )}
 
             {url && (
