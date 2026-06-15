@@ -532,9 +532,7 @@ describe("scenarios > admin > databases > exceptions", () => {
       .findByRole("button", { name: "Edit connection details" })
       .should("be.disabled")
       .trigger("mouseenter", { force: true });
-    H.tooltip().findByText(
-      "This database is managed by Metabase Cloud and cannot be modified.",
-    );
+    H.tooltip().findByText("The sample database cannot be edited.");
     cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
