@@ -10,6 +10,7 @@ import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/Admin
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_DATA_APPS,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -26,7 +27,6 @@ import {
   CustomVisualizationsFormPage,
   CustomVisualizationsManagePage,
 } from "./settings/components/SettingsPages/CustomVisualizationsSettingsPage";
-import { DataAppsManagePage } from "./settings/components/SettingsPages/DataAppsSettingsPage";
 import { EmailSettingsPage } from "./settings/components/SettingsPages/EmailSettingsPage";
 import { GeneralSettingsPage } from "./settings/components/SettingsPages/GeneralSettingsPage";
 import { LicenseSettingsPage } from "./settings/components/SettingsPages/LicenseSettingsPage";
@@ -107,7 +107,7 @@ export const getSettingsRoutes = (
         )}
       </Route>
       <Route path="data-apps" component={IsAdmin}>
-        <IndexRoute component={DataAppsManagePage} />
+        <IndexRoute component={PLUGIN_DATA_APPS.ManageDataAppsPage} />
       </Route>
       <Route path="uploads" component={UploadSettingsPage} />
       <Route

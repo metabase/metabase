@@ -1,8 +1,9 @@
 import { createRoot } from "react-dom/client";
 
 import { api } from "metabase/api/client";
-import { DataAppIframeApp } from "metabase/data_apps/DataAppIframeApp";
 import registerVisualizations from "metabase/visualizations/register";
+
+import { DataAppIframeApp } from "./DataAppIframeApp";
 
 /**
  * Entry point loaded by `data-app.html` and served from `/embed/data-app/:name`.
