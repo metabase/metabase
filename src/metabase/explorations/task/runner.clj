@@ -160,8 +160,8 @@
   (try
     (when (and chart-config stats)
       (let [breakdown (interestingness/chart-interestingness chart-config stats)]
-        (log/debugf "Statistical interestingness for ExplorationQuery %d (thread %d): %s"
-                    (:id exploration-query) (:exploration_thread_id exploration-query) (pr-str breakdown))
+        (log/infof "Statistical interestingness for ExplorationQuery %d (thread %d): %s"
+                   (:id exploration-query) (:exploration_thread_id exploration-query) (pr-str breakdown))
         (:score breakdown)))
     (catch Throwable e
       (log/warnf e "Failed to compute interestingness for ExplorationQuery %d"
@@ -344,12 +344,12 @@
                                         :sql              sql
                                         :context-string   prompt})
                                       (update :metric-description #(or card-description %)))]
-              (log/debugf "Contextual interestingness for ExplorationQuery %d (thread %d): score=%s reasoning=%s chart-description=%s"
-                          (:id exploration-query)
-                          (:exploration_thread_id exploration-query)
-                          (:score result)
-                          (pr-str (:reasoning result))
-                          (pr-str (:chart-description result)))
+              (log/infof "Contextual interestingness for ExplorationQuery %d (thread %d): score=%s reasoning=%s chart-description=%s"
+                         (:id exploration-query)
+                         (:exploration_thread_id exploration-query)
+                         (:score result)
+                         (pr-str (:reasoning result))
+                         (pr-str (:chart-description result)))
               result)))))
     (catch Throwable e
       (log/warnf e "Failed to compute contextual interestingness for ExplorationQuery %d"
