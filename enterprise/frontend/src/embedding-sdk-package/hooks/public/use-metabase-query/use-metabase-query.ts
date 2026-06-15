@@ -166,7 +166,6 @@ function isOrderableJavaScriptType(
   );
 }
 
-/** @internal */
 export function filter<
   TDimension,
   TOperator extends ValueFilterOperatorForDimension<TDimension>,
@@ -206,7 +205,6 @@ export function filter(
   return { dimension, operator, value };
 }
 
-/** @internal */
 export function breakout<TDimension>(dimension: TDimension): {
   dimension: TDimension;
 };
@@ -338,10 +336,8 @@ const useMetabaseQueryImpl = <
   };
 };
 
-/** @internal */
 export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
-/** @internal */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
@@ -354,7 +350,6 @@ export function useMetabaseQueryObject(
   return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
 }
 
-/** @internal */
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
