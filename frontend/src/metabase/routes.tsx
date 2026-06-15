@@ -150,7 +150,7 @@ export const getRoutes = (store: AppStore) => {
           {getMetabotRoutes()}
 
           {/* Data-app host routes — provided by the enterprise data_apps
-              plugin, gated behind the `data_apps` premium feature. Admin-only;
+              plugin, gated behind the `data-apps` premium feature. Admin-only;
               the backend bundle endpoint is additionally superuser-only. Path
               can't be `/app/:name` because the server reserves `/app/*` for
               static asset serving. */}
