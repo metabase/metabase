@@ -1,20 +1,15 @@
-import { type EChartsType, graphic } from "echarts/core";
+import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useMemo } from "react";
 
 import { isNative } from "metabase/common/utils/card";
 import {
   getNodesFromPath,
-  getTreemapNodeRectById,
   getTreemapRootNodeId,
 } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
-import {
-  HOVER_OVERLAY_Z,
-  TREEMAP_HOVER_OVERLAY_FILL,
-} from "metabase/visualizations/echarts/graph/treemap/style";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import type {
   ClickObject,
@@ -26,11 +21,13 @@ import type { ClickObjectDimension } from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
-type TreemapSeriesMouseEvent = EChartsSeriesMouseEvent<{ id?: unknown }>;
+import {
+  type TreemapHoverOverlayRef,
+  hideTreemapHoverOverlay,
+  showTreemapHoverOverlay,
+} from "./overlay";
 
-export type TreemapHoverOverlay = InstanceType<typeof graphic.Rect>;
-export type TreemapHoverOverlayRef =
-  MutableRefObject<TreemapHoverOverlay | null>;
+type TreemapSeriesMouseEvent = EChartsSeriesMouseEvent<{ id?: unknown }>;
 
 export function dispatchTreemapViewRoot(
   chartRef: MutableRefObject<EChartsType | undefined>,
@@ -44,50 +41,6 @@ export function dispatchTreemapViewRoot(
     seriesIndex: 0,
     targetNode: viewRootId,
   });
-}
-
-export function showTreemapHoverOverlay(
-  chartRef: MutableRefObject<EChartsType | undefined>,
-  overlayRef: TreemapHoverOverlayRef,
-  nodeId: string,
-): void {
-  const chart = chartRef.current;
-  if (!chart) {
-    return;
-  }
-  const rect = getTreemapNodeRectById(chart, nodeId);
-  if (!rect) {
-    return;
-  }
-  if (overlayRef.current == null) {
-    overlayRef.current = new graphic.Rect({
-      silent: true,
-      z: HOVER_OVERLAY_Z,
-      shape: rect,
-      style: { fill: TREEMAP_HOVER_OVERLAY_FILL },
-    });
-    chart.getZr().add(overlayRef.current);
-  } else {
-    overlayRef.current.attr({
-      shape: rect,
-      style: { fill: TREEMAP_HOVER_OVERLAY_FILL },
-    });
-  }
-}
-
-export function hideTreemapHoverOverlay(
-  chartRef: MutableRefObject<EChartsType | undefined>,
-  overlayRef: TreemapHoverOverlayRef,
-): void {
-  const overlay = overlayRef.current;
-  if (overlay === null) {
-    return;
-  }
-  const chart = chartRef.current;
-  if (chart && !chart.isDisposed()) {
-    chart.getZr().remove(overlay);
-  }
-  overlayRef.current = null;
 }
 
 /**

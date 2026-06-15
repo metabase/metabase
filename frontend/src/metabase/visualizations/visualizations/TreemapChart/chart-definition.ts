@@ -193,17 +193,12 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     index: 1,
     getDefault: () => true,
     inline: true,
-    // Parent values render inside the group header chips, so they have no effect
-    // when the chips themselves are hidden — disable the toggle when parent
-    // labels are off.
     getProps: (
       _series: RawSeries,
       vizSettings: ComputedVisualizationSettings,
     ) => ({
       disabled: vizSettings["treemap.show_parent_labels"] === false,
     }),
-    // Parent values render in the group header chips, which only exist in a
-    // 2-level treemap — hide the setting until a sub-grouping is selected.
     getHidden: (
       _series: RawSeries,
       vizSettings: ComputedVisualizationSettings,

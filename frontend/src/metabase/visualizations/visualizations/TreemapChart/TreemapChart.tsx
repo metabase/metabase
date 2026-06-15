@@ -26,12 +26,8 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { TreemapBreadcrumb } from "./TreemapBreadcrumb";
 import S from "./TreemapChart.module.css";
 import { TREEMAP_CHART_DEFINITION } from "./chart-definition";
-import {
-  type TreemapHoverOverlay,
-  dispatchTreemapViewRoot,
-  hideTreemapHoverOverlay,
-  useChartEvents,
-} from "./events";
+import { dispatchTreemapViewRoot, useChartEvents } from "./events";
+import { type TreemapHoverOverlay, hideTreemapHoverOverlay } from "./overlay";
 import { getTreemapTooltipOption } from "./tooltip";
 import { useLabelMeasurement } from "./use-label-measurement";
 

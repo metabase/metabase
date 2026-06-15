@@ -19,13 +19,15 @@ import {
 } from "metabase-types/api/mocks/dataset";
 
 import {
-  type TreemapHoverOverlay,
-  type TreemapHoverOverlayRef,
   dispatchTreemapViewRoot,
   getTreemapClickData,
   getTreemapEventHandlers,
-  hideTreemapHoverOverlay,
 } from "./events";
+import {
+  type TreemapHoverOverlay,
+  type TreemapHoverOverlayRef,
+  hideTreemapHoverOverlay,
+} from "./overlay";
 
 const groupingCol = createMockColumn({
   name: "Category",
