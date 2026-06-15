@@ -163,7 +163,7 @@ export const cardApi = Api.injectEndpoints({
             ...params,
             paramId: parameter_id,
             cardId: card_id,
-            entityIdentifier,
+            ...(entityIdentifier && { entityIdentifier }),
           },
         }),
         providesTags: (_response, _error, { parameter_id }) =>

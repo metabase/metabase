@@ -159,7 +159,7 @@ export const dashboardApi = Api.injectEndpoints({
             ...params,
             paramId: parameter_id,
             dashId: dashboard_id,
-            entityIdentifier,
+            ...(entityIdentifier && { entityIdentifier }),
           },
         }),
         providesTags: (_response, _error, { parameter_id }) =>
