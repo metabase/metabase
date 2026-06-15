@@ -85,9 +85,3 @@ export const PermissionsApi = {
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
 };
-
-export const PersistedModelsApi = {
-  enablePersistence: POST("/api/persist/enable"),
-  disablePersistence: POST("/api/persist/disable"),
-  setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
-};
