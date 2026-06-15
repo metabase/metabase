@@ -123,29 +123,17 @@ export async function runQuestionQuerySdk(
     const datasetData = data as DatasetData;
 
     if (initialDisplay) {
-      // Mirrors picking the visualization from the chart type dropdown:
-      // lock the display so it isn't auto-reset based on the data shape.
+      // Mirrors picking the visualization from the chart-type dropdown:
+      // lock it so the data shape doesn't auto-reset it.
       question = question.setDisplay(initialDisplay).lockDisplay();
     } else {
-      // Exclude custom displays that didn't load this run: the global
-      // `visualizations` map may hold a stale registration from a previous
-      // mount with a different allowlist, and `getSensibleDisplays` treats
-      // every registered display as sensible when the data has <= 1 row.
+      // Built-in sensibles only (custom viz never report sensible, no `isSensible`),
+      // plus the current display if it's a custom viz that loaded this run.
       const sensibleDisplays = getSensibleDisplays(datasetData).filter(
-        (sensibleDisplay) =>
-          !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(sensibleDisplay) ||
-          loadedDisplays.has(sensibleDisplay),
+        (d) => !PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(d),
       );
-      // Custom viz plugins don't implement `isSensible`, so even a loaded one
-      // would be reset away by `maybeResetDisplay` — treat it as sensible.
-      const loadedCustomVizDisplay = loadedDisplays.has(display)
-        ? display
-        : null;
-      if (
-        loadedCustomVizDisplay &&
-        !sensibleDisplays.includes(loadedCustomVizDisplay)
-      ) {
-        sensibleDisplays.push(loadedCustomVizDisplay);
+      if (loadedDisplays.has(display)) {
+        sensibleDisplays.push(display);
       }
       question = question.maybeResetDisplay(
         datasetData,
