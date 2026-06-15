@@ -61,15 +61,20 @@ export function initializeSdkCustomVizPlugin() {
   }
 
   Object.assign(PLUGIN_CUSTOM_VIZ, {
-    // TODO: we might want to check the domain to check if we need "blank" or "sandbox" mode, to support data apps
     loadCustomVizPlugin: (
       plugin: CustomVizPluginRuntime,
       options: LoadCustomVizPluginOptions = {},
-    ) =>
-      eeLoadCustomVizPlugin(plugin, {
+    ) => {
+      // We should only be calling this for allowed plugins, but this checks again to be safer
+      if (!getAllowlist().includes(plugin.identifier)) {
+        return Promise.resolve(null);
+      }
+      return eeLoadCustomVizPlugin(plugin, {
         ...options,
+        // Note: in the future we might want to check the domain to check if we need "blank" or "sandbox" mode, to support data apps
         sandboxMode: "blank",
-      }),
+      });
+    },
 
     loadCustomVizPluginForDisplay: async (
       dispatch: DispatchFn,
