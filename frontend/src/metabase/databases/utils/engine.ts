@@ -24,8 +24,6 @@ const isEngineVisible = (
   const isSelected = engineKey === selectedEngineKey;
   const isSuperseded = engine["superseded-by"] != null;
   const isSuperseding = engine["superseded-by"] === selectedEngineKey;
-  // A non-creatable engine (e.g. SQLite on Cloud) is hidden from the list, but still shown when it is the
-  // already-selected engine so an existing database using it can be viewed/edited.
   const isCreatable = engine["creatable?"] !== false;
 
   return isSelected || ((!isSuperseded || isSuperseding) && isCreatable);
