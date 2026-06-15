@@ -217,10 +217,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.findByTestId("Widget-settings-button").click();
 
-    cy.log("close the popover with Escape to commit the new name");
-    cy.findByDisplayValue("Widget")
-      .type("{selectall}Woooget")
-      .realPress("Escape");
+    cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
 
     H.getDraggableElements().contains("Woooget").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
@@ -245,10 +242,7 @@ describe("scenarios > visualizations > pie chart", () => {
     H.getDraggableElements().contains("Gizmo").should("not.exist");
 
     cy.findByTestId("Gadget-settings-button").click();
-    cy.log("close the popover with Escape to commit the new name");
-    cy.findByDisplayValue("Gadget")
-      .type("{selectall}Katget")
-      .realPress("Escape");
+    cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
     H.getDraggableElements().contains("Katget").as("dragElement");
     H.moveDnDKitElementByAlias("@dragElement", {
       vertical: 30,
