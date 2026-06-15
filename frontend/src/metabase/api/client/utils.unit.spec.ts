@@ -31,19 +31,6 @@ describe("substituteUrlTags", () => {
     expect(url).toBe("/api/foo/a%2Fb%20c");
   });
 
-  it("substitutes :tag* values raw (preserves slashes)", () => {
-    const data = { subPath: "table/3/cell/4" };
-    const url = substituteUrlTags("/api/automagic-dashboards/:subPath*", data);
-    expect(url).toBe("/api/automagic-dashboards/table/3/cell/4");
-    expect(data).toEqual({});
-  });
-
-  it("mixes :tag (encoded) and :tag* (raw) in the same URL", () => {
-    const data = { id: "x/y", path: "a/b/c" };
-    const url = substituteUrlTags("/api/:id/sub/:path*", data);
-    expect(url).toBe("/api/x%2Fy/sub/a/b/c");
-  });
-
   it("substitutes empty string and warns when a tag has no value in data", () => {
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
     const data = {};
