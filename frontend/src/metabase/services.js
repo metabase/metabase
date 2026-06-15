@@ -21,12 +21,6 @@ export const EmbedApi = {
   dashboard: GET("/api/embed/dashboard/:token"),
 };
 
-// also unauthenticated
-export const NotificationUnsubscribeApi = {
-  unsubscribe: POST("/api/notification/unsubscribe"),
-  undo_unsubscribe: POST("/api/notification/unsubscribe/undo"),
-};
-
 export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),

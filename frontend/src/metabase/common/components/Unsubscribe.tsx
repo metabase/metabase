@@ -4,7 +4,9 @@ import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import {
+  useUndoUnsubscribeFromNotificationByEmailMutation,
   useUndoUnsubscribeFromPulseMutation,
+  useUnsubscribeFromNotificationByEmailMutation,
   useUnsubscribeFromPulseMutation,
 } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
@@ -14,7 +16,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
-import { NotificationUnsubscribeApi } from "metabase/services";
 import { Button, Center, Stack, Text } from "metabase/ui";
 
 import {
@@ -183,6 +184,10 @@ function useUnsubscribeRequest({
 
   const [unsubscribeFromPulse] = useUnsubscribeFromPulseMutation();
   const [undoUnsubscribeFromPulse] = useUndoUnsubscribeFromPulseMutation();
+  const [unsubscribeFromNotification] =
+    useUnsubscribeFromNotificationByEmailMutation();
+  const [undoUnsubscribeFromNotification] =
+    useUndoUnsubscribeFromNotificationByEmailMutation();
 
   const {
     value: data,
@@ -195,16 +200,15 @@ function useUnsubscribeRequest({
 
     const isUnsubscribe = subscriptionChange === SUBSCRIPTION.UNSUBSCRIBE;
 
-    if (notificationHandlerId) {
-      const method = isUnsubscribe
-        ? NotificationUnsubscribeApi.unsubscribe
-        : NotificationUnsubscribeApi.undo_unsubscribe;
-      return await method(params);
-    }
+    const triggers = notificationHandlerId
+      ? {
+          unsubscribe: unsubscribeFromNotification,
+          undo: undoUnsubscribeFromNotification,
+        }
+      : { unsubscribe: unsubscribeFromPulse, undo: undoUnsubscribeFromPulse };
 
-    const unsubscribe = isUnsubscribe
-      ? unsubscribeFromPulse
-      : undoUnsubscribeFromPulse;
+    const unsubscribe = isUnsubscribe ? triggers.unsubscribe : triggers.undo;
+
     return await unsubscribe(params).unwrap();
   }, [
     params,
@@ -212,6 +216,8 @@ function useUnsubscribeRequest({
     notificationHandlerId,
     unsubscribeFromPulse,
     undoUnsubscribeFromPulse,
+    unsubscribeFromNotification,
+    undoUnsubscribeFromNotification,
   ]);
 
   return { data, isLoading, error };
