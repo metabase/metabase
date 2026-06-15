@@ -91,7 +91,3 @@ export const PersistedModelsApi = {
   disablePersistence: POST("/api/persist/disable"),
   setRefreshSchedule: POST("/api/persist/set-refresh-schedule"),
 };
-
-export const SetupApi = {
-  create: POST("/api/setup"),
-};
