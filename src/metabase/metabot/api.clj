@@ -507,7 +507,8 @@
       (if (nil? credentials)
         {:access-key-id     nil
          :secret-access-key nil
-         :session-token     nil}
+         :session-token     nil
+         :region            nil}
         (let [creds (effective-bedrock-credentials credentials)]
           (when-not (metabot.settings/provider-credentials-complete? provider creds)
             (throw (ex-info (tru "AWS Bedrock credentials are incomplete.")
@@ -521,8 +522,9 @@
 
 (defn- save-bedrock-credentials!
   "Persist a Bedrock credentials map resolved by [[request-credentials]]; nil key material clears those settings.
-  The region is written only when the map carries it — a nil region resets the setting to its default, while a
-  top-level credentials clear (whose map has no `:region` key) leaves it in place for the next connect."
+  The region is written only when the map carries it — a nil region resets the setting to its default. A top-level
+  credentials clear (disconnect) carries `:region nil`, so it resets the region too; a field-level edit that omits
+  `:region` leaves the saved value in place."
   [{:keys [access-key-id secret-access-key session-token] :as credentials}]
   (setting/set! :llm-bedrock-access-key-id access-key-id)
   (setting/set! :llm-bedrock-secret-access-key secret-access-key)

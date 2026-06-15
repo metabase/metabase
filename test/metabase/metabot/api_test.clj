@@ -1434,8 +1434,8 @@
           (is (nil? (llm.settings/llm-bedrock-access-key-id)))
           (is (nil? (llm.settings/llm-bedrock-secret-access-key)))
           (is (nil? (llm.settings/llm-bedrock-session-token))))
-        (testing "the region is not secret and survives the clear for the next connect"
-          (is (= "us-east-2" (llm.settings/llm-bedrock-region))))))))
+        (testing "the clear also resets the region to its default"
+          (is (= "us-east-1" (llm.settings/llm-bedrock-region))))))))
 
 (deftest settings-put-bedrock-absent-credentials-leaves-saved-credentials-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
