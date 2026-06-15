@@ -101,7 +101,3 @@ export const UserApi = {
   current: GET("/api/user/current"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
 };
-
-export const FrontendErrorsApi = {
-  report: POST("/api/frontend-errors"),
-};

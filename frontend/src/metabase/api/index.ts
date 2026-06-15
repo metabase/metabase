@@ -20,6 +20,7 @@ export * from "./document";
 export * from "./embed";
 export * from "./entity-id";
 export * from "./field";
+export * from "./frontend-errors";
 export * from "./glossary";
 export * from "./google";
 export * from "./group-table-access-policy";
