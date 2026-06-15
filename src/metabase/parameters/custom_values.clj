@@ -11,7 +11,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
@@ -83,8 +82,6 @@
   (when (seq query)
     (let [metadata-provider  (lib.metadata/->metadata-provider query)
           value-source-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))]
-      (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
-        (throw (ex-info "Must provided a cached metadata provider" {})))
       (lib-be/bulk-load-query-metadata! metadata-provider
                                         (lib/all-referenced-entity-ids [value-source-query]
                                                                        {:include-implicitly-joinable? true}))

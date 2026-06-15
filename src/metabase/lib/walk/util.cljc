@@ -259,6 +259,10 @@
    [:segment [:set ::lib.schema.id/segment]]
    [:snippet [:set ::lib.schema.id/snippet]]])
 
+(mr/def ::referenced-entity-ids.options
+  [:map
+   [:include-implicitly-joinable? {:optional true} :boolean]])
+
 (defn- implicitly-joinable-table-ids
   "The ids of Tables reachable by one FK hop out of the columns of `source-table-ids` and the result metadata of
   `source-card-ids` -- i.e. the Tables a caller exposing implicitly-joinable columns would need on top of the directly
@@ -288,8 +292,7 @@
    (all-referenced-entity-ids queries nil))
 
   ([queries :- [:sequential ::lib.schema/query]
-    {:keys [include-implicitly-joinable?]} :- [:maybe [:map
-                                                       [:include-implicitly-joinable? {:optional true} :boolean]]]]
+    {:keys [include-implicitly-joinable?]} :- [:maybe ::referenced-entity-ids.options]]
    (let [source-table-ids (into #{} (mapcat all-source-table-ids) queries)
          source-card-ids (into #{} (mapcat all-source-card-ids) queries)
          implicitly-joined-field-ids (into #{} (mapcat all-implicitly-joined-field-ids) queries)

@@ -17,7 +17,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -328,11 +327,8 @@
     (when-let [queries (not-empty (into [] (keep (fn [[card stage-number]]
                                                    (card->filterable-columns-query card stage-number)))
                                         cards+stages))]
-      (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
-        (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
-          (throw (ex-info "Must provided a cached metadata provider" {})))
-        (lib-be/bulk-load-query-metadata! metadata-provider
-                                          (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true}))))))
+      (lib-be/bulk-load-query-metadata! (lib-be/application-database-metadata-provider database-id)
+                                        (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})))))
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
   "Return map of parameter ids to mapped field ids."
