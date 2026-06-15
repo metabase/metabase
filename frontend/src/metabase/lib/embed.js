@@ -38,12 +38,37 @@ export function initializeEmbedding(store) {
     window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
         if (e.data.metabase.type === "location") {
-          store.dispatch(push(e.data.metabase.location));
+          store.dispatch(
+            push(getLocationWithoutBasename(e.data.metabase.location)),
+          );
         }
       }
     });
     store.dispatch(setInitialUrlOptions(window.location));
   }
+}
+
+/**
+ * The location synced from the parent frame is the iframe's `window.location`,
+ * whose `pathname` already includes the sub-path Metabase is mounted under
+ * (the react-router basename, e.g. `/metabase`). Because `push` re-prepends the
+ * basename, pushing the raw pathname would double the sub-path
+ * (`/metabase/metabase/...`) and 404 — once per back/forward navigation. Strip
+ * the basename so `push` re-adds it exactly once. (metabase EMB-106)
+ */
+export function getLocationWithoutBasename(location) {
+  const basename = (window.MetabaseRoot ?? "/").replace(/\/+$/, "");
+  const { pathname } = location;
+
+  if (!basename || pathname == null) {
+    return location;
+  }
+
+  if (pathname === basename || pathname.startsWith(`${basename}/`)) {
+    return { ...location, pathname: pathname.slice(basename.length) || "/" };
+  }
+
+  return location;
 }
 
 function sendMessage(message) {
