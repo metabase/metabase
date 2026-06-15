@@ -64,7 +64,6 @@
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true
                               :describe-fields                        true
-                              :describe-fks                           true
                               :convert-timezone                       true
                               :datetime-diff                          true
                               :full-join                              false
@@ -534,14 +533,14 @@
 
 (defmethod sql.qp/date [:mysql :minute]
   [_driver _unit expr]
-  (let [format-str (if (= (h2x/database-type expr) "time")
+  (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
                      "%H:%i"
                      "%Y-%m-%d %H:%i")]
     (trunc-with-format format-str expr)))
 
 (defmethod sql.qp/date [:mysql :hour]
   [_driver _unit expr]
-  (let [format-str (if (= (h2x/database-type expr) "time")
+  (let [format-str (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
                      "%H"
                      "%Y-%m-%d %H")]
     (trunc-with-format format-str expr)))

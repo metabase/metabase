@@ -61,10 +61,10 @@ export const QuestionDetails = ({ question }: { question: Question }) => {
         )}
       </SidesheetCardSection>
       <SidesheetCardSection title={t`Saved in`}>
-        <Flex gap="sm" align="top" c="brand">
+        <Flex gap="sm" align="top" c="core-brand">
           <Icon
             name={isDashboardQuestion ? "dashboard" : "folder"}
-            c="brand"
+            c="core-brand"
             className={SidebarStyles.IconMargin}
           />
           <Text>
@@ -109,7 +109,7 @@ function SharingDisplay({ question }: { question: Question }) {
     <SidesheetCardSection title={t`Visibility`}>
       {publicUUID && (
         <Flex gap="sm" align="center">
-          <Icon name="globe" c="brand" />
+          <Icon name="globe" c="core-brand" />
           <Text>{t`Shared publicly`}</Text>
 
           <QuestionPublicLinkPopover

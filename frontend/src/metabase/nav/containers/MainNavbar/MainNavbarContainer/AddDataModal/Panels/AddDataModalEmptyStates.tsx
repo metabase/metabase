@@ -201,7 +201,7 @@ export const CSVPanelEmptyState = ({
     <AddDataEmptyState
       title={t`Upload CSV files`}
       subtitle={subtitle}
-      illustration={<Box component={IconCSV} c="brand" h={66} />}
+      illustration={<Box component={IconCSV} c="core-brand" h={66} />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
       upsell={upsell}

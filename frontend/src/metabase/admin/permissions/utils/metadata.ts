@@ -1,8 +1,6 @@
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { ConcreteTableId } from "metabase-types/api";
-
-import type { TableEntityId } from "../types";
+import type { ConcreteTableId, TableEntityId } from "metabase-types/api";
 
 export const getDatabase = (metadata: Metadata, databaseId: number) => {
   const database = metadata.database(databaseId);

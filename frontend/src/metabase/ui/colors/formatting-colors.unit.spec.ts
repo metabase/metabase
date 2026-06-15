@@ -9,7 +9,7 @@ describe("lib/formatting/colors", () => {
     const userColors = assignUserColors(userIds, currentUserId);
 
     const expectedAssignedColors = {
-      "1": color("brand"),
+      "1": color("core-brand"),
       "2": color("accent2"),
       "3": color("error"),
     };

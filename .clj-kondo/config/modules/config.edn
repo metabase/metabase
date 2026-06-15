@@ -176,6 +176,7 @@
               settings
               util}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Table
@@ -338,8 +339,7 @@
            connection-pool
            task
            util}
-   :model-imports #{:model/Database
-                    :model/Field
+   :model-imports #{:model/Field
                     :model/QueryCache
                     :model/Secret
                     :model/Setting}}
@@ -894,6 +894,7 @@
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
+           batch-processing
            settings
            util}
    :model-imports #{:model/Action
@@ -1013,6 +1014,17 @@
    :api  #{metabase.graph.core}
    :uses #{util}}
 
+  health-inspector
+  {:team "Querying Platform"
+   :api #{metabase.health-inspector.api
+          metabase.health-inspector.init}
+   :uses #{api
+           lib
+           lib-be
+           settings
+           task
+           util}}
+
   indexed-entities
   {:team "UX West"
    :api  #{metabase.indexed-entities.api
@@ -1023,6 +1035,7 @@
            legacy-mbql
            lib
            models
+           permissions
            query-processor
            search
            sync
@@ -1432,10 +1445,12 @@
 
   oauth-server
   {:team "UX West"
-   :api  #{metabase.oauth-server.api
+   :api  #{metabase.oauth-server.api       ;; Special case OAuth standard endpoints under `/`
+           metabase.oauth-server.api.admin ;; The usual Metabase internal API endpoints under `/api`
            metabase.oauth-server.core
            metabase.oauth-server.init}
    :uses #{api
+           api-scope
            appearance
            mcp
            models
@@ -1667,6 +1682,7 @@
            dashboards
            documents
            events
+           graph
            lib
            lib-be
            metrics
@@ -1779,7 +1795,8 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
-              metabase.query-processor.util.add-alias-info}
+              metabase.query-processor.util.add-alias-info
+              metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analytics-interface
            analyze
@@ -2160,6 +2177,7 @@
            events
            interestingness
            lib
+           lib-be
            models
            premium-features
            query-processor
@@ -2401,6 +2419,23 @@
                     :model/Database
                     :model/Field
                     :model/Table}}
+
+  usage-metadata
+  {:team "UX West"
+   :api  #{metabase.usage-metadata.init}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Query
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table}
+   :uses #{app-db
+           lib
+           lib-be
+           models
+           settings
+           task
+           util}}
 
   user-key-value
   {:team "UX West"
@@ -3002,8 +3037,7 @@
            metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init
            metabase-enterprise.dependencies.models.dependency}
-   :uses #{analyze
-           api
+   :uses #{api
            app-db
            collections
            database-routing
@@ -3014,7 +3048,6 @@
            lib
            lib-be
            models
-           native-query-snippets
            permissions
            premium-features
            queries
@@ -3082,7 +3115,8 @@
    :api  #{metabase-enterprise.erd.api}
    :uses #{api
            models
-           util}
+           util
+           warehouse-schema}
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table}}
@@ -3360,7 +3394,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
+   :model-imports #{:model/Collection}}
 
   enterprise/serialization
   {:team "Graphy"
@@ -3553,6 +3587,7 @@
            enterprise/serialization}
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
+                    :model/Table
                     :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals

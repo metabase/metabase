@@ -8,7 +8,7 @@
 }
 
 .NativeCardLink {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   font-weight: bold;
   margin-top: 0.5rem;
 }
