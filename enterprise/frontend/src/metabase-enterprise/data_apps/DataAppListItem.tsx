@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
+import { getSubpathSafeUrl } from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
@@ -50,8 +50,14 @@ export function DataAppListItem({ app }: Props) {
           size="sm"
         />
         <Button
-          component={Link}
-          to={`/data-app/${encodeURIComponent(app.name)}`}
+          component="a"
+          href={
+            enabled
+              ? getSubpathSafeUrl(`/data-app/${encodeURIComponent(app.name)}`)
+              : undefined
+          }
+          target="_blank"
+          rel="noreferrer"
           leftSection={<Icon name="external" />}
           variant="subtle"
           disabled={!enabled}

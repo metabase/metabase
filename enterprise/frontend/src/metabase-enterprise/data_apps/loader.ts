@@ -11,18 +11,45 @@ export interface LoadedDataApp {
 }
 
 /**
+ * Error thrown when a data-app bundle can't be fetched. `status` carries the
+ * HTTP status (when the request reached the server) so the UI can tell a
+ * not-yet-synced app (404) apart from a genuine failure.
+ */
+export class DataAppBundleError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "DataAppBundleError";
+    this.status = status;
+  }
+}
+
+/**
  * Fetch a data-app bundle's raw JS source. Called from the iframe-top
- * `DataAppIframeApp` after it reads the `:name` from the URL.
+ * `DataAppIframeApp` after it reads the `:name` from the URL. Throws a
+ * [[DataAppBundleError]] on a transport failure or non-2xx response.
  */
 export async function fetchDataAppBundleCode(name: string): Promise<string> {
   const url = getSubpathSafeUrl(
     `/api/data-app/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
   );
 
-  const res = await fetch(url, { cache: "no-store" });
+  let res: Response;
+  try {
+    res = await fetch(url, { cache: "no-store" });
+  } catch (e) {
+    throw new DataAppBundleError(
+      `Failed to reach the server for data-app bundle: ${
+        e instanceof Error ? e.message : String(e)
+      }`,
+    );
+  }
 
   if (!res.ok) {
-    throw new Error(`Failed to fetch data-app bundle: HTTP ${res.status}`);
+    throw new DataAppBundleError(
+      `Failed to fetch data-app bundle: HTTP ${res.status}`,
+      res.status,
+    );
   }
 
   return res.text();
