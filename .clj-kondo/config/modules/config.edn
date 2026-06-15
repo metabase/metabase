@@ -3232,7 +3232,8 @@
   enterprise/public-link-passwords
   {:team "Embedding"
    :api  #{metabase-enterprise.public-link-passwords.init}
-   :uses #{api
+   :uses #{analytics
+           api
            events
            premium-features
            util}

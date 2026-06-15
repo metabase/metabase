@@ -45,6 +45,25 @@ To share a document via a public link, admins can click on the **Sharing** butto
 
 Public documents are read-only: viewers cannot edit the content or add comments. For charts embedded in the document, viewers can download the results in CSV, XLSX, or JSON format using the **Download results** option in the chart menu.
 
+## Set a password on a public link
+
+{% include plans-blockquote.html feature="Password-protected public links" is_plural=true %}
+
+You can add a password to a public link so that people need to enter it before they can view the question or dashboard.
+
+Only admins can set, change, or remove a password from a public link.
+
+1. Click on **Sharing** for a question or dashboard.
+2. If you haven't already, create a public link.
+3. Toggle **Require password**.
+4. Enter a password (minimum 6 characters) and click **Save**.
+
+Anyone who can see the resource will be able to see the password.
+
+When people enter the password to view the link, the browser will issue an unlock cookie good for seven days. Changing or deleting the password will immediately invalidate these cookies.
+
+In some cases, viewers may need to input the password on each visit (for example, if you've embedded the public link in an iframe in another domain, and the person's browser blocks third-party cookies).
+
 ## Exporting raw, unformatted question results
 
 To export the raw, unformatted rows, you'll need to append `?format_rows=false` to the URL Metabase generates. For example, if you create a public link for a CSV download, the URL would look like:
