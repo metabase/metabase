@@ -93,6 +93,140 @@ export function canFormatForEngine(engine: string) {
   return getFormatterDialect(engine) != null;
 }
 
+export function getCurrentQuery(
+  queryText: string,
+  cursorOffset: number,
+): string | null {
+  const realSemicolons = findRealSemicolonPositions(queryText);
+
+  if (realSemicolons.length === 0) {
+    return null;
+  }
+
+  let lastBefore = -1;
+  let nextAtOrAfter = -1;
+
+  for (const pos of realSemicolons) {
+    if (pos < cursorOffset) {
+      lastBefore = pos;
+    }
+    if (pos >= cursorOffset && nextAtOrAfter === -1) {
+      nextAtOrAfter = pos;
+    }
+  }
+
+  const start = lastBefore + 1;
+  const end =
+    nextAtOrAfter === -1 ? queryText.length : nextAtOrAfter;
+
+  let result = queryText.slice(start, end).trim();
+
+  // Handle cursor positioned between two consecutive semicolons (empty statement)
+  if (result === "" && lastBefore >= 0) {
+    const idx = realSemicolons.indexOf(lastBefore);
+    const prevReal = idx > 0 ? realSemicolons[idx - 1] : -1;
+    result = queryText.slice(prevReal + 1, lastBefore).trim();
+  }
+
+  if (
+    result === "" ||
+    result === queryText.trim() ||
+    result + ";" === queryText.trim()
+  ) {
+    return null;
+  }
+
+  return result;
+}
+
+/**
+ * Scans through query text and returns positions of semicolons that act as
+ * real statement separators, excluding semicolons inside:
+ * - Single-quoted string literals ('...') with '' escaping
+ * - Double-quoted identifiers ("...") with "" escaping
+ * - Single-line comments (-- ...)
+ * - Multi-line comments (/* ... *​/)
+ */
+function findRealSemicolonPositions(queryText: string): number[] {
+  const positions: number[] = [];
+  let i = 0;
+
+  while (i < queryText.length) {
+    switch (queryText[i]) {
+      case "'":
+        i++;
+        while (i < queryText.length) {
+          if (queryText[i] === "'") {
+            if (i + 1 < queryText.length && queryText[i + 1] === "'") {
+              i += 2;
+              continue;
+            }
+            break;
+          }
+          i++;
+        }
+        i++;
+        break;
+
+      case '"':
+        i++;
+        while (i < queryText.length) {
+          if (queryText[i] === '"') {
+            if (i + 1 < queryText.length && queryText[i + 1] === '"') {
+              i += 2;
+              continue;
+            }
+            break;
+          }
+          i++;
+        }
+        i++;
+        break;
+
+      case "-":
+        if (i + 1 < queryText.length && queryText[i + 1] === "-") {
+          i += 2;
+          while (i < queryText.length && queryText[i] !== "\n") {
+            i++;
+          }
+        } else {
+          i++;
+        }
+        break;
+
+      case "/":
+        if (i + 1 < queryText.length && queryText[i + 1] === "*") {
+          i += 2;
+          while (i < queryText.length) {
+            if (
+              queryText[i] === "*" &&
+              i + 1 < queryText.length &&
+              queryText[i + 1] === "/"
+            ) {
+              i += 2;
+              break;
+            }
+            i++;
+          }
+        } else {
+          i++;
+        }
+        break;
+
+      case ";":
+        positions.push(i);
+        i++;
+        break;
+
+      default:
+        i++;
+        break;
+    }
+  }
+
+  return positions;
+}
+
 export function formatQuery(queryText: string, engine: string) {
   const dialect = getFormatterDialect(engine);
   if (!dialect) {

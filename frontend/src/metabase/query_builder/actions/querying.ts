@@ -22,12 +22,15 @@ import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import type { Dataset } from "metabase-types/api";
 
+import { getCurrentQuery } from "metabase/querying/components/NativeQueryEditor/utils";
+
 import {
   getAllNativeEditorSelectedText,
   getCard,
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
+  getNativeEditorCursorOffset,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
@@ -298,7 +301,25 @@ export const runOrCancelQuestionOrSelectedQuery =
           shouldUpdateUrl: false,
         }),
       );
-    } else {
-      dispatch(runQuestionQuery());
+      return;
+    } else if (queryInfo.isNative) {
+      // No text selected - try to determine current query from cursor position
+      // when the query contains multiple semicolon-delimited statements
+      const cursorOffset = getNativeEditorCursorOffset(getState());
+      if (cursorOffset != null) {
+        const queryText = Lib.rawNativeQuery(query);
+        const currentQuery = getCurrentQuery(queryText, cursorOffset);
+        if (currentQuery) {
+          const currentQueryObj = Lib.withNativeQuery(query, currentQuery);
+          dispatch(
+            runQuestionQuery({
+              overrideWithQuestion: question.setQuery(currentQueryObj),
+              shouldUpdateUrl: false,
+            }),
+          );
+          return;
+        }
+      }
     }
+    dispatch(runQuestionQuery());
   };

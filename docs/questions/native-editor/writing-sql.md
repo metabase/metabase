@@ -43,6 +43,8 @@ You'll notice that the table that comes back is the same as if you had used the 
 
 You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only part of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
 
+If you're editing a large query and have multiple queries in the editor separated by semicolons, you don't need to highlight the same query over and over each time you make a change. Instead, just leave your cursor inside the query you want to rerun and hit the run shortcut. Metabase will figure out which query you mean based on the cursor position — and it's smart enough to ignore semicolons hiding inside strings, identifiers, and comments.
+
 Questions asked using SQL can be saved, downloaded, converted to models, and added to dashboards just like questions asked using the query builder.
 
 You can also [refer to models and saved questions][ref-models] in your SQL queries.
