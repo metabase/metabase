@@ -7,6 +7,5 @@ export * from "./dimension-breakout-config";
 export * from "./series";
 export * from "./dimension-breakouts";
 export * from "./dimension-picker";
-export * from "./compact-schema";
 export * from "./url-serialization";
 export { getDimensionIcon } from "metabase/common/utils/columns";

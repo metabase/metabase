@@ -50,7 +50,7 @@
 }
 
 .BrandColorResizeHandle :global(.react-resizable-handle::after) {
-  border-color: var(--mb-color-brand) !important;
+  border-color: var(--mb-color-core-brand) !important;
 }
 
 .DashEditing .DashCard:global(.react-draggable-dragging),
@@ -61,7 +61,7 @@
 .DashEditing .DashCard:global(.react-draggable-dragging) .Card,
 .DashEditing .DashCard:global(.react-resizable-resizing) .Card {
   background-color: var(--mb-color-background-tertiary) !important;
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
 }
 
 .DashEditing .DashCard .VisualizationSlowSpinner {

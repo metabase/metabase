@@ -20,7 +20,8 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${({ onMouseEnter }) => onMouseEnter && "var(--mb-color-brand)"};
+    color: ${({ onMouseEnter }) =>
+      onMouseEnter && "var(--mb-color-core-brand)"};
   }
 `;
 
@@ -44,6 +45,6 @@ export const LegendItemTitle = styled.div<{
       : "unset"};
 
   &:hover {
-    color: ${({ onClick }) => onClick && "var(--mb-color-brand)"};
+    color: ${({ onClick }) => onClick && "var(--mb-color-core-brand)"};
   }
 `;

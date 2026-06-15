@@ -40,7 +40,6 @@
    [metabase.queries.models.query :as query]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
-   [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
@@ -144,11 +143,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
-(defmethod mi/can-read? :model/Card
-  ([instance]
-   (perms/can-read-audit-helper :model/Card instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Card :id pk))))
+(perms/define-collection-based-visibility! :model/Card)
 
 (defn model?
   "Returns true if `card` is a model."
@@ -543,15 +538,25 @@
   metabase-enterprise.sandbox.models.sandbox
   [_ _])
 
+(defn- value-field-gone?
+  [metadata-columns value-field]
+  (or (nil? value-field)
+      (empty? metadata-columns)
+      (nil? (lib/find-matching-column (lib/->mbql5 value-field) metadata-columns))))
+
 (defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
 
   Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
-  [{:keys [id]} changes]
+  [{:keys [id database_id]} changes]
   (when (some #{:archived :result_metadata} (keys changes))
-    (let [parameter-cards (t2/select :model/ParameterCard :card_id id)]
+    (let [parameter-cards  (t2/select :model/ParameterCard :card_id id)
+          metadata-columns (when-let [result-metadata (:result_metadata changes)]
+                             (lib/->card-metadata-columns
+                              (lib-be/application-database-metadata-provider database_id)
+                              result-metadata))]
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
         (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
@@ -568,11 +573,10 @@
                                               (filter (fn [param-card]
                                                         ;; if can't find the value-field in result_metadata, then we should
                                                         ;; remove it
-                                                        ;; existing usage -- do not use this in new code
-                                                        #_{:clj-kondo/ignore [:deprecated-var]}
-                                                        (nil? (qp.util/field->field-info
-                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
-                                                               (:result_metadata changes)))))
+                                                        (value-field-gone?
+                                                         metadata-columns
+                                                         (get-in (param-id->parameter (:parameter_id param-card))
+                                                                 [:values_source_config :value_field]))))
                                               (map :parameter_id)
                                               set))
 

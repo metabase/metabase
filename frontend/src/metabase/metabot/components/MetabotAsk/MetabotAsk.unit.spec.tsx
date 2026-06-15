@@ -1,87 +1,73 @@
-import { Route } from "react-router";
+import { assocIn } from "icepick";
 
-import { setupBookmarksEndpoints } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
+import { screen } from "__support__/ui";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { createMockUser } from "metabase-types/api/mocks";
+
 import {
-  useMetabotAgent,
-  useUserMetabotPermissions,
-} from "metabase/metabot/hooks";
-import { createMockState } from "metabase/redux/store/mocks";
+  enterChatMessage,
+  mockAgentEndpoint,
+  setup,
+  whoIsYourFavoriteResponse,
+} from "../../tests/utils";
 
 import { MetabotAsk } from "./MetabotAsk";
 
-jest.mock("metabase/api", () => ({
-  ...jest.requireActual("metabase/api"),
-  useGetSuggestedMetabotPromptsQuery: jest.fn(),
-}));
-
-jest.mock("metabase/metabot/hooks", () => ({
-  ...jest.requireActual("metabase/metabot/hooks"),
-  useMetabotAgent: jest.fn(),
-  useUserMetabotPermissions: jest.fn(),
-}));
-
-type SetupOptions = {
-  prompt?: string;
-  suggestedPrompts?: { prompt: string }[];
-};
-
-function setup({ prompt = "", suggestedPrompts = [] }: SetupOptions = {}) {
-  jest.mocked(useUserMetabotPermissions).mockReturnValue({
-    hasNlqAccess: true,
-    canUseNlq: true,
-  } as any);
-
-  setupBookmarksEndpoints([]);
-
-  jest.mocked(useMetabotAgent).mockReturnValue({
-    setVisible: jest.fn(),
-    resetConversation: jest.fn(),
-    submitInput: jest.fn(),
-    cancelRequest: jest.fn(),
-    setPrompt: jest.fn(),
-    metabotId: "default",
-    isDoingScience: false,
-    prompt,
-    promptInputRef: { current: null },
-  } as any);
-  jest.mocked(useGetSuggestedMetabotPromptsQuery).mockReturnValue({
-    currentData: { prompts: suggestedPrompts },
-  } as any);
-
-  const settings = mockSettings();
-
-  return renderWithProviders(<Route path="/" component={MetabotAsk} />, {
-    withRouter: true,
-    storeInitialState: createMockState({ settings }),
-  });
-}
+const greetingTitle =
+  /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
 
 describe("MetabotAsk", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  it("shows the greeting and closes the global Metabot sidebar", async () => {
+    const metabotInitialState = assocIn(
+      getMetabotInitialState(),
+      ["conversations", "omnibot", "visible"],
+      true,
+    );
 
-  it("renders suggested prompts when the API returns them", () => {
-    setup({
-      suggestedPrompts: [
-        { prompt: "Show me top customers" },
-        { prompt: "How many orders this month?" },
-      ],
+    const { store } = setup({
+      ui: <MetabotAsk />,
+      metabotInitialState,
+      promptSuggestions: [{ prompt: "Show me all orders" }],
     });
-    expect(screen.getByText("Show me top customers")).toBeInTheDocument();
-    expect(screen.getByText("How many orders this month?")).toBeInTheDocument();
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+    expect(await screen.findByText("Show me all orders")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-chat-input")).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
+    expect(getMetabotVisible(store.getState(), "omnibot")).toBe(false);
   });
 
-  it("disables the send button when the prompt is empty", () => {
-    setup({ prompt: "" });
-    expect(screen.getByTestId("metabot-send-message")).toBeDisabled();
+  it("replaces the greeting with the conversation after sending a message", async () => {
+    setup({ ui: <MetabotAsk /> });
+    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+    expect(await screen.findByText(greetingTitle)).toBeInTheDocument();
+
+    await enterChatMessage("Who is your favorite?");
+
+    expect(
+      await screen.findByText("Who is your favorite?"),
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
+    expect(screen.queryByText(greetingTitle)).not.toBeInTheDocument();
   });
 
-  it("enables the send button when the prompt is non-empty", () => {
-    setup({ prompt: "anything" });
-    expect(screen.getByTestId("metabot-send-message")).toBeEnabled();
+  it("shows the AI provider setup notice in the greeting when not configured", async () => {
+    setup({
+      ui: <MetabotAsk />,
+      currentUser: createMockUser({ is_superuser: true }),
+      isConfigured: false,
+    });
+
+    expect(
+      await screen.findByText("To use AI exploration, please", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "connect to a model" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("metabot-chat-input")).not.toBeInTheDocument();
   });
 });

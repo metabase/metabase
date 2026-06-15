@@ -67,13 +67,12 @@ import { DocumentMode } from "metabase/visualizations/click-actions/modes/Docume
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
-import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
+import { getDatasetError } from "metabase/visualizations/lib/errors";
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
 import type {
   CardDisplayType,
-  Dataset,
   StoredResultSort,
 } from "metabase-types/api";
 
@@ -113,15 +112,6 @@ function formatCardEmbed(attrs: CardEmbedAttributes): string {
     return `{% card id=${attrs.id} %}`;
   }
 }
-
-const getDatasetError = (dataset: Dataset) => {
-  if (dataset.error) {
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning" as const,
-    };
-  }
-};
 
 export interface CardEmbedAttributes {
   id?: number;

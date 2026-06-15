@@ -50,7 +50,7 @@
  [metabase.queries.models.query
   average-execution-time-ms
   query->database-and-table-ids
-  save-query-and-update-average-execution-time!]
+  save-queries-and-update-average-execution-times!]
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!

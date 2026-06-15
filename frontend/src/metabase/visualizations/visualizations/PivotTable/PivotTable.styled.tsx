@@ -203,10 +203,10 @@ export const ResizeHandle = styled.div`
   cursor: ew-resize;
 
   &:active {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   &:hover {
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 `;

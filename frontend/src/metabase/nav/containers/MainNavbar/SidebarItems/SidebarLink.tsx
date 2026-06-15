@@ -76,7 +76,7 @@ function SidebarLink({
             name={iconProps.name}
             iconUrl={iconProps.iconUrl}
             size="1rem"
-            color="brand"
+            color="core-brand"
           />
         ) : (
           <SidebarIcon {...iconProps} isSelected={isSelected} />

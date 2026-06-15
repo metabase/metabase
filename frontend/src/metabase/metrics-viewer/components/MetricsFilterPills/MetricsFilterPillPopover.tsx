@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
+import { FilterPickerBody } from "metabase/common/metrics/components/FilterPicker/FilterPickerBody";
 import {
   trackMetricsViewerFilterEdited,
   trackMetricsViewerFilterRemoved,
@@ -75,7 +75,7 @@ export function MetricsFilterPillPopover({
                 {(metricCount ?? 0) > 1 && (
                   <Badge
                     circle
-                    color="filter"
+                    color="core-filter"
                     // override background from Badge.config.tsx
                     styles={{ root: { background: "var(--badge-bg)" } }}
                     ml="xs"

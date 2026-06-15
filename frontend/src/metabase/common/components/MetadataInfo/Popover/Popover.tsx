@@ -4,6 +4,8 @@ import { useCallback, useState } from "react";
 import Animation from "metabase/css/core/animation.module.css";
 import type { HoverCardProps } from "metabase/ui";
 import { HoverCard, useDelayGroup } from "metabase/ui";
+// TODO: drop the close-handler registration below when the legacy Modal /
+// RENDERED_POPOVERS stack is no longer used (GDGT-2575)
 import { useSequencedContentCloseHandler } from "metabase/ui/hooks/use-sequenced-content-close-handler";
 
 // Initially, the user will have to hover for this long to open the popover

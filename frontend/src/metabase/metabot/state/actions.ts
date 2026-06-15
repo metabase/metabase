@@ -446,12 +446,14 @@ export const sendAgentRequest = createAsyncThunk<
                   metadata: { editorTransform, suggestionId },
                 });
               })
-              .with({ type: "adhoc_viz" }, (part) => {
-                pushDataPart({ type: "data_part", part });
-              })
-              .with({ type: "static_viz" }, (part) => {
-                pushDataPart({ type: "data_part", part });
-              })
+              .with(
+                { type: "generated_entity" },
+                { type: "adhoc_viz" },
+                { type: "static_viz" },
+                (part) => {
+                  pushDataPart({ type: "data_part", part });
+                },
+              )
               .exhaustive();
           },
           onStartMessagePart: function handleStartMessagePart(part) {

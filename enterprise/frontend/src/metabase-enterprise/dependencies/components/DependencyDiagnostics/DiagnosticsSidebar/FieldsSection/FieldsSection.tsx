@@ -32,7 +32,7 @@ export function FieldsSection({ node }: FieldsSectionProps) {
   return (
     <Stack role="region" aria-label={t`Fields`}>
       <Group gap="sm" wrap="nowrap">
-        <Badge variant="filled" bg="brand">
+        <Badge variant="filled" bg="core-brand">
           {fields.length}
         </Badge>
         <Title order={5}>{getNodeFieldsLabel(fields.length)}</Title>
@@ -59,7 +59,7 @@ function FieldListItem({ field }: FieldListItemProps) {
   return (
     <Stack className={S.item} p="md" gap="xs">
       <Group gap="xs" wrap="nowrap">
-        <FixedSizeIcon name={fieldIcon} c="brand" />
+        <FixedSizeIcon name={fieldIcon} c="core-brand" />
         <Box className={CS.textWrap} lh="1rem">
           {field.display_name}
         </Box>

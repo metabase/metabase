@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { getNewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
+import { NewMenuItemAIExploration } from "metabase/metabot/components/NewMenuItemAIExploration";
 import { useUserMetabotPermissions } from "metabase/metabot/hooks";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setOpenModal } from "metabase/redux/ui";
@@ -47,13 +47,14 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    const aiExplorationItem = getNewMenuItemAIExploration(
-      hasDataAccess,
-      collectionId,
-      hasNlqAccess,
-    );
-    if (aiExplorationItem) {
-      items.push(aiExplorationItem);
+    if (hasDataAccess) {
+      items.push(
+        <NewMenuItemAIExploration
+          key="nlq"
+          collectionId={collectionId}
+          hasNlqAccess={hasNlqAccess}
+        />,
+      );
     }
 
     if (hasDataAccess) {

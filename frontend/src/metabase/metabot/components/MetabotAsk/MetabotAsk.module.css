@@ -1,126 +1,18 @@
-.page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  height: 100%;
-  width: 100%;
-  background: var(--mb-color-background-primary);
-  position: relative;
-  padding: 2rem;
-  gap: 1.5rem;
+.chat {
+  --metabot-chat-messages-padding-top: 2rem;
 }
 
-.inputWrapper {
-  width: 100%;
-  max-width: 42rem;
-}
-
-.inputContainer {
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem 1rem 1rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--mb-color-border);
-
-  :global(.ProseMirror) {
-    min-height: 7.5rem;
-  }
-}
-
-.inputContainerLoading {
-  background: var(--mb-color-background-secondary);
-  animation: pulse 5s ease-in-out 1s infinite;
-}
-
-.editorWrapper {
-  flex: 1;
-  min-width: 0;
-  width: 100%;
-}
-
-.inputActions {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-}
-
-.sendButton {
-  color: var(--mb-color-background-primary);
-
-  &:disabled,
-  &:disabled:hover {
-    background-color: var(--mb-color-brand);
-    color: var(--mb-color-text-primary-inverse);
-    border-color: var(--mb-color-brand);
-    opacity: 0.35;
-  }
-}
-
-.promptSuggestionsContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.25rem;
-  width: 100%;
-  min-height: 10.75rem;
-}
-
-.promptSuggestion {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--mb-color-text-secondary);
-  cursor: pointer;
-  border-radius: 0.5rem;
-  transition:
-    background 150ms ease,
-    color 150ms ease,
-    opacity 150ms ease;
-
-  &:hover {
-    background: var(--mb-color-background-secondary);
-    color: var(--mb-color-text-primary);
-  }
-}
-
-.promptSuggestionShow {
-  opacity: 0;
-  animation: fade-in 300ms ease forwards;
-}
-
-.promptSuggestionHide {
-  opacity: 1;
-  animation: fade-out 200ms ease forwards;
-  cursor: default;
-  user-select: none;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes fade-out {
-  from {
-    opacity: 1;
-  }
-
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    background: var(--mb-color-background-secondary);
-  }
-
-  50% {
-    background: var(--mb-color-background-tertiary);
-  }
+.topFade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1rem;
+  background: linear-gradient(
+    to bottom,
+    var(--mb-color-background-primary),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 1;
 }

@@ -33,7 +33,7 @@ const sizeOptions = {
 export const BrowseCard = ({
   icon,
   to,
-  iconColor = "brand",
+  iconColor = "core-brand",
   title,
   size = "md",
   children,

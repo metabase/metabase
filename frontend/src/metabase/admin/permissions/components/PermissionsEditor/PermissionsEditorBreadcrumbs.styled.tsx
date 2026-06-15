@@ -13,7 +13,7 @@ export const BreadcrumbsSeparator = styled.div`
 
 export const BreadcrumbsLink = styled.a`
   cursor: pointer;
-  color: var(--mb-color-filter);
+  color: var(--mb-color-core-filter);
   transition: color 200ms;
 
   &:hover {

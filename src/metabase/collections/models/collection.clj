@@ -1445,7 +1445,8 @@
     (let [{collection-after-update :collection_id :as model-after-update} <>]
       (when (remote-synced-collection? collection-after-update)
         (check-non-remote-synced-dependencies model-after-update)
-        (when (api/column-will-change? :archived model-before-update model-after-update)
+        (when (and (api/column-will-change? :archived model-before-update model-after-update)
+                   (:archived model-after-update))
           (check-remote-synced-dependents model-after-update)))
       (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
                  (moving-from-remote-synced? collection-before-update collection-after-update))

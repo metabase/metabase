@@ -2510,6 +2510,41 @@
                             (collection/check-remote-synced-dependents (t2/instance :model/Collection {:id source-coll-id})))
           "Should throw exception when collection contains cards with remote-synced dependents"))))
 
+(deftest check-for-remote-sync-update-restore-test
+  (testing "restoring an item that lives in a remote-synced collection does not throw (GHY-3821)"
+    ;; The item's own containing remote-synced collection is reported as a dependent, so the
+    ;; dependents check must only fire when archiving (false->true), not when restoring (true->false).
+    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Card {card-id :id} {:name "Archived Card"
+                                              :collection_id remote-synced-id
+                                              :archived true
+                                              :database_id (mt/id)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (let [card-before-update (t2/select-one :model/Card :id card-id)]
+        ;; mirror the DB state after a restore has been applied within the update transaction
+        (t2/update! :model/Card card-id {:archived false})
+        (is (some? (collection/check-for-remote-sync-update card-before-update))
+            "Restoring an item in a remote-synced collection should not throw")))))
+
+(deftest check-for-remote-sync-update-archive-with-dependent-test
+  (testing "archiving an item that an active remote-synced item depends on still throws"
+    (mt/with-temp [:model/Collection {remote-synced-id :id} {:name "Remote-Synced" :location "/" :is_remote_synced true}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id remote-synced-id
+                                                   :database_id (mt/id)
+                                                   :dataset_query (mt/mbql-query venues)}
+                   :model/Card _ {:name "Dependent Card"
+                                  :collection_id remote-synced-id
+                                  :database_id (mt/id)
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+      (let [card-before-update (t2/select-one :model/Card :id base-card-id)]
+        ;; mirror the DB state after an archive has been applied within the update transaction
+        (t2/update! :model/Card base-card-id {:archived true})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Used by remote synced content."
+                              (collection/check-for-remote-sync-update card-before-update))
+            "Archiving an item with active remote-synced dependents should throw")))))
+
 (deftest ^:parallel remote-synced-dependents-with-dashboard-test
   (testing "remote-synced-dependents should return dashboards in remote-synced collections that contain the card"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:is_remote_synced true}
