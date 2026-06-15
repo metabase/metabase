@@ -84,7 +84,7 @@
 
 (defn- column-defs
   "Return [{:name col-name :sqlite-type ... :jdbc-type long}] for the given
-  schema.table by introspecting a 1-row query against H2."
+  schema.table by introspecting the result-set metadata of a 0-row query against H2."
   [h2 schema table]
   (with-open [conn (jdbc/get-connection h2)
               ps   (.prepareStatement conn (format "SELECT * FROM \"%s\".\"%s\" LIMIT 0"
