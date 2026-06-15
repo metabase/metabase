@@ -27,7 +27,7 @@ Assuming your site is localhost serving on port 3000:
 
 In both cases the login behavior is the same, and you can pass `return_to` as a query parameter in both `GET` and `POST` requests.
 
-For example, with curl:
+An example `POST` request with curl:
 
 ```bash
 curl -X POST "http://localhost:3000/auth/sso?return_to=/question/1-superb-question" \
