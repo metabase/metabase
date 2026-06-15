@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useToast } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -40,13 +40,12 @@ export const useSensibleVisualizations = () => {
     };
   }, [customVizPlugins, onInfo]);
 
-  const result = queryResults?.[0];
+  const result = queryResults?.[0] ?? null;
 
-  const initialResultRef = useRef(result);
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
-    () => getSensibleVisualizations({ result: initialResultRef.current }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute after custom-viz plugins are loaded
-    [pluginsLoadedVersion],
+    () => getSensibleVisualizations({ result }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `pluginsLoadedVersion` isn't read in the body; it's the signal that custom-viz plugins registered in the global `visualizations` Map, which `getSensibleVisualizations` reads.
+    [result, pluginsLoadedVersion],
   );
 
   return {
