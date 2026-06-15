@@ -44,20 +44,13 @@ function CopyMenuItem({
   );
 }
 
-export function CopyLinkMenuItem({
-  url,
-  onCopied,
-}: {
-  url: string;
-  onCopied?: () => void;
-}) {
+export function CopyLinkMenuItem({ url }: { url: string }) {
   return (
     <CopyMenuItem
       url={url}
       icon="link"
       label={t`Copy link`}
       copiedMessage={t`Link copied to clipboard`}
-      onCopied={onCopied}
     />
   );
 }

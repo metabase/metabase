@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
+import { createMockDashboardTab } from "metabase-types/api/mocks";
 
 import { openMenu, setupDashboardSharingMenu } from "./tests/setup";
 
@@ -41,9 +42,9 @@ describe("DashboardSharingMenu", () => {
           isAdmin: userType === "admin",
           dashboard: {
             tabs: [
-              { id: 1, name: "First Tab" },
-              { id: 2, name: "Second Tab" },
-            ] as any,
+              createMockDashboardTab({ id: 1, name: "First Tab" }),
+              createMockDashboardTab({ id: 2, name: "Second Tab" }),
+            ],
           },
         });
         await openMenu();
@@ -137,9 +138,9 @@ describe("DashboardSharingMenu", () => {
           isAdmin: true,
           dashboard: {
             tabs: [
-              { id: 1, name: "First Tab" },
-              { id: 2, name: "Second Tab" },
-            ] as any,
+              createMockDashboardTab({ id: 1, name: "First Tab" }),
+              createMockDashboardTab({ id: 2, name: "Second Tab" }),
+            ],
           },
           dashboardState: { selectedTabId: 2 },
         });
