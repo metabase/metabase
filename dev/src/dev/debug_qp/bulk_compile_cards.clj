@@ -20,6 +20,14 @@
              :order-by [[:md.id :asc] [:rc.id :asc]]
              :limit  limit}))
 
+(defn- get-native-card-ids [engine limit]
+  (t2/query {:select [:rc.id :rc.database_id]
+             :from   [[:report_card :rc]]
+             :join   [[:metabase_database :md] [:= :rc.database_id :md.id]]
+             :where  [:and [:= :md.engine engine] [:= :rc.query_type "native"]]
+             :order-by [[:md.id :asc] [:rc.id :asc]]
+             :limit  limit}))
+
 (defn- save-card-compilation-results
   [card-ids output-file]
   (let [pool    (Executors/newFixedThreadPool 8)
@@ -125,4 +133,49 @@
   (get-compilation-diffs
    "dev/src/dev/debug_qp/redshift_4_to_5"
    "dev/src/dev/debug_qp/redshift_mbql4_results.jsonl"
-   "dev/src/dev/debug_qp/redshift_mbql5_results.jsonl"))
+   "dev/src/dev/debug_qp/redshift_mbql5_results.jsonl")
+
+  (time
+   (save-card-compilation-results redshift-card-ids "redshift_mock_quotes_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/redshift_5_to_mock_quotes5"
+   "dev/src/dev/debug_qp/redshift_mbql5_results.jsonl"
+   "dev/src/dev/debug_qp/redshift_mock_quotes_mbql5_results.jsonl")
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/redshift_4_to_mock_quotes5"
+   "dev/src/dev/debug_qp/redshift_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/redshift_mock_quotes_mbql5_results.jsonl"))
+
+(comment
+
+  (def h2-native-card-ids (get-native-card-ids "h2" 3800))
+
+  (time
+   (save-card-compilation-results h2-native-card-ids "h2_native_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/h2_native_4_to_5"
+   "dev/src/dev/debug_qp/h2_native_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/h2_native_mbql5_results.jsonl")
+
+  (def postgres-native-card-ids (get-native-card-ids "postgres" 16600))
+
+  (time
+   (save-card-compilation-results postgres-native-card-ids "postgres_native_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/postgres_native_4_to_5"
+   "dev/src/dev/debug_qp/postgres_native_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/postgres_native_mbql5_results.jsonl")
+
+  (def redshift-native-card-ids (get-native-card-ids "redshift" 16600))
+
+  (time
+   (save-card-compilation-results redshift-native-card-ids "redshift_native_mbql5_results.jsonl"))
+
+  (get-compilation-diffs
+   "dev/src/dev/debug_qp/redshift_native_4_to_5"
+   "dev/src/dev/debug_qp/redshift_native_mbql4_results.jsonl"
+   "dev/src/dev/debug_qp/redshift_native_mbql5_results.jsonl"))
