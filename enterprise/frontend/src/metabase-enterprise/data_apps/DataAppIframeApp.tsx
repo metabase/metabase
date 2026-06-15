@@ -1,14 +1,30 @@
 import createCache from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import {
+  Component,
+  type ComponentType,
+  type ErrorInfo,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { Center, Loader } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getCspNonce } from "metabase/utils/csp";
 
 import { DataAppProvider } from "./components/DataAppProvider";
-import { fetchDataAppBundleCode, instantiateDataAppBundle } from "./loader";
+import { type ErrorDetail, describeError } from "./lib/describe-error";
+import { readNameFromUrl } from "./lib/read-name-from-url";
+import { reportErrorToParent } from "./lib/report-error-to-parent";
+import {
+  DataAppBundleError,
+  fetchDataAppBundleCode,
+  instantiateDataAppBundle,
+} from "./loader";
 
 interface LoadedApp {
   component: ComponentType<Record<string, unknown>>;
@@ -16,19 +32,44 @@ interface LoadedApp {
 }
 
 /**
- * Reads the requested data-app name from the iframe URL.
- *
- * The BE serves this iframe at `/embed/data-app/:name(/sub/route)`. Anything
- * after the `:name` segment is owned by the bundle's own router and mirrored
- * back to the parent by `attachIframeUrlMirror` in `AppView`.
+ * Catches errors thrown while *rendering* the bundle's React tree (the async
+ * fetch/instantiate failures are handled separately in `BundleHost`). Without
+ * this, a throw inside the bundle — e.g. an opaque `#<Object>` from the
+ * Near-Membrane sandbox — unmounts the whole tree and leaves a blank iframe.
  */
-function readNameFromUrl(): string | null {
-  const segments = window.location.pathname.split("/").filter(Boolean);
-  const i = segments.indexOf("data-app");
-  if (i < 0 || i === segments.length - 1) {
-    return null;
+class BundleErrorBoundary extends Component<
+  { children: ReactNode },
+  { detail: ErrorDetail | null }
+> {
+  state: { detail: ErrorDetail | null } = { detail: null };
+
+  static getDerivedStateFromError(error: unknown): { detail: ErrorDetail } {
+    return { detail: describeError(error) };
   }
-  return decodeURIComponent(segments[i + 1] ?? "");
+
+  componentDidCatch(error: unknown, info: ErrorInfo) {
+    const detail = describeError(error);
+    console.error(
+      "[data-app] error rendering the bundle:",
+      detail.message,
+      detail.stack ?? "",
+      info,
+    );
+    reportErrorToParent(false, detail);
+  }
+
+  render() {
+    if (this.state.detail) {
+      // `componentDidCatch` already reported the error to the host, which shows
+      // the themed failure screen; a neutral loader covers the handoff.
+      return (
+        <Center h="100vh">
+          <Loader />
+        </Center>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 interface BundleHostProps {
@@ -49,7 +90,10 @@ interface BundleHostProps {
  */
 function BundleHost({ name, cache }: BundleHostProps) {
   const [loaded, setLoaded] = useState<LoadedApp | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // We don't keep the error detail in state — it's reported straight to the host
+  // `AppView`, which owns the failure screen. This only gates what we render here
+  // (the bundle vs. a neutral loader during the handoff).
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,9 +110,15 @@ function BundleHost({ name, cache }: BundleHostProps) {
       setLoaded({ component, theme });
     };
 
-    load().catch((e: unknown) => {
+    load().catch((error: unknown) => {
       if (!cancelled) {
-        setError(e instanceof Error ? e.message : String(e));
+        const notReady =
+          error instanceof DataAppBundleError && error.status === 404;
+        // A 404 (not-yet-synced) is expected, so we keep the friendly message;
+        // any other failure carries the real error so it can be shown.
+        const detail = notReady ? undefined : describeError(error);
+        setFailed(true);
+        reportErrorToParent(notReady, detail);
       }
     });
 
@@ -77,25 +127,57 @@ function BundleHost({ name, cache }: BundleHostProps) {
     };
   }, [name]);
 
-  if (error) {
-    return (
-      <div style={{ padding: 16, color: color("error") }}>
-        {t`Error:`} {error}
-      </div>
+  useEffect(() => {
+    // The bundle runs in a Near-Membrane sandbox that can throw errors which
+    // escape React's render cycle (e.g. an opaque `#<Object>` from the membrane)
+    // and so slip past `BundleErrorBoundary`, leaving a blank frame. Catch
+    // genuine uncaught JS errors at the window level and show the error screen.
+    // `event.error == null` for resource-load errors, which we ignore.
+    const onError = (event: ErrorEvent) => {
+      if (event.error != null) {
+        const detail = describeError(event.error, event.message);
+        // Log the unpacked message/stack so devtools shows the real error
+        // instead of the membrane's opaque `#<Object>`.
+        console.error(
+          "[data-app] uncaught error in the bundle:",
+          detail.message,
+          detail.stack ?? "",
+        );
+        setFailed(true);
+        reportErrorToParent(false, detail);
+      }
+    };
+
+    window.addEventListener("error", onError);
+
+    return () => window.removeEventListener("error", onError);
+  }, []);
+
+  // On failure we report the error up to the host `AppView` (see
+  // `reportErrorToParent`), which renders the themed failure screen in its own
+  // realm and unmounts this iframe. Until that handoff lands we show a neutral
+  // loader — never an in-frame error screen, which would flash mis-themed.
+  let content: ReactNode;
+  if (loaded && !failed) {
+    const AppComponent = loaded.component;
+    content = (
+      <BundleErrorBoundary>
+        <AppComponent />
+      </BundleErrorBoundary>
+    );
+  } else {
+    content = (
+      <Center h="100vh">
+        <Loader />
+      </Center>
     );
   }
 
-  if (!loaded) {
-    return <div style={{ padding: 16 }}>{t`Loading…`}</div>;
-  }
-
-  const { component: AppComponent, theme } = loaded;
-
+  // The bundle + loader render inside `DataAppProvider` so they get the SDK
+  // theme and the `MantineProvider`, the same context the bundle renders in.
   return (
     <CacheProvider value={cache}>
-      <DataAppProvider theme={theme}>
-        <AppComponent />
-      </DataAppProvider>
+      <DataAppProvider theme={loaded?.theme}>{content}</DataAppProvider>
     </CacheProvider>
   );
 }
