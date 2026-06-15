@@ -180,5 +180,5 @@ jobs:
           name: claude-e2e-flake-fix-${{ steps.ref.outputs.ref }}
           if-no-files-found: ignore
           path: |
-            local/claude/flake-fix/**
+            local/claude/e2e-flake-fix/**
             ${{ steps.claude.outputs.execution_file }}

@@ -58,7 +58,7 @@ The Linear issue is the input. Everything else is reasoning over files.
    a shorter unique substring of the test name if the literal has special characters.)
 4. **Decide `qa_db`:** scan the spec / its `describe` for external-DB helpers
    (postgres/mysql/mongo-writable) or an `@external` tag → `true`, else `false`.
-5. **Write the state file** `local/claude/flake-fix/<DEV-id-or-slug>.md`:
+5. **Write the state file** `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md`:
    ```markdown
    # Flake fix: <test name>
    - linear: <DEV-#### or n/a>
@@ -202,7 +202,7 @@ done
   - **Either `failure` / `timed_out`** → fix is not holding (`fail_fast` stopped at the
     first bad iteration, so the artifact is fresh and minimal):
     ```bash
-    gh run download <failed-id> --dir local/claude/flake-fix/<id>-artifacts
+    gh run download <failed-id> --dir local/claude/e2e-flake-fix/<failed-id>-artifacts
     ```
     The Cypress error lives in the GitHub step log (`gh run view <id> --log-failed`) and the
     screenshots/video — **not** in `logs/test.log` (that's only the backend health log).
@@ -250,7 +250,7 @@ done
 
 - **Always — attach the run log to Linear (regardless of outcome).** As the final step on
   both the fixed and exhausted paths, post the full state file
-  `local/claude/flake-fix/<id>.md` to the Linear issue as a comment titled
+  `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md` to the Linear issue as a comment titled
   **"🤖 Flake-fix run log (audit trail)"** (fence it so it renders verbatim). This is the
   end-to-end audit trail — every hypothesis, fix, commit, run URL, and verdict — kept for a
   human reviewer and as a learning artifact even when the fix didn't land. Skip only on the
