@@ -150,13 +150,17 @@
 
   The cleanup runs unconditionally (an incompatible sample database should never linger), but the new
   Sample Database and its Example collection are only recreated when sample content is enabled - and
-  the Example collection is skipped under test endpoints, matching fresh-install seeding."
+  the Example collection is skipped under test endpoints, matching fresh-install seeding.
+
+  The old Example collection is deleted before the new one is recreated; deleting it cascades (via the
+  Collection before-delete hook) to its descendant collections and permission records."
   [old-sample-db]
   (log/infof "Bundled sample database engine changed from %s to %s; replacing the sample database"
              (:engine old-sample-db) (sample-database-engine))
   (let [dashboard-ids (sample-database-dashboard-ids (:id old-sample-db))]
     (t2/delete! :model/Database (:id old-sample-db))
-    (delete-emptied-dashboards! dashboard-ids))
+    (delete-emptied-dashboards! dashboard-ids)
+    (t2/delete! :model/Collection :is_sample true))
   (when (config/load-sample-content?)
     (extract-and-sync-sample-database!)
     (when-not (config/config-bool :mb-enable-test-endpoints)

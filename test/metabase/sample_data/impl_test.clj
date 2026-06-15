@@ -138,7 +138,10 @@
        :model/Dashboard mixed-dash  {}
        :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
        :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id sample-card)}
-       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}]
+       :model/DashboardCard _ {:dashboard_id (:id mixed-dash),  :card_id (:id other-card)}
+       :model/Collection examples  {:name "Examples",   :is_sample true}
+       :model/Collection ecommerce {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
+       :model/Collection keep-coll {:name "Keep me"}]
       (let [extract-called? (atom false)]
         (mt/with-dynamic-fn-redefs [sample-data/extract-and-sync-sample-database! (fn [] (reset! extract-called? true))]
           (#'sample-data/update-sample-database-if-needed! old-sample))
@@ -150,6 +153,10 @@
         (testing "a dashboard that still has other cards is kept"
           (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
           (is (t2/exists? :model/Card :id (:id other-card))))
+        (testing "the old Example collections are deleted, but a non-sample collection is kept"
+          (is (not (t2/exists? :model/Collection :id (:id examples))))
+          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
+          (is (t2/exists? :model/Collection :id (:id keep-coll))))
         (testing "the new bundled sample DB is extracted and synced"
           (is (true? @extract-called?)))))))
 

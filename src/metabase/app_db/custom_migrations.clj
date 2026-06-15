@@ -1333,7 +1333,8 @@
 (defn- remove-sqlite-sample-database-on-downgrade!
   "Delete the SQLite sample database and the content it leaves dangling: its tables/fields, its
   Cards, and those cards' dashcards; Dashboards left with no cards as a result are then deleted
-  too. No H2 sample database is restored.
+  too. The sample Example collections (and their permission records) are deleted last. No H2 sample
+  database is restored.
 
   Children are deleted explicitly, bottom-up, rather than relying on ON DELETE CASCADE: MySQL 9.7
   resolves multi-level cascade fan-outs incompletely, leaving orphaned rows that later break
@@ -1360,7 +1361,11 @@
                                                        :from   [:report_dashboardcard]
                                                        :where  [:in :card_id card-ids-q]}]]})
       (t2/query {:delete-from :report_dashboardcard :where [:in :card_id card-ids-q]})
-      (t2/query {:delete-from :parameter_card :where [:in :card_id card-ids-q]})
+      (t2/query {:delete-from :parameter_card
+                 :where       [:or
+                               [:in :card_id card-ids-q]
+                               [:and [:= :parameterized_object_type "card"]
+                                [:in :parameterized_object_id card-ids-q]]]})
       (t2/query {:delete-from :report_card :where [:= :database_id sample-db-id]})
       (t2/query {:delete-from :dimension :where [:in :field_id field-ids-q]})
       (t2/query {:delete-from :metabase_field
@@ -1377,7 +1382,21 @@
               empty-ids (remove non-empty affected-dashboard-ids)]
           (when (seq empty-ids)
             (t2/query {:delete-from :dashboard_tab :where [:in :dashboard_id empty-ids]})
-            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]})))))))
+            (t2/query {:delete-from :parameter_card
+                       :where       [:and [:= :parameterized_object_type "dashboard"]
+                                     [:in :parameterized_object_id empty-ids]]})
+            (t2/query {:delete-from :report_dashboard :where [:in :id empty-ids]}))))
+      (let [sample-collection-ids (->> (t2/query {:select [:id] :from [:collection] :where [:= :is_sample true]})
+                                       (mapv :id))]
+        (when (seq sample-collection-ids)
+          (t2/query {:delete-from :permissions
+                     :where       [:or
+                                   [:in :collection_id sample-collection-ids]
+                                   [:in :object (mapcat (fn [id]
+                                                          [(format "/collection/%d/" id)
+                                                           (format "/collection/%d/read/" id)])
+                                                        sample-collection-ids)]]})
+          (t2/query {:delete-from :collection :where [:in :id sample-collection-ids]}))))))
 
 ;; The bundled sample database moved from H2 to SQLite. If an instance running a SQLite-sample
 ;; version is downgraded to an H2-sample version, the older code cannot use the SQLite sample

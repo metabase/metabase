@@ -2942,11 +2942,14 @@
 (deftest migrate-away-from-sqlite-sample-database-on-downgrade-test
   (testing "Downgrade removes the SQLite sample database and the content it leaves empty, keeping everything else"
     (mt/with-temp
-      [:model/Database  sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
-       :model/Database  other       {:engine :h2,     :details {:db "mem:other"}}
-       :model/Card      other-card  {:database_id (:id other)}
-       :model/Dashboard sample-dash {}
-       :model/Dashboard mixed-dash  {}]
+      [:model/Database   sample      {:engine :sqlite, :is_sample true, :details {:db "mem:sample"}}
+       :model/Database   other       {:engine :h2,     :details {:db "mem:other"}}
+       :model/Card       other-card  {:database_id (:id other)}
+       :model/Dashboard  sample-dash {}
+       :model/Dashboard  mixed-dash  {}
+       :model/Collection examples    {:name "Examples",   :is_sample true}
+       :model/Collection ecommerce   {:name "E-commerce", :is_sample true, :location (str "/" (:id examples) "/")}
+       :model/Collection keep-coll   {:name "Keep me"}]
       ;; Mirror the bundled sample content's fan-out: 8 tables x 7 fields, 39 cards, plus dashcards,
       ;; series, and tabs. MySQL 9.7 resolves a multi-level ON DELETE CASCADE of this shape
       ;; incompletely (it deletes the tables but orphans most cards and all fields), so the cleanup
@@ -2985,7 +2988,27 @@
                                                                   :position         0})
             _             (t2/insert! :model/DashboardTab {:dashboard_id (:id sample-dash)
                                                            :name         "Tab 1"
-                                                           :position     0})]
+                                                           :position     0})
+            ;; parameter_card rows orphan in three ways; a fourth must survive.
+            [pc-src
+             pc-card-owner
+             pc-dash-owner
+             pc-keep]    (t2/insert-returning-pks!
+                          :model/ParameterCard
+                          [;; value source is a sample card -> delete
+                           {:card_id (first card-ids) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id mixed-dash) :parameter_id "src"}
+                           ;; parameterized object is a sample card -> delete
+                           {:card_id (:id other-card) :parameterized_object_type "card"
+                            :parameterized_object_id (second card-ids) :parameter_id "card-owner"}
+                           ;; parameterized object is a deleted sample dashboard -> delete
+                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id sample-dash) :parameter_id "dash-owner"}
+                           ;; non-sample source on a surviving dashboard -> keep
+                           {:card_id (:id other-card) :parameterized_object_type "dashboard"
+                            :parameterized_object_id (:id mixed-dash) :parameter_id "keep"}])]
+        ;; Collection creation auto-grants an "All Users" permission row (object "/collection/<id>/") for each
+        ;; sample collection; the migration must clean those up too.
         (#'custom-migrations/remove-sqlite-sample-database-on-downgrade!)
         (testing "the SQLite sample database and all of its child content are deleted, with no orphans"
           (is (not (t2/exists? :model/Database :id (:id sample))))
@@ -2997,8 +3020,20 @@
         (testing "a dashboard left empty by the deletion is deleted, along with its tabs"
           (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
           (is (zero? (t2/count :dashboard_tab :dashboard_id (:id sample-dash)))))
+        (testing "parameter_card rows referencing a deleted sample card or dashboard are removed"
+          (is (not (t2/exists? :model/ParameterCard :id pc-src)))
+          (is (not (t2/exists? :model/ParameterCard :id pc-card-owner)))
+          (is (not (t2/exists? :model/ParameterCard :id pc-dash-owner)))
+          (testing "but an unrelated parameter_card is kept"
+            (is (t2/exists? :model/ParameterCard :id pc-keep))))
+        (testing "the sample Example collections and their permission records are deleted"
+          (is (not (t2/exists? :model/Collection :id (:id examples))))
+          (is (not (t2/exists? :model/Collection :id (:id ecommerce))))
+          (is (zero? (t2/count :permissions :object [:in [(format "/collection/%d/" (:id examples))
+                                                          (format "/collection/%d/read/" (:id examples))]]))))
         (testing "a dashboard that still has other cards, and unrelated content, is kept"
           (is (t2/exists? :model/Dashboard :id (:id mixed-dash)))
           (is (t2/exists? :report_dashboardcard :id dc3))
           (is (t2/exists? :model/Card :id (:id other-card)))
-          (is (t2/exists? :model/Database :id (:id other))))))))
+          (is (t2/exists? :model/Database :id (:id other)))
+          (is (t2/exists? :model/Collection :id (:id keep-coll))))))))
