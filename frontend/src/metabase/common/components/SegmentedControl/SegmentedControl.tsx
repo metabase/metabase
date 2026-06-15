@@ -59,7 +59,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
         const iconOnly = !option.name;
-        const selectedColor = option.selectedColor || "brand";
+        const selectedColor = option.selectedColor || "core-brand";
         return (
           <SegmentedItem
             key={option.value}

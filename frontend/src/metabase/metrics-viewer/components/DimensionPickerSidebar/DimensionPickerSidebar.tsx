@@ -54,7 +54,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     sourceColors,
     sourceDataById,
     selectDimensionBreakout: onSelectDimensionBreakout,
-    updateActiveDimensionBreakout: onUpdateActiveDimensionBreakout,
+    updateActiveDimensionBreakout,
     closeSidebar,
   } = useMetricsViewerContext();
   const [searchText, setSearchText] = useState("");
@@ -100,10 +100,11 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
         dimensionBreakoutConfig.matchMode === "aggregate"
       ) {
-        onUpdateActiveDimensionBreakout({
+        updateActiveDimensionBreakout((prev) => ({
+          ...prev,
           dimensionMapping: item.dimensionBreakoutInfo.dimensionMapping,
           label: item.dimensionBreakoutInfo.label,
-        });
+        }));
         trackMetricsViewerDimensionSelected();
         return;
       }
@@ -113,7 +114,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     },
     [
       activeDimensionBreakout,
-      onUpdateActiveDimensionBreakout,
+      updateActiveDimensionBreakout,
       onSelectDimensionBreakout,
     ],
   );
@@ -138,10 +139,11 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
         activeDimensionBreakout.type === item.dimensionBreakoutInfo.type &&
         dimensionBreakoutConfig.matchMode === "aggregate"
       ) {
-        onUpdateActiveDimensionBreakout({
+        updateActiveDimensionBreakout((prev) => ({
+          ...prev,
           dimensionMapping,
           label: item.dimensionBreakoutInfo.label,
-        });
+        }));
         trackMetricsViewerDimensionSelected();
         return;
       }
@@ -155,7 +157,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     },
     [
       activeDimensionBreakout,
-      onUpdateActiveDimensionBreakout,
+      updateActiveDimensionBreakout,
       onSelectDimensionBreakout,
       sections,
       metricSlots,
@@ -202,7 +204,10 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
           ...activeDimensionBreakout.dimensionMapping,
           [slotIndex]: dimensionId,
         };
-        onUpdateActiveDimensionBreakout({ dimensionMapping });
+        updateActiveDimensionBreakout((prev) => ({
+          ...prev,
+          dimensionMapping,
+        }));
         return;
       }
 
@@ -222,7 +227,7 @@ export function DimensionPickerSidebar(props: DimensionPickerSidebarProps) {
     [
       activeDimensionBreakout,
       onSelectDimensionBreakout,
-      onUpdateActiveDimensionBreakout,
+      updateActiveDimensionBreakout,
     ],
   );
 

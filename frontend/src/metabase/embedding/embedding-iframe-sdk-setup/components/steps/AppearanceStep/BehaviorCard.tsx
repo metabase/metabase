@@ -271,7 +271,7 @@ export const BehaviorCard = () => {
             href={behaviorDocsUrl}
             target="_blank"
             rel="noreferrer"
-            c="brand"
+            c="core-brand"
             lh={1}
           >
             <Icon

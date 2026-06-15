@@ -45,7 +45,7 @@ import { getTrendLinesOption } from "./trend-line";
 import type { EChartsSeriesOption } from "./types";
 
 export function getBrushStyle(renderingContext: RenderingContext) {
-  const brandColor = Color(renderingContext.getColor("brand"));
+  const brandColor = Color(renderingContext.getColor("core-brand"));
   return {
     fill: brandColor.alpha(CHART_STYLE.brush.fillOpacity).string(),
     borderColor: brandColor.alpha(CHART_STYLE.brush.borderOpacity).string(),

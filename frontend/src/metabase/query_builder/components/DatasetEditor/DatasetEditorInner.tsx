@@ -30,6 +30,7 @@ import {
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
+import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -311,6 +312,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   } = props;
 
   const dispatch = useDispatch();
+  const visualizationResultProps = useVisualizationResultQBProps();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
@@ -744,6 +746,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               ) : (
                 <QueryVisualization
                   {...props}
+                  {...visualizationResultProps}
                   rawSeries={tempRawSeries}
                   className={CS.spread}
                   noHeader

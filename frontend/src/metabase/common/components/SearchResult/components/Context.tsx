@@ -18,7 +18,7 @@ export function Context({ context }: { context: any[] }) {
           }
 
           return (
-            <strong key={i} style={{ color: color("brand") }}>
+            <strong key={i} style={{ color: color("core-brand") }}>
               {" "}
               {text}
             </strong>

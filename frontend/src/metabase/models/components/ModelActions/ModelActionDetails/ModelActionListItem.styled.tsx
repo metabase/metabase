@@ -21,7 +21,7 @@ export const ActionTitle = styled(Link)`
   cursor: ${(props) => (props.to ? "pointer" : "unset")};
 
   &:hover {
-    color: ${(props) => props.to && color("brand")};
+    color: ${(props) => props.to && color("core-brand")};
   }
 `;
 
@@ -47,7 +47,7 @@ export const MenuIcon = styled(Icon)`
   cursor: pointer;
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 `;
 

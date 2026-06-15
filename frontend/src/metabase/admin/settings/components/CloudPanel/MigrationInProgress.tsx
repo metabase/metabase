@@ -74,7 +74,7 @@ export const MigrationInProgress = ({
             justify="center"
             align="center"
           >
-            <Icon name="cloud_filled" size="2.375rem" c="brand" />
+            <Icon name="cloud_filled" size="2.375rem" c="core-brand" />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
             <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>

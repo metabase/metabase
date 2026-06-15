@@ -433,7 +433,7 @@ export const CreateOrEditQuestionAlertModal = ({
       >
         <Button
           variant="outline"
-          color="brand"
+          color="core-brand"
           loading={isLoading}
           onClick={onSendNow}
         >
@@ -443,7 +443,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            bg={hasError ? "error" : "brand"}
+            bg={hasError ? "error" : "core-brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

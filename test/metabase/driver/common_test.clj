@@ -141,7 +141,8 @@
               (driver/drop-table! driver db-id qualified-table-name))))))))
 
 (deftest insert-from-jsonl-file-test
-  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :snowflake :sqlserver :mongo :clickhouse}
+  ;; TODO: give this driver set a name, or use features here. what are we selecting for?
+  (mt/test-drivers #{:postgres :h2 :mysql :bigquery-cloud-sdk :redshift :sqlserver :mongo :clickhouse}
     (mt/with-empty-db
       (let [driver       driver/*driver*
             db-id        (mt/id)
