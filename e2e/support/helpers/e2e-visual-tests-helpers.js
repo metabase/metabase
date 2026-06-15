@@ -288,6 +288,6 @@ export const BoxPlot = {
 export function applyBrush(left, right) {
   echartsContainer()
     .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
+    .trigger("mousemove", right, 100)
     .trigger("mouseup", right, 100);
 }

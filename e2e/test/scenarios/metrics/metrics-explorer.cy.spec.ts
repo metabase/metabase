@@ -157,7 +157,11 @@ const selectEntityPickerItem = (path: string | string[]) => {
 
 const addMetricInputSequence = (
   sequence: InputToken[],
-  { runExpression = true, clearInput = false, skipDatasetWait = false } = {},
+  {
+    runExpression = true,
+    clearInput = false,
+    skipRunCompletionWait = false,
+  } = {},
 ) => {
   H.MetricsViewer.searchInput().then(($input) => {
     if (clearInput) {
@@ -178,34 +182,6 @@ const addMetricInputSequence = (
     }
   });
 
-  // Count how many top-level datasets we're adding
-  // Split by comma to identify separate datasets (pills)
-  let datasetCount = 0;
-  let inExpression = false;
-
-  for (let i = 0; i < sequence.length; i++) {
-    const item = sequence[i];
-
-    if (item === ",") {
-      inExpression = false;
-      continue;
-    }
-
-    if (typeof item !== "object") {
-      // Operator - we're now in an expression
-      if (typeof sequence[i - 1] === "object") {
-        inExpression = true;
-      }
-    } else {
-      // Metric/measure token
-      if (!inExpression) {
-        // This is either a standalone metric or the start of a new expression
-        datasetCount++;
-      }
-      // If inExpression, it's part of the current expression, don't increment
-    }
-  }
-
   for (let i = 0; i < sequence.length; i++) {
     const item = sequence[i];
 
@@ -220,8 +196,11 @@ const addMetricInputSequence = (
 
   if (runExpression) {
     runFormula();
-    if (datasetCount > 0 && !skipDatasetWait) {
-      cy.wait(Array.from({ length: datasetCount }, () => "@dataset"));
+    if (!skipRunCompletionWait) {
+      // It is expected that the elements below do not exist after the expression ran successfully
+      cy.findByTestId("metrics-viewer-search-input").should("not.exist");
+      cy.findByTestId("run-expression-button").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
     }
   }
 };
@@ -231,17 +210,22 @@ const addMetricInputSequence = (
  */
 const addMetric = (
   nameOrPath: string | string[],
-  { runExpression = true, clearInput = false, skipDatasetWait = false } = {},
+  {
+    runExpression = true,
+    clearInput = false,
+    skipRunCompletionWait = false,
+  } = {},
 ) => {
   addMetricInputSequence([{ nameOrPath }], {
     runExpression,
     clearInput,
-    skipDatasetWait,
+    skipRunCompletionWait,
   });
 };
 
 const runFormula = () => {
   cy.log("Make sure mini picker is closed before clicking Run");
+  H.MetricsViewer.runButton().should("be.visible");
   cy.get("body").then(($body) => {
     if ($body.find('[data-testid="mini-picker"]').length > 0) {
       cy.realPress("Escape");
@@ -573,7 +557,7 @@ describe("scenarios > metrics > explorer", () => {
       verifyMetricCount(2);
 
       cy.log("allows duplicates");
-      addMetric("Count of products", { skipDatasetWait: true });
+      addMetric("Count of products");
 
       cy.log("Should allow me to add measures");
       addMetricInputSequence([{ nameOrPath: testMeasurePath }]);
@@ -586,10 +570,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end}xyznonexistent", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No search results",
-      );
+      H.miniPicker().should("contain.text", "No search results");
     });
 
     it("should add metrics and measures from the entity picker", () => {
@@ -600,7 +581,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Add a metric from the entity picker");
       H.MetricsViewer.searchInput().type("Count", { waitForAnimations: true });
-      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.miniPicker().findByText("Browse all").click();
       cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Our analytics", "Count of orders"] });
       cy.findByTestId("metrics-viewer-search-input").should(
@@ -612,7 +593,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end}, Test", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.miniPicker().findByText("Browse all").click();
       cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Library", "Data", "Orders", "Test Measure"] });
       cy.findByTestId("metrics-viewer-search-input").should(
@@ -625,7 +606,7 @@ describe("scenarios > metrics > explorer", () => {
       verifyMetricCount(2);
 
       H.MetricsViewer.searchInput().type("Sample", { waitForAnimations: true });
-      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.miniPicker().findByText("Browse all").click();
       cy.findByTestId("nested-item-picker").should("be.visible");
       H.pickEntity({ path: ["Databases", "Sample Database"] });
 
@@ -666,13 +647,10 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Count of", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No search results",
-      );
+      H.miniPicker().should("contain.text", "No search results");
 
       H.MetricsViewer.searchInput().clear().type("Test Measure");
-      H.MetricsViewer.searchResults().should("contain.text", "Test Measure");
+      H.miniPicker().should("contain.text", "Test Measure");
     });
 
     it("should not show me measures that live in tables I do not have permissions to see", () => {
@@ -681,10 +659,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Test Measure", {
         waitForAnimations: true,
       });
-      H.MetricsViewer.searchResults().should(
-        "contain.text",
-        "No search results",
-      );
+      H.miniPicker().should("contain.text", "No search results");
 
       addMetric("Count of orders", { clearInput: true });
       cy.log(
@@ -909,7 +884,7 @@ describe("scenarios > metrics > explorer", () => {
 
     it("should preserve breakout state when editing formula and re-running", () => {
       cy.log("Set up: two instances of Count of orders with an expression");
-      addMetric("Count of orders", { skipDatasetWait: true });
+      addMetric("Count of orders");
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
 
@@ -930,6 +905,7 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Enter formula edit mode and append a new metric");
       cy.findByTestId("metrics-formula-input").click();
+      cy.findByTestId("mini-picker").should("be.visible");
       H.MetricsViewer.searchInput().type(", Count of products", {
         waitForAnimations: true,
       });
@@ -1261,15 +1237,12 @@ describe("scenarios > metrics > explorer", () => {
         .eq(0)
         .should("contain.text", "First Name");
 
-      addMetricInputSequence(
-        [
-          ",",
-          { nameOrPath: "Count of orders" },
-          "+",
-          { nameOrPath: testMeasurePath },
-        ],
-        { skipDatasetWait: true },
-      );
+      addMetricInputSequence([
+        ",",
+        { nameOrPath: "Count of orders" },
+        "+",
+        { nameOrPath: testMeasurePath },
+      ]);
 
       H.MetricsViewer.searchBarPills().should("have.length", 2);
       openExpressionRename(1);
@@ -2142,6 +2115,7 @@ describe("scenarios > metrics > explorer", () => {
     });
 
     it("should allow me to do brush style time range filtering", () => {
+      H.ensureChartIsActive();
       H.applyBrush(100, 250);
       H.MetricsViewer.getMetricVisualization().within(() => {
         cy.findByText(/June/).should("be.visible");
