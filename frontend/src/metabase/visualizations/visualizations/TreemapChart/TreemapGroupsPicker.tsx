@@ -15,13 +15,6 @@ export type TreemapGroupsPickerProps = {
   ) => void;
 };
 
-/**
- * The per-group list under the Grouping picker: color swatch + name + a "…"
- * rename popover + an X that removes the group from the chart (it can be added
- * back via the picker that appears once something is removed). Unlike pie's
- * rows there is no reordering — tiles auto-sort by value — so drag handles are
- * disabled.
- */
 export function TreemapGroupsPicker({
   rawSeries,
   settings,
@@ -34,10 +27,6 @@ export function TreemapGroupsPicker({
     return null;
   }
 
-  // In a 2-level treemap the sub-group tiles render as derived shades of the
-  // parent hue, so the picker offers only the main accent row (a light/dark
-  // shade as the base would collide with the derived shades). A 1-level
-  // treemap has no derived shades, so the full palette is offered.
   const isTwoLevel =
     getTreemapChartColumns(rawSeries[0]?.data?.cols ?? [], settings)
       ?.subGrouping != null;
