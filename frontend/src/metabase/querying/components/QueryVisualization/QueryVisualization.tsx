@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTimeout } from "react-use";
 import { c, t } from "ttag";
@@ -7,7 +7,6 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { Warnings } from "metabase/common/components/Warnings";
-import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useSelector } from "metabase/redux";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
@@ -17,13 +16,15 @@ import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
+import S from "./QueryVisualization.module.css";
 import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
+import type { QueryVisualizationProps } from "./types";
 
 const SLOW_MESSAGE_TIMEOUT = 4000;
 
-export function QueryVisualization(props) {
+export function QueryVisualization(props: QueryVisualizationProps) {
   const {
     className,
     question,
@@ -38,7 +39,7 @@ export function QueryVisualization(props) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
-  const [warnings, setWarnings] = useState([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const isDirtyStateShown =
     canRun &&
     isResultDirty &&
@@ -47,65 +48,52 @@ export function QueryVisualization(props) {
     !isNativeEditorOpen &&
     (result?.error == null ||
       isDirtyStateShownForError ||
-      result.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
+      result?.error_type === SERVER_ERROR_TYPES.missingRequiredParameter);
 
   return (
-    <div
-      className={cx(className, CS.relative, CS.stackingContext, CS.fullHeight)}
-    >
-      {isRunning ? (
-        <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
-      ) : null}
+    <Box pos="relative" h="100%" className={cx(className, S.root)}>
+      {isRunning ? <VisualizationRunningState className={S.overlay} /> : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isDirtyStateShown}
-        className={cx(CS.spread, CS.z2)}
+        className={S.overlay}
       />
       {!isObjectDetail && (
-        <Warnings
-          warnings={warnings}
-          className={cx(CS.absolute, CS.top, CS.right, CS.mt2, CS.mr2, CS.z2)}
-          size={18}
-        />
+        <Warnings warnings={warnings} className={S.warnings} size={18} />
       )}
-      <div
-        className={cx(
-          CS.spread,
-          QueryBuilderS.Visualization,
-          {
-            [QueryBuilderS.VisualizationLoading]: isRunning,
-          },
-          CS.z1,
-        )}
+      <Box
+        className={cx(S.visualization, QueryBuilderS.Visualization, {
+          [QueryBuilderS.VisualizationLoading]: isRunning,
+        })}
         data-testid="query-visualization-root"
       >
         {result?.error ? (
           <VisualizationError
-            className={CS.spread}
+            className={S.spread}
             error={result.error}
             errorType={result.error_type}
-            via={result.via}
+            via={result.via ?? []}
             question={question}
-            duration={result.duration}
+            duration={result.duration ?? 0}
           />
         ) : result?.data ? (
           <VisualizationResult
             {...props}
             maxTableRows={maxTableRows}
-            className={CS.spread}
+            className={S.spread}
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning && !isDirtyStateShown ? (
-          <VisualizationEmptyState className={CS.spread}>
+          <VisualizationEmptyState>
             {t`Here's where your results will appear`}
           </VisualizationEmptyState>
         ) : null}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 
-const VisualizationEmptyState = ({ children }) => {
+const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
@@ -126,14 +114,18 @@ const VisualizationEmptyState = ({ children }) => {
   );
 };
 
-export function VisualizationRunningState({ className = "" }) {
+export function VisualizationRunningState({
+  className = "",
+}: {
+  className?: string;
+}) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
   const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
 
   // show the slower loading message only when the loadingMessage is
   // not customized
-  const message = getLoadingMessage(isSlow());
+  const message = getLoadingMessage(isSlow() ?? false);
 
   return (
     <Flex
@@ -151,23 +143,31 @@ export function VisualizationRunningState({ className = "" }) {
   );
 }
 
+type VisualizationDirtyStateProps = {
+  className?: string;
+  isRunning?: boolean;
+  isResultDirty?: boolean;
+  runQuestionQuery?: () => void;
+  cancelQuery?: () => void;
+  hidden?: boolean;
+};
+
 export const VisualizationDirtyState = ({
   className,
-  result,
   isRunning,
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
   hidden,
-}) => {
+}: VisualizationDirtyStateProps) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   const handleClick = () => {
     if (!hidden) {
       if (isRunning) {
-        cancelQuery();
+        cancelQuery?.();
       } else {
-        runQuestionQuery();
+        runQuestionQuery?.();
       }
     }
   };
@@ -186,12 +186,12 @@ export const VisualizationDirtyState = ({
       onClick={handleClick}
     >
       <RunButtonWithTooltip
-        className={CS.shadowed}
+        className={S.shadowed}
         iconSize={32}
         circular
         hidden={hidden}
-        isRunning={isRunning}
-        isDirty={isResultDirty}
+        isRunning={Boolean(isRunning)}
+        isDirty={Boolean(isResultDirty)}
       />
       {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>

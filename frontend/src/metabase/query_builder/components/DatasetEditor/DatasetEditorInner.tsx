@@ -64,6 +64,7 @@ import {
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CollectionId,
+  Dataset,
   DatasetColumn,
   Field,
   NativeQuerySnippet,
@@ -97,7 +98,7 @@ export type DatasetEditorInnerProps = {
   metadataDiff: MetadataDiff;
   resultsMetadata?: ResultsMetadata | null;
   isMetadataDirty: boolean;
-  result?: { error?: unknown } | null;
+  result?: Dataset | null;
   height?: number;
   isDirty: boolean;
   isResultDirty: boolean;
@@ -540,18 +541,18 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   );
 
   const handleTableElementClick = useCallback(
-    ({
-      element,
-      ...clickedObject
-    }: {
-      element?: unknown;
-      column?: DatasetColumn;
-    }) => {
-      const isColumnClick =
-        clickedObject?.column && Object.keys(clickedObject)?.length === 1;
+    (clicked: Lib.ClickObject | null) => {
+      if (!clicked) {
+        return;
+      }
+      const { element, ...clickedObject } = clicked;
+      if (!clickedObject.column) {
+        return;
+      }
 
+      const isColumnClick = Object.keys(clickedObject).length === 1;
       if (isColumnClick) {
-        setFocusedFieldName((clickedObject.column as DatasetColumn).name);
+        setFocusedFieldName(clickedObject.column.name);
       }
     },
     [setFocusedFieldName],
@@ -762,7 +763,9 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
                   isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                   hasMetadataPopovers={false}
                   handleVisualizationClick={handleTableElementClick}
-                  tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}
+                  tableHeaderHeight={
+                    isEditingColumns ? TABLE_HEADER_HEIGHT : undefined
+                  }
                   renderTableHeader={renderTableHeader}
                   scrollToColumn={focusedFieldIndex + scrollToColumnModifier}
                   renderEmptyMessage={isEditingColumns}
