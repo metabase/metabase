@@ -372,3 +372,57 @@
       (is (-> [changed-file]
               mage.modules/updated-files->updated-modules
               mage.modules/driver-deps-affected?)))))
+
+;;; =============================================================================
+;;; ci-test-config `drivers` parsing (skip / info / required status)
+;;; =============================================================================
+
+(deftest config-name->drivers-resolves-driver-names
+  (testing "a driver name resolves to its internal driver keyword"
+    (is (= [:snowflake] (#'mage.modules/config-name->drivers "snowflake")))
+    (is (= [:bigquery] (#'mage.modules/config-name->drivers "bigquery")))
+    (is (= [:databricks] (#'mage.modules/config-name->drivers "databricks"))))
+  (testing "a name that fans out to several jobs is expanded"
+    (is (= [:mongo :mongo-ssl :mongo-sharded-cluster]
+           (#'mage.modules/config-name->drivers "mongo")))))
+
+(def ^:private example-config
+  "The new ci-test-config `drivers` shape from DEV-2149."
+  {:drivers [{:name "databricks" :status "skip"}
+             {:name "snowflake" :status "info"}
+             {:name "bigquery" :status "info"}]})
+
+(deftest driver-statuses-maps-names-to-status
+  (testing "drivers array is translated to a driver-keyword -> status map"
+    (with-redefs [mage.modules/read-ci-test-config (constantly example-config)]
+      (is (= {:databricks :skip
+              :snowflake :info
+              :bigquery :info}
+             (#'mage.modules/driver-statuses)))))
+  (testing "drivers absent from the config are not present (implicitly :required)"
+    (with-redefs [mage.modules/read-ci-test-config (constantly example-config)]
+      (is (nil? (get (#'mage.modules/driver-statuses) :mysql))))))
+
+(deftest driver-statuses-never-throws
+  (testing "a failure to read/parse the config yields {} (all drivers required) instead of breaking CI"
+    (with-redefs [mage.modules/read-ci-test-config (fn [] (throw (ex-info "boom" {})))]
+      (is (= {} (#'mage.modules/driver-statuses))))))
+
+(deftest skip-drivers-selects-only-skip-status
+  (testing "only :skip drivers are quarantined; :info drivers still run"
+    (is (= #{:databricks}
+           (#'mage.modules/skip-drivers {:databricks :skip
+                                         :snowflake :info
+                                         :bigquery :info})))))
+
+(deftest info-driver-runs-but-is-not-skipped
+  (testing "an :info driver is NOT in the skip-set, so it follows normal run rules (runs on master)"
+    ;; skip-set derived from example-config contains only :databricks
+    (let [skip-set (#'mage.modules/skip-drivers {:databricks :skip :snowflake :info})
+          result (mage.modules/driver-decision :snowflake
+                                               (make-ctx {:is-master-or-release true})
+                                               false
+                                               skip-set
+                                               #{})]
+      (is (true? (:should-run result)))
+      (is (= "master/release branch" (:reason result))))))
