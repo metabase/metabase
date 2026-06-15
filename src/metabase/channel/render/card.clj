@@ -131,7 +131,6 @@
         (#{:smartscalar
            :progress
            :sankey
-           :treemap
            :scalar
            :pie
            :scatter
