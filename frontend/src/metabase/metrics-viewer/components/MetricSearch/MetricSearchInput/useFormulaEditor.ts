@@ -422,10 +422,12 @@ export function useFormulaEditor({
       ]),
     );
 
-    for (const identity of [
-      ...editingSessionIdentities,
-      ...pendingIdentities,
-    ]) {
+    const recoverableIdentities =
+      editText === textAtFocusRef.current
+        ? [...editingSessionIdentities, ...pendingIdentities]
+        : pendingIdentities;
+
+    for (const identity of recoverableIdentities) {
       const positionKey = `${identity.from}:${identity.to}`;
       const metricName = metricNamesRef.current[identity.sourceId];
       if (
