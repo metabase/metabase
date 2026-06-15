@@ -172,7 +172,8 @@
                                                                            :target  [:dimension
                                                                                      [:field "CATEGORY" {:base-type :type/Text}]
                                                                                      {:stage-number 2}]}]}]
-        (let [param-fields (-> (t2/hydrate dashboard :param_fields) :param_fields)]
+        (let [param-fields (lib-be/with-metadata-provider-cache
+                             (-> (t2/hydrate dashboard :param_fields) :param_fields))]
           (is (=? {"p1" [{:id (mt/id :products :id)}]
                    "p2" [{:id (mt/id :products :id)}]
                    "p3" [{:id (mt/id :products :id)}]

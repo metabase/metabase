@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -317,18 +318,20 @@
   [[field-id-into-context-rf]]) will need, so those computations hit the metadata-provider cache instead of fetching
   objects one at a time. Only Cards whose parameter target is not field-id-based need filterable columns; we build
   their queries here (the same way [[ensure-filterable-columns-for-card]] does, via [[card->filterable-columns-query]]),
-  gather the entities they reference, and bulk-load them per Database. No-op outside a metadata-provider cache scope,
-  since there'd be no shared cache to warm."
+  gather the entities they reference, and bulk-load them per Database. Requires a metadata-provider cache scope (asserted
+  by [[card->filterable-columns-query]]), since there'd otherwise be no shared cache to warm."
   [param-dashcard-infos]
-  (when (lib-be/metadata-provider-cache)
-    (doseq [[database-id cards+stages] (->> param-dashcard-infos
-                                            (keep param-dashcard-info->card+stage)
-                                            (filter (fn [[card _stage-number]] (pos-int? (:database_id card))))
-                                            (group-by (fn [[card _stage-number]] (:database_id card))))]
-      (when-let [queries (not-empty (into [] (keep (fn [[card stage-number]]
-                                                     (card->filterable-columns-query card stage-number)))
-                                          cards+stages))]
-        (lib-be/bulk-load-query-metadata! (lib-be/application-database-metadata-provider database-id)
+  (doseq [[database-id cards+stages] (->> param-dashcard-infos
+                                          (keep param-dashcard-info->card+stage)
+                                          (filter (fn [[card _stage-number]] (pos-int? (:database_id card))))
+                                          (group-by (fn [[card _stage-number]] (:database_id card))))]
+    (when-let [queries (not-empty (into [] (keep (fn [[card stage-number]]
+                                                   (card->filterable-columns-query card stage-number)))
+                                        cards+stages))]
+      (let [metadata-provider (lib-be/application-database-metadata-provider database-id)]
+        (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
+          (throw (ex-info "Must provided a cached metadata provider" {})))
+        (lib-be/bulk-load-query-metadata! metadata-provider
                                           (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true}))))))
 
 (mu/defn dashcards->param-id->field-ids* :- [:map-of ::lib.schema.parameter/id [:set ::lib.schema.id/field]]
