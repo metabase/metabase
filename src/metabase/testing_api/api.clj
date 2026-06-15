@@ -366,7 +366,7 @@
   ([user-id second-user-id]
    (seed-usage-auditing-data! user-id second-user-id nil nil))
   ([user-id second-user-id tenant-id second-tenant-id]
-   (let [today          (t/offset-date-time (t/zone-offset "+00"))
+   (let [today          (t/zoned-date-time)
          yesterday      (t/minus today (t/days 1))
          two-days       (t/minus today (t/days 2))
          previous-week  (t/minus today (t/days 8))
