@@ -32,11 +32,13 @@
            deps.findings/analyzable-entities)))
 
 (defn- check-entities!
-  "Drain stale/outdated entities until the run converges, then return.
+  "Analyze stale/outdated entities until a pass turns up nothing new, then return.
 
   Guaranteed to terminate even when the dependency graph contains a cycle or an entity that can
   never clear its stale flag — earlier this could spin until the instance ran out of memory
-  (#75748)."
+  (#75748). Convergence is eventual, not necessarily within a single run: a node re-staled *after*
+  it was already analyzed this run (e.g. the bottom of a diamond whose parents are processed in the
+  wrong order) keeps its stale flag and is re-analyzed on the next run."
   []
   (when (premium-features/has-feature? :dependencies)
     ;; Each pass analyzes a batch and (via analyze-and-propagate!) marks the dependents of *changed*

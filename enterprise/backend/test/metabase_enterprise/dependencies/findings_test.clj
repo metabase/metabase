@@ -338,3 +338,65 @@
               (#'task.entity-check/check-entities!)
               (is (false? (finding-stale? :card card-id))
                   "card should be re-analyzed after entity-check"))))))))
+
+(deftest ^:sequential re-staled-after-being-seen-carries-to-next-run-test
+  (testing (str "A node re-staled AFTER it was already analyzed this run is left stale until the NEXT "
+                "run — `check-entities!` convergence is eventual, not necessarily within a single run "
+                "(#75748). The per-run `seen` set bounds the loop: once an upstream is in `seen`, a "
+                "terminal pass that re-analyzes it (and re-stales a downstream) turns up nothing NEW, "
+                "so the loop stops with the downstream still stale.")
+    ;; Diamond: C depends on A and B. The natural ordering of the within-run re-stale depends on the
+    ;; appdb's intra-batch row order, which has no secondary sort key and so is not guaranteed — making
+    ;; a fully organic reproduction flaky. We instead pin the LOOP SEMANTIC deterministically: model an
+    ;; upstream that is re-staled and re-analyzed in a *terminal* pass (already in `seen`) and re-stales
+    ;; an already-analyzed C. Each pass below carries exactly one entity, so there is no ordering
+    ;; ambiguity. Concretely:
+    ;;   pass 1: A (stale, output moved) → marks C stale
+    ;;   pass 2: C analyzed and cleared; we then re-stale A (already seen) and move A's stored metadata
+    ;;           again so A's next analysis changes output
+    ;;   pass 3: batch = {A} (already in `seen`) → A re-analyzed, output moves → re-stales C; the loop
+    ;;           turns up nothing NEW and STOPS, leaving C stale → carried to the next run.
+    (backfill-all-entity-analyses!)
+    (let [mp       (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          rmeta3   [{:name "A" :base_type :type/Integer :display_name "A"}
+                    {:name "B" :base_type :type/Integer :display_name "B"}
+                    {:name "C" :base_type :type/Integer :display_name "C"}]
+          rmeta2   (vec (take 2 rmeta3))
+          rmeta1   (vec (take 1 rmeta3))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-model-cleanup [:model/AnalysisFinding]
+          (mt/with-temp [:model/Card {a-id :id :as a-card} {:dataset_query (lib/query mp products) :result_metadata rmeta3}
+                         :model/Card {b-id :id :as b-card} {:dataset_query (lib/query mp products) :result_metadata rmeta3}
+                         :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp products) :result_metadata rmeta3}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                              :to_entity_type :card :to_entity_id a-id}
+                         :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                              :to_entity_type :card :to_entity_id b-id}]
+            (lib-be/with-metadata-provider-cache
+              (run! deps.findings/upsert-analysis! [a-card b-card c-card]))
+            ;; A's first output change, propagated to its stored metadata; only A is marked stale.
+            (t2/update! :model/Card a-id {:result_metadata rmeta2})
+            (models.analysis-finding/mark-stale! :card [a-id])
+            (let [orig    (mt/original-fn #'task.entity-check/process-one-batch!)
+                  bumped? (atom false)]
+              ;; After the pass that analyzes (and clears) C, re-stale A — which is already in the run's
+              ;; `seen` set — and move A's stored metadata again so its terminal-pass re-analysis changes
+              ;; output and re-stales C. This is the within-run re-stale-after-seen the loop must defer.
+              (mt/with-dynamic-fn-redefs [task.entity-check/process-one-batch!
+                                          (fn []
+                                            (let [processed (orig)]
+                                              (when (and (not @bumped?) (contains? processed [:card c-id]))
+                                                (reset! bumped? true)
+                                                (t2/update! :model/Card a-id {:result_metadata rmeta1})
+                                                (models.analysis-finding/mark-stale! :card [a-id]))
+                                              processed))]
+                (#'task.entity-check/check-entities!)))
+            (is (= {a-id false, b-id false, c-id true}
+                   (stale-map [a-id b-id c-id]))
+                "C was re-staled by an already-seen upstream in a terminal pass, so it is LEFT stale after run 1")
+            ;; the next run has a fresh `seen` set and drains C
+            (#'task.entity-check/check-entities!)
+            (is (= {a-id false, b-id false, c-id false}
+                   (stale-map [a-id b-id c-id]))
+                "the next run clears C — convergence is eventual across runs")))))))

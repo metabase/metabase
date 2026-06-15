@@ -1,5 +1,7 @@
 (ns metabase-enterprise.dependencies.analysis
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -173,12 +175,15 @@
   ;; re-propagates, which is correct — nothing a dependent reads changes when a segment is edited.
   [:segment segment-id])
 
-(defn output-hash
-  "A stable token for an entity's output identity. Equal outputs hash equal; the entity-check job
-  propagates staleness to dependents only when this changes between analyses (#75748). Stable across
-  processes for a given Clojure version."
+(mu/defn output-hash :- :string
+  "A stable, bounded token for an entity's output identity. Equal outputs hash equal; the
+  entity-check job propagates staleness to dependents only when this changes between analyses
+  (#75748). Stable across processes."
   [metadata-provider entity-type entity-id]
-  ;; `clojure.core/hash` is content- (not identity-) based and order-independent for maps, so the
-  ;; identity needs no canonical serialization. A Clojure upgrade that changed hashing would
-  ;; re-propagate everything once (bounded by the job).
-  (str (hash (-output-identity metadata-provider entity-type entity-id))))
+  ;; SHA-256 over the identity's `pr-str`. The identity is a deterministic, map-free structure, so
+  ;; its `pr-str` is stable; SHA-256 keeps the token a fixed 64 chars and makes a collision — which
+  ;; would silently skip a propagation, the dangerous direction — practically impossible.
+  (-> (-output-identity metadata-provider entity-type entity-id)
+      pr-str
+      buddy-hash/sha256
+      codecs/bytes->hex))

@@ -12,6 +12,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -178,7 +179,9 @@
                 "(#75748). The kebab-shaped mock guards above can't see this — mock providers "
                 "normalize to kebab, while production stores snake.")
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/mbql-query products)
+      ;; the query is incidental here — output-hash reads the stored result_metadata, never the query
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/native-query {:query "SELECT 1"})
+                                                :database_id     (mt/id)
                                                 :result_metadata snake-result-metadata}]
         (let [db-id     (mt/id)
               base-hash (fresh-card-hash db-id card-id)]
@@ -196,3 +199,77 @@
               (is (not= base-hash mutated-hash)
                   (str "output-hash must change when a real card's stored " label " changes — "
                        "a kebab-only canonical-column would read nil for the type axes and miss this")))))))))
+
+;; --- Segment soundness: breaking a segment must NOT flip a dependent's breakage ----------------
+;; `-output-identity :segment` returns a CONSTANT `[:segment id]` token, so a segment edit never
+;; moves the segment's output-hash and therefore never re-checks the segment's dependents
+;; (`analyze-and-propagate!` only propagates when `upsert-analysis!` reports a change). That is sound
+;; ONLY IF no dependent's breakage check resolves anything against the segment's `:definition` — i.e.
+;; breaking the segment cannot flip a card that *uses* the segment. `find-bad-refs` walks the card's
+;; `:field` clauses, not the `[:segment id]` clause's definition (segment expansion happens in QP
+;; middleware, not in the analysis path), so a broken segment makes the *segment* report broken while
+;; its dependent card stays clean. This test pins exactly that: if a future change ever teaches
+;; `find-bad-refs` to expand and validate segment definitions, the dependent's breakage WOULD flip
+;; here while the segment hash stays constant — and this test fails, forcing the segment hash to
+;; become definition-sensitive (#75748).
+
+(def ^:private segment-soundness-fixture
+  "A clean provider plus a broken one, sharing one segment (700) and one card (800) that uses it.
+
+  The segment's definition filters PRODUCTS on PRICE; card 800 is PRODUCTS filtered by the segment
+  (a `[:segment 700]` clause, produced by `lib/filter` on the segment metadata). The broken provider
+  deactivates the PRICE field the segment's definition binds — the same Lib-level break the mutation
+  guards above use — which makes the *segment's own* `check-entity` non-empty while leaving the
+  card's untouched. Built once; everything is Lib-constructed (no hand-written MBQL)."
+  (delay
+    (let [base      (deps.tu/mock-metadata-provider {})
+          prods-q   (lib/query base (meta/table-metadata :products))
+          price-col (m/find-first #(= (:name %) "PRICE") (lib/returned-columns prods-q))
+          _         (assert (some? price-col) "PRICE column must resolve from products")
+          seg-def   (lib/filter prods-q (lib/> price-col 100))
+          segment   {:lib/type   :metadata/segment
+                     :id         700
+                     :name       "Expensive products"
+                     :table-id   (meta/id :products)
+                     ;; stored legacy, as production / `mock-card` does
+                     :definition (lib.convert/->legacy-MBQL seg-def)}
+          mp-seg    (lib/composed-metadata-provider
+                     base
+                     (providers.mock/mock-metadata-provider {:segments [segment]}))
+          ;; card 800 USES the segment: PRODUCTS filtered by the `[:segment 700]` clause
+          card-q    (-> (lib/query mp-seg (meta/table-metadata :products))
+                        (lib/filter (lib.metadata/segment mp-seg 700)))
+          card      (deps.tu/mock-card mp-seg {:id 800 :query card-q})
+          clean-mp  (lib/composed-metadata-provider
+                     base
+                     (providers.mock/mock-metadata-provider {:segments [segment] :cards [card]}))
+          ;; break the segment by deactivating the PRICE field its definition binds
+          price-fld (lib.metadata/field base (meta/id :products :price))
+          broken-mp (lib/composed-metadata-provider
+                     (providers.mock/mock-metadata-provider {:fields [(assoc price-fld :active false)]})
+                     clean-mp)]
+      {:clean clean-mp :broken broken-mp})))
+
+(deftest breaking-a-segment-does-not-flip-a-dependent-cards-breakage-test
+  (testing (str "Breaking a segment makes the SEGMENT report broken but does NOT flip a card that "
+                "uses it, and the segment's output-hash is a constant token unaffected by the break "
+                "(#75748). This is what makes the constant `-output-identity :segment` sound: no "
+                "dependent breakage check resolves against a segment's definition. If `find-bad-refs` "
+                "ever learns to expand segments, this fails and forces the segment hash to track the "
+                "definition.")
+    (let [{clean-mp :clean broken-mp :broken} @segment-soundness-fixture]
+      (testing "baseline: the segment and the card that uses it are both clean"
+        (is (empty? (deps.analysis/check-entity clean-mp :segment 700)))
+        (is (empty? (deps.analysis/check-entity clean-mp :card 800))
+            "card 800 uses segment 700 and is clean before the break"))
+      (testing "after the break: the SEGMENT is broken but the dependent CARD is not"
+        (is (seq (deps.analysis/check-entity broken-mp :segment 700))
+            "the segment's own breakage check flips — its definition binds the now-inactive PRICE")
+        (is (empty? (deps.analysis/check-entity broken-mp :card 800))
+            (str "the card that USES the segment stays clean — breaking the segment did NOT flip "
+                 "its breakage. If this fails, find-bad-refs now resolves against segment "
+                 "definitions and the constant segment output-hash is no longer sound.")))
+      (testing "the segment's output-hash is the constant token — unchanged across the break"
+        (is (= (deps.analysis/output-hash clean-mp :segment 700)
+               (deps.analysis/output-hash broken-mp :segment 700))
+            "segment output-hash must be definition-insensitive (the constant `[:segment id]` token)")))))

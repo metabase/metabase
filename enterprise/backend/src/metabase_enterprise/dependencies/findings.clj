@@ -93,15 +93,6 @@
          [(lib/validation-exception-error "Could not resolve a database for this entity.")]
          unanalyzable-output-hash)))))
 
-(defn analyze-instances!
-  "Given a series of toucan entities, upsert analyses for all of them and catch errors."
-  [instances]
-  (doseq [instance instances]
-    (try (upsert-analysis! instance)
-         (catch Exception e
-           (log/errorf e "Analyzing entity %s %s failed"
-                       (t2/model instance) (:id instance))))))
-
 (def analyzable-entities
   "Entities for which we can compute analysis findings."
   #{:card :transform :segment})
