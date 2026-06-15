@@ -1220,8 +1220,7 @@
                            (lib/join (-> (lib/join-clause reviews-table
                                                           [(lib/= orders-product-id reviews-product-id)])
                                          (lib/with-join-alias "Reviews")
-                                         (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))
-                           lib/->legacy-MBQL))
+                                         (lib/with-join-fields [reviews-id reviews-product-id reviews-created-at])))))
           with-products (mt/user-http-request :crowberto :post 200 "card"
                                               {:name                   "model 60930"
                                                :type                   :model
