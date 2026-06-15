@@ -3,10 +3,10 @@
    importing a repo materializes data apps from its `data_apps/` directory."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.models.data-app]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase.data-apps.models.data-app]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -14,7 +14,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :each (fn [f] (test-helpers/clean-remote-sync-state f)))
 
-(comment metabase.data-apps.models.data-app/keep-me)
+(comment metabase-enterprise.data-apps.models.data-app/keep-me)
 
 (defn- import! [files]
   (let [source  (test-helpers/create-mock-source :initial-files files)
