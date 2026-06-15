@@ -14,9 +14,11 @@ import { useDispatch, useSelector } from "metabase/redux";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  CollectionId,
   DatabaseId,
   EmbeddingParameterVisibility,
   NativeDatasetQuery,
+  NativeQuerySnippet,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -31,6 +33,11 @@ interface NativeQueryRightSidebarProps {
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
+  setModalSnippet: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  snippetCollectionId: CollectionId | null;
+  setSnippetCollectionId?: (id: CollectionId | null) => void;
   showTimelineEvents: () => void;
   hideTimelineEvents: () => void;
   selectTimelineEvents: () => void;

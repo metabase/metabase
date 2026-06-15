@@ -621,99 +621,68 @@ export const selectedTimelineEventIds = createReducer<number[]>(
   },
 );
 
+type CardPayloadAction = {
+  type: string;
+  payload: Card;
+};
+
+type NestedCardPayloadAction = {
+  type: string;
+  payload: {
+    card: Card;
+  };
+};
+
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(INITIALIZE_QB, (state, action) =>
+    .addCase<string, NestedCardPayloadAction>(INITIALIZE_QB, (state, action) =>
       action.payload ? action.payload.card : null,
     )
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(SOFT_RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(RELOAD_CARD, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
+    .addCase<string, CardPayloadAction>(
+      SOFT_RELOAD_CARD,
+      (state, action) => action.payload,
+    )
+    .addCase<string, CardPayloadAction>(
+      RELOAD_CARD,
+      (state, action) => action.payload,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      SET_CARD_AND_RUN,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, CardPayloadAction>(
+      API_CREATE_QUESTION,
+      (state, action) => action.payload,
+    )
+    .addCase<string, CardPayloadAction>(
+      API_UPDATE_QUESTION,
+      (state, action) => action.payload,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      CANCEL_QUESTION_CHANGES,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      UPDATE_QUESTION,
+      (state, action) => action.payload.card,
+    )
+    .addCase<string, NestedCardPayloadAction>(
+      QUERY_COMPLETED,
+      (state, action) => {
+        if (!state) {
+          return state;
+        }
+        return {
+          ...state,
+          display: action.payload.card.display,
+          result_metadata: action.payload.card.result_metadata,
+          visualization_settings: action.payload.card.visualization_settings,
         };
-      }
-    >(SET_CARD_AND_RUN, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_CREATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: Card;
-      }
-    >(API_UPDATE_QUESTION, (state, action) => action.payload)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(CANCEL_QUESTION_CHANGES, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(UPDATE_QUESTION, (state, action) => action.payload.card)
-    .addCase<
-      string,
-      {
-        type: string;
-        payload: {
-          card: Card;
-        };
-      }
-    >(QUERY_COMPLETED, (state, action) => {
-      if (!state) {
-        return state;
-      }
-      return {
-        ...state,
-        display: action.payload.card.display,
-        result_metadata: action.payload.card.result_metadata,
-        visualization_settings: action.payload.card.visualization_settings,
-      };
-    });
-  // Matchers chained separately — a single fluent chain with the RTK Query
-  // endpoint matchers exceeds TS's type-instantiation depth (TS2589).
-  builder
+      },
+    )
     .addMatcher(createCardPublicLink.matchFulfilled, (state, action) => {
       if (!state) {
         return state;

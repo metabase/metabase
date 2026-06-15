@@ -499,6 +499,7 @@
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
            settings
@@ -1594,7 +1595,8 @@
 
   pivot
   {:team "UX West"
-   :api  #{metabase.pivot.core}
+   :api  #{metabase.pivot.core
+           metabase.pivot.postprocess}
    :uses #{models
            util}}
 
