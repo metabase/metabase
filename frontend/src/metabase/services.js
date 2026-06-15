@@ -7,10 +7,6 @@ export const GTAPApi = {
   validate: POST("/api/mt/gtap/validate"),
 };
 
-export const StoreApi = {
-  tokenStatus: GET("/api/premium-features/token/status"),
-};
-
 export const CollectionsApi = {
   get: GET("/api/collection/:id"),
   graph: GET("/api/collection/graph"),
