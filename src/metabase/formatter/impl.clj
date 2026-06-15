@@ -342,9 +342,9 @@
   Shared by the CSV export and static-viz pivot render paths. `row-indexes`/`col-indexes`/`val-indexes` are column
   indexes into `columns`."
   [columns      :- [:sequential :map]
-   row-indexes  :- [:sequential :int]
-   col-indexes  :- [:sequential :int]
-   val-indexes  :- [:sequential :int]
+   row-indexes  :- [:maybe [:sequential :int]]
+   col-indexes  :- [:maybe [:sequential :int]]
+   val-indexes  :- [:maybe [:sequential :int]]
    settings     :- [:maybe :map]
    timezone     :- [:maybe :string]
    format-rows? :- :boolean]
