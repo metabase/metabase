@@ -299,7 +299,7 @@
       (when-let [data (store/load-database! store db-name)]
         (->database-metadata data))))
 
-  (metadatas [_this {:keys [lib/type id table-id name]}]
+  (metadatas [_this {:keys [lib/type id table-ids name]}]
     (case type
       :metadata/table
       (vec
@@ -329,13 +329,14 @@
                :when data]
            (->field-metadata (make-import-resolver store nil) data))
 
-         table-id
-         (let [table-path (store/id->ref store :table table-id)]
-           (when table-path
-             (for [fpath (store/fields-for-table store table-path)
-                   :let [data (store/load-field! store fpath)]
-                   :when data]
-               (->field-metadata (make-import-resolver store nil) data))))
+         table-ids
+         (for [table-id  table-ids
+               :let      [table-path (store/id->ref store :table table-id)]
+               :when     table-path
+               fpath     (store/fields-for-table store table-path)
+               :let      [data (store/load-field! store fpath)]
+               :when     data]
+           (->field-metadata (make-import-resolver store nil) data))
 
          :else
          (for [path (store/all-field-paths store)

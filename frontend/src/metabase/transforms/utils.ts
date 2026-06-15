@@ -274,6 +274,10 @@ export const getRootCollectionItem = ({
   return null;
 };
 
+export function isMissingSourceDatabase(transform: Transform) {
+  return transform.source_database_id == null;
+}
+
 /**
  * Returns the duration in ms of a transform run, or null when it cannot be
  * measured (run still in progress, missing timestamps, unparseable values).

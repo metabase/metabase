@@ -28,6 +28,7 @@ import {
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { ViewSidebar } from "metabase/query_builder/components/view/ViewSidebar";
+import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import {
   getDatasetEditorTab,
   getIsListViewConfigurationShown,
@@ -60,8 +61,10 @@ import {
 } from "metabase-lib/v1/metadata/utils/models";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
+  CollectionId,
   DatasetColumn,
   Field,
+  NativeQuerySnippet,
   RawSeries,
   ResultsMetadata,
   VisualizationDisplay,
@@ -124,6 +127,11 @@ export type DatasetEditorInnerProps = {
   toggleTemplateTagsEditor: () => void;
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
+  setModalSnippet: (snippet: NativeQuerySnippet) => void;
+  openSnippetModalWithSelectedText: () => void;
+  insertSnippet: (snippet: NativeQuerySnippet) => void;
+  snippetCollectionId: CollectionId | null;
+  setSnippetCollectionId?: (id: CollectionId | null) => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
 
   dataReferenceStack: DataReferenceItem[];
@@ -309,6 +317,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
   } = props;
 
   const dispatch = useDispatch();
+  const visualizationResultProps = useVisualizationResultQBProps();
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
@@ -740,6 +749,7 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               ) : (
                 <QueryVisualization
                   {...props}
+                  {...visualizationResultProps}
                   rawSeries={tempRawSeries}
                   className={CS.spread}
                   noHeader
