@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
@@ -11,28 +11,35 @@ import { Box, Flex, Stack, Switch, Text, TextInput } from "metabase/ui";
 import { CursorInstallLink } from "./CursorInstallLink";
 import { McpServerUrlSection } from "./MCPServerUrlSection";
 
-const getMcpClients = (enabledClients: string[]) =>
-  [
-    {
-      key: "claude",
-      label: t`Claude`,
-    },
-    {
-      key: "cursor-vscode",
-      label: (
-        <Stack gap="xs">
-          <span>{t`Cursor and VS Code`}</span>
+type McpClient = {
+  key: string;
+  label: ReactNode;
+  ariaLabel: string;
+};
 
-          {enabledClients.includes("cursor-vscode") && <CursorInstallLink />}
-        </Stack>
-      ),
-      ariaLabel: t`Cursor and VS Code`,
-    },
-    {
-      key: "chatgpt",
-      label: t`ChatGPT`,
-    },
-  ] as const;
+const getMcpClients = (enabledClients: string[]): McpClient[] => [
+  {
+    key: "claude",
+    label: t`Claude`,
+    ariaLabel: t`Claude`,
+  },
+  {
+    key: "cursor-vscode",
+    label: (
+      <Stack gap="xs">
+        <span>{t`Cursor and VS Code`}</span>
+
+        {enabledClients.includes("cursor-vscode") && <CursorInstallLink />}
+      </Stack>
+    ),
+    ariaLabel: t`Cursor and VS Code`,
+  },
+  {
+    key: "chatgpt",
+    label: t`ChatGPT`,
+    ariaLabel: t`ChatGPT`,
+  },
+];
 
 export const McpAppsSettings = ({ id }: { id?: string }) => {
   const {
@@ -122,7 +129,7 @@ function CommonMcpClientsSection() {
         {mcpClients.map(({ key, label, ariaLabel }) => (
           <Switch
             key={key}
-            aria-label={ariaLabel ?? label}
+            aria-label={ariaLabel}
             data-testid={`mcp-client-${key}`}
             checked={enabledClients.includes(key)}
             onChange={(e) => handleToggle(key, e.target.checked)}
