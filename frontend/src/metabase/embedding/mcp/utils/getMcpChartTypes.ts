@@ -22,7 +22,7 @@ const MCP_CHART_TYPE_ICONS: Record<CardDisplayType, IconName> = {
   scatter: "bubble",
   smartscalar: "smartscalar",
   table: "table2",
-  treemap: "grid_2x2",
+  treemap: "treemap",
   waterfall: "waterfall",
   list: "table2",
 };
