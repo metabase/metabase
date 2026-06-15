@@ -34,6 +34,57 @@
   [:map {:closed true}
    [:chart_type :string]])
 
+;; Hackathon HACK: provide a partial json-schema for the mbql query, otherwise openai models get confused and always
+;; pass an empty map. Gets construct_notebook_query basically working with weaker openai models.
+(def ^:private construct-notebook-query-json-schema
+  "Hand-authored JSON Schema for the `:query` argument, attached to the (deliberately open,
+  property-less) malli `:map` via a `:json-schema` override. It does not participate in
+  validation — it only replaces what we hand the LLM (see [[construct-notebook-query-args-schema]]
+  for why). The structured `:required`/`:properties` are what stop weaker models from emitting
+  `{}`; the prose carries the per-clause shape that JSON Schema can't express well."
+  {:type        "object"
+   :description (str "An MBQL 5 query as a JSON **object** (never a quoted string) matching "
+                     "`metabase.lib.schema/external-query`. The FIRST stage MUST contain exactly one of `source-table` "
+                     "(a portable FK `[\"<db-name>\", \"<schema-or-null>\", \"<table-name>\"]`) or `source-card` "
+                     "(an entity_id string) — the target database is inferred from it; there is no top-level "
+                     "`database` field. Every clause is `[\"<op>\", {<options>}, ...args]` with a mandatory "
+                     "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
+                     "[\"<db>\", \"<schema>\", \"<table>\", \"<field>\"]]`. Minimal example — count of orders by "
+                     "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
+                     "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
+                     "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
+                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. See the system "
+                     "instructions for the full operator catalog, joins, expressions, and multi-stage rules.")
+   :required    ["lib/type" "stages"]
+   :properties  {"lib/type" {:type        "string"
+                             :const       "mbql/query"
+                             :description "Must be the literal string `mbql/query`."}
+                 "stages"   {:type        "array"
+                             :minItems    1
+                             :description (str "Non-empty array of query stages. The FIRST stage must carry the "
+                                               "source (`source-table` or `source-card`); later stages read from "
+                                               "the previous one.")
+                             :items
+                             {:type       "object"
+                              :properties {"lib/type"     {:type "string" :const "mbql.stage/mbql"}
+                                           "source-table" {:type        "array"
+                                                           :minItems    3
+                                                           :maxItems    3
+                                                           :items       {:type "string"}
+                                                           :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
+                                           "source-card"  {:type        "string"
+                                                           :description "entity_id of a saved question/model used as the source."}
+                                           ;; Each clause is itself a `["<op>", {opts}, ...args]` array; the inner
+                                           ;; `items {}` (any) keeps the shape open while satisfying the API's
+                                           ;; requirement that every `array` schema declare `items`.
+                                           "aggregation"  {:type "array" :items {:type "array" :items {}}}
+                                           "breakout"     {:type "array" :items {:type "array" :items {}}}
+                                           "filters"      {:type "array" :items {:type "array" :items {}}}
+                                           "fields"       {:type "array" :items {:type "array" :items {}}}
+                                           "order-by"     {:type "array" :items {:type "array" :items {}}}
+                                           "joins"        {:type "array" :items {:type "object"}}
+                                           "expressions"  {:type "object"}}}}}})
+
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
 
@@ -50,7 +101,14 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   [:query :map]
+   ;; The malli schema we validate against stays a fully open, property-less `:map` on purpose — see the docstring
+   ;; above: the repair/forgiveness layer fixes LLM shortcuts, so we assert no structure here (an empty `{}`, a real
+   ;; query, and queries with extra keys all validate). But malli would then emit `{"type":"object","properties":{}}`
+   ;; to the LLM, and an empty `properties` reads to weaker models (e.g. gpt-4.1-mini) as "this object has no fields"
+   ;; — they ignore the prose description and emit `{}`. So we decouple the two via a `:json-schema` override: it
+   ;; replaces ONLY the schema we hand the LLM with a structured one (`required: [lib/type, stages]` + real nested
+   ;; `properties`), giving the model strong structural signal, while validation stays exactly as permissive as before.
+   [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]])
 
