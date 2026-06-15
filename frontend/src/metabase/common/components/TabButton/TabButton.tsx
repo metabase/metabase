@@ -173,10 +173,7 @@ const _TabButton = forwardRef(function TabButton(
               disabled={disabled}
             />
           </Popover.Target>
-          <Popover.Dropdown
-            // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
-            setupSequencedCloseHandler={() => setIsMenuOpen(false)}
-          >
+          <Popover.Dropdown>
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
