@@ -8,8 +8,10 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
@@ -74,10 +76,19 @@
    [:exact-value {:optional true} :any]])
 
 (defn- card-query
-  "Build the lib query for a `card` used as a parameter value source (its `:dataset_query`)."
+  "Build the lib query for a `card` used as a parameter value source (its `:dataset_query`), bulk-loading the metadata it
+  references up front so the column resolution that follows ([[lib/visible-columns]] etc.) hits the provider cache
+  instead of fetching one entity at a time."
   [{query :dataset_query, :keys [id], :as _card}]
   (when (seq query)
-    (lib/query query (lib.metadata/card query id))))
+    (let [metadata-provider  (lib.metadata/->metadata-provider query)
+          value-source-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))]
+      (when-not (lib.metadata.protocols/cached-metadata-provider-with-cache? metadata-provider)
+        (throw (ex-info "Must provided a cached metadata provider" {})))
+      (lib-be/bulk-load-query-metadata! metadata-provider
+                                        (lib/all-referenced-entity-ids [value-source-query]
+                                                                       {:include-implicitly-joinable? true}))
+      value-source-query)))
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
   [query     :- [:maybe ::lib.schema/query]
