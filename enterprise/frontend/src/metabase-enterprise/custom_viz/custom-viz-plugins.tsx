@@ -40,51 +40,36 @@ import { ensureVizApi } from "./custom-viz-globals";
 import type { SandboxMode } from "./sandbox";
 import { usePluginMount } from "./use-plugin-mount";
 
-type ResolvedAsset = {
-  /** URL to render the asset with: an object URL, or the original URL. */
-  url: string;
-  /**
-   * Set only when this call created an object URL the caller is responsible for
-   * revoking.
-   */
-  objectUrl?: string;
+/**
+ * Injection point for plugin asset (icon) loading. Given a plugin id and a raw
+ * asset path, returns a URL usable in an `<img>`. The main app default just
+ * builds the same-origin asset URL (`getPluginAssetUrl`) and keeps no state.
+ * The SDK overwrites both methods at init (like the `PLUGIN_CUSTOM_VIZ` slots),
+ * because there the `<img>` is cross-origin and can't carry the session header:
+ * it fetches the asset with auth, returns a same-origin `blob:` URL, and owns
+ * the blob lifecycle (revoking on reload and on `release`). Core stays unaware
+ * of blobs.
+ */
+type CustomVizAssetManager = {
+  resolveUrl: (
+    pluginId: number,
+    assetPath: string | null | undefined,
+  ) => Promise<string | undefined>;
+  release: (pluginId: number) => void;
 };
 
-/**
- * Fetch a plugin asset (icon, etc.) with auth headers and expose it as a
- * same-origin `blob:` URL. Needed as img/svg loaded by url wouldn't otherwise
- * get loaded with auth on the SDK, as we don't use cookies
- */
-async function resolveAuthedAssetUrl(assetUrl: string): Promise<ResolvedAsset> {
-  // Same-origin (main app): browser attaches the session cookie to the <img>
-  // request directly; no blob conversion needed.
-  if (!api.basename) {
-    return { url: assetUrl };
-  }
-  try {
-    // `getPluginAssetUrl` already prepends `api.basename`; strip it back off
-    // because `api.fetch` re-adds it.
-    const relativeUrl = assetUrl.startsWith(api.basename)
-      ? assetUrl.slice(api.basename.length)
-      : assetUrl;
-    const res = await api.fetch({ method: "GET", url: relativeUrl });
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const objectUrl = URL.createObjectURL(await res.blob());
-    return { url: objectUrl, objectUrl };
-  } catch {
-    return { url: assetUrl };
-  }
-}
+export const customVizAssetManager: CustomVizAssetManager = {
+  resolveUrl: (pluginId, assetPath) =>
+    Promise.resolve(getPluginAssetUrl(pluginId, assetPath)),
+  release: () => {},
+};
 
 // Track which plugins have already been loaded to avoid re-execution.
-// Maps plugin id → { identifier, hash, iconBlobUrl? } so we can detect when a
-// re-uploaded bundle (or a dev server reload) produced new bytes, and revoke
-// old icon blob URLs when overwriting.
+// Maps plugin id → { identifier, hash } so we can detect when a re-uploaded
+// bundle (or a dev server reload) produced new bytes.
 const loadedPlugins = new Map<
   number,
-  { identifier: string; hash: string | null; iconBlobUrl?: string }
+  { identifier: string; hash: string | null }
 >();
 
 const failedPluginHashes = new Map<
@@ -109,9 +94,7 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
   }
   for (const [id, entry] of loadedPlugins) {
     if (entry.identifier === display) {
-      if (entry.iconBlobUrl) {
-        URL.revokeObjectURL(entry.iconBlobUrl);
-      }
+      customVizAssetManager.release(id);
       loadedPlugins.delete(id);
       failedPluginHashes.delete(id);
     }
@@ -239,7 +222,10 @@ export function useAutoLoadCustomVizPlugin(
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, { onInfo, sandboxMode });
+        await loadCustomVizPlugin(pluginToLoad, {
+          onInfo,
+          sandboxMode,
+        });
       } finally {
         loadingRef.current = null;
         setLoading(false);
@@ -409,12 +395,13 @@ export async function loadCustomVizPlugin(
       plugin.id,
     );
 
-    // Prefetch the icon as a same-origin blob URL so the chart-type picker
-    // <img> can render it cross-origin in the SDK (no auth header on <img>).
-    const rawIconUrl = getPluginAssetUrl(plugin.id, plugin.icon);
-    const { url: resolvedIconUrl, objectUrl: iconBlobUrl } = rawIconUrl
-      ? await resolveAuthedAssetUrl(rawIconUrl)
-      : { url: rawIconUrl };
+    // Resolve the icon URL through the asset manager (plain same-origin URL by
+    // default; the SDK fetches it with auth and returns a same-origin blob: URL
+    // so the chart-type picker <img> can render it cross-origin).
+    const resolvedIconUrl = await customVizAssetManager.resolveUrl(
+      plugin.id,
+      plugin.icon,
+    );
 
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
@@ -440,14 +427,7 @@ export async function loadCustomVizPlugin(
     loadedPlugins.set(plugin.id, {
       identifier,
       hash: currentHash,
-      iconBlobUrl,
     });
-    // Revoke the previous icon blob only after the new registration is
-    // committed: if anything above threw, the old viz is still registered and
-    // must keep its working icon URL.
-    if (existing?.iconBlobUrl) {
-      URL.revokeObjectURL(existing.iconBlobUrl);
-    }
     failedPluginHashes.delete(plugin.id);
 
     return identifier;

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { api } from "metabase/api/client";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
@@ -16,6 +17,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { CustomVizSettingWidget } from "../../metabase-enterprise/custom_viz/components/CustomVizSettingWidget";
 import type { LoadCustomVizPluginOptions } from "../../metabase-enterprise/custom_viz/custom-viz-plugins";
 import {
+  customVizAssetManager,
   loadCustomVizPlugin as eeLoadCustomVizPlugin,
   useAutoLoadCustomVizPlugin as eeUseAutoLoadCustomVizPlugin,
   useCustomVizPlugins as eeUseCustomVizPlugins,
@@ -54,10 +56,66 @@ function isCustomVizAllowed(
   );
 }
 
+/**
+ * SDK asset manager swapped into the core `customVizAssetManager` at init. The
+ * host page is on a different origin from the Metabase instance, so a
+ * plugin-icon `<img>` can't carry the session header. Fetch each asset with
+ * auth, hand back a same-origin `blob:` URL, and own the blob lifecycle:
+ * revoke the previous blob on reload and on `release`.
+ */
+const sdkCustomVizAssetManager = (() => {
+  const objectUrls = new Map<number, string>();
+
+  return {
+    resolveUrl: async (
+      pluginId: number,
+      assetPath: string | null | undefined,
+    ): Promise<string | undefined> => {
+      if (!assetPath) {
+        return undefined;
+      }
+      try {
+        // Relative path on purpose so `api.fetch` adds `api.basename` itself.
+        // Mirrors the endpoint that `getPluginAssetUrl` builds.
+        const res = await api.fetch({
+          method: "GET",
+          url: `/api/ee/custom-viz-plugin/${pluginId}/asset`,
+          params: { path: assetPath },
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const objectUrl = URL.createObjectURL(await res.blob());
+        // Revoke the previous blob only after the new one exists, so the
+        // currently-rendered icon never points at a revoked URL.
+        const previous = objectUrls.get(pluginId);
+        objectUrls.set(pluginId, objectUrl);
+        if (previous) {
+          URL.revokeObjectURL(previous);
+        }
+        return objectUrl;
+      } catch {
+        return getPluginAssetUrl(pluginId, assetPath);
+      }
+    },
+    release: (pluginId: number) => {
+      const objectUrl = objectUrls.get(pluginId);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrls.delete(pluginId);
+      }
+    },
+  };
+})();
+
 export function initializeSdkCustomVizPlugin() {
   if (!hasPremiumFeature("custom-viz")) {
     return;
   }
+
+  // Swap the core loader's identity asset manager for the auth-aware one so
+  // plugin icons load over the session-authenticated, same-origin blob path.
+  Object.assign(customVizAssetManager, sdkCustomVizAssetManager);
 
   Object.assign(PLUGIN_CUSTOM_VIZ, {
     loadCustomVizPlugin: (
