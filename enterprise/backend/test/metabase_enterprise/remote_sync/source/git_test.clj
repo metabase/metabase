@@ -310,6 +310,36 @@
           (is (= "new" (source.p/read-file snap "collections/a/new.yaml")))
           (is (= "keep" (source.p/read-file snap "collections/a/keep.yaml"))))))))
 
+(deftest changed-files-test
+  (testing "changed-files classifies the paths whose blob differs between two commits"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"keep.txt"             "unchanged"
+                                                   "edit.txt"             "old content"
+                                                   "remove.txt"           "delete me"
+                                                   "deep/nested/keep.txt" "deep unchanged"})
+            from-version (:version (source.p/snapshot master))]
+        (source.p/apply-changes! (source.p/snapshot master) "Change set"
+                                 [{:path "edit.txt" :content "new content"}
+                                  {:path "add.txt"  :content "brand new"}]
+                                 ["remove.txt"])
+        (let [snap (source.p/snapshot master)]
+          (testing "added / modified / deleted are reported in their own buckets"
+            (is (= {:added    #{"add.txt"}
+                    :modified #{"edit.txt"}
+                    :deleted  #{"remove.txt"}}
+                   (git/changed-files snap from-version))))
+          (testing "unchanged files — including deep untouched subtrees — are not reported"
+            (let [{:keys [added modified deleted]} (git/changed-files snap from-version)
+                  touched (reduce into #{} [added modified deleted])]
+              (is (not (contains? touched "keep.txt")))
+              (is (not (contains? touched "deep/nested/keep.txt")))))
+          (testing "comparing a version against itself reports no changes"
+            (is (= {:added #{} :modified #{} :deleted #{}}
+                   (git/changed-files snap (:version snap)))))
+          (testing "an unresolvable from-version returns nil, signalling a full import"
+            (is (nil? (git/changed-files snap "no-such-ref-or-sha")))))))))
+
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
     (mt/with-temp-dir [remote-dir nil]
