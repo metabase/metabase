@@ -1,13 +1,3 @@
-// App-shell selectors that orchestrate feature state.
-//
-// These compute whether app-shell chrome (nav bar, app bar, collection
-// breadcrumbs) should be visible by reading dashboard and query_builder state.
-// Composing feature state is app-tier work, so they live here rather than in
-// the shared `metabase/selectors/app` module — shared code must not depend on
-// feature modules. The feature-free app selectors (router path, error page,
-// navbar-open flag, embed-driven visibility) stay in `metabase/selectors/app`,
-// which this module builds on.
-
 import { createSelector } from "@reduxjs/toolkit";
 
 import {

@@ -40,12 +40,8 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     // enabled, force the sidebar open or it would be totally inaccessible.
     //
     // The app bar is hidden exactly when `top_nav` is off or we're in
-    // fullscreen. The other factors that feed getIsAppBarVisible
-    // (search/logo/question-lineage/collection-path/…) only matter when the nav
-    // bar isn't rendered anyway, so they never change this guard's outcome —
-    // which lets us stay feature-free here rather than importing the app-tier
-    // getIsAppBarVisible. The equivalence is proven against the real
-    // getIsAppBarVisible in app/get-is-navbar-open.unit.spec.ts.
+    // fullscreen. The other factors in the app-tier getIsAppBarVisible only
+    // matter when the nav bar isn't rendered anyway.
     const isFullscreen = locationHash.includes("fullscreen");
     if (
       isEmbeddingIframe &&
