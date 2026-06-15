@@ -115,7 +115,6 @@
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
         (u/update-some :last_run transforms-base.u/present-run)
-
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
