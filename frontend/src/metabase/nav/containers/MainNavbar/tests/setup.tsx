@@ -8,6 +8,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDashboardEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupSettingEndpoint,
@@ -20,7 +21,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/collections/constants";
-import type { DashboardState, StoreDashboard } from "metabase/redux/store";
+import type { DashboardState } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockQueryBuilderState,
@@ -177,15 +178,15 @@ export async function setup({
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
   const dashboardsForEntities: Dashboard[] = [];
-  let storeDashboard: StoreDashboard | undefined;
   if (openDashboard) {
     dashboardId = openDashboard.id;
-    storeDashboard = {
+    dashboardsForState[openDashboard.id] = {
       ...openDashboard,
       dashcards: openDashboard.dashcards.map((c) => c.id),
     };
-    dashboardsForState[openDashboard.id] = storeDashboard;
     dashboardsForEntities.push(openDashboard);
+    // MainNavbar reads the open dashboard via useGetDashboardQuery.
+    setupDashboardEndpoints(openDashboard);
   }
 
   const storeInitialState = createMockState({
@@ -225,9 +226,7 @@ export async function setup({
   renderWithProviders(
     <Route
       path={route}
-      component={(props) => (
-        <MainNavbar {...props} isOpen dashboard={storeDashboard} />
-      )}
+      component={(props) => <MainNavbar {...props} isOpen />}
     />,
     {
       storeInitialState,

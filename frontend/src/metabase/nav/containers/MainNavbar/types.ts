@@ -1,7 +1,5 @@
 import type { Location } from "history";
 
-import type { StoreDashboard } from "metabase/redux/store";
-
 export interface MainNavbarOwnProps {
   isOpen: boolean;
   location: Location;
@@ -9,7 +7,6 @@ export interface MainNavbarOwnProps {
     slug?: string;
     pageId?: string;
   };
-  dashboard?: StoreDashboard;
 }
 
 export interface MainNavbarDispatchProps {

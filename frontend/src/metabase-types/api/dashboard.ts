@@ -299,6 +299,7 @@ export type ListDashboardsResponse = Omit<
 export type GetDashboardRequest = {
   id: DashboardId;
   ignore_error?: boolean;
+  dashboard_load_id?: string;
 };
 
 export type CreateDashboardRequest = {

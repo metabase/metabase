@@ -6,6 +6,7 @@ import {
   skipToken,
   useGetCardQuery,
   useGetCollectionQuery,
+  useGetDashboardQuery,
 } from "metabase/api";
 import { NavbarPromoSlot } from "metabase/nav/components/NavbarPromoSlot";
 import { connect } from "metabase/redux";
@@ -20,6 +21,7 @@ import MainNavbarContainer from "./MainNavbarContainer";
 import {
   getSelectedItems,
   isCollectionPath,
+  isDashboardPath,
   isMetricPath,
   isModelPath,
   isQuestionPath,
@@ -37,6 +39,7 @@ interface EntityLoaderProps {
 interface StateProps {
   questionId?: number | null;
   collectionId?: CollectionId | null;
+  dashboardId?: number | null;
 }
 
 interface DispatchProps extends MainNavbarDispatchProps {
@@ -52,6 +55,7 @@ function mapStateToProps(state: State, props: MainNavbarOwnProps) {
   return {
     questionId: maybeGetQuestionId(state, props),
     collectionId: maybeGetCollectionId(state, props),
+    dashboardId: maybeGetDashboardId(state, props),
   };
 }
 
@@ -67,7 +71,7 @@ function MainNavbarInner({
   params,
   questionId,
   collectionId,
-  dashboard,
+  dashboardId,
   openNavbar,
   closeNavbar,
   onChangeLocation,
@@ -83,6 +87,10 @@ function MainNavbarInner({
 
   const { currentData: collection } = useGetCollectionQuery(
     collectionId ? { id: collectionId } : skipToken,
+  );
+
+  const { currentData: dashboard } = useGetDashboardQuery(
+    dashboardId ? { id: dashboardId } : skipToken,
   );
 
   useEffect(() => {
@@ -156,6 +164,14 @@ function maybeGetCollectionId(
   const { pathname } = location;
   const canFetchQuestion = isCollectionPath(pathname);
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
+}
+
+function maybeGetDashboardId(
+  state: State,
+  { location, params }: MainNavbarOwnProps,
+) {
+  const { pathname } = location;
+  return isDashboardPath(pathname) ? Urls.extractEntityId(params.slug) : null;
 }
 
 export const MainNavbar = connect(
