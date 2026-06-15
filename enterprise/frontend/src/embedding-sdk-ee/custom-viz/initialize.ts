@@ -41,18 +41,17 @@ function getAllowlist(): string[] {
 }
 
 /**
- * Identifier of an allowed `custom:*` display, or null when the display is
- * not a custom viz or not in the allowlist.
+ * Whether `display` is an allowed `custom:*` visualization. False for
+ * non-custom displays and for custom ones missing from the allowlist.
  */
-function getAllowedIdentifier(
+function isCustomVizAllowed(
   display: string | undefined,
   allowlist: string[],
-): string | null {
-  if (!isCustomVizDisplay(display)) {
-    return null;
-  }
-  const identifier = display.slice("custom:".length);
-  return allowlist.includes(identifier) ? identifier : null;
+): boolean {
+  return (
+    isCustomVizDisplay(display) &&
+    allowlist.includes(display.slice("custom:".length))
+  );
 }
 
 export function initializeSdkCustomVizPlugin() {
@@ -80,10 +79,10 @@ export function initializeSdkCustomVizPlugin() {
       dispatch: DispatchFn,
       display: string,
     ): Promise<string | null> => {
-      const identifier = getAllowedIdentifier(display, getAllowlist());
-      if (!identifier) {
+      if (!isCustomVizAllowed(display, getAllowlist())) {
         return null;
       }
+      const identifier = display.slice("custom:".length);
       const action = dispatch(
         customVizPluginApi.endpoints.listCustomVizPlugins.initiate(undefined),
       );
@@ -106,15 +105,10 @@ export function initializeSdkCustomVizPlugin() {
 
     useAutoLoadCustomVizPlugin: (display: string | undefined) => {
       const allowlist = useAllowlist();
-      // Regular (non-custom) displays are always allowed.
       const allowed =
-        !isCustomVizDisplay(display) ||
-        getAllowedIdentifier(display, allowlist) !== null;
+        // Regular (non-custom) displays are always allowed.
+        !isCustomVizDisplay(display) || isCustomVizAllowed(display, allowlist);
 
-      // Drop a stale registration left by a previous mount with a different
-      // allowlist, so the question falls back to the default visualization.
-      // The `visualizations` map is global to the page, not to the provider.
-      // In an effect: mutating it during render is unsafe.
       useEffect(() => {
         if (isCustomVizDisplay(display) && !allowed) {
           unregisterCustomVizDisplay(display);
@@ -148,7 +142,7 @@ export function initializeSdkCustomVizPlugin() {
       const allowlist = useAllowlist();
       const getIcon = eeUseCustomVizPluginsIcon();
       return (display: VisualizationDisplay) => {
-        if (!getAllowedIdentifier(display, allowlist)) {
+        if (!isCustomVizAllowed(display, allowlist)) {
           return { icon: undefined, isLoading: false };
         }
         return getIcon(display);
