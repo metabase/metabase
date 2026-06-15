@@ -9,6 +9,13 @@ import {
   getMcpChartTypes,
 } from "../utils/getMcpChartTypes";
 
+interface UseChartTypesInput {
+  queryKey: string | null;
+  question: Question | undefined;
+  queryResults: Dataset[] | null | undefined;
+  updateQuestion: (question: Question, opts: { run: boolean }) => void;
+}
+
 interface UseChartTypesResult {
   sensibleChartTypes: McpChartTypeEntry[];
   hasOnlyTable: boolean;
@@ -16,23 +23,37 @@ interface UseChartTypesResult {
   handleDisplayChange: (type: CardDisplayType) => void;
 }
 
-export function useChartTypes(
-  question: Question | undefined,
-  queryResults: Dataset[] | null | undefined,
-  updateQuestion: (question: Question, opts: { run: boolean }) => void,
-): UseChartTypesResult {
+export function useChartTypes({
+  queryKey,
+  question,
+  queryResults,
+  updateQuestion,
+}: UseChartTypesInput): UseChartTypesResult {
   const queryResult = queryResults?.[0] ?? null;
   const currentDisplay = question?.display() ?? null;
 
-  const defaultDisplayRef = useRef<CardDisplayType | null>(null);
+  const originalDisplayRef = useRef<{
+    queryKey: string | null;
+    display: CardDisplayType | null;
+  }>({ queryKey, display: null });
 
-  if (
-    queryResult &&
-    currentDisplay != null &&
-    (defaultDisplayRef.current == null ||
-      (defaultDisplayRef.current === "table" && currentDisplay !== "table"))
-  ) {
-    defaultDisplayRef.current = currentDisplay;
+  // Clear the original visualization when the query changes
+  if (originalDisplayRef.current.queryKey !== queryKey) {
+    originalDisplayRef.current = { display: null, queryKey };
+  }
+
+  const originalDisplay = originalDisplayRef.current.display;
+
+  // EMB-1858: MCP cards start as `table` before the SDK picks a sensible viz.
+  // Update that placeholder, then preserve the visualization across re-runs.
+  const shouldUpdateOriginalDisplay =
+    queryResult !== null &&
+    currentDisplay !== null &&
+    (originalDisplay === null ||
+      (originalDisplay === "table" && currentDisplay !== "table"));
+
+  if (shouldUpdateOriginalDisplay) {
+    originalDisplayRef.current.display = currentDisplay;
   }
 
   const { sensibleVisualizations } = useMemo(
@@ -43,7 +64,7 @@ export function useChartTypes(
   const rowCount = queryResult?.data?.rows?.length ?? 0;
 
   const sensibleChartTypes = getMcpChartTypes({
-    defaultDisplay: defaultDisplayRef.current,
+    defaultDisplay: originalDisplayRef.current.display,
     sensibleVisualizations: sensibleVisualizations as CardDisplayType[],
     canShowTable: rowCount >= 2,
   });

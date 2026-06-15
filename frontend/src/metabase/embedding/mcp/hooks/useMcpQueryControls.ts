@@ -4,7 +4,7 @@ import { useChartTypes } from "./useChartTypes";
 import { useDateFilter } from "./useDateFilter";
 import { useTemporalGranularity } from "./useTemporalGranularity";
 
-export function useMcpQueryControls() {
+export function useMcpQueryControls(queryKey: string | null) {
   const { question, updateQuestion, queryResults } = useSdkQuestionContext();
 
   const {
@@ -12,7 +12,7 @@ export function useMcpQueryControls() {
     hasOnlyTable,
     selectedChartType,
     handleDisplayChange,
-  } = useChartTypes(question, queryResults, updateQuestion);
+  } = useChartTypes({ question, queryResults, updateQuestion, queryKey });
 
   const {
     temporalColumn,
