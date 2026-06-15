@@ -1,4 +1,8 @@
-import { ModerationReviewApi } from "metabase/services";
+import fetchMock from "fetch-mock";
+
+import { getStore } from "__support__/entities-store";
+import { findRequests } from "__support__/server-mocks";
+import { Api } from "metabase/api";
 import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview } from "metabase-types/api";
 import {
@@ -19,50 +23,49 @@ import {
   verifyItem,
 } from "./service";
 
-jest.mock("metabase/services", () => ({
-  ModerationReviewApi: {
-    create: jest.fn(() => Promise.resolve({ id: 123 })),
-  },
-}));
+const setupStore = () =>
+  getStore({ [Api.reducerPath]: Api.reducer }, {}, [Api.middleware]);
 
 describe("moderation/service", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  afterEach(() => {
+    fetchMock.removeRoutes().clearHistory();
   });
 
   describe("verifyItem", () => {
     it("should create a new moderation review", async () => {
-      const review = await verifyItem({
-        itemId: 123,
-        itemType: "card",
-        text: "bar",
-      });
+      fetchMock.post("path:/api/moderation-review", { id: 123 });
+      const store = setupStore();
 
-      expect(ModerationReviewApi.create).toHaveBeenCalledWith({
+      await verifyItem(
+        { itemId: 123, itemType: "card", text: "bar" },
+        store.dispatch,
+      );
+
+      const [request] = await findRequests("POST");
+      expect(request.url).toContain("/api/moderation-review");
+      expect(request.body).toEqual({
         status: "verified",
         moderated_item_id: 123,
         moderated_item_type: "card",
         text: "bar",
       });
-
-      expect(review).toEqual({ id: 123 });
     });
   });
 
   describe("removeReview", () => {
     it("should create a new moderation review with a null status", async () => {
-      const review = await removeReview({
-        itemId: 123,
-        itemType: "card",
-      });
+      fetchMock.post("path:/api/moderation-review", { id: 123 });
+      const store = setupStore();
 
-      expect(ModerationReviewApi.create).toHaveBeenCalledWith({
+      await removeReview({ itemId: 123, itemType: "card" }, store.dispatch);
+
+      const [request] = await findRequests("POST");
+      expect(request.url).toContain("/api/moderation-review");
+      expect(request.body).toEqual({
         status: null,
         moderated_item_id: 123,
         moderated_item_type: "card",
       });
-
-      expect(review).toEqual({ id: 123 });
     });
   });
 

@@ -34,11 +34,6 @@ export const EmbedApi = {
   dashboard: GET("/api/embed/dashboard/:token"),
 };
 
-export const ModerationReviewApi = {
-  create: POST("/api/moderation-review"),
-  update: PUT("/api/moderation-review/:id"),
-};
-
 /// this in unauthenticated, for letting people who are not logged in unsubscribe from Alerts/DashboardSubscriptions
 export const PulseUnsubscribeApi = {
   unsubscribe: POST("/api/pulse/unsubscribe"),
