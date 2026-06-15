@@ -1,4 +1,5 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
+import _ from "underscore";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
@@ -14,6 +15,9 @@ import type {
   TreemapTree,
 } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTooltipBaseOption } from "metabase/visualizations/echarts/tooltip";
+
+const hasId = (value: unknown): value is { id: unknown } =>
+  _.isObject(value) && "id" in value;
 
 export function getTreemapTooltipOption(
   tree: TreemapTree,
@@ -33,7 +37,10 @@ export function getTreemapTooltipOption(
       if (Array.isArray(params)) {
         return "";
       }
-      const id = (params.data as { id?: string } | undefined)?.id;
+      const id =
+        hasId(params.data) && typeof params.data.id === "string"
+          ? params.data.id
+          : undefined;
       if (id == null) {
         return "";
       }

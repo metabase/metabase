@@ -1,3 +1,4 @@
+/* rounded corners on the chart container */
 .root {
   & [data-testid="chart-container"] svg {
     clip-path: inset(0 round 1rem);
