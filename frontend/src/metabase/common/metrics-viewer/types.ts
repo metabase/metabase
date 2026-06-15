@@ -1,4 +1,4 @@
-import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
+import type { DimensionType } from "metabase/common/metrics/utils/dimension-types";
 import type {
   BooleanFilterParts,
   CoordinateFilterParts,
