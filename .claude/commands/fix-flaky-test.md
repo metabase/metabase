@@ -11,11 +11,11 @@ The Linear issue is the input. Everything else is reasoning over files.
 **Hard rules — do not deviate:**
 - **Max 3 attempts.** One attempt = diagnose → fix → push → 2 stress runs → interpret.
   After 3 failed attempts, stop and hand back.
-- **No human approval gate — dedup by branch instead.** Before starting, check whether the
-  remote branch `automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If
-  it does, a run is already in flight (or already landed a fix) → **stop, do nothing**. If it
-  doesn't, that is the go signal: proceed and push, no approval needed. This works identically
-  whether a human or automation triggered the command.
+- **Branch existence is the go/no-go gate.** Before starting, check whether the remote branch
+  `automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If it does, a run
+  is already in flight (or already landed a fix) → **stop, do nothing**. If it doesn't,
+  proceed through the whole loop and push without pausing for confirmation. This runs
+  identically whether a human or automation triggered the command.
 - **Linear access:** prefer the Linear MCP (`mcp__linear__*`); if it's unavailable (e.g.
   headless CI), fall back to the Linear REST/GraphQL API with a token — for both reads and
   comment writes.
@@ -133,9 +133,9 @@ and stops immediately (fast red + artifacts) — no need for a separate cheap sa
 A good fix runs all 50 to green (full confirmation). So every attempt is a single pair of
 runs at `burn_in=50` with `fail_fast=true` (throttle on + off).
 
-- **No approval gate.** The branch-existence check in Phase 0 was the go decision — if you
-  reached this phase, you're clear to push. Don't ask for approval (works the same for a
-  human or automated trigger).
+- **Push without pausing for confirmation.** The branch-existence check in Phase 0 was the
+  go decision; if you reached this phase you're clear to commit, push, and trigger (same for
+  a human or automated trigger).
 - Commit and push (first attempt only creates the branch; later attempts push the revised
   fix), then trigger.
 
