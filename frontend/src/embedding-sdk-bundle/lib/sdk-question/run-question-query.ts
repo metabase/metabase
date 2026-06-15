@@ -104,13 +104,13 @@ export async function runQuestionQuerySdk(
     ]);
     queryResults = results;
 
-    const isAvailableDisplay = (d: QueryVisualizationDisplayType) =>
+    const isDisplayAvailable = (d: QueryVisualizationDisplayType) =>
       PLUGIN_CUSTOM_VIZ.isCustomVizDisplay(d)
         ? loadedDisplays.has(d)
         : visualizations.has(d);
 
     const initialDisplay =
-      initialVisualization && isAvailableDisplay(initialVisualization)
+      initialVisualization && isDisplayAvailable(initialVisualization)
         ? initialVisualization
         : null;
 

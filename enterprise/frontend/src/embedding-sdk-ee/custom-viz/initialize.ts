@@ -96,7 +96,6 @@ export function initializeSdkCustomVizPlugin() {
           sandboxMode: "blank",
         });
       } catch {
-        // Plugin loading must never break the query flow.
         return null;
       } finally {
         action.unsubscribe();
