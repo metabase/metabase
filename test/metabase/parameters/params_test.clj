@@ -306,7 +306,7 @@
             ;; - one bulk fetch of those Cards' result-metadata Fields
             ;; - one bulk fetch of those Fields' FK targets
             ;; - one bulk fetch of the FK-target Tables
-            ;; - one bulk fetch of those Tables' columns 
+            ;; - one bulk fetch of those Tables' columns
             (is (= 5 (lib-be/with-metadata-provider-cache
                        (t2/with-call-count [call-count]
                          (params/dashcards->param-field-ids dashcards)

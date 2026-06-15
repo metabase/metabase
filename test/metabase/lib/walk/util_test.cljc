@@ -345,3 +345,27 @@
             :segment #{}
             :snippet #{snippet-id}}
            (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-table-test
+  (testing ":include-implicitly-joinable? adds the source Table's columns' FK-target Tables to :table"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (= #{(meta/id :orders)}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, only the source Table is referenced")
+      (is (= #{(meta/id :orders) (meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the FK-target Tables of the source columns are included too"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-card-test
+  (testing ":include-implicitly-joinable? adds a source Card's result-metadata columns' FK-target Tables to :table"
+    (let [card-id 1
+          mp      (lib.tu/metadata-provider-with-card-from-query
+                   meta/metadata-provider card-id
+                   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query   (lib/query mp (lib.metadata/card mp card-id))]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, the Card source references no Tables")
+      (is (= #{(meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the Card columns' FK-target Tables are included"))))
