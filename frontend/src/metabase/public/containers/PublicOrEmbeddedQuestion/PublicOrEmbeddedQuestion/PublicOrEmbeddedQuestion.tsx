@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLatest, useMount } from "react-use";
 
 import { embedApi, makePivotAwareQueryRunner, publicApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { applyParameters } from "metabase/common/utils/card";
 import { fetchDataOrError } from "metabase/dashboard/utils";
 import { LocaleProvider } from "metabase/embedding/LocaleProvider";
@@ -17,7 +18,7 @@ import { updateMetadata } from "metabase/redux/metadata";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { EmbedApi, PublicApi } from "metabase/services";
+import { PublicApi } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -64,7 +65,11 @@ export const PublicOrEmbeddedQuestion = ({
     try {
       let card;
       if (token) {
-        card = await EmbedApi.card({ token });
+        card = await runRtkEndpoint(
+          { token },
+          dispatch,
+          embedApi.endpoints.getEmbedCard,
+        );
       } else if (uuid) {
         card = await PublicApi.card({ uuid });
       } else {

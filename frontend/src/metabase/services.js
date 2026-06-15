@@ -14,13 +14,6 @@ export const PublicApi = {
   document: GET(`/api/public/document/:uuid`),
 };
 
-// `/api/embed` is rewritten to `/api/preview_embed` by the request middleware
-// when running inside an embed preview.
-export const EmbedApi = {
-  card: GET("/api/embed/card/:token"),
-  dashboard: GET("/api/embed/dashboard/:token"),
-};
-
 export const SessionApi = {
   create: POST("/api/session"),
   createWithGoogleAuth: POST("/api/session/google_auth"),
