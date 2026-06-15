@@ -387,7 +387,7 @@ export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
   dashboard_id?: DashboardId;
-  entityIdentifier?: EntityUuid | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

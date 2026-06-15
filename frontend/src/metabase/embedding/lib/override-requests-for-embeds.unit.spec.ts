@@ -150,6 +150,36 @@ describe("overrideRequests", () => {
     expect(result.url).toBe("/api/embed/card/:token/query");
     expect(result.method).toBe("GET");
   });
+
+  it("drops the real cardId so it isn't leaked as a querystring param", async () => {
+    const result = await overrideRequests({
+      embedType: "public",
+      method: "GET",
+      url: "/api/card/:cardId/params/:paramId/remapping",
+      data: { cardId: 123, paramId: "p1", entityIdentifier: "uuid-1" },
+    });
+
+    expect(result.url).toBe(
+      "/api/public/card/:entityIdentifier/params/:paramId/remapping",
+    );
+    expect(result.data).not.toHaveProperty("cardId");
+    expect(result.data.entityIdentifier).toBe("uuid-1");
+  });
+
+  it("drops the real dashId for dashboard parameter endpoints", async () => {
+    const result = await overrideRequests({
+      embedType: "guest",
+      method: "GET",
+      url: "/api/dashboard/:dashId/params/:paramId/values",
+      data: { dashId: 7, paramId: "p1", entityIdentifier: "uuid-2" },
+    });
+
+    expect(result.url).toBe(
+      "/api/embed/dashboard/:entityIdentifier/params/:paramId/values",
+    );
+    expect(result.data).not.toHaveProperty("dashId");
+    expect(result.data.entityIdentifier).toBe("uuid-2");
+  });
 });
 
 describe("setupEmbedPreviewRewrite", () => {

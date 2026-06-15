@@ -155,14 +155,15 @@ export const cardApi = Api.injectEndpoints({
         query: ({ card_id, entityIdentifier, parameter_id, ...params }) => ({
           method: "GET",
           url: "/api/card/:cardId/params/:paramId/remapping",
-          // Embed requests carry an entity identifier (uuid/token) instead of
-          // the real card id; the embed override rewrites `:cardId` →
-          // `:entityIdentifier` (see override-requests-for-embeds). Mirrors the
-          // `cardId`/`entityIdentifier` switch in `parameters/actions`.
+          // Pass both ids; in an embed the override rewrites `:cardId` →
+          // `:entityIdentifier` and drops the real `cardId` from the params
+          // (see override-requests-for-embeds), and a null `entityIdentifier`
+          // never reaches the querystring.
           params: {
             ...params,
             paramId: parameter_id,
-            ...(entityIdentifier ? { entityIdentifier } : { cardId: card_id }),
+            cardId: card_id,
+            entityIdentifier,
           },
         }),
         providesTags: (_response, _error, { parameter_id }) =>

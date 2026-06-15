@@ -151,16 +151,15 @@ export const dashboardApi = Api.injectEndpoints({
         }) => ({
           method: "GET",
           url: "/api/dashboard/:dashId/params/:paramId/remapping",
-          // Embed requests carry an entity identifier (uuid/token) instead of
-          // the real dashboard id; the embed override rewrites `:dashId` →
-          // `:entityIdentifier` (see override-requests-for-embeds). Mirrors the
-          // `dashId`/`entityIdentifier` switch in `parameters/actions`.
+          // Pass both ids; in an embed the override rewrites `:dashId` →
+          // `:entityIdentifier` and drops the real `dashId` from the params
+          // (see override-requests-for-embeds), and a null `entityIdentifier`
+          // never reaches the querystring.
           params: {
             ...params,
             paramId: parameter_id,
-            ...(entityIdentifier
-              ? { entityIdentifier }
-              : { dashId: dashboard_id }),
+            dashId: dashboard_id,
+            entityIdentifier,
           },
         }),
         providesTags: (_response, _error, { parameter_id }) =>

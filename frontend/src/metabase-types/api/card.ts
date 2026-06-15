@@ -510,7 +510,7 @@ export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
   card_id?: CardId | EntityToken;
-  entityIdentifier?: EntityUuid | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken | null;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

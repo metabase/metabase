@@ -201,6 +201,17 @@ export const overrideRequests = async ({
     return { method, url, headers, data };
   }
 
+  // The matched embed endpoints address the entity by token/uuid
+  // (`:entityIdentifier`), never the real numeric id. Drop the id keys so they
+  // don't trail along as `?cardId=`/`?dashId=` querystring params now that the
+  // url has no `:cardId`/`:dashId` tag to consume them. The pipeline's merge
+  // can't delete keys, so mutate the bag in place — the client defensively
+  // copies it for exactly this.
+  if (findMatchingPattern(url)) {
+    delete data.cardId;
+    delete data.dashId;
+  }
+
   return {
     method: transformation.method,
     url: replaceWithEmbedBase({ embedType, url: transformation.url }),
