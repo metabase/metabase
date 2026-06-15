@@ -12,7 +12,7 @@ The Linear issue is the input. Everything else is reasoning over files.
 - **Max 3 attempts.** One attempt = diagnose → fix → push → 2 stress runs → interpret.
   After 3 failed attempts, stop and hand back.
 - **Branch existence is the go/no-go gate.** Before starting, check whether the remote branch
-  `automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If it does, a run
+  `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If it does, a run
   is already in flight (or already landed a fix) → **stop, do nothing**. If it doesn't,
   proceed through the whole loop and push without pausing for confirmation. This runs
   identically whether a human or automation triggered the command.
@@ -37,16 +37,17 @@ The Linear issue is the input. Everything else is reasoning over files.
      body for failure detail / screenshots / stack, and capture the **ranked failure
      reasons** (Trunk lists them "most common" first) — #1 is what you fix first (Phase 1).
    - Otherwise treat it as a spec path or fuzzy test name (fallback; no Linear context).
-2. **Compute the branch name + dedup gate (this is the go decision — it replaces human
-   approval).** The branch name is derived **only** from the Linear ref, never the test name:
-   `automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` (e.g. `DEV-2181` →
-   `automated-flake-fix-DEV-2181`). Check whether it already exists on the remote:
+2. **Compute the branch name + dedup gate (this is the go decision).** The branch name is
+   derived **only** from the Linear ref, never the test name:
+   `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` (e.g. `DEV-2181` →
+   `automated-e2e-flake-fix-DEV-2181`). Check whether it already exists on the remote:
    ```bash
-   git ls-remote --exit-code --heads origin automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+   git ls-remote --exit-code --heads origin automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
    ```
    - **Exists (exit 0)** → a run is already in flight or already landed a fix → **stop, do
      nothing.** This is the whole dedup mechanism.
-   - **Doesn't exist (exit 2)** → that's the **go** signal. Proceed — no human approval.
+   - **Doesn't exist (exit 2)** → that's the **go** signal. Proceed without pausing for
+     confirmation.
    (On the no-Linear fallback path there's no ref to build the name from; that path stays
    interactive and is for local debugging only.)
 3. **Resolve the spec file** from the exact test name:
@@ -65,7 +66,7 @@ The Linear issue is the input. Everything else is reasoning over files.
    - test_name (grep): <exact test name>
    - qa_db: <true|false>
    - edition: ee
-   - branch: automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+   - branch: automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
    - attempt: 0 / 3
 
    ## Failure reasons (Trunk, ranked — fix #1 first)
@@ -104,7 +105,7 @@ The Linear issue is the input. Everything else is reasoning over files.
 
 - On **attempt 1 only**, create the branch computed in Phase 0 (dashes only, no `/`):
   ```bash
-  git switch -c automated-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+  git switch -c automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
   ```
   On later attempts, keep committing to the same branch.
 - Apply a **minimal** fix:

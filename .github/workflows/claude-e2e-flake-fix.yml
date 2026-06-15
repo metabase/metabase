@@ -48,7 +48,7 @@ jobs:
             exit 1
           fi
           echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "branch=automated-flake-fix-$REF" >> "$GITHUB_OUTPUT"
+          echo "branch=automated-e2e-flake-fix-$REF" >> "$GITHUB_OUTPUT"
           echo "Flake fix for Linear issue: $REF"
 
       # Check out metabase itself with the Metabase Automation token so the agent's
