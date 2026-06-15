@@ -29,6 +29,21 @@
   [toucan-instance]
   (some-> toucan-instance :definition lib/database-id))
 
+(defmulti ^:private pre-analysis-errors
+  "Return a (possibly empty) sequence of errors detected without running the full analyzer. When
+  non-empty, the entity is recorded broken with these errors and the regular analysis is skipped.
+  Use this for structural failures e.g. an orphan Transform whose source database has been deleted."
+  {:arglists '([toucan-instance])}
+  t2/model)
+
+(defmethod pre-analysis-errors :default [_] nil)
+
+(defmethod pre-analysis-errors :model/Transform
+  [{db-id :source_database_id id :id}]
+  (when (nil? db-id)
+    [(-> (lib/validation-exception-error "Source database for this transform has been deleted.")
+         (assoc :source-entity-type :transform :source-entity-id id))]))
+
 (defn upsert-analysis!
   "Given a Toucan entity, run its analysis and write the results into `:model/AnalysisFinding`.
 
@@ -37,15 +52,19 @@
   (when-not (lib-be/metadata-provider-cache)
     (throw (ex-info "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"
                     {:instance toucan-instance})))
-  (when-let [db-id (instance-db-id toucan-instance)]
-    (let [mp (lib-be/application-database-metadata-provider db-id)
-          model (t2/model toucan-instance)
-          results (try (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
-                       (catch Exception e
-                         (log/error e "Error analyzing entity")
-                         [(lib/validation-exception-error (.getMessage e))]))
-          success (empty? results)]
-      (deps.analysis-finding/upsert-analysis! (deps.dependency-types/model->dependency-type model) (:id toucan-instance) success results))))
+  (let [model       (t2/model toucan-instance)
+        entity-type (deps.dependency-types/model->dependency-type model)
+        instance-id (:id toucan-instance)]
+    (if-let [errors (seq (pre-analysis-errors toucan-instance))]
+      (deps.analysis-finding/upsert-analysis! entity-type instance-id false errors)
+      (when-let [db-id (instance-db-id toucan-instance)]
+        (let [mp (lib-be/application-database-metadata-provider db-id)
+              results (try (deps.analysis/check-entity mp entity-type instance-id)
+                           (catch Exception e
+                             (log/error e "Error analyzing entity")
+                             [(lib/validation-exception-error (.getMessage e))]))
+              success (empty? results)]
+          (deps.analysis-finding/upsert-analysis! entity-type instance-id success results))))))
 
 (defn analyze-instances!
   "Given a series of toucan entities, upsert analyses for all of them and catch errors."

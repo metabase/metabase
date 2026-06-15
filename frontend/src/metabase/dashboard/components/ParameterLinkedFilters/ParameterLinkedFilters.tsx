@@ -128,7 +128,7 @@ function NoUsableParameters() {
             className={S.buttonLink}
             key="link"
             component="span"
-            c="brand"
+            c="core-brand"
             role="button"
             onClick={onShowAddParameterPopover}
           >
@@ -338,8 +338,8 @@ type FieldListProps = {
 const FieldList = ({ filteredIds, filteringIds }: FieldListProps) => {
   return (
     <SimpleGrid cols={2} px="md" pb="md" spacing="sm" fz="sm">
-      <Box c="brand">{t`Filtering column`}</Box>
-      <Box c="brand">{t`Filtered column`}</Box>
+      <Box c="core-brand">{t`Filtering column`}</Box>
+      <Box c="core-brand">{t`Filtered column`}</Box>
       {filteringIds.map((filteringId) => (
         <Fragment key={filteringId}>
           {filteredIds.map((filteredId) => (

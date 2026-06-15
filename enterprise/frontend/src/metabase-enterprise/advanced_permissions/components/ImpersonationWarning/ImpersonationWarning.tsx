@@ -23,34 +23,34 @@ export const ImpersonationWarning = ({
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const redshiftWarning = jt`You’re connecting Metabase to the ${(
-    <Code c="brand" key="1" fw="bold" fz={13}>
+    <Code c="core-brand" key="1" fw="bold" fz={13}>
       {database.name}
     </Code>
   )} database using the credentials for the Redshift user ${(
-    <Code c="brand" key="2" fw="bold" fz={13}>
+    <Code c="core-brand" key="2" fw="bold" fz={13}>
       {String(databaseUser)}
     </Code>
   )}. For impersonation to work,  ${(
-    <Code c="brand" key="3" fw="bold" fz={13}>
+    <Code c="core-brand" key="3" fw="bold" fz={13}>
       {String(databaseUser)}
     </Code>
   )} must be a superuser in Redshift.`;
 
   // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
   const regularWarning = jt`${(
-    <Code c="brand" key="1" fw="bold" fz={13}>
+    <Code c="core-brand" key="1" fw="bold" fz={13}>
       {String(databaseUser)}
     </Code>
   )} is the database user Metabase is using to connect to your  ${(
-    <Code c="brand" key="2" fw="bold" fz={13}>
+    <Code c="core-brand" key="2" fw="bold" fz={13}>
       {database.name}
     </Code>
   )} database. Make sure that ${(
-    <Code c="brand" key="3" fw="bold" fz={13}>
+    <Code c="core-brand" key="3" fw="bold" fz={13}>
       {String(databaseUser)}
     </Code>
   )} has access to everything in ${(
-    <Code c="brand" key="4" fw="bold" fz={13}>
+    <Code c="core-brand" key="4" fw="bold" fz={13}>
       {database.name}
     </Code>
   )} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`;
