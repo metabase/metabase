@@ -69,6 +69,29 @@
                        ":something-else")
         "Unknown phases fall back to (str phase)")))
 
+;;; ----------------------------------------- _id attributes (comment targets) -----------------------------------------
+
+(defn- every-commentable-node-has-id?
+  "True when every heading / paragraph / bulletList / etc. node in `doc` carries an `:_id` attr."
+  [doc]
+  (let [nodes (rest (tree-seq map? :content doc))]
+    (every? (fn [node]
+              (or (not (#{"paragraph" "heading" "bulletList" "orderedList"
+                          "blockquote" "codeBlock" "cardEmbed" "supportingText"}
+                        (:type node)))
+                  (some? (get-in node [:attrs :_id]))))
+            nodes)))
+
+(deftest ^:parallel placeholder-pm-doc-has-ids-test
+  (testing "placeholder doc nodes carry _id attrs so the frontend doesn't flag it as needing migration"
+    (let [d (ai-summary/placeholder-pm-doc)]
+      (is (every-commentable-node-has-id? d)))))
+
+(deftest ^:parallel error-doc-has-ids-test
+  (testing "error doc nodes carry _id attrs so the frontend doesn't flag it as needing migration"
+    (let [d (#'ai-summary/error-doc {:phase :phase-1 :final-errors ["oops"] :detail "ctx"})]
+      (is (every-commentable-node-has-id? d)))))
+
 ;;; ---------------------------------------------- end-to-end integration ----------------------------------------------
 
 (defn- fixture-qp-result []

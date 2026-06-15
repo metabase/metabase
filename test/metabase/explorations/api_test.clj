@@ -1,12 +1,12 @@
 (ns metabase.explorations.api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.documents.core :as documents]
-   [metabase.explorations.ai-summary :as ai-summary]
    [metabase.explorations.api :as explorations.api]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration-query-result :as eqr]
@@ -855,9 +855,13 @@
                                   :content [{:type "paragraph"
                                              :content [{:type "text" :text "Old summary"}]}]}})
           (mt/user-http-request u :post 200 (format "exploration/%d/restart" expl-id))
-          (is (= (ai-summary/placeholder-pm-doc)
-                 (t2/select-one-fn :document :model/Document :id doc-id))
-              "the doc body is reset to the placeholder"))))))
+          (let [persisted (t2/select-one-fn :document :model/Document :id doc-id)
+                all-text  (->> persisted
+                               (tree-seq map? :content)
+                               (keep :text)
+                               (apply str))]
+            (is (str/includes? all-text "Analysis underway")
+                "the doc body is reset to the placeholder")))))))
 
 (deftest exploration-restart-permissions-test
   (testing "Only a user with write access can restart an exploration"

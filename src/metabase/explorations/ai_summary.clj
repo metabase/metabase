@@ -121,14 +121,15 @@
   skip, or failure). Public because the API endpoint creates the doc at
   exploration-creation time, before any worker has touched the thread."
   []
-  {:type    "doc"
-   :content [{:type    "heading"
-              :attrs   {:level 2}
-              :content [{:type "text" :text (tru "Analysis underway…")}]}
-             {:type    "paragraph"
-              :content [{:type  "text"
-                         :text  (tru "The {0} is generating. This page will update when it''s ready." auto-doc-name)
-                         :marks [{:type "italic"}]}]}]})
+  (documents/add-ids-to-nodes
+   {:type    "doc"
+    :content [{:type    "heading"
+               :attrs   {:level 2}
+               :content [{:type "text" :text (tru "Analysis underway…")}]}
+              {:type    "paragraph"
+               :content [{:type  "text"
+                          :text  (tru "The {0} is generating. This page will update when it''s ready." auto-doc-name)
+                          :marks [{:type "italic"}]}]}]}))
 
 (defn current-user-can-create-ai-summary?
   "True when AI Summary can be generated for the **current user**. Must be called with the creator
@@ -188,37 +189,38 @@
                              :content [{:type    "paragraph"
                                         :content [{:type "text" :text e}]}]})
                           (or final-errors []))]
-    {:type    "doc"
-     :content (into []
-                    cat
-                    [[{:type    "heading"
-                       :attrs   {:level 2}
-                       :content [{:type "text" :text (str auto-doc-name " generation failed")}]}
-                      {:type    "paragraph"
-                       :content [{:type "text" :text "The failure happened in "}
-                                 {:type  "text"
-                                  :text  phase-label
-                                  :marks [{:type "bold"}]}
-                                 {:type "text" :text " after a repair retry."}]}
-                      {:type    "heading"
-                       :attrs   {:level 3}
-                       :content [{:type "text" :text "Validation errors"}]}
-                      (if (seq err-items)
-                        {:type "bulletList" :content err-items}
-                        {:type    "paragraph"
-                         :content [{:type "text" :text "(no specific errors captured — see the server logs for details)"}]})]
-                     (when detail
-                       [{:type    "heading"
-                         :attrs   {:level 3}
-                         :content [{:type "text" :text "Details"}]}
-                        {:type    "paragraph"
-                         :content [{:type "text" :text detail}]}])
-                     [{:type    "heading"
-                       :attrs   {:level 3}
-                       :content [{:type "text" :text "Next steps"}]}
-                      {:type    "paragraph"
-                       :content [{:type "text"
-                                  :text "Re-running may succeed if this was a transient issue. Otherwise, check the server logs for the underlying error."}]}]])}))
+    (documents/add-ids-to-nodes
+     {:type    "doc"
+      :content (into []
+                     cat
+                     [[{:type    "heading"
+                        :attrs   {:level 2}
+                        :content [{:type "text" :text (str auto-doc-name " generation failed")}]}
+                       {:type    "paragraph"
+                        :content [{:type "text" :text "The failure happened in "}
+                                  {:type  "text"
+                                   :text  phase-label
+                                   :marks [{:type "bold"}]}
+                                  {:type "text" :text " after a repair retry."}]}
+                       {:type    "heading"
+                        :attrs   {:level 3}
+                        :content [{:type "text" :text "Validation errors"}]}
+                       (if (seq err-items)
+                         {:type "bulletList" :content err-items}
+                         {:type    "paragraph"
+                          :content [{:type "text" :text "(no specific errors captured — see the server logs for details)"}]})]
+                      (when detail
+                        [{:type    "heading"
+                          :attrs   {:level 3}
+                          :content [{:type "text" :text "Details"}]}
+                         {:type    "paragraph"
+                          :content [{:type "text" :text detail}]}])
+                      [{:type    "heading"
+                        :attrs   {:level 3}
+                        :content [{:type "text" :text "Next steps"}]}
+                       {:type    "paragraph"
+                        :content [{:type "text"
+                                   :text "Re-running may succeed if this was a transient issue. Otherwise, check the server logs for the underlying error."}]}]])})))
 
 ;;; ----- Main entry point -----
 
