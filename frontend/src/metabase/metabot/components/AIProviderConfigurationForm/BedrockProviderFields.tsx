@@ -8,6 +8,7 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { FormErrorMessage, FormProvider, FormTextInput } from "metabase/forms";
 import { Text } from "metabase/ui";
+import type { BedrockCredentials } from "metabase-types/api";
 
 import { useAIProviderConfigurationContext } from "./AIProviderConfigurationContext";
 import {
@@ -58,17 +59,26 @@ export const BedrockProviderFields = ({
     values: BedrockCredentialValues,
     { resetForm }: FormikHelpers<BedrockCredentialValues>,
   ) => {
-    const changedValueOrNull = (field: keyof BedrockCredentialValues) =>
-      values[field] !== initialValues[field] ? values[field] || null : null;
+    // Per-field presence contract: an unchanged field is omitted so the backend keeps the saved
+    // value, while a field the user blanked is sent as an explicit null to clear the saved value.
+    const credentials: BedrockCredentials = {};
+    const setIfChanged = (
+      apiField: keyof BedrockCredentials,
+      field: keyof BedrockCredentialValues,
+    ) => {
+      if (values[field] !== initialValues[field]) {
+        credentials[apiField] = values[field] || null;
+      }
+    };
+
+    setIfChanged("access-key-id", "accessKeyId");
+    setIfChanged("secret-access-key", "secretAccessKey");
+    setIfChanged("region", "region");
+    setIfChanged("session-token", "sessionToken");
 
     await updateMetabotSettings({
       provider: "bedrock",
-      credentials: {
-        "access-key-id": changedValueOrNull("accessKeyId"),
-        "secret-access-key": changedValueOrNull("secretAccessKey"),
-        region: changedValueOrNull("region"),
-        "session-token": changedValueOrNull("sessionToken"),
-      },
+      credentials,
     }).unwrap();
 
     resetForm({ values });

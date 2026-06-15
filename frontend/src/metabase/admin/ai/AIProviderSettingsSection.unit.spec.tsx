@@ -275,6 +275,7 @@ async function setup({
     }),
     "llm-bedrock-session-token": createMockSettingDefinition({
       key: "llm-bedrock-session-token",
+      value: mergedApiKeyValues.bedrock ? "**********EN" : undefined,
     }),
   };
 
@@ -376,18 +377,32 @@ async function setup({
         value ? `**********${String(value).slice(-2)}` : undefined;
 
       // `credentials: null` is an explicit clear — the backend wipes all the saved key material.
-      settingsDefinitions["llm-bedrock-access-key-id"] =
-        createMockSettingDefinition({
-          ...settingsDefinitions["llm-bedrock-access-key-id"],
-          key: "llm-bedrock-access-key-id",
-          value: mask(body.credentials?.["access-key-id"]),
+      // Fields inside the map follow the same presence contract: an absent field keeps the saved
+      // value, a null field clears it.
+      const requestCredentials = body.credentials ?? null;
+      const updateBedrockSetting = (
+        settingKey:
+          | "llm-bedrock-access-key-id"
+          | "llm-bedrock-secret-access-key"
+          | "llm-bedrock-session-token",
+        field: keyof BedrockCredentials,
+      ) => {
+        if (requestCredentials !== null && !(field in requestCredentials)) {
+          return;
+        }
+        settingsDefinitions[settingKey] = createMockSettingDefinition({
+          ...settingsDefinitions[settingKey],
+          key: settingKey,
+          value: mask(requestCredentials?.[field]),
         });
-      settingsDefinitions["llm-bedrock-secret-access-key"] =
-        createMockSettingDefinition({
-          ...settingsDefinitions["llm-bedrock-secret-access-key"],
-          key: "llm-bedrock-secret-access-key",
-          value: mask(body.credentials?.["secret-access-key"]),
-        });
+      };
+
+      updateBedrockSetting("llm-bedrock-access-key-id", "access-key-id");
+      updateBedrockSetting(
+        "llm-bedrock-secret-access-key",
+        "secret-access-key",
+      );
+      updateBedrockSetting("llm-bedrock-session-token", "session-token");
     }
 
     if ("model" in body) {
@@ -1806,6 +1821,7 @@ describe("AIProviderSettingsSection", () => {
         { method: "PUT" },
       );
 
+      // The untouched session token field is omitted entirely — only changed fields are sent.
       expect(request?.options?.body).toBe(
         JSON.stringify({
           provider: "bedrock",
@@ -1813,7 +1829,6 @@ describe("AIProviderSettingsSection", () => {
             "access-key-id": "AKIDEXAMPLE",
             "secret-access-key": "test-secret",
             region: "us-east-2",
-            "session-token": null,
           },
         }),
       );
@@ -1844,15 +1859,47 @@ describe("AIProviderSettingsSection", () => {
         { method: "PUT" },
       );
 
-      // The untouched access key and secret round-trip as obfuscated placeholders in the form, but
-      // must be sent as null so the backend leaves the real saved values (and session token) intact.
+      // The untouched access key, secret, and session token round-trip as obfuscated placeholders
+      // in the form, and must be omitted so the backend leaves the real saved values intact.
       expect(request?.options?.body).toBe(
         JSON.stringify({
           provider: "bedrock",
           credentials: {
-            "access-key-id": null,
-            "secret-access-key": null,
             region: "us-west-2",
+          },
+        }),
+      );
+    });
+
+    it("clears the session token by sending an explicit null without touching the other fields", async () => {
+      await setup({
+        savedProviderValue: "bedrock/anthropic.claude-haiku-4-5",
+        apiKeyValues: { bedrock: "**********LE" },
+      });
+
+      const sessionTokenInput = await screen.findByLabelText("Session token");
+      await userEvent.clear(sessionTokenInput);
+
+      await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called("path:/api/metabot/settings", {
+            method: "PUT",
+          }),
+        ).toBe(true);
+      });
+
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/metabot/settings",
+        { method: "PUT" },
+      );
+
+      // null means an explicit clear; the untouched fields are omitted so the saved keys survive.
+      expect(request?.options?.body).toBe(
+        JSON.stringify({
+          provider: "bedrock",
+          credentials: {
             "session-token": null,
           },
         }),

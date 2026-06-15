@@ -1295,11 +1295,101 @@
         (mt/user-http-request :crowberto :put 200 "metabot/settings"
                               {:provider    "bedrock"
                                :credentials {:access-key-id     "AKIANEWNEWNEWNEWNEW1"
-                                             :secret-access-key "new-secret"}})
-        (testing "a session token from the previous key pair does not survive rotation"
+                                             :secret-access-key "new-secret"
+                                             :session-token     nil}})
+        (testing "an explicit nil session token sent alongside rotated keys clears the saved token"
           (is (nil? (llm.settings/llm-bedrock-session-token))))
         (is (= "AKIANEWNEWNEWNEWNEW1" (llm.settings/llm-bedrock-access-key-id)))
         (is (= "new-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-rotation-without-session-token-field-keeps-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAOLDOLDOLDOLDOLD1"
+                                       llm.settings/llm-bedrock-secret-access-key "old-secret"
+                                       llm.settings/llm-bedrock-session-token     "old-token"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:access-key-id     "AKIANEWNEWNEWNEWNEW1"
+                                             :secret-access-key "new-secret"}})
+        (testing "new key material without a session-token field keeps the saved token; clearing it takes an explicit nil"
+          (is (= "old-token" (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIANEWNEWNEWNEWNEW1" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "new-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-nil-session-token-clears-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "stale-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [provider {:keys [credentials]}]
+                                                             (is (= "bedrock" provider))
+                                                             (is (= {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                                     :secret-access-key "test-secret"
+                                                                     :session-token     nil
+                                                                     :region            "us-east-2"}
+                                                                    credentials)
+                                                                 "validation should run without the cleared session token")
+                                                             {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:session-token nil}})
+        (testing "an explicit nil session token clears the saved token without touching the keys"
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+        (is (= "us-east-2" (llm.settings/llm-bedrock-region)))))))
+
+(deftest settings-put-bedrock-blank-session-token-clears-token-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "stale-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:session-token ""}})
+        (testing "a blank session token field counts as an explicit clear, same as nil"
+          (is (nil? (llm.settings/llm-bedrock-session-token))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))))))
+
+(deftest settings-put-bedrock-nil-region-resets-to-default-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-access-key-id     nil
+                                mb-llm-bedrock-secret-access-key nil
+                                mb-llm-bedrock-session-token     nil
+                                mb-llm-bedrock-region            nil]
+    (mt/with-temporary-setting-values [llm.settings/llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm.settings/llm-bedrock-secret-access-key "test-secret"
+                                       llm.settings/llm-bedrock-session-token     "test-token"
+                                       llm.settings/llm-bedrock-region            "us-east-2"
+                                       metabot.settings/llm-metabot-provider      "bedrock/anthropic.claude-opus-4-8"]
+      (mt/with-dynamic-fn-redefs [metabot.self/list-models (constantly {:models []})]
+        (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                              {:provider    "bedrock"
+                               :credentials {:region nil}})
+        (testing "an explicit nil region resets the setting to its default"
+          (is (= "us-east-1" (llm.settings/llm-bedrock-region))))
+        (is (= "AKIAIOSFODNN7EXAMPLE" (llm.settings/llm-bedrock-access-key-id)))
+        (is (= "test-secret" (llm.settings/llm-bedrock-secret-access-key)))
+        (is (= "test-token" (llm.settings/llm-bedrock-session-token)))))))
 
 (deftest settings-put-bedrock-preserves-session-token-without-new-key-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil

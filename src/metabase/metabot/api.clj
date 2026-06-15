@@ -475,23 +475,22 @@
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))
 
+(def ^:private bedrock-credential-fields
+  [:access-key-id :secret-access-key :region :session-token])
+
 (defn- effective-bedrock-credentials
   "The Bedrock credentials a settings request resolves to.
 
-  Non-blank request fields are layered over the saved `llm-bedrock-*` settings.
-
-  The session token pairs with the access key it was issued for, so whenever new key material is supplied the token
-  is taken from the request — even when blank — rather than from the saved settings. That way a key rotation can't
-  leave a stale token behind, while editing an unrelated field (e.g. region) can't strand a still-valid one."
-  [{:keys [access-key-id secret-access-key region session-token]}]
-  (let [new-access-key (non-blank-string access-key-id)
-        new-secret     (non-blank-string secret-access-key)
-        new-region     (non-blank-string region)]
-    (cond-> (metabot.settings/configured-provider-credentials "bedrock")
-      new-access-key (assoc :access-key-id new-access-key)
-      new-secret     (assoc :secret-access-key new-secret)
-      new-region     (assoc :region new-region)
-      (or new-access-key new-secret) (assoc :session-token (non-blank-string session-token)))))
+  Each field follows the same presence contract as the top-level `:credentials` key: a field present in the request
+  replaces the saved `llm-bedrock-*` value, while an absent field keeps the saved value. Nil or blank means an
+  explicit clear. So an admin can blank a stale session token without re-entering the keys, and a region-only edit
+  doesn't touch anything else."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field) (assoc field (non-blank-string (get supplied-creds field)))))
+          (metabot.settings/configured-provider-credentials "bedrock")
+          bedrock-credential-fields))
 
 (defn- request-credentials
   "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
@@ -499,9 +498,9 @@
   nil when the request does not touch credentials for `provider`.
 
   An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock —
-  resolves to a credentials map whose key material is nil: an explicit clear. (Blank *fields inside* the Bedrock
-  credentials map are not a clear; they mean \"keep the saved value\", so e.g. a region-only edit can't wipe the
-  keys.) Throws a 400 when non-nil Bedrock credentials don't resolve to a complete set."
+  resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the Bedrock credentials
+  map follow the same presence contract (see [[effective-bedrock-credentials]]). Throws a 400 when non-nil Bedrock
+  credentials don't resolve to a complete set."
   [provider {:keys [api-key credentials] :as body}]
   (if (= provider "bedrock")
     (when (contains? body :credentials)
@@ -522,13 +521,14 @@
 
 (defn- save-bedrock-credentials!
   "Persist a Bedrock credentials map resolved by [[request-credentials]]; nil key material clears those settings.
-  The region is written only when present, so an explicit credentials clear leaves it in place for the next connect."
-  [{:keys [access-key-id secret-access-key region session-token]}]
+  The region is written only when the map carries it — a nil region resets the setting to its default, while a
+  top-level credentials clear (whose map has no `:region` key) leaves it in place for the next connect."
+  [{:keys [access-key-id secret-access-key session-token] :as credentials}]
   (setting/set! :llm-bedrock-access-key-id access-key-id)
   (setting/set! :llm-bedrock-secret-access-key secret-access-key)
   (setting/set! :llm-bedrock-session-token session-token)
-  (when region
-    (setting/set! :llm-bedrock-region region)))
+  (when (contains? credentials :region)
+    (setting/set! :llm-bedrock-region (:region credentials))))
 
 (defn- save-credentials!
   "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
