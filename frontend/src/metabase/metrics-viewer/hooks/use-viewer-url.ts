@@ -88,11 +88,6 @@ export function useViewerUrl(
       if (serializedState.dimensionBreakouts.length > 0) {
         const dimensionBreakouts: MetricsViewerDimensionBreakoutState[] =
           serializedState.dimensionBreakouts.map(deserializeDimensionBreakout);
-        const showColumnLabels =
-          serializedState.showColumnLabels ??
-          dimensionBreakouts.some(
-            (dimensionBreakout) => dimensionBreakout.showColumnLabels === true,
-          );
 
         initialize({
           definitions: {},
@@ -100,7 +95,7 @@ export function useViewerUrl(
           dimensionBreakouts,
           selectedDimensionBreakoutId:
             serializedState.selectedDimensionBreakoutId,
-          showColumnLabels,
+          showColumnLabels: serializedState.showColumnLabels ?? false,
         });
       }
 

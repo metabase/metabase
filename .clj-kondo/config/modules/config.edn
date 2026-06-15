@@ -498,6 +498,7 @@
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
            settings
@@ -894,6 +895,7 @@
            metabase.eid-translation.core
            metabase.eid-translation.init}
    :uses #{api
+           batch-processing
            settings
            util}
    :model-imports #{:model/Action
@@ -1541,7 +1543,8 @@
 
   pivot
   {:team "UX West"
-   :api  #{metabase.pivot.core}
+   :api  #{metabase.pivot.core
+           metabase.pivot.postprocess}
    :uses #{models
            util}}
 

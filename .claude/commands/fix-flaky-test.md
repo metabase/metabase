@@ -118,12 +118,29 @@ A good fix runs all 50 to green (full confirmation). So every attempt is a singl
 runs at `burn_in=50` with `fail_fast=true` (throttle on + off).
 
 - **Approval gate (once per run).** If `pushes_authorized: no`, ask the user now, showing:
-  branch name, spec, test name (grep), `qa_db`, edition, and the plan (≤3 attempts; each =
+  branch name, spec, test name (grep), `qa_db`, edition, `build_jar`, and the plan (≤3 attempts; each =
   a pair of `burn_in=50, fail_fast=true` runs, throttle on + off). On approval, set
   `pushes_authorized: yes` in the state file. This OK covers all later pushes/triggers this
   run — do not re-ask.
 - Commit and push (first attempt only creates the branch; later attempts push the revised
   fix), then trigger.
+
+- **Decide `build_jar` (cumulative across the branch, not per-attempt).** With
+  `build_jar=false` the run downloads a prebuilt uberjar by walking the current commit's
+  ancestors; with `build_jar=true` it builds the uberjar from this branch, so the JAR is
+  guaranteed to match your source. Rule:
+  - If **every** commit on the branch (vs. the base) touches **only** test/spec code →
+    `build_jar=false`. There is no source change for a JAR to miss, so a download is correct
+    and saves the build time.
+  - If **any** commit on the branch changed backend or frontend source — whether this attempt
+    made it or an earlier one did → `build_jar=true`, and keep it `true` on every later run
+    (including a test-only attempt 2). We build defensively: it may be redundant if a matching
+    branch JAR already exists, but it removes any doubt that the stress run tested your actual
+    source. A redundant build is far cheaper than a hard-to-debug false green from a JAR that
+    silently didn't include the fix.
+  - Check with `git diff --name-only <base>...HEAD` and treat anything outside test paths
+    (`e2e/`, `**/*_test.clj`, `**.unit.*`, etc.) as source. Record the chosen value in the
+    state file.
 
 ### Trigger helper
 **Always `git push` and confirm the remote branch is at your new commit BEFORE triggering.**
@@ -141,6 +158,7 @@ for throttle in true false; do
     -f burn_in="50" \
     -f mb_edition="ee" \
     -f qa_db="<true|false>" \
+    -f build_jar="<true|false>" \
     -f enable_network_throttling="$throttle" \
     -f fail_fast="true"
 done

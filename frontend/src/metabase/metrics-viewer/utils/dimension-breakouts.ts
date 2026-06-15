@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import type { DimensionDescriptor } from "metabase/metrics/common/utils/dimension-descriptors";
-import { getDimensionDescriptors } from "metabase/metrics/common/utils/dimension-descriptors";
-import { GEO_SUBTYPE_PRIORITY } from "metabase/metrics/common/utils/dimension-types";
+import type { DimensionDescriptor } from "metabase/common/metrics/utils/dimension-descriptors";
+import { getDimensionDescriptors } from "metabase/common/metrics/utils/dimension-descriptors";
+import { GEO_SUBTYPE_PRIORITY } from "metabase/common/metrics/utils/dimension-types";
 import { getObjectEntries, objectFromEntries } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
