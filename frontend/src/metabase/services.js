@@ -95,9 +95,3 @@ export const PersistedModelsApi = {
 export const SetupApi = {
   create: POST("/api/setup"),
 };
-
-export const UserApi = {
-  list: GET("/api/user/recipients"),
-  current: GET("/api/user/current"),
-  update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-};
