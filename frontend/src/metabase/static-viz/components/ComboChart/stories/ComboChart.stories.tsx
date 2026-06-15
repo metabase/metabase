@@ -1,40 +1,12 @@
-import type { StoryFn } from "@storybook/react";
 import { updateIn } from "icepick";
 
-import {
-  measureTextHeight,
-  measureTextWidth,
-} from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
 
-import type { StaticChartProps } from "../StaticVisualization";
-import { StaticVisualization } from "../StaticVisualization";
+import { data } from "../stories-data";
 
-import { data } from "./stories-data";
+import { Template, comboChartMeta, renderingContext } from "./shared";
 
-export default {
-  title: "Viz/Static Viz/ComboChart",
-  component: StaticVisualization,
-};
-
-const Template: StoryFn<StaticChartProps> = (args) => {
-  return (
-    <div style={{ border: "1px solid black", display: "inline-block" }}>
-      <StaticVisualization {...args} isStorybook />
-    </div>
-  );
-};
-
-const renderingContext: RenderingContext = {
-  getColor: color,
-  measureText: (text, style) =>
-    measureTextWidth(text, Number(style.size), Number(style.weight)),
-  measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
-  fontFamily: "Lato",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+export default comboChartMeta;
 
 export const LineLinearXScale = {
   render: Template,
@@ -1118,14 +1090,6 @@ export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
   render: Template,
   args: {
     rawSeries: data.barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
-    renderingContext,
-  },
-};
-
-export const Bar45DegreeLabels = {
-  render: Template,
-  args: {
-    rawSeries: data.bar45DegreeLabels,
     renderingContext,
   },
 };
