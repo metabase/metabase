@@ -2972,6 +2972,11 @@
            util}
    :model-exports #{:model/CustomVizPlugin}}
 
+  enterprise/dashboard-subscription-filters
+  {:team "Graphy"
+   :api  #{}
+   :uses #{premium-features}}
+
   enterprise/data-apps
   {:team "Gadget"
    :api  #{metabase-enterprise.data-apps.api
@@ -2980,13 +2985,7 @@
    :uses #{api
            models
            settings
-           util}
-   :model-exports #{:model/DataApp}}
-
-  enterprise/dashboard-subscription-filters
-  {:team "Graphy"
-   :api  #{}
-   :uses #{premium-features}}
+           util}}
 
   enterprise/data-complexity-score
   {:team "Metabot"
