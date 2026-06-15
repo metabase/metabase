@@ -156,11 +156,11 @@
 
     (seq (:ingest-errors (ex-data e)))
     (let [ingest-errors (:ingest-errors (ex-data e))]
-      (format "Failed to read %d file(s) from the repository:\n%s"
+      (format "Failed to read %d file(s) from the repository: %s"
               (count ingest-errors)
-              (str/join "\n" (for [ie ingest-errors
+              (str/join "; " (for [ie ingest-errors
                                    :let [{:keys [file reason]} (ex-data ie)]]
-                               (cond-> (str "  • " file)
+                               (cond-> file
                                  reason (str ": " reason))))))
 
     :else
