@@ -1,14 +1,13 @@
 (ns metabase.transforms.models.index-request
   "The `metabase_index_request` model: index/clustering hints declared on a transform target table.
 
-  Each request binds to a transform (`:transform_id`), carries a structured index definition validated
-  against [[index-structured]], and tracks a lifecycle `:status`. `:table_id` is backfilled once the target
-  table first syncs. Requests are read at two run-path seams (inline kinds at compile time, standalone kinds
-  after the table exists) and applied by [[metabase.transforms.index-manager]].
+  Each request binds to a transform (`:transform_id`), carries a structured index definition validated against
+  [[index-structured]], and tracks a lifecycle `:status`. `:table_id` is backfilled once the target table first
+  syncs.
 
-  The structured map is stored as JSON, which flattens keyword-valued fields (`:kind`, `:style`, `:type`, and
-  each column's `:direction`) to strings. The `:structured` transform re-keywordizes them on read, so a driver
-  can dispatch on `:kind` without callers having to normalize."
+  The structured map is stored as JSON, which flattens keyword-valued fields (`:kind`, `:style`, `:type`, and each
+  column's `:direction`) to strings; the `:structured` transform re-keywordizes them on read so a driver can
+  dispatch on `:kind`."
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
@@ -71,7 +70,7 @@
    [:granularity {:optional true} pos-int?]])
 
 (mr/def ::index-structured
-  "A single structured index definition, dispatched on `:kind`. This is the typed shape stored in
+  "A single structured index definition, dispatched on `:kind`. The shape stored in
   `metabase_index_request.structured` and handed to the driver index multimethods."
   [:multi {:dispatch :kind}
    [:btree ::classical-index] [:hash ::classical-index] [:gin ::classical-index]
@@ -104,85 +103,24 @@
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
 
+(def ^:private transform-structured
+  "JSON in/out for `:structured`, re-keywordizing enum-valued fields on read. Validation lives in the hooks."
+  {:in  mi/json-in
+   :out (comp keywordize-structured mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/IndexRequest
-  {:structured {:in  (:in mi/transform-json)
-                :out (comp keywordize-structured (:out mi/transform-json))}
+  {:structured transform-structured
    :status     mi/transform-keyword})
 
-(defn- validate-structured!
-  [structured]
-  (when-not (mr/validate ::index-structured structured)
-    (throw (ex-info "Invalid index request structured definition"
-                    {:structured structured
-                     :explanation (mr/explain ::index-structured structured)}))))
-
-(t2/define-before-insert :model/IndexRequest
-  [{:keys [structured status] :as req}]
-  (when structured (validate-structured! (keywordize-structured structured)))
+(defn- validate-request!
+  [{:keys [structured status]}]
+  (when (seq structured)
+    (let [structured (keywordize-structured structured)]
+      (when-not (mr/validate ::index-structured structured)
+        (throw (ex-info "Invalid index request structured definition"
+                        {:structured structured, :explanation (mr/explain ::index-structured structured)})))))
   (when (and status (not (contains? statuses (keyword status))))
-    (throw (ex-info "Invalid index request status" {:status status, :allowed statuses})))
-  req)
+    (throw (ex-info "Invalid index request status" {:status status, :allowed statuses}))))
 
-(t2/define-before-update :model/IndexRequest
-  [req]
-  (let [{:keys [structured status]} (t2/changes req)]
-    (when structured (validate-structured! (keywordize-structured structured)))
-    (when (and status (not (contains? statuses (keyword status))))
-      (throw (ex-info "Invalid index request status" {:status status, :allowed statuses}))))
-  req)
-
-;;; ------------------------------------------------- Write API -------------------------------------------------
-
-(defn- request-index-name
-  "Physical index name for a structured index. Named kinds (btree, skip-index, ...) carry their own `:name`;
-  inline kinds without one (sortkey, order-by, distkey) get a stable per-transform name from their `:kind`, so a
-  table can hold at most one of each (enforced by the unique `(transform_id, index_name)` constraint)."
-  [structured]
-  (or (:name structured) (name (:kind structured))))
-
-(defn create-index-request!
-  "Create a `:pending` index request binding `structured` to `transform-id`. Returns the inserted instance."
-  [transform-id structured & {:keys [created-by index-name]}]
-  (let [structured (keywordize-structured structured)]
-    (t2/insert-returning-instance! :model/IndexRequest
-                                   {:transform_id transform-id
-                                    :index_name   (or index-name (request-index-name structured))
-                                    :structured   structured
-                                    :status       :pending
-                                    :created_by   created-by})))
-
-(defn update-index-request!
-  "Replace the `structured` definition of an existing request, resetting it to `:pending`."
-  [id structured]
-  (t2/update! :model/IndexRequest id {:structured (keywordize-structured structured)
-                                      :status     :pending
-                                      :error_message nil}))
-
-(defn drop-index-request!
-  "Mark a request `:dropped`. The physical DROP happens on the next full rebuild for standalone kinds."
-  [id]
-  (t2/update! :model/IndexRequest id {:status :dropped}))
-
-(defn mark-status!
-  "Set `status` (and optionally `:error_message` / `:last_executed_at`) on a request."
-  [id status & {:keys [error-message executed-at]}]
-  (t2/update! :model/IndexRequest id
-              (cond-> {:status status, :error_message error-message}
-                executed-at (assoc :last_executed_at executed-at))))
-
-(defn requests-for-transform
-  "All non-dropped index requests for a transform (or just those with `status` when given)."
-  ([transform-id]
-   (t2/select :model/IndexRequest :transform_id transform-id :status [:not= "dropped"]))
-  ([transform-id status]
-   (t2/select :model/IndexRequest :transform_id transform-id :status (name status))))
-
-(defn dropped-requests-for-transform
-  "Requests marked `:dropped`, whose physical index should be removed on the next full rebuild."
-  [transform-id]
-  (t2/select :model/IndexRequest :transform_id transform-id :status "dropped"))
-
-(defn backfill-table-id!
-  "Set `table_id` on this transform's requests once the synced target table id is known."
-  [transform-id table-id]
-  (t2/update! :model/IndexRequest :transform_id transform-id {:table_id table-id}))
+(t2/define-before-insert :model/IndexRequest [req] (validate-request! req) req)
+(t2/define-before-update :model/IndexRequest [req] (validate-request! (t2/changes req)) req)
