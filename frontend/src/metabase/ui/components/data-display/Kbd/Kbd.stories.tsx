@@ -34,7 +34,6 @@ export const Default = {
 type State = {
   id: string;
   label: string;
-  /** Extra props applied to every Kbd in this row. */
   props?: Partial<KbdProps> & Record<`data-${string}`, unknown>;
 };
 
@@ -81,7 +80,6 @@ function StatesMatrix({ content }: { content?: KbdProps["children"] }) {
   );
 }
 
-/** Mirrors how shortcuts are composed at call sites (one Kbd per key). */
 function Shortcut({ keys, disabled }: { keys: string[]; disabled?: boolean }) {
   return (
     <Group gap="0.25rem">
@@ -89,6 +87,23 @@ function Shortcut({ keys, disabled }: { keys: string[]; disabled?: boolean }) {
         <Kbd key={key} disabled={disabled}>
           {key}
         </Kbd>
+      ))}
+    </Group>
+  );
+}
+
+function SequentialShortcut({ steps }: { steps: string[][] }) {
+  return (
+    <Group gap="0.5rem">
+      {steps.map((keys, index) => (
+        <Fragment key={keys.join("-")}>
+          {index > 0 && (
+            <span style={{ color: "var(--mb-color-text-secondary)" }}>
+              {" > "}
+            </span>
+          )}
+          <Shortcut keys={keys} />
+        </Fragment>
       ))}
     </Group>
   );
@@ -106,12 +121,13 @@ export const Overview: StoryObj<KbdProps> = {
 
       <StorySection
         title="In use"
-        description="Shortcuts compose one Kbd per key, as in the command palette."
+        description={`Shortcuts compose one Kbd per key.`}
       >
         <Stack gap="md">
-          <Shortcut keys={["⌘", "C"]} />
           <Shortcut keys={["Shift", "⌘", "P"]} />
           <Shortcut keys={["⌘", "C"]} disabled />
+          <SequentialShortcut steps={[["G"], ["C"]]} />
+          <SequentialShortcut steps={[["⌘", "K"], ["↑"]]} />
         </Stack>
       </StorySection>
     </StoryShowcase>
