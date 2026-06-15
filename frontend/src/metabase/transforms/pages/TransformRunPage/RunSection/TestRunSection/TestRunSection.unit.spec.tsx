@@ -77,6 +77,15 @@ describe("TestRunSection", () => {
     expect(screen.getByText("Expected output")).toBeInTheDocument();
   });
 
+  it("previews an uploaded CSV's parsed contents", async () => {
+    setup();
+    await uploadAllFiles();
+
+    // orders.csv = "id,total\n1,5" → preview renders the header cell + the row value
+    expect(await screen.findByText("total")).toBeInTheDocument();
+    expect(await screen.findByText("5")).toBeInTheDocument();
+  });
+
   it("renders the inputs-endpoint error instead of dropzones", async () => {
     setup({
       inputs: {

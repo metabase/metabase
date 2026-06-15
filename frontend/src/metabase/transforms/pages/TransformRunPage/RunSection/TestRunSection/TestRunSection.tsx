@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { parse } from "csv-parse/browser/esm/sync";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { t } from "ttag";
 
@@ -32,6 +33,15 @@ type TestRunSectionProps = {
 };
 
 const EXPECTED_KEY = "expected";
+
+const PREVIEW_MAX_ROWS = 8;
+
+type CsvPreview = {
+  headers: string[];
+  rows: string[][];
+  totalRows: number;
+  error: boolean;
+};
 
 export function TestRunSection({ transformId }: TestRunSectionProps) {
   const {
@@ -211,6 +221,8 @@ function FileDropzone({
   inputTestId,
   onChange,
 }: FileDropzoneProps) {
+  const [preview, setPreview] = useState<CsvPreview | null>(null);
+
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       if (acceptedFiles.length > 0) {
@@ -225,6 +237,45 @@ function FileDropzone({
     maxFiles: 1,
     accept: { "text/csv": [".csv"] },
   });
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    let cancelled = false;
+    const fail = () => {
+      if (!cancelled) {
+        setPreview({ headers: [], rows: [], totalRows: 0, error: true });
+      }
+    };
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (cancelled) {
+        return;
+      }
+      try {
+        const records = parse(String(reader.result ?? ""), {
+          skip_empty_lines: true,
+          relax_column_count: true,
+        }) as string[][];
+        const [headers = [], ...rows] = records;
+        setPreview({
+          headers,
+          rows: rows.slice(0, PREVIEW_MAX_ROWS),
+          totalRows: rows.length,
+          error: false,
+        });
+      } catch {
+        fail();
+      }
+    };
+    reader.onerror = fail;
+    reader.readAsText(file);
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
 
   const rootClassName = [
     S.dropzone,
@@ -255,6 +306,49 @@ function FileDropzone({
           <Text c="text-secondary">{t`Drag a CSV here, or click to choose a file.`}</Text>
         )}
       </Box>
+      {file && preview && <CsvPreviewTable preview={preview} />}
+    </Box>
+  );
+}
+
+function CsvPreviewTable({ preview }: { preview: CsvPreview }) {
+  if (preview.error) {
+    return (
+      <Text c="text-secondary" fz="sm" mt={4}>
+        {t`Couldn't preview this file.`}
+      </Text>
+    );
+  }
+
+  const hiddenRows = preview.totalRows - preview.rows.length;
+
+  return (
+    <Box>
+      <Box className={S.previewWrapper}>
+        <table className={S.resultTable}>
+          <thead>
+            <tr>
+              {preview.headers.map((header, index) => (
+                <th key={index}>{header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {preview.rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Box>
+      {hiddenRows > 0 && (
+        <Text c="text-secondary" fz="sm" mt={4}>
+          {t`+${hiddenRows} more rows`}
+        </Text>
+      )}
     </Box>
   );
 }

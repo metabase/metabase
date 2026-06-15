@@ -16,6 +16,12 @@
   border-color: var(--mb-color-success);
 }
 
+.previewWrapper {
+  margin-top: 0.5rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+
 .resultTable {
   width: 100%;
   border-collapse: collapse;
