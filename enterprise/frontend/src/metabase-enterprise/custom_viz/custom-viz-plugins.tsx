@@ -332,11 +332,12 @@ export async function loadCustomVizPlugin(
   ensureVizApi();
 
   try {
+    // `plugin.bundle_url` already carries `?v=<bundle_hash>` from the backend, so
+    // production fetches are version-busted without us adding anything. We only
+    // add a unique `t` for dev reloads; `cache: "no-store"` covers the rest.
     const params: Record<string, string> = {};
     if (cacheBustSuffix) {
       params.t = Date.now().toString();
-    } else if (currentHash) {
-      params.v = currentHash;
     }
 
     const res = await api.fetch({
