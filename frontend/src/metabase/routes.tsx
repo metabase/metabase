@@ -154,7 +154,9 @@ export const getRoutes = (store: AppStore) => {
               the backend bundle endpoint is additionally superuser-only. Path
               can't be `/app/:name` because the server reserves `/app/*` for
               static asset serving. */}
-          <Route component={IsAdmin}>{PLUGIN_DATA_APPS.getRoutes()}</Route>
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <Route component={IsAdmin}>{PLUGIN_DATA_APPS.getRoutes()}</Route>
+          )}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
