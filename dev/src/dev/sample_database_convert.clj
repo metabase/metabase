@@ -148,10 +148,14 @@
     {:dialect :ansi :quoted true})))
 
 (defn- insert-sql [table cols]
-  (format "INSERT INTO \"%s\" (%s) VALUES (%s)"
-          table
-          (str/join ", " (map #(format "\"%s\"" (:name %)) cols))
-          (str/join ", " (repeat (count cols) "?"))))
+  ;; `[:raw "?"]` forces a positional placeholder per column for the batched PreparedStatement (a nil value would
+  ;; render as NULL instead). The actual values are bound later via `.setObject`/`.setNull`.
+  (first
+   (sql/format
+    {:insert-into (keyword table)
+     :columns     (mapv (comp keyword :name) cols)
+     :values      [(vec (repeat (count cols) [:raw "?"]))]}
+    {:dialect :ansi :quoted true})))
 
 (defn- coerce-value
   "Coerce H2 values to types SQLite-JDBC accepts cleanly."
