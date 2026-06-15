@@ -9,6 +9,19 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(deftest remap-collection-location-test
+  (let [remap #'example-content/remap-collection-location]
+    (testing "root location is unchanged"
+      (is (= "/" (remap {2 20} "/"))))
+    (testing "each path segment is remapped independently"
+      (is (= "/20/" (remap {2 20} "/2/")))
+      (is (= "/20/30/" (remap {2 20, 3 30} "/2/3/"))))
+    (testing "a new id colliding with a still-pending old id does not double-substitute"
+      ;; old reduce-of-str/replace would turn \"/5/12/\" into \"/99/99/\"; per-segment remapping keeps them distinct
+      (is (= "/12/99/" (remap {5 12, 12 99} "/5/12/"))))
+    (testing "segments without a mapping keep their original id"
+      (is (= "/2/7/" (remap {2 2} "/2/7/"))))))
+
 (defn- sample-database-db []
   {:details (#'metabase.sample-data.impl/try-to-extract-sample-database!)
    :engine  :sqlite

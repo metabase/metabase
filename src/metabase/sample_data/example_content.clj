@@ -112,16 +112,29 @@
                                      edn-fields))]
     {:db new-db-id :tables table-id-map :fields field-id-map}))
 
+(defn- remap-collection-location
+  "Remap the parent ids embedded in a collection `location` path (e.g. \"/2/3/\") through `old->new`, one path
+  segment at a time. Remapping per segment (rather than successive string replacement over the id map) avoids a
+  newly-assigned id being re-substituted as if it were a still-pending old id."
+  [old->new location]
+  (if (= "/" location)
+    location
+    (str "/"
+         (->> (str/split location #"/")
+              (remove str/blank?)
+              (map (fn [segment]
+                     (if-let [old-id (parse-long segment)]
+                       (str (get old->new old-id old-id))
+                       segment)))
+              (str/join "/"))
+         "/")))
+
 (defn- insert-collections! [content]
   ;; Insert root collections before children so location paths can be remapped against ids already assigned.
   (loop [pending (sort-by (comp count :location) (:collection content))
          coll-map {}]
     (if-let [row (first pending)]
-      (let [remap-location (fn [loc]
-                             (reduce (fn [loc [old new]]
-                                       (str/replace loc (str "/" old "/") (str "/" new "/")))
-                                     loc coll-map))
-            prepared (-> row prep-row (update :location remap-location))
+      (let [prepared (-> row prep-row (update :location #(remap-collection-location coll-map %)))
             _        (t2/query {:insert-into :collection :values [prepared]})
             new-id   (:id (t2/query-one {:select [:id] :from :collection :where [:= :entity_id (:entity_id row)]}))]
         (recur (rest pending) (assoc coll-map (:id row) new-id)))
