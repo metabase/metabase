@@ -10,15 +10,6 @@ import type { RawSeries, RowValue, TreemapRow } from "metabase-types/api";
 
 import { getKeyFromDimensionValue } from "./pie";
 
-/**
- * One row per distinct top-level grouping value, sorted by value descending
- * (matching tile size order — there is no manual ordering for treemaps).
- *
- * Saved rows keep their customizations: `name` always, `color` unless
- * `defaultColor` is still true (then it follows the palette). Saved rows whose
- * key is no longer in the data are retained at the end of the array so
- * customizations survive filter changes; they are never rendered.
- */
 export function getTreemapRows(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -71,8 +62,6 @@ export function getTreemapRows(
     if (savedRow != null) {
       return {
         ...savedRow,
-        // Rows saved before the remove-group feature existed have no
-        // `enabled` — missing means visible, only an explicit false disables.
         enabled: savedRow.enabled !== false,
         hidden: false,
         ...(savedRow.defaultColor ? { color: colors[key] } : {}),
