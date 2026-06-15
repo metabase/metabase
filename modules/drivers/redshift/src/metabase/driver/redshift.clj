@@ -52,6 +52,11 @@
                               :describe-is-nullable             false
                               :expression-literals              true
                               :identifiers-with-spaces          false
+                              ;; Redshift has no secondary indexes; sortkeys are inlined into the table-creation
+                              ;; statement, not created afterwards. Override the `:postgres`-inherited standalone
+                              ;; support.
+                              :index/inline-create              true
+                              :index/standalone-create          false
                               :metadata/table-existence-check   true
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
@@ -222,6 +227,53 @@
 (defmethod driver/db-start-of-week :redshift
   [_]
   :sunday)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Indexes (Index Manager)                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/supported-index-methods :redshift
+  [_driver _database]
+  ;; Redshift has no secondary indexes: a sortkey is inlined into the table at creation time. That's the CTAS for a
+  ;; SQL transform and the CREATE TABLE for a Python transform, so it is rendered in both `compile-transform`
+  ;; and `create-table!`. distkeys come in a later milestone.
+  {:sortkey {:lifecycle :inline}})
+
+(defn- sortkey-clause
+  "Render the inline clause for a table's `indexes`, e.g. `COMPOUND SORTKEY (\"a\", \"b\")`, or nil when there is no
+  sortkey. Shared by both creation seams: the CTAS in `compile-transform` and the CREATE TABLE in `create-table!`."
+  [driver indexes]
+  (when-let [{:keys [style columns]} (first (filter (comp #{:sortkey} :kind) indexes))]
+    (let [style-sql (if (= style :interleaved) "INTERLEAVED" "COMPOUND")
+          cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
+      (format "%s SORTKEY (%s)" style-sql cols))))
+
+(defmethod driver/compile-transform :redshift
+  [driver {:keys [query output-table indexes] :as transform-details}]
+  (if-let [clause (sortkey-clause driver indexes)]
+    (let [{sql-query :query sql-params :params} query
+          k      (keyword output-table)
+          target (if (namespace k)
+                   (sql.u/quote-name driver :table (namespace k) (name k))
+                   (sql.u/quote-name driver :table (name k)))]
+      [(format "CREATE TABLE %s %s AS %s" target clause sql-query)
+       sql-params])
+    ((get-method driver/compile-transform :sql) driver transform-details)))
+
+(defn- create-table-sql
+  "Render the `CREATE TABLE (...)` for a Python-transform target, inlining a sortkey from `:indexes` when present.
+  Reuses the `:sql-jdbc` renderer for the column list and appends the inline clause."
+  [driver table-name column-definitions {:keys [primary-key indexes]}]
+  (cond-> (#'sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
+    (seq indexes) (str " " (sortkey-clause driver indexes))))
+
+(defmethod driver/create-table! :redshift
+  [driver db-id table-name column-definitions & {:as opts}]
+  ;; Same as the inherited `:sql-jdbc` impl, but inlines a sortkey when one is present. Non-transform callers
+  ;; (e.g. uploads) pass no `:indexes`, so the rendered SQL is unchanged for them.
+  (let [sql (create-table-sql driver table-name column-definitions opts)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
