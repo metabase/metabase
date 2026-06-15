@@ -14,9 +14,12 @@ import {
   InteractiveDashboard,
   StaticDashboard,
 } from "embedding-sdk-bundle/components/public/dashboard";
-// eslint-disable-next-line no-restricted-imports
+import {
+  DataAppLink,
+  DataAppRouter,
+  useDataAppLocation,
+} from "embedding-sdk-bundle/lib/data-app/router";
 import { useAction } from "embedding-sdk-package/hooks/public/use-action";
-// eslint-disable-next-line no-restricted-imports
 import {
   avg,
   breakout,
@@ -31,19 +34,10 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "embedding-sdk-package/hooks/public/use-metabase-query";
-// eslint-disable-next-line no-restricted-imports
 import { useMetricQuery } from "embedding-sdk-package/hooks/public/use-metric-query";
-// eslint-disable-next-line no-restricted-imports
 import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
-// eslint-disable-next-line no-restricted-imports
 import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
-// eslint-disable-next-line no-restricted-imports
 import { defineMetabaseTheme } from "embedding-sdk-package/lib/public/define-metabase-theme";
-import {
-  DataAppLink,
-  DataAppRouter,
-  useDataAppLocation,
-} from "metabase/data_apps/router";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import { makeDistortionCallback } from "./sandbox/distortions";

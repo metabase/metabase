@@ -1,4 +1,4 @@
-(ns metabase.data-apps.models.data-app
+(ns metabase-enterprise.data-apps.models.data-app
   (:require
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
