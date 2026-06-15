@@ -3,6 +3,11 @@
   transform runs, and re-applied when it runs again. Proves the Phase 1 wiring: `target.indexes` flows out of the
   target and through the creation lifecycle, whatever the driver's mix of `:inline` and `:standalone` index methods.
 
+  The same assertions run for both transform kinds, since the target table is built at a different seam for each: a
+  SQL transform creates it with a CTAS, a Python transform with `create-table!`. [[test-declared-indexes!]] is the
+  shared body; [[declared-indexes-applied-and-replayed-test]] drives it with a SQL source and
+  [[declared-indexes-applied-on-python-transform-test]] with a Python one.
+
   The test is driver-generic and selects drivers by feature, so it starts running for a driver the moment it
   declares `:index/inline-create` or `:index/standalone-create`. To add a driver, add an entry to [[driver-cases]];
   until then the test fails for that driver with instructions."
@@ -81,30 +86,66 @@
   (set/union (mt/normal-driver-select {:+features [:transforms/table :index/inline-create]})
              (mt/normal-driver-select {:+features [:transforms/table :index/standalone-create]})))
 
+(defn- python-index-test-drivers
+  "Index-supporting drivers that also run Python transforms."
+  []
+  (set/intersection (index-test-drivers) (mt/normal-drivers-with-feature :transforms/python)))
+
+(defn- missing-case-message [driver]
+  (str driver " declares index support (`:index/inline-create` or `:index/standalone-create`) but has no test "
+       "coverage here. Add an entry for it to `driver-cases`."))
+
+(defn- query-source
+  "A SQL transform source that selects the whole `transforms_products` table (built via a CTAS)."
+  []
+  {:type  :query
+   :query (query-test-util/make-query
+           {:source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))})})
+
+(defn- python-source
+  "A Python transform source that returns `transforms_products` unchanged (built via `create-table!`), so the target
+  carries the same columns the driver-cases indexes reference."
+  []
+  {:type            "python"
+   :source-database (mt/id)
+   :source-tables   [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
+   :body            "def transform(transforms_products):\n    return transforms_products"})
+
+(defn- test-declared-indexes!
+  "Shared body for both transform kinds: declare the driver's `:indexes` on a fresh target, run a transform whose
+  source is built by the 0-arg `make-source`, and assert `:physical-indexes` reads `:expected` back from the
+  catalog. Runs twice to prove the indexes survive a full rebuild."
+  [{:keys [indexes expected physical-indexes]} make-source]
+  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+    (with-transform-cleanup! [{table-name :name :as target}
+                              {:type    "table"
+                               :schema  schema
+                               :name    "idx_products"
+                               :indexes indexes}]
+      (mt/with-temp [:model/Transform transform {:name   "index-transform"
+                                                 :source (make-source)
+                                                 :target target}]
+        (testing "a full run applies the declared indexes to the physical table"
+          (transforms.execute/execute! transform {:run-method :manual})
+          (transforms.tu/wait-for-table table-name 10000)
+          (is (= expected (physical-indexes (mt/db) schema table-name))))
+        (testing "a re-run rebuilds the table and the indexes come back with it"
+          (transforms.execute/execute! transform {:run-method :manual})
+          (is (= expected (physical-indexes (mt/db) schema table-name))))))))
+
 (deftest ^:synchronized declared-indexes-applied-and-replayed-test
   (mt/test-drivers (index-test-drivers)
     (mt/dataset transforms-dataset/transforms-test
-      (let [driver driver/*driver*
-            {:keys [indexes expected physical-indexes] :as test-case} (driver-cases driver)]
-        (is (some? test-case)
-            (str driver " declares index support (`:index/inline-create` or `:index/standalone-create`) but has no "
-                 "test coverage here. Add an entry for it to `driver-cases`."))
+      (let [test-case (driver-cases driver/*driver*)]
+        (is (some? test-case) (missing-case-message driver/*driver*))
         (when test-case
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-            (with-transform-cleanup! [{table-name :name :as target}
-                                      {:type    "table"
-                                       :schema  schema
-                                       :name    "idx_products"
-                                       :indexes indexes}]
-              (let [source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
-                    query        (query-test-util/make-query {:source-table source-table})]
-                (mt/with-temp [:model/Transform transform {:name   "index-transform"
-                                                           :source {:type :query :query query}
-                                                           :target target}]
-                  (testing "a full run applies the declared indexes to the physical table"
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (transforms.tu/wait-for-table table-name 10000)
-                    (is (= expected (physical-indexes (mt/db) schema table-name))))
-                  (testing "a re-run rebuilds the table and the indexes come back with it"
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (is (= expected (physical-indexes (mt/db) schema table-name)))))))))))))
+          (test-declared-indexes! test-case query-source))))))
+
+(deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-applied-on-python-transform-test
+  (mt/test-drivers (python-index-test-drivers)
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
+      (mt/dataset transforms-dataset/transforms-test
+        (let [test-case (driver-cases driver/*driver*)]
+          (is (some? test-case) (missing-case-message driver/*driver*))
+          (when test-case
+            (test-declared-indexes! test-case python-source)))))))

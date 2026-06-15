@@ -675,3 +675,39 @@
                                   checkpoint (get-checkpoint-value (:id transform))]
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
+
+(defn- pg-index-names
+  [schema table]
+  (->> (next.jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                           ["SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ?" schema table]
+                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+       (map :indexname)
+       set))
+
+(deftest ^:synchronized incremental-append-preserves-declared-indexes-test
+  (testing "the first incremental run creates the target's standalone indexes; an append run leaves them untouched"
+    ;; The gating in `complete-execution!` (re)applies standalone indexes only on a full-create run: a `:table` run,
+    ;; or a first/full-reset incremental run. A plain append must skip it, otherwise it re-issues `CREATE INDEX`
+    ;; against the live table (no IF NOT EXISTS) and `execute!` throws. So a broken gate fails the append run below,
+    ;; not just the index assertion.
+    (mt/test-drivers #{:postgres}
+      (mt/with-premium-features #{:transforms-basic}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [checkpoint-config (:integer checkpoint-configs)
+                indexed-target    (assoc (target-table-gen "incremental_index")
+                                         :indexes [{:kind :btree :name "incr_by_category" :columns [{:name "category"}]}])]
+            (with-transform-cleanup! [target indexed-target]
+              (let [payload (make-incremental-transform-payload "Incremental Index Transform" target :mbql checkpoint-config)
+                    schema  (:schema target)
+                    table   (:name target)]
+                (mt/with-temp [:model/Transform transform payload]
+                  (testing "first (full) run creates the declared btree"
+                    (transforms.execute/execute! transform {:run-method :manual})
+                    (transforms.tu/wait-for-table table 10000)
+                    (is (contains? (pg-index-names schema table) "incr_by_category")))
+                  (testing "append run preserves the btree without re-creating it"
+                    (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
+                                                  :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                      (let [transform (t2/select-one :model/Transform (:id transform))]
+                        (transforms.execute/execute! transform {:run-method :manual})
+                        (is (contains? (pg-index-names schema table) "incr_by_category"))))))))))))))
