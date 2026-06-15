@@ -1,4 +1,4 @@
-(ns metabase.data-apps.config
+(ns metabase-enterprise.data-apps.config
   "Parsing + validation of a per-app `data_app.yml`. Each data app lives in its
    own directory under `data_apps/` at the repo root, alongside its built bundle:
 

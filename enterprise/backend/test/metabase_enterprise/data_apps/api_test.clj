@@ -1,8 +1,8 @@
-(ns metabase.data-apps.api-test
+(ns metabase-enterprise.data-apps.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.data-apps.sync :as data-app.sync]
+   [metabase-enterprise.data-apps.sync :as data-app.sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -43,30 +43,37 @@
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
 (deftest non-superuser-is-forbidden-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (create-app!)
-    (testing "a non-superuser is forbidden from every data-app endpoint"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "data-app")))
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "data-app/repo-status")))
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "data-app/demo")))
-      (mt/user-real-request :rasta :get 403 "data-app/demo/bundle")
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 "data-app/demo" {:enabled false}))))))
+  ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
+  ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
+  ;; a thread-local `binding`).
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (create-app!)
+        (testing "a non-superuser is forbidden from every data-app endpoint"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "data-app")))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "data-app/repo-status")))
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "data-app/demo")))
+          (mt/user-real-request :rasta :get 403 "data-app/demo/bundle")
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 "data-app/demo" {:enabled false}))))))))
 
 (deftest superuser-can-manage-and-view-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (create-app!)
-    (testing "a superuser can list, read metadata, and serve the bundle"
-      (is (=? [{:name "demo" :display_name "Demo"}]
-              (mt/user-http-request :crowberto :get 200 "data-app")))
-      (is (=? {:name "demo"}
-              (mt/user-http-request :crowberto :get 200 "data-app/demo")))
-      (is (str/includes?
-           (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
-           "BUNDLE")))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (create-app!)
+        (testing "a superuser can list, read metadata, and serve the bundle"
+          (is (=? [{:name "demo" :display_name "Demo"}]
+                  (mt/user-http-request :crowberto :get 200 "data-app")))
+          (is (=? {:name "demo"}
+                  (mt/user-http-request :crowberto :get 200 "data-app/demo")))
+          (is (str/includes?
+               (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
+               "BUNDLE")))))))
 
 ;;; ----------------------------------------------------- Sync -----------------------------------------------------
 
@@ -171,36 +178,41 @@
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
 (deftest list-and-bundle-endpoints-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "demo" {:name "Demo app" :slug "demo" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
-    (testing "GET / lists the synced apps"
-      (is (=? [{:name "demo" :display_name "Demo app"
-                :bundle_path "data_apps/demo/dist/index.js" :enabled true}]
-              (mt/user-http-request :crowberto :get 200 "data-app"))))
-    (testing "GET /:slug/bundle serves the cached bytes"
-      (is (str/includes?
-           (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
-           "DEMOBUNDLE")))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (data-app.sync/import-from-snapshot!
+         (snapshot (app-files "demo" {:name "Demo app" :slug "demo" :path "dist/index.js" :bundle "DEMOBUNDLE"})))
+        (testing "GET / lists the synced apps"
+          (is (=? [{:name "demo" :display_name "Demo app"
+                    :bundle_path "data_apps/demo/dist/index.js" :enabled true}]
+                  (mt/user-http-request :crowberto :get 200 "data-app"))))
+        (testing "GET /:slug/bundle serves the cached bytes"
+          (is (str/includes?
+               (str (mt/user-real-request :crowberto :get 200 "data-app/demo/bundle"))
+               "DEMOBUNDLE")))))))
 
 (deftest repo-status-endpoint-test
-  (testing "configured reflects whether a repository is connected"
-    (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
-      (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))
-    (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
-      (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))))
+  (mt/with-premium-features #{:data-apps}
+    (testing "configured reflects whether a repository is connected"
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly false)]
+        (is (=? {:configured false} (mt/user-http-request :crowberto :get 200 "data-app/repo-status"))))
+      (mt/with-dynamic-fn-redefs [data-app.sync/repo-configured? (constantly true)]
+        (is (=? {:configured true} (mt/user-http-request :crowberto :get 200 "data-app/repo-status")))))))
 
 (deftest enable-disable-endpoint-test
-  (mt/with-model-cleanup [:model/DataApp]
-    (data-app.sync/import-from-snapshot!
-     (snapshot (app-files "demo" {:name "Demo" :slug "demo" :path "index.js" :bundle "BUNDLE"})))
-    (testing "PUT /:slug can disable an app"
-      (is (=? {:name "demo" :enabled false}
-              (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled false}))))
-    (testing "a disabled app is not served"
-      (is (= "Not found." (mt/user-http-request :crowberto :get 404 "data-app/demo")))
-      (mt/user-real-request :crowberto :get 404 "data-app/demo/bundle"))
-    (testing "re-enabling restores serving"
-      (is (=? {:enabled true}
-              (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled true})))
-      (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "data-app/demo"))))))
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp]
+        (data-app.sync/import-from-snapshot!
+         (snapshot (app-files "demo" {:name "Demo" :slug "demo" :path "index.js" :bundle "BUNDLE"})))
+        (testing "PUT /:slug can disable an app"
+          (is (=? {:name "demo" :enabled false}
+                  (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled false}))))
+        (testing "a disabled app is not served"
+          (is (= "Not found." (mt/user-http-request :crowberto :get 404 "data-app/demo")))
+          (mt/user-real-request :crowberto :get 404 "data-app/demo/bundle"))
+        (testing "re-enabling restores serving"
+          (is (=? {:enabled true}
+                  (mt/user-http-request :crowberto :put 200 "data-app/demo" {:enabled true})))
+          (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "data-app/demo"))))))))

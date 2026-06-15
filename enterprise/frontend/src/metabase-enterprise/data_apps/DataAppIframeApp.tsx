@@ -1,5 +1,4 @@
 import createCache from "@emotion/cache";
-// eslint-disable-next-line no-restricted-imports
 import { CacheProvider } from "@emotion/react";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";

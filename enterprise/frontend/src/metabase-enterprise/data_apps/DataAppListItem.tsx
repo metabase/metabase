@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useSetDataAppEnabledMutation } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { Button, Flex, Group, Icon, Switch } from "metabase/ui";
+import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
 import { DataAppSummary } from "./DataAppSummary";

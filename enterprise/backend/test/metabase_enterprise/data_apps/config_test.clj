@@ -1,7 +1,7 @@
-(ns metabase.data-apps.config-test
+(ns metabase-enterprise.data-apps.config-test
   (:require
    [clojure.test :refer :all]
-   [metabase.data-apps.config :as data-app.config]))
+   [metabase-enterprise.data-apps.config :as data-app.config]))
 
 (set! *warn-on-reflection* true)
 

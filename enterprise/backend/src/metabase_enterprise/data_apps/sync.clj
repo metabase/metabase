@@ -1,4 +1,4 @@
-(ns metabase.data-apps.sync
+(ns metabase-enterprise.data-apps.sync
   "Materialize data apps from a synced repository snapshot.
 
    Data apps ride the remote-sync import pipeline: whenever remote-sync pulls the
@@ -14,7 +14,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.data-apps.config :as data-app.config]
+   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
