@@ -9,8 +9,10 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
-// The Behavior/Parameters/Appearance cards share a wrapper whose inline
-// `opacity` style is dimmed (0.5) while the selected auth type isn't ready.
+// The Behavior/Parameters/Appearance cards share a wrapper that is dimmed and
+// made non-interactive (`pointer-events: none`) while the selected auth type
+// isn't ready. The wrapper always carries an inline `opacity` style, so it can
+// be selected in either state.
 const optionCardsWrapper = () =>
   getEmbedSidebar().findByText("Behavior").closest("[style*='opacity']");
 
@@ -68,14 +70,26 @@ describe(suiteTitle, () => {
     cy.log("switch to Guest authentication");
     getEmbedSidebar().findByLabelText("Guest").click();
 
-    cy.log("option cards stay dimmed until the Guest terms are accepted");
-    optionCardsWrapper().should("have.css", "opacity", "0.5");
+    cy.log(
+      "the Behavior options aren't interactive until the Guest terms are accepted",
+    );
+    optionCardsWrapper().should("have.css", "pointer-events", "none");
 
     cy.log("accept the Guest terms only — never the SSO terms");
     H.embedModalEnableEmbedding();
 
-    cy.log("option cards become available without accepting the SSO terms");
-    optionCardsWrapper().should("have.css", "opacity", "1");
+    cy.log(
+      "the Behavior options become interactive without accepting the SSO terms",
+    );
+    optionCardsWrapper().should("have.css", "pointer-events", "all");
+    getEmbedSidebar()
+      .findByLabelText("Allow downloads")
+      .click()
+      .should("be.checked");
+
+    getEmbedSidebar().findByText("Get code").click();
+    getEmbedSidebar().findByText("publish this dashboard").click();
+    H.codeMirrorValue().should("contain", 'with-downloads="true"');
   });
 
   it("pre-selects question in embed flow when opened from question sharing modal", () => {
