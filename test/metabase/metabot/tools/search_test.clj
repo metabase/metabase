@@ -611,7 +611,7 @@
                                      [#'search/transform-search-tool {:keyword_queries ["x"]}]]]
               (testing (str "wrapped " (-> tool-var symbol name))
                 (let [wrapped (-> (agent-tools/wrap-tools-with-state
-                                   {"search" tool-var} (atom {}) nil)
+                                   {"search" tool-var} (atom {}) nil nil)
                                   (get "search")
                                   :fn)
                       result  (wrapped args)
