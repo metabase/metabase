@@ -52,6 +52,7 @@ export const TreemapChart = ({
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   const [viewRootId, setViewRootId] = useState<NodeId | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
+  const isAnimatingRef = useRef(false);
   const clickedRef = useLatest(clicked);
   const handleViewRootChange = useCallback((id: NodeId | null) => {
     viewRootIdRef.current = id;
@@ -125,6 +126,7 @@ export const TreemapChart = ({
         containerRef,
         () => viewRootIdRef.current,
         () => clickedRef.current != null,
+        () => isAnimatingRef.current,
         getTreemapInlineValueIds(labelLayout, parentLabelLayout),
         treemapColumns.grouping.column.display_name,
       ),
@@ -165,30 +167,37 @@ export const TreemapChart = ({
     onVisualizationClick,
   });
 
+  const handleFinished = useCallback(() => {
+    isAnimatingRef.current = false;
+    handleLabelMeasure();
+  }, [handleLabelMeasure]);
+
   const allEventHandlers = useMemo(
     () => [
       ...eventHandlers,
-      { eventName: "finished", handler: handleLabelMeasure },
+      { eventName: "finished", handler: handleFinished },
     ],
-    [eventHandlers, handleLabelMeasure],
+    [eventHandlers, handleFinished],
   );
 
   useEffect(() => {
     handleViewRootChange(null);
   }, [chartData, handleViewRootChange]);
 
-  // reapply current zoom level that lives outside of echarts
+  // reapply current zoom level that lives outside echarts
   useEffect(() => {
     hideTreemapHoverOverlay(chartRef, overlayRef);
     dispatchTreemapViewRoot(chartRef, viewRootId);
   }, [option, viewRootId]);
 
-  // re-measure labels when the view root changes
   const prevViewRootIdRef = useRef(viewRootId);
+  // re-measure labels when the view root changes
   useEffect(() => {
     const isDrillTransition = prevViewRootIdRef.current !== viewRootId;
     prevViewRootIdRef.current = viewRootId;
-    if (!isDrillTransition) {
+    if (isDrillTransition) {
+      isAnimatingRef.current = true;
+    } else {
       handleLabelMeasure();
     }
   }, [option, viewRootId, handleLabelMeasure]);

@@ -27,6 +27,7 @@ export function getTreemapTooltipOption(
   containerRef: React.RefObject<HTMLDivElement>,
   getViewRootId: () => string | null,
   getIsClicked: () => boolean,
+  getIsAnimating: () => boolean,
   inlineValueIds: TreemapInlineValueIds,
   groupingHeader?: string,
 ): TooltipOption {
@@ -35,8 +36,7 @@ export function getTreemapTooltipOption(
     ...getTooltipBaseOption(containerRef),
     trigger: "item",
     formatter: (params) => {
-      // Suppress the tooltip while a drill-through popover is open
-      if (getIsClicked()) {
+      if (getIsClicked() || getIsAnimating()) {
         return "";
       }
       if (Array.isArray(params)) {
