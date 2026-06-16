@@ -9,6 +9,7 @@ import {
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import { ChartSettingColorsPicker } from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
+import { ChartSettingSelect } from "metabase/visualizations/components/settings/ChartSettingFieldPicker/ChartSettingSelect";
 import { ChartSettingFieldsPartition } from "metabase/visualizations/components/settings/ChartSettingFieldsPartition";
 import { ChartSettingFieldsPicker } from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
 import { ChartSettingInput } from "metabase/visualizations/components/settings/ChartSettingInput";
@@ -16,7 +17,6 @@ import { ChartSettingInputNumeric } from "metabase/visualizations/components/set
 import { ChartSettingMultiSelect } from "metabase/visualizations/components/settings/ChartSettingMultiSelect";
 import { ChartSettingRadio } from "metabase/visualizations/components/settings/ChartSettingRadio";
 import { ChartSettingSegmentedControl } from "metabase/visualizations/components/settings/ChartSettingSegmentedControl";
-import { ChartSettingSelect } from "metabase/visualizations/components/settings/ChartSettingSelect";
 import { ChartSettingToggle } from "metabase/visualizations/components/settings/ChartSettingToggle";
 import type {
   CompleteVisualizationSettingDefinition,

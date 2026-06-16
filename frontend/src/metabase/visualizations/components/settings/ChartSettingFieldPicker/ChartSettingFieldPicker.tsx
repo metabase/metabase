@@ -1,50 +1,76 @@
-/* eslint-disable react/prop-types */
+import cx from "classnames";
+import type { ComponentPropsWithoutRef, Ref } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { ActionIcon, Group, Icon, useMantineTheme } from "metabase/ui";
+import { ActionIcon, Group, Icon } from "metabase/ui";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { DatasetColumn, Series } from "metabase-types/api";
 
-import { ChartSettingActionIcon } from "./ChartSettingActionIcon";
-import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
-import {
-  ChartSettingFieldPickerRoot,
-  GrabberHandle,
-} from "./ChartSettingFieldPicker.styled";
+import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
+import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
+
+import S from "./ChartSettingFieldPicker.module.css";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
 const RIGHT_SECTION_PADDING = 16;
 const RIGHT_SECTION_BUTTON_WIDTH = 22;
 
+type MenuWidgetInfo = {
+  id: string;
+  props?: {
+    initialKey: string;
+  };
+};
+
+type ChartSettingFieldPickerProps = {
+  autoOpenWhenUnset?: boolean;
+  className?: string;
+  colors?: Record<string, string>;
+  columnHasSettings?: (column: DatasetColumn) => boolean;
+  columns?: DatasetColumn[];
+  dragHandleListeners?: Partial<ComponentPropsWithoutRef<typeof Icon>>;
+  dragHandleRef?: Ref<HTMLElement>;
+  fieldSettingWidget?: string | null;
+  onChange?: (value: string) => void;
+  onChangeSeriesColor?: (seriesKey: string, value: string) => void;
+  onRemove?: () => void;
+  onShowWidget?: (widget: MenuWidgetInfo, target: HTMLElement) => void;
+  options?: Array<{ name: string; value: string }>;
+  series?: Series;
+  showColorPicker?: boolean;
+  showColumnSetting?: boolean;
+  showDragHandle?: boolean;
+  value?: string;
+};
+
 export const ChartSettingFieldPicker = ({
-  value,
-  options,
+  autoOpenWhenUnset = true,
+  className,
+  colors = {},
+  columnHasSettings,
+  columns,
+  dragHandleListeners,
+  dragHandleRef,
+  fieldSettingWidget = null,
   onChange,
+  onChangeSeriesColor,
   onRemove,
   onShowWidget,
-  className,
-  columns,
+  options = [],
+  series,
+  showColorPicker,
   showColumnSetting,
   showDragHandle,
-  dragHandleRef,
-  dragHandleListeners,
-  columnHasSettings,
-  showColorPicker,
-  colors,
-  series,
-  onChangeSeriesColor,
-  autoOpenWhenUnset = true,
-  fieldSettingWidget = null,
-}) => {
-  const theme = useMantineTheme();
-
-  let columnKey;
-  if (value && showColumnSetting && columns) {
+  value,
+}: ChartSettingFieldPickerProps) => {
+  let columnKey: string | undefined;
+  if (typeof value === "string" && showColumnSetting && columns) {
     const column = _.findWhere(columns, { name: value });
-    if (column && columnHasSettings(column)) {
+    if (column && columnHasSettings?.(column)) {
       columnKey = getColumnKey(column);
     }
   }
@@ -83,7 +109,9 @@ export const ChartSettingFieldPicker = ({
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
-  const hasLeftSection = showDragHandle || (showColorPicker && seriesKey);
+  const hasLeftSection = Boolean(
+    showDragHandle || (showColorPicker && seriesKey),
+  );
 
   const rightSectionWidth =
     [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
@@ -91,8 +119,8 @@ export const ChartSettingFieldPicker = ({
     RIGHT_SECTION_PADDING;
 
   return (
-    <ChartSettingFieldPickerRoot
-      className={className}
+    <Group
+      className={cx(S.root, className)}
       data-testid="chartsettings-field-picker"
       bg="background-primary"
       align="center"
@@ -103,19 +131,18 @@ export const ChartSettingFieldPicker = ({
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
         value={value}
-        onChange={onChange}
+        onChange={(value) => onChange?.(String(value))}
         leftSection={
           hasLeftSection ? (
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
-                <GrabberHandle
-                  ref={dragHandleRef}
+                <Icon
+                  ref={dragHandleRef as Ref<SVGSVGElement>}
                   name="grabber"
-                  noMargin
                   {...dragHandleListeners}
                   onClick={(e) => e.stopPropagation()}
                   c="text-secondary"
-                  className={CS.pointerEventsAll}
+                  className={cx(S.grabberHandle, CS.pointerEventsAll)}
                   data-testid="drag-handle"
                 />
               )}
@@ -124,7 +151,7 @@ export const ChartSettingFieldPicker = ({
                   pillSize="small"
                   value={colors[seriesKey]}
                   onChange={(value) => {
-                    onChangeSeriesColor(seriesKey, value);
+                    onChangeSeriesColor?.(seriesKey, value);
                   }}
                   className={CS.pointerEventsAll}
                 />
@@ -135,6 +162,7 @@ export const ChartSettingFieldPicker = ({
         placeholderNoOptions={t`No valid fields`}
         placeholder={t`Select a field`}
         rightSectionWidth={`${rightSectionWidth}px`}
+        hasLeftSection={hasLeftSection}
         rightSection={
           <>
             {!disabled && (
@@ -146,7 +174,7 @@ export const ChartSettingFieldPicker = ({
               <ChartSettingActionIcon
                 icon="ellipsis"
                 data-testid={`settings-${value}`}
-                onClick={(e) => onShowWidget(menuWidgetInfo, e.currentTarget)}
+                onClick={(e) => onShowWidget?.(menuWidgetInfo, e.currentTarget)}
               />
             )}
             {onRemove && (
@@ -158,36 +186,7 @@ export const ChartSettingFieldPicker = ({
             )}
           </>
         }
-        styles={{
-          root: {
-            overflow: "visible",
-            padding: "0px",
-          },
-          wrapper: {
-            marginTop: "0px",
-          },
-          section: {
-            backgroundColor: "unset",
-            zIndex: "initial",
-          },
-          input: {
-            marginLeft: hasLeftSection ? theme.spacing.xs : 0,
-            textOverflow: "ellipsis",
-            fontWeight: "bold",
-
-            backgroundColor: disabled
-              ? "var(--mb-color-background-primary)"
-              : "inherit",
-
-            border: "none",
-            width: "100%",
-            color: "var(--mb-color-text-primary)",
-            cursor: "pointer",
-            pointerEvents: "unset",
-            paddingRight: `${rightSectionWidth + 8}px`,
-          },
-        }}
       />
-    </ChartSettingFieldPickerRoot>
+    </Group>
   );
 };

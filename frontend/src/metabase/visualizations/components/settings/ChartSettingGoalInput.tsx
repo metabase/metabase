@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
+import { Box, Group, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
-import { ChartSettingFieldPickerRoot } from "./ChartSettingFieldPicker.styled";
+import S from "./ChartSettingFieldPicker/ChartSettingFieldPicker.module.css";
 
 const RIGHT_SECTION_WIDTH = "38px";
 
@@ -80,12 +80,11 @@ export const ChartSettingGoalInput = ({
       opened={isPopoverOpen}
       onChange={setIsPopoverOpen}
       position="bottom-end"
-      withArrow
     >
       <Menu.Target>
-        <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
+        <Box component="span" className={S.chevronTarget}>
           <Icon name="chevrondown" />
-        </ActionIcon>
+        </Box>
       </Menu.Target>
       <Menu.Dropdown miw={320}>
         <Menu.Item onClick={() => handleMenuItemSelect(numericValue)} fw="bold">
@@ -107,7 +106,7 @@ export const ChartSettingGoalInput = ({
 
   if (isColumnReference) {
     return (
-      <ChartSettingFieldPickerRoot bg="background-primary" align="center">
+      <Group className={S.root} bg="background-primary" align="center">
         <TextInput
           id={id}
           value={selectedColumn?.label || value}
@@ -119,12 +118,12 @@ export const ChartSettingGoalInput = ({
           styles={inputStyles}
           w="100%"
         />
-      </ChartSettingFieldPickerRoot>
+      </Group>
     );
   }
 
   return (
-    <ChartSettingFieldPickerRoot bg="background-primary" align="center">
+    <Group className={S.root} bg="background-primary" align="center">
       <NumberInput
         ref={numberInputRef}
         id={id}
@@ -137,6 +136,6 @@ export const ChartSettingGoalInput = ({
         styles={inputStyles}
         w="100%"
       />
-    </ChartSettingFieldPickerRoot>
+    </Group>
   );
 };
