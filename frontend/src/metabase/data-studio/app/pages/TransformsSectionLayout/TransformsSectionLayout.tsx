@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -13,12 +14,13 @@ import { getShouldShowTransformsUpsell } from "metabase/transforms/selectors";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
-type TransformsSectionLayoutProps = {
+type TransformsSectionLayoutProps = WithRouterProps & {
   children?: ReactNode;
 };
 
 export function TransformsSectionLayout({
   children,
+  params,
 }: TransformsSectionLayoutProps) {
   usePageTitle(t`Transforms`, { titleIndex: 1 });
   const shouldShowUpsell = useSelector(getShouldShowTransformsUpsell);
@@ -33,7 +35,16 @@ export function TransformsSectionLayout({
     return <EnableTransformsPage />;
   }
 
-  if (!isLoadingDatabases && transformsDatabases?.length === 0) {
+  // Transform-detail pages (`/data-studio/transforms/:transformId/...`) must remain reachable
+  // even when no writable database exists, so the analyst can read the SQL/Python body of an
+  // orphaned transform after its source DB has been deleted (GDGT-2447).
+  const isTransformDetailRoute = Boolean(params?.transformId);
+
+  if (
+    !isLoadingDatabases &&
+    transformsDatabases?.length === 0 &&
+    !isTransformDetailRoute
+  ) {
     return (
       <SectionLayout>
         <NoWritableDatabasesEmptyState />
