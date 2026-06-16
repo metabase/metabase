@@ -58,15 +58,18 @@ export function getAllParentLabelLayouts(
     }
     const available = node.rect.width - groupHeader.paddingX * 2;
     const minReadable = label.slice(0, PARENT_MIN_HEADER_VISIBLE_CHARS);
-    const minReadableWidth = config.measureTextWidth(minReadable);
-    const showText = minReadableWidth <= available;
+    const minLabelWidth = config.measureTextWidth(minReadable);
+    const fullLabelWidth = config.measureTextWidth(label);
+    const showText = minLabelWidth <= available;
     let showValuePercent = false;
     let nameColumnWidth: number | undefined;
     if (showText) {
       const clusterWidth = config.getValuePercentWidth?.(node.id) ?? Infinity;
+
       showValuePercent =
-        minReadableWidth + PARENT_HEADER_VALUE_PERCENT_GAP + clusterWidth <=
+        fullLabelWidth + PARENT_HEADER_VALUE_PERCENT_GAP + clusterWidth <=
         available;
+
       if (showValuePercent) {
         nameColumnWidth =
           available - PARENT_HEADER_VALUE_PERCENT_GAP - clusterWidth;
@@ -75,7 +78,7 @@ export function getAllParentLabelLayouts(
     layouts[node.id] = {
       showText,
       showValuePercent,
-      ...(nameColumnWidth != null ? { nameColumnWidth } : {}),
+      nameColumnWidth,
     };
   }
   return layouts;
