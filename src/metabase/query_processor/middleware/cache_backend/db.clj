@@ -35,38 +35,51 @@
   [{:keys [results]}]
   results)
 
-(defn select-cache
-  "Select the result form the cache"
-  [query-hash updated-at]
-  (t2/select-one-fn results-as-bytes :model/QueryCache
-                    {:select [:results]
-                     :where [:and
-                             [:= :query_hash query-hash]
-                             [:>= :updated_at updated-at]]
-                     :order-by [[:updated_at :desc]]}))
+(defn select-latest-cache-entry
+  "The most recent cache entry for `query-hash` *regardless of TTL* (`query_hash` is the PK, so there's at most one):
+  `{:results <raw bytes>, :updated-at <timestamp>}`, or nil if there's no entry. The caller compares `:updated-at`
+  against the strategy's freshness boundary to decide whether to serve the entry, serve it stale while refreshing, or
+  recompute (see [[strategy->invalidated-at]])."
+  [query-hash]
+  (when-let [row (t2/select-one [:model/QueryCache :results :updated_at] :query_hash query-hash)]
+    {:results    (results-as-bytes row)
+     :updated-at (:updated_at row)}))
 
-(defn fetch-cache-stmt-ttl
-  "Make a prepared statement for :ttl caching strategy"
-  [strategy query-hash]
-  (if-not (:avg-execution-ms strategy)
-    (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
-    (let [max-age-ms     (* (:multiplier strategy)
-                            (:avg-execution-ms strategy))
-          invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
-      (select-cache query-hash invalidated-at))))
+(defn invalidated-at-ttl
+  "Freshness boundary for a `:ttl` strategy: cache entries with `updated_at` older than this are stale. Returns nil when
+  the strategy is missing `:avg-execution-ms` (so a TTL can't be computed and nothing should be served from cache)."
+  [strategy]
+  (when-let [avg-execution-ms (:avg-execution-ms strategy)]
+    ;; `:multiplier` can be fractional, so round to whole milliseconds (`ms-ago`/`u.date/add` want an integer)
+    (let [boundary (ms-ago (long (* (:multiplier strategy) avg-execution-ms)))]
+      (if-let [invalidated-at (:invalidated-at strategy)]
+        (t/max boundary invalidated-at)
+        boundary))))
 
-(defenterprise fetch-cache-stmt
-  "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
+(defenterprise strategy->invalidated-at
+  "Freshness boundary timestamp for `strategy`: cache entries with `updated_at` strictly older than this are stale and
+  must be refreshed. Returns nil when nothing can be served from cache for this strategy (e.g. on OSS for a non-`:ttl`
+  strategy). EE overrides this to also handle `:duration` and `:schedule`."
   metabase-enterprise.cache.strategies
-  [strategy hash]
+  [strategy]
   (when (= :ttl (:type strategy))
-    (fetch-cache-stmt-ttl strategy hash)))
+    (invalidated-at-ttl strategy)))
 
-(defn- cached-results [query-hash strategy respond]
-  (if-let [cached (fetch-cache-stmt strategy query-hash)]
-    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. cached))]
-      (respond is))
-    (respond nil)))
+(def ^:private lease-free-sentinel
+  "Substituted (via COALESCE) for a NULL `refresh_started_at` so that 'no refresh in progress' counts as a free lease.
+  Any timestamp older than every realistic lease cutoff works."
+  (t/offset-date-time 1970 1 1 0 0 0 0 (t/zone-offset 0)))
+
+(defn try-acquire-refresh-lease!
+  "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`, via a conditional
+  UPDATE on `refresh_started_at`. Returns true iff this process won the lease (and so should recompute); false means
+  another process is already refreshing it (and we should serve stale instead). A lease older than `lease-ms` is
+  considered abandoned (e.g. the claimer crashed) and can be taken over."
+  [query-hash lease-ms]
+  (pos? (t2/update! :model/QueryCache
+                    {:query_hash                                          query-hash
+                     [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
+                    {:refresh_started_at (t/offset-date-time)})))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
@@ -89,8 +102,9 @@
         timestamp     (t/offset-date-time)]
     (try
       (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
-                                (constantly {:updated_at timestamp
-                                             :results    final-results}))
+                                (constantly {:updated_at         timestamp
+                                             :results            final-results
+                                             :refresh_started_at nil}))
       (catch Throwable e
         (log/error e "Error saving query results to cache.")))
     nil))
@@ -98,12 +112,18 @@
 (defmethod i/cache-backend :db
   [_]
   (reify i/CacheBackend
-    (cached-results [_ query-hash strategy respond]
-      (cached-results query-hash strategy respond))
+    (cached-results [_ query-hash respond]
+      (if-let [{:keys [results updated-at]} (select-latest-cache-entry query-hash)]
+        (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. results))]
+          (respond is updated-at))
+        (respond nil nil)))
 
     (save-results! [_ query-hash is]
       (save-results! query-hash is)
       nil)
 
     (purge-old-entries! [_ max-age-seconds]
-      (purge-old-cache-entries! max-age-seconds))))
+      (purge-old-cache-entries! max-age-seconds))
+
+    (try-acquire-refresh-lease! [_ query-hash lease-ms]
+      (try-acquire-refresh-lease! query-hash lease-ms))))

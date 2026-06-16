@@ -59,7 +59,8 @@
 (defn- test-backend
   "In in-memory cache backend implementation."
   [save-chan purge-chan]
-  (let [store (atom nil)]
+  (let [store  (atom nil)
+        leases (atom {})]
     (reify
       pretty/PrettyPrintable
       (pretty [_]
@@ -69,27 +70,20 @@
                                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
       i/CacheBackend
-      (cached-results [this query-hash strategy respond]
-        (assert (= :ttl (:type strategy)))
-        (assert (contains? strategy :avg-execution-ms))
-        (let [hex-hash   (codecs/bytes->hex query-hash)
-              max-age-ms (* (:multiplier strategy)
-                            (:avg-execution-ms strategy))]
+
+      (cached-results [this query-hash respond]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
-                                                                               (when (= hash hex-hash)
-                                                                                 entry))
-                                                                             @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/millis max-age-ms)))
-                                      results))]
+          (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
             (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is))
-            (respond nil))))
+              (respond is created))
+            (respond nil nil))))
 
       (save-results! [this query-hash results]
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
+          (swap! leases dissoc hex-hash) ; release the refresh lease now that fresh results are stored
           (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
 
@@ -99,7 +93,19 @@
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
-        (a/>!! purge-chan ::purge)))))
+        (a/>!! purge-chan ::purge))
+
+      (try-acquire-refresh-lease! [_this query-hash lease-ms]
+        (let [hex-hash (codecs/bytes->hex query-hash)
+              now      (t/instant)
+              won      (volatile! false)]
+          (swap! leases (fn [ls]
+                          (let [held (get ls hex-hash)]
+                            (if (or (nil? held) (t/before? held now))
+                              (do (vreset! won true)
+                                  (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
+                              ls))))
+          @won)))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
@@ -177,6 +183,20 @@
     (if (:cached (:cache/details result))
       :cached
       :not-cached)))
+
+(defn- run-query-rows
+  "Run the query and return the rows actually served (from `*rows*` if recomputed, or from the cache if a cache hit).
+  Lets a test tell a stale cache hit apart from a recompute by the data they return."
+  [& {:as query-kvs}]
+  (while (a/poll! *save-chan*))
+  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
+        query (test-query query-kvs)]
+    (binding [driver.settings/*query-timeout-ms* 2000
+              qp.pipeline/*execute*             (fn [_driver _query respond]
+                                                  (Thread/sleep *query-execution-delay-ms*)
+                                                  (respond {} *rows*))]
+      (driver/with-driver :h2
+        (get-in (qp query qp.reducible/default-rff) [:data :rows])))))
 
 (defn- cacheable? [& {:as query-kvs}]
   (boolean (#'cache/is-cacheable? (merge {:cache-strategy (ttl-strategy), :query :abc} query-kvs))))
@@ -305,8 +325,8 @@
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (true?
-               (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                                 some?))))
+               (i/cached-results cache/*backend* query-hash
+                                 (fn [is _updated-at] (some? is))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
