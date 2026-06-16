@@ -184,6 +184,37 @@ describe("SdkUsageProblemDisplay", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the API key warning when the SDK is disabled on localhost but an API key is used", async () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    setup({
+      authConfig: createMockApiKeyConfig(),
+      hasEmbeddingFeature: true,
+      isEmbeddingSdkEnabled: false,
+    });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    const card = screen.getByTestId(PROBLEM_CARD_TEST_ID);
+
+    // API keys are always allowed on localhost regardless of the
+    // `enable-embedding-sdk` setting, so the eval-only warning still shows —
+    // not the "not enabled" error.
+    expect(
+      within(card).getByText("This embed is powered by the Metabase SDK."),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).getByText(
+        /This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO./,
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      within(card).queryByText(/Embedding is not enabled for this instance/),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows an error when Embedding SDK is disabled in production", async () => {
     const mock = jest
       .spyOn(IsLocalhostModule, "getIsLocalhost")
