@@ -49,3 +49,18 @@
       (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
         (mt/user-http-request :crowberto :post 402 "ee/index-manager"
                               {:transform_id transform-id :structured btree})))))
+
+(deftest ownership-test
+  (testing "creating a request for a non-existent transform 404s (only transform-owned tables)"
+    (mt/with-premium-features #{:transforms-python}
+      (mt/user-http-request :crowberto :post 404 "ee/index-manager"
+                            {:transform_id Integer/MAX_VALUE :structured btree}))))
+
+(deftest inline-kind-index-name-test
+  (testing "an inline kind with no :name gets its index_name from :kind"
+    (mt/with-premium-features #{:transforms-python}
+      (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+        (let [created (mt/user-http-request :crowberto :post 200 "ee/index-manager"
+                                            {:transform_id transform-id
+                                             :structured {:kind "sortkey" :style "compound" :columns [{:name "a"}]}})]
+          (is (= "sortkey" (:index_name created))))))))

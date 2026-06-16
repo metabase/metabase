@@ -85,15 +85,3 @@
     (:type structured)    (update :type keyword)
     (:columns structured) (update :columns (fn [cols]
                                              (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
-
-(defn validate-structured!
-  "Validate a structured index map against [[index-structured]], throwing a 400 on failure. Returns the keywordized
-  map so callers can store a normalized value."
-  [structured]
-  (let [structured (keywordize-structured structured)]
-    (when-not (mr/validate ::index-structured structured)
-      (throw (ex-info "Invalid index request structured definition"
-                      {:status-code 400
-                       :structured  structured
-                       :errors      (mr/explain ::index-structured structured)})))
-    structured))
