@@ -286,7 +286,8 @@
 (defn available-drivers
   "Return a set of all currently available drivers."
   []
-  (into #{} (filter #(driver/available? %))
+  (into #{}
+        (filter driver/available?)
         (descendants driver/hierarchy :metabase.driver/driver)))
 
 (mu/defn semantic-version-gte :- :boolean
