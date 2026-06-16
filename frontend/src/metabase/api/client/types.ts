@@ -4,6 +4,8 @@ export type RequestOptions<RawResponse extends boolean = boolean> = {
   noEvent?: boolean;
   headers?: Record<string, string>;
   signal?: AbortSignal;
+  /** Forwarded to the underlying `fetch` (e.g. `"no-store"` to skip the cache). */
+  cache?: RequestCache;
   /**
    * When `true`, resolve with the raw `Response` instead of the parsed body —
    * for callers that read it themselves (binary downloads, map tiles as a blob).

@@ -9,6 +9,7 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { api } from "metabase/api/client";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
@@ -53,6 +54,29 @@ const failedPluginHashes = new Map<
 >();
 
 /**
+ * Remove a previously-loaded custom-viz display from the global
+ * visualizations registry and drop its load/failure cache entries, so a
+ * question with this display falls back to the default visualization on
+ * the next render (and a future `loadCustomVizPlugin` call re-fetches
+ * and re-registers instead of returning the cached registration).
+ *
+ * Used by `useAutoLoadCustomVizPlugin` when a plugin disappears from the
+ * installed list, and by the SDK gating layer when the identifier is not in
+ * `allowedCustomVisualizations`.
+ */
+export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
+  if (visualizations.has(display)) {
+    visualizations.delete(display);
+    for (const [id, entry] of loadedPlugins) {
+      if (entry.identifier === display) {
+        loadedPlugins.delete(id);
+        failedPluginHashes.delete(id);
+      }
+    }
+  }
+}
+
+/**
  * Hook that fetches the list of active custom visualization plugins.
  */
 export function useCustomVizPlugins({
@@ -79,6 +103,7 @@ function useCustomVizDevReload(
   plugins: CustomVizPluginRuntime[] | undefined,
   setLoading: (loading: boolean) => void,
   onInfo: (message: string) => void,
+  sandboxMode: SandboxMode = "hosted",
 ) {
   useEffect(() => {
     if (!isCustomVizDisplay(display) || !plugins) {
@@ -107,6 +132,7 @@ function useCustomVizDevReload(
         await loadCustomVizPlugin(plugin, {
           cacheBustSuffix: `?t=${Date.now()}`,
           onInfo,
+          sandboxMode,
         });
       } finally {
         setLoading(false);
@@ -120,8 +146,12 @@ function useCustomVizDevReload(
     return () => {
       eventSource.close();
     };
-  }, [display, onInfo, plugins, setLoading]);
+  }, [display, onInfo, plugins, setLoading, sandboxMode]);
 }
+
+export type UseAutoLoadCustomVizPluginOptions = {
+  sandboxMode?: SandboxMode;
+};
 
 /**
  * Hook that auto-loads a custom viz plugin bundle when the current display
@@ -131,9 +161,13 @@ function useCustomVizDevReload(
  * For plugins with `dev_bundle_url` set, polls the bundle endpoint via HEAD
  * every 2s and reloads when the ETag changes.
  */
-export function useAutoLoadCustomVizPlugin(display: string | undefined): {
+export function useAutoLoadCustomVizPlugin(
+  display: string | undefined,
+  options: UseAutoLoadCustomVizPluginOptions = {},
+): {
   loading: boolean;
 } {
+  const { sandboxMode = "hosted" } = options;
   const { plugins, disabled } = useCustomVizPlugins();
   const [sendToast] = useToast();
   const [loading, setLoading] = useState(false);
@@ -163,13 +197,16 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
       loadingRef.current = identifier;
       setLoading(true);
       try {
-        await loadCustomVizPlugin(pluginToLoad, { onInfo });
+        await loadCustomVizPlugin(pluginToLoad, {
+          onInfo,
+          sandboxMode,
+        });
       } finally {
         loadingRef.current = null;
         setLoading(false);
       }
     },
-    [onInfo],
+    [onInfo, sandboxMode],
   );
 
   useEffect(() => {
@@ -186,7 +223,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     load(plugin);
   }, [display, plugins, load]);
 
-  useCustomVizDevReload(display, plugins, setLoading, onInfo);
+  useCustomVizDevReload(display, plugins, setLoading, onInfo, sandboxMode);
 
   // `loading` state drives re-renders when async load completes.
   // Without it, the Map-based check alone wouldn't trigger a re-render.
@@ -212,15 +249,7 @@ export function useAutoLoadCustomVizPlugin(display: string | undefined): {
     plugins &&
     !plugins.find((p) => `custom:${p.identifier}` === display)
   ) {
-    if (visualizations.has(display)) {
-      visualizations.delete(display);
-      for (const [id, entry] of loadedPlugins) {
-        if (entry.identifier === display) {
-          loadedPlugins.delete(id);
-          failedPluginHashes.delete(id);
-        }
-      }
-    }
+    unregisterCustomVizDisplay(display);
     return { loading: false };
   }
 
@@ -278,16 +307,18 @@ export async function loadCustomVizPlugin(
   ensureVizApi();
 
   try {
-    const bundleUrl = new URL(
-      getSubpathSafeUrl(plugin.bundle_url),
-      window.location.origin,
-    );
+    const params: Record<string, string> = {};
     if (cacheBustSuffix) {
-      bundleUrl.searchParams.set("t", Date.now().toString());
+      params.t = Date.now().toString();
     } else if (currentHash) {
-      bundleUrl.searchParams.set("v", currentHash);
+      params.v = currentHash;
     }
-    const res = await fetch(bundleUrl.href, { cache: "no-store" });
+    const res = await api.fetch({
+      method: "GET",
+      url: plugin.bundle_url,
+      params,
+      cache: "no-store",
+    });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }

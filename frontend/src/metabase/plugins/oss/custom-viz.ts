@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Dispatch } from "metabase/redux/store";
 import type {
   CustomVizPluginRuntime,
   VisualizationDisplay,
@@ -39,6 +40,15 @@ const getDefaultPluginCustomViz = () => ({
       onInfo?: (message: string) => void;
     },
   ) => null as string | null,
+  /**
+   * Load (and register) the plugin backing a `custom:*` display, if it is
+   * installed and enabled. Resolves to the registered display identifier, or
+   * null when the plugin is unavailable. No-op in OSS.
+   */
+  loadCustomVizPluginForDisplay: async (
+    _dispatch: Dispatch,
+    _display: string,
+  ): Promise<VisualizationDisplay | null> => null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
   useCustomVizPluginsIcon: () => noopCustomVizIcon,
