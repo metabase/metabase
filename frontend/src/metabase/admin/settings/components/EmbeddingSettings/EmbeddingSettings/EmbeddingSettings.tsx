@@ -14,7 +14,7 @@ import {
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk/plugin";
 import {
   PLUGIN_ADMIN_SETTINGS,
   PLUGIN_CONTENT_TRANSLATION,

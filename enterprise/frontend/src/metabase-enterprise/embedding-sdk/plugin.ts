@@ -1,4 +1,4 @@
-import type { EmbeddingSdkPlugin } from "metabase/embedding/sdk-plugin.types";
+import type { EmbeddingSdkPlugin } from "metabase/embedding/sdk/types";
 import type { OnBeforeRequestHandler } from "metabase/plugins/oss/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

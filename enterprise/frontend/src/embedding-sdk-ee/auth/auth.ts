@@ -30,7 +30,7 @@ import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
 import { api } from "metabase/api/client";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk/plugin";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,

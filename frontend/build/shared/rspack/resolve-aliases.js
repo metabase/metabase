@@ -52,7 +52,7 @@ const RESOLVE_ALIASES = {
     ? {
         "metabase/moderation/plugin":
           ENTERPRISE_SRC_PATH + "/moderation/plugin",
-        "metabase/embedding/sdk-plugin":
+        "metabase/embedding/sdk/plugin":
           ENTERPRISE_SRC_PATH + "/embedding-sdk/plugin",
       }
     : {}),

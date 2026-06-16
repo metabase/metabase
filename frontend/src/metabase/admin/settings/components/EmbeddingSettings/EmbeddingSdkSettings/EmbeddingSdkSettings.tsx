@@ -6,7 +6,7 @@ import { UpsellSdkLink } from "metabase/admin/upsells/UpsellSdkLink";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useUrlWithUtm } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk/plugin";
 import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 
 import { EmbeddingSettingsCard } from "../EmbeddingSettingsCard";

@@ -1,4 +1,4 @@
-import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk/plugin";
 import { PLUGIN_API } from "metabase/plugins";
 import type {
   OnBeforeRequestHandler,

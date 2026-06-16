@@ -17,7 +17,7 @@ export interface EmbeddingSdkRequestHandlers {
  * plugin's shape.
  *
  * Two modules implement it:
- *   - `metabase/embedding/sdk-plugin` (OSS default)
+ *   - `metabase/embedding/sdk/plugin` (OSS default)
  *   - `metabase-enterprise/embedding-sdk/plugin` (enterprise)
  *
  * The build resolves which one is bundled (see resolve-aliases.js). This plugin
