@@ -73,19 +73,22 @@
 
 (def ^:private lease-free-sentinel
   "Substituted (via COALESCE) for a NULL `refresh_started_at` so that 'no refresh in progress' counts as a free lease.
-  Any timestamp older than every realistic lease cutoff works, but it must stay inside MySQL's `TIMESTAMP` range
-  (>= 1970-01-01 00:00:01 UTC): the epoch itself underflows that range (worse once shifted by a non-UTC session zone),
-  making the comparison evaluate to NULL so no process ever wins the lease."
-  (t/offset-date-time "2000-01-01T00:00Z"))
+  Any timestamp older than every realistic lease cutoff works."
+  (t/offset-date-time "1970-01-01T00:00Z"))
 
 (defn try-acquire-refresh-lease!
   "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`, via a conditional
   UPDATE on `refresh_started_at`. Returns true iff this process won the lease (and so should recompute); false means
   another process is already refreshing it (and we should serve stale instead). A lease older than `lease-ms` is
-  considered abandoned (e.g. the claimer crashed) and can be taken over."
+  considered abandoned (e.g. the claimer crashed) and can be taken over.
+  
+  Updates the raw table, not the `:model/QueryCache` model: the model derives `:hook/updated-at-timestamped?`, whose
+  before-update hook would turn this into a non-atomic select-then-update-per-PK (losing the cross-process
+  single-flight guarantee) and bump `updated_at`, making a stale entry look fresh. The raw table keeps it a single
+  atomic conditional UPDATE that touches only `refresh_started_at`."
   [query-hash lease-ms]
-  (pos? (t2/update! :model/QueryCache
-                    {:query_hash                                          query-hash
+  (pos? (t2/update! (t2/table-name :model/QueryCache)
+                    {:query_hash                                         query-hash
                      [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
                     {:refresh_started_at (t/offset-date-time)})))
 

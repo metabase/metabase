@@ -235,9 +235,8 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
-    ;; QueryCache is a cache table, not a metadata-provider-backed model
     #_{:clj-kondo/ignore [:discouraged-var]}
-    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array [1 2 3 4])
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
                                                                :updated_at (t/offset-date-time)}]
       (testing "the first caller wins the lease"
