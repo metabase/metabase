@@ -68,19 +68,10 @@
 ;;; ──────────────────────────────────────────────────────────────────
 
 (defn entity-usage-for-transform
-  "Build the `:entity-usage` map for a `write_transform_*` tool call.
-
-  - `args`   — tool args map. Reads `:database_id` and (Python only) `:source_tables`.
-  - `sql-body` — optional resulting SQL body string (post-edit). Extracts
-                 `{{#N}}` card refs. Pass `nil` for Python transforms or on
-                 error branches where the post-edit SQL is unrecoverable.
-  - `extra-table-refs` — optional pre-built `{:type \"table\" :id N}` entries
-                 (e.g. physical tables resolved from the SQL body via
-                 [[metabot.tools.sql.common/native-physical-table-refs]]).
-                 Passed only on success branches, mirroring
-                 `entity-usage-for-sql`'s 3-arity in the SQL query tools.
-
-  Output is always `[]`; authoring tools don't surface entities."
+  "Build the `:entity-usage` `:input` for a `write_transform_*` tool: the
+  `:database_id`, Python `:source_tables`, `{{#N}}` card refs in `sql-body`
+  (nil for Python / error branches), and optional pre-resolved `extra-table-refs`
+  (success branches only). `:output` is always empty."
   ([args sql-body]
    (entity-usage-for-transform args sql-body nil))
   ([{:keys [database_id source_tables]} sql-body extra-table-refs]
@@ -95,16 +86,9 @@
       :output []})))
 
 (defn transform-inspection-entity-usage
-  "Build the `:entity-usage` map for a transform-inspection tool call.
-  Input is a single `{:type \"transform\" :id transform-id}` entry. Output is
-  always `[]` — these tools don't surface entities; they fetch details about
-  a known transform.
-
-  `transform-id` may be an int (`get_transform_details`) or a path string
-  (`get_transform_python_library_details` — the path is recorded under the
-  `transform`-type bucket because it identifies a transform-infrastructure
-  artifact, even though it is not a row id in the `transform` table).
-  Consumers can disambiguate by `:id`'s runtime type."
+  "Build `:entity-usage` for a transform-inspection tool: a single
+  `{:type \"transform\" :id transform-id}` input, empty output. `transform-id`
+  may be an int (a `transform` row) or a library path string."
   [transform-id]
   {:input  [{:type "transform" :id transform-id}]
    :output []})
@@ -151,11 +135,8 @@
   get-transform-details-tool
   "Get information about a transform."
   [{:keys [transform_id]} :- [:map {:closed true} [:transform_id :int]]]
-  ;; Outer try attaches :entity-usage on the non-agent error path that
-  ;; `handle-agent-error` re-raises (e.g. `api/read-check` 404s from
-  ;; `transforms/get-transform`, which throw with `:status-code 404` but no
-  ;; `:agent-error?` — without this catch the throw escapes past
-  ;; `entity-usage-on-result`).
+  ;; Outer try attaches :entity-usage on the non-agent error path:
+  ;; `handle-agent-error` re-raises (e.g. `read-check` 404s that lack `:agent-error?`).
   (let [entity-usage (transform-inspection-entity-usage transform_id)]
     (try
       (entity-usage/entity-usage-on-result
@@ -279,7 +260,7 @@
          true))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+          ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
           (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} base-eu)
               (entity-usage/stamp-artifact-valid false))
           (do

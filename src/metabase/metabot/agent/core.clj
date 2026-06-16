@@ -191,10 +191,7 @@
        (not (has-final-response? parts))))
 
 (defn- finish-reason
-  "Determine why the agent loop stopped. A final response or the absence of
-  any tool call means the agent chose to stop, so those win even on the last
-  allowed iteration; only pending tool calls that hit the cap are a
-  force-stop."
+  "Why the agent loop stopped. A final response or no tool calls means the agent chose to stop — those win over the iteration cap; only pending tool calls at the cap force-stop."
   [iteration max-iterations parts]
   (cond
     (has-final-response? parts)   :final-response
@@ -506,9 +503,7 @@
                      :all-parts parts}))
       (log/debug "Iteration" {:n iteration :parts-count (count parts)})
       (if (empty? parts)
-        ;; Degenerate completion: the LLM returned zero AISDK parts. Emit a
-        ;; terminal-state-part so the quality-score temporal layer can read
-        ;; the exit reason from persisted message data.
+        ;; Degenerate completion: LLM returned zero AISDK parts. Still emit a terminal-state-part so the exit reason is persisted like every other exit.
         (assoc loop-state
                :status :done
                :result (-> result
@@ -658,13 +653,7 @@
 
                       :else
                       (log/errorf e "Agent loop error: %s" msg)))
-                  ;; Emit a terminal-state part alongside the error part: the
-                  ;; instrumented loop did run, and the quality-score pipeline
-                  ;; keys "instrumented" off terminal_state presence — without
-                  ;; it a provider/loop failure would be sentineled as
-                  ;; pre-instrumentation instead of scored as an error
-                  ;; termination. `:error` is not in the finish-reason map, so
-                  ;; it projects to the `error` categorical.
+                  ;; Emit a terminal-state part alongside the error: the quality pipeline keys "instrumented" off terminal_state presence, so without it a loop failure looks pre-instrumentation rather than an error termination.
                   (-> init
                       (rf (error-part e))
                       (rf (streaming/terminal-state-part :error))))

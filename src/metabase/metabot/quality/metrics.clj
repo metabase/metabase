@@ -49,15 +49,11 @@
          (double total)))))
 
 (defn- artifact-validity-share
-  "Fraction of authoring tool calls that produced a valid artifact —
-  `valid-authoring-calls / authoring-calls`. A health in `[0, 1]` (1 = good):
-  every authored artifact valid → `1.0`, all invalid → `0.0`. An authoring call
-  is counted only when its result carried an explicit `:artifact-valid` stamp
-  (`true` or `false`); calls with no stamp (in-flight turns, non-authoring
-  tools, or authoring tools outside the query/transform/document family) are
-  excluded from both numerator and denominator. Per-call by design — a turn that
-  thrashes on invalid artifacts before succeeding scores poorly. `:na` when no
-  stamped authoring call exists."
+  "Fraction of stamped authoring calls that produced a valid artifact. A
+  health in `[0, 1]` (1 = good). Only calls whose result carried an explicit
+  `:artifact-valid` stamp count; unstamped calls are excluded from both sides.
+  Per-call, so a turn that thrashes before succeeding scores poorly. `:na` when
+  no stamped authoring call exists."
   [normalized]
   (let [evs (->> (:tool-events normalized)
                  (filter #(= :authoring (:tool-type %)))
@@ -130,9 +126,7 @@
    ...]
   ```
 
-  The first call is never unproductive (no prior to overlap). Public so
-  the per-turn attribution layer can reuse the same determination and
-  back-reference the overlapped calls."
+  The first call is never unproductive (no prior to overlap)."
   [search-evs]
   (let [id-sets (mapv result-id-set search-evs)]
     (into []

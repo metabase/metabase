@@ -20,11 +20,9 @@
    [metabase.util.malli.registry :as mr]))
 
 (def ^:private card-tag-re
-  ;; Mirrors metabase.lib.parameters.parse/card-tag-regex but anchored as a
-  ;; standalone token inside surrounding text. Captures the numeric card id;
-  ;; tolerates the optional `-some-slug` suffix and inner whitespace
-  ;; (`{{ #123 }}`, `{{#123-slug}}`). Retained for `neutralize-card-refs`;
-  ;; `card-refs-in-sql` itself defers to the canonical recognizer.
+  ;; Mirrors metabase.lib.parameters.parse/card-tag-regex, anchored as a standalone
+  ;; token; captures the card id, tolerates `-slug` and inner whitespace. Used by
+  ;; `neutralize-card-refs` only (`card-refs-in-sql` uses the canonical recognizer).
   #"\{\{\s*#(\d+)(?:-[a-z0-9-]*)?\s*\}\}")
 
 (defn card-refs-in-sql
@@ -35,10 +33,8 @@
   (`question`/`model`/`metric`) can join to `report_card.type`. Returns `[]`
   when `sql` is not a string or has no card references.
 
-  Unlike a raw regex scan, this ignores card refs written inside SQL comments
-  (`-- {{#1}}`, `/* {{#1}} */`), matching how Metabase actually resolves card
-  references — a ref in a comment is not a real reference. Output order follows
-  the recognizer's tag map and is irrelevant: the consumer keys by `[type id]`."
+  Ignores refs inside SQL comments (the recognizer is comment-aware), matching how
+  Metabase resolves card references. Output order is irrelevant."
   [sql]
   (if (string? sql)
     (->> (lib/recognize-template-tags sql)
@@ -71,11 +67,9 @@
   path, which records only directly-named tables (see
   `metabase.metabot.tools.construct/query->entity-usage`).
 
-  Never throws: an unsupported driver, a compile/parse failure, blank SQL, or a
-  nil `database-id` all degrade to `[]`, matching entity-usage's best-effort
-  contract. Variable/field-filter tags are substituted by the underlying
-  analyzer; snippet-derived tables are a known, accepted limitation (snippets
-  are not part of the entity-usage vocabulary)."
+  Never throws: unsupported driver, parse/compile failure, blank SQL, or nil
+  `database-id` all degrade to `[]`. Snippet-derived tables are not surfaced
+  (snippets aren't part of the entity-usage vocabulary)."
   [database-id sql]
   (or (try
         (when (and (some? database-id) (string? sql) (not (str/blank? sql)))

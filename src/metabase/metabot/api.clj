@@ -94,12 +94,7 @@
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration.
 
-  `:context` MUST already be the post-`create-context` enriched form — the
-  caller (`streaming-request`) runs the enrichment before `start-turn!` so the
-  user-row's prompt-context snapshot reflects what the LLM actually saw.
-  Re-running `create-context` here would not be idempotent (`set-user-time`
-  would re-stamp against `OffsetDateTime/now`, and `add-recent-views` would
-  perform a second activity-feed IO call).
+  `:context` MUST already be the post-create-context enriched form. The caller (streaming-request) enriches before start-turn! so the user-row snapshot matches what the LLM saw; create-context is not idempotent, so don't re-run it here.
 
   `:assistant-msg-id` is the PK of the placeholder assistant row created by
   [[metabot.persistence/start-turn!]]; the finally block UPDATEs that row.
@@ -178,12 +173,7 @@
     - `hostname`: extracted from the origin URL, always recorded.
     - `pii-info`: gated by `analytics-pii-retention-enabled` — nil when off.
 
-  Enriches `:context` via `metabot.context/create-context` *before* calling
-  `start-turn!` so the user-row's persisted prompt-context snapshot reflects
-  the post-enrichment shape the LLM will actually see (`:used_tables`,
-  `:user_recently_viewed`, source-type annotations on transform drafts).
-  The enriched form is then handed to `native-agent-streaming-request`,
-  which must not re-run enrichment — see that fn's docstring."
+  Enriches `:context` via create-context *before* start-turn! so the persisted prompt-context snapshot matches what the LLM sees, then hands the enriched form to native-agent-streaming-request (which must not re-enrich)."
   [{:keys [metabot_id profile_id message context history conversation_id state debug]} request-info]
   (let [message          (metabot.envelope/user-message message)
         metabot-id       (metabot.config/resolve-dynamic-metabot-id metabot_id)

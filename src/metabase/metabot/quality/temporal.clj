@@ -65,12 +65,8 @@
 
 (defn- reason-from-terminal-state-part
   "Find the `terminal_state` data part on an assistant row's `:data` and
-  project its `:reason` string to a categorical keyword. Returns `nil`
-  when no `terminal_state` part is present.
-
-  Each part comes back from `mi/transform-json` with string `:type` and
-  string `:data-type`; the inner `:data` map's keys are keywords but
-  its `:reason` value stays a string."
+  project its `:reason` to a categorical keyword, or `nil` when absent.
+  Unknown reasons fall through to `:error`."
   [row]
   (when-let [reason-str
              (some (fn [part]

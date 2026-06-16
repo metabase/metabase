@@ -108,13 +108,11 @@
 ;;; ---------------------------------------------------------------------------
 
 (mu/defn- build-breakdown :- ::quality.schema/full-breakdown
-  "Build the JSON-encodable `quality_breakdown` map persisted on the
-  conversation row. Most metric values read `1 = good`
-  (`tool_call_failure_rate` is a badness rate, `0 = good`); `:na` serializes
-  as null. `:subscores` nests each subscore's `:value` and member `:metrics`
-  (the shared [[subscores/project-json]] projection); `:diagnostics`
-  carries the run-level iteration/tool/termination counts and the
-  entity-set sizes."
+  "Build the JSON-encodable `quality_breakdown` persisted on the conversation
+  row: the shared [[subscores/project-json]] projection (composite score +
+  nested subscores) plus `:diagnostics` (run-level counts and entity-set
+  sizes). Metric values read `1 = good` except `tool_call_failure_rate`
+  (`0 = good`); `:na` serializes as null."
   [normalized metrics subscores]
   (merge
    {:version quality.constants/quality-score-version}
@@ -154,7 +152,7 @@
 
 (defn compute-conversation-score
   "Pure entry point: given a seq of `MetabotMessage` rows, return the
-  values to persist. Three result shapes:
+  values to persist. Four result shapes:
 
   - **Pre-instrumentation** — sentinel breakdown, `quality_score = nil`,
     no `:quality_attribution` (assistant rows stay NULL).
@@ -201,17 +199,11 @@
              :deleted_at nil))
 
 (defn- write-result!
-  "Persist a pipeline result. Always updates the conversation row;
-  per-assistant-row attribution is updated separately, one UPDATE per
-  assistant row. Sentinel results carry no `:quality_attribution`, so on
-  that path any attribution left over from an earlier clean score is
-  nulled out — readers must never see an unscoreable conversation whose
-  messages still carry scores.
-
-  Runs in its own transaction so the conversation row and the message
-  rows can't drift if one UPDATE fails. The caller
-  (`finalize-assistant-turn!`) invokes this after its own transaction
-  commits, so a failure here can never roll back the user-visible turn."
+  "Persist a pipeline result in its own transaction: the conversation row
+  plus one UPDATE per assistant row for attribution. Sentinel results carry
+  no `:quality_attribution`, so any attribution left from an earlier clean
+  score is nulled out — readers must never see an unscoreable conversation
+  whose messages still carry scores."
   [conversation-id result]
   (t2/with-transaction [_conn]
     (t2/update! :model/MetabotConversation conversation-id

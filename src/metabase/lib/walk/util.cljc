@@ -51,21 +51,14 @@
      [:metric _ _] true)))
 
 (mu/defn all-non-metric-source-table-ids :- [:maybe [:set {:min 1} ::lib.schema.id/table]]
-  "Like [[all-source-table-ids]], but omits the `:source-table` of any stage that aggregates a
-  metric. A metric-bearing stage's source table is the base table the metric is defined over —
-  fixed by the metric rather than chosen on its own — so it is not counted as a table referenced
-  in its own right. Stages without a metric contribute their `:source-table` as usual."
+  "Like [[all-source-table-ids]], but omits the `:source-table` of any metric-aggregating stage —
+  that source is fixed by the metric definition, not chosen in its own right."
   [query :- ::lib.schema/query]
   (stage-values-set query (comp (remove stage-aggregates-metric?)
                                 (keep :source-table))))
 
 (mu/defn all-non-metric-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
-  "The `:source-card` analog of [[all-non-metric-source-table-ids]]: every stage's `:source-card`,
-  omitting stages that aggregate a metric. A metric may be defined over a card/model rather than
-  a table ([[metabase.lib.metric/available-metrics]] resolves by `:source-table` or
-  `:source-card`), in which case the consuming stage's `:source-card` is fixed by the metric
-  rather than chosen on its own. Unlike [[all-source-card-ids]], this does not include metric
-  ids or template-tag card ids — only stage `:source-card` values."
+  "The `:source-card` analog of [[all-non-metric-source-table-ids]]."
   [query :- ::lib.schema/query]
   (stage-values-set query (comp (remove stage-aggregates-metric?)
                                 (keep :source-card))))

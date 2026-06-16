@@ -20,13 +20,7 @@
 (set! *warn-on-reflection* true)
 
 (def persisted-structured-output-keys
-  "Subset of `:structured-output` that must survive persistence. The first
-  five keys are consumed by `metabase-enterprise.metabot-analytics.queries`
-  to surface generated queries on the admin detail page. `:entity-usage` is
-  the structured per-call entity record populated by tools and read by
-  downstream observability consumers. `:artifact-valid` is the authoring
-  tools' outcome stamp (true = produced a valid artifact, false = invalid),
-  read by the quality pipeline's `artifact-validity-share` metric."
+  "Subset of :structured-output that must survive persistence: query keys feed metabase-enterprise.metabot-analytics.queries (admin detail page); :entity-usage is the per-call entity record read by observability consumers; :artifact-valid is the authoring tools' outcome stamp read by the quality pipeline's artifact-validity-share metric."
   [:query-id :query-content :query :database :chart-type
    :entity-usage :artifact-valid])
 
@@ -129,16 +123,11 @@
 ;;; unchanged (the block falls through `convert-content-block` to nil).
 
 (def ^:private viewing-item-keep-keys
-  "Top-level keys preserved when projecting a `:user_is_viewing` item for
-  persistence. Drops the bulk fields: `:query` (the raw MBQL/native query
-  map), `:chart_configs` (per-chart query duplicates), and any
-  enrichment metadata not in this list."
+  "Top-level keys kept when projecting a :user_is_viewing item for persistence; everything else (notably the bulk :query and :chart_configs) is dropped."
   [:type :id :name :description :sql_engine :database_id :error :source_type])
 
 (def ^:private viewing-source-keep-keys
-  "Sub-keys preserved from a transform item's `:source` map. Drops the body
-  (`:query`, `:body`) and table-detail fields; the `:source-tables` and
-  `:source-database` references are enough to identify what the LLM saw."
+  "Sub-keys kept from a transform item's :source; the :source-tables/:source-database refs identify what the LLM saw without the query body."
   [:type :source-database :source-tables])
 
 (defn- project-used-table
@@ -170,33 +159,18 @@
   (into [] (keep project-viewing-item) user-is-viewing))
 
 (defn project-recent-views-for-persist
-  "Pass-through projection — `add-recent-views` already produces the
-  `{:id :name :description :type}` shape this snapshot uses. Helper exists
-  so the call site reads symmetric with the viewing-context projection
-  and so future shape drift has an obvious choke point."
+  "Project recent-views entries to {:id :name :description :type} for persistence (add-recent-views already produces this shape)."
   [user-recently-viewed]
   (into [] (keep #(when (map? %)
                     (select-keys % [:id :name :description :type])))
         user-recently-viewed))
 
 (def ^:private metabase-uri-re
-  "Matches `metabase://<entity-type>/<id>` URIs anywhere in user-message text.
-  The 8 entity types mirror the FE's `METABASE_PROTOCOL_ENTITY_MODELS`
-  (`frontend/src/metabase/metabot/utils/links.ts`); this list must stay in
-  sync with that constant. The regex deliberately catches both
-  markdown-link form (`[label](metabase://card/42)`, FE-serialized
-  `@`-mentions) and bare-URI form (a user typing `metabase://card/42`
-  themselves) — both are prompt-side entity references and recording
-  them is correct."
+  "Matches metabase://<entity-type>/<id> URIs in user text. The 8 entity types must stay in sync with the FE's METABASE_PROTOCOL_ENTITY_MODELS (frontend/src/metabase/metabot/utils/links.ts). Catches both markdown-link and bare-URI forms."
   #"metabase://(question|dashboard|collection|document|model|database|table|transform)/(\d+)")
 
 (defn parse-mentioned-refs
-  "Pull `metabase://type/id` references out of a user-message text body.
-  Tolerates nil / non-string / empty input. Returns a vector of
-  `{:type \"...\" :id N}` maps in source order; duplicates are preserved
-  so consumers can count references. Ids too large for a Long (no real
-  entity can have one) are dropped rather than thrown on — this runs in
-  the request path before anything is persisted."
+  "Pull metabase://type/id refs from user-message text. Tolerates nil/non-string. Returns {:type :id} maps in source order, duplicates preserved; ids too large for a Long are dropped (no real entity has one)."
   [user-message-content]
   (if (string? user-message-content)
     (->> (re-seq metabase-uri-re user-message-content)
@@ -226,17 +200,7 @@
       :else "")))
 
 (defn build-prompt-context-block
-  "Compose the `prompt-context` block for the user-row's `:data` vector.
-  Returns nil when `context` is nil so callers can short-circuit on the
-  block insertion.
-
-  Three regimes:
-  - `context` is nil → returns nil (block omitted entirely).
-  - `context` is non-nil with empty sub-channels → block is present with
-     `:user_is_viewing []`, `:user_recently_viewed []`,
-     `:mentioned_refs []`. Distinguishes \"we recorded an empty context\"
-     from \"we never recorded this.\"
-  - `context` is populated → block carries the projected data."
+  "Compose the prompt-context block for the user-row's :data vector. Returns nil when context is nil (block omitted). A non-nil context with empty channels still yields a present block with empty vectors — distinguishing \"recorded empty context\" from \"never recorded.\""
   [context user-message]
   (when (some? context)
     {:type                 "prompt-context"
@@ -272,13 +236,7 @@
      it so the assistant row's `user_id` stays NULL. Falls back to
      `api/*current-user-id*` when omitted.
   - `:ai-proxy?` — override; otherwise derived from `llm-metabot-provider`.
-  - `:context` — the *enriched* per-turn context map (i.e. the one
-     `metabase.metabot.context/create-context` returns). When non-nil, a
-     `{:type \"prompt-context\" ...}` block is appended as `data[1]` on the
-     user row — a snapshot of what was injected into the LLM at turn start.
-     The user message itself stays at `data[0]`, so chat rendering is
-     unchanged (the block falls through `convert-content-block` to nil and
-     is filtered out). See `build-prompt-context-block`.
+  - :context — the *enriched* per-turn context (what create-context returns). When non-nil, a {:type \"prompt-context\"} snapshot block is appended as data[1] (user message stays at data[0], so rendering is unchanged). See build-prompt-context-block.
 
   Returns `{:assistant-msg-id <pk> :assistant-external-id <uuid-str>}`."
   [conversation-id profile-id user-message
@@ -403,14 +361,7 @@
                            :error        (safe-encode-error error)}
                     slack-msg-id (assoc :slack_msg_id slack-msg-id)
                     channel-id   (assoc :channel_id channel-id))))
-    ;; Quality-score pipeline. Runs after the message UPDATE commits: on
-    ;; Postgres a SQL-level failure inside the scoring UPDATEs would abort
-    ;; the enclosing transaction even with the exception caught, rolling
-    ;; back the user-visible message UPDATE. Outside the transaction a
-    ;; scoring failure can only lose the score, never the turn. The outer
-    ;; try/catch is defense-in-depth for any throw that escapes the inner
-    ;; guard in `score-conversation!` (e.g. a Throwable raised before the
-    ;; guard's try block is entered).
+    ;; Quality-score pipeline. Runs *after* the message UPDATE commits: on Postgres a SQL failure inside scoring would abort the enclosing transaction and roll back the user-visible UPDATE even if caught. Outside the tx a scoring failure can only lose the score. The try/catch guards any throw escaping score-conversation!'s inner guard.
     (try
       (quality.core/score-conversation! conversation-id)
       (catch Throwable t

@@ -74,17 +74,11 @@
                              :value sql}))
 
 (defn- entity-usage-for-sql
-  "Build an `:entity-usage` map for an authoring SQL tool. `:input` carries the
-  database the tool wrote against, any `{{#N}}` card refs in the SQL body, and —
-  when `table-refs` is supplied — the physical tables the query named directly;
-  `:output []` because authoring tools don't surface entities. `database-id`
-  may be nil — in that case the database ref is omitted (e.g. error branches
-  where we couldn't resolve the in-memory query).
-
-  Physical-table refs (3-arity) are passed only on success branches, where a
-  validated query is in scope; validation-failure and exception branches use
-  the 2-arity form and stay cards-only, as before. Build `table-refs` with
-  [[metabot.tools.sql.common/native-physical-table-refs]]."
+  "Build the `:entity-usage` `:input` for an authoring SQL tool: the `database-id`
+  (omitted when nil), `{{#N}}` card refs in the SQL body, and — on success
+  branches only (3-arity) — physical `table-refs` from
+  [[metabase.metabot.tools.sql.common/native-physical-table-refs]]. `:output` is always
+  empty; authoring tools don't surface entities."
   ([database-id sql]
    (entity-usage-for-sql database-id sql nil))
   ([database-id sql table-refs]
@@ -144,7 +138,7 @@
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+          ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
           (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} entity-usage)
               (entity-usage/stamp-artifact-valid false))
           (do
@@ -248,15 +242,13 @@
           (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
             (entity-usage/stamp-artifact-valid
              {:output (format-validation-error-output instr)
-              ;; SQL pre-transpile isn't available on the validation-failure
-              ;; branch, so card refs from the edits payload aren't recoverable
-              ;; here; record the database alone.
+              ;; Pre-transpile SQL unavailable here; record the database alone (no card refs).
               :structured-output {:entity-usage (entity-usage-for-sql existing-db nil)}
               :instructions instr}
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+          ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
           (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} (entity-usage-for-sql existing-db nil))
               (entity-usage/stamp-artifact-valid false))
           (do
@@ -325,7 +317,7 @@
              false))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+          ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
           (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} entity-usage)
               (entity-usage/stamp-artifact-valid false))
           (do

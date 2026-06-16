@@ -22,11 +22,7 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 (def terminal-state-type
-  "AI-SDK data type for agent loop terminal state. Persisted on every
-  successful loop exit; read by the quality-score temporal layer
-  (`metabase.metabot.quality.temporal`). Distinct from `metabot_message.error`
-  — the error column captures *why* a turn failed, while terminal-state
-  captures *how* the loop exited."
+  "AI-SDK data type for the agent loop's terminal state, persisted on every successful loop exit and read by the quality-score temporal layer. Distinct from metabot_message.error: error is *why* a turn failed, terminal-state is *how* the loop exited."
   "terminal_state")
 
 (defn persistable-data-part?
@@ -145,27 +141,14 @@
    :data value})
 
 (def ^:private finish-reason->terminal-state
-  "Map the agent loop's `finish-reason` keyword to the persisted
-  terminal-state categorical consumed by the quality-score temporal layer.
-
-  `:empty-response` represents the rare degenerate case where the LLM call
-  returned zero AISDK parts; treated as `:error` for termination-health
-  purposes."
+  "Maps the agent loop's finish-reason keyword to the persisted terminal-state categorical consumed by the quality-score temporal layer."
   {:max-iterations :iter_cap
    :final-response :final_response
    :stop           :model_signaled_done
    :empty-response :error})
 
 (defn terminal-state-part
-  "Create a TERMINAL_STATE data part. `reason` is the raw agent-loop
-  `finish-reason` keyword (`:max-iterations` / `:final-response` /
-  `:stop` / `:empty-response`); this function projects it to the
-  persisted categorical (`iter_cap` / `final_response` /
-  `model_signaled_done` / `error`) consumed by the quality-score
-  temporal layer.
-
-  Unknown / future reasons fall through to `error`, the conservative
-  classification for the termination signal."
+  "Create a TERMINAL_STATE data part. Projects the raw finish-reason keyword to the persisted categorical via finish-reason->terminal-state; unknown reasons fall through to error."
   [reason]
   (let [terminal (get finish-reason->terminal-state reason :error)]
     {:type      :data

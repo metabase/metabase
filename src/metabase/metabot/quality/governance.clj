@@ -62,11 +62,10 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- card-rows
-  "Issue the batched card query. LEFT JOIN to `collection` (for the
-  authority level, personal-owner, and the path/type that resolve the
-  card's top-level collection) and `moderation_review` (filtered to
-  `most_recent = true`). A card appears N times iff N `most_recent` rows
-  exist for it — [[fold-card-rows]] folds those."
+  "Issue the batched card query. LEFT JOIN to `collection` (authority level,
+  personal-owner, path/type) and to `moderation_review` filtered to
+  `most_recent = true`; [[fold-card-rows]] collapses the per-review
+  duplication."
   [card-ids]
   (when (seq card-ids)
     (t2/query
@@ -215,14 +214,9 @@
   the Library collection-id set from [[library-collection-ids]]. Returns
   `{[type id-str] facts-map}`.
 
-  Cards and tables carry the [[canonical?]] inputs; dashboards, databases,
-  and transforms carry `:kind :other` and a `:name`. An entity the appdb
-  can't find is absent from the map. Refs whose `:type` is outside the
-  resolved vocabulary, or whose `:id` is non-numeric, are dropped before
-  any query runs.
-
-  One batched query per entity-type bucket, plus memoized root-collection
-  lookups for cards nested inside other collections."
+  Resolution contract is described in the namespace docstring. One batched
+  query per entity-type bucket, plus memoized root-collection lookups for
+  nested cards."
   [entity-refs library-cids]
   (let [{:keys [card table dashboard database transform]} (partition-refs entity-refs)]
     (merge

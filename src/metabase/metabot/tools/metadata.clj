@@ -163,12 +163,9 @@
         fields))
 
 (defn- list-available-fields-output
-  "Walk the `get-metadata` result and collect each surfaced field. Tables
-  contribute their direct fields; models contribute their `lib/returned-columns`
-  (each typed with the model's card id under `:metadata.table_id` — the
-  parent that surfaced the field). Metrics surface no fields under the
-  options `list_available_fields` passes (`with-queryable-dimensions? false`),
-  so they contribute nothing here."
+  "Collect surfaced fields from a `get-metadata` result: tables' direct fields and
+  models' returned-columns (each tagged with the parent entity id under
+  `:metadata.table_id`). Metrics contribute none here."
   [result]
   (let [{:keys [tables models]} (:structured-output result)]
     (into []
@@ -178,8 +175,7 @@
 (defn- answer-sources-output-refs
   "Project the `:metrics` and `:models` from a successful `answer-sources`
   result into `:entity-usage.output` entries. Both lists carry `:id` per
-  entity; the `:type` on each list element is the keyword equivalent of
-  the entity-usage type string."
+  entity."
   [{:keys [metrics models]}]
   (into []
         (concat
@@ -235,9 +231,8 @@
   get-field-values-tool
   "Return metadata for a given field of a given data source."
   [{:keys [data_source source_id field_id]} :- get-field-values-schema]
-  ;; Outer try attaches :entity-usage on the non-agent error path that
-  ;; `handle-agent-error` re-raises (e.g. `api/read-check` 404s from
-  ;; `field-stats` helpers when `source_id` doesn't resolve to a real entity).
+  ;; Outer try attaches :entity-usage on the non-agent error path:
+  ;; `handle-agent-error` re-raises (e.g. `read-check` 404s that lack `:agent-error?`).
   (let [entity-usage {:input  [{:type data_source :id source_id}
                                {:type "field"     :id field_id}]
                       :output []}]

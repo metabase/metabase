@@ -64,11 +64,8 @@
 
 (defn- artifact-validity
   "The artifact-validity share itself — its lone member metric is already a
-  health in `[0, 1]` (1 = good), so the subscore is that value, or nil when no
-  authoring call was stamped (the share is `:na`, or absent from a partial
-  metrics map). Its own subscore — a weakest-link axis in the composite
-  geometric mean — so a conversation that authored nothing valid geometrically
-  zeroes the composite, while pure-chat turns (no authoring) are unaffected."
+  health in `[0, 1]`. Returns that value, or nil when no authoring call was
+  stamped (`:na` or absent)."
   [metrics]
   (let [s (:artifact-validity-share metrics)]
     (when (and (some? s) (not= :na s))
@@ -126,8 +123,7 @@
   (the composite) alongside a snake-cased `subscores` map. Each subscore
   nests its own `:value` (nil when N/A) and the `:metrics` that compose it.
 
-  Single source of truth for the persisted shape so the two payloads can't
-  drift apart."
+  Single source for the persisted shape."
   [metrics subs]
   {:quality_score (:composite subs)
    :subscores     {:data_source_quality (subscore-entry (:data-source-quality subs)

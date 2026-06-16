@@ -86,10 +86,8 @@
       (ex-message e))))
 
 (defn- schema-collect-entity-usage
-  "Build the `:entity-usage` map for `document_schema_collect`. Only the
-  successfully-resolved single-database branch records an input entity —
-  the error branches (no database, multiple databases) didn't inspect
-  anything."
+  "Build `:entity-usage` for `document_schema_collect`: the resolved database as
+  input (or empty on the no-/multi-database error branches)."
   [database-id]
   {:input  (if (some? database-id)
              [{:type "database" :id database-id}]
@@ -159,10 +157,8 @@
                    [:chart_type chart-type-enum]]]])
 
 (defn- sql-chart-entity-usage
-  "2-arity is the cheap database + `{{#N}}` card-ref projection used on
-  error branches; the 3-arity adds pre-built table refs (resolved via
-  [[metabot.tools.sql.common/native-physical-table-refs]]) on the valid
-  branch, mirroring `entity-usage-for-sql` in the SQL query tools."
+  "Like `entity-usage-for-sql`: database + `{{#N}}` card refs (2-arity), plus
+  pre-resolved table refs on the valid branch (3-arity)."
   ([database-id sql]
    (sql-chart-entity-usage database-id sql nil))
   ([database-id sql table-refs]
@@ -221,7 +217,7 @@
                true)))))
       (catch Exception e
         (if (:agent-error? (ex-data e))
-          ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+          ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
           (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} entity-usage)
               (entity-usage/stamp-artifact-valid false))
           (do
@@ -275,16 +271,15 @@
                               :entity-usage  entity-usage}
           :final-response? true}
          true)
-        ;; Preserve tool error messaging from construct_notebook_query path. The inner construct
-        ;; call returns a result with no resolved query on agent-input errors (rather than
-        ;; throwing), so a nil dataset-query here is an authoring miss.
+        ;; Preserve construct_notebook_query's error messaging. A nil dataset-query means the
+        ;; inner call returned an agent-input error (not a throw) — an authoring miss.
         (-> (entity-usage/entity-usage-on-result
              (or result {:output "Failed to construct model chart draft."})
              entity-usage)
             (entity-usage/stamp-artifact-valid false))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
-        ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+        ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
         (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} construct-tools/empty-entity-usage)
             (entity-usage/stamp-artifact-valid false))
         (do

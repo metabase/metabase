@@ -213,10 +213,8 @@
 ;;; ---------------------------------------- Entity usage ----------------------------------------
 
 (def empty-entity-usage
-  "Placeholder `:entity-usage` for construct-family error branches that don't have a resolved
-  query in scope (LLM-input failures, generic exceptions, the degraded structured-output
-  branch). The success path populates `:entity-usage` from a real walk of the resolved
-  pmbql-query — see [[query->entity-usage]]."
+  "Placeholder `:entity-usage` for construct-family error branches with no resolved
+  query in scope. The success path uses [[query->entity-usage]]."
   {:input [] :output []})
 
 (defn query->entity-usage
@@ -224,16 +222,14 @@
 
   Tables and cards are the ones the author named directly: non-metric `:source-table`s /
   `:source-card`s, table template tags, and `{{#N}}` card template tags. An entity reached only
-  because the author referenced something else — a field's implicit-join target, the table
-  backing a template-tag field, or the table/card a metric is defined over (a metric-bearing
-  stage's source is fixed by the metric, see [[lib/all-non-metric-source-table-ids]]) — is
+  because the author referenced something else — e.g. a field's implicit-join target — is
   deliberately excluded, since the author referenced the field or metric, not its source.
-  Metric ids are also included under the `card` type (metrics share `report_card`'s id space),
+  Metric ids are also included under the `card` type,
   `:field` refs come from [[lib/all-field-ids]], and the query's own `:database` id is
   prepended. Card subtypes (model / question / metric) are NOT resolved — `\"card\"` is used as
   the catch-all type, matching how the SQL tools emit `{{#N}}` template-tag refs. `:measure`,
   `:segment`, and `:snippet` references are dropped because they are not present in the
-  entity-usage vocabulary (see [[metabase.metabot.tools.entity-usage/entity-types]]).
+  entity-usage vocabulary.
 
   Authoring construct-family tools have no `:output` entities, so the output vector is
   always empty."
@@ -467,11 +463,10 @@
               (entity-usage/stamp-artifact-valid false)))))
     (catch Exception e
       (if (:agent-error? (ex-data e))
-        ;; Agent-facing signal: relay the message, stamp the artifact invalid (feeds artifact-validity-share, not the :error channel).
+        ;; Agent error: relay the message and stamp the artifact invalid (not the :error channel).
         (-> (entity-usage/entity-usage-on-result {:output (ex-message e)} empty-entity-usage)
             (entity-usage/stamp-artifact-valid false))
-        ;; Genuine unexpected failure — keep full stacktrace. Still an authoring miss (no valid
-        ;; artifact produced), so stamp invalid.
+        ;; Genuine unexpected failure — keep full stacktrace.
         (do
           (log/error e "Failed to construct notebook query")
           (-> (entity-usage/entity-usage-on-result

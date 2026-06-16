@@ -5,9 +5,8 @@
 
   The metric-bearing pieces are *generated* from the metric registry in
   [[metabase.metabot.quality.constants]], so the enumerated metric keys and
-  enums can't drift from the pipeline that produces them. Enforced where bugs
-  are caught — `mu/defn` instrumentation is on in dev/test and inert (zero
-  cost, no throw) in prod (`metabase.util.malli.fn/instrument-ns?`)."
+  enums can't drift from the pipeline that produces them (instrumented in
+  dev/test, inert in prod)."
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.util.malli.registry :as mr]))

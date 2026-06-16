@@ -9,22 +9,8 @@
   per-turn prefix-normalized struct, so they can't disagree about what the
   agent knew by the end of the turn.
 
-  Storage shape per assistant message:
-
-  ```clojure
-  {:version       \"...\"
-   :observables   [{:observation \"...\" :metric \"...\" :entity {...} :context {...}}
-                   ...]
-   :quality_score 0.91
-   :subscores     {:data_source_quality {:value 0.84 :metrics {...}}
-                   :execution_health    {:value 1.0  :metrics {...}}}}
-  ```
-
-  Each observable's `:metric` names the metric it is evidence for
-  (`grounded_source_share`, `search_efficiency`, `tool_call_failure_rate`,
-  `termination_health`, `artifact_validity_share`), so a reviewer can join an
-  observable straight onto
-  the nested `subscores → metrics` value it explains."
+  Each observable's `:metric` names the subscore metric it is evidence for, so
+  a reviewer can join it onto the `subscores → metrics` value it explains."
   (:require
    [metabase.metabot.quality.constants :as constants]
    [metabase.metabot.quality.extract :as extract]
@@ -128,9 +114,7 @@
 
 (defn- hallucinated-ref-observables
   "For each entity the agent authored against but never saw surfaced, emit
-  `hallucinated-ref` on the turn where it entered the authored set. Such
-  entities inherit authored-set provenance by extract's set arithmetic, so
-  the lookup is straightforward."
+  `hallucinated_ref` on the turn it entered the authored set."
   [normalized call-id->msg]
   (for [atom-rec (vals (get-in normalized [:sets :hallucinated]))
         :let     [authored-prov (first-provenance-in-set atom-rec :authored)
@@ -202,9 +186,7 @@
 ;;; ---------------------------------------------------------------------------
 
 (defn- sort-key
-  "Match extract's row ordering — `(created_at, id)`. Re-derived here
-  rather than imported because the messages list is already sorted by
-  the time it reaches us; we only need this for the take-while in
+  "Extract's row ordering — `(created_at, id)`. Used by the take-while in
   [[prefix-up-to-row]]."
   [row]
   [(:created_at row) (:id row)])
@@ -261,9 +243,7 @@
   `{message-id → attribution-map}` for assistant rows only; user rows have
   no entry (their `quality_attribution` stays NULL).
 
-  Each attribution map carries the version stamp, the turn's observables, and
-  its score (`quality_score` + `subscores`) as of the end of the turn. The
-  last assistant row's prefix score matches the conversation-level score by
+  The last assistant row's prefix score matches the conversation-level score by
   construction.
 
   Pure. Quadratic in the number of assistant turns (each prefix re-extracts)."

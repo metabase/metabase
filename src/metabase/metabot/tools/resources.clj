@@ -669,13 +669,9 @@
        "\n</resources>"))
 
 ;; ----- Entity-usage derivation -----
-;;
-;; `read_resource` is a hybrid tool — its URIs are
-;; inputs (the entity the agent asked to dereference) and the surfaced content
-;; carries outputs (the entity itself plus any related entities the response
-;; exposes). The helpers below pure-derive `:entity-usage` from the parsed
-;; URI segments and the structured-output produced by each `fetch-*` handler;
-;; nothing here calls back into the DB or the dispatch.
+;; `read_resource` is a hybrid tool: URIs are inputs, surfaced content is output.
+;; These helpers purely derive `:entity-usage` from parsed URI segments and each
+;; handler's structured-output — no DB or dispatch calls.
 
 (def ^:private uri-type->entity-type
   "Maps the first path segment of a `metabase://` URI to the entity-usage type
@@ -694,8 +690,6 @@
 (defn- uri-input-refs
   "Derive the input entity refs implied by a parsed URI's segments.
 
-   - Top-level lists (e.g. `metabase://databases`)            → `[]`
-   - Single-entity URIs (`metabase://table/3`)                → `[{:type \"table\" :id 3}]`
    - Sub-resource URIs (`metabase://table/3/derived`)         → `[{:type \"table\" :id 3}]`
    - Leaf field URIs (`metabase://table/3/fields/42`,
      `metabase://metric/6/dimensions/dim-1`) emit both the parent and the
@@ -763,14 +757,10 @@
     (vec (concat (when head [head]) related field-refs dim-refs))))
 
 (defn- output-refs-from-field-metadata
-  "Project a `:field-metadata` structured-output into a single field ref.
-
-  `field-stats/field-values` stores `:field_id` verbatim from its caller,
-  which for the URI-dispatched fetch-*-field handlers is the raw URI tail
-  string. Parse it to an int when numeric so the surfaced field ref dedups
-  cleanly against the integer leaf-id derived from the URI; keep
-  non-numeric strings (e.g. composite ids like `c75/17`) verbatim per
-  the entity-usage schema's `[:or :int :string]` allowance."
+  "Project a `:field-metadata` structured-output to a single field ref.
+  `:field_id` arrives verbatim from the caller (the raw URI tail for fetch-*-field
+  handlers); parse to int when numeric so it dedups against the URI leaf-id, else
+  keep the string (composite ids like `c75/17`)."
   [{:keys [field_id]}]
   (let [id (cond
              (int? field_id)    field_id

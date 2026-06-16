@@ -15,14 +15,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private empty-entity-usage
-  "Authoring chart tools take memory-only refs (query_id, chart_id), not appdb
-  entity ids — so `:entity-usage` is always empty. The constant is kept so the
-  validator sees a well-formed channel on every path."
+  "Authoring chart tools take memory-only refs (query_id, chart_id), not appdb entity ids, so :entity-usage is always empty."
   {:input [] :output []})
 
 (defn- attach-entity-usage
-  "Attach `empty-entity-usage` under `:structured-output`, preserving any
-  structured-output already present."
+  "Attach empty-entity-usage to a result's :structured-output."
   [result]
   (update result :structured-output (fnil assoc {}) :entity-usage empty-entity-usage))
 
