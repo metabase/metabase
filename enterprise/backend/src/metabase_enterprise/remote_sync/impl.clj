@@ -154,6 +154,15 @@
     (some-> e ex-cause ex-message (str/includes? "database not found"))
     (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))
 
+    (seq (:ingest-errors (ex-data e)))
+    (let [ingest-errors (:ingest-errors (ex-data e))]
+      (format "Failed to read %d file(s) from the repository: %s"
+              (count ingest-errors)
+              (str/join "; " (for [ie ingest-errors
+                                   :let [{:keys [file reason]} (ex-data ie)]]
+                               (cond-> file
+                                 reason (str ": " reason))))))
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 

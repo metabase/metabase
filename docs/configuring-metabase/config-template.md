@@ -320,5 +320,9 @@ config:
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
+    usage-metadata-enabled: false
+    usage-metadata-last-completed-day: null
+    usage-metadata-retention-days: 90
+    usage-metadata-schedule: 0 0 2 * * ? *
     user-visibility: all
 ```

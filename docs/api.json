@@ -8668,7 +8668,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -11211,7 +11211,7 @@
       "metabase.lib.schema.validate.source-entity-type" : {
         "description" : "The type of the source entity causing an error.",
         "type" : "string",
-        "enum" : [ "table", "card" ]
+        "enum" : [ "table", "card", "transform" ]
       },
       "metabase.lib.schema.validate.validate-error-type" : {
         "type" : "string",
@@ -28406,6 +28406,104 @@
             "description" : "Server error response"
           }
         },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "force" : {
+                    "type" : "boolean"
+                  },
+                  "merge" : {
+                    "type" : "boolean"
+                  },
+                  "message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "branch" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/remote-sync" ]
+      }
+    },
+    "/api/ee/remote-sync/export-preflight" : {
+      "get" : {
+        "operationId" : "get-api-ee-remote-sync-export-preflight",
+        "summary" : "GET /api/ee/remote-sync/export-preflight",
+        "description" : "Dry-run preview of what pushing the current state would do given the live remote branch, without\n  writing anything. Drives the UI's push decision (force / new branch / merge).\n\n  Returns:\n  - has_changes: whether the remote branch has advanced beyond the last synced version\n  - clean: whether a 3-way merge would apply with no conflicts\n  - conflicts: human-readable labels of the entities that conflict (empty when clean)\n  - summary: counts of remote changes a merge would fold in\n  - reason: \"history-rewritten\" when the remote was force-pushed/rebased so no merge base exists\n\n  Requires superuser permissions.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "branch",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "clean" : {
+                      "type" : "boolean"
+                    },
+                    "conflicts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "has_changes" : {
+                      "type" : "boolean"
+                    },
+                    "reason" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "summary" : {
+                      "type" : "object",
+                      "properties" : {
+                        "added" : {
+                          "type" : "integer"
+                        },
+                        "removed" : {
+                          "type" : "integer"
+                        },
+                        "updated" : {
+                          "type" : "integer"
+                        }
+                      },
+                      "required" : [ "added", "updated", "removed" ]
+                    }
+                  },
+                  "required" : [ "has_changes", "clean", "conflicts", "summary", "reason" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
         "tags" : [ "/api/ee/remote-sync" ]
       }
     },
@@ -28524,10 +28622,18 @@
                     "type" : "string",
                     "minLength" : 1
                   },
+                  "expected_branch" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
                   "force" : {
                     "type" : "boolean"
+                  },
+                  "merge" : {
+                    "type" : "boolean"
                   }
-                }
+                },
+                "required" : [ "expected_branch" ]
               }
             }
           }
@@ -31807,6 +31913,14 @@
                         "items" : {
                           "type" : "object",
                           "properties" : {
+                            "database" : {
+                              "oneOf" : [ {
+                                "type" : "object",
+                                "properties" : { }
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "database_id" : {
                               "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                             },
@@ -31861,7 +31975,7 @@
       "post" : {
         "operationId" : "post-api-ee-workspace-manager",
         "summary" : "POST /api/ee/workspace-manager",
-        "description" : "Create a new Workspace (name only, no databases).",
+        "description" : "Create a new Workspace attached to the given databases (each must be eligible\n   for workspaces) and provision it (blocking).",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -31920,6 +32034,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -31974,12 +32096,19 @@
               "schema" : {
                 "type" : "object",
                 "properties" : {
+                  "database_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                    },
+                    "minItems" : 1
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
                   }
                 },
-                "required" : [ "name" ],
+                "required" : [ "name", "database_ids" ],
                 "additionalProperties" : false
               }
             }
@@ -32060,6 +32189,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -32181,6 +32318,14 @@
                       "items" : {
                         "type" : "object",
                         "properties" : {
+                          "database" : {
+                            "oneOf" : [ {
+                              "type" : "object",
+                              "properties" : { }
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "database_id" : {
                             "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
                           },
@@ -32330,434 +32475,6 @@
                     }
                   },
                   "required" : [ "status", "headers", "body" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/database" : {
-      "post" : {
-        "operationId" : "post-api-ee-workspace-manager-id-database",
-        "summary" : "POST /api/ee/workspace-manager/{id}/database",
-        "description" : "Add a database to a workspace and provision it immediately (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "database_id" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                  },
-                  "input_schemas" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  }
-                },
-                "required" : [ "database_id", "input_schemas" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      }
-    },
-    "/api/ee/workspace-manager/{id}/database/{db-id}" : {
-      "put" : {
-        "operationId" : "put-api-ee-workspace-manager-id-database-db-id",
-        "summary" : "PUT /api/ee/workspace-manager/{id}/database/{db-id}",
-        "description" : "Update a database's input namespaces. Deprovisions the old config and reprovisions\n   with the new one (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "db-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "input_schemas" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  }
-                },
-                "required" : [ "input_schemas" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/workspace-manager" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-ee-workspace-manager-id-database-db-id",
-        "summary" : "DELETE /api/ee/workspace-manager/{id}/database/{db-id}",
-        "description" : "Deprovision and remove a database from a workspace (blocking).",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
-          "in" : "path",
-          "name" : "db-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "created_at" : {
-                      "anyOf" : [ { }, { } ]
-                    },
-                    "creator" : {
-                      "oneOf" : [ {
-                        "type" : "object",
-                        "properties" : {
-                          "common_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "email" : {
-                            "type" : "string",
-                            "minLength" : 1
-                          },
-                          "first_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          },
-                          "id" : {
-                            "description" : "value must be an integer greater than zero.",
-                            "type" : "integer",
-                            "minimum" : 1
-                          },
-                          "last_name" : {
-                            "oneOf" : [ {
-                              "type" : "string"
-                            }, {
-                              "type" : "null"
-                            } ]
-                          }
-                        },
-                        "required" : [ "id", "first_name", "last_name", "email" ],
-                        "additionalProperties" : false
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "databases" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "object",
-                        "properties" : {
-                          "database_id" : {
-                            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                          },
-                          "input_schemas" : {
-                            "type" : "array",
-                            "items" : {
-                              "type" : "string",
-                              "minLength" : 1
-                            }
-                          },
-                          "output_namespace" : {
-                            "type" : "string"
-                          },
-                          "status" : {
-                            "type" : "string",
-                            "enum" : [ "unprovisioned", "provisioning", "provisioned", "deprovisioning" ]
-                          }
-                        },
-                        "required" : [ "database_id", "input_schemas", "output_namespace", "status" ],
-                        "additionalProperties" : false
-                      }
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : {
-                      "anyOf" : [ { }, { } ]
-                    }
-                  },
-                  "required" : [ "id", "name", "creator", "created_at", "updated_at" ],
-                  "additionalProperties" : false
                 }
               }
             }
@@ -38965,6 +38682,82 @@
           }
         },
         "tags" : [ "/api/notify" ]
+      }
+    },
+    "/api/oauth/authorizations" : {
+      "get" : {
+        "operationId" : "get-api-oauth-authorizations",
+        "summary" : "GET /api/oauth/authorizations",
+        "description" : "List OAuth dynamic client registration events (registered, approved, or denied), newest first.\n   Joins client info and, for decision events, the deciding user. Superuser only.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "client-id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "event-type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "registered", "approved", "denied" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "total", "limit", "offset", "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/oauth" ]
       }
     },
     "/api/permissions/graph" : {
@@ -45760,6 +45553,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -45975,6 +45771,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -45982,6 +45781,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {
@@ -46095,6 +45897,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_read" : {
+                      "type" : "boolean"
                     },
                     "source_type" : {
                       "type" : "string"
@@ -46311,6 +46116,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -46318,6 +46126,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -48269,6 +48080,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -48484,6 +48298,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -48491,6 +48308,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -48613,6 +48433,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -48828,6 +48651,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -48835,6 +48661,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -49094,6 +48923,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -49309,6 +49141,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -49316,6 +49151,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {

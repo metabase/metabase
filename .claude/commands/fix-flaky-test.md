@@ -11,9 +11,14 @@ The Linear issue is the input. Everything else is reasoning over files.
 **Hard rules — do not deviate:**
 - **Max 3 attempts.** One attempt = diagnose → fix → push → 2 stress runs → interpret.
   After 3 failed attempts, stop and hand back.
-- **One upfront approval authorizes the whole run's pushes.** Ask once (Phase 3), before
-  the first push. That single OK covers every push/trigger for the rest of this run on
-  this branch. Never push before that OK.
+- **Branch existence is the go/no-go gate.** Before starting, check whether the remote branch
+  `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` already exists (Phase 0). If it does, a run
+  is already in flight (or already landed a fix) → **stop, do nothing**. If it doesn't,
+  proceed through the whole loop and push without pausing for confirmation. This runs
+  identically whether a human or automation triggered the command.
+- **Linear access:** prefer the Linear MCP (`mcp__linear__*`); if it's unavailable (e.g.
+  headless CI), fall back to the Linear REST/GraphQL API with a token — for both reads and
+  comment writes.
 - **Each attempt triggers TWO stress runs in parallel** — `enable_network_throttling=true`
   and `=false` — on the same branch/commit. The fix is verified only if **both** pass.
 - **CI is the source of truth.** No local Cypress runs, no `bin/` stress scripts.
@@ -32,15 +37,28 @@ The Linear issue is the input. Everything else is reasoning over files.
      body for failure detail / screenshots / stack, and capture the **ranked failure
      reasons** (Trunk lists them "most common" first) — #1 is what you fix first (Phase 1).
    - Otherwise treat it as a spec path or fuzzy test name (fallback; no Linear context).
-2. **Resolve the spec file** from the exact test name:
+2. **Compute the branch name + dedup gate (this is the go decision).** The branch name is
+   derived **only** from the Linear ref, never the test name:
+   `automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>` (e.g. `DEV-2181` →
+   `automated-e2e-flake-fix-DEV-2181`). Check whether it already exists on the remote:
+   ```bash
+   git ls-remote --exit-code --heads origin automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
+   ```
+   - **Exists (exit 0)** → a run is already in flight or already landed a fix → **stop, do
+     nothing.** This is the whole dedup mechanism.
+   - **Doesn't exist (exit 2)** → that's the **go** signal. Proceed without pausing for
+     confirmation.
+   (On the no-Linear fallback path there's no ref to build the name from; that path stays
+   interactive and is for local debugging only.)
+3. **Resolve the spec file** from the exact test name:
    ```bash
    grep -rl "<exact test name>" e2e/test/scenarios
    ```
    Require **exactly one** match. If 0 or >1, stop and ask the user to disambiguate. (Try
    a shorter unique substring of the test name if the literal has special characters.)
-3. **Decide `qa_db`:** scan the spec / its `describe` for external-DB helpers
+4. **Decide `qa_db`:** scan the spec / its `describe` for external-DB helpers
    (postgres/mysql/mongo-writable) or an `@external` tag → `true`, else `false`.
-4. **Write the state file** `local/claude/flake-fix/<DEV-id-or-slug>.md`:
+5. **Write the state file** `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md`:
    ```markdown
    # Flake fix: <test name>
    - linear: <DEV-#### or n/a>
@@ -48,9 +66,8 @@ The Linear issue is the input. Everything else is reasoning over files.
    - test_name (grep): <exact test name>
    - qa_db: <true|false>
    - edition: ee
-   - branch: <fix-flake-...>
+   - branch: automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
    - attempt: 0 / 3
-   - pushes_authorized: no
 
    ## Failure reasons (Trunk, ranked — fix #1 first)
    1. <dominant / most common>
@@ -86,11 +103,11 @@ The Linear issue is the input. Everything else is reasoning over files.
 
 ## Phase 2 — Fix on a branch
 
-- On **attempt 1 only**, create the branch (dashes only, no `/`):
+- On **attempt 1 only**, create the branch computed in Phase 0 (dashes only, no `/`):
   ```bash
-  git switch -c fix-flake-<DEV-id-or-test-slug>
+  git switch -c automated-e2e-flake-fix-<TEAM_SLUG>-<ISSUE_NUMBER>
   ```
-  Record it in the state file. On later attempts, keep committing to the same branch.
+  On later attempts, keep committing to the same branch.
 - Apply a **minimal** fix:
   - **Default:** test-scoped (deterministic waits via `cy.intercept` + `cy.wait("@alias")`
     before asserting; positive anchor before a negative assertion; scoped selectors).
@@ -117,11 +134,9 @@ and stops immediately (fast red + artifacts) — no need for a separate cheap sa
 A good fix runs all 50 to green (full confirmation). So every attempt is a single pair of
 runs at `burn_in=50` with `fail_fast=true` (throttle on + off).
 
-- **Approval gate (once per run).** If `pushes_authorized: no`, ask the user now, showing:
-  branch name, spec, test name (grep), `qa_db`, edition, `build_jar`, and the plan (≤3 attempts; each =
-  a pair of `burn_in=50, fail_fast=true` runs, throttle on + off). On approval, set
-  `pushes_authorized: yes` in the state file. This OK covers all later pushes/triggers this
-  run — do not re-ask.
+- **Push without pausing for confirmation.** The branch-existence check in Phase 0 was the
+  go decision; if you reached this phase you're clear to commit, push, and trigger (same for
+  a human or automated trigger).
 - Commit and push (first attempt only creates the branch; later attempts push the revised
   fix), then trigger.
 
@@ -172,10 +187,10 @@ done
 
 ## Phase 4 — Wait + interpret (gh only)
 
-- **Auto-poll** with `ScheduleWakeup` (~1200s cadence; setup alone is ~15–20 min) until
-  **both** runs leave `queued`/`in_progress`. Pass the same `/fix-flaky-test $ARGUMENTS`
+- **Auto-poll** with `ScheduleWakeup` (~900s / 15 min cadence) until **both** runs leave
+  `queued`/`in_progress`. Pass the same `/fix-flaky-test $ARGUMENTS`
   back so the loop resumes; re-read the state file on each wake (a manual wake must also
-  work). Don't poll faster than ~1200s.
+  work). Don't poll faster than ~900s.
 - When both finish, read each conclusion:
   ```bash
   gh run view <id> --json status,conclusion
@@ -187,7 +202,7 @@ done
   - **Either `failure` / `timed_out`** → fix is not holding (`fail_fast` stopped at the
     first bad iteration, so the artifact is fresh and minimal):
     ```bash
-    gh run download <failed-id> --dir local/claude/flake-fix/<id>-artifacts
+    gh run download <failed-id> --dir local/claude/e2e-flake-fix/<failed-id>-artifacts
     ```
     The Cypress error lives in the GitHub step log (`gh run view <id> --log-failed`) and the
     screenshots/video — **not** in `logs/test.log` (that's only the backend health log).
@@ -235,10 +250,15 @@ done
 
 - **Always — attach the run log to Linear (regardless of outcome).** As the final step on
   both the fixed and exhausted paths, post the full state file
-  `local/claude/flake-fix/<id>.md` to the Linear issue as a comment titled
+  `local/claude/e2e-flake-fix/<TEAM_SLUG>-<ISSUE_NUMBER>.md` to the Linear issue as a comment titled
   **"🤖 Flake-fix run log (audit trail)"** (fence it so it renders verbatim). This is the
   end-to-end audit trail — every hypothesis, fix, commit, run URL, and verdict — kept for a
   human reviewer and as a learning artifact even when the fix didn't land. Skip only on the
-  no-Linear fallback path. (Posting the markdown as a comment is sufficient; a file
+  no-Linear fallback path.
+  - **Lead the comment with a run-cost line** (above the fenced log):
+    **total wall-clock time spent** on the run and **total tokens used** — e.g.
+    `⏱ 2h 14m · 🪙 1.8M tokens (N attempts)`. Compute time from the first state-file
+    timestamp to now; report tokens for the whole session (best available figure). This makes
+    the cost of each automated run visible at a glance on the issue. (Posting the markdown as a comment is sufficient; a file
   attachment via `mcp__linear__create_attachment_from_upload` is optional if the user wants
   a downloadable file.)
