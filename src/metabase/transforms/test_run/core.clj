@@ -227,52 +227,52 @@
                                  :source     (:source transform)})))
         db            (t2/select-one :model/Database :id db-id)
         output-schema (or (-> transform :target :schema) "public")
-        nonce         (scratch/new-nonce)]
-    ;; Accumulate scratch state so finally can clean up.
-    (let [mapping*     (atom nil)
-          output-spec* (atom nil)]
-      (try
-        (driver.conn/with-transform-connection
-          ;; The canonical write-data credentials + :transform JDBC pool.
-          ;; conn-spec construction (inside build-transform-details) reads
-          ;; *connection-type* = :transform via effective-details.
-          (let [;; Step 4: seed scratch input tables.
-                output-spec  (scratch/scratch-output-target output-schema nonce)
-                _            (reset! output-spec* output-spec)
-                mapping      (scratch/seed! db-id db output-schema seed-inputs nonce)
-                _            (reset! mapping* mapping)
-                ;; Step 5: compile + rewrite/override + verify.
-                artifact     (resolve/resolve-test-transform transform mapping output-spec
-                                                             {:db           db
-                                                              :input-tables required-tables})
-                drv          (:driver artifact)
-                compiled     (:compiled artifact)
-                ;; Step 6: belt-and-braces DDL guard.
-                all-scratch-names
-                (concat (map :table (vals mapping))
-                        [(:table output-spec)])
-                _            (assert-all-test-tables! all-scratch-names)
-                ;; Step 7: execute via driver/run-transform! under the canonical bindings.
-                transform-details (build-transform-details compiled output-spec db-id db drv)
-                _            (binding [driver.settings/*query-timeout-ms* timeout-ms]
-                               (driver/run-transform! drv transform-details {:overwrite? true}))
-                ;; Step 8: read back the scratch output.
-                qp-result    (read-back-output db-id drv output-spec)
-                actual-cols  (get-in qp-result [:data :cols])
-                actual-rows  (get-in qp-result [:data :rows])
-                ;; Step 9: parse expected CSV against actual output column types.
-                expected-schema   (actual->schema actual-cols)
-                expected-fixture  (fixtures/parse-fixture expected-csv-file expected-schema)
-                ;; Step 10: diff.
-                report       (diff/diff actual-cols actual-rows expected-fixture
-                                        {:ignore-columns ignore-cols})]
-            {:status         (:status report)
-             :diff           report
-             :parser-backend (:parser-backend artifact)
-             :output-table   (:table output-spec)}))
-        (finally
-          ;; Cleanup runs on ALL paths: success, error, timeout.
-          ;; drop-table! is idempotent (DROP TABLE IF EXISTS), so double-drops are safe.
-          (scratch/cleanup! db-id db
-                            (or @mapping* {})
-                            @output-spec*))))))
+        nonce         (scratch/new-nonce)
+        ;; Accumulate scratch state so finally can clean up.
+        mapping*     (atom nil)
+        output-spec* (atom nil)]
+    (try
+      (driver.conn/with-transform-connection
+        ;; The canonical write-data credentials + :transform JDBC pool.
+        ;; conn-spec construction (inside build-transform-details) reads
+        ;; *connection-type* = :transform via effective-details.
+        (let [;; Step 4: seed scratch input tables.
+              output-spec  (scratch/scratch-output-target output-schema nonce)
+              _            (reset! output-spec* output-spec)
+              mapping      (scratch/seed! db-id db output-schema seed-inputs nonce)
+              _            (reset! mapping* mapping)
+              ;; Step 5: compile + rewrite/override + verify.
+              artifact     (resolve/resolve-test-transform transform mapping output-spec
+                                                           {:db           db
+                                                            :input-tables required-tables})
+              drv          (:driver artifact)
+              compiled     (:compiled artifact)
+              ;; Step 6: belt-and-braces DDL guard.
+              all-scratch-names
+              (concat (map :table (vals mapping))
+                      [(:table output-spec)])
+              _            (assert-all-test-tables! all-scratch-names)
+              ;; Step 7: execute via driver/run-transform! under the canonical bindings.
+              transform-details (build-transform-details compiled output-spec db-id db drv)
+              _            (binding [driver.settings/*query-timeout-ms* timeout-ms]
+                             (driver/run-transform! drv transform-details {:overwrite? true}))
+              ;; Step 8: read back the scratch output.
+              qp-result    (read-back-output db-id drv output-spec)
+              actual-cols  (get-in qp-result [:data :cols])
+              actual-rows  (get-in qp-result [:data :rows])
+              ;; Step 9: parse expected CSV against actual output column types.
+              expected-schema   (actual->schema actual-cols)
+              expected-fixture  (fixtures/parse-fixture expected-csv-file expected-schema)
+              ;; Step 10: diff.
+              report       (diff/diff actual-cols actual-rows expected-fixture
+                                      {:ignore-columns ignore-cols})]
+          {:status         (:status report)
+           :diff           report
+           :parser-backend (:parser-backend artifact)
+           :output-table   (:table output-spec)}))
+      (finally
+        ;; Cleanup runs on ALL paths: success, error, timeout.
+        ;; drop-table! is idempotent (DROP TABLE IF EXISTS), so double-drops are safe.
+        (scratch/cleanup! db-id db
+                          (or @mapping* {})
+                          @output-spec*)))))

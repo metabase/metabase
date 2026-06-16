@@ -29,14 +29,13 @@
   tokens/refs), consistent with the error taxonomy of
   [[metabase.transforms.test-run.inputs]]."
   (:require
-   [clojure.string :as str]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (clojure.lang ExceptionInfo)
@@ -147,8 +146,8 @@
   set comparison: nil schema → driver default schema; lowercase fold of both
   parts (sufficient because scratch names are system-generated lowercase)."
   [driver {:keys [schema table]}]
-  {:schema (str/lower-case (or schema (sql.normalize/default-schema driver)))
-   :table  (str/lower-case table)})
+  {:schema (u/lower-case-en (or schema (sql.normalize/default-schema driver)))
+   :table  (u/lower-case-en table)})
 
 (defn- scratch-ref-set
   "Set of normalized `{:schema :table}` tuples for the scratch targets in `mapping`."
@@ -190,8 +189,8 @@
     (into #{}
           (keep (fn [{:keys [type name]}]
                   (when (and (= type :missing-table-alias)
-                             (contains? forbidden-lc (some-> name str/lower-case)))
-                    (str/lower-case name))))
+                             (contains? forbidden-lc (some-> name u/lower-case-en)))
+                    (u/lower-case-en name))))
           errors)))
 
 (defn- token-survives-as-string-literal?
@@ -245,7 +244,7 @@
     ;;     string literal (fail-closed-by-design) without colliding with
     ;;     case-different quoted identifiers.
     (let [forbidden    (forbidden-tokens mapping)
-          forbidden-lc (into #{} (map str/lower-case) forbidden)
+          forbidden-lc (into #{} (map u/lower-case-en) forbidden)
           dangling     (dangling-qualifier-tokens driver final-sql forbidden-lc)]
       (when-let [token (first dangling)]
         (cannot-test-run!
@@ -303,7 +302,7 @@
              :source-type (-> transform :source :type keyword)})))
   (let [driver  (source-driver db)
         ;; Pin + record the parser backend at resolve time.
-        backend (sql-tools.settings/current-parser-backend)
+        backend (sql-tools/parser-backend)
         native? (transforms-base.u/native-query-transform? transform)
         compiled
         (if native?

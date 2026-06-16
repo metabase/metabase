@@ -23,6 +23,8 @@
    (java.math BigInteger)
    (java.time LocalDate LocalDateTime OffsetDateTime ZoneOffset)))
 
+(set! *warn-on-reflection* true)
+
 ;; ---------------------------------------------------------------------------
 ;; Helpers for constructing test inputs
 ;; ---------------------------------------------------------------------------

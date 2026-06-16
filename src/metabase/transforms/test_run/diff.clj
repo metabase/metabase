@@ -134,7 +134,7 @@
     ;; Already a QP-produced ISO-8601 string; normalise to Z suffix.
     ;; The QP always emits the Z suffix, so this is mostly a passthrough.
     ;; Defensively parse and re-format to guarantee canonical form.
-    (let [odt (OffsetDateTime/parse ^String v (DateTimeFormatter/ISO_OFFSET_DATE_TIME))]
+    (let [odt (OffsetDateTime/parse ^String v DateTimeFormatter/ISO_OFFSET_DATE_TIME)]
       (.format (.atZoneSameInstant odt ZoneOffset/UTC)
                DateTimeFormatter/ISO_OFFSET_DATE_TIME))
 
@@ -305,18 +305,17 @@
 (defn- cell-mismatch-detail
   "Produce cell-mismatch detail entries for a single pair of (actual, expected) canonical rows.
   Returns a seq of mismatch maps. Reports `:actual-canonical` and `:expected-canonical` only."
-  [col-names actual-row expected-row base-types]
+  [col-names actual-row expected-row]
   ;; No :actual-raw / :expected-raw fields: raw pre-canonicalization values are discarded at
   ;; canonicalization time and cannot be recovered here. Including them would always produce
   ;; values identical to the canonical fields — a correctness failure for date columns where
   ;; raw "2024-03-15" becomes canonical "2024-03-15T00:00:00Z".
-  (mapcat (fn [col-name base-type actual-canon expected-canon]
+  (mapcat (fn [col-name actual-canon expected-canon]
             (when-not (cells-equal? actual-canon expected-canon)
               [{:column             col-name
                 :actual-canonical   (canonical->report-str actual-canon)
                 :expected-canonical (canonical->report-str expected-canon)}]))
           col-names
-          base-types
           actual-row
           expected-row))
 
@@ -330,13 +329,13 @@
   Limitation: this pairing is only unambiguous when both sides have exactly one differing
   row. For larger diffs, the pairing may be arbitrary but is at least deterministic and
   bounded. Documented limitation: fuzzy/optimal row matching is not implemented."
-  [missing-rows extra-rows col-names base-types]
+  [missing-rows extra-rows col-names]
   (when (and (seq missing-rows)
              (= (count missing-rows) (count extra-rows)))
     (let [sorted-missing (sort-by row-key missing-rows)
           sorted-extra   (sort-by row-key extra-rows)]
       (mapcat (fn [expected-canon actual-canon]
-                (cell-mismatch-detail col-names actual-canon expected-canon base-types))
+                (cell-mismatch-detail col-names actual-canon expected-canon))
               sorted-missing
               sorted-extra))))
 
@@ -376,8 +375,7 @@
           filtered-actual-names (mapv :name filtered-actual-cols)
           actual-base-types    (mapv :base_type filtered-actual-cols)
 
-          ;; Build name→col maps for expected fixture
-          exp-col-by-name  (into {} (map (juxt :name identity)) (:columns expected))
+          ;; Build name→value map for expected fixture rows
           exp-row-by-name  (fn [row]
                              ;; Map from expected column names to values
                              (into {} (map (fn [col v] [(:name col) v])
@@ -432,7 +430,7 @@
                          (<= (count missing) mismatch-cap))
                 (attempt-cell-mismatches
                  missing extra
-                 filtered-actual-names actual-base-types))
+                 filtered-actual-names))
 
               ;; Cap missing/extra at mismatch-cap; convert canonical rows to
               ;; display form at the report boundary (BigDecimal → plain string;

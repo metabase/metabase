@@ -518,7 +518,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    _body
-   {{:strs [expected options] :as multipart-params} :multipart-params}]
+   {{:as multipart-params} :multipart-params}]
   (let [transform (api/read-check :model/Transform id)]
     (transforms.core/check-feature-enabled! transform)
     (api/check (not (transforms.core/transform-locked? transform))
@@ -545,7 +545,12 @@
 
 (api.macros/defendpoint :get "/:id/test-run/inputs" :- [:map
                                                         [:status pos-int?]
-                                                        [:body :any]]
+                                                        ;; Success → a vector of input-table descriptors; error paths
+                                                        ;; (402/403/422) → the run-record error envelope. The body must
+                                                        ;; admit both shapes or the framework coerces errors to 400.
+                                                        [:body [:or
+                                                                [:sequential InputTableResponse]
+                                                                [:map [:status [:= "error"]]]]]]
   "Return the required input tables for a transform's test run.
 
   The response is a vector of table descriptors — one per input table the

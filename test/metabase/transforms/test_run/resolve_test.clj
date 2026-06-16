@@ -14,6 +14,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.test :as mt]
    [metabase.transforms.test-run.resolve :as resolve]))
@@ -146,7 +147,7 @@
     (let [broken "SELECT \"public\".\"orders\".\"user_id\" FROM \"public\".\"scratch_orders\""]
       ;; sanity: guard 2 alone would pass (the only FROM source is scratch_orders)
       (is (= [{:schema "public" :table "scratch_orders"}]
-             (vec (metabase.sql-tools.core/referenced-tables-raw :postgres broken))))
+             (vec (sql-tools/referenced-tables-raw :postgres broken))))
       ;; but verify as a whole fails closed via guard 3
       (is (cannot-test-run?
            #(resolve/verify :postgres orders->scratch broken)
@@ -344,7 +345,7 @@
               opid      (lib.metadata/field mp (mt/id :orders :product_id))
               pid       (lib.metadata/field mp (mt/id :products :id))
               q         (-> (lib/query mp orders)
-                            (lib/join (-> (lib/join-clause products [(lib/= opid pid)]))))
+                            (lib/join (lib/join-clause products [(lib/= opid pid)])))
               transform (mbql-transform q)
               inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}
                          {:id (mt/id :products) :schema "public" :name "products"}]
@@ -394,7 +395,7 @@
               opid      (lib.metadata/field mp (mt/id :orders :product_id))
               pid       (lib.metadata/field mp (mt/id :products :id))
               q         (-> (lib/query mp orders)
-                            (lib/join (-> (lib/join-clause products [(lib/= opid pid)]))))
+                            (lib/join (lib/join-clause products [(lib/= opid pid)])))
               transform (mbql-transform q)
               ;; only orders is provided in input-tables AND mapping; products is left real
               inputs    [{:id (mt/id :orders) :schema "public" :name "orders"}]

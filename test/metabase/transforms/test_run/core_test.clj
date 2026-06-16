@@ -341,7 +341,7 @@
   (testing "run-test! never creates a TransformRun row (success and failure paths)"
     (mt/test-drivers #{:postgres}
       (mt/dataset test-data
-        (let [db-id     (mt/id)
+        (let [_db-id    (mt/id)
               schema    "public"
               mp        (mt/metadata-provider)
               orders-id (mt/id :orders)

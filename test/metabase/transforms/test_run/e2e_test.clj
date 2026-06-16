@@ -201,7 +201,7 @@
                              "options"                "{\"ignore_columns\":[\"snapshot_ts\"]}"})]
                   (testing "status is passed"
                     (is (= "passed" (:status resp))
-                        (str "Expected passed; diff: " (pr-str (get-in resp [:diff])))))
+                        (str "Expected passed; diff: " (pr-str (:diff resp)))))
                   (testing "test_run_id is nil (synchronous)"
                     (is (nil? (:test_run_id resp))))
                   (testing "diff is present and well-formed"
@@ -281,7 +281,7 @@
                       (is (some #(or (.contains ^String % "TX") (.contains ^String % "99"))
                                 all-strs)
                           (str "Expected TX/99 to appear in diff; got: "
-                               (pr-str (get-in resp [:diff]))))))
+                               (pr-str (:diff resp))))))
                   (testing "no scratch tables remain after failed run"
                     (is (= before-scratch (count-test-scratch-tables db-id schema))
                         "All scratch tables cleaned up even on failed diff"))

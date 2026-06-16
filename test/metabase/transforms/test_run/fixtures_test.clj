@@ -114,7 +114,7 @@
         (is (= (biginteger 1) id))
         (is (= "alpha" name))
         (is (= (double 9.5) score))
-        (is (= true active))
+        (is (true? active))
         (is (instance? java.time.LocalDate dt))))))
 
 ;; ---------------------------------------------------------------------------

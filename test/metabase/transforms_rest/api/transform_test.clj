@@ -2251,7 +2251,7 @@
     (mt/with-premium-features #{}
       (mt/test-drivers #{:postgres}
         (mt/dataset test-data
-          (let [db-id     (mt/id)
+          (let [_db-id    (mt/id)
                 schema    "public"
                 mp        (mt/metadata-provider)
                 orders-id (mt/id :orders)]

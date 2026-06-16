@@ -7,13 +7,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.query-processor.core :as qp]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.test-run.scratch :as scratch])
-  (:import
-   (java.time Instant)))
+   [metabase.transforms.test-run.scratch :as scratch]))
 
 (set! *warn-on-reflection* true)
 
@@ -461,7 +460,7 @@
             ;; Always clean up all 4, idempotent
             (doseq [tbl-name [young-name old-name prod-name ordinary-name]]
               (try
-                (metabase.driver/drop-table! :postgres db-id (keyword schema tbl-name))
+                (driver/drop-table! :postgres db-id (keyword schema tbl-name))
                 (catch Exception _)))))))))
 
 ;;; ---------------------------------------------------------------------------

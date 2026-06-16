@@ -143,10 +143,10 @@
 
 (deftest required-input-tables-non-query-type-throws-test
   (testing "Non-:query source type throws a typed 'not supported' error"
-    (let [xf (make-python-transform)]
-      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported"
-                                    (inputs/required-input-tables xf)))]
-        (is (= ::inputs/unsupported-transform-type (-> e ex-data :error-type)))))))
+    (let [xf (make-python-transform)
+          e  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported"
+                                   (inputs/required-input-tables xf)))]
+      (is (= ::inputs/unsupported-transform-type (-> e ex-data :error-type))))))
 
 (deftest required-input-tables-extraction-failure-throws-test
   (testing "Any dependency-extraction failure throws a typed error (never returns silent #{})"
@@ -189,13 +189,13 @@
           ;; building an MBQL query under a stub metadata-provider.
           ;; Simplest: just assert the error type via a controlled path.
           ;; We expose resolve-dep-spec for testing:
-          bogus-id 9999999]
-      ;; Test the internal resolution fn directly, since triggering a missing-id from
-      ;; a real MBQL query requires a stub metadata provider.
-      (let [e (is (thrown? clojure.lang.ExceptionInfo
-                           (inputs/resolve-table-dep {:table bogus-id})))]
-        (is (= ::inputs/table-not-found (-> e ex-data :error-type)))
-        (is (= bogus-id (-> e ex-data :table-id)))))))
+          bogus-id 9999999
+          ;; Test the internal resolution fn directly, since triggering a missing-id from
+          ;; a real MBQL query requires a stub metadata provider.
+          e        (is (thrown? clojure.lang.ExceptionInfo
+                                (inputs/resolve-table-dep {:table bogus-id})))]
+      (is (= ::inputs/table-not-found (-> e ex-data :error-type)))
+      (is (= bogus-id (-> e ex-data :table-id))))))
 
 (deftest required-input-tables-table-ref-not-found-throws-test
   (testing "A {:table-ref ...} dep whose (db-id, schema, table) matches nothing throws a typed error"
