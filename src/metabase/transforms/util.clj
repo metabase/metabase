@@ -44,27 +44,46 @@
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
   Returns true if the user can query all source tables (for python transforms) or the
-  source database (for query transforms)."
-  [transform]
-  (let [source (:source transform)]
-    (case (keyword (:type source))
-      :query
-      (if-let [db-id (get-in source [:query :database])]
-        (boolean (mi/can-query? (t2/select-one :model/Database db-id)))
-        false)
+  source database (for query transforms). Returns false if the referenced source database
+  no longer exists."
+  ([transform] (source-tables-readable? transform nil))
+  ([transform models-cache]
+   (let [resolve* (fn [model id]
+                    (if models-cache
+                      (get-in models-cache [model id])
+                      (t2/select-one model id)))
+         source   (:source transform)]
+     (case (keyword (:type source))
+       :query
+       (if-let [db-id (get-in source [:query :database])]
+         (if-let [db (resolve* :model/Database db-id)]
+           (boolean (mi/can-query? db))
+           false)
+         false)
 
-      :python
-      (let [source-tables (:source-tables source)]
-        (if (empty? source-tables)
-          true
-          (let [table-ids (into [] (keep :table_id) source-tables)]
-            (and (seq table-ids)
-                 (every? (fn [table-id]
-                           (when-let [table (t2/select-one :model/Table table-id)]
-                             (mi/can-query? table)))
-                         table-ids)))))
+       :python
+       (let [source-tables (:source-tables source)]
+         (if (empty? source-tables)
+           true
+           (let [table-ids (into [] (keep :table_id) source-tables)]
+             (and (seq table-ids)
+                  (every? (fn [table-id]
+                            (when-let [table (resolve* :model/Table table-id)]
+                              (mi/can-query? table)))
+                          table-ids)))))
 
-      (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
+       (throw (ex-info (str "Unknown transform source type: " (:type source)) {}))))))
+
+(defn prefetch-source-models
+  "Bulk-load the source databases and tables referenced by `transforms` into a
+  `{:model/Database {id db} :model/Table {id table}}` map"
+  [transforms]
+  (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
+        table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
+    {:model/Database (when (seq db-ids)
+                       (u/index-by :id (t2/select :model/Database :id [:in db-ids])))
+     :model/Table    (when (seq table-ids)
+                       (u/index-by :id (t2/select :model/Table :id [:in table-ids])))}))
 
 (defn add-source-readable
   "Add :source_readable field to a transform or collection of transforms.

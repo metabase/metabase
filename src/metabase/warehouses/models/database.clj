@@ -153,6 +153,16 @@
   [_db-id]
   (mi/superuser?))
 
+(defenterprise mark-transforms-stale-on-database-delete!
+  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
+   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
+   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
+   be re-run so they surface on `/data-studio/dependency-diagnostics/broken`. OSS is a no-op
+   (no dependencies module)."
+  metabase-enterprise.dependencies.events
+  [_db-id]
+  nil)
+
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -389,6 +399,11 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
+  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
+  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
+  ;; the database row is deleted below) so we can still resolve the affected transforms by
+  ;; source_database_id.
+  (mark-transforms-stale-on-database-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
