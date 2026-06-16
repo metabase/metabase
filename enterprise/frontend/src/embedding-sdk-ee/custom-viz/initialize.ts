@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { api } from "metabase/api/client";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
 import { getPluginAssetUrl } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
@@ -54,12 +55,56 @@ function isCustomVizAllowed(
   );
 }
 
+const assetObjectUrls = new Map<number, string>();
+
+// A cross-origin `<img>` can't carry the session header, so we fetch the icon
+// with the auth in the headers and hand back a same-origin `blob:` url.
+export const sdkCustomVizAssetManager = {
+  resolveCustomVizAssetUrl: async (
+    pluginId: number,
+    assetPath: string | null | undefined,
+  ): Promise<string | undefined> => {
+    if (!assetPath) {
+      return undefined;
+    }
+    try {
+      const res = await api.fetch({
+        method: "GET",
+        url: `/api/ee/custom-viz-plugin/${pluginId}/asset`,
+        params: { path: assetPath },
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const objectUrl = URL.createObjectURL(await res.blob());
+      const previous = assetObjectUrls.get(pluginId);
+      assetObjectUrls.set(pluginId, objectUrl);
+      // if there was a previous asset, revoke it
+      if (previous) {
+        URL.revokeObjectURL(previous);
+      }
+      return objectUrl;
+    } catch {
+      return getPluginAssetUrl(pluginId, assetPath);
+    }
+  },
+  releaseCustomVizAsset: (pluginId: number) => {
+    const objectUrl = assetObjectUrls.get(pluginId);
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      assetObjectUrls.delete(pluginId);
+    }
+  },
+};
+
 export function initializeSdkCustomVizPlugin() {
   if (!hasPremiumFeature("custom-viz")) {
     return;
   }
 
   Object.assign(PLUGIN_CUSTOM_VIZ, {
+    ...sdkCustomVizAssetManager,
+
     loadCustomVizPlugin: (
       plugin: CustomVizPluginRuntime,
       options: LoadCustomVizPluginOptions = {},

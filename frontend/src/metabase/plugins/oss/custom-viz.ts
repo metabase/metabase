@@ -51,6 +51,17 @@ const getDefaultPluginCustomViz = () => ({
   ): Promise<VisualizationDisplay | null> => null,
   getPluginAssetUrl: (_pluginId: number, _assetPath: string | null) =>
     undefined as string | undefined,
+
+  // Only the SDK really implements these: its icon `<img>` is cross-origin and
+  // can't carry the session header, so the sdk fetches the asset with auth, hands back
+  // a `blob:` url, and revokes it via `releaseCustomVizAsset`. The main app just
+  // builds a plain url.
+  resolveCustomVizAssetUrl: (
+    _pluginId: number,
+    _assetPath: string | null | undefined,
+  ): Promise<string | undefined> => Promise.resolve(undefined),
+  releaseCustomVizAsset: (_pluginId: number) => {},
+
   useCustomVizPluginsIcon: () => noopCustomVizIcon,
 
   // Must be functional in OSS — pure string check used by getSensibleVisualizations

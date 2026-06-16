@@ -14,6 +14,7 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { useToast } from "metabase/common/hooks";
 import type { IconData } from "metabase/common/utils/icon";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useColorScheme } from "metabase/ui";
 import { getSubpathSafeUrl } from "metabase/urls";
 import visualizations, { registerVisualization } from "metabase/visualizations";
@@ -69,6 +70,7 @@ export function unregisterCustomVizDisplay(display: VisualizationDisplay) {
     visualizations.delete(display);
     for (const [id, entry] of loadedPlugins) {
       if (entry.identifier === display) {
+        PLUGIN_CUSTOM_VIZ.releaseCustomVizAsset(id);
         loadedPlugins.delete(id);
         failedPluginHashes.delete(id);
       }
@@ -368,6 +370,14 @@ export async function loadCustomVizPlugin(
       plugin.id,
     );
 
+    // core app resolves these to a plain same-origin url like
+    // `/api/ee/custom-viz-plugin/1/asset?path=icon.svg`, the SDK to an inline
+    // `blob:` url to avoid the cross-origin auth issue (see the slot).
+    const resolvedIconUrl = await PLUGIN_CUSTOM_VIZ.resolveCustomVizAssetUrl(
+      plugin.id,
+      plugin.icon,
+    );
+
     // Attach the required static properties onto the component function
     const Component = ExplicitSize<VisualizationProps>({ wrapped: true })(
       Wrapper,
@@ -376,7 +386,7 @@ export async function loadCustomVizPlugin(
       identifier,
       pluginId: plugin.id,
       getUiName: () => plugin.display_name,
-      iconUrl: getPluginAssetUrl(plugin.id, plugin.icon),
+      iconUrl: resolvedIconUrl,
       isDev: Boolean(plugin.dev_bundle_url),
     });
 
