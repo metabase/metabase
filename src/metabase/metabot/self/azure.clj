@@ -1,27 +1,19 @@
 (ns metabase.metabot.self.azure
   "Microsoft Azure LLM provider adapter.
 
-  Talks to the OpenAI- and Anthropic-compatible \"v1\" surfaces of a customer's Azure
-  resource — `https://<resource>.services.ai.azure.com/{openai|anthropic}` for Azure AI
-  Foundry resources, or the `https://<resource>.openai.azure.com/openai` equivalent:
+  Talks to the OpenAI- and Anthropic-compatible \"v1\" surfaces of a customer's Azure resource
+  (`https://<resource>.services.ai.azure.com/{openai|anthropic}`, or the `*.openai.azure.com`
+  equivalent), authenticating with `Authorization: Bearer {llm-azure-api-key}`:
 
     - `POST {base-url}/v1/messages`  — Anthropic Messages API, for `anthropic/*` models
     - `POST {base-url}/v1/responses` — OpenAI Responses API, for `openai/*` models
-    - `GET  {base-url}/v1/models`    — regional model catalog (`/openai` surface only)
 
-  Azure serves admin-created, admin-named *deployments* rather than a callable model
-  catalog, so the model string is `{family}/{deployment-name}` (e.g.
-  `anthropic/claude-sonnet-4-5`): the first segment explicitly selects the wire protocol
-  and the rest is the deployment name sent as the request body's `model`. Because these
-  are the same wire protocols the direct Anthropic/OpenAI adapters speak, this namespace
-  reuses [[claude/claude-request-body]] + [[claude/claude->aisdk-chunks-xf]] and
-  [[openai/openai-request-body]] + [[openai/openai->aisdk-chunks-xf]], exactly like the
-  Bedrock adapter.
-
-  Requests authenticate with `Authorization: Bearer {llm-azure-api-key}` (an Azure
-  data-plane key). The classic deployment-scoped endpoints
-  (`/openai/deployments/<name>/...?api-version=...` with an `api-key` header) and
-  Entra ID token auth are not supported — v1 surfaces only."
+  Azure serves admin-named *deployments*, not a callable catalog, so the model string is
+  `{family}/{deployment-name}`: the first segment selects the wire protocol and the rest is the
+  deployment name sent as the body's `model`. These are the same protocols the direct
+  Anthropic/OpenAI adapters speak, so this namespace reuses their request-body and chunks-xf fns,
+  exactly like the Bedrock adapter. Only the v1 surfaces are supported (no classic
+  deployment-scoped endpoints or Entra ID auth)."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -143,16 +135,14 @@
 (defn list-models
   "Validate Azure credentials with a model-free round trip and return an empty model list.
 
-  Azure's models listing (`GET /v1/models`, `/openai` surface only) returns the regional
-  catalog — hundreds of models, not the customer's deployments — so there is never a
-  dropdown to populate and deployment names are free-text input. The round trip only
-  proves the API key and base URL reach an authenticated surface of the right family
-  (see [[validate-openai-surface!]] and [[validate-anthropic-surface!]]); deployment
-  existence is not validated and first fails at chat time with `DeploymentNotFound`.
+  There is never a dropdown to populate (Azure's listing returns the regional catalog, not the
+  customer's deployments — deployment names are free text), so the round trip only proves the
+  credentials reach an authenticated surface of the right family (see [[validate-openai-surface!]]
+  and [[validate-anthropic-surface!]]); deployment existence is not validated and first fails at
+  chat time with `DeploymentNotFound`.
 
-  Opts: `:credentials` (`{:api-key ... :base-url ...}`) and `:model` (the
-  `{family}/{deployment-name}` string selecting which surface family to validate;
-  defaults to the saved Azure model when Azure is the configured provider)."
+  Opts: `:credentials` (`{:api-key ... :base-url ...}`) and `:model` (the `{family}/{deployment}`
+  string selecting which surface family to validate; defaults to the saved Azure model)."
   ([] (list-models {}))
   ([{:keys [credentials model]}]
    (when-let [model (or (not-empty model) (configured-azure-model))]

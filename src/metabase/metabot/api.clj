@@ -414,9 +414,6 @@
   (let [models           (if (= provider provider-util/metabase-provider-prefix)
                            (map normalize-metabase-model models)
                            models)
-        ;; some providers (e.g. a gateway behind a custom base URL, Azure's regional catalog) list the
-        ;; same model id more than once; duplicate ids crash the FE model dropdown
-        models           (m/distinct-by :id models)
         decorated-models (map #(decorate-provider-model provider %) models)]
     (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]

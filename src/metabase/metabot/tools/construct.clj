@@ -34,14 +34,13 @@
   [:map {:closed true}
    [:chart_type :string]])
 
-;; Hackathon HACK: provide a partial json-schema for the mbql query, otherwise openai models get confused and always
-;; pass an empty map. Gets construct_notebook_query basically working with weaker openai models.
 (def ^:private construct-notebook-query-json-schema
-  "Hand-authored JSON Schema for the `:query` argument, attached to the (deliberately open,
-  property-less) malli `:map` via a `:json-schema` override. It does not participate in
-  validation — it only replaces what we hand the LLM (see [[construct-notebook-query-args-schema]]
-  for why). The structured `:required`/`:properties` are what stop weaker models from emitting
-  `{}`; the prose carries the per-clause shape that JSON Schema can't express well."
+  "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
+  property-less malli `:map` via a `:json-schema` override. It does not participate in validation —
+  it only replaces the schema we hand the LLM. Malli would otherwise emit an empty-`properties`
+  object, which weaker models (e.g. gpt-4.1-mini) read as \"this object has no fields\" and answer
+  with `{}`; the structured `:required`/`:properties` here stop that, and the prose carries the
+  per-clause shape JSON Schema can't express well."
   {:type        "object"
    :description (str "An MBQL 5 query as a JSON **object** (never a quoted string) matching "
                      "`metabase.lib.schema/external-query`. The FIRST stage MUST contain exactly one of `source-table` "
@@ -101,13 +100,8 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   ;; The malli schema we validate against stays a fully open, property-less `:map` on purpose — see the docstring
-   ;; above: the repair/forgiveness layer fixes LLM shortcuts, so we assert no structure here (an empty `{}`, a real
-   ;; query, and queries with extra keys all validate). But malli would then emit `{"type":"object","properties":{}}`
-   ;; to the LLM, and an empty `properties` reads to weaker models (e.g. gpt-4.1-mini) as "this object has no fields"
-   ;; — they ignore the prose description and emit `{}`. So we decouple the two via a `:json-schema` override: it
-   ;; replaces ONLY the schema we hand the LLM with a structured one (`required: [lib/type, stages]` + real nested
-   ;; `properties`), giving the model strong structural signal, while validation stays exactly as permissive as before.
+   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
+   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
    [:query [:map {:json-schema construct-notebook-query-json-schema}]]
    [:visualization {:optional true} construct-visualization-schema]
    [:title :string]])
