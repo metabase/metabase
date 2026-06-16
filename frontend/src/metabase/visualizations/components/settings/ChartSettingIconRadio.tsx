@@ -29,7 +29,7 @@ export const ChartSettingIconRadio = ({
           key={`radio-icon-${option.iconName}`}
           className={S.iconButton}
           variant={option.value === value ? "filled" : "default"}
-          size="lg"
+          size="2rem"
           ml="sm"
           onClick={() => handleClick(option.value)}
         >
