@@ -18,6 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
+   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -229,9 +230,20 @@
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
       (mt/wait-for-result save-chan)
       (Thread/sleep 200)
-      ;; expired and nobody else is refreshing -> we win the lease and recompute
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
+
+(deftest refresh-lease-test
+  (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array [1 2 3 4])
+                                                               :results    (byte-array [0])
+                                                               :updated_at (t/offset-date-time)}]
+      (testing "the first caller wins the lease"
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
+      (testing "a concurrent caller loses while the lease is still held"
+        (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
+      (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash 0)))))))
 
 (deftest stale-while-revalidate-test
   (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
@@ -241,9 +253,8 @@
             query-hash (qp.util/query-hash (test-query {:cache-strategy strategy}))]
         (run-query :cache-strategy strategy)
         (mt/wait-for-result save-chan)
-        (Thread/sleep 200)                                                            ; entry is now expired
-        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000))) ; another process refreshes
-        ;; a cache hit (`:cached`) means we served the stale entry; a recompute would be `:not-cached`
+        (Thread/sleep 200)
+        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
         (is (= :cached
                (run-query :cache-strategy strategy)))))))
 
