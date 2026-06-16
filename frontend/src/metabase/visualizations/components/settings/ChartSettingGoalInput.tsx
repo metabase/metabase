@@ -5,6 +5,23 @@ import { ActionIcon, Icon, Menu, NumberInput, TextInput } from "metabase/ui";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn } from "metabase-types/api";
 
+import { ChartSettingFieldPickerRoot } from "./ChartSettingFieldPicker.styled";
+
+const RIGHT_SECTION_WIDTH = "38px";
+
+const inputStyles = {
+  input: {
+    border: "none",
+    fontWeight: "bold",
+    cursor: "pointer",
+    width: "100%",
+  },
+  section: {
+    backgroundColor: "unset",
+    zIndex: "initial",
+  },
+};
+
 export type ChartSettingGoalInputProps = {
   id: string;
   value: number | string;
@@ -90,28 +107,36 @@ export const ChartSettingGoalInput = ({
 
   if (isColumnReference) {
     return (
-      <TextInput
-        id={id}
-        value={selectedColumn?.label || value}
-        readOnly
-        placeholder={selectedColumn?.label || value}
-        fw="bold"
-        rightSection={rightSection}
-        rightSectionPointerEvents="all"
-      />
+      <ChartSettingFieldPickerRoot bg="background-primary" align="center">
+        <TextInput
+          id={id}
+          value={selectedColumn?.label || value}
+          readOnly
+          placeholder={selectedColumn?.label || value}
+          rightSection={rightSection}
+          rightSectionPointerEvents="all"
+          rightSectionWidth={RIGHT_SECTION_WIDTH}
+          styles={inputStyles}
+          w="100%"
+        />
+      </ChartSettingFieldPickerRoot>
     );
   }
 
   return (
-    <NumberInput
-      ref={numberInputRef}
-      id={id}
-      value={numericValue}
-      onChange={(val) => onChange(val ?? 0)}
-      placeholder={t`Enter goal value`}
-      fw="bold"
-      rightSection={rightSection}
-      rightSectionPointerEvents="all"
-    />
+    <ChartSettingFieldPickerRoot bg="background-primary" align="center">
+      <NumberInput
+        ref={numberInputRef}
+        id={id}
+        value={numericValue}
+        onChange={(val) => onChange(val ?? 0)}
+        placeholder={t`Enter goal value`}
+        rightSection={rightSection}
+        rightSectionPointerEvents="all"
+        rightSectionWidth={RIGHT_SECTION_WIDTH}
+        styles={inputStyles}
+        w="100%"
+      />
+    </ChartSettingFieldPickerRoot>
   );
 };
