@@ -190,6 +190,16 @@ Use Metabase's SDK `InteractiveQuestion` or `StaticQuestion` by default when the
 
 Metabase supports these question displays: `table`, `bar`, `line`, `pie`, `scalar`, `row`, `area`, `combo`, `pivot`, `smartscalar`, `gauge`, `progress`, `funnel`, `object`, `map`, `scatter`, `boxplot`, `waterfall`, `sankey`, and `list`.
 
+### SDK Chart Heights
+
+When an SDK-rendered chart lives in a card, panel, dashboard cell, or any other area that needs a specific height, pass that height to the SDK component that owns the visualization. Setting only the outer container or card height is not enough — the chart can render taller than the card and get cut off.
+
+- Chart only: pass `height` to `InteractiveQuestion.QuestionVisualization`.
+- Default question layout with query bar: pass `height` to `InteractiveQuestion`.
+- Static question: pass `height` to `StaticQuestion`.
+
+Use the actual body height available to the chart. For example, if a card is 560px tall and has a 60px header, pass `height="500px"` to the SDK component.
+
 Prefer `InteractiveQuestion` for:
 
 - standard charts, pivot tables, maps, object/list views, scalar/KPI values, and exploratory views
@@ -233,7 +243,7 @@ const trendQuery = useMetabaseQueryObject({
 
 return (
   <InteractiveQuestion query={trendQuery}>
-    <InteractiveQuestion.QuestionVisualization />
+    <InteractiveQuestion.QuestionVisualization height="500px" />
   </InteractiveQuestion>
 );
 ```
@@ -247,7 +257,7 @@ const trendQuery = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { bucket: "month" })],
 });
 
-return <InteractiveQuestion query={trendQuery} />;
+return <InteractiveQuestion query={trendQuery} height="500px" />;
 ```
 
 Static question:
@@ -259,7 +269,7 @@ const trendQuery = useMetabaseQueryObject({
   breakouts: [breakout(eventsTable.fields.occurredAt, { bucket: "month" })],
 });
 
-return <StaticQuestion query={trendQuery} />;
+return <StaticQuestion query={trendQuery} height="500px" />;
 ```
 
 Metric-backed SDK question:
@@ -276,12 +286,12 @@ const metricTrendQuery = useMetabaseQueryObject({
 
 return (
   <InteractiveQuestion query={metricTrendQuery}>
-    <InteractiveQuestion.QuestionVisualization />
+    <InteractiveQuestion.QuestionVisualization height="500px" />
   </InteractiveQuestion>
 );
 ```
 
-Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow.
+Do not wrap `InteractiveQuestion` or `StaticQuestion` in containers that clip or move on hover. Avoid `overflow: hidden`, hover transforms, and hover-driven layout shifts around embedded Metabase UI; popovers, menus, and chart tooltips need stable geometry and visible overflow. If a parent card has a fixed height, also pass the matching available height to `InteractiveQuestion`, `StaticQuestion`, or `InteractiveQuestion.QuestionVisualization`; never rely on the parent height alone.
 
 ## Filters And Breakouts
 
