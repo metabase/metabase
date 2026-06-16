@@ -34,8 +34,6 @@ import {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "embedding-sdk-package/hooks/public/use-metabase-query";
-import { useMetricQuery } from "embedding-sdk-package/hooks/public/use-metric-query";
-import { useQuestionQuery } from "embedding-sdk-package/hooks/public/use-question-query";
 import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
 import { defineMetabaseTheme } from "embedding-sdk-package/lib/public/define-metabase-theme";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
@@ -75,9 +73,6 @@ export function createDataAppSandbox(
         React,
         __react_jsx_runtime__: ReactJsxRuntime,
         __metabase_sdk__: {
-          // Data fetching
-          useQuestionQuery,
-          useMetricQuery,
           // Custom actions
           useAction,
 

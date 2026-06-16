@@ -29,8 +29,6 @@ export { useCurrentUser } from "./hooks/public/use-current-user";
 export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
-export { useQuestionQuery } from "./hooks/public/use-question-query";
-export { useMetricQuery } from "./hooks/public/use-metric-query";
 /** @internal */
 export {
   avg,
@@ -191,16 +189,6 @@ export type {
   SqlParameterValues,
   SdkActionId,
 } from "embedding-sdk-bundle/types";
-export type {
-  UseQuestionQueryOptions,
-  UseQuestionQueryResult,
-} from "./hooks/public/use-question-query";
-export type {
-  MetricBreakout,
-  MetricFilter,
-  UseMetricQueryOptions,
-  UseMetricQueryResult,
-} from "./hooks/public/use-metric-query";
 export type {
   MetricSchema,
   QuestionSchema,
