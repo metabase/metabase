@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 
+import { Link } from "metabase/common/components/Link";
 import { trackSearchClick } from "metabase/common/search/analytics";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
@@ -78,18 +79,25 @@ export function SearchResult({
     );
   };
 
+  const url = modelToUrl(result);
+
+  const canNavigate = !onClick && isActive;
+
   const handleClick = (e: MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+    if (onClick) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (isActive) {
+        onClick(result);
+      }
+      return;
+    }
 
     if (!isActive) {
+      e.preventDefault();
       return;
     }
 
-    if (onClick) {
-      onClick(result);
-      return;
-    }
     trackSearchClick({
       itemType: "item",
       position: index,
@@ -100,14 +108,14 @@ export function SearchResult({
       entityId: typeof result.id === "number" ? result.id : null,
       searchTerm,
     });
-    onChangeLocation(modelToUrl(result));
   };
 
   return (
     <SearchResultContainer
       className={className}
       data-testid="search-result-item"
-      component="button"
+      component={canNavigate ? Link : "button"}
+      to={canNavigate ? url : undefined}
       onClick={handleClick}
       isActive={isActive}
       isSelected={isSelected}
@@ -125,10 +133,10 @@ export function SearchResult({
       <ResultNameSection justify="center" gap="xs">
         <Group gap="xs" align="center" wrap="nowrap">
           <ResultTitle
+            component="span"
             role="heading"
             data-testid="search-result-item-name"
             truncate
-            href={!onClick ? modelToUrl(result) : undefined}
           >
             {name}
           </ResultTitle>
@@ -138,7 +146,7 @@ export function SearchResult({
             size={14}
           />
         </Group>
-        <InfoText showLinks={!onClick} result={result} isCompact={compact} />
+        <InfoText showLinks={false} result={result} isCompact={compact} />
         {description && showDescription && (
           <DescriptionSection>
             <Group wrap="nowrap" gap="sm" data-testid="result-description">

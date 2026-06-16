@@ -92,6 +92,14 @@ describe("SearchResult", () => {
     expect(history?.getCurrentLocation().pathname).toEqual(expectedPath);
   });
 
+  it("renders the whole row as a link so it can be opened in a new tab", () => {
+    setup({ result: TEST_RESULT_QUESTION });
+
+    const row = screen.getByTestId("search-result-item");
+    expect(row.tagName).toBe("A");
+    expect(row).toHaveAttribute("href", modelToUrl(TEST_RESULT_QUESTION));
+  });
+
   describe("indexed entities", () => {
     it("renders x-ray button for indexed entity search result", () => {
       setup({ result: TEST_RESULT_INDEXED_ENTITY });

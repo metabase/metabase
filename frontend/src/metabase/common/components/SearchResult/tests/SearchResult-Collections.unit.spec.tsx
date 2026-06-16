@@ -1,3 +1,5 @@
+import { Route } from "react-router";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
@@ -78,9 +80,17 @@ const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  renderWithProviders(<SearchResult result={result} index={0} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <Route
+      path="*"
+      component={() => <SearchResult result={result} index={0} />}
+    />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+      initialRoute: "/",
+    },
+  );
 };
 
 describe("SearchResult > Collections", () => {

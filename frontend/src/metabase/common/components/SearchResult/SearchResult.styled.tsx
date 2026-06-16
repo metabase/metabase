@@ -5,6 +5,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import type {
   AnchorHTMLAttributes,
+  ElementType,
   HTMLAttributes,
   PropsWithChildren,
   RefObject,
@@ -15,15 +16,15 @@ import type { AnchorProps, BoxProps, ButtonProps } from "metabase/ui";
 import { Anchor, Box, Button, Divider, Stack } from "metabase/ui";
 
 const isBoxPropValid = (propName: string) => {
-  return (
-    propName !== "isActive" &&
-    propName !== "isSelected" &&
-    isPropValid(propName)
-  );
+  if (propName === "isActive" || propName === "isSelected") {
+    return false;
+  }
+  return propName === "component" || propName === "to" || isPropValid(propName);
 };
 
 export const ResultTitle = styled(Anchor)<
-  AnchorProps & AnchorHTMLAttributes<HTMLAnchorElement>
+  AnchorProps &
+    AnchorHTMLAttributes<HTMLAnchorElement> & { component?: ElementType }
 >`
   line-height: unset;
   font-weight: 700;
@@ -46,7 +47,8 @@ export const SearchResultContainer = styled(Box, {
     HTMLAttributes<HTMLButtonElement> & {
       isActive?: boolean;
       isSelected?: boolean;
-      component?: string;
+      component?: ElementType;
+      to?: string;
       ref?: RefObject<HTMLButtonElement> | null;
     }
 >`
