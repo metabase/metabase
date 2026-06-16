@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
+   [metabase.channel.render.pdf.typeset :as typeset]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.memoize :as memo])
   (:import
@@ -101,14 +102,14 @@
 ;; --------------------------------------------------------------------------------------------
 
 (deftest ^:parallel segment-test
-  ;; pack numbers into groups whose running sum stays <= limit (greedy bin packing); ::pdf/reject
-  ;; uses the alias so it resolves to the sentinel in pdf's namespace.
+  ;; pack numbers into groups whose running sum stays <= limit (greedy bin packing); ::typeset/reject
+  ;; uses the alias so it resolves to the sentinel in the typeset namespace.
   (let [pack (fn [limit]
-               (#'pdf/segment
+               (#'typeset/segment
                 (fn ([x] {:items [x] :sum x})
                   ([{:keys [items sum]} x]
                    (let [s (+ sum x)]
-                     (if (<= s limit) {:items (conj items x) :sum s} ::pdf/reject))))
+                     (if (<= s limit) {:items (conj items x) :sum s} ::typeset/reject))))
                 :items))]
     (testing "greedy grouping by running total; an overflowing item reopens the next group"
       (is (= [[3 4] [5 5] [2]] (into [] (pack 10) [3 4 5 5 2]))))
@@ -118,17 +119,17 @@
       (is (= [] (into [] (pack 10) []))))
     (testing "default close is identity (emits the raw accumulator)"
       (is (= [[1 2 3]]
-             (into [] (#'pdf/segment (fn ([x] [x]) ([acc x] (conj acc x)))) [1 2 3]))))
+             (into [] (#'typeset/segment (fn ([x] [x]) ([acc x] (conj acc x)))) [1 2 3]))))
     (testing "custom close transforms each finished group"
       (is (= [3 7 5] ; consecutive pairs, summed
-             (into [] (#'pdf/segment (fn ([x] [x])
-                                       ([acc x] (if (< (count acc) 2) (conj acc x) ::pdf/reject)))
-                                     #(reduce + %))
+             (into [] (#'typeset/segment (fn ([x] [x])
+                                           ([acc x] (if (< (count acc) 2) (conj acc x) ::typeset/reject)))
+                                         #(reduce + %))
                    [1 2 3 4 5]))))
     (testing "::break closes the group and DROPS the seam item"
       (is (= [[1 2] [3] [4]]
-             (into [] (#'pdf/segment (fn ([x] [x])
-                                       ([acc x] (if (= x :|) ::pdf/break (conj acc x)))))
+             (into [] (#'typeset/segment (fn ([x] [x])
+                                           ([acc x] (if (= x :|) ::typeset/break (conj acc x)))))
                    [1 2 :| 3 :| 4]))))
     (testing "honors downstream reduced? (take) without double-flushing or erroring"
       (is (= [[3 4]] (into [] (comp (pack 10) (take 1)) [3 4 5 5 2])))
@@ -138,12 +139,12 @@
 
 (deftest ^:parallel segment-partition-all-test
   (letfn [(part-all [n]
-            (#'pdf/segment (fn
-                             ([item] [item])
-                             ([acc item]
-                              (if (= n (count acc))
-                                ::pdf/reject
-                                (conj acc item))))))]
+            (#'typeset/segment (fn
+                                 ([item] [item])
+                                 ([acc item]
+                                  (if (= n (count acc))
+                                    ::typeset/reject
+                                    (conj acc item))))))]
     (are [n xs] (= (into [] (partition-all n) xs)
                    (into [] (part-all n) xs))
       3 (range 10)
@@ -157,14 +158,14 @@
 
 (deftest ^:parallel segment-partition-by-test
   (letfn [(part-by [kf]
-            (#'pdf/segment (fn
-                             ([item] [(kf item) [item]])
-                             ([[old-key acc] item]
-                              (let [new-key (kf item)]
-                                (if (not= old-key new-key)
-                                  ::pdf/reject
-                                  [old-key (conj acc item)]))))
-                           second))]
+            (#'typeset/segment (fn
+                                 ([item] [(kf item) [item]])
+                                 ([[old-key acc] item]
+                                  (let [new-key (kf item)]
+                                    (if (not= old-key new-key)
+                                      ::typeset/reject
+                                      [old-key (conj acc item)]))))
+                               second))]
     (are [xs] (= (into [] (partition-by even?) xs)
                  (into [] (part-by even?) xs))
       (range 10)
@@ -219,19 +220,19 @@
   (let [u    (fn [ww sb?] {:ww ww :sp 5.0 :space-before? sb?})
         noop (fn [x] [x])
         us   [(u 30.0 false) (u 40.0 true) (u 50.0 true)]
-        n-at (fn [w] (count (#'pdf/pack-units->lines us w noop)))]
+        n-at (fn [w] (count (#'typeset/pack-units->lines us w noop)))]
     (testing "returns the narrowest width that preserves the fewest-lines count"
-      (let [w1 (#'pdf/min-column-width us 1000.0 noop)]    ; everything fits on one line when wide
+      (let [w1 (#'typeset/min-column-width us 1000.0 noop)]    ; everything fits on one line when wide
         (is (= 1 (n-at 1000.0)))
         (is (= 1 (n-at w1)))                                ; still one line at the computed width
         (is (= 2 (n-at (- w1 1.0))))                        ; ... two lines just below it
         (is (<= 129.0 w1 131.0)))                           ; == total advance 30 + (5+40) + (5+50)
-      (let [w2 (#'pdf/min-column-width us 80.0 noop)]       ; only two units fit per line at 80
+      (let [w2 (#'typeset/min-column-width us 80.0 noop)]       ; only two units fit per line at 80
         (is (= 2 (n-at 80.0)))
         (is (= 2 (n-at w2)))
         (is (<= 74.0 w2 76.0))))                            ; == width to fit [30,40]: 30 + 5 + 40
     (testing "empty units -> zero width"
-      (is (= 0.0 (#'pdf/min-column-width [] 100.0 noop))))))
+      (is (= 0.0 (#'typeset/min-column-width [] 100.0 noop))))))
 
 (deftest ^:parallel resolve-inline-params-test
   (let [params [{:id "a" :name "Max Discount" :value [100]}
@@ -291,7 +292,7 @@
 
 (deftest ^:parallel reorder-bidi-items-test
   (let [mk    (fn [t sp] {:text t :space-before? sp})
-        texts (fn [items] (mapv :text (#'pdf/reorder-bidi-items items)))]
+        texts (fn [items] (mapv :text (#'typeset/reorder-bidi-items items)))]
     (testing "a left-to-right line keeps its word order"
       (is (= ["Hello" "world"] (texts [(mk "Hello" false) (mk "world" true)]))))
     (testing "a single item (or empty line) is returned unchanged"
@@ -302,7 +303,7 @@
       (is (= ["ג" "ב" "א"] (texts [(mk "א" false) (mk "ב" true) (mk "ג" true)]))))
     (testing "the first visual word loses its leading space; later words keep an inter-word space"
       (is (= [false true true]
-             (mapv :space-before? (#'pdf/reorder-bidi-items
+             (mapv :space-before? (#'typeset/reorder-bidi-items
                                    [(mk "א" false) (mk "ב" true) (mk "ג" true)])))))
     (testing "an embedded left-to-right word keeps its internal order within an RTL line"
       ;; logical: shalom, Metabase, olam -> visual L-to-R: olam, Metabase, shalom
