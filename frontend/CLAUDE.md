@@ -51,6 +51,7 @@ summary; when they disagree, follow the skill.
 - Running / debugging Cypress E2E → **e2e-test**
 - Replacing Emotion styled-components with Mantine → **emotion-migrate**
 - Adding product analytics events → **analytics-events**
+- Restyling / implementing a `metabase/ui` component from a Figma spec → **metabase-ui-component-from-figma**
 
 ### Enterprise Features
 

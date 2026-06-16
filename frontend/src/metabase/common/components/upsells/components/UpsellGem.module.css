@@ -4,6 +4,6 @@
 }
 
 .UpsellGemNew {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   flex-shrink: 0;
 }

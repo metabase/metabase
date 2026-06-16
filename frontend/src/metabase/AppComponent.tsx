@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
+import {
+  getIsAdminApp,
+  getIsAppBarVisible,
+  getIsDataStudioApp,
+  getIsNavBarEnabled,
+} from "metabase/app/selectors";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
   Archived,
@@ -20,13 +26,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor, State } from "metabase/redux/store";
-import {
-  getErrorPage,
-  getIsAdminApp,
-  getIsAppBarVisible,
-  getIsDataStudioApp,
-  getIsNavBarEnabled,
-} from "metabase/selectors/app";
+import { getErrorPage } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
 import { initializeIframeResizer } from "metabase/utils/dom";

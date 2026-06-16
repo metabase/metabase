@@ -54,7 +54,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px); /* tab .list padding - input padding - borders/margins */
   color: ${(props) =>
     props.isSelected && !props.disabled
-      ? "var(--mb-color-brand)"
+      ? "var(--mb-color-core-brand)"
       : "var(--mb-color-text-primary)"};
   opacity: ${(props) => (props.disabled ? 0.3 : 1)};
   font-size: var(--mantine-font-size-md);
@@ -66,7 +66,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     ${(props) =>
       !props.disabled &&
       css`
-        color: var(--mb-color-brand);
+        color: var(--mb-color-core-brand);
       `}
   }
 
@@ -84,7 +84,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     !props.disabled &&
     css`
       :after {
-        border-color: var(--mb-color-brand);
+        border-color: var(--mb-color-core-brand);
       }
     `}
 `;
@@ -100,7 +100,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
     props.isOpen &&
     !props.disabled &&
     css`
-      color: var(--mb-color-brand);
+      color: var(--mb-color-core-brand);
       background-color: var(--mb-color-background-tertiary);
     `}
   &:hover,:focus {
@@ -110,7 +110,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
             color: var(--mb-color-text-primary);
           `
         : css`
-            color: var(--mb-color-brand);
+            color: var(--mb-color-core-brand);
             background-color: var(--mb-color-background-tertiary);
           `}
   }
@@ -132,7 +132,7 @@ export const MenuItem = styled.li`
 
   &:focus,
   :hover {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
     background-color: var(--mb-color-background-secondary);
   }
 `;

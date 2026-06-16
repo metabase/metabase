@@ -39,17 +39,17 @@ export const LocaleButton = styled.span<LocaleContainerProps>`
     color(props.checked ? "text-primary-inverse" : "text-primary")};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color("brand") : color("background-primary")};
+    props.checked ? color("core-brand") : color("background-primary")};
   font-weight: 700;
   border: 2px solid var(--mb-color-white);
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: var(--mb-color-brand);
+    background-color: var(--mb-color-core-brand);
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid var(--mb-color-brand);
+    outline: 2px solid var(--mb-color-core-brand);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

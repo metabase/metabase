@@ -107,7 +107,7 @@ function DropHint({ isDragActive }: { isDragActive: boolean }) {
 function SelectedFile({ file }: { file: File }) {
   return (
     <>
-      <Icon name="document" size={24} c="brand" />
+      <Icon name="document" size={24} c="core-brand" />
       <Text fw={500}>{file.name}</Text>
       <Text c="text-secondary" size="sm">
         {(file.size / 1024).toFixed(1)} KB

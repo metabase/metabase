@@ -211,7 +211,10 @@
      (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
-  (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
+  ;; INFO (not DEBUG) so pool destruction is visible in CI test-log artifacts: destroying a pool closes its
+  ;; checked-out connections, which kills in-flight queries with errors like SQL Server's "The result set is
+  ;; closed" (see DEV-2161). Pool destruction is rare and significant enough to warrant INFO in production too.
+  (log/info (u/format-color :red "Closing old connection pool for database %s ..." database-id))
   (driver-api/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
@@ -298,8 +301,8 @@
         swapped-keys    (filter (fn [[cached-db-id _details-hash]]
                                   (= cached-db-id db-id))
                                 (keys (.asMap ^Cache swapped-connection-pools)))]
-    (log/debugf "Invalidating connection pools for database %d (canonical count: %d, swapped count: %d)"
-                db-id canonical-count (count swapped-keys))
+    (log/infof "Invalidating connection pools for database %d (canonical count: %d, swapped count: %d)"
+               db-id canonical-count (count swapped-keys))
     ;; Clear canonical pools for both connection types
     (doseq [cache-key canonical-keys
             :let      [[old-map] (swap-vals! pool-cache-key->connection-pool dissoc cache-key)

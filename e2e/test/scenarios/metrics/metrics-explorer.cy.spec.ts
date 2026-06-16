@@ -329,6 +329,16 @@ const addOrdersProductsExpression = () => {
   cy.wait("@dataset");
 };
 
+const assertMetricControlsDoNotOverflowViewport = () => {
+  H.MetricsViewer.getMetricControls().then(($controls) => {
+    const rect = $controls[0].getBoundingClientRect();
+    const viewportWidth = Cypress.config("viewportWidth");
+
+    expect(Math.floor(rect.left)).to.be.at.least(0);
+    expect(Math.ceil(rect.right)).to.be.at.most(viewportWidth);
+  });
+};
+
 const openTimeDimensionConfiguration = () => {
   H.MetricsViewer.dimensionPickerSidebar()
     .findByRole("button", { name: "Time" })
@@ -2210,6 +2220,57 @@ describe("scenarios > metrics > explorer", () => {
 
       cy.log("Expression should run without 'No compatible dimensions' error");
       H.MetricsViewer.getMetricVisualization().should("be.visible");
+    });
+  });
+
+  describe("Responsive viewer controls", () => {
+    const setupTimeControls = (width: number) => {
+      cy.viewport(1280, 900);
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      H.MetricsViewer.searchInput().type("{end}, Count of orders", {
+        waitForAnimations: true,
+      });
+      H.MetricsViewer.searchResults()
+        .findByText("Count of orders")
+        .closest("[role='menuitem']")
+        .click();
+      runFormula();
+      cy.wait("@dataset");
+      cy.viewport(width, 900);
+    };
+
+    it("shows compact controls at phone widths and keeps them interactive", () => {
+      setupTimeControls(480);
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .should("be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .should("be.visible");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .click();
+      H.popover().findByText("Visualization").should("be.visible");
+      H.popover().findByRole("menuitem", { name: "Bar chart" }).click();
+      H.MetricsViewer.assertVizType("Bar");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .click();
+      H.popover()
+        .findByRole("button", { name: "Change column" })
+        .should("be.visible")
+        .should("contain.text", "Time");
+      H.popover()
+        .findByRole("button", { name: /by month/i })
+        .should("be.visible");
+      H.popover().findByRole("button", { name: "Change column" }).click();
+      H.MetricsViewer.dimensionPickerSidebar().should("be.visible");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+      assertMetricControlsDoNotOverflowViewport();
     });
   });
 

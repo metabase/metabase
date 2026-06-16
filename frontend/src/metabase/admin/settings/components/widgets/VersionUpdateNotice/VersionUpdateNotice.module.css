@@ -1,14 +1,14 @@
 .container {
-  background-color: var(--mb-color-summarize);
+  background-color: var(--mb-color-core-summarize);
 }
 
 .message {
   padding: 1rem;
   color: var(--mb-color-text-primary-inverse);
   font-weight: bold;
-  border: 1px solid var(--mb-color-brand);
+  border: 1px solid var(--mb-color-core-brand);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 }
 
 .iframe {

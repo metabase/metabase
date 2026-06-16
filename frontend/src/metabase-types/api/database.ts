@@ -10,6 +10,7 @@ export type InitialSyncStatus = LongTaskStatus;
 export type DatabaseSettings = {
   [key: string]: any;
   "database-enable-actions"?: boolean;
+  "database-enable-workspaces"?: boolean;
 };
 
 export type DatabaseFeature =
@@ -121,6 +122,7 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+  transform: number;
 }
 
 export interface GetDatabaseRequest {

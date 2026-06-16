@@ -5,13 +5,14 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
-  (:refer-clojure :exclude [every? empty? get-in])
+  (:refer-clojure :exclude [every? empty? get-in not-empty])
   (:require
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
+   [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
@@ -23,7 +24,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty? get-in]]
+   [metabase.util.performance :refer [every? empty? get-in not-empty]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -40,43 +41,52 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
-;; in the completing arity of the rf
-;;
-;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
-;; for other places where we would want to do async saves (such as results-metadata for Cards?)
+(def ^:private save-execution-metadata-interval-seconds 20)
+
+(def ^:private save-execution-metadata-queue-capacity 500)
+
 (defn- save-execution-metadata!*
-  "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
+  "Save a batch of `QueryExecution`s and update the average execution times for the corresponding `Query`s."
+  [query-executions]
   (tracing/with-span :db-app "db-app.save-query-execution" {}
-    (when-not (:cache_hit query-execution)
-      (query/save-query-and-update-average-execution-time! query query-hash running-time))
-    (if-not context
-      (log/warn "Cannot save QueryExecution, missing :context")
-      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
+    (log/tracef "Saving %d QueryExecutions" (count query-executions))
+    (when-let [entries (not-empty
+                        (for [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution} query-executions
+                              :when (and (not (:cache_hit query-execution)) query-hash running-time)]
+                          {:query query, :query-hash query-hash, :execution-time-ms running-time}))]
+      (try
+        (query/save-queries-and-update-average-execution-times! entries)
+        (catch Throwable e
+          (log/error e "Error updating query average execution times"))))
+    (try
+      (let [{with-context true, no-context false} (group-by (comp some? :context) query-executions)]
+        (when (seq no-context)
+          (log/warnf "Cannot save %d QueryExecution(s), missing :context" (count no-context)))
+        (when (seq with-context)
+          (t2/insert! :model/QueryExecution (map #(dissoc % :json_query) with-context))))
+      (catch Throwable e
+        (log/error e "Error saving query execution info")))))
+
+(defonce ^:private save-execution-metadata-queue
+  (delay (grouper/start!
+          #'save-execution-metadata!*
+          :capacity save-execution-metadata-queue-capacity
+          :interval (* save-execution-metadata-interval-seconds 1000))))
 
 (defn- save-execution-metadata!
-  "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
+  "Save a `QueryExecution` row containing `execution-info`. Saves are batched and written asynchronously, so they may
+  not be visible for up to [[save-execution-metadata-interval-seconds]] (and may be lost on non-graceful shutdown);
+  this is analytics data, so we consider that an acceptable trade for not paying for an INSERT per query execution.
+  Tests can bind [[qp.util/*execute-async?*]] to `false` to save synchronously on the current thread."
   [execution-info]
-  (let [;; Capture SDK info now, on the request thread, because `with-execute-async` below intentionally
-        ;; does not convey dynamic var bindings to the background thread (to avoid holding DB connections).
-        ;; `include-sdk-info` also runs in the `before-insert` hook as a safety net for any code path
-        ;; that inserts QueryExecution directly (where dynamic vars would still be bound).
-        execution-info' (analytics.core/include-sdk-info execution-info)]
-    (qp.util/with-execute-async
-      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-      ;;
-      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-      ;;    attempt to use closed DB connections
-      (fn []
-        (log/trace "Saving QueryExecution info")
-        (try
-          (save-execution-metadata!* (add-running-time execution-info'))
-          (catch Throwable e
-            (log/error e "Error saving query execution info")))))))
+  (let [;; Capture SDK info and compute the running time now, on the query execution thread: by the time the batch is
+        ;; processed the request (and its dynamic bindings and clock) is long gone. `include-sdk-info` also runs in
+        ;; the `before-insert` hook as a safety net for any code path that inserts QueryExecution directly (where
+        ;; dynamic vars would still be bound).
+        execution-info' (add-running-time (analytics.core/include-sdk-info execution-info))]
+    (if qp.util/*execute-async?*
+      (grouper/submit! @save-execution-metadata-queue execution-info')
+      (save-execution-metadata!* [execution-info']))))
 
 (defn- save-successful-execution-metadata! [cache-details is-sandboxed? query-execution result-rows]
   (let [qe-map (assoc query-execution

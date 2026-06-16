@@ -14,7 +14,7 @@ export const HeaderLink = styled.div`
   cursor: ${(props) => props.onClick && "pointer"};
 
   &:hover {
-    color: ${(props) => props.onClick && color("brand")};
+    color: ${(props) => props.onClick && color("core-brand")};
   }
 `;
 

@@ -36,6 +36,11 @@ export type Transform = {
   created_at: string;
   updated_at: string;
   source_readable: boolean;
+  can_read?: boolean;
+  can_write?: boolean;
+  can_execute?: boolean;
+
+  source_database_id?: DatabaseId | null;
 
   // true when transform was deleted but still referenced by runs
   deleted?: boolean;
@@ -49,6 +54,12 @@ export type Transform = {
   owner?: TransformOwner | null;
 
   last_checkpoint_value?: string | null;
+
+  // set by the job transforms endpoint on transforms pulled into the plan
+  // only as dependencies (not tagged for the job); `scheduled` says whether
+  // any active job's schedule covers them
+  dependency?: boolean;
+  scheduled?: boolean;
 
   // hydrated fields
   collection?: Collection | null;

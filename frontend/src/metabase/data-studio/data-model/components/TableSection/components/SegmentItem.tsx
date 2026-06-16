@@ -24,7 +24,7 @@ export function SegmentItem({ segment, href }: SegmentItemProps) {
     >
       <Stack gap="xs">
         <Flex align="center" gap="sm">
-          <Icon name="segment" c="brand" />
+          <Icon name="segment" c="core-brand" />
           <Ellipsified lines={1} tooltip={segment.name}>
             <Text fw="bold">{segment.name}</Text>
           </Ellipsified>

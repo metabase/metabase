@@ -1,0 +1,1 @@
+export { StaticChoropleth } from "./StaticChoropleth";

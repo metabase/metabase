@@ -5,11 +5,11 @@ import { t } from "ttag";
 import { useDeleteCardMutation, useUpdateCardMutation } from "metabase/api";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import type { CollectionPickerValueItem } from "metabase/common/components/Pickers/CollectionPicker";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Card } from "metabase-types/api";
 
-import type { MetricUrls } from "../../types";
 import { CollectionBreadcrumbs } from "../CollectionBreadcrumbs";
 import { MetricHeader } from "../MetricHeader";
 

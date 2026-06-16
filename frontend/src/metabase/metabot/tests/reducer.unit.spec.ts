@@ -6,11 +6,13 @@ import {
   activateSuggestedTransform,
   addSuggestedTransform,
   deactivateSuggestedTransform,
+  metabotActions,
   metabotReducer,
 } from "metabase/metabot/state";
 import type { MetabotSuggestedTransform } from "metabase-types/api";
 import { createMockTransform } from "metabase-types/api/mocks/transform";
 
+import { METABOT_PROFILE_OVERRIDES } from "../constants";
 import {
   createConversation,
   getMetabotInitialState,
@@ -232,6 +234,24 @@ describe("metabot reducer", () => {
           }),
         ]);
       });
+    });
+  });
+
+  describe("the full-page `ask` conversation", () => {
+    it("exists in the initial state with the nlq profile", () => {
+      const state = getMetabotInitialState();
+      expect(state.conversations.ask).toBeDefined();
+      expect(state.conversations.ask?.profileOverride).toBe(
+        METABOT_PROFILE_OVERRIDES.NLQ,
+      );
+    });
+
+    it("can be reset independently and keeps the nlq profile", () => {
+      const store = createTestStore();
+      store.dispatch(metabotActions.resetConversation({ agentId: "ask" }));
+      const convo = store.getState().metabot.conversations.ask;
+      expect(convo).toBeDefined();
+      expect(convo?.profileOverride).toBe(METABOT_PROFILE_OVERRIDES.NLQ);
     });
   });
 

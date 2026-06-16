@@ -271,10 +271,11 @@
          (map #(get-structured-output (:result %)))
          (filter #(and (:chart-id %) (:query-id %))))
    (completing
-    (fn [mem {:keys [chart-id chart-type query]}]
+    (fn [mem {:keys [chart-id query-id chart-type query]}]
       (memory/store-chart mem
                           chart-id
                           {:chart_id chart-id
+                           :query_id query-id
                            :queries [query]
                            :visualization_settings {:chart_type chart-type}})))
    memory
@@ -414,7 +415,7 @@
                          (memory/load-todos-from-state seeded)
                          (memory/load-link-registry-from-state seeded))
         memory-atom  (atom memory)
-        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id)]
+        tools        (tools/wrap-tools-with-state base-tools memory-atom metabot-id profile-id)]
     (log/info "Starting agent" {:profile  profile-id
                                 :tools    (count tools)
                                 :max-iter (:max-iterations profile)

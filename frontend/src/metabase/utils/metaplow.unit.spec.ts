@@ -1,6 +1,10 @@
 import Settings from "metabase/utils/settings";
 
-import { trackMetaplowEvent, trackMetaplowPageView } from "./metaplow";
+import {
+  initMetaplow,
+  trackMetaplowEvent,
+  trackMetaplowPageView,
+} from "./metaplow";
 
 const METAPLOW_URL = "https://metaplow.example.com/api/send";
 const METAPLOW_WEBSITE_ID = "23eefa30-4c4f-490e-aa4f-084cd23b1561";
@@ -31,6 +35,36 @@ describe("metaplow", () => {
     );
     return JSON.parse(init?.body as string);
   };
+
+  describe("initMetaplow", () => {
+    describe("beforeSend", () => {
+      afterEach(() => {
+        initMetaplow({ beforeSend: (_type, payload) => payload });
+      });
+
+      it("can modify the payload before it's sent", () => {
+        initMetaplow({
+          beforeSend: (_type, payload) => ({
+            ...payload,
+            data: { ...payload.data, user_id: 123 },
+          }),
+        });
+
+        trackMetaplowEvent("button_clicked");
+
+        const { payload } = getSentPayload();
+        expect(payload.data.user_id).toBe(123);
+      });
+
+      it("suppresses the fetch call when a falsy value is returned", () => {
+        initMetaplow({ beforeSend: () => undefined });
+
+        trackMetaplowEvent("button_clicked");
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+      });
+    });
+  });
 
   describe("trackMetaplowEvent", () => {
     it("does not call fetch when metaplow-url is not set", () => {
