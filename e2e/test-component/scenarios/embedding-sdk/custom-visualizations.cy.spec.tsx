@@ -4,6 +4,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   CUSTOM_VIZ_DISPLAY,
   CUSTOM_VIZ_FIXTURE_TGZ,
+  CUSTOM_VIZ_IDENTIFIER,
   addCustomVizPlugin,
   createQuestion,
 } from "e2e/support/helpers";
@@ -48,14 +49,94 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     setup();
   });
 
-  it("renders the custom visualization in the SDK", () => {
+  it("renders the custom visualization when the identifier is in allowedCustomVisualizations", () => {
     cy.get<number>("@questionId").then((questionId) => {
-      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        sdkProviderProps: {
+          allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+        },
+      });
     });
 
     getSdkRoot().within(() => {
       cy.findByText("Custom viz rendered successfully").should("be.visible");
       cy.findByText(/Value: \d+/).should("be.visible");
+    });
+  });
+
+  it("falls back to the default visualization when the prop is omitted", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        sdkProviderProps: {
+          allowedCustomVisualizations: undefined,
+        },
+      });
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  it("falls back to the default visualization when allowedCustomVisualizations is empty", () => {
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        sdkProviderProps: {
+          allowedCustomVisualizations: [],
+        },
+      });
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  describe("allowlist via allowedCustomVisualizations", () => {
+    it("renders the custom visualization when the identifier is in the allowlist", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+          sdkProviderProps: {
+            allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+          },
+        });
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
+      });
+    });
+
+    it("falls back to the default visualization when the identifier is not in the allowlist", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+          sdkProviderProps: {
+            allowedCustomVisualizations: ["some-other-plugin"],
+          },
+        });
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+
+    it("falls back to the default visualization when the allowlist is empty", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+          sdkProviderProps: {
+            allowedCustomVisualizations: [],
+          },
+        });
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
     });
   });
 });
