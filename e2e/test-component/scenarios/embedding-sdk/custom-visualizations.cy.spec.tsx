@@ -40,6 +40,18 @@ const setup = () => {
     cy.wrap(question.id).as("questionId");
   });
 
+  cy.log("Create a question with a regular display, for dropdown selection");
+  createQuestion({
+    name: "Default Display SDK Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+    },
+    display: "table",
+  }).then(({ body: question }) => {
+    cy.wrap(question.id).as("defaultDisplayQuestionId");
+  });
+
   cy.signOut();
   mockAuthProviderAndJwtSignIn();
 };
@@ -91,6 +103,141 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     getSdkRoot().within(() => {
       cy.findByText("Custom viz rendered successfully").should("not.exist");
       cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  describe("initialVisualization", () => {
+    it("applies a custom visualization as the initial visualization when enabled", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization={CUSTOM_VIZ_DISPLAY}
+          />,
+          {
+            sdkProviderProps: {
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The custom viz renders instead of the saved table display");
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText(/Value: \d+/).should("be.visible");
+
+        cy.log("The chart type dropdown shows the custom viz as selected");
+        cy.findByTestId("chart-type-selector-button").should(
+          "contain.text",
+          CUSTOM_VIZ_IDENTIFIER,
+        );
+        cy.findByTestId("chart-type-selector-button").click();
+        cy.findByRole("listbox")
+          .findByRole("option", { name: CUSTOM_VIZ_IDENTIFIER })
+          .should("have.attr", "data-combobox-selected", "true");
+      });
+    });
+
+    it("applies a regular visualization as the initial visualization", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization="scalar"
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The Number viz renders instead of the saved table display");
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        cy.findByTestId("chart-type-selector-button").should(
+          "contain.text",
+          "Number",
+        );
+      });
+    });
+
+    it("applies the custom visualization when it is both the saved display and the initial visualization", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization={CUSTOM_VIZ_DISPLAY}
+          />,
+          {
+            sdkProviderProps: {
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The custom viz plugin is only loaded once and renders");
+        cy.findByText("Custom viz rendered successfully").should("be.visible");
+        cy.findByText(/Value: \d+/).should("be.visible");
+      });
+    });
+
+    it("applies a regular initial visualization over a saved custom display", () => {
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization="scalar"
+          />,
+          {
+            sdkProviderProps: {
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.log("The Number viz renders instead of the saved custom display");
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+      });
+    });
+
+    it("falls back to the saved visualization when the custom viz is not enabled", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization={CUSTOM_VIZ_DISPLAY}
+          />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
+    });
+
+    it("falls back to the saved visualization when the custom viz doesn't exist", () => {
+      cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={questionId}
+            initialVisualization="custom:does-not-exist"
+          />,
+          {
+            sdkProviderProps: {
+              allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+            },
+          },
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Custom viz rendered successfully").should("not.exist");
+        cy.findByText("18,760").should("be.visible");
+      });
     });
   });
 
