@@ -56,6 +56,16 @@
       (mt/user-http-request :crowberto :post 404 "ee/index-manager"
                             {:transform_id Integer/MAX_VALUE :structured btree}))))
 
+(deftest duplicate-index-name-rejected-test
+  (testing "you can't create two index requests with the same name on one transform"
+    (mt/with-premium-features #{:transforms-python}
+      (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
+        (mt/user-http-request :crowberto :post 200 "ee/index-manager"
+                              {:transform_id transform-id :structured btree})
+        (is (re-find #"already exists"
+                     (mt/user-http-request :crowberto :post 400 "ee/index-manager"
+                                           {:transform_id transform-id :structured btree})))))))
+
 (deftest inline-kind-index-name-test
   (testing "an inline kind with no :name gets its index_name from :kind"
     (mt/with-premium-features #{:transforms-python}

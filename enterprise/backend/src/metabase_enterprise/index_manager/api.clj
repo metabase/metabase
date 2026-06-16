@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -53,11 +54,15 @@
   (api/check-superuser)
   ;; A managed hint may only target a transform-owned table, so the transform must exist.
   (api/check-404 (t2/exists? :model/Transform :id transform_id))
-  (present (t2/insert-returning-instance! :model/IndexRequest
-                                          {:transform_id transform_id
-                                           :index_name   (index-name structured)
-                                           :structured   structured
-                                           :created_by   api/*current-user-id*})))
+  (let [idx-name (index-name structured)]
+    ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
+    (api/check-400 (not (t2/exists? :model/IndexRequest :transform_id transform_id :index_name idx-name))
+                   (tru "An index named \"{0}\" already exists for this transform." idx-name))
+    (present (t2/insert-returning-instance! :model/IndexRequest
+                                            {:transform_id transform_id
+                                             :index_name   idx-name
+                                             :structured   structured
+                                             :created_by   api/*current-user-id*}))))
 
 (api.macros/defendpoint :put "/:id" :- IndexRequest
   "Replace the structured definition of a managed index request, resetting it to pending."
