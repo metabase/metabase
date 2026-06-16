@@ -1,27 +1,10 @@
-import type { ModerationPlugin } from "./types";
-
-const NoComponent = () => null;
-
 /**
- * OSS default implementation of the moderation plugin.
- *
- * In enterprise builds this whole module is swapped for
- * `metabase-enterprise/moderation/plugin` (see resolve-aliases.js), so this
- * file is never bundled there. Consumers import the resolved module directly:
+ * The resolved moderation plugin — what consumers import:
  *
  *   import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
+ *
+ * In OSS builds this re-exports the default (no-op) implementation. In
+ * enterprise builds the whole module is swapped for
+ * `metabase-enterprise/moderation/plugin` (see resolve-aliases.js).
  */
-export const PLUGIN_MODERATION: ModerationPlugin = {
-  isEnabled: () => false,
-  EntityModerationIcon: NoComponent,
-  ModerationReviewTextForQuestion: NoComponent,
-  ModerationReviewTextForDashboard: NoComponent,
-  ModerationStatusIcon: NoComponent,
-  MetabotVerifiedContentConfigurationPane: NoComponent,
-  getStatusIcon: () => undefined,
-  getQuestionIcon: () => null,
-  getModerationTimelineEvents: () => [],
-  useCardMenuItems: () => [],
-  useDashboardMenuItems: () => [],
-  useQuestionMenuItems: () => [],
-};
+export { PLUGIN_MODERATION } from "./default";
