@@ -19,6 +19,7 @@ databaseChangeLog:
               - column:
                   name: job_run_id
                   type: bigint
+                  remarks: FK to transform_job_run; links each transform execution to its parent job run
                   constraints:
                     nullable: true
       rollback:
