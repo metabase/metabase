@@ -27,12 +27,32 @@ Keep the semantic layer and presentation layer separate.
 
 If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
 
-Before generating, ask which collections should be available to the app:
+Before generating, make sure the user has explicitly chosen the scopes the app needs:
 
-- `libraryCollections` for curated Data/Metrics library subcollections. These provide tables, fields, segments, measures, and metrics.
-- `questionCollections` for saved questions from normal collections.
+- Library scope:
+  - `includeDataLibrary=true` for the whole `Library / Data` tree
+  - `includeMetricLibrary=true` for the whole `Library / Metrics` tree
+  - `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data/Metrics library subcollections.
+- Saved question scope:
+  - `questionCollections=<collection-id>[,<collection-id>]` for saved questions from normal collections.
 
-If the repository contains Metabase representation YAML, such as `collections/` or `databases/` folders, inspect those files enough to offer concrete collection choices by name. Otherwise ask the user for collection IDs or names.
+If the user did not already choose a library scope and/or saved question scope, stop and ask what they want:
+
+- Include the entire semantic layer/library in the generated schema file. Only offer this when the app is intentionally using the semantic layer and the library looks small enough to be useful.
+- Include only part of it: the whole Data library, the whole Metrics library, selected library subcollections, selected question collections, or a mix. For example, `includeMetricLibrary=true&libraryCollections=g-jLnamuHKdezZMthJ-z7` includes the entire Metrics library and one Data subcollection.
+
+If the current working tree looks like a Metabase remote-sync repository, inspect representation YAML before asking. Useful signals:
+
+- `collections/main/library/data.yaml` and `collections/main/library/metrics.yaml` are the top-level Data and Metrics library collections.
+- Child collection YAML under `collections/main/library/data/` or `collections/main/library/metrics/` exposes a stable `entity_id`; use that value in `libraryCollections` when a subcollection name could be ambiguous.
+- Table YAML under `databases/**/tables/**/<table>.yaml` can show `collection_id: librarylibrarydatadat` for tables directly in Data, or another collection `entity_id` for subcollections.
+- Card YAML under `collections/main/**` with `type: question`, `type: model`, or `type: metric` shows normal saved-question/model/metric placement.
+
+Correlate those representation files with the user's request and offer concrete choices.
+
+- Prefer representation `entity_id` values for specific library subcollections.
+- Only use `includeDataLibrary=true` / `includeMetricLibrary=true` if the user agrees to include the whole data or metric library.
+- If you cannot tell from representations, say you do not know and ask for collection IDs or entity IDs.
 
 Warn the user before exporting the whole instance. Including everything is noisy: it bloats context, makes agents more likely to pick irrelevant entities, and weakens the intended boundary between the curated semantic layer and the presentation layer.
 
@@ -43,12 +63,16 @@ curl \
   -o src/metabase.data.ts \
   -H "x-api-key: <YOUR_API_KEY>" \
   -H "Accept: text/typescript" \
-  "http://localhost:3000/api/typed-schemas/v1/typescript?libraryCollections=24,25&questionCollections=10,11"
+  "http://localhost:3000/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=10,11"
 ```
 
 Other useful filters:
 
 - `?database=Production` or `?database=1` for one database.
+- `?includeDataLibrary=true` for every published table in the top-level Data library and its subcollections.
+- `?includeMetricLibrary=true` for every metric in the top-level Metrics library and its subcollections, plus mapped source tables needed by those metrics.
+- `?includeDataLibrary=true&includeMetricLibrary=true` for everything in both top-level semantic libraries.
+- `?includeDataLibrary=true&libraryCollections=g-jLnamuHKdezZMthJ-z7` for the whole Data library plus one specific library subcollection.
 - No query parameters only when the user explicitly wants the whole instance.
 
 ## Standard Pattern

@@ -380,6 +380,56 @@
                                                           (:id metric-child))}))
                           [:collection-ids :data-collection-ids :metric-collection-ids]))))))
 
+(deftest library-collections-scope-accepts-representation-entity-ids-test
+  (mt/with-temp [:model/Collection root         {:name "Library"
+                                                 :type "library"
+                                                 :location "/"}
+                 :model/Collection data         {:name "Data"
+                                                 :type "library-data"
+                                                 :location (collection/children-location root)}
+                 :model/Collection website      {:name      "Website"
+                                                 :type      "library-data"
+                                                 :entity_id "g-jLnamuHKdezZMthJ-z7"
+                                                 :location  (collection/children-location data)}
+                 :model/Collection website-page {:name "Website Page"
+                                                 :type "library-data"
+                                                 :location (collection/children-location website)}]
+    (mt/with-test-user :crowberto
+      (is (= {:collection-ids        #{(:id website) (:id website-page)}
+              :data-collection-ids   #{(:id website) (:id website-page)}
+              :metric-collection-ids #{}}
+             (select-keys (#'typed-schemas.api/library-collections-scope ["g-jLnamuHKdezZMthJ-z7"])
+                          [:collection-ids :data-collection-ids :metric-collection-ids]))))))
+
+(deftest library-scope-includes-canonical-data-and-metrics-libraries-test
+  (with-redefs [typed-schemas.api/library-data-entity-id    "test-library-data"
+                typed-schemas.api/library-metrics-entity-id "test-library-metrics"]
+    (mt/with-temp [:model/Collection root         {:name "Library"
+                                                   :type "library"
+                                                   :location "/"}
+                   :model/Collection data         {:name      "Data"
+                                                   :type      "library-data"
+                                                   :entity_id "test-library-data"
+                                                   :location  (collection/children-location root)}
+                   :model/Collection metrics      {:name      "Metrics"
+                                                   :type      "library-metrics"
+                                                   :entity_id "test-library-metrics"
+                                                   :location  (collection/children-location root)}
+                   :model/Collection data-child   {:name "Boba Data"
+                                                   :type "library-data"
+                                                   :location (collection/children-location data)}
+                   :model/Collection metric-child {:name "Boba Metrics"
+                                                   :type "library-metrics"
+                                                   :location (collection/children-location metrics)}]
+      (mt/with-test-user :crowberto
+        (is (= {:collection-ids        #{(:id data) (:id data-child) (:id metrics) (:id metric-child)}
+                :data-collection-ids   #{(:id data) (:id data-child)}
+                :metric-collection-ids #{(:id metrics) (:id metric-child)}}
+               (select-keys (#'typed-schemas.api/library-scope
+                             {:includeDataLibrary   "true"
+                              :includeMetricLibrary "true"})
+                            [:collection-ids :data-collection-ids :metric-collection-ids])))))))
+
 (deftest query-collection-values-accept-camel-case-aliases-test
   (is (= ["1" "2"]
          (#'typed-schemas.api/query-library-collection-values {:libraryCollections "1, 2"})))
