@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -74,13 +75,15 @@
    ;; remapped label for a single selected value)
    [:exact-value {:optional true} :any]])
 
-(defn- card-query
-  "Build the lib query for a `card` used as a parameter value source (its `:dataset_query`), bulk-loading the metadata it
-  references up front so the column resolution that follows ([[lib/visible-columns]] etc.) hits the provider cache
+(mu/defn- card-query :- [:maybe ::lib.schema/query]
+  "Build the lib query for the value-source Card identified by `card-id`. `query` is the Card's own `:dataset_query`,
+  which is metadata-providerable, so we resolve the Card as a Lib `:metadata/card` through it. Bulk-loads the metadata
+  it references up front so the column resolution that follows ([[lib/visible-columns]] etc.) hits the provider cache
   instead of fetching one entity at a time."
-  [{query :dataset_query, :keys [id], :as _card}]
+  [card-id :- ::lib.schema.id/card
+   query   :- [:maybe ::lib.schema/query]]
   (when (seq query)
-    (let [value-source-query (lib/query query (lib.metadata/card query id))]
+    (let [value-source-query (lib/query query (lib.metadata/card query card-id))]
       (lib-be/bulk-load-query-metadata! query
                                         (lib/all-referenced-entity-ids [value-source-query]
                                                                        {:include-implicitly-joinable? true}))
@@ -168,7 +171,7 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (values-from-card* (card-query card) field-ref opts)))
+   (values-from-card* (card-query (:id card) (not-empty (:dataset_query card))) field-ref opts)))
 
 (defn- can-get-card-values?
   "Whether the prebuilt value-source `query` exposes the `value-field` column."
@@ -206,7 +209,7 @@
                    (when-not (mi/can-read? card)
                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                    (or (when-not (:archived card)
-                         (when-let [query (card-query card)]
+                         (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
                            (when (can-get-card-values? query (:value_field config))
                              (card-values query config query-string))))
                        (default-case-thunk)))
@@ -254,7 +257,7 @@
   (when-let [label-field (:label_field config)]
     (when-let [card (t2/select-one :model/Card :id (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
-        (when-let [query (card-query card)]
+        (when-let [query (card-query (:id card) (not-empty (:dataset_query card)))]
           (when (can-get-card-values? query (:value_field config))
             (first (:values (values-from-card* query
                                                (lib/->mbql5 (:value_field config))

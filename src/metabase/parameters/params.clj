@@ -19,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.parameters.schema :as parameters.schema]
@@ -196,9 +197,10 @@
       ;; for backward compatibility, append a filter stage only with explicit stage numbers
       (cond-> query (>= stage-number 0) lib/ensure-filter-stage))))
 
-(defn- filterable-columns-for-query
-  "Get filterable columns for query."
-  [card stage-number]
+(mu/defn- filterable-columns-for-query :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "Get the filterable columns of `card`'s query at `stage-number`."
+  [card         :- :metabase.queries.schema/card
+   stage-number :- :int]
   (when-let [query (card->filterable-columns-query card stage-number)]
     (when (and (>= stage-number -1) (< stage-number (lib/stage-count query)))
       (lib/filterable-columns query stage-number))))

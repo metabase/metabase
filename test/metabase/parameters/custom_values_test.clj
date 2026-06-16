@@ -655,5 +655,5 @@
           ;; bulk-loading exists to prevent).
           (is (= 6 (lib-be/with-metadata-provider-cache
                      (t2/with-call-count [call-count]
-                       (#'custom-values/can-get-card-values? (#'custom-values/card-query card) value-field)
+                       (#'custom-values/can-get-card-values? (#'custom-values/card-query (:id card) (:dataset_query card)) value-field)
                        (call-count))))))))))

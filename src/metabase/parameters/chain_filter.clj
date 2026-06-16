@@ -124,9 +124,9 @@
 (mu/defn- add-filter :- ::lib.schema/query
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection).
   `id->field` looks up prefetched Field metadata by id (see [[add-filters]])."
-  [id->field                           :- ifn?
-   query                               :- ::lib.schema/query
+  [query                               :- ::lib.schema/query
    source-table-id                     :- ::lib.schema.id/table
+   id->field                           :- [:map-of ::lib.schema.id/field ::lib.schema.metadata/column]
    {:keys [field-id op value options]} :- ::constraint]
   (let [field          (id->field field-id)
         field-table-id (:table-id field)
@@ -187,7 +187,7 @@
                          (name-for-logging :model/Table field-table-id)
                          (name-for-logging :model/Field field-id)
                          (pr-str constraint))
-             (add-filter id->field query source-table-id constraint))
+             (add-filter query source-table-id id->field constraint))
            (do
              (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"
                          (name-for-logging :model/Table field-table-id)
