@@ -5,6 +5,10 @@ import _ from "underscore";
 import { ColorRangeSelector } from "metabase/common/components/ColorRangeSelector";
 import { getAccentColors, getPreferredColor } from "metabase/ui/colors/groups";
 import MetabaseSettings from "metabase/utils/settings";
+import {
+  getDefaultMapDimension,
+  getDefaultMapMetric,
+} from "metabase/visualizations/lib/choropleth";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
@@ -24,7 +28,6 @@ import type {
 import {
   hasLatitudeAndLongitudeColumns,
   isCountry,
-  isDimension,
   isLatitude,
   isLongitude,
   isMetric,
@@ -246,7 +249,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         {
           data: { cols },
         },
-      ]) => cols.find(isMetric)?.name,
+      ]) => getDefaultMapMetric(cols),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     ...dimensionSetting("map.dimension", {
@@ -257,13 +260,7 @@ const MAP_VIZ_DEFINITION: VisualizationDefinition = {
         {
           data: { cols },
         },
-      ]) => {
-        const geoDimension = cols.find((col) => isCountry(col) || isState(col));
-        if (geoDimension) {
-          return geoDimension.name;
-        }
-        return cols.find(isDimension)?.name;
-      },
+      ]) => getDefaultMapDimension(cols),
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {

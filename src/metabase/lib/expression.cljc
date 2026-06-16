@@ -567,7 +567,7 @@
          (assoc opts :name new-name :display-name new-name))))))
 
 (def ^:private aggregation-explainer
-  (mr/explainer ::lib.schema.aggregation/aggregation))
+  (mr/explainer ::lib.schema.aggregation/aggregation-with-no-unaggregated-refs))
 
 (def ^:private filter-explainer
   (mr/explainer ::lib.schema.expression/boolean))
