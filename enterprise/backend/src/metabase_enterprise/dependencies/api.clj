@@ -52,10 +52,9 @@
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
-    :model/Collection   (select-keys entity [:id :name :authority_level :is_personal])
-    :model/Dashboard    (select-keys entity [:id :name])
-    :model/Document     (select-keys entity [:id :name])
-    :model/TransformRun (dissoc entity :last_heartbeat)
+    :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
+    :model/Dashboard  (select-keys entity [:id :name])
+    :model/Document   (select-keys entity [:id :name])
     entity))
 
 (mr/def ::usages
