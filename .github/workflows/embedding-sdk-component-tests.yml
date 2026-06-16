@@ -87,7 +87,7 @@ jobs:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js component
 
-      - name: Rewrite JUnit hook failures (dry-run)
+      - name: Rewrite JUnit hook failures
         if: always()
         continue-on-error: true
         timeout-minutes: 1
@@ -95,7 +95,7 @@ jobs:
         run: |
           if [ -d ./target/junit ]; then
             echo "fix-junit-hooks: invoking bun"
-            bun e2e/support/fix-junit-hooks.ts --dry-run ./target/junit
+            bun e2e/support/fix-junit-hooks.ts ./target/junit
           else
             echo "No ./target/junit directory; nothing to process."
           fi
@@ -253,7 +253,7 @@ jobs:
           node e2e/runner/run_cypress_ci.js component \
             --expose grepTags="-@skip-backward-compatibility"
 
-      - name: Rewrite JUnit hook failures (dry-run)
+      - name: Rewrite JUnit hook failures
         if: always()
         continue-on-error: true
         timeout-minutes: 1
@@ -261,7 +261,7 @@ jobs:
         run: |
           if [ -d ./target/junit ]; then
             echo "fix-junit-hooks: invoking bun"
-            bun e2e/support/fix-junit-hooks.ts --dry-run ./target/junit
+            bun e2e/support/fix-junit-hooks.ts ./target/junit
           else
             echo "No ./target/junit directory; nothing to process."
           fi

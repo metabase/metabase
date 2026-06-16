@@ -46,7 +46,7 @@ const ChannelAvatar = ({ channel, bordered }: ChannelAvatarProps) => {
     }))
     .otherwise(() => ({
       backgroundColor: "var(--mb-color-background-brand)",
-      iconColor: "brand" as const,
+      iconColor: "core-brand" as const,
     }));
 
   return (

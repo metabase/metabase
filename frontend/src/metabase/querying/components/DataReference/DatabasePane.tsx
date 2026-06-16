@@ -252,6 +252,7 @@ export const DatabasePane = ({
       ? {
           models: ["dataset", "table"],
           table_db_id: databaseId,
+          context: "data-picker",
         }
       : skipToken,
   );

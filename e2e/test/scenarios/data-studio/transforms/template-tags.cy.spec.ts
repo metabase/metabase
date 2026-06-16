@@ -25,9 +25,6 @@ describe("scenarios > admin > transforms", () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check_transform").as(
-      "checkTransformDependencies",
-    );
   });
 
   it("should be able to use the data reference and snippets when writing a SQL transform", () => {

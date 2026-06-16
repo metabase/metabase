@@ -75,12 +75,12 @@ const countTransforms = (node: TreeNode): number => {
 };
 
 const isRowDisabled = (row: Row<TreeNode>) => {
-  return row.original.source_readable === false;
+  return row.original.can_read === false;
 };
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
   folder: "text-secondary",
-  transform: "brand",
+  transform: "core-brand",
   library: "text-primary",
 };
 
@@ -161,7 +161,7 @@ export const TransformListPage = ({
         url: Urls.transformPythonLibrary({
           path: PLUGIN_TRANSFORMS_PYTHON.sharedLibImportPath,
         }),
-        source_readable: transformsDatabases.length > 0,
+        can_read: transformsDatabases.length > 0,
       });
     }
     return data;

@@ -127,7 +127,7 @@ function PinnedItemCard({
       <Card p={0} radius="md" shadow="none" withBorder>
         <Body>
           <Header>
-            <EntityIcon {...iconData} size="1.5rem" color="brand" />
+            <EntityIcon {...iconData} size="1.5rem" color="core-brand" />
             <ActionsContainer h={item ? undefined : "2rem"}>
               {hasActions && (
                 // This component is used within a `<Link>` component,

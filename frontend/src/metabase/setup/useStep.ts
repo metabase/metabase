@@ -1,4 +1,5 @@
 import { useDispatch, useSelector } from "metabase/redux";
+import type { SetupStep } from "metabase/redux/store";
 
 import { selectStep } from "./actions";
 import {
@@ -6,7 +7,6 @@ import {
   getIsStepActive,
   getIsStepCompleted,
 } from "./selectors";
-import type { SetupStep } from "./types";
 
 export const useStep = (stepName: SetupStep) => {
   const isStepActive = useSelector((state) => getIsStepActive(state, stepName));

@@ -28,11 +28,11 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
 
   &:focus,
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
     transition: border 300ms ease-in-out;
   }
 
-  ${focusOutlineStyle("brand")};
+  ${focusOutlineStyle("core-brand")};
 
   &:disabled {
     pointer-events: none;

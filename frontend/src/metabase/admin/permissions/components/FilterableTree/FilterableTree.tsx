@@ -62,7 +62,7 @@ export const FilterableTree = ({
           placeholder={placeholder}
           value={filter}
           leftIcon="search"
-          colorScheme="filter"
+          colorScheme="core-filter"
           onChange={handleFilterChange}
           onResetClick={() => setFilter("")}
         />

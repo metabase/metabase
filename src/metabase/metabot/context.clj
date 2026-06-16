@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.premium-features.core :as premium-features]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -299,23 +300,27 @@
   /dashboards before taking the top 5. Tables are not moderatable and always pass through."
   [context {:keys [metabot-id] :as _opts}]
   (try
-    (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
-                                                       [:views :selections]
-                                                       {:models [:card :dataset :metric :dashboard :table]}))
-          recents (cond->> recents
-                    (verified-only? (get-metabot metabot-id))
-                    filter-recents-to-verified)
-          processed-recents (mapv (fn [item]
-                                    (let [item-type
-                                          (case (:model item)
-                                            :card "question"
-                                            :dataset "model"
-                                            (name (:model item)))]
-                                      (-> item
-                                          (select-keys [:id :name :description])
-                                          (assoc :type item-type))))
-                                  (take 5 recents))]
-      (assoc context :user_recently_viewed processed-recents))
+    ;; When disabled, strip any preexisting :user_recently_viewed so the setting guarantees recent
+    ;; views never reach the prompt, even for a caller-supplied context that already carries the key.
+    (if-not (metabot.settings/metabot-recent-views-enabled?)
+      (dissoc context :user_recently_viewed)
+      (assoc context :user_recently_viewed
+             (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
+                                                                [:views :selections]
+                                                                {:models [:card :dataset :metric :dashboard :table]}))
+                   recents (cond->> recents
+                             (verified-only? (get-metabot metabot-id))
+                             filter-recents-to-verified)]
+               (mapv (fn [item]
+                       (let [item-type
+                             (case (:model item)
+                               :card "question"
+                               :dataset "model"
+                               (name (:model item)))]
+                         (-> item
+                             (select-keys [:id :name :description])
+                             (assoc :type item-type))))
+                     (take 5 recents)))))
     (catch Exception e
       (log/error e "Error adding recent views to metabot context")
       context)))

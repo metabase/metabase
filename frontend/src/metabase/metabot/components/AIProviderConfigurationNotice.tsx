@@ -85,7 +85,7 @@ export const getMetabotNotConfiguredToastProps = ({
   id: METABOT_NOT_CONFIGURED_TOAST_ID,
   dark: false,
   icon: "metabot" as const,
-  iconColor: "brand" as const,
+  iconColor: "core-brand" as const,
   toastColor: "error",
   dismissIconColor: "text-secondary" as const,
   timeout: 0,

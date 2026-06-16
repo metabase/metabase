@@ -64,8 +64,12 @@
   "Shared core of [[sync-db-metadata!]] and [[sync-db-metadata-explicit!]]: the metadata sync work,
   without the surrounding `*-sync-operation` wrapper (which is what applies the eligibility gating)."
   [database :- i/DatabaseInstance]
-  (let [db-metadata (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
-                      (fetch-metadata/db-metadata database))]
+  (let [db-metadata (try
+                      (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
+                        (fetch-metadata/db-metadata database))
+                      (catch Throwable e
+                        (sync-util/set-initial-database-sync-aborted! database)
+                        (throw e)))]
     (u/prog1 (sync-util/run-sync-operation "sync" database (make-sync-steps db-metadata))
       (if (some sync-util/abandon-sync? (map second (:steps <>)))
         (sync-util/set-initial-database-sync-aborted! database)

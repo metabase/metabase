@@ -19,7 +19,7 @@ export const PanelsHeader = ({
   onAddDataModalClose,
 }: HeaderProps) => {
   const HeaderLink = ({ to, text }: { to: string; text: string }) => (
-    <Box component={Link} to={to} fw="bold" c="brand">
+    <Box component={Link} to={to} fw="bold" c="core-brand">
       {text}
     </Box>
   );

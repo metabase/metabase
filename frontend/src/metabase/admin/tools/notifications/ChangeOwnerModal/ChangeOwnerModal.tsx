@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import {
+  type UserOption,
+  UserPicker,
+} from "metabase/common/components/UserPicker";
 import { Button, Flex, Modal } from "metabase/ui";
 import type { AdminNotification, UserId } from "metabase-types/api";
-
-import { type UserOption, UserPicker } from "../UserPicker";
 
 type Props = {
   opened: boolean;

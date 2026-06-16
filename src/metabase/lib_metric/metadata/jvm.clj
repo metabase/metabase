@@ -30,14 +30,14 @@
 (defn- metric-spec->honey-sql
   "Build HoneySQL WHERE clause for fetching metrics.
    Metrics are Cards with type='metric' - not scoped to any database."
-  [{id-set :id, name-set :name, :keys [table-id card-id], :as _metadata-spec}]
+  [{id-set :id, name-set :name, :keys [table-ids card-ids], :as _metadata-spec}]
   (let [active-only? (not (or id-set name-set))
         where-clauses (cond-> [[:= :type [:inline "metric"]]]
                         id-set       (conj [:in :id id-set])
                         name-set     (conj [:in :name name-set])
-                        table-id     (conj [:= :table_id table-id])
-                        table-id     (conj [:= :source_card_id nil])
-                        card-id      (conj [:= :source_card_id card-id])
+                        table-ids    (conj [:in :table_id table-ids])
+                        table-ids    (conj [:= :source_card_id nil])
+                        card-ids     (conj [:in :source_card_id card-ids])
                         active-only? (conj [:= :archived false]))]
     (reduce sql.helpers/where {} where-clauses)))
 
@@ -76,12 +76,12 @@
 
 (defn- measure-spec->honey-sql
   "Build HoneySQL WHERE clause for fetching measures."
-  [{id-set :id, name-set :name, :keys [table-id], :as _metadata-spec}]
+  [{id-set :id, name-set :name, :keys [table-ids], :as _metadata-spec}]
   (let [active-only? (not (or id-set name-set))
         where-clauses (cond-> []
                         id-set       (conj [:in :measure/id id-set])
                         name-set     (conj [:in :measure/name name-set])
-                        table-id     (conj [:= :measure/table_id table-id])
+                        table-ids    (conj [:in :measure/table_id table-ids])
                         active-only? (conj [:= :measure/archived false]))]
     (reduce sql.helpers/where {} where-clauses)))
 
@@ -99,19 +99,19 @@
 (defn- fetch-dimensions
   "Fetch dimensions by aggregating from metrics and measures.
    Dimensions are extracted from their parent entities and annotated with source info."
-  [{id-set :id, :keys [metric-id measure-id table-id]}]
+  [{id-set :id, :keys [metric-id measure-id table-ids]}]
   (let [;; Fetch from metrics if not a measure-specific query
         metric-dims (when-not measure-id
                       (let [metric-spec (cond-> {:lib/type :metadata/metric}
                                           metric-id (assoc :id #{metric-id})
-                                          table-id  (assoc :table-id table-id))
+                                          table-ids (assoc :table-ids table-ids))
                             metrics (fetch-metrics metric-spec)]
                         (mapcat #(extract-dimensions-from-entity % :metric) metrics)))
         ;; Fetch from measures if not a metric-specific query
         measure-dims (when-not metric-id
                        (let [measure-spec (cond-> {:lib/type :metadata/measure}
                                             measure-id (assoc :id #{measure-id})
-                                            table-id   (assoc :table-id table-id))
+                                            table-ids  (assoc :table-ids table-ids))
                              measures (fetch-measures-for-dimensions measure-spec)]
                          (mapcat #(extract-dimensions-from-entity % :measure) measures)))
         all-dims (concat metric-dims measure-dims)]
@@ -144,7 +144,7 @@
    (lib.metadata.protocols/metadatas mp {:lib/type :metadata/dimension :metric-id 1})
 
    ;; Routes to correct database provider for table 1
-   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-id 1})
+   (lib.metadata.protocols/metadatas mp {:lib/type :metadata/column :table-ids #{1}})
    ```"
   []
   (let [table->db (table->database-id)

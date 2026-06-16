@@ -56,7 +56,7 @@
   (:name (lib.metadata/database metadata-provider)))
 
 (defn- matching-tables-via-provider
-  "Return all tables matching `table-name` in `metadata-provider`, post-filtered by `schema`
+  "Return active tables matching `table-name` in `metadata-provider`, post-filtered by `schema`
   (`schema` may be `nil` for schemaless databases).
 
   Used as a fallback for mock and checker providers. NOT safe for production: the
@@ -69,12 +69,20 @@
   (->> (lib.metadata.protocols/metadatas metadata-provider
                                          {:lib/type :metadata/table
                                           :name     #{table-name}})
-       (filter #(= (:schema %) schema))))
+       ;; By-name lookups skip the provider's SQL `active = true` filter (it only guards
+       ;; enumerate-all queries), so inactive rows reach here. `false?` keeps mocks with no
+       ;; `:active` key.
+       (filter #(and (= (:schema %) schema)
+                     (not (false? (:active %)))))))
 
 (defn- matching-tables-via-app-db
   "Return all tables matching the `(db-id, schema, table-name)` triple by direct application-DB
   query — same shape `resolve.db/import-table-fk` has always used. Bypasses the metadata
   provider entirely.
+
+  Returns inactive rows too: the app DB is authoritative for *existence*, and
+  [[table-candidates]] needs to tell \"no row at all\" (fall back to the provider) apart from
+  \"only inactive rows\" (an authoritative miss). It does the `:active` filtering itself.
 
   Defective `(db_id, schema, name)` duplicates (allowed by the
   `001_update_migrations.yaml` `is_defective_duplicate` carve-out for pre-constraint rows)
@@ -105,6 +113,11 @@
   prompts the agent with a hallucinated `source-table:` would otherwise receive a list of
   schemas / tables they cannot otherwise see.
 
+  For the same reason this single message covers both a never-existed miss and an inactive
+  match — [[table-candidates]] drops inactive rows upstream, so both reach [[find-table]] as 0
+  candidates. Branching the wording on whether an inactive row exists would be an existence
+  oracle, so both get this identical message.
+
   The LLM can still self-correct in one turn by calling `entity_details` on the parent
   database; the message points it at that path."
   [_metadata-provider [_path-db-name _path-schema _path-table-name :as path]]
@@ -116,21 +129,28 @@
             :path         path}))
 
 (defn- table-candidates
-  "Resolve `(schema, table-name)` against `metadata-provider`. Tries
-  [[matching-tables-via-app-db]] first for app-DB-backed providers and falls back to
-  [[matching-tables-via-provider]] on empty.
+  "Resolve `(schema, table-name)` against `metadata-provider`, returning only active tables.
 
-  The fallback covers three cases: vanilla mocks (no `CachedMetadataProvider`, skip the
-  app-DB attempt entirely), wrapped mocks with synthetic db ids that don't exist as
-  `metabase_database` rows, and the rare production case where the app DB and the metadata
-  provider's cache disagree about whether a table exists (e.g. provider holds a cached row
-  for a table that was just deleted, or vice versa). In that last case the provider's view
-  becomes authoritative, since the alternative is a confusing `:unknown-table` raised for a
-  table the caller can plainly see via `entity_details`."
+  For app-DB-backed providers the app DB is authoritative for existence. If
+  [[matching-tables-via-app-db]] finds any row for the triple, we return just the active ones:
+  an inactive-only match is an authoritative 0-candidate miss, NOT a reason to fall back. The
+  fallback must not run here — the provider's by-name cache can hold a stale `:active true`
+  row from before the table was deleted / re-uploaded (BOT-739-adjacent), and falling back
+  would resurrect it.
+
+  We fall back to [[matching-tables-via-provider]] only when the app DB has no row for the
+  triple at all (or the provider isn't app-DB-backed): vanilla mocks (no
+  `CachedMetadataProvider`, skip the app-DB attempt entirely), wrapped mocks with synthetic db
+  ids that don't exist as `metabase_database` rows, and the rare production case where the
+  provider's cache holds a table the app DB has fully dropped. In that last case the
+  provider's view becomes authoritative, since the alternative is a confusing `:unknown-table`
+  raised for a table the caller can plainly see via `entity_details`."
   [metadata-provider db-id schema table-name]
-  (or (when (and db-id (app-db-backed-provider? metadata-provider))
-        (seq (matching-tables-via-app-db db-id schema table-name)))
-      (matching-tables-via-provider metadata-provider schema table-name)))
+  (if-let [app-db-rows (and db-id
+                            (app-db-backed-provider? metadata-provider)
+                            (seq (matching-tables-via-app-db db-id schema table-name)))]
+    (filter :active app-db-rows)
+    (matching-tables-via-provider metadata-provider schema table-name)))
 
 (defn- find-table
   "Resolve `[db-name, schema, table-name]` to a `:metadata/table` or throw with context.
@@ -138,7 +158,10 @@
   On miss, the thrown ex-info carries actionable, tiered hints (see
   [[unknown-table-ex-info]]) so the LLM can self-correct on the next turn instead of
   re-hallucinating the same bad path. All error branches are marked
-  `:agent-error? true` so the outer tool wrapper relays the message verbatim."
+  `:agent-error? true` so the outer tool wrapper relays the message verbatim.
+
+  Inactive (`:active false`) tables are dropped by [[table-candidates]], so a stale FK to one
+  surfaces here as a 0-candidate miss."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
   (let [{current-db :name, current-db-id :id} (lib.metadata/database metadata-provider)]
     (when-not (= path-db-name current-db)

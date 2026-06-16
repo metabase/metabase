@@ -260,7 +260,7 @@ const CollectionDisplay = ({
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">
-      <Icon {...icon} c={icon.color ?? "brand"} />
+      <Icon {...icon} c={icon.color ?? "core-brand"} />
       <Text c="text-secondary" fw="bold">
         {collection.name}
       </Text>

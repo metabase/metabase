@@ -6,6 +6,7 @@ import type {
   Dashboard,
   DashboardCardQueryRequest,
   DashboardId,
+  DashboardParameterValuesRequest,
   DashboardQueryMetadata,
   Dataset,
   FieldId,
@@ -20,7 +21,9 @@ import type {
   ListCollectionItemsResponse,
   ListDashboardsRequest,
   ListDashboardsResponse,
+  ParameterValues,
   SaveDashboardRequest,
+  SearchDashboardParameterValuesRequest,
   UpdateDashboardPropertyRequest,
   UpdateDashboardRequest,
 } from "metabase-types/api";
@@ -76,9 +79,10 @@ export const dashboardApi = Api.injectEndpoints({
         onQueryStarted: hydrateMetadataStore([DashboardSchema]),
       }),
       getDashboard: builder.query<Dashboard, GetDashboardRequest>({
-        query: ({ id, ignore_error }) => ({
+        query: ({ id, ignore_error, ...params }) => ({
           method: "GET",
           url: `/api/dashboard/${id}`,
+          params,
           noEvent: ignore_error,
         }),
         providesTags: (dashboard) =>
@@ -150,6 +154,30 @@ export const dashboardApi = Api.injectEndpoints({
         }),
         providesTags: (_response, _error, { parameter_id }) =>
           provideParameterValuesTags(parameter_id),
+      }),
+      getDashboardParameterValues: builder.query<
+        ParameterValues,
+        DashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/values",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
+      }),
+      searchDashboardParameterValues: builder.query<
+        ParameterValues,
+        SearchDashboardParameterValuesRequest
+      >({
+        query: (params) => ({
+          method: "GET",
+          url: "/api/dashboard/:dashId/params/:paramId/search/:query",
+          params,
+        }),
+        providesTags: (_response, _error, { paramId }) =>
+          provideParameterValuesTags(paramId),
       }),
       listDashboardItems: builder.query<
         ListCollectionItemsResponse,
@@ -309,6 +337,8 @@ export const {
   useListDashboardsQuery,
   useListDashboardItemsQuery,
   useGetRemappedDashboardParameterValueQuery,
+  useGetDashboardParameterValuesQuery,
+  useSearchDashboardParameterValuesQuery,
   useGetValidDashboardFilterFieldsQuery,
   useCreateDashboardMutation,
   useUpdateDashboardMutation,
@@ -323,6 +353,8 @@ export const {
   useUpdateDashboardEmbeddingParamsMutation,
   endpoints: {
     getDashboard,
+    getDashboardParameterValues,
+    searchDashboardParameterValues,
     deleteDashboardPublicLink,
     createDashboard,
     createDashboardPublicLink,

@@ -86,7 +86,7 @@ export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column) as unknown as IconName}
-      c="brand"
+      c="core-brand"
       size={18}
     />
     <div>

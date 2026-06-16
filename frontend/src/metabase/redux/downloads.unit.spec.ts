@@ -1,4 +1,4 @@
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 import { mockIsEmbeddingSdk } from "metabase/embedding-sdk/mocks/config-mock";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
@@ -32,7 +32,7 @@ describe("getDatasetResponse", () => {
   describe("subpath deployment", () => {
     /**
      * We will assert that the result is a relative path without subpath.
-     * Because this URL will be pass to `frontend/src/metabase/api/legacy-client.ts`
+     * Because this URL will be pass to `frontend/src/metabase/api/client`
      * which already takes care of the subpath (api.basename)
      */
     const origin = "http://localhost";

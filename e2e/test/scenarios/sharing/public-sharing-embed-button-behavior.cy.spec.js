@@ -47,8 +47,19 @@ const { H } = cy;
             visitResource(resource, id);
           });
 
-          H.openSharingMenu();
-          H.sharingMenu().findByText(/embed/i).should("not.exist");
+          if (resource === "question") {
+            // No public link: the share button copies directly, so there's no menu.
+            H.sharingMenuButton().should(
+              "have.attr",
+              "aria-label",
+              "Copy link",
+            );
+          }
+
+          if (resource === "dashboard") {
+            H.openSharingMenu();
+            H.sharingMenu().findByText(/embed/i).should("not.exist");
+          }
         });
       });
     });
@@ -83,28 +94,20 @@ const { H } = cy;
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
+          it(`should not prompt a non-admin to create a public link for a ${resource} without an existing link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            assertNonAdminCannotCreatePublicLink(resource);
           });
 
-          it(`should show the public link button if the ${resource} has a public link`, () => {
+          it(`should let a non-admin copy the existing public link for a ${resource}`, () => {
             cy.get("@resourceId").then((id) => {
               createPublicResourceLink(resource, id);
-              visitResource(resource, id);
             });
-
-            H.openSharingMenu(/public link/i);
-
-            assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
             cy.signInAsNormalUser();
 
@@ -112,12 +115,21 @@ const { H } = cy;
               visitResource(resource, id);
             });
 
-            H.openSharingMenu("Public link");
-
-            assertValidPublicLink({
-              resource,
-              shouldHaveRemoveLink: false,
+            cy.window().then((win) => {
+              cy.stub(win.navigator.clipboard, "writeText")
+                .as("copyLink")
+                .resolves();
             });
+
+            H.openSharingMenu("Copy public link");
+            H.tooltip().findByText("Public link copied to clipboard");
+
+            cy.get("@copyLink").should((stub) => {
+              expect(stub.firstCall.args[0]).to.match(
+                new RegExp(`/public/${resource}/`),
+              );
+            });
+            cy.findByTestId("public-link-popover-content").should("not.exist");
           });
         });
       });
@@ -129,7 +141,7 @@ const { H } = cy;
         });
 
         describe("when user is admin", () => {
-          it(`should show a disabled menu item for public links for ${resource} and allow the user to access the embed modal`, () => {
+          it(`should hide the public link option for ${resource} and allow the user to access the embed modal`, () => {
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
@@ -137,26 +149,23 @@ const { H } = cy;
             H.openSharingMenu();
 
             H.sharingMenu().within(() => {
-              cy.findByText("Public link").should("be.visible");
-              cy.findByText("Enable").should("be.visible");
+              cy.findByText(/public link/i).should("not.exist");
+              cy.findByText("Enable").should("not.exist");
             });
 
-            cy.findByTestId("embed-menu-embed-modal-item").click();
+            H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
           });
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled button for ${resource}`, () => {
+          it(`should not prompt a non-admin to create a public link for ${resource}`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then((id) => {
               visitResource(resource, id);
             });
 
-            H.openSharingMenu();
-            H.sharingMenu().findByText(
-              "Ask your admin to create a public link",
-            );
+            assertNonAdminCannotCreatePublicLink(resource);
           });
         });
       });
@@ -1016,6 +1025,24 @@ function visitResource(resource, id) {
 
   if (resource === "dashboard") {
     H.visitDashboard(id);
+  }
+}
+
+function assertNonAdminCannotCreatePublicLink(resource) {
+  if (resource === "question") {
+    // No public link: the share button copies the app link directly, no menu.
+    H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
+  }
+
+  if (resource === "dashboard") {
+    // No public link: dashboards keep the app link copy and the PDF export.
+    H.openSharingMenu();
+    H.sharingMenu().within(() => {
+      cy.findByText("Copy link").should("be.visible");
+      cy.findByText("Export as PDF").should("be.visible");
+      cy.findByText("Embed").should("not.exist");
+      cy.findByText(/public link/i).should("not.exist");
+    });
   }
 }
 
