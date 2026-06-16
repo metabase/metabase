@@ -286,6 +286,7 @@
   remove-field
   with-fields]
  [metabase.lib.field.util
+  parent-qualified-name
   update-keys-for-col-from-previous-stage]
  [lib.filter
   add-filter-to-stage
