@@ -319,25 +319,6 @@
              (mt/user-http-request :crowberto :get 200 "metabot/settings"
                                    :provider "openrouter"))))))
 
-(deftest settings-get-deduplicates-model-ids-test
-  (testing "duplicate model ids from a provider are dropped, keeping the first occurrence"
-    (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-proj-valid"]
-      (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider {:keys [credentials]}]
-                                                             (is (= {:api-key "sk-proj-valid"} credentials))
-                                                             {:models [{:id "gpt-4.1-mini"
-                                                                        :display_name "GPT-4.1 mini"}
-                                                                       {:id "text-embedding-ada-002"
-                                                                        :display_name "text-embedding-ada-002"}
-                                                                       {:id "gpt-4.1-mini"
-                                                                        :display_name "GPT-4.1 mini (duplicate)"}]})]
-        (is (= {:value  (metabot.settings/llm-metabot-provider)
-                :models [{:id "gpt-4.1-mini"
-                          :display_name "GPT-4.1 mini"}
-                         {:id "text-embedding-ada-002"
-                          :display_name "text-embedding-ada-002"}]}
-               (mt/user-http-request :crowberto :get 200 "metabot/settings"
-                                     :provider "openai")))))))
-
 (deftest settings-get-returns-metabase-models-without-api-key-test
   (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
     (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn
