@@ -48,9 +48,10 @@
   [{:keys [indexes expected physical-indexes]} make-source]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     (with-transform-cleanup! [{table-name :name :as target}
-                              {:type   "table"
-                               :schema schema
-                               :name   "idx_products"}]
+                              {:type     "table"
+                               :schema   schema
+                               :name     "idx_products"
+                               :database (mt/id)}]
       (mt/with-temp [:model/Transform transform {:name   "index-transform"
                                                  :source (make-source)
                                                  :target target}]
@@ -92,9 +93,10 @@
           (when test-case
             (let [bogus  (index-util/bogus-indexes (:indexes test-case))
                   schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-              (with-transform-cleanup! [target {:type   "table"
-                                                :schema schema
-                                                :name   "idx_fail_products"}]
+              (with-transform-cleanup! [target {:type     "table"
+                                                :schema   schema
+                                                :name     "idx_fail_products"
+                                                :database (mt/id)}]
                 (mt/with-temp [:model/Transform transform {:name   "index-fail-transform"
                                                            :source (query-source)
                                                            :target target}]
@@ -122,9 +124,10 @@
             (let [db     (mt/db)
                   schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
               (with-transform-cleanup! [{table-name :name :as target}
-                                        {:type   "table"
-                                         :schema schema
-                                         :name   "idx_idempotent_products"}]
+                                        {:type     "table"
+                                         :schema   schema
+                                         :name     "idx_idempotent_products"
+                                         :database (mt/id)}]
                 (mt/with-temp [:model/Transform transform {:name   "index-idempotent-transform"
                                                            :source (query-source)
                                                            :target target}]
