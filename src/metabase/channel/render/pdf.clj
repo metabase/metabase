@@ -1001,7 +1001,7 @@
                     adv      (+ lh extra)
                     y'       (- y adv)]
                 (when (>= y' bottom)
-                  (draw-md-line! cs content-x content-w rtl? baseline (first lines)))
+                  (draw-md-line! cs content-x content-w rtl? baseline line))
                 y'))
             (double top-y)
             lines)))
