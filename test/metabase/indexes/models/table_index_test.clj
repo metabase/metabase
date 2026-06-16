@@ -2,13 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
+   [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (defn- temp-transform-spec []
   {:name   (mt/random-name)
-   :source {:type "python" :source-database (mt/id) :body "import pandas as pd\n"}
+   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
 (deftest roundtrip-and-status-default-test

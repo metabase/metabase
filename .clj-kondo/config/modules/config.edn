@@ -1051,7 +1051,7 @@
            models
            util}
    :model-exports #{:model/TableIndex}
-   :model-imports #{:model/Transform}}
+   :model-imports #{:model/Table :model/Transform}}
 
   initialization-status
   {:team "UX West"

@@ -1,6 +1,8 @@
 (ns metabase.indexes.api
-  "Superuser CRUD over managed table indexes, mounted at `/api/indexes`. Validation and the `:status` default live
-  in the model's hooks; these endpoints use toucan2 directly."
+  "CRUD over managed table indexes, mounted at `/api/indexes`. A managed index belongs to a transform's output, so
+  reads require read access to that transform (or table) and mutations require write access to it -- the same
+  permission editing the transform itself uses. Validation and the `:status` default live in the model's hooks;
+  these endpoints use toucan2 directly."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -35,14 +37,29 @@
   [structured]
   (or (:name structured) (name (:kind structured))))
 
+(defn- read-check-owner!
+  "Read-check the transform a request belongs to (its target's owner). Falls back to the table for a request not
+  bound to a transform."
+  [{:keys [transform_id table_id]}]
+  (if transform_id
+    (api/read-check :model/Transform transform_id)
+    (api/read-check :model/Table table_id)))
+
+(defn- write-check-owner!
+  "Write-check the transform a request belongs to -- the permission editing that transform uses."
+  [{:keys [transform_id]}]
+  (api/write-check :model/Transform transform_id))
+
 (api.macros/defendpoint :get "/" :- [:map [:data [:sequential TableIndex]]]
-  "List the managed indexes for a transform or a table. At least one of `transform_id` / `table_id` is required."
+  "List the managed indexes for a transform or a table. At least one of `transform-id` / `table-id` is required."
   [_route-params
    {:keys [transform-id table-id]} :- [:map
                                        [:transform-id {:optional true} [:maybe ms/PositiveInt]]
                                        [:table-id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
   (api/check-400 (or transform-id table-id) (tru "transform_id or table_id is required."))
+  (if transform-id
+    (api/read-check :model/Transform transform-id)
+    (api/read-check :model/Table table-id))
   (let [where (cond-> [:and]
                 transform-id (conj [:= :transform_id transform-id])
                 table-id     (conj [:= :table_id table-id]))]
@@ -51,19 +68,18 @@
 (api.macros/defendpoint :get "/:id" :- TableIndex
   "Fetch a single managed index (e.g. to poll its status)."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (present (api/check-404 (t2/select-one :model/TableIndex :id id))))
+  (let [req (api/check-404 (t2/select-one :model/TableIndex :id id))]
+    (read-check-owner! req)
+    (present req)))
 
 (api.macros/defendpoint :post "/" :- TableIndex
-  "Create a managed index on a transform's target table."
+  "Create a managed index on a transform's target table. Requires write access to the transform."
   [_route-params
    _query-params
    {:keys [transform_id structured]} :- [:map
                                          [:transform_id ms/PositiveInt]
                                          [:structured :map]]]
-  (api/check-superuser)
-  ;; A managed hint may only target a transform-owned table, so the transform must exist.
-  (api/check-404 (t2/exists? :model/Transform :id transform_id))
+  (api/write-check :model/Transform transform_id)
   (let [idx-name (index-name structured)]
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (t2/exists? :model/TableIndex :transform_id transform_id :index_name idx-name))
@@ -79,8 +95,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
-  (api/check-superuser)
-  (api/check-404 (t2/exists? :model/TableIndex :id id))
+  (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
   (t2/update! :model/TableIndex id {:structured    structured
                                     :index_name    (index-name structured)
                                     :status        :pending
@@ -91,6 +106,6 @@
 (api.macros/defendpoint :delete "/:id"
   "Delete a managed index."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (api/check-404 (pos? (t2/delete! :model/TableIndex :id id)))
+  (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
+  (t2/delete! :model/TableIndex :id id)
   api/generic-204-no-content)

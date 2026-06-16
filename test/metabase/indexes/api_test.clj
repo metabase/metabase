@@ -1,16 +1,20 @@
 (ns metabase.indexes.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.transforms.query-test-util :as query-test-util]))
 
 (set! *warn-on-reflection* true)
 
-(defn- temp-transform-spec []
+(defn- temp-transform-spec
+  "A real query transform over a test-data table. Query transforms are available without a premium feature on
+  non-hosted instances, so a superuser passes the transform read/write checks the index endpoints rely on."
+  []
   {:name   (mt/random-name)
-   :source {:type "python" :source-database (mt/id) :body "import pandas as pd\n"}
+   :source {:type "query" :query (query-test-util/make-query :source-table "venues")}
    :target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
 
-(def ^:private btree {:kind "btree" :name "by_cat" :columns [{:name "category"}]})
+(def ^:private btree {:kind "btree" :name "by_cat" :columns [{:name "name"}]})
 
 (deftest crud-happy-path-test
   (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
@@ -37,8 +41,8 @@
                                                      (str "indexes?transform-id=" transform-id))]
             (is (empty? data))))))))
 
-(deftest superuser-only-test
-  (testing "non-superusers cannot manage indexes"
+(deftest requires-transform-write-test
+  (testing "a user without write access to the transform cannot manage its indexes"
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :post 403 "indexes"
@@ -49,8 +53,8 @@
     (is (re-find #"required"
                  (mt/user-http-request :crowberto :get 400 "indexes")))))
 
-(deftest ownership-test
-  (testing "creating an index for a non-existent transform 404s (only transform-owned tables)"
+(deftest unknown-transform-404s-test
+  (testing "creating an index for a non-existent transform 404s"
     (mt/user-http-request :crowberto :post 404 "indexes"
                           {:transform_id Integer/MAX_VALUE :structured btree})))
 
@@ -68,5 +72,5 @@
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (let [created (mt/user-http-request :crowberto :post 200 "indexes"
                                           {:transform_id transform-id
-                                           :structured {:kind "sortkey" :style "compound" :columns [{:name "a"}]}})]
+                                           :structured {:kind "sortkey" :style "compound" :columns [{:name "name"}]}})]
         (is (= "sortkey" (:index_name created)))))))
