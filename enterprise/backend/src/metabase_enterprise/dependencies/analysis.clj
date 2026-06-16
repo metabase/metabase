@@ -91,35 +91,39 @@
   (-check-entity metadata-provider entity-type entity-id))
 
 ;; Output identity ==============================================================================
-;; The entity-check job re-checks an entity's dependents only when the entity's *output identity*
-;; changes — the part of it dependents resolve their references against. This is what lets the
-;; drain loop terminate on cyclic graphs and stops every sync from re-analyzing whole closures
-;; (#75748). The token MUST be a superset of everything any dependent's breakage check can read of
-;; an upstream: MBQL dependents bind by field id (with name fallbacks) and read active/visibility
-;; and (transitively) type; native dependents bind by driver-normalized column name. Over-inclusion
-;; only costs extra re-analysis (bounded by the job's per-run `seen` set); under-inclusion would
-;; miss breakage — so when in doubt, include it.
+;; The entity-check job analyzes batches of stale entities until a pass turns up nothing new, and
+;; re-stales an entity's dependents only when that entity's *output identity* — the part of it a
+;; dependent resolves its references against — actually changes. Were propagation unconditional, two
+;; failures would follow: a dependency cycle would never finish, and every sync would re-stale an
+;; entity's whole transitive set of dependents rather than the few a change can reach. Gating on a
+;; real output change forecloses both (#75748); a cycle now drains in one extra pass, since an
+;; entity's second analysis reproduces its output and propagates nothing. Termination proper is owed
+;; not to the gating but to the per-run `seen` set, which bounds even a non-cyclic entity that can
+;; never clear its flag.
+;;
+;; The token MUST therefore capture every property of an upstream that a dependent's breakage check
+;; relies on. Over-inclusion only buys extra re-analysis, itself bounded by that `seen` set;
+;; under-inclusion misses breakage. When in doubt, include it.
+
+(def ^:private column-relevance-fns
+  "Ordered extractors for the breakage-relevant properties of one output column."
+  [:id
+   :name
+   :lib/desired-column-alias
+   :base-type
+   (some-fn :effective-type :base-type)   ; missing effective-type reads as base-type, as the resolvers do
+   :semantic-type
+   :fk-target-field-id
+   #(not (false? (:active %)))            ; missing :active reads as active, as the resolvers do
+   :visibility-type])
 
 (defn- canonical-column
-  "A fixed-order, normalized tuple of the breakage-relevant properties of one output column.
-  `:effective-type` defaults to `:base-type`, and an absent `:active` to `true` — matching how the
-  resolvers read them."
+  "A fixed-order tuple of the breakage-relevant properties of one output column (see
+  `column-relevance-fns`)."
   [col]
-  ;; Each property is read under both its kebab and snake key, because this serves two differently
-  ;; shaped sources: a transform's `returned-columns` (kebab Lib columns) and a card's stored
-  ;; `:result-metadata` read via `lib.metadata/card` (raw snake_case). Reading only kebab silently
-  ;; hashed nil for type/semantic-type/fk on every real card (#75748). A flat tuple (no maps) keeps
-  ;; the surrounding structure deterministic to hash.
-  (let [base-type (or (:base-type col) (:base_type col))]
-    [(:id col)
-     (:name col)
-     (:lib/desired-column-alias col)
-     base-type
-     (or (:effective-type col) (:effective_type col) base-type)
-     (or (:semantic-type col) (:semantic_type col))
-     (or (:fk-target-field-id col) (:fk_target_field_id col))
-     (not (false? (:active col)))
-     (or (:visibility-type col) (:visibility_type col))]))
+  ;; normalize first: stored card result-metadata is snake_case; transform columns are kebab
+  (let [col (lib/normalize ::lib.schema.metadata/column col)]
+    (mapv #(% col) column-relevance-fns)))
 
 (defn- column-identity-with-live-field
   "`canonical-column` for `col`, plus the *live* `:active`/`:visibility-type` of its backing field.
