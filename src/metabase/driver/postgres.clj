@@ -41,7 +41,7 @@
    [taoensso.nippy :as nippy])
   (:import
    (java.io DataInput DataOutput StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Statement Types)
+   (java.sql Array Connection ResultSet ResultSetMetaData Statement Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
@@ -1425,6 +1425,64 @@
     (driver/execute-raw-queries! driver
                                  (driver/connection-spec driver database)
                                  [[(format "ANALYZE %s" qtable)]])))
+
+;; Index detail beyond what `describe-table-indexes` gives us: key columns (ordered), INCLUDE columns, the partial
+;; predicate, access method, uniqueness/primary, validity, and `pg_get_indexdef` (the catalog's own DDL, the most
+;; faithful representation of what's on disk). `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits its
+;; key columns from the trailing INCLUDE columns. A blank schema falls back to the connection's `current_schema()`.
+(def ^:private fetch-indexes-sql
+  "SELECT i.relname                              AS index_name,
+          am.amname                              AS access_method,
+          ix.indisunique                         AS is_unique,
+          ix.indisprimary                        AS is_primary,
+          ix.indisvalid                          AS is_valid,
+          pg_get_expr(ix.indpred, ix.indrelid)   AS partial_predicate,
+          pg_get_indexdef(ix.indexrelid)         AS definition,
+          ARRAY(SELECT a.attname
+                FROM unnest(ix.indkey[0:ix.indnkeyatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                ORDER BY k.ord)                  AS key_columns,
+          ARRAY(SELECT a.attname
+                FROM unnest(ix.indkey[ix.indnkeyatts : ix.indnatts - 1]) WITH ORDINALITY AS k(attnum, ord)
+                LEFT JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = k.attnum
+                ORDER BY k.ord)                  AS include_columns
+   FROM pg_index ix
+   JOIN pg_class     c  ON c.oid  = ix.indrelid
+   JOIN pg_class     i  ON i.oid  = ix.indexrelid
+   JOIN pg_namespace n  ON n.oid  = c.relnamespace
+   JOIN pg_am        am ON am.oid = i.relam
+   WHERE n.nspname = COALESCE(?, current_schema()) AND c.relname = ?
+   ORDER BY i.relname")
+
+(defn- index-array->vec
+  [^Array a]
+  (when a (vec (.getArray a))))
+
+(defn- fetch-indexes-row->index
+  [^ResultSet rs]
+  {:name              (.getString rs "index_name")
+   :access_method     (.getString rs "access_method")
+   :is_unique         (.getBoolean rs "is_unique")
+   :is_primary        (.getBoolean rs "is_primary")
+   :is_valid          (.getBoolean rs "is_valid")
+   :key_columns       (index-array->vec (.getArray rs "key_columns"))
+   :include_columns   (index-array->vec (.getArray rs "include_columns"))
+   :partial_predicate (.getString rs "partial_predicate")
+   :definition        (.getString rs "definition")})
+
+(defmethod driver/fetch-indexes :postgres
+  [driver database schema table]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn fetch-indexes-sql)]
+       (.setString stmt 1 (when (not-empty schema) schema))
+       (.setString stmt 2 table)
+       (with-open [rs (.executeQuery stmt)]
+         (loop [out (transient [])]
+           (if (.next rs)
+             (recur (conj! out (fetch-indexes-row->index rs)))
+             (persistent! out))))))))
 
 (defmethod driver/extra-info :postgres
   [_driver]
