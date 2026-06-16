@@ -7,6 +7,8 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.test :as mt]))
 
+(set! *warn-on-reflection* true)
+
 (deftest cache-object-test
   (testing "returns the backing cache of a clojure.core.memoize function (countable + measurable)"
     (let [f (memoize/memo (fn [x] (* x x)))]
@@ -31,13 +33,13 @@
 
 (deftest cache-stats-bytes-gated-on-agent-availability-test
   (testing "byte measurement is skipped when the JVM can't self-attach the measurement agent"
-    (with-redefs-fn {#'memoize-monitor/memory-measurement-available? (constantly false)}
+    (with-redefs-fn {#'memoize-monitor/memory-measurement-available? false}
       (fn []
         (doseq [{:keys [cache bytes measure-ms]} (#'memoize-monitor/all-cache-stats)]
           (is (nil? bytes) (str cache " bytes"))
           (is (nil? measure-ms) (str cache " measure-ms"))))))
   (testing "byte measurement runs when self-attach is available"
-    (with-redefs-fn {#'memoize-monitor/memory-measurement-available? (constantly true)}
+    (with-redefs-fn {#'memoize-monitor/memory-measurement-available? true}
       (fn []
         (doseq [{:keys [cache bytes measure-ms]} (#'memoize-monitor/all-cache-stats)]
           (is (and (number? measure-ms) (not (neg? measure-ms))) (str cache " measure-ms"))
@@ -47,7 +49,7 @@
 (deftest pull-collector-emits-all-metrics-test
   (testing "the pull collector populates the entries, bytes, and measure-duration gauges at scrape time"
     (let [reporter (analytics.interface/get-reporter)]
-      (with-redefs-fn {#'memoize-monitor/memory-measurement-available? (constantly true)}
+      (with-redefs-fn {#'memoize-monitor/memory-measurement-available? true}
         (fn []
           (mt/with-prometheus-system! [_ system]
             (try

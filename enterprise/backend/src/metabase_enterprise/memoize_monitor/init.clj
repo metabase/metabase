@@ -72,7 +72,7 @@
   are nil. `:bytes` is also nil if measurement throws."
   [cache-var]
   (when-let [cache (cache-object @cache-var)]
-    (let [[bytes measure-ms] (when (memory-measurement-available?)
+    (let [[bytes measure-ms] (when memory-measurement-available?
                                (let [start-ns (System/nanoTime)
                                      bytes    (try
                                                 (mm/measure cache :bytes true)
