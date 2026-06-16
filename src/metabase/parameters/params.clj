@@ -251,20 +251,20 @@
   {:card-id->filterable-columns {}
    :param-id->field-ids         {}})
 
-(mu/defn- param-dashcard-info->card+stage :- [:maybe [:tuple [:maybe :metabase.queries.schema/card] :int]]
-  "When `param-dashcard-info`'s parameter target is not already field-id-based (so we need filterable columns to
-  resolve it), return `[card stage-number]` -- the Card and stage whose filterable columns must be computed. Returns
-  nil when the target is field-id-based and no filterable-columns computation is needed."
-  [{:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
-  (when-not param-target-field-id
-    (let [card-id      (:card_id param-mapping)
-          card         (if card-id
-                         (m/find-first #(= (:id %) card-id)
-                                       (cons (get-in param-dashcard-info [:dashcard :card])
-                                             (get-in param-dashcard-info [:dashcard :series])))
-                         (get-in param-dashcard-info [:dashcard :card]))
-          stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
-      [card stage-number])))
+(mu/defn- param-dashcard-info->card :- [:maybe :metabase.queries.schema/card]
+  "The Card on `param-dashcard-info`'s dashcard that its parameter mapping targets: matched by the mapping's `:card_id`
+  against the dashcard's main Card and series Cards, falling back to the main Card when the mapping has no `:card_id`."
+  [{:keys [param-mapping dashcard] :as _param-dashcard-info} :- ::param-dashcard-info]
+  (if-let [card-id (:card_id param-mapping)]
+    (m/find-first #(= (:id %) card-id)
+                  (cons (:card dashcard) (:series dashcard)))
+    (:card dashcard)))
+
+(mu/defn- param-dashcard-info->stage-number :- :int
+  "The query stage of `param-dashcard-info`'s parameter target whose filterable columns we need, or -1 when the target
+  doesn't pin a stage."
+  [{:keys [param-mapping] :as _param-dashcard-info} :- ::param-dashcard-info]
+  (get-in param-mapping [:target 2 :stage-number] -1))
 
 (mu/defn- field-id-into-context-rf
   "Reducing function that generates _field id_ corresponding to `:parameter` of `param-dashcard-info` if possible,
@@ -295,7 +295,8 @@
        ;; In case the card doesn't have the same result_metadata columns as filterable columns (a question that
        ;; aggregates a native query model with a field that was mapped to a db field), we need to load metadata in
        ;; [[ensure-filterable-columns-for-card]] to find the originating field. (#42829)
-       (let [[card stage-number] (param-dashcard-info->card+stage param-dashcard-info)]
+       (let [card         (param-dashcard-info->card param-dashcard-info)
+             stage-number (param-dashcard-info->stage-number param-dashcard-info)]
          (-> ctx
              (ensure-filterable-columns-for-card card stage-number)
              (field-id-from-dashcards-filterable-columns param-dashcard-info stage-number)))))))
@@ -332,13 +333,16 @@
   gather the entities they reference, and bulk-load them per Database. Requires a metadata-provider cache scope (asserted
   by [[card->filterable-columns-query]]), since there'd otherwise be no shared cache to warm."
   [param-dashcard-infos :- [:sequential ::param-dashcard-info]]
-  (doseq [[database-id cards+stages] (->> param-dashcard-infos
-                                          (keep param-dashcard-info->card+stage)
-                                          (filter (fn [[card _stage-number]] (pos-int? (:database_id card))))
-                                          (group-by (fn [[card _stage-number]] (:database_id card))))]
-    (when-let [queries (not-empty (into [] (keep (fn [[card stage-number]]
-                                                   (card->filterable-columns-query card stage-number)))
-                                        cards+stages))]
+  (doseq [[database-id infos] (->> param-dashcard-infos
+                                   ;; field-id-based targets are resolved without filterable columns, so nothing to preload
+                                   (remove :param-target-field-id)
+                                   (group-by (comp :database_id param-dashcard-info->card))
+                                   (filter (fn [[database-id _infos]] (pos-int? database-id))))]
+    (when-let [queries (not-empty (into [] (keep (fn [info]
+                                                   (card->filterable-columns-query
+                                                    (param-dashcard-info->card info)
+                                                    (param-dashcard-info->stage-number info))))
+                                        infos))]
       (lib-be/bulk-load-query-metadata! (lib-be/application-database-metadata-provider database-id)
                                         (lib/all-referenced-entity-ids queries {:include-implicitly-joinable? true})))))
 
