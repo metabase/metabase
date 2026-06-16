@@ -36474,14 +36474,14 @@
       "get" : {
         "operationId" : "get-api-metabot-settings",
         "summary" : "GET /api/metabot/settings",
-        "description" : "Return available models for a provider using its configured API key.",
+        "description" : "Return available models for a provider using its configured credentials.",
         "parameters" : [ {
           "in" : "query",
           "name" : "provider",
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "anthropic", "openai", "metabase", "openrouter" ]
+            "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
           }
         } ],
         "responses" : {
@@ -36492,7 +36492,7 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api-key-error" : {
+                    "credentials-error" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -36546,7 +36546,7 @@
       "put" : {
         "operationId" : "put-api-metabot-settings",
         "summary" : "PUT /api/metabot/settings",
-        "description" : "Update the Metabot provider API key and/or model setting and return the refreshed settings payload.",
+        "description" : "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -36556,7 +36556,7 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
-                    "api-key-error" : {
+                    "credentials-error" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -36618,6 +36618,57 @@
                       "type" : "null"
                     } ]
                   },
+                  "credentials" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "access-key-id" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "api-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "base-url" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "region" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "secret-access-key" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "session-token" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "model" : {
                     "oneOf" : [ {
                       "type" : "string"
@@ -36627,7 +36678,7 @@
                   },
                   "provider" : {
                     "type" : "string",
-                    "enum" : [ "anthropic", "openai", "metabase", "openrouter" ]
+                    "enum" : [ "anthropic", "openai", "azure", "bedrock", "metabase", "openrouter" ]
                   }
                 },
                 "required" : [ "provider" ]
