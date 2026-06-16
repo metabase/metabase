@@ -62,6 +62,23 @@
       :state
       :country)))
 
+(deftest ^:parallel detect-pulse-chart-type-pivot-test
+  (testing "pivot cards route to :pivot"
+    (is (= :pivot (channel.render/detect-pulse-chart-type
+                   {:display :pivot} nil
+                   {:cols [{:base_type :type/Text} {:base_type :type/Number}] :rows [["a" 1]]})))))
+
+(deftest ^:parallel detect-pulse-chart-type-object-detail-test
+  (let [data {:cols [{:base_type :type/Text :name "name"} {:base_type :type/Number :name "n"}]
+              :rows [["a" 1]]}]
+    (testing "an :object display routes to the :object renderer"
+      (is (= :object (channel.render/detect-pulse-chart-type {:display :object} nil data))))
+    (testing "a single-column object detail still routes to :object, not :scalar"
+      (is (= :object (channel.render/detect-pulse-chart-type
+                      {:display :object} nil {:cols [{:base_type :type/Text :name "x"}] :rows [["v"]]}))))
+    (testing "empty results still short-circuit to :empty"
+      (is (= :empty (channel.render/detect-pulse-chart-type {:display :object} nil {:cols [] :rows []}))))))
+
 (deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."
     (is (= :empty

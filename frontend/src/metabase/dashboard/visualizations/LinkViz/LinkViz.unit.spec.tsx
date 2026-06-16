@@ -366,6 +366,47 @@ describe("LinkViz", () => {
       });
     });
 
+    it("should find Documents when searching (UXW-4440)", async () => {
+      const documentSearchDashcard = createMockLinkDashboardCard({
+        url: "Quarterly",
+      });
+      const searchDocumentItem = createMockCollectionItem({
+        id: 2,
+        model: "document",
+        name: "Quarterly Plan Doc",
+        collection: searchCardCollection,
+      });
+      setupSearchEndpoints([searchDocumentItem]);
+      setupUserRecipientsEndpoint({ users: [createMockUser()] });
+      setupCollectionByIdEndpoint({
+        collections: [searchCardCollection],
+      });
+
+      const { changeSpy } = setup({
+        isEditing: true,
+        dashcard: documentSearchDashcard,
+        settings:
+          documentSearchDashcard.visualization_settings as LinkCardVizSettings,
+      });
+
+      const searchInput = screen.getByPlaceholderText("https://example.com");
+
+      await userEvent.click(searchInput);
+      await waitForLoaderToBeRemoved();
+
+      await userEvent.click(await screen.findByText("Quarterly Plan Doc"));
+
+      expect(changeSpy).toHaveBeenCalledWith({
+        link: {
+          entity: expect.objectContaining({
+            id: 2,
+            name: "Quarterly Plan Doc",
+            model: "document",
+          }),
+        },
+      });
+    });
+
     it("clicking a recent item should update the entity", async () => {
       const recentTableItem = createMockRecentTableItem({
         model: "table",

@@ -17,9 +17,10 @@ export const CopyTextInput = forwardRef(function CopyTextInput(
   {
     classNames,
     onClick,
+    onCopied,
     readOnly,
     ...props
-  }: TextInputProps & { value: string },
+  }: TextInputProps & { value: string; onCopied?: () => void },
   ref: Ref<HTMLInputElement>,
 ) {
   const isReadOnly = readOnly ?? defaultProps.readOnly;
@@ -42,15 +43,25 @@ export const CopyTextInput = forwardRef(function CopyTextInput(
       }}
       rightSectionPointerEvents="all"
       rightSection={
-        <CopyButton value={props.value} timeout={2000}>
-          {({ copied, copy }) => (
-            <Tooltip label={t`Copied!`} opened={copied}>
-              <ActionIcon variant="subtle" aria-label={t`Copy`} onClick={copy}>
-                <Icon name="copy" />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </CopyButton>
+        props.value ? (
+          <CopyButton value={props.value} timeout={2000}>
+            {({ copied, copy }) => (
+              <Tooltip label={t`Copied!`} opened={copied}>
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={t`Copy`}
+                  data-testid="copy-button"
+                  onClick={() => {
+                    copy();
+                    onCopied?.();
+                  }}
+                >
+                  <Icon name="copy" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </CopyButton>
+        ) : undefined
       }
     />
   );

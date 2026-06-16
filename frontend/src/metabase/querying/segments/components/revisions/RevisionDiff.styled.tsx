@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { Icon } from "metabase/ui";
 
 export const EditIcon = styled(Icon)`
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const ErrorIcon = styled(Icon)`
@@ -12,5 +12,5 @@ export const ErrorIcon = styled(Icon)`
 `;
 
 export const SuccessIcon = styled(Icon)`
-  color: var(--mb-color-summarize);
+  color: var(--mb-color-core-summarize);
 `;

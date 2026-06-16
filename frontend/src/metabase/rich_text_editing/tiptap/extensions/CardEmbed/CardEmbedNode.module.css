@@ -22,7 +22,7 @@
 }
 
 .cardEmbed.selected {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
   outline: none;
 }
 

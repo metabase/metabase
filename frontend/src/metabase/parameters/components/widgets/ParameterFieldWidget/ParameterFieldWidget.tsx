@@ -114,7 +114,7 @@ export function ParameterFieldWidget({
                   getFilterArgumentFormatOptions(operator, index)),
                 ...fields?.[0]?.settings,
               }}
-              color="brand"
+              color="core-brand"
               minWidth={300}
               maxWidth={400}
             />

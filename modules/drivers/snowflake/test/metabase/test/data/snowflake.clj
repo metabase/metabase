@@ -99,6 +99,8 @@
   []
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
+;;; --------------------------------- Cleanup ----------------------------------
+
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old
    -- tracked that haven't been touched in a while or are not tracked and too old"
@@ -107,14 +109,10 @@
         ;; tracked UNION ALL untracked
         ;; NB. currently appears that the second half never shows anything; all
         ;; datasets currently appear to be tracked.
-        query "(select name from metabase_test_tracking.PUBLIC.datasets
-                where accessed_at < dateadd(day, ?, current_timestamp()))
-               UNION All
-               (select database_name from metabase_test_tracking.information_schema.databases d
-                where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
-                and d.database_name like 'sha_%'
-                and created < dateadd(day, ?, current_timestamp()))"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
+        query "select name from metabase_test_tracking.PUBLIC.datasets
+                where accessed_at < dateadd(day, ?, current_timestamp())"]
+    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec)
+                                               [query days-ago]))))
 
 (defn- orphan-isolation-schemas
   "Return a collection of schema names with mb__isolation_ prefix that are more than 3 hours old,
@@ -296,7 +294,7 @@
   ;; local testing shows that identifying old datasets works correctly, but
   ;; sometimes randomly in CI it seems to decide that datasets are old and
   ;; deletes them even tho they are not old.
-  (drop-old-datasets!)
+  ;; (drop-old-datasets!)
   (drop-orphan-isolation-schemas!)
   (drop-orphan-isolation-users!)
   (drop-orphan-isolation-roles!))
@@ -546,6 +544,10 @@
 (defmethod driver/database-supports? [:snowflake :test/use-fake-sync]
   [_driver _feature _database]
   (not (tx/on-master-or-release-branch?)))
+
+;; too much contention here causing unreliable tests
+(defmethod driver/database-supports? [:snowflake :test/dynamic-dataset-loading]
+  [_driver _feature _database] false)
 
 (defmethod tx/fake-sync-schema :snowflake
   [_driver]

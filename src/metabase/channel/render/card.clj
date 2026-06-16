@@ -118,13 +118,14 @@
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above
         (and (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
-             (not (contains? #{:progress :gauge} display-type))
+             (not (contains? #{:progress :gauge :object} display-type))
              (= @col-sample-count @row-sample-count 1))
         (chart-type :scalar "result has one row and one column")
 
         (#{:scalar
            :gauge
            :table
+           :object
            :funnel} display-type)
         (chart-type display-type "display-type is %s" display-type)
 
@@ -142,6 +143,9 @@
            :bar
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
+
+        (= :pivot display-type)
+        (chart-type :pivot "display-type is pivot")
 
         :else
         (chart-type :table "no other chart types match")))))

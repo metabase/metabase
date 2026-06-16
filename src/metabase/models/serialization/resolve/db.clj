@@ -44,8 +44,8 @@
   "Given a numeric table_id, return a portable table reference [db-name schema table-name]."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
-          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
+          db-name                     (t2/select-one-fn :name [:model/Database :id :name] :id db_id)]
       [db-name schema name])))
 
 (defn export-field-fk

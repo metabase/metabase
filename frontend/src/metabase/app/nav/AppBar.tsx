@@ -1,6 +1,18 @@
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 
+import { skipToken, useGetDashboardQuery } from "metabase/api";
+import {
+  getCollectionId,
+  getIsAppSwitcherVisible,
+  getIsCollectionPathVisible,
+  getIsLogoVisible,
+  getIsMetricsViewer,
+  getIsNavBarEnabled,
+  getIsNewButtonVisible,
+  getIsQuestionLineageVisible,
+  getIsSearchVisible,
+} from "metabase/app/selectors";
 import { useInitialCollectionId } from "metabase/collections/hooks";
 import {
   getCommentSidebarOpen,
@@ -21,18 +33,7 @@ import { connect, useDispatch, useSelector } from "metabase/redux";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import type { RouterProps } from "metabase/selectors/app";
-import {
-  getDetailViewState,
-  getIsAppSwitcherVisible,
-  getIsCollectionPathVisible,
-  getIsLogoVisible,
-  getIsMetricsViewer,
-  getIsNavBarEnabled,
-  getIsNavbarOpen,
-  getIsNewButtonVisible,
-  getIsQuestionLineageVisible,
-  getIsSearchVisible,
-} from "metabase/selectors/app";
+import { getDetailViewState, getIsNavbarOpen } from "metabase/selectors/app";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { modelToUrl } from "metabase/urls";
@@ -85,10 +86,18 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
   const dispatch = useDispatch();
   const question = useSelector(getQuestion);
   const originalQuestion = useSelector(getOriginalQuestion);
+  // The breadcrumbs' current collection is derived from the active
+  // dashboard/question/document state. CollectionBreadcrumbs used to read this
+  // itself, but getCollectionId orchestrates feature state and now lives in the
+  // app tier, so the app-tier AppBar resolves it and passes it down.
+  const breadcrumbCollectionId = useSelector(getCollectionId);
 
   const { pathname } = props.location;
-  const dashboard =
-    pathname && isQuestionPath(pathname) ? question?.dashboard() : undefined;
+  const isOnQuestionPage = pathname && isQuestionPath(pathname);
+  const dashboardId = isOnQuestionPage ? question?.dashboard()?.id : undefined;
+  const { data: dashboard } = useGetDashboardQuery(
+    dashboardId != null ? { id: dashboardId } : skipToken,
+  );
 
   const locationState = props.location.state as { cardId?: number } | undefined;
 
@@ -105,7 +114,12 @@ function AppBarContainerInner(props: AppBarProps & RouterProps) {
     <AppBarView
       {...props}
       collectionId={collectionId}
-      collectionBreadcrumbs={<CollectionBreadcrumbs dashboard={dashboard} />}
+      collectionBreadcrumbs={
+        <CollectionBreadcrumbs
+          dashboard={dashboardId != null ? dashboard : undefined}
+          collectionId={breadcrumbCollectionId ?? undefined}
+        />
+      }
       questionLineage={
         <QuestionLineage
           question={question}

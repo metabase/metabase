@@ -9,6 +9,8 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.js.color :as js.color]
+   [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
    [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
@@ -341,6 +343,68 @@
                  :content     vector?
                  :render/text "40\nUp 133.33% vs. previous month: 30"}
                 (body/render :smartscalar nil pacific-tz nil nil results)))))))
+
+(def ^:private object-card
+  {:name "T" :display :object})
+
+(def ^:private object-id-col
+  {:name "id" :display_name "ID" :base_type :type/BigInteger :semantic_type :type/PK})
+
+(defn- render-object-html [data]
+  (html (:content (body/render :object nil pacific-tz object-card nil data))))
+
+(deftest ^:parallel object-detail-test
+  (let [data     {:cols [object-id-col
+                         {:name "name" :display_name "Name" :base_type :type/Text}
+                         {:name "created" :display_name "Created" :base_type :type/DateTime}]
+                  :rows [[1 "Widget" "2014-04-01T08:30:00.0000"]
+                         [2 "Gadget" "2015-01-01T00:00:00.0000"]]}
+        html-str (render-object-html data)]
+    (testing "renders each column as a label/value pair for the first row, with per-column formatting"
+      (is (str/includes? html-str "Name"))
+      (is (str/includes? html-str "Widget"))
+      (is (str/includes? html-str "April 1, 2014, 8:30 AM")))
+    (testing "only the first row is rendered (a static email can't paginate)"
+      (is (not (str/includes? html-str "Gadget"))))
+    (testing "notes when more records exist"
+      (is (str/includes? html-str "Showing 1 of 2 records")))))
+
+(deftest ^:parallel object-detail-single-row-test
+  (testing "a single row shows no 'more records' note"
+    (let [data {:cols [{:name "id" :display_name "ID" :base_type :type/Text}]
+                :rows [["only"]]}]
+      (is (not (str/includes? (render-object-html data) "Showing 1 of"))))))
+
+(deftest ^:parallel object-detail-details-only-columns-test
+  (testing "details-only columns (hidden in tables) ARE shown in object detail"
+    (let [data {:cols [object-id-col
+                       {:name "notes" :display_name "Notes" :base_type :type/Text :visibility_type :details-only}]
+                :rows [[1 "internal note"]]}
+          html-str (render-object-html data)]
+      (is (str/includes? html-str "Notes"))
+      (is (str/includes? html-str "internal note")))))
+
+(deftest ^:parallel object-detail-hidden-columns-test
+  (testing "sensitive columns are dropped"
+    (let [data {:cols [object-id-col
+                       {:name "ssn" :display_name "SSN" :base_type :type/Text :visibility_type :sensitive}]
+                :rows [[1 "999-99-9999"]]}
+          html-str (render-object-html data)]
+      (is (not (str/includes? html-str "999-99-9999")))
+      (is (not (str/includes? html-str "SSN"))))))
+
+(deftest ^:parallel object-detail-empty-values-test
+  (testing "missing values (nil or blank) render as a muted 'Empty' placeholder, like the live viz"
+    (let [data     {:cols [object-id-col
+                           {:name "name" :display_name "Name" :base_type :type/Text}
+                           {:name "note" :display_name "Note" :base_type :type/Text}]
+                    :rows [[1 nil "   "]]}
+          html-str (render-object-html data)
+          empties  (count (re-seq #"Empty" html-str))]
+      (testing "both the nil and the blank-string values are shown as Empty"
+        (is (= 2 empties)))
+      (testing "the placeholder is styled in the secondary/muted color, not left blank"
+        (is (str/includes? html-str style/color-gray-3))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]
@@ -1088,9 +1152,14 @@
                                                  :breakout    [$category !year.created_at]})}]
         (mt/with-current-user (mt/user->id :rasta)
           (let [card-doc        (render.tu/render-pivot-card-as-hickory! card-id)
-                card-header-els (hik.s/select (hik.s/tag :th) card-doc)]
-            (is (=  ["Category" "Created At: Year" "Sum of Price"]
-                    (mapv (comp first :content) card-header-els)))))))))
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+                headers         (mapv (comp first :content) card-header-els)]
+            ;; A pivot card renders as an assembled (transposed) table: the row-dimension label is the
+            ;; top-left header, the pivot-grouping column is excluded, and row/grand totals are added.
+            (is (= "Category" (first headers)))
+            (is (not (some #{"pivot-grouping"} headers)))
+            (is (some #{"Row totals"} headers))
+            (is (> (count headers) 3))))))))
 
 (deftest render-sankey-chart-test
   (testing "The static-viz sankey chart renders correctly."
@@ -1247,3 +1316,104 @@
                    "ID"
                    "Product ID [external remap]"]
                   (map (comp :title second) (-> table :content second (nth 2) second last)))))))))
+
+(def ^:private pivot-test-split
+  "Single-measure pivot split shared by the render-pivot tests (rows R, cols C, measure m)."
+  {:rows ["R"] :columns ["C"] :values ["m"]})
+
+(def ^:private pivot-test-data
+  "A `:pivot` query result: rows R, cols C, single measure m, plus the pivot-grouping column the QP emits.
+  `:pivot-export-options` carries the row/col/measure column indexes in the pivot-grouping-free space (R=0, C=1, m=2)."
+  {:cols                 [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
+                          {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+   :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
+   :format-rows?         true
+   :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}})
+
+(deftest ^:parallel render-pivot-test
+  (let [pcard {:display :pivot :visualization_settings {:pivot_table.column_split pivot-test-split}}]
+    (testing "a pivot card renders as an assembled (transposed) pivot table"
+      (let [part (body/render :pivot :inline "UTC" pcard nil pivot-test-data)
+            h    (html (:content part))]
+        (is (= :table (-> part :content first)))
+        (is (nil? (:attachments part)))
+        (is (not (str/includes? h "pivot-grouping")))
+        (is (every? #(str/includes? h %) ["x" "y" "a" "b" "10" "20" "30" "40"]))
+        ;; transposed pivot: header (x, y) + a + b + grand-totals row = 4 <tr> (a flat table would be 5)
+        (is (= 4 (count (re-seq #"<tr" h))))))
+    (testing "measures are derived from the non row/col columns when the QP left :pivot-measures empty"
+      ;; happens when the split's measure name doesn't resolve to a result column (e.g. a casing mismatch)
+      (let [data (assoc-in pivot-test-data [:pivot-export-options :pivot-measures] [])
+            h    (html (:content (body/render :pivot :inline "UTC" pcard nil data)))]
+        (is (not (str/includes? h "pivot-grouping")))
+        (is (every? #(str/includes? h %) ["x" "y" "a" "b" "10" "20" "30" "40"]))))
+    (testing "a pivot card with no column split degrades to a flat table without erroring"
+      (let [part (body/render :pivot :inline "UTC"
+                              {:display :pivot :visualization_settings {}} nil
+                              {:cols [{:name "a" :base_type :type/Text} {:name "b" :base_type :type/Number}]
+                               :rows [["x" 1]]})]
+        (is (some? (:content part)))))
+    (testing "the card's conditional formatting colors the measure value cells"
+      (mt/with-dynamic-fn-redefs [js.color/make-color-selector  (fn [_ _] ::selector)
+                                  js.color/get-background-color (fn [_sel cell _col _row]
+                                                                  (when (formatter/NumericWrapper? cell)
+                                                                    "rgb(1, 2, 3)"))]
+        (let [pcard {:display                :pivot
+                     :visualization_settings {:pivot_table.column_split pivot-test-split
+                                              :table.column_formatting [{:type     "single"
+                                                                         :columns  ["m"]
+                                                                         :color    "#ff0000"
+                                                                         :operator ">"
+                                                                         :value    0}]}}
+              h     (html (:content (body/render :pivot :inline "UTC" pcard nil pivot-test-data)))]
+          ;; numeric cells get the (stubbed) conditional-formatting background; headers/labels don't
+          (is (str/includes? h "rgb(1, 2, 3)")))))))
+
+(deftest render-pivot-conditional-formatting-test
+  (testing "pivot value cells get value-based conditional-formatting colors via the real shared color JS"
+    (let [render-with (fn [formatting]
+                        (let [settings (cond-> {:pivot_table.column_split pivot-test-split}
+                                         formatting (assoc :table.column_formatting formatting))]
+                          (html (:content (body/render :pivot :inline "UTC"
+                                                       {:display :pivot :visualization_settings settings}
+                                                       nil pivot-test-data)))))]
+      (testing "a `>` rule colors the matching measure cells"
+        (is (str/includes? (render-with [{:type     "single"
+                                          :columns  ["m"]
+                                          :color    "#ff0000"
+                                          :operator ">"
+                                          :value    25}])
+                           "background-color")))
+      (testing "no conditional formatting means no cell background colors"
+        (is (not (str/includes? (render-with nil) "background-color")))))))
+
+(deftest render-pivot-multi-measure-conditional-formatting-test
+  (testing "with multiple measures, conditional formatting maps to the correct measure column"
+    ;; Two measures: m1 values are all < 50, m2 values all > 50, and the rule targets m2 (> 50). If cell-bg's
+    ;; (mod vpos measure-count) mis-maps value columns to measures, the m2 cells would be labeled m1 (no rule ->
+    ;; uncolored) and the m1 cells labeled m2 (11-44, not > 50 -> uncolored) -- so the m2 cells being the colored
+    ;; ones confirms the measure mapping. Totals are off so only the data cells remain.
+    (let [split    {:rows ["R"] :columns ["C"] :values ["m1" "m2"]}
+          cols     [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
+                    {:name "pivot-grouping" :base_type :type/Integer}
+                    {:name "m1" :base_type :type/Integer} {:name "m2" :base_type :type/Integer}]
+          data     {:cols                 cols
+                    :rows                 [["a" "x" 0 11 100] ["a" "y" 0 22 200]
+                                           ["b" "x" 0 33 300] ["b" "y" 0 44 400]]
+                    :format-rows?         true
+                    :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2 3]}}
+          settings {:pivot_table.column_split split
+                    :pivot.show_row_totals    false
+                    :pivot.show_column_totals false
+                    :table.column_formatting  [{:type     "single"
+                                                :columns  ["m2"]
+                                                :color    "#ff0000"
+                                                :operator ">"
+                                                :value    50}]}
+          h        (html (:content (body/render :pivot :inline "UTC"
+                                                {:display :pivot :visualization_settings settings}
+                                                nil data)))]
+      (testing "both measures' values render"
+        (is (every? #(str/includes? h %) ["11" "22" "33" "44" "100" "200" "300" "400"])))
+      (testing "only the four m2 value cells (> 50) are colored"
+        (is (= 4 (count (re-seq #"background-color" h))))))))

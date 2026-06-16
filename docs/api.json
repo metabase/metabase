@@ -1347,27 +1347,6 @@
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
       },
-      "metabase-enterprise.dependencies.api.broken-cards-response" : {
-        "type" : "object",
-        "properties" : {
-          "bad_cards" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.queries.schema.card"
-            }
-          },
-          "bad_transforms" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.transforms.schema.transform"
-            }
-          },
-          "success" : {
-            "type" : "boolean"
-          }
-        },
-        "required" : [ "success" ]
-      },
       "metabase-enterprise.dependencies.api.broken-dependent-entity" : {
         "description" : "Entity returned by /graph/broken endpoint - includes errors but no dependents_count.",
         "type" : "object",
@@ -1385,96 +1364,6 @@
           }
         },
         "required" : [ "id", "type", "data" ]
-      },
-      "metabase-enterprise.dependencies.api.card-body" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
       },
       "metabase-enterprise.dependencies.api.card-entity" : {
         "type" : "object",
@@ -1865,42 +1754,6 @@
           }
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
-      },
-      "metabase-enterprise.dependencies.api.transform-body" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "oneOf" : [ {
-              "type" : "object",
-              "properties" : {
-                "query" : {
-                  "$ref" : "#/components/schemas/metabase.queries.schema.query"
-                },
-                "type" : {
-                  "type" : "string"
-                }
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "target" : {
-            "oneOf" : [ {
-              "description" : "Value must be a map.",
-              "type" : "object",
-              "properties" : { }
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "id" ]
       },
       "metabase-enterprise.dependencies.api.transform-entity" : {
         "type" : "object",
@@ -8743,11 +8596,6 @@
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase.lib.schema.id.collection" : {
-        "description" : "Valid Collection ID",
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "type" : "integer",
@@ -11367,7 +11215,7 @@
       },
       "metabase.lib.schema.validate.validate-error-type" : {
         "type" : "string",
-        "enum" : [ "missing-column", "missing-table-alias", "duplicate-column", "syntax-error", "validation-exception-error" ]
+        "enum" : [ "missing-column", "missing-table-alias", "missing-table", "missing-card", "duplicate-column", "syntax-error", "validation-exception-error" ]
       },
       "metabase.logger.api.log-level" : {
         "type" : "string",
@@ -13534,102 +13382,6 @@
         "type" : "string",
         "enum" : [ "static-list", "card" ]
       },
-      "metabase.queries.schema..card.result-metadata" : {
-        "type" : "array",
-        "items" : {
-          "$ref" : "#/components/schemas/metabase.lib.schema.metadata.lib-or-legacy-column"
-        }
-      },
-      "metabase.queries.schema.card" : {
-        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
-        "type" : "object",
-        "properties" : {
-          "dataset_query" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema.query"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameter_mappings" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "database_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "document_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "result_metadata" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.queries.schema..card.result-metadata"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "collection_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "parameters" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "dashboard_id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
       "metabase.queries.schema.card-type" : {
         "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
       },
@@ -14151,10 +13903,6 @@
         },
         "required" : [ "type" ]
       },
-      "metabase.transforms.schema.id" : {
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.transforms.schema.source-incremental-strategy" : {
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.checkpoint-strategy"
@@ -14213,31 +13961,6 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.transforms.schema.append-config"
         } ]
-      },
-      "metabase.transforms.schema.transform" : {
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "oneOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.id"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-source"
-          },
-          "target" : {
-            "$ref" : "#/components/schemas/metabase.transforms.schema.transform-target"
-          }
-        },
-        "required" : [ "id", "name", "source", "target" ]
       },
       "metabase.transforms.schema.transform-source" : {
         "oneOf" : [ {
@@ -26646,131 +26369,11 @@
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
-    "/api/ee/dependencies/check-card" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-card",
-        "summary" : "POST /api/ee/dependencies/check-card",
-        "description" : "Check a proposed edit to a card, and return the cards/transforms this edit will break.\n\n  `broken-cards-response` ensures the stable response order.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-snippet" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-snippet",
-        "summary" : "POST /api/ee/dependencies/check-snippet",
-        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "content" : {
-                    "type" : "string"
-                  },
-                  "id" : {
-                    "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
-                  },
-                  "name" : {
-                    "description" : "snippet names cannot include '}' or start with spaces"
-                  }
-                },
-                "required" : [ "id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
-    "/api/ee/dependencies/check-transform" : {
-      "post" : {
-        "operationId" : "post-api-ee-dependencies-check-transform",
-        "summary" : "POST /api/ee/dependencies/check-transform",
-        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/dependencies" ]
-      }
-    },
     "/api/ee/dependencies/graph" : {
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph",
         "summary" : "GET /api/ee/dependencies/graph",
-        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.\n\n  Optional :archived parameter controls whether entities in archived collections are included:\n  - false (default): Excludes entities in archived collections\n  - true: Includes entities in archived collections",
+        "description" : "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.\n  The graph is represented by a list of :nodes and a list of :edges. Each node has an :id, :type, :data (which\n  depends on the node type), and a map of :dependent_counts per entity type. Each edge is a :model/Dependency.",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -26786,13 +26389,6 @@
           "required" : false,
           "schema" : {
             "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         } ],
         "responses" : {
@@ -26820,7 +26416,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-breaking",
         "summary" : "GET /api/ee/dependencies/graph/breaking",
-        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of entities that are breaking other entities (sources of errors).\n   These are tables or cards that other entities depend on, where those dependents\n   have validation errors traced back to this source entity.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of source entity types - only `:card` or `:table` (default: both)\n   - `card-types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of breaking source entities\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -26857,13 +26453,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27035,7 +26624,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-dependents",
         "summary" : "GET /api/ee/dependencies/graph/dependents",
-        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `archived`: Include entities in archived collections (default: false)\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
+        "description" : "Returns a list of dependents for the specified entity.\n\n   Required parameters:\n   - `id`: The ID of the entity\n   - `type`: The type of the entity (card, table, dashboard, etc.)\n\n   Optional parameters:\n   - `dependent-types`: Dependency types to filter by. Can be single value or array.\n     If not provided, returns all types. Example: ?dependent-types=card&dependent-types=dashboard\n   - `dependent-card-types`: Card types to filter by when dependent-types includes :card.\n     Ignored if dependent-types doesn't include :card. Example: ?dependent-card-types=question&dependent-card-types=model\n   - `broken`: Return only broken entities (default: false)\n   - `query`: Search string to filter results by name or location (case-insensitive)\n   - `include-personal-collections`: Include items in personal collections (default: false)\n   - `sort-column`: Column to sort by - name, location, or view-count (default: name)\n   - `sort-direction`: Sort direction - asc or desc (default: asc)",
         "parameters" : [ {
           "in" : "query",
           "name" : "id",
@@ -27081,13 +26670,6 @@
                 "enum" : [ "question", "metric", "model" ]
               }
             } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -27155,7 +26737,7 @@
       "get" : {
         "operationId" : "get-api-ee-dependencies-graph-unreferenced",
         "summary" : "GET /api/ee/dependencies/graph/unreferenced",
-        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `archived`: Controls whether archived entities are included\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - `card-types`: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - `query`: Search string to filter by name or location\n   - `include-personal-collections`: Controls whether items in personal collections are included (default: false)\n   - `sort-column`: Sort column - `:name`, `:location`, `:dependents-errors`, or `:dependents-with-errors` (default: `:name`)\n   - `sort-direction`: Sort direction - `:asc` or `:desc` (default: `:asc`)\n   - `offset`: Default 0\n   - `limit`: Default 50\n\n   Returns a map with:\n   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields\n   - `total`: Total count of matched items\n   - `offset`: Applied offset\n   - `limit`: Applied limit",
         "parameters" : [ {
           "in" : "query",
           "name" : "types",
@@ -27192,13 +26774,6 @@
           "required" : false,
           "schema" : {
             "type" : "string"
-          }
-        }, {
-          "in" : "query",
-          "name" : "archived",
-          "required" : false,
-          "schema" : {
-            "type" : "boolean"
           }
         }, {
           "in" : "query",
@@ -42672,7 +42247,7 @@
           "schema" : {
             "default" : "api",
             "type" : "string",
-            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
+            "enum" : [ "search-bar", "search-app", "command-palette", "entity-picker", "data-picker", "type-filter", "basic-actions", "browse", "embedding-setup", "document", "library", "dependencies", "model-migration", "api", "metabot" ]
           }
         }, {
           "in" : "query",
@@ -47683,7 +47258,7 @@
       "post" : {
         "operationId" : "post-api-transform-job-job-id-run",
         "summary" : "POST /api/transform-job/{job-id}/run",
-        "description" : "Run a transform job manually.",
+        "description" : "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`\n  to force-refresh the whole plan.",
         "parameters" : [ {
           "in" : "path",
           "name" : "job-id",
@@ -47720,6 +47295,22 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "run_all" : {
+                    "default" : false,
+                    "type" : "boolean"
+                  }
+                },
+                "required" : [ ]
+              }
+            }
           }
         },
         "tags" : [ "/api/transform-job" ]
@@ -47759,6 +47350,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "scheduled" : {
+                        "type" : "boolean"
                       },
                       "id" : {
                         "type" : "integer",
@@ -47825,6 +47419,9 @@
                         "type" : "string"
                       },
                       "updated_at" : { },
+                      "dependency" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
