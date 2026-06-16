@@ -2,7 +2,7 @@ import { Group } from "@mantine/core";
 import { Fragment } from "react";
 import { t } from "ttag";
 
-import { ALTKEY, METAKEY, SHIFTKEY } from "metabase/utils/browser";
+import { ALTKEY, METAKEY } from "metabase/utils/browser";
 
 import { Kbd } from "../Kbd";
 
@@ -11,7 +11,6 @@ import S from "./KeyboardShortcut.module.css";
 const KEY_LABELS: Record<string, string> = {
   $mod: METAKEY,
   Alt: ALTKEY,
-  Shift: SHIFTKEY,
   ArrowUp: "↑",
   ArrowDown: "↓",
   ArrowLeft: "←",
