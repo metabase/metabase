@@ -27,14 +27,16 @@ Keep the semantic layer and presentation layer separate.
 
 If the schema file already exists, use it. If it is missing or stale, treat schema generation as semantic-layer curation for this data app, not a mechanical export.
 
-Before generating, make sure the user has explicitly chosen both scopes the app needs:
+Before generating, make sure the user has explicitly chosen the scopes the app needs:
 
-- `includeDataLibrary=true` for everything under the top-level `Library / Data` collection.
-- `includeMetricLibrary=true` for everything under the top-level `Library / Metrics` collection.
-- `libraryCollections` for specific Data/Metrics library subcollections by numeric ID or representation `entity_id`. These provide tables, fields, segments, measures, and metrics.
-- `questionCollections` for saved questions from normal collections.
+- Library scope:
+  - `includeDataLibrary=true` for the whole `Library / Data` tree
+  - `includeMetricLibrary=true` for the whole `Library / Metrics` tree
+  - `libraryCollections=<id-or-entity-id>[,<id-or-entity-id>]` for specific Data/Metrics library subcollections.
+- Saved question scope:
+  - `questionCollections=<collection-id>[,<collection-id>]` for saved questions from normal collections.
 
-If the user did not already specify a library scope (`includeDataLibrary`, `includeMetricLibrary`, or `libraryCollections`) and/or `questionCollections`, stop and ask what they want:
+If the user did not already choose a library scope and/or saved question scope, stop and ask what they want:
 
 - Include the entire semantic layer/library in the generated schema file. Only offer this when the app is intentionally using the semantic layer and the library looks small enough to be useful.
 - Include only part of it: the whole Data library, the whole Metrics library, selected library subcollections, selected question collections, or a mix. For example, `includeMetricLibrary=true&libraryCollections=g-jLnamuHKdezZMthJ-z7` includes the entire Metrics library and one Data subcollection.
@@ -46,7 +48,11 @@ If the current working tree looks like a Metabase remote-sync repository, inspec
 - Table YAML under `databases/**/tables/**/<table>.yaml` can show `collection_id: librarylibrarydatadat` for tables directly in Data, or another collection `entity_id` for subcollections.
 - Card YAML under `collections/main/**` with `type: question`, `type: model`, or `type: metric` shows normal saved-question/model/metric placement.
 
-Correlate those representation files with the user's request and offer concrete choices. Prefer `includeDataLibrary=true` / `includeMetricLibrary=true` for whole top-level libraries, and representation `entity_id` values for specific library subcollections. If you cannot tell from representations, say you do not know and ask for collection IDs or entity IDs.
+Correlate those representation files with the user's request and offer concrete choices.
+
+- Prefer representation `entity_id` values for specific library subcollections.
+- Only use `includeDataLibrary=true` / `includeMetricLibrary=true` if the user agrees to include the whole data or metric library.
+- If you cannot tell from representations, say you do not know and ask for collection IDs or entity IDs.
 
 Warn the user before exporting the whole instance. Including everything is noisy: it bloats context, makes agents more likely to pick irrelevant entities, and weakens the intended boundary between the curated semantic layer and the presentation layer.
 
