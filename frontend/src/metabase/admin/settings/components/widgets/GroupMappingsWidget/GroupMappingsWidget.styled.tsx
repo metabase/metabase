@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Button } from "metabase/common/components/Button";
-
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
   display: flex;
   flex-direction: column;
@@ -57,10 +55,4 @@ export const GroupMappingsWidgetAbout = styled.div`
 export const GroupMappingsWidgetAboutContentRoot = styled.div`
   display: flex;
   align-items: center;
-`;
-
-export const AddMappingButton = styled(Button)`
-  float: right;
-  margin-right: var(--mantine-spacing-md);
-  margin-bottom: -40px;
 `;

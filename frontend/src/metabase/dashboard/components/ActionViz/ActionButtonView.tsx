@@ -1,10 +1,24 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import { Ellipsified, Icon } from "metabase/ui";
+import { Button, Ellipsified, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
-import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
+import S from "./ActionButton.module.css";
+import { StyledButtonContent } from "./ActionButton.styled";
+
+const BUTTON_VARIANT_PROPS: Record<
+  string,
+  { variant: string; color?: ColorName }
+> = {
+  default: { variant: "default" },
+  primary: { variant: "filled" },
+  danger: { variant: "filled", color: "error" },
+  success: { variant: "filled", color: "success" },
+  borderless: { variant: "subtle" },
+};
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {
   disabled?: boolean;
@@ -26,27 +40,27 @@ function ActionButtonView({
 }: ActionButtonViewProps) {
   const label = settings["button.label"];
   const variant = settings["button.variant"] ?? "primary";
-
-  const variantProps: any = {};
-  if (variant !== "default") {
-    variantProps[variant] = true;
-  }
+  const { variant: buttonVariant, color } =
+    BUTTON_VARIANT_PROPS[variant] ?? BUTTON_VARIANT_PROPS.primary;
 
   return (
-    <StyledButton
+    <Button
+      className={cx(S.actionButton, {
+        [S.fullHeight]: isFullHeight !== false,
+        [S.focus]: focus,
+      })}
+      variant={buttonVariant}
+      color={color}
       disabled={!!disabled}
       onClick={onClick}
       fullWidth
-      isFullHeight={isFullHeight}
-      focus={focus}
       aria-label={tooltip}
-      {...variantProps}
     >
       <StyledButtonContent>
         {icon && <Icon name={icon} />}
         <Ellipsified>{label ?? t`Click me`}</Ellipsified>
       </StyledButtonContent>
-    </StyledButton>
+    </Button>
   );
 }
 

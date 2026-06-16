@@ -9,14 +9,13 @@ import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
-import { Icon, Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAbout as About,
   GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
-  AddMappingButton,
   GroupMappingsWidgetHeader as Header,
   GroupMappingsWidgetRoot as Root,
   GroupMappingsWidgetToggleRoot as ToggleRoot,
@@ -168,9 +167,16 @@ export function GroupMappingsWidgetView({
         <div>
           <div>
             {!showAddRow && (
-              <AddMappingButton primary small onClick={handleShowAddRow}>
+              <Button
+                className={CS.floatRight}
+                variant="filled"
+                size="sm"
+                mr="md"
+                mb={-40}
+                onClick={handleShowAddRow}
+              >
                 {t`New mapping`}
-              </AddMappingButton>
+              </Button>
             )}
             <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
               {showAddRow && (
