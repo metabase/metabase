@@ -216,13 +216,12 @@
 
 (defn- stamp-analyzed-at-to-past!
   "Stamp `card-id`'s `analyzed_at` to `past-sentinel` and return the stored value, so a later
-  re-analysis is observable: it overwrites the sentinel, while no re-analysis leaves it unchanged."
+  re-analysis is observable."
   [card-id]
   ;; `mi/now` is Postgres `now()` = transaction-start time, and the whole test runs in one
   ;; rolled-back transaction, so a plain before/after snapshot is identical whether or not the
-  ;; entity was re-analyzed. The past sentinel breaks that tie. Read the value back rather than
-  ;; comparing to the literal: the appdb round-trips ZonedDateTime -> OffsetDateTime, never `=` to
-  ;; the literal even at the same instant.
+  ;; entity was re-analyzed. Stamping a past value sidesteps that. The time format changes in the
+  ;; appdb round-trip, so read the value back rather than embedding a comparison against the literal.
   (t2/update! :model/AnalysisFinding
               :analyzed_entity_type :card :analyzed_entity_id card-id
               {:analyzed_at past-sentinel})
@@ -231,8 +230,7 @@
 (deftest ^:sequential reanalysis-without-output-change-does-not-cascade-test
   (testing "Re-analyzing a stale entity whose output is unchanged clears it but does NOT cascade to its dependents (#75748)"
     ;; Propagation is gated on the entity's output identity changing. Marking p stale when nothing
-    ;; about p's output changed must clear p without re-checking c — otherwise an upstream cycle or
-    ;; a sync that touched nothing would fan re-analysis through the whole closure (the old bug).
+    ;; about p's output changed must clear p without re-checking c.
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))]
@@ -263,9 +261,9 @@
 
 (deftest ^:sequential output-change-cascades-through-entity-check-test
   (testing "When an upstream's output changes, the entity-check wave re-checks transitive dependents (#75748)"
-    ;; The positive counterpart: a real output change at gp must reach c. We give each card an
-    ;; explicit result-metadata (what dependents resolve against) and then drop a column from gp's
-    ;; and p's stored metadata — exactly what metadata propagation does after an upstream column is
+    ;; Counterpart to the no-cascade test above: here a real output change at gp must reach c. We give
+    ;; each card an explicit result-metadata (what dependents resolve against) and then drop a column
+    ;; from gp's and p's stored metadata — what metadata propagation does after an upstream column is
     ;; removed — and assert the wave reaches c.
     (backfill-all-entity-analyses!)
     (let [mp (mt/metadata-provider)
@@ -340,22 +338,19 @@
                   "card should be re-analyzed after entity-check"))))))))
 
 (deftest ^:sequential re-staled-after-being-seen-carries-to-next-run-test
-  (testing (str "A node re-staled AFTER it was already analyzed this run is left stale until the NEXT "
-                "run — `check-entities!` convergence is eventual, not necessarily within a single run "
-                "(#75748). The per-run `seen` set bounds the loop: once an upstream is in `seen`, a "
-                "terminal pass that re-analyzes it (and re-stales a downstream) turns up nothing NEW, "
-                "so the loop stops with the downstream still stale.")
-    ;; Diamond: C depends on A and B. The natural ordering of the within-run re-stale depends on the
-    ;; appdb's intra-batch row order, which has no secondary sort key and so is not guaranteed — making
-    ;; a fully organic reproduction flaky. We instead pin the LOOP SEMANTIC deterministically: model an
-    ;; upstream that is re-staled and re-analyzed in a *terminal* pass (already in `seen`) and re-stales
-    ;; an already-analyzed C. Each pass below carries exactly one entity, so there is no ordering
-    ;; ambiguity. Concretely:
-    ;;   pass 1: A (stale, output moved) → marks C stale
-    ;;   pass 2: C analyzed and cleared; we then re-stale A (already seen) and move A's stored metadata
-    ;;           again so A's next analysis changes output
-    ;;   pass 3: batch = {A} (already in `seen`) → A re-analyzed, output moves → re-stales C; the loop
-    ;;           turns up nothing NEW and STOPS, leaving C stale → carried to the next run.
+  (testing "A node re-staled after it was already analyzed this run is left stale until the next run (#75748)."
+    ;; Propagation rule: re-analyzing an entity whose output CHANGED marks its dependents stale. C
+    ;; depends on A and B, so a real output change at A re-stales C.
+    ;;
+    ;; The case under test: C re-staled by an upstream that was ALREADY analyzed this run (so it sits
+    ;; in `seen`), on the final pass — the loop then finds nothing new and stops with C left stale.
+    ;; Which upstream lands last depends on batch row order, which the appdb doesn't fix, so we drive
+    ;; the passes by hand (one entity each) and inject A's second change with a redef below:
+    ;;   pass 1: A is stale with a changed output (set up before the run) → A re-analyzed, re-stales C
+    ;;   pass 2: C re-analyzed; its own output is unchanged, so it clears and propagates nothing. The
+    ;;           redef now fires: bump A's output again and re-stale A (A is already in `seen`)
+    ;;   pass 3: A re-analyzed, output changed → re-stales C. Every entity this pass is already in
+    ;;           `seen`, so the loop stops — C is left stale, to be drained on the next run.
     (backfill-all-entity-analyses!)
     (let [mp       (mt/metadata-provider)
           products (lib.metadata/table mp (mt/id :products))
@@ -380,9 +375,7 @@
             (models.analysis-finding/mark-stale! :card [a-id])
             (let [orig    (mt/original-fn #'task.entity-check/process-one-batch!)
                   bumped? (atom false)]
-              ;; After the pass that analyzes (and clears) C, re-stale A — which is already in the run's
-              ;; `seen` set — and move A's stored metadata again so its terminal-pass re-analysis changes
-              ;; output and re-stales C. This is the within-run re-stale-after-seen the loop must defer.
+              ;; the pass-2 injection from the trace above: once C clears, bump A's output and re-stale A.
               (mt/with-dynamic-fn-redefs [task.entity-check/process-one-batch!
                                           (fn []
                                             (let [processed (orig)]

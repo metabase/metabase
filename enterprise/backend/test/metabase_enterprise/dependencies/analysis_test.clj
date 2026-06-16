@@ -180,27 +180,18 @@
               (is (not= base-hash mutated-hash)
                   (str "output-hash must change when a real card's stored " label " changes")))))))))
 
-;; --- Segment soundness: breaking a segment must NOT flip a dependent's breakage ----------------
-;; `output-identity :segment` returns a CONSTANT `[:segment id]` token, so a segment edit never
-;; moves the segment's output-hash and therefore never re-checks the segment's dependents
-;; (`analyze-and-propagate!` only propagates when `upsert-analysis!` reports a change). That is sound
-;; ONLY IF no dependent's breakage check resolves anything against the segment's `:definition` — i.e.
-;; breaking the segment cannot flip a card that *uses* the segment. `find-bad-refs` walks the card's
-;; `:field` clauses, not the `[:segment id]` clause's definition (segment expansion happens in QP
-;; middleware, not in the analysis path), so a broken segment makes the *segment* report broken while
-;; its dependent card stays clean. This test pins exactly that: if a future change ever teaches
-;; `find-bad-refs` to expand and validate segment definitions, the dependent's breakage WOULD flip
-;; here while the segment hash stays constant — and this test fails, forcing the segment hash to
-;; become definition-sensitive (#75748).
+;; --- Segment soundness drift guard ------------------------------------------------------------
+;; `output-identity :segment` is a constant token, so editing a segment never re-checks its
+;; dependents. That holds only because no breakage check resolves against a segment's `:definition`;
+;; if that ever changes (e.g. `find-bad-refs` learns to validate segment definitions), this test
+;; fails — the signal that the segment hash must become definition-sensitive (#75748).
 
 (def ^:private segment-soundness-fixture
-  "A clean provider plus a broken one, sharing one segment (700) and one card (800) that uses it.
+  "Returns `{:clean mp, :broken mp}` — two providers sharing segment 700 and card 800, which uses it.
 
-  The segment's definition filters PRODUCTS on PRICE; card 800 is PRODUCTS filtered by the segment
-  (a `[:segment 700]` clause, produced by `lib/filter` on the segment metadata). The broken provider
-  deactivates the PRICE field the segment's definition binds — the same Lib-level break the mutation
-  guards above use — which makes the *segment's own* `check-entity` non-empty while leaving the
-  card's untouched. Built once; everything is Lib-constructed (no hand-written MBQL)."
+  Segment 700 filters PRODUCTS on PRICE; card 800 is PRODUCTS filtered by `[:segment 700]`. The
+  `:broken` provider deactivates the PRICE field the segment binds, so in it segment 700's own
+  `check-entity` reports broken while card 800's stays clean. All Lib-constructed (no hand-written MBQL)."
   (delay
     (let [base      (deps.tu/mock-metadata-provider {})
           prods-q   (lib/query base (meta/table-metadata :products))
@@ -231,8 +222,7 @@
       {:clean clean-mp :broken broken-mp})))
 
 (deftest breaking-a-segment-does-not-flip-a-dependent-cards-breakage-test
-  (testing (str "Breaking a segment flips the segment's own breakage but not its dependent card's, "
-                "and leaves the segment's output-hash constant (#75748).")
+  (testing "A broken segment flips its own breakage, not its dependent card's; its output-hash holds (#75748)."
     (let [{clean-mp :clean broken-mp :broken} @segment-soundness-fixture]
       (testing "baseline: the segment and the card that uses it are both clean"
         (is (empty? (deps.analysis/check-entity clean-mp :segment 700)))
