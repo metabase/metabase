@@ -20,5 +20,7 @@
                     Math/sin
                     (Math/max -0.9999)
                     (Math/min 0.9999))
-        y       (* world (- 0.5 (/ (Math/log (/ (+ 1.0 sin-lat) (- 1.0 sin-lat))) (* 4.0 Math/PI))))]
+        y       (* world (- 0.5 (/ (Math/log (/ (+ 1.0 sin-lat)
+                                                (- 1.0 sin-lat)))
+                                   (* 4.0 Math/PI))))]
     [x y]))

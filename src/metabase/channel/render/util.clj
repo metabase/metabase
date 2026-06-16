@@ -45,7 +45,7 @@
   `dashcard` isn't a visualizer dashcard."
   [dashcard]
   (when (is-visualizer-dashcard? dashcard)
-    (keyword (get-in dashcard [:visualization_settings :visualization :display]))))
+    (-> dashcard :visualization_settings :visualization :display keyword)))
 
 (defn merged-viz-settings
   "Merge a card's and dashcard's `:visualization_settings`, with the dashcard's taking precedence."

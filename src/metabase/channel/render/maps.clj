@@ -165,7 +165,7 @@
 (defn- channel-255
   "Clamp a 0-1 sRGB channel value and scale it to 0-255."
   ^long [^double v]
-  (Math/round (* 255.0 (-> v (Math/max 0.0) (Math/min 1.0)))))
+  (-> v (Math/max 0.0) (Math/min 1.0) (* 255.0) Math/round))
 
 (defn- rgb-color ^Color [^double r ^double g ^double b]
   (Color. (int (channel-255 r)) (int (channel-255 g)) (int (channel-255 b))))
@@ -210,7 +210,7 @@
 (defn- clamp
   "Clamp `v` between `lo` and `hi` and round to the nearest whole number."
   ^long [^double v ^double lo ^double hi]
-  (Math/round (-> v (Math/max lo) (Math/min hi))))
+  (-> v (Math/max lo) (Math/min hi) Math/round))
 
 (defn- axis-window
   "Fit one axis of the output window to the data: given the data's projected extent `[lo hi]` along that

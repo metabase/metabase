@@ -90,11 +90,11 @@
     (try
       (doseq [[^double lat ^double lon] points
               :let [[world-x world-y] (mercator/latlon->world-px lat lon zoom)
-                    tile-pixel        {:x (mod (int (Math/floor (double world-x))) tile-size)
-                                       :y (mod (int (Math/floor (double world-y))) tile-size)}
+                    tile-x            (-> (double world-x) Math/floor int (mod tile-size))
+                    tile-y            (-> (double world-y) Math/floor int (mod tile-size))
                     ;; cx/cy is needed to put center of a pin at the tile-pixel position
-                    cx                (- (tile-pixel :x) pin-size-half)
-                    cy                (- (tile-pixel :y) pin-size-half)]]
+                    cx                (- tile-x pin-size-half)
+                    cy                (- tile-y pin-size-half)]]
         ;; now draw a "pin" at the given tile pixel location
         (.setColor graphics color-white)
         (.fillRect graphics cx cy pin-size pin-size)
