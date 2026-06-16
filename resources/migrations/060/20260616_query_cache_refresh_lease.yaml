@@ -3,7 +3,7 @@
 ## serve the stale cached result instead of all stampeding the data warehouse.
 ##
 ## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60 and
-## runs exactly once -- no per-version guards needed. Requires the triple-backport label.
+## runs exactly once -- no per-version guards needed.
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
