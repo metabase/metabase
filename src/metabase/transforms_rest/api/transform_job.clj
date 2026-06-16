@@ -312,7 +312,12 @@
    [:message [:maybe :string]]
    [:user_id [:maybe pos-int?]]
    [:transform_name {:optional true} [:maybe :string]]
-   [:transform_entity_id {:optional true} [:maybe :string]]])
+   [:transform_entity_id {:optional true} [:maybe :string]]
+   [:transform {:optional true} [:maybe :map]]
+   [:metered_as {:optional true} [:maybe :string]]
+   [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
+   [:checkpoint_lo_value {:optional true} [:maybe :string]]
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
 (api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
                                                   [:data [:sequential JobRunResponse]]
