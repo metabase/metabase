@@ -81,16 +81,18 @@
   UPDATE on `refresh_started_at`. Returns true iff this process won the lease (and so should recompute); false means
   another process is already refreshing it (and we should serve stale instead). A lease older than `lease-ms` is
   considered abandoned (e.g. the claimer crashed) and can be taken over.
-  
-  Updates the raw table, not the `:model/QueryCache` model: the model derives `:hook/updated-at-timestamped?`, whose
-  before-update hook would turn this into a non-atomic select-then-update-per-PK (losing the cross-process
-  single-flight guarantee) and bump `updated_at`, making a stale entry look fresh. The raw table keeps it a single
-  atomic conditional UPDATE that touches only `refresh_started_at`."
+
+  Updates the raw table, not the `:model/QueryCache` model: the model's `:hook/updated-at-timestamped?` before-update
+  hook makes toucan2 run a non-atomic SELECT-then-UPDATE-by-PK, which would move the conditional lease check into the
+  SELECT and let two processes both win. The raw table keeps this a single atomic conditional UPDATE; we set
+  `updated_at` ourselves in place of the hook."
   [query-hash lease-ms]
-  (pos? (t2/update! (t2/table-name :model/QueryCache)
-                    {:query_hash                                         query-hash
-                     [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
-                    {:refresh_started_at (t/offset-date-time)})))
+  (let [now (t/offset-date-time)]
+    (pos? (t2/update! (t2/table-name :model/QueryCache)
+                      {:query_hash                                         query-hash
+                       [:coalesce :refresh_started_at lease-free-sentinel] [:< (ms-ago lease-ms)]}
+                      {:refresh_started_at now
+                       :updated_at         now}))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
