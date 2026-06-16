@@ -5,9 +5,9 @@
   which problems landed on *this* turn (observables) plus the subscores as
   of the end of this turn (the prefix score).
 
-  Pure given the normalized struct and governance map. Observables are
-  derived directly from the normalized struct; the prefix score re-runs the
-  pure pipeline on each message prefix.
+  Pure. A turn's observables and its prefix score both come from the same
+  per-turn prefix-normalized struct, so they can't disagree about what the
+  agent knew by the end of the turn.
 
   Storage shape per assistant message:
 
@@ -218,23 +218,39 @@
     (vec (take-while (fn [r] (not (pos? (compare (sort-key r) target))))
                      messages))))
 
-(defn- prefix-score
-  "Run the pure pipeline on the message prefix ending at `assistant-row`
-  and return its persisted-shape score — `{:quality_score .. :subscores
-  {..}}` — restricted to that prefix.
+(defn- prefix-observables
+  "Observables attributable to the last assistant turn of `prefix`. Producers
+  run over the prefix (judging against only what was known by then, matching
+  the prefix subscores); the result is narrowed to that turn — earlier turns'
+  observables belong to their own prefixes."
+  [prefix]
+  (let [call-id->msg (build-call-id->msg-id prefix)
+        last-msg-id  (last-assistant-msg-id prefix)
+        produced     (concat
+                      (unproductive-search-observables prefix call-id->msg)
+                      (hallucinated-ref-observables    prefix call-id->msg)
+                      (tool-error-observables          prefix call-id->msg)
+                      (invalid-artifact-observables    prefix call-id->msg)
+                      (termination-observables         prefix last-msg-id))]
+    (into []
+          (comp (filter (fn [[msg-id _]] (= msg-id last-msg-id)))
+                (map second))
+          produced)))
 
-  Shares `governance` with the full-conversation computation so its
-  lookup cost is paid once. The slice tightens the entity sets to what is
-  *known* by the end of the prefix, which is what the prefix score is
-  meant to reflect."
+(defn- prefix-attribution
+  "Attribution payload for `assistant-row`. Runs the pipeline once on the
+  prefix ending at this row; that one struct feeds both the observables and
+  the subscores. Shares `governance` so its lookup is paid once."
   [messages governance assistant-row]
-  (let [prefix-msgs (prefix-up-to-row messages assistant-row)
-        normalized  (-> prefix-msgs
-                        extract/normalize
-                        temporal/derive)
-        metrics     (metrics/compute normalized governance)
-        subs        (subscores/compose metrics)]
-    (subscores/project-json metrics subs)))
+  (let [prefix  (-> (prefix-up-to-row messages assistant-row)
+                    extract/normalize
+                    temporal/derive)
+        metrics (metrics/compute prefix governance)
+        subs    (subscores/compose metrics)]
+    (merge
+     {:version     constants/quality-score-version
+      :observables (prefix-observables prefix)}
+     (subscores/project-json metrics subs))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Public surface
@@ -245,31 +261,18 @@
   `{message-id → attribution-map}` for assistant rows only; user rows have
   no entry (their `quality_attribution` stays NULL).
 
-  Each attribution map carries the version stamp, the observables
-  attributable to the turn, and the score (`quality_score` + `subscores`)
-  as of the end of the turn. The last assistant row's prefix score matches
-  the conversation-level score by construction.
+  Each attribution map carries the version stamp, the turn's observables, and
+  its score (`quality_score` + `subscores`) as of the end of the turn. The
+  last assistant row's prefix score matches the conversation-level score by
+  construction.
 
-  Pure. Cost is quadratic in the number of assistant turns (each prefix
-  re-extracts from scratch)."
+  Pure. Quadratic in the number of assistant turns (each prefix re-extracts)."
   [normalized governance]
-  (let [messages       (vec (:messages normalized))
-        call-id->msg   (build-call-id->msg-id normalized)
-        last-msg-id    (last-assistant-msg-id normalized)
-        observable-seq (concat
-                        (unproductive-search-observables normalized call-id->msg)
-                        (hallucinated-ref-observables    normalized call-id->msg)
-                        (tool-error-observables          normalized call-id->msg)
-                        (invalid-artifact-observables    normalized call-id->msg)
-                        (termination-observables         normalized last-msg-id))
-        by-msg         (group-by first observable-seq)]
+  (let [messages (vec (:messages normalized))]
     (into {}
-          (for [row   (assistant-rows normalized)
-                :let  [msg-id (:id row)]]
-            [msg-id (merge
-                     {:version     constants/quality-score-version
-                      :observables (mapv second (get by-msg msg-id []))}
-                     (prefix-score messages governance row))]))))
+          (for [row  (assistant-rows normalized)
+                :let [msg-id (:id row)]]
+            [msg-id (prefix-attribution messages governance row)]))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; REPL helpers

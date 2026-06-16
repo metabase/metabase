@@ -20,6 +20,12 @@
   ratio are treated as the same retrieval."
   0.5)
 
+(def max-scoreable-assistant-turns
+  "Assistant-turn ceiling for synchronous scoring. Past it, a conversation
+  gets a `too-long-to-score` sentinel rather than pay the quadratic per-turn
+  re-score on the response path."
+  100)
+
 ;;; ---------------------------------------------------------------------------
 ;;; Metric registry
 ;;; ---------------------------------------------------------------------------
@@ -82,4 +88,5 @@
   pipeline declines to score writes one of these and leaves `quality_score`
   NULL."
   {:pre-instrumentation "pre-instrumentation"
-   :extract-error       "extract-error"})
+   :extract-error       "extract-error"
+   :too-long            "too-long-to-score"})

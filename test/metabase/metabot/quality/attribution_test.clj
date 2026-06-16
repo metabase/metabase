@@ -152,6 +152,43 @@
                        (= "a1" (get-in o [:context :tool_call]))))
                 obs)))))
 
+(deftest hallucinated-ref-survives-later-discovery-on-its-own-turn-test
+  (testing "a card authored blind on an early turn keeps its hallucinated_ref
+            observable, and its grounded-source-share penalty, even after a later
+            turn discovers the card — the per-turn payload is prefix-scoped, so
+            observable and metric agree in sign and the later discovery cancels
+            the hallucination only at the conversation level"
+    (let [messages [(user-row {:id 1 :created-at 0})
+                    ;; turn 100: authors card 999 without ever having seen it
+                    (assistant-row
+                     {:id         100
+                      :created-at 1
+                      :tool-calls [{:call-id "a1" :function "construct_notebook_query"
+                                    :input  [{:type "card" :id 999}]}]
+                      :terminal-state "final_response"})
+                    (user-row {:id 2 :created-at 2})
+                    ;; turn 200: a later search surfaces card 999
+                    (assistant-row
+                     {:id         200
+                      :created-at 3
+                      :tool-calls [{:call-id "s1" :function "search"
+                                    :output [{:type "card" :id 999}]}]
+                      :terminal-state "final_response"})]
+          out      (attribution-for messages)]
+      (testing "the authoring turn retains the hallucinated_ref observable"
+        (is (some (fn [o] (and (= "hallucinated_ref" (:observation o))
+                               (= {:type "card" :id 999} (:entity o))))
+                  (observables-for-row out 100))))
+      (testing "and its grounded-source-share metric is penalized in agreement"
+        (is (= 0.0 (get-in (get out 100)
+                           [:subscores :data_source_quality :metrics :grounded_source_share]))))
+      (testing "the discovering turn carries no hallucinated_ref"
+        (is (empty? (filter #(= "hallucinated_ref" (:observation %))
+                            (observables-for-row out 200)))))
+      (testing "and its grounded-source-share has recovered"
+        (is (= 1.0 (get-in (get out 200)
+                           [:subscores :data_source_quality :metrics :grounded_source_share])))))))
+
 ;;; ---------------------------------------------------------------------------
 ;;; unproductive-search
 ;;; ---------------------------------------------------------------------------

@@ -287,6 +287,51 @@
               "the persisted extract-error sentinel conforms to the breakdown schema"))))))
 
 ;;; ---------------------------------------------------------------------------
+;;; Conversation-length guard
+;;; ---------------------------------------------------------------------------
+
+(defn- many-turn-messages
+  "A user row plus `n` instrumented assistant rows (each carries a
+  `terminal_state` part, so the conversation isn't pre-instrumentation)."
+  [n]
+  (into [{:id 1 :role :user :created_at 0
+          :data [{:role "user" :content "hi"}]}]
+        (for [i (range n)]
+          {:id         (+ 100 i)
+           :role       :assistant
+           :created_at (inc i)
+           :finished   true
+           :data       [{:type "data" :data-type "terminal_state"
+                         :version 1 :data {:reason "final_response"}}]})))
+
+(deftest compute-conversation-score-over-ceiling-writes-too-long-sentinel-test
+  (testing "a conversation past the assistant-turn ceiling routes to the
+            too-long-to-score sentinel instead of paying the quadratic per-turn
+            re-score on the response path"
+    (let [result (quality.core/compute-conversation-score
+                  (many-turn-messages (inc quality.constants/max-scoreable-assistant-turns)))]
+      (is (nil? (:quality_score result))
+          "too-long leaves the composite NULL")
+      (is (nil? (:quality_attribution result))
+          "no per-turn attribution is computed past the ceiling")
+      (is (= "too-long-to-score" (:unscoreable (:quality_breakdown result)))
+          "sentinel reason marks the row scored-but-skipped for the backfill task")
+      (is (nil? (mr/explain ::quality.schema/breakdown (:quality_breakdown result)))
+          "the persisted too-long sentinel conforms to the breakdown schema"))))
+
+(deftest compute-conversation-score-at-ceiling-is-scored-test
+  (testing "a conversation exactly at the ceiling is still scored — the guard
+            fires on strictly-greater-than, not at the boundary"
+    (let [result (quality.core/compute-conversation-score
+                  (many-turn-messages quality.constants/max-scoreable-assistant-turns))]
+      (is (some? (:quality_score result))
+          "exactly max turns is within budget and gets a real composite")
+      (is (nil? (:unscoreable (:quality_breakdown result)))
+          "a full breakdown is written, not a too-long sentinel")
+      (is (some? (:quality_attribution result))
+          "per-turn attribution is still computed at the ceiling"))))
+
+;;; ---------------------------------------------------------------------------
 ;;; Safety guards
 ;;; ---------------------------------------------------------------------------
 

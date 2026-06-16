@@ -8,7 +8,8 @@
 
   Conversations that carry neither prompt context nor any tool
   entity-usage get a `pre-instrumentation` sentinel; conversations that throw
-  inside extract get an `extract-error` sentinel."
+  inside extract get an `extract-error` sentinel; conversations past the
+  assistant-turn ceiling get a `too-long-to-score` sentinel."
   (:require
    [metabase.metabot.quality.attribution :as attribution]
    [metabase.metabot.quality.constants :as quality.constants]
@@ -70,6 +71,22 @@
   (and (not (has-entity-usage? normalized))
        (not (has-prompt-context? normalized))
        (not (temporal/instrumented? normalized))))
+
+;;; ---------------------------------------------------------------------------
+;;; Conversation-length guard
+;;; ---------------------------------------------------------------------------
+
+(defn- assistant-turn-count
+  "Number of assistant rows — the unit per-turn scoring cost is quadratic in."
+  [normalized]
+  (count (filter #(= :assistant (:role %)) (:messages normalized))))
+
+(defn- too-long?
+  "True once assistant turns exceed
+  [[quality.constants/max-scoreable-assistant-turns]]."
+  [normalized]
+  (> (assistant-turn-count normalized)
+     quality.constants/max-scoreable-assistant-turns))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Entity-ref harvesting (for the batched governance lookup)
@@ -141,6 +158,9 @@
     no `:quality_attribution` (assistant rows stay NULL).
   - **Extract error** — sentinel breakdown, `quality_score = nil`,
     no `:quality_attribution`.
+  - **Too long** — assistant turns over
+    [[quality.constants/max-scoreable-assistant-turns]]; sentinel breakdown,
+    `quality_score = nil`, no `:quality_attribution`.
   - **Real score** — composite `:quality_score`, full
     `:quality_breakdown`, and `:quality_attribution` keyed by assistant
     message id."
@@ -157,6 +177,10 @@
       (pre-instrumentation? normalized)
       {:quality_score     nil
        :quality_breakdown (sentinel-breakdown (:pre-instrumentation quality.constants/unscoreable-reasons))}
+
+      (too-long? normalized)
+      {:quality_score     nil
+       :quality_breakdown (sentinel-breakdown (:too-long quality.constants/unscoreable-reasons))}
 
       :else
       (run-pipeline normalized))))
