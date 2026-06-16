@@ -122,6 +122,30 @@ See [Database routing](../../permissions/database-routing.md).
 
 See [Danger zone](../danger-zone.md).
 
+## Redshift datashares
+If you're using Amazon Redshift datashares, Metabase may not automatically show shared schemas and tables until you expose the datashare in the consumer cluster as an external schema and grant the Metabase database user access to that schema.
+
+### Assumptions:
+
+- A datashare has been created from the producer cluster or namespace to the consumer cluster or namespace.
+- A database has been created in the consumer cluster or namespace from the datashare.
+- In the consumer cluster or namespace, create an external schema that maps to the shared schema:
+
+```
+CREATE EXTERNAL SCHEMA {schema name for consumer cluster/namespace}
+FROM REDSHIFT DATABASE {external database created from datashare}
+SCHEMA {schema name in datashare};
+```
+
+Then grant usage on that external schema to the user or group that Metabase uses to connect to Redshift:
+
+```
+GRANT USAGE ON SCHEMA {schema name for consumer cluster/namespace}
+TO GROUP {group that is used to connect to consumer cluster/namespace in Metabase};
+```
+
+After creating the external schema and granting access, re-sync the database schema in Metabase.
+
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
