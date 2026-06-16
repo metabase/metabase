@@ -142,6 +142,7 @@
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
    "SupportAccessGrantLog"
+   "TableIndex"
    "TableRemapping"
    "TaskHistory"
    "TaskRun"
