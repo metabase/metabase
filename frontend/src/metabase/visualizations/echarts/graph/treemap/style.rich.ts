@@ -83,14 +83,12 @@ export function getRichUpperLabel({
         color: textPrimary,
         fontSize: groupHeader.fontSize,
         fontWeight: groupHeader.fontWeight,
-        // Gap between the name column and the value.
         padding: [0, 0, 0, PARENT_HEADER_VALUE_PERCENT_GAP],
       },
       pct: {
         color: textSecondary,
         fontSize: groupHeader.fontSize,
         fontWeight: groupHeader.percentFontWeight,
-        // Gap between the value and the percentage.
         padding: [0, 0, 0, groupHeader.valuePercentGap],
       },
     },
@@ -102,5 +100,18 @@ function getHeaderFormatter(
   valueLabel: string,
   percentLabel: string,
 ) {
-  return `{name|${displayName}}{value|${valueLabel}}{pct|${percentLabel}}`;
+  return `{name|${sanitizeRichTextContent(displayName)}}{value|${sanitizeRichTextContent(valueLabel)}}{pct|${sanitizeRichTextContent(percentLabel)}}`;
+}
+
+export function getLeafFormatter(
+  name: string,
+  valueLabel: string,
+  percentLabel: string,
+): string {
+  return `{name|${sanitizeRichTextContent(name)}}\n{value|${sanitizeRichTextContent(valueLabel)}}\n{pct|${sanitizeRichTextContent(percentLabel)}}`;
+}
+
+// characters {}| are part of the echarts rich template syntax
+export function sanitizeRichTextContent(text: string): string {
+  return text.replace(/[{}|]/g, "");
 }

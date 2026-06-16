@@ -20,7 +20,11 @@ import {
   getGroupHeaderBgTint,
   groupHeader,
 } from "../style";
-import { getRichLeafLabel, getRichUpperLabel } from "../style.rich";
+import {
+  getLeafFormatter,
+  getRichLeafLabel,
+  getRichUpperLabel,
+} from "../style.rich";
 
 type TreemapChartSeriesOption = TreemapSeriesOption & {
   type: "treemap";
@@ -255,16 +259,6 @@ function toLeafSeriesNode({
   };
 }
 
-const formatters = {
-  getLeafFormatter(
-    name: string,
-    valueLabel: string,
-    percentLabel: string,
-  ): string {
-    return `{name|${name}}\n{value|${valueLabel}}\n{pct|${percentLabel}}`;
-  },
-};
-
 function getItemStyle({
   groupColor,
   groupTint,
@@ -335,7 +329,7 @@ function getTileLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
-        formatter: formatters.getLeafFormatter(
+        formatter: getLeafFormatter(
           displayName,
           formatValue(value),
           getLeafPercentLabel({
