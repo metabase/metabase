@@ -307,15 +307,15 @@
          measure-ids (into #{} (mapcat all-measure-ids) queries)
          segment-ids (into #{} (mapcat all-segment-ids) queries)
          all-card-ids (set/union source-card-ids template-tag-card-ids)
-         all-field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
+         field-ids (set/union implicitly-joined-field-ids template-tag-field-ids)
          all-field-table-ids (if (seq queries)
-                               (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids)
+                               (->> (lib.metadata/bulk-metadata (first queries) :metadata/column field-ids)
                                     (into #{} (keep :table-id)))
                                #{})
-         implicitly-joinable-table-ids (if (and include-implicitly-joinable? (seq queries))
-                                         (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids)
-                                         #{})]
-     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids implicitly-joinable-table-ids)
+         joinable-table-ids (if (and include-implicitly-joinable? (seq queries))
+                              (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids)
+                              #{})]
+     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids joinable-table-ids)
       :card all-card-ids
       :metric metric-ids
       :measure measure-ids
