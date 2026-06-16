@@ -351,7 +351,7 @@
           ;; a deleted file we can't map back to a tracked entity — can't safely remove it
           incremental-fallback
           (let [ingestable  (when (seq add-mod)
-                              (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
+                              (source.p/->ingestable snapshot {:path-filters (exact-path-filters add-mod)}))
                 add-models  (if ingestable
                               (into #{} (map #(:model (last %))) (serialization/ingest-list ingestable))
                               #{})
@@ -391,16 +391,11 @@
                   (when ingestable
                     (record-exported-paths! (source.ingestable/cached-file-paths ingestable)))
                   (when finalize! (finalize!)))
-                ;; We skipped the whole-appdb reindex; update the search index for just the changed
-                ;; entities so it stays consistent at a cost proportional to the change. Runs after the
-                ;; reconcile commits so the index reflects committed state.
+                ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
+                ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
+                ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
                 (doseq [{:keys [model-key model_id]} deletes]
                   (search/delete! model-key [model_id]))
-                (doseq [{:keys [model_type model_id]} sync-rows
-                        :let [model-key (:model-key (spec/spec-for-model-type model_type))
-                              instance  (when model-key (t2/select-one model-key :id model_id))]
-                        :when instance]
-                  (search/update! instance))
                 (remote-sync.task/update-progress! task-id 0.95)
                 imported-data))))))))
 

@@ -30,6 +30,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
    [metabase.search.core :as search]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -104,15 +105,18 @@
   resulting state is identical. `f0`/`f1` are {path content} trees. Returns the path the under-test import
   took (:incremental or :fallback) so the caller can assert the v1 scope boundary."
   [f0 f1]
-  (let [src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
-    (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
-    (is (= :success (:status (import-at! src "v1" :force? true))) "oracle full import of v1 succeeds")
-    (let [oracle (state-vector)]
-      (is (= :success (:status (import-at! src "v0" :force? true))) "reset back to v0 succeeds")
-      (let [[result path] (import-v1-under-test! src)]
-        (is (= :success (:status result)) "under-test import of v1 succeeds")
-        (assert-equivalent oracle (state-vector))
-        path))))
+  ;; These scenarios assert DB/RSO/setting/version equivalence, not search — disable index maintenance so
+  ;; their (async) search ingestion can't bleed into the search-index integration test in this namespace.
+  (search.tu/with-index-disabled
+    (let [src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
+      (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
+      (is (= :success (:status (import-at! src "v1" :force? true))) "oracle full import of v1 succeeds")
+      (let [oracle (state-vector)]
+        (is (= :success (:status (import-at! src "v0" :force? true))) "reset back to v0 succeeds")
+        (let [[result path] (import-v1-under-test! src)]
+          (is (= :success (:status result)) "under-test import of v1 succeeds")
+          (assert-equivalent oracle (state-vector))
+          path)))))
 
 (defn- do-with-bench!
   "Sets up a remote-synced `Bench` collection with cards A and B, then calls `f` with the V0 tree
@@ -182,20 +186,44 @@
 (deftest incremental-search-update-only-changed-test
   (testing "GHY-3779: an incremental edit re-indexes only the changed entity (we skip the full reindex),
             keeping search-index cost proportional to the change"
-    (do-with-bench!
-     (fn [f0]
-       (let [a-eid   (second (re-find #"entity_id: (\S+)" (get f0 (path-with f0 "card_a"))))
-             b-path  (path-with f0 "card_b")
-             b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
-             f1      (update f0 b-path str/replace "display: table" "display: line")
-             src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
-             indexed (atom #{})]
-         (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
-         (with-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
-                       search/delete! (fn [& _] nil)]
-           (import-at! src "v1"))                        ; incremental edit of card_b only
-         (is (contains? @indexed b-eid) "the edited card is re-indexed")
-         (is (not (contains? @indexed a-eid)) "the unchanged card is NOT re-indexed"))))))
+    ;; Index maintenance is disabled so the (un-stubbed) baseline reindex can't bleed into the
+    ;; search-index integration test; the with-redefs recorder still captures the hook's update! call.
+    (search.tu/with-index-disabled
+      (do-with-bench!
+       (fn [f0]
+         (let [a-eid   (second (re-find #"entity_id: (\S+)" (get f0 (path-with f0 "card_a"))))
+               b-path  (path-with f0 "card_b")
+               b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
+               f1      (update f0 b-path str/replace "display: table" "display: line")
+               src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
+               indexed (atom #{})]
+           (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
+           (with-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
+                         search/delete! (fn [& _] nil)]
+             (import-at! src "v1"))                        ; incremental edit of card_b only
+           (is (contains? @indexed b-eid) "the edited card is re-indexed")
+           (is (not (contains? @indexed a-eid)) "the unchanged card is NOT re-indexed")))))))
+
+(deftest incremental-delete-removes-from-search-index-test
+  (testing "GHY-3779: a remote delete must explicitly remove the entity from the search index — unlike
+            updates (handled by the load's after-insert/after-update hooks), there is no after-delete
+            hook, so the incremental path calls search/delete! for each removed entity."
+    ;; Asserted at the call level (search/delete! invoked with the right model + id); the live appdb index
+    ;; isn't queried here because its tracking state is order-sensitive across tests in a shared JVM.
+    (search.tu/with-index-disabled
+      (do-with-bench!
+       (fn [f0]
+         (let [b-path  (path-with f0 "card_b")
+               b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
+               f1      (dissoc f0 b-path)
+               src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
+               deleted (atom [])]
+           (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
+           (let [b-id (t2/select-one-pk :model/Card :entity_id b-eid)]
+             (with-redefs [search/delete! (fn [model ids] (swap! deleted conj [model (vec ids)]))]
+               (import-at! src "v1"))                      ; incremental delete of card_b
+             (is (some (fn [[model ids]] (and (= :model/Card model) (some #{b-id} ids))) @deleted)
+                 "the removed card is deleted from the search index by id"))))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old
