@@ -3163,6 +3163,17 @@
    :uses #{premium-features
            settings}}
 
+  enterprise/index-manager
+  {:team "Graphy"
+   :api  #{metabase-enterprise.index-manager.api
+           metabase-enterprise.index-manager.core
+           metabase-enterprise.index-manager.init}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/IndexRequest}
+   :model-imports #{:model/Transform}}
+
   enterprise/library
   {:team "UX West"
    :api  #{metabase-enterprise.library.api}

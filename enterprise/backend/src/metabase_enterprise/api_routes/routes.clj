@@ -26,6 +26,7 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.index-manager.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
@@ -128,6 +129,7 @@
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)
                                        (premium-handler :etl-connections))
+   "/index-manager"                (premium-handler metabase-enterprise.index-manager.api/routes :transforms-python)
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)

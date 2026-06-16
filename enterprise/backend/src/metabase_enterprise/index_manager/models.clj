@@ -1,4 +1,4 @@
-(ns metabase.transforms.models.index-request
+(ns metabase-enterprise.index-manager.models
   "The `metabase_index_request` model: index/clustering hints declared on a transform target table.
 
   Each request binds to a transform (`:transform_id`), carries a structured index definition validated against
@@ -92,7 +92,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defn- keywordize-structured
+(defn keywordize-structured
   "JSON storage flattens the structured map's keyword-valued fields to strings; turn them back into keywords so a
   driver can dispatch on `:kind` (and friends)."
   [structured]
@@ -112,15 +112,23 @@
   {:structured transform-structured
    :status     mi/transform-keyword})
 
+(defn validate-structured!
+  "Validate a structured index map against [[index-structured]], throwing a 400 on failure. Returns the keywordized
+  map so callers can store a normalized value."
+  [structured]
+  (let [structured (keywordize-structured structured)]
+    (when-not (mr/validate ::index-structured structured)
+      (throw (ex-info "Invalid index request structured definition"
+                      {:status-code 400
+                       :structured  structured
+                       :errors      (mr/explain ::index-structured structured)})))
+    structured))
+
 (defn- validate-request!
   [{:keys [structured status]}]
-  (when (seq structured)
-    (let [structured (keywordize-structured structured)]
-      (when-not (mr/validate ::index-structured structured)
-        (throw (ex-info "Invalid index request structured definition"
-                        {:structured structured, :explanation (mr/explain ::index-structured structured)})))))
+  (when (seq structured) (validate-structured! structured))
   (when (and status (not (contains? statuses (keyword status))))
-    (throw (ex-info "Invalid index request status" {:status status, :allowed statuses}))))
+    (throw (ex-info "Invalid index request status" {:status-code 400, :status status, :allowed statuses}))))
 
 (t2/define-before-insert :model/IndexRequest [req] (validate-request! req) req)
 (t2/define-before-update :model/IndexRequest [req] (validate-request! (t2/changes req)) req)
