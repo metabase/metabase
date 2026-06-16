@@ -237,6 +237,7 @@
                                                                         :metricId    5}}}}})]
     (is (str/includes? body (str "/" "/ Display name: Payment Method")))
     (is (str/includes? body (str "/" "/ Semantic type: type/Category")))
+    (is (not (str/includes? body (str "/" "/ id: 3970"))))
     (is (str/includes? body "paymentMethod: {\n          name: \"payment_method\""))
     (is (str/includes? body "fieldId: 3970"))
     (is (str/includes? body "tableId: 10"))
