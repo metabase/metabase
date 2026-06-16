@@ -76,6 +76,32 @@ describe("scenarios > embedding-sdk > custom visualizations", () => {
     });
   });
 
+  it("allows selecting the custom visualization from the chart type dropdown", () => {
+    cy.get<number>("@defaultDisplayQuestionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+        sdkProviderProps: {
+          allowedCustomVisualizations: [CUSTOM_VIZ_IDENTIFIER],
+        },
+      });
+    });
+
+    getSdkRoot().within(() => {
+      cy.log("The default visualization renders first");
+      cy.findByText("18,760").should("be.visible");
+      cy.findByText("Custom viz rendered successfully").should("not.exist");
+
+      cy.log("The custom viz is listed in the chart type dropdown");
+      cy.findByTestId("chart-type-selector-button").click();
+      cy.findByRole("listbox").within(() => {
+        cy.findByText(CUSTOM_VIZ_IDENTIFIER).click();
+      });
+
+      cy.log("Selecting it renders the custom visualization");
+      cy.findByText("Custom viz rendered successfully").should("be.visible");
+      cy.findByText(/Value: \d+/).should("be.visible");
+    });
+  });
+
   it("falls back to the default visualization when the prop is omitted", () => {
     cy.get<number>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
