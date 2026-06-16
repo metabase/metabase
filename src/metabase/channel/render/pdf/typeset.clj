@@ -370,6 +370,7 @@
 
 (defmulti ^:private block-height
   "Vertical points a block consumes when laid out at `scale` (mirrors `draw-block!`)."
+  {:arglists '([block cell-w scale])}
   (fn [block _cell-w _scale]
     (:kind block)))
 
