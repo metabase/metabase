@@ -17,10 +17,6 @@ describe(
       cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
         "persistDatabase",
       );
-      // The picker popover's final load step fetches the saved-questions database
-      // (the only `saved=true` call in this flow); waiting on it lets the option list
-      // settle before we click, instead of clicking into a mid-load re-render.
-      cy.intercept("GET", "/api/database?*saved=true*").as("databasesLoaded");
 
       H.restore("postgres-12");
       cy.signInAsAdmin();
@@ -119,11 +115,18 @@ describe(
     it("selecting a database in native editor for model actions should not persist the database", () => {
       [SAMPLE_DB_ID, PG_DB_ID].forEach(enableModelActionsForDatabase);
 
+      // A leaked `last-used-native-database-id` (from a previous test, or a previous
+      // iteration in a stress run) is applied asynchronously right after the action
+      // editor auto-opens the database picker: it selects that database and closes the
+      // popover just as we click an option, detaching it ("the page updated while this
+      // command was executing"). Reset it so the action editor deterministically starts
+      // with no database selected.
+      H.updateSetting("last-used-native-database-id", null);
+
       cy.visit("/");
       H.startNewAction();
       assertNoDatabaseSelected();
 
-      cy.wait("@databasesLoaded");
       selectDatabase("Sample Database");
       cy.get("@persistDatabase").should("be.null");
 
@@ -132,13 +135,11 @@ describe(
       cy.log(
         "Persisting a database for a native model should not affect actions",
       );
-      cy.wait("@databasesLoaded");
       selectDatabase(postgresName);
       cy.wait("@persistDatabase");
 
       cy.visit("/");
       H.startNewAction();
-      cy.wait("@databasesLoaded");
       assertNoDatabaseSelected();
     });
 
@@ -385,11 +386,6 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
-  // The picker popover auto-opens and fetches the database list, which flips the
-  // dropdown through a loading -> loaded re-render (and a floating-ui reposition).
-  // Wait for the option to settle, then re-query the popover for the click so a
-  // mid-load re-render can't detach the node we're about to click.
-  H.popover().findByText(database).should("be.visible");
   H.popover().findByText(database).click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
