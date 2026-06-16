@@ -6,7 +6,7 @@ databaseChangeLog:
 
   - changeSet:
       id: v63.2026-06-16T00:00:00
-      author: alexpolyankin
+      author: ranquild
       comment: Add query_cache.refresh_started_at as a cross-process refresh lease for stale-while-revalidate caching
       changes:
         - addColumn:
