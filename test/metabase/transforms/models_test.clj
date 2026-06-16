@@ -380,6 +380,7 @@
                      :model/TransformJobRun {job-run-id :id} {:job_id     job-id
                                                               :status     "started"
                                                               :run_method "cron"
+                                                              :start_time #t "2025-09-01T10:00:00Z"
                                                               :is_active  true}
                      :model/Transform {transform-id :id} {}]
         (let [run (transform-run/start-run! transform-id {:run_method "cron"
@@ -397,14 +398,14 @@
                                                          :start_time #t "2025-09-02T10:00:00Z"}
                      :model/TransformJobRun _ {:job_id j2-id :status "succeeded" :run_method "cron"
                                                :start_time #t "2025-09-03T10:00:00Z"}]
-        (let [result (#'metabase.transforms.models.job-run/paged-job-runs {:job-id j1-id})]
+        (let [result (transforms.job-run/paged-job-runs {:job-id j1-id})]
           (is (= #{r1-id r2-id} (into #{} (map :id) (:data result))))
           (is (= 2 (:total result))))
         (testing "filters by status"
-          (let [result (#'metabase.transforms.models.job-run/paged-job-runs {:job-id j1-id :status "failed"})]
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :status "failed"})]
             (is (= [r2-id] (map :id (:data result))))
             (is (= 1 (:total result)))))
         (testing "honors offset/limit"
-          (let [result (#'metabase.transforms.models.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
             (is (= 1 (count (:data result))))
             (is (= 2 (:total result)))))))))
