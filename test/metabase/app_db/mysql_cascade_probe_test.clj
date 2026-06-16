@@ -120,7 +120,7 @@
     (teardown! ids)
     result))
 
-(deftest ^:mb/driver-tests mysql-cascade-reach-probe-test
+(deftest mysql-cascade-reach-probe-test
   (when (= :mysql (mdb/db-type))
     (let [facts   (server-facts)
           rules   (fk-delete-rules)
