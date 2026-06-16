@@ -16,13 +16,13 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
@@ -74,46 +74,61 @@
    ;; remapped label for a single selected value)
    [:exact-value {:optional true} :any]])
 
-(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :keys [id], :as _card} :- [:and
-                                                     :metabase.queries.schema/card
-                                                     [:map
-                                                      [:id ::lib.schema.id/card]]]
-   field-ref                                    :- [:or :mbql.clause/field :mbql.clause/expression]
-   {:keys [query-string label-field exact-value] :as _opts} :- [:maybe ::values-from-card-query.options]]
+(defn- card-query
+  [{query :dataset_query, :keys [id], :as _card}]
   (when (seq query)
-    ;; start a new query using this Card as a starting point
-    (let [query (lib/query query (lib.metadata/card query id))]
-      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
-                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
-                                                id))]
-        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
-                                               id
-                                               (pr-str field-ref)
-                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
-          (let [label-column (when label-field
+    (lib/query query (lib.metadata/card query id))))
+
+(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
+  [{:keys [id], :as card} :- [:and
+                              :metabase.queries.schema/card
+                              [:map
+                               [:id ::lib.schema.id/card]]]
+   field-ref              :- [:or :mbql.clause/field :mbql.clause/expression]
+   {:keys [query-string label-field exact-value] :as _opts} :- [:maybe ::values-from-card-query.options]]
+  (when-let [query (card-query card)]
+    (when-let [visible-columns (or (not-empty (lib/visible-columns query))
+                                   (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
+                                              id))]
+      (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
+                                  (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
+                                             id
+                                             (pr-str field-ref)
+                                             (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+        (let [label-column   (when label-field
                                (or (lib/find-matching-column query -1 label-field visible-columns)
                                    (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
                                               id
                                               (pr-str label-field))))
-                textual?     (lib.types.isa/string? value-column)
-                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-                query-filter (cond
-                               (some? exact-value) (lib/= value-column exact-value)
-                               query-string        (if textual?
-                                                     (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                                                     (lib/= value-column query-string)))]
-            (-> query
-                (lib/limit *max-rows*)
-                (lib/filter nonempty)
-                (cond-> query-filter (lib/filter query-filter))
-                (lib/breakout value-column)
-                ;; add the label as a second breakout so each row is a [value label] pair
-                (cond-> label-column (lib/breakout label-column))
-                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-                ;; "internal" query in the BE.
-                (assoc-in [:middleware :disable-remaps?] true))))))))
+              search-column   (or label-column value-column)
+              value-textual?  (lib.types.isa/string? value-column)
+              search-textual? (lib.types.isa/string? search-column)
+              nonempty        ((if value-textual? lib/not-empty lib/not-null) value-column)
+              query-filter    (cond
+                                (some? exact-value) (lib/= value-column exact-value)
+                                query-string        (if search-textual?
+                                                      (lib/ignore-case (lib/contains search-column query-string))
+                                                      (lib/= search-column query-string)))]
+          (-> query
+              (lib/limit *max-rows*)
+              (lib/filter nonempty)
+              (cond-> query-filter (lib/filter query-filter))
+              (lib/breakout value-column)
+              ;; add the label as a second breakout so each row is a [value label] pair
+              (cond-> label-column (lib/breakout label-column))))))))
+
+(defn- result->rows
+  "Extract rows from a QP result, dropping values for any display columns the QP injected for
+  remapped breakouts. Those columns are referenced by a `:remapped_to` entry on their source
+  column; when none are present the raw rows are returned as-is."
+  [result]
+  (let [cols       (get-in result [:data :cols])
+        rows       (get-in result [:data :rows])
+        drop-names (into #{} (keep :remapped_to) cols)]
+    (if (empty? drop-names)
+      rows
+      (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
+        (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -135,10 +150,10 @@
   ([card      :- :metabase.queries.schema/card
     field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
     opts      :- [:maybe ::values-from-card-query.options]]
-   (let [mbql-query   (values-from-card-query card field-ref opts)
-         result       (some-> mbql-query qp/process-query)
-         values       (get-in result [:data :rows])]
-     {:values         (or values [])
+   (let [mbql-query (values-from-card-query card field-ref opts)
+         result     (some-> mbql-query qp/process-query)
+         values     (some-> result result->rows)]
+     {:values          (or values [])
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))
@@ -158,9 +173,9 @@
   [card value-field]
   (boolean
    (and (not (:archived card))
-        ;; existing usage -- do not use this in new code
-        #_{:clj-kondo/ignore [:deprecated-var]}
-        (some? (qp.util/field->field-info value-field (:result_metadata card))))))
+        (when-let [query (card-query card)]
+          (some? (lib/find-matching-column query -1 (lib/->mbql5 value-field)
+                                           (lib/visible-columns query)))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 

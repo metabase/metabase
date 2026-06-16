@@ -26,7 +26,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
 
   :hover {
     color: ${(props) =>
-      color((!props.disabled && props.hoverColor) || "brand")};
+      color((!props.disabled && props.hoverColor) || "core-brand")};
     background-color: ${(props) =>
       !props.disabled && props.hoverBgColor
         ? color(props.hoverBgColor)
@@ -41,7 +41,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
 
   :hover > .Icon {
     color: ${(props) =>
-      color((!props.disabled && props.hoverColor) || "brand")};
+      color((!props.disabled && props.hoverColor) || "core-brand")};
   }
 `;
 

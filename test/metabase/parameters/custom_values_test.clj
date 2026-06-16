@@ -2,6 +2,8 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.custom-values-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -52,6 +54,22 @@
                 card
                 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :id)]
                 {:label-field [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} (mt/id :venues :name)]})))))))
+
+(deftest ^:parallel search-by-label-field-test
+  (testing "query-string with a label-field filters by the label, not the value"
+    (mt/with-temp
+      [:model/Card card (merge (mt/card-with-source-metadata-for-query (mt/mbql-query venues))
+                               {:database_id (mt/id)
+                                :type        :question
+                                :table_id    (mt/id :venues)})]
+      (let [{:keys [values]} (custom-values/values-from-card
+                              card
+                              [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :venues :id)]
+                              {:query-string "bakery"
+                               :label-field  [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                              (mt/id :venues :name)]})]
+        (is (seq values))
+        (is (every? (fn [[_id label]] (re-find #"(?i)bakery" label)) values))))))
 
 (deftest ^:parallel with-mbql-card-test-2
   (testing "source card is a model" ; Models are opaque, so this sees the post-aggregation columns.
@@ -353,6 +371,32 @@
                     nil
                     (constantly mock-default-result))))))))))
 
+(deftest ^:parallel parameter->values-join-aliased-value-field-test
+  (let [mp (mt/metadata-provider)
+        venue-table (lib.metadata/table mp (mt/id :venues))
+        categories-table (lib.metadata/table mp (mt/id :categories))
+        venue-category-id (lib.metadata/field mp (mt/id :venues :category_id))
+        category-id (lib.metadata/field mp (mt/id :categories :id))
+        query (-> (lib/query mp venue-table)
+                  (lib/join (lib/join-clause categories-table
+                                             [(lib/= venue-category-id category-id)])))]
+    (binding [custom-values/*max-rows* 3]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id} (mt/card-with-source-metadata-for-query query)]
+          (is (= {:has_more_values true
+                  :values          [["American"] ["Artisan"] ["Asian"]]}
+                 (custom-values/parameter->values
+                  {:name                 "Category name"
+                   :slug                 "category_name"
+                   :id                   (str (random-uuid))
+                   :type                 :string/=
+                   :values_query_type    :list
+                   :values_source_type   :card
+                   :values_source_config {:card_id     card-id
+                                          :value_field [:field "Categories__NAME" {:base-type :type/Text}]}}
+                  nil
+                  (fn [] (throw (ex-info "Couldn't get parameter values unexpectedly" {})))))))))))
+
 (deftest ^:parallel parameter->values-with-label-field-test
   ;; bind to an admin to bypass the permissions check
   (mt/with-current-user (mt/user->id :crowberto)
@@ -416,6 +460,71 @@
                    1
                    (fn [] (throw (ex-info "Shouldn't call this function" {}))))))))))
 
+(deftest ^:parallel values-from-card-external-remapping-test
+  (testing "remapped breakouts are stripped from the result, leaving only the requested columns in the requested order"
+    (mt/dataset test-data
+      (mt/with-column-remappings [orders.user_id    people.name
+                                  orders.product_id products.title]
+        (binding [custom-values/*max-rows* 3]
+          (mt/with-temp
+            [:model/Card card (mt/card-with-source-metadata-for-query (mt/mbql-query orders))]
+            (let [user-id-ref       (lib/ensure-uuid [:field {} (mt/id :orders :user_id)])
+                  people-name-ref   (lib/ensure-uuid [:field {} (mt/id :people :name)])
+                  product-title-ref (lib/ensure-uuid [:field {} (mt/id :products :title)])]
+              (testing "value-field is a remapped FK with no label"
+                (is (= {:has_more_values true
+                        :values          [[2210] [624] [276]]}
+                       (custom-values/values-from-card card user-id-ref))))
+              (testing "value-field is a remapped FK, label-field is its remap target"
+                (is (= {:has_more_values true
+                        :values          [[2210 "Abbey Satterfield"]
+                                          [624 "Abbie Parisian"]
+                                          [276 "Abbie Ryan"]]}
+                       (custom-values/values-from-card card user-id-ref {:label-field people-name-ref}))))
+              (testing "value-field and label-field are remap targets reached via different FKs"
+                (is (= {:has_more_values true
+                        :values          [["Abbey Satterfield" "Aerodynamic Leather Toucan"]
+                                          ["Abbey Satterfield" "Awesome Plastic Watch"]
+                                          ["Abbey Satterfield" "Enormous Cotton Pants"]]}
+                       (custom-values/values-from-card card people-name-ref {:label-field product-title-ref})))))))))))
+
+(deftest ^:parallel parameter-remapped-value-external-remapping-test
+  (testing "parameter-remapped-value returns the [value label] pair for a single value when breakouts are remapped"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-column-remappings [orders.user_id    people.name
+                                    orders.product_id products.title]
+          (binding [custom-values/*max-rows* 3]
+            (mt/with-temp
+              [:model/Card card (mt/card-with-source-metadata-for-query (mt/mbql-query orders))]
+              (let [raise (fn [] (throw (ex-info "Shouldn't call this function" {})))]
+                (testing "value-field is a remapped FK, label-field is its remap target"
+                  (is (= [2210 "Abbey Satterfield"]
+                         (custom-values/parameter-remapped-value
+                          {:name                 "Card as source"
+                           :slug                 "card"
+                           :id                   "_CARD_"
+                           :type                 :category
+                           :values_source_type   :card
+                           :values_source_config {:card_id     (:id card)
+                                                  :value_field (mt/$ids $orders.user_id)
+                                                  :label_field (mt/$ids $people.name)}}
+                          2210
+                          raise))))
+                (testing "value-field and label-field are remap targets reached via different FKs"
+                  (is (= ["Abbey Satterfield" "Aerodynamic Leather Toucan"]
+                         (custom-values/parameter-remapped-value
+                          {:name                 "Card as source"
+                           :slug                 "card"
+                           :id                   "_CARD_"
+                           :type                 :category
+                           :values_source_type   :card
+                           :values_source_config {:card_id     (:id card)
+                                                  :value_field (mt/$ids $orders.user_id->people.name)
+                                                  :label_field (mt/$ids $orders.product_id->products.title)}}
+                          "Abbey Satterfield"
+                          raise))))))))))))
+
 (deftest ^:parallel order-by-aggregation-fields-test
   (testing "Values could be retrieved for queries containing ordering by aggregation (#46369)"
     (doseq [model? [true false]]
@@ -436,7 +545,7 @@
                   card
                   [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} (mt/id :products :category)]))))))))
 
-(deftest pk-of-fk-pk-field-ids-test
+(deftest ^:parallel pk-of-fk-pk-field-ids-test
   (testing "single group"
     (testing "with PK"
       (is (= (mt/id :products :id)
@@ -466,7 +575,9 @@
       (is (= (mt/id :products :id)
              (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                    (mt/id :orders :product_id)
-                                                   (mt/id :orders :product_id)])))))
+                                                   (mt/id :orders :product_id)]))))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-2
   (testing "two groups"
     (testing "both with PKs"
       (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
@@ -482,7 +593,9 @@
     (testing "none with PK"
       (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                       (mt/id :reviews :product_id)
-                                                      (mt/id :orders :user_id)])))))
+                                                      (mt/id :orders :user_id)]))))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-3
   (testing "single group with PK plus other field"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
@@ -495,7 +608,9 @@
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
                                                      (mt/id :products :id)
-                                                     -1}))))
+                                                     -1})))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-4
   (testing "single group without PK plus other field"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :orders :product_id)
                                                     (mt/id :reviews :product_id)
@@ -505,8 +620,12 @@
                                                      Integer/MAX_VALUE})))
     (is (nil? (custom-values/pk-of-fk-pk-field-ids #{(mt/id :orders :product_id)
                                                      (mt/id :reviews :product_id)
-                                                     -1}))))
+                                                     -1})))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-5
   (testing "just a PK"
-    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :products :id)]))))
+    (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :products :id)])))))
+
+(deftest ^:parallel pk-of-fk-pk-field-ids-test-6
   (testing "just a non-key"
     (is (nil? (custom-values/pk-of-fk-pk-field-ids [(mt/id :people :name)])))))

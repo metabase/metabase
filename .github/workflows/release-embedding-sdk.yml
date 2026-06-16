@@ -94,6 +94,7 @@ jobs:
         "test",
         "build-sdk",
         "publish-npm",
+        "tag-latest",
         "git-tag",
       ]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -387,7 +388,7 @@ jobs:
       # Trusted publishing requires npm >= 11.5.1 and Node >= 22.14.0.
       # Node 22.x line bundles npm 10.x, so pin Node 24.x which ships npm 11.x.
       - name: Setup Node.js for npm publish with trusted publishing
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.4.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
@@ -398,12 +399,17 @@ jobs:
           TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
-      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
-      # Only uncomment this when the new release branch becomes stable (gold).
-      # - name: Add `latest` tag to the latest release branch (e.g. `release-x.61.x`) deployment
-      #   working-directory: sdk
-      #   run: |
-      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+
+  # When a newer release branch goes gold, remove this entire job from this branch.
+  tag-latest:
+    name: Tag npm release as latest
+    # Pre-gold: remove `if: false` once this branch becomes gold.
+    if: false
+    needs: [publish-npm, determine-sdk-version]
+    uses: ./.github/workflows/embedding-sdk-tag-latest.yml
+    with:
+      version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
+    secrets: inherit
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]

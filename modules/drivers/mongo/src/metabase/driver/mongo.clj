@@ -300,7 +300,6 @@
             (->> (get-in ftree* (conj path :children))
                  keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
-
           (ftree-prewalk*
             [ftree* path]
             (reduce ftree-prewalk*
@@ -508,11 +507,11 @@
 
 ;; We say Mongo supports foreign keys so that the front end can use implicit
 ;; joins. In reality, Mongo doesn't support foreign keys.
-;; Only define an implementation for `:foreign-keys` if none exists already.
+;; Only define an implementation for `:metadata/key-constraints` if none exists already.
 ;; In test extensions we define an alternate implementation, and we don't want
 ;; to stomp over that if it was loaded already.
-(when-not (get (methods driver/database-supports?) [:mongo :foreign-keys])
-  (defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] true))
+(when-not (get (methods driver/database-supports?) [:mongo :metadata/key-constraints])
+  (defmethod driver/database-supports? [:mongo :metadata/key-constraints] [_driver _feature _db] true))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
@@ -524,9 +523,9 @@
   (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
-(defmethod driver/substitute-native-parameters :mongo
-  [driver inner-query]
-  (mongo.params/substitute-native-parameters driver inner-query))
+(defmethod driver/substitute-native-parameters-in-stage-method :mongo
+  [driver metadata-providerable stage]
+  (mongo.params/substitute-native-parameters driver metadata-providerable stage))
 
 (defmethod driver/db-start-of-week :mongo
   [_]

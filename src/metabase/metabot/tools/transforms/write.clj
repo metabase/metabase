@@ -157,14 +157,11 @@ def transform():
                               transform_name (assoc :name transform_name)
                               transform_description (assoc :description transform_description)
                               database_id (assoc-in [:source :database] database_id))]
-
     ;; Store in memory if we have an ID
     (when (and transform_id memory-atom)
       (swap! memory-atom assoc-in [:state :transforms (str transform_id)] suggested-transform))
-
     (log/debug "SQL transform written" {:transform-id transform_id
                                         :sql-length (count new-sql)})
-
     {:structured-output {:transform suggested-transform
                          :thinking thinking
                          :message "Transform SQL updated successfully."}

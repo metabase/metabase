@@ -128,6 +128,7 @@
     :model/Measure
     ;; 60+
     :model/OAuthClient
+    :model/OAuthClientEvent
     :model/OAuthAuthorizationCode
     :model/OAuthAccessToken
     :model/OAuthRefreshToken
@@ -136,6 +137,7 @@
     :model/MetabotMessage
     :model/MetabotFeedback
     :model/MetabotSourceFeedback
+    :model/MetabotUsedTable
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/MetabotPermissions

@@ -7,12 +7,10 @@ import { t } from "ttag";
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard";
-import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
   useDashboardContext,
@@ -21,8 +19,9 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Group } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
@@ -147,6 +146,11 @@ const AutomaticDashboardAppInner = () => {
                         className={cx(CS.mlAuto, CS.textNoWrap)}
                         success
                         borderless
+                        // The dashboard isn't always loaded when the header first
+                        // renders. Without this guard, "Save this" is clickable while
+                        // `dashboard` is undefined, which fires a false `x-ray_saved`
+                        // event and no-ops `save()` (no save request is sent).
+                        disabled={!dashboard}
                         actionFn={() => {
                           trackXRaySaved();
                           return save();
@@ -190,7 +194,9 @@ const AutomaticDashboardAppInner = () => {
         {more && (
           <div className={cx(CS.flex, CS.justifyEnd, CS.px4, CS.pb4)}>
             <Link to={more} className={CS.ml2}>
-              <Button iconRight="chevronright">{t`Show more about this`}</Button>
+              <Button
+                rightSection={<Icon name="chevronright" />}
+              >{t`Show more about this`}</Button>
             </Link>
           </div>
         )}

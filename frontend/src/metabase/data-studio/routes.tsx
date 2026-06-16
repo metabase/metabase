@@ -1,11 +1,11 @@
 import type { Store } from "@reduxjs/toolkit";
-import type { ComponentType } from "react";
-import { IndexRoute, Route } from "react-router";
+import { IndexRoute, Route, type RouteComponent } from "react-router";
 
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_SCHEMA_VIEWER,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
@@ -26,14 +26,15 @@ import {
   DependenciesUpsellPage,
   DependencyDiagnosticsUpsellPage,
   LibraryUpsellPage,
+  SchemaViewerUpsellPage,
 } from "./upsells/pages";
 
 export function getDataStudioRoutes(
   store: Store<State>,
-  CanAccessDataStudio: ComponentType,
-  CanAccessDataModel: ComponentType,
-  _CanAccessTransforms: ComponentType,
-  IsAdmin: ComponentType,
+  CanAccessDataStudio: RouteComponent,
+  CanAccessDataModel: RouteComponent,
+  _CanAccessTransforms: RouteComponent,
+  IsAdmin: RouteComponent,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -79,6 +80,13 @@ export function getDataStudioRoutes(
             path="dependency-diagnostics"
             component={DependencyDiagnosticsUpsellPage}
           />
+        )}
+        {PLUGIN_SCHEMA_VIEWER.isEnabled ? (
+          <Route path="schema-viewer">
+            {PLUGIN_SCHEMA_VIEWER.getDataStudioSchemaViewerRoutes()}
+          </Route>
+        ) : (
+          <Route path="schema-viewer" component={SchemaViewerUpsellPage} />
         )}
         <Route path="git-sync" component={GitSyncSectionLayout} />
       </Route>

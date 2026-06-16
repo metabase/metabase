@@ -1,5 +1,6 @@
 (ns metabase.transforms.jobs
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
@@ -11,17 +12,23 @@
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.ordering :as transforms-base.ordering]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ArrayBlockingQueue BlockingQueue ExecutorService Executors ThreadFactory)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
 
@@ -114,32 +121,172 @@
             (recur))))
       (transforms.job-run/add-run-activity! run-id))))
 
+(defn- named-thread-factory ^ThreadFactory [pattern]
+  (.build (doto (BasicThreadFactory$Builder.)
+            (.namingPattern pattern)
+            (.daemon true))))
+
+(defn- submit-transform!
+  [^ExecutorService executor
+   ^BlockingQueue completions
+   run-id run-method user-id transform]
+  (let [task (bound-fn []
+               (let [tid (:id transform)]
+                 (try
+                   (run-transform! run-id run-method user-id transform)
+                   (.put completions {::status :succeeded ::transform transform})
+                   (catch Throwable t
+                     (log/errorf t "Transform %s in run %s failed" (pr-str tid) (pr-str run-id))
+                     ;; Record the failure with as much debugging context as we can; the coordinator
+                     ;; preserves these fields onto :failures. We catch Throwable (not just
+                     ;; Exception) so a non-Exception Error — e.g. OutOfMemoryError — is still
+                     ;; reported as a transform failure and lets the coordinator unwind cleanly,
+                     ;; rather than vanishing into the worker's FutureTask. `::fatal` flags that case
+                     ;; so consumers can distinguish it. (We don't rethrow: under `.submit` the
+                     ;; FutureTask would just swallow it, so a rethrow would be a silent no-op.)
+                     (.put completions {::status    :failed
+                                        ::transform transform
+                                        ::message   (or (ex-message t) (str t))
+                                        ::ex-data   (ex-data t)
+                                        ::throwable t
+                                        ::fatal     (not (instance? Exception t))})))))]
+    (.submit executor ^Runnable task)))
+
+(defn- transform-target-key
+  "A coarse identity for a transform's output table, used to keep two transforms that write the
+  same target table from being dispatched concurrently. Returns nil when the transform has no
+  resolved target (in which case it isn't subject to the co-writer guard)."
+  [transform]
+  (when-let [{:keys [database schema name]} (:target transform)]
+    [database schema name]))
+
+(defn- app-db-now
+  []
+  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
+  SQL transforms are dispatched concurrently up to `transform-run-job-sql-concurrency`, respecting
+  the DAG: a transform is only started once all of its dependencies have succeeded.
+
+  Python transforms run in a separate single-slot lane regardless of the SQL pool size, because
+  the python-runner service has only one worker; oversubscribing it would just queue requests
+  against their own per-call timeouts.
+
+  If a dependency failed, dependents are recorded as failures (transitively) without being
+  executed.
+
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
-  [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?]
+                                :or   {skip-fresh-deps? true}}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        successful (volatile! #{})
-        failures (volatile! [])]
-    (when start-promise
-      (deliver start-promise :started))
+        requested    (set transform-ids-to-run)
+        closure      (into #{} (map :id) plan)
+        ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
+        ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
+        skip         (or (when skip-fresh-deps?
+                           (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested)))
+                         #{})
+        n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
+        sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
+        py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
+        lanes        {:sql {:executor sql-executor :capacity n}
+                      :py  {:executor py-executor  :capacity 1}}
+        lane-for     (fn [t] (if (transforms-base.u/python-transform? t) :py :sql))
+        completions  (ArrayBlockingQueue. (max 2 (inc n)))
+        state        (volatile! {:succeeded         skip
+                                 :failed            #{}
+                                 :failures          []
+                                 :in-flight         {:sql #{} :py #{}}
+                                 ;; target tables currently being written by an in-flight transform
+                                 :in-flight-targets #{}})
+        busy?        (fn [{:keys [in-flight]}] (some seq (vals in-flight)))
+        ;; Plan is topo-sorted, so a single pass propagates the full cascade of dep-failures.
+        dispatch!    (fn [st]
+                       (reduce
+                        (fn [{:keys [succeeded failed in-flight-targets] :as st} t]
+                          (let [id            (:id t)
+                                dep-ids       (get deps id)
+                                lane-key      (lane-for t)
+                                {:keys [^ExecutorService executor capacity]} (get lanes lane-key)
+                                in-flight-now (get-in st [:in-flight lane-key])
+                                tkey          (transform-target-key t)]
+                            (cond
+                              (or (succeeded id) (failed id) (in-flight-now id))
+                              st
 
-    (doseq [transform plan]
-      (if (every? @successful (get deps (:id transform)))
-        (try
-          (run-transform! run-id run-method user-id transform)
-          (vswap! successful conj (:id transform))
-          (catch Exception e
-            (vswap! failures conj {::transform transform
-                                   ::message (.getMessage e)})))
-        (vswap! failures conj {::transform transform
-                               ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
+                              (some failed dep-ids)
+                              (-> st
+                                  (update :failed conj id)
+                                  (update :failures conj
+                                          {::transform t
+                                           ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
 
-    (if (seq @failures)
-      {::status :failed
-       ::failures @failures}
+                              ;; Defer if another in-flight transform is already writing this target
+                              ;; table. `transform-ordering` builds DAG edges from table *reads*, not
+                              ;; co-*writes*, so two transforms sharing a target are independent in
+                              ;; the DAG and would otherwise dispatch concurrently — producing
+                              ;; nondeterministic DDL. This shouldn't happen in a well-formed config;
+                              ;; the guard just stops a misconfiguration from racing. Retried on a
+                              ;; later pass once the in-flight writer completes (something is always
+                              ;; in-flight while a target is held, so the loop won't exit early).
+                              (and tkey (contains? in-flight-targets tkey))
+                              st
+
+                              (and (every? succeeded dep-ids)
+                                   (< (count in-flight-now) capacity))
+                              (try
+                                (submit-transform! executor completions run-id run-method user-id t)
+                                (cond-> (update-in st [:in-flight lane-key] conj id)
+                                  tkey (update :in-flight-targets conj tkey))
+                                (catch java.util.concurrent.RejectedExecutionException e
+                                  ;; The pool was shut down out from under us (abnormal-exit window).
+                                  ;; Record the failure so the run reflects the partial dispatch
+                                  ;; rather than silently dropping this transform.
+                                  (-> st
+                                      (update :failed conj id)
+                                      (update :failures conj
+                                              {::transform t
+                                               ::message (or (ex-message e) (str e))}))))
+
+                              :else st)))
+                        st
+                        plan))]
+    (when (seq skip)
+      (log/infof "Skipping %d fresh pulled-in dependency transform(s): %s" (count skip) (pr-str skip)))
+    (when start-promise (deliver start-promise :started))
+    (try
+      (vreset! state (dispatch! @state))
+      (while (busy? @state)
+        (let [completion (.take completions)
+              {::keys [transform status]} completion
+              id       (:id transform)
+              lane-key (lane-for transform)
+              tkey     (transform-target-key transform)]
+          (vswap! state
+                  (fn [st]
+                    (let [st' (cond-> (update-in st [:in-flight lane-key] disj id)
+                                tkey (update :in-flight-targets disj tkey))]
+                      (case status
+                        :succeeded (update st' :succeeded conj id)
+                        ;; Preserve the full failure context the worker attached (::message plus
+                        ;; ::ex-data / ::throwable / ::fatal) so downstream consumers — notifications
+                        ;; and logs — can surface it. dispatch!'s dep-failure path produces a subset
+                        ;; of the same shape, and consumers only read ::transform / ::message.
+                        :failed    (-> st'
+                                       (update :failed conj id)
+                                       (update :failures conj (dissoc completion ::status)))))))
+          (vreset! state (dispatch! @state))))
+      (finally
+        ;; shutdownNow (not shutdown): on the happy path the in-flight set is already drained, so
+        ;; this is equivalent to shutdown; on an abnormal exit (e.g. an interrupted take) it also
+        ;; interrupts any workers still running against a run that has already been failed.
+        (.shutdownNow sql-executor)
+        (.shutdownNow py-executor)))
+    (if (seq (:failures @state))
+      {::status :failed ::failures (:failures @state)}
       {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
@@ -150,11 +297,20 @@
       #{})))
 
 (defn job-transforms
-  "Return the transforms that are executed when running the job with ID `job-id`.
+  "Return the transforms that are executed when running the job with ID `job-id`, in execution order.
 
-  The transforms are returned in the order of their execution."
+  Transforms pulled into the plan only as dependencies are marked with `:dependency true`
+  and `:scheduled` (whether any active job's schedule covers them)."
   [job-id]
-  (:order (get-plan (job-transform-ids job-id))))
+  (let [tagged    (job-transform-ids job-id)
+        plan      (:order (get-plan tagged))
+        dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
+        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+    (map (fn [{:keys [id] :as transform}]
+           (cond-> transform
+             (contains? dep-ids id) (assoc :dependency true
+                                           :scheduled  (contains? scheduled id))))
+         plan)))
 
 (defn- compile-transform-failure-messages [failures]
   (->> failures
@@ -227,19 +383,6 @@
                                                  :message (structure-message (::message failure))})
                                               failures)}))))
 
-(defn- notify-job-failure
-  "Notify admins of a catastrophic job failure (not individual transform failures)."
-  [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)
-        admin-emails (keep :email (active-admins))]
-    (doseq [email admin-emails]
-      (events/publish-event! :event/transform-failed
-                             {:email email
-                              :job_name (:name job)
-                              :job_href (urls/transform-job-url job-id)
-                              :failure_count 1
-                              :failures [{:message (structure-message message)}]}))))
-
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
@@ -265,13 +408,11 @@
                                 (log/error e "Error when failing a transform run.")))))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
-                  ;; We should clean up in this case and notify the admin users.
                   (try
                     (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                    (when (= :cron run-method)
-                      (if (::transform-failure (ex-data t))
-                        (notify-transform-failures job-id (::failures (ex-data t)))
-                        (notify-job-failure job-id (.getMessage t))))
+                    (when (and (::transform-failure (ex-data t))
+                               (= :cron run-method)) ;; Catastrophic job failures are included in the digest
+                      (notify-transform-failures job-id (::failures (ex-data t))))
                     (catch Exception e
                       (log/error e "Error when failing a transform job run.")))
                   (throw t)))))
@@ -279,24 +420,20 @@
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
-(defn- timeout-and-notify-old-runs!
-  "Time out stale job runs and notify admins for each cron-scheduled run that was
-  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
-  notification behavior."
+(defn- timeout-old-runs!
+  "Time out stale transform job runs."
   []
   (let [timed-out (transforms.job-run/timeout-old-runs!
                    (transforms.settings/transform-timeout) :minute)]
-    (doseq [{:keys [job_id run_method message]} timed-out
-            :when (= run_method :cron)]
-      (try
-        (notify-job-failure job_id (or message "Timed out by metabase"))
-        (catch Throwable t
-          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
+    (when (seq timed-out)
+      (log/infof "Timed out %d transform job run(s)." (count timed-out)))
+    timed-out))
 
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
-  (timeout-and-notify-old-runs!))
+  (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "job"}
+    (timeout-old-runs!)))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

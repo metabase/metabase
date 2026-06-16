@@ -9,7 +9,8 @@
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.context :as context]
    [metabase.metabot.table-utils :as table-utils]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -241,6 +242,24 @@
           (is (= #{"question" "model" "dashboard" "table"}
                  (set (map :type recently-viewed)))))))))
 
+(deftest recent-views-disabled-by-setting-test
+  (testing "Omits recent views from context when metabot-recent-views-enabled? is false"
+    (mt/with-test-user :rasta
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/Card  {card-id :id}  {:type "question" :name "my question"}
+                       :model/Table {table-id :id} {}]
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
+          (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+            (let [ctx (context/create-context {})]
+              (is (not (contains? ctx :user_recently_viewed))))))))))
+
+(deftest recent-views-disabled-strips-preexisting-test
+  (testing "Disabling the setting strips a caller-supplied :user_recently_viewed already in the context"
+    (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
+      (is (not (contains? (#'context/add-recent-views {:user_recently_viewed [{:id 1 :name "stale"}]} {})
+                          :user_recently_viewed))))))
+
 (deftest recent-views-verified-content-filter-test
   (testing "Recent views filtering by verified content"
     (mt/with-test-user :rasta
@@ -273,7 +292,6 @@
                             [:model/Card um]
                             [:model/Dashboard ud]]]
           (recent-views/update-users-recent-views! (mt/user->id :rasta) model id :view))
-
         ;; IDs are unique per model but can collide across models (e.g. a Card and a Dashboard
         ;; can share the same id). Identify items by [:type :id] pairs so cross-model collisions
         ;; don't mask filtering bugs.
@@ -286,7 +304,6 @@
               ud*     (as-pair "dashboard" ud)
               table*  (as-pair "table"     table-id)
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
-
           (testing "no metabot-id passed -> no filtering (even with :content-verification active)"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {}) :user_recently_viewed)
@@ -296,7 +313,6 @@
                 (is (contains? ks um*))
                 (is (contains? ks ud*))
                 (is (contains? ks table*)))))
-
           (testing "use_verified_content=true with :content-verification feature -> filters"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
@@ -312,7 +328,6 @@
                       "Should keep 5 items even though 3 unverified items were ahead of older verified items")
                   (is (contains? ks vm2*))
                   (is (contains? ks vm1*))))))
-
           (testing "use_verified_content=true but premium feature absent -> no filtering"
             (mt/with-premium-features #{}
               (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
@@ -321,7 +336,6 @@
                 (is (contains? ks uq*))
                 (is (contains? ks um*))
                 (is (contains? ks ud*)))))
-
           (testing "metabot-id that does not resolve -> no filtering"
             (mt/with-premium-features #{:content-verification}
               (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})

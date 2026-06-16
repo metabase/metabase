@@ -36,6 +36,7 @@ export const setup = (options?: {
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
   metabotEnabled?: boolean;
+  siteUrl?: string;
 }) => {
   const { enterprisePlugins } = options ?? {};
 
@@ -62,6 +63,9 @@ export const setup = (options?: {
     "jwt-enabled-and-configured": options?.jwtReady ?? false,
     "embedded-metabot-enabled?": options?.metabotEnabled ?? false,
     "llm-metabot-configured?": options?.metabotEnabled ?? false,
+    // Default to the jsdom test origin so the embed wizard preview renders
+    // (mismatched origins surface a Site URL configuration error).
+    "site-url": options?.siteUrl ?? window.location.origin,
   });
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);

@@ -43,7 +43,7 @@ export function exploreMetricDimension({
 }: ExploreMetricDimensionOptions): string {
   const state: SerializedMetricsViewerPageState = {
     formulaEntities: [{ type: "metric", id: metricId }],
-    tabs: [
+    dimensionBreakouts: [
       {
         id: dimensionId,
         type: dimensionType,
@@ -52,7 +52,7 @@ export function exploreMetricDimension({
         definitions: [{ slotIndex: 0, dimensionId }],
       },
     ],
-    selectedTabId: dimensionId,
+    selectedDimensionBreakoutId: dimensionId,
   };
 
   const hash = encodeState(state);
@@ -73,10 +73,6 @@ export function metricQuery(cardId: CardId): string {
 
 export function metricDependencies(cardId: CardId): string {
   return `/metric/${cardId}/dependencies`;
-}
-
-export function metricCaching(cardId: CardId): string {
-  return `/metric/${cardId}/caching`;
 }
 
 export function metricHistory(cardId: CardId): string {

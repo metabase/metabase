@@ -213,7 +213,7 @@
    table-id          :- pos-int?]
   (lib.metadata.protocols/metadatas
    metadata-provider
-   {:lib/type :metadata/dimension :table-id table-id}))
+   {:lib/type :metadata/dimension :table-ids #{table-id}}))
 
 ;;; ------------------------------------------------- Dimension Resolution -------------------------------------------------
 ;;; Functions for resolving dimension UUIDs to field IDs through dimension mappings.

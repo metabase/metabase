@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import type { ExportFormat } from "metabase/common/types/export";
 import {
   Anchor,
@@ -12,10 +13,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import {
-  PublicLinkCopyButton,
-  RemoveLinkAnchor,
-} from "./PublicLinkCopyPanel.styled";
+import S from "./PublicLinkCopyPanel.module.css";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -45,7 +43,11 @@ export const PublicLinkCopyPanel = ({
       placeholder={loading ? t`Loading…` : undefined}
       value={url ?? ""}
       inputWrapperOrder={["label", "input", "error", "description"]}
-      rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
+      rightSection={
+        url && (
+          <CopyButton className={S.copyButton} value={url} onCopy={onCopy} />
+        )
+      }
     />
     <Box pos="relative">
       <Group
@@ -65,15 +67,16 @@ export const PublicLinkCopyPanel = ({
                 </Text>
               }
             >
-              <RemoveLinkAnchor
+              <Anchor
                 component="button"
+                className={S.removeLink}
                 fz="sm"
                 c="error"
                 fw={700}
                 onClick={onRemoveLink}
               >
                 {removeButtonLabel}
-              </RemoveLinkAnchor>
+              </Anchor>
             </Tooltip>
           )}
         </Box>
@@ -85,7 +88,11 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand" : "text-tertiary"}
+                c={
+                  extension === selectedExtension
+                    ? "core-brand"
+                    : "text-tertiary"
+                }
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

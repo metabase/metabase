@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders } from "__support__/ui";
+import { act, renderWithProviders } from "__support__/ui";
 import type { CacheableModel } from "metabase-types/api";
 
 import { useInvalidateTarget } from "./useInvalidateTarget";
@@ -22,8 +22,7 @@ function setup(targetId: number, targetModel: CacheableModel) {
   return { getInvalidateTarget: () => invalidateTarget! };
 }
 
-async function getInvalidateRequestUrl(): Promise<URL> {
-  await fetchMock.callHistory.flush();
+function getInvalidateRequestUrl(): URL {
   const calls = fetchMock.callHistory.calls();
   const invalidateCall = calls.find((call) =>
     call.url?.includes("/api/cache/invalidate"),
@@ -35,9 +34,13 @@ describe("useInvalidateTarget", () => {
   it('should send "question" as the query param when model is "question"', async () => {
     const { getInvalidateTarget } = setup(1, "question");
 
-    await getInvalidateTarget()();
+    // Invoking the callback triggers an RTK Query mutation whose state
+    // updates must stay wrapped in act.
+    await act(async () => {
+      await getInvalidateTarget()();
+    });
 
-    const url = await getInvalidateRequestUrl();
+    const url = getInvalidateRequestUrl();
     expect(url.searchParams.get("question")).toBe("1");
     expect(url.searchParams.has("metric")).toBe(false);
   });
@@ -45,9 +48,13 @@ describe("useInvalidateTarget", () => {
   it('should map "metric" to "question" in the query param', async () => {
     const { getInvalidateTarget } = setup(1, "metric");
 
-    await getInvalidateTarget()();
+    // Invoking the callback triggers an RTK Query mutation whose state
+    // updates must stay wrapped in act.
+    await act(async () => {
+      await getInvalidateTarget()();
+    });
 
-    const url = await getInvalidateRequestUrl();
+    const url = getInvalidateRequestUrl();
     expect(url.searchParams.get("question")).toBe("1");
     expect(url.searchParams.has("metric")).toBe(false);
   });

@@ -6,6 +6,7 @@
   `enterprise/backend/README.md` for more details."
   (:require
    [metabase-enterprise.action-v2.api]
+   [metabase-enterprise.advanced-config.api]
    [metabase-enterprise.advanced-config.api.logs]
    [metabase-enterprise.advanced-permissions.api.routes]
    [metabase-enterprise.api.core :as ee.api]
@@ -23,6 +24,7 @@
    [metabase-enterprise.dependencies.api]
    [metabase-enterprise.email.api]
    [metabase-enterprise.embedding-hub.api]
+   [metabase-enterprise.erd.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
    [metabase-enterprise.metabot-analytics.api]
@@ -59,6 +61,7 @@
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
+   :schema-viewer              (deferred-tru "Schema Viewer")
    :embedding                  (deferred-tru "Embedding")
    :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
@@ -98,6 +101,7 @@
   routes here and follow the convention."
   ;; Postponing a granular flag for :actions until it's used more widely.
   {"/action-v2"                    (premium-handler metabase-enterprise.action-v2.api/routes :table-data-editing)
+   "/advanced-config"              (api.macros/ns-handler 'metabase-enterprise.advanced-config.api)
    "/advanced-permissions"         (premium-handler metabase-enterprise.advanced-permissions.api.routes/routes :advanced-permissions)
    "/ai-controls"                  (premium-handler metabase-enterprise.metabot.api.routes/routes :ai-controls)
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
@@ -117,6 +121,7 @@
    "/database-routing"             (premium-handler metabase-enterprise.database-routing.api/routes :database-routing)
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
+   "/erd"                          (premium-handler metabase-enterprise.erd.api/routes :schema-viewer)
    "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/replacement"                  (premium-handler metabase-enterprise.replacement.api/routes :dependencies)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)

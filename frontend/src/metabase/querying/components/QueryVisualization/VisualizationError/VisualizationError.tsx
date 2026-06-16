@@ -2,7 +2,7 @@ import cx from "classnames";
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { NetworkError } from "metabase/api/legacy-client";
+import { isNetworkError } from "metabase/api/client";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ErrorDetails } from "metabase/common/components/ErrorDetails/ErrorDetails";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
@@ -51,7 +51,7 @@ export function VisualizationError({
   // the same as an HTTP error with a status — the user just needs to know the
   // server isn't reachable, not see a stack trace.
   if (
-    error instanceof NetworkError ||
+    isNetworkError(error) ||
     (typeof error === "object" && error.status != null)
   ) {
     // Assume if the request took more than 15 seconds it was due to a timeout

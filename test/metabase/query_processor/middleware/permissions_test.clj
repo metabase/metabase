@@ -6,10 +6,13 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.setup :as qp.setup]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -284,7 +287,6 @@
               {:database (u/the-id db)
                :type :query
                :query {:source-table (u/the-id table)}}))))
-
       ;; Don't leak metadata about the table if the user doesn't have access to it, even if it's inactive
       (mt/with-no-data-perms-for-all-users!
         (is (thrown-with-msg?
@@ -322,19 +324,16 @@
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-1)))))))
-
                           (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                             (binding [qp.perms/*card-id* (u/the-id card-2)]
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-2)))))))
-
                           (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
                                                         {:source-table (format "card__%d" card-1-id)}))))))
-
                           (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
@@ -374,19 +373,16 @@
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-1)))))))
-
                           (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                             (binding [qp.perms/*card-id* (u/the-id card-2)]
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-2)))))))
-
                           (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
                                                         {:source-table (format "card__%d" card-1-id)}))))))
-
                           (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
@@ -425,19 +421,16 @@
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-1)))))))
-
                           (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                             (binding [qp.perms/*card-id* (u/the-id card-2)]
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-2)))))))
-
                           (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
                                                         {:source-table (format "card__%d" card-1-id)}))))))
-
                           (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
@@ -480,19 +473,16 @@
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-1)))))))
-
                           (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                             (binding [qp.perms/*card-id* (u/the-id card-2)]
                               (is (= expected
                                      (mt/rows
                                       (qp/process-query (:dataset_query card-2)))))))
-
                           (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (mt/mbql-query nil
                                                         {:source-table (format "card__%d" card-1-id)}))))))
-
                           (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                             (is (= expected
                                    (mt/rows
@@ -531,13 +521,11 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-
                         (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (:dataset_query card-2)))))))
-
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -545,7 +533,6 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-
                         (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
                           (is (= expected
                                  (mt/rows
@@ -588,13 +575,11 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-
                         (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (:dataset_query card-2)))))))
-
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -602,7 +587,6 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-
                         (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
                           (is (= expected
                                  (mt/rows
@@ -644,13 +628,11 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-
                         (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (:dataset_query card-2)))))))
-
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -658,7 +640,6 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-
                         (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
                           (is (= expected
                                  (mt/rows
@@ -704,13 +685,11 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-
                         (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
                             (is (= expected
                                    (mt/rows
                                     (qp/process-query (:dataset_query card-2)))))))
-
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -718,7 +697,6 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-
                         (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
                           (is (= expected
                                  (mt/rows
@@ -754,12 +732,13 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You do not have permissions to run this query"
-             (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                      :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                        :perms/create-queries {(mt/id :venues) :query-builder}}}))))))))
+        (testing "Query carrying a :query-permissions/perms value is still rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
+                                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                                          :perms/create-queries {(mt/id :venues) :query-builder}}})))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
@@ -771,23 +750,11 @@
                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
                                                          :perms/create-queries :query-builder-and-native}}}]
         (mt/with-test-user :rasta
-          (testing "Sanity check: should not be able to run this query the normal way"
+          (testing "Query carrying :query-permissions/sandboxed-table and perms keys is still rejected"
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"You do not have permissions to run this query"
-                 (qp/process-query bad-query))))
-          (letfn [(process-query []
-                    (qp/process-query bad-query))]
-            (testing "Testing that we will still throw due to the :query-permissions/perms stripping"
-              (with-redefs [qp.perms/remove-sandboxed-table-keys identity]
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"You do not have permissions to run this query"
-                     (process-query)))))
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"You do not have permissions to run this query"
-                 (process-query)))))))))
+                 (qp/process-query bad-query)))))))))
 
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
@@ -1261,7 +1228,6 @@
                       ;; Create an ad-hoc query that uses the source card and adds another aggregation stage
                       ;; Should successfully run the multi-stage aggregation query
                       (is (= expected (mt/rows (qp/process-query (qp/userland-query multi-stage-query)))))))
-
                   (testing "Should NOT be able to run the same query if source card permissions are revoked"
                     ;; Remove collection permissions
                     (perms/revoke-collection-permissions! (perms/all-users-group) collection)
@@ -1310,20 +1276,17 @@
                               (binding [qp.perms/*card-id* card-3-id]
                                 (is (= expected
                                        (mt/rows (qp/process-query card-3-query))))))
-
                             (testing "Should be able to run ad-hoc query using Card 3 as source"
                               (let [ad-hoc-query (mt/mbql-query nil
                                                    {:source-table (format "card__%d" card-3-id)})]
                                 (is (= expected
                                        (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
-
                             (testing "Should be able to run ad-hoc query using Card 2 as source"
                               (let [ad-hoc-query (mt/mbql-query nil
                                                    {:source-table (format "card__%d" card-2-id)
                                                     :limit 1})]
                                 (is (= expected
                                        (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
-
                             (testing "Should be able to run ad-hoc query using Card 1 as source"
                               (let [ad-hoc-query (mt/mbql-query nil
                                                    {:source-table (format "card__%d" card-1-id)
@@ -1332,7 +1295,6 @@
                                                     :limit 1})]
                                 (is (= expected
                                        (mt/rows (qp/process-query (qp/userland-query ad-hoc-query)))))))
-
                             (testing "Blocked table (reviews) should still be inaccessible"
                               (is (thrown-with-msg?
                                    ExceptionInfo
@@ -1380,7 +1342,6 @@
                                   (binding [qp.perms/*card-id* card-4-id]
                                     (is (= expected
                                            (mt/rows (qp/process-query card-4-query))))))
-
                                 (testing "Should be able to run ad-hoc query using Card 4 as source"
                                   (is (= expected
                                          (mt/rows
@@ -1402,7 +1363,6 @@
             ;; Grant permissions to collections 1 and 2, but not the restricted collection
             (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-coll-1)
             (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-coll-2)
-
             ;; Card 1: In accessible collection
             (let [card-1-query (mt/mbql-query venues
                                  {:fields [$id $name $price]
@@ -1435,24 +1395,20 @@
                                     (is (= [[1 "Red Medicine" 3]
                                             [2 "Stout Burgers & Beers" 2]]
                                            (mt/rows (qp/process-query card-1-query))))))
-
                                 (testing "Should NOT be able to run Card 2 directly (no access)"
                                   (binding [qp.perms/*card-id* card-2-id]
                                     (is (thrown-with-msg?
                                          ExceptionInfo
                                          #"You do not have permissions to view Card"
                                          (qp/process-query card-2-query)))))
-
                                 (testing "Should be able to run Card 3 directly (despite Card 2 in chain)"
                                   (binding [qp.perms/*card-id* card-3-id]
                                     (is (= expected
                                            (mt/rows (qp/process-query card-3-query))))))
-
                                 (testing "Should be able to run Card 4 directly (despite Card 2 in chain)"
                                   (binding [qp.perms/*card-id* card-4-id]
                                     (is (= expected
                                            (mt/rows (qp/process-query card-4-query))))))
-
                                 (testing "Should NOT be able to run ad-hoc query with Card 2 as source"
                                   (is (thrown-with-msg?
                                        ExceptionInfo
@@ -1476,7 +1432,6 @@
             ;; Grant permissions only to specific collections
             (perms/grant-collection-read-permissions! (perms/all-users-group) parent-coll)
             (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-coll)
-
             ;; Card 1: In parent collection (accessible)
             (let [card-1-query (mt/mbql-query venues
                                  {:fields [$id $name $category_id]
@@ -1499,18 +1454,15 @@
                           (testing "Should be able to run Card 1 in parent collection"
                             (binding [qp.perms/*card-id* card-1-id]
                               (is (seq (mt/rows (qp/process-query card-1-query))))))
-
                           (testing "Should not be able to run Card 2 (does not inherit permissions from parent)"
                             (is (thrown-with-msg?
                                  ExceptionInfo
                                  #"You do not have permissions to view Card"
                                  (binding [qp.perms/*card-id* card-2-id]
                                    (mt/rows (qp/process-query card-2-query))))))
-
                           (testing "Should be able to run Card 3 in grandchild collection"
                             (binding [qp.perms/*card-id* card-3-id]
                               (is (seq (mt/rows (qp/process-query card-3-query))))))
-
                           (testing "Should be able to run ad-hoc query chaining all cards"
                             (is (seq
                                  (mt/rows
@@ -1532,7 +1484,6 @@
             ;; Grant permissions to collections 1 and 3 only
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-1)
             (perms/grant-collection-read-permissions! (perms/all-users-group) coll-3)
-
             ;; Card 1: Native query in accessible collection
             (let [card-1-query (mt/native-query
                                 {:query (str "SELECT id, name, category_id, price "
@@ -1562,19 +1513,16 @@
                             (testing "Should be able to run Card 1 (native, accessible)"
                               (binding [qp.perms/*card-id* card-1-id]
                                 (is (= 2 (count (mt/rows (qp/process-query card-1-query)))))))
-
                             (testing "Should NOT be able to run Card 2 directly (restricted collection)"
                               (binding [qp.perms/*card-id* card-2-id]
                                 (is (thrown-with-msg?
                                      ExceptionInfo
                                      #"You do not have permissions to view Card"
                                      (qp/process-query card-2-query)))))
-
                             (testing "Should be able to run Card 3 (references restricted Card 2 via template tag)"
                               (binding [qp.perms/*card-id* card-3-id]
                                 (is (= expected
                                        (mt/rows (qp/process-query card-3-query))))))
-
                             (testing "Should be able to use Card 3 as source in ad-hoc query"
                               (is (= expected
                                      (mt/rows
@@ -1593,7 +1541,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
           ;; Block access to categories table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use expressions with foreign key fields even if the referenced table is blocked"
               (let [result (qp/process-query
@@ -1605,7 +1552,6 @@
                 (is (= [[1 "Red Medicine" 5]
                         [2 "Stout Burgers & Beers" 12]]
                        (mt/rows result)))))
-
             (testing "Should be able to use expressions with only accessible fields"
               (let [result (qp/process-query
                             (mt/mbql-query venues
@@ -1632,7 +1578,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to calculate across permitted tables"
               (let [result (qp/process-query
@@ -1643,7 +1588,6 @@
                                :order-by [[:desc [:expression "checkin_rate"]]]
                                :limit 2}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to create aggregations with joins to restricted tables"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1667,7 +1611,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use expressions in join conditions between permitted tables"
               (let [result (qp/process-query
@@ -1684,7 +1627,6 @@
                                :order-by [[:asc $id]]
                                :limit 3}))]
                 (is (= 3 (count (mt/rows result))))))
-
             (testing "Should be able to use expressions in filters"
               (let [result (qp/process-query
                             (mt/mbql-query venues
@@ -1704,11 +1646,9 @@
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
           (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
-
           (mt/with-temp [:model/Collection {accessible-coll :id} {}
                          :model/Collection {restricted-coll :id} {}]
             (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-coll)
-
             ;; Create a card with expressions
             (let [card-query (mt/mbql-query venues
                                {:expressions {"price_tier" [:case
@@ -1722,7 +1662,6 @@
                                                                    :dataset_query card-query}
                              :model/Card {restricted-card-id :id} {:collection_id restricted-coll
                                                                    :dataset_query card-query}]
-
                 (mt/with-test-user :rasta
                   (testing "Should be able to add expressions to accessible card source"
                     (let [result (qp/process-query
@@ -1739,7 +1678,6 @@
                                               [:expression "tier_name"]]
                                      :limit 2}))]
                       (is (= 2 (count (mt/rows result))))))
-
                   (testing "Should NOT be able to query restricted card even with expressions"
                     (is (thrown-with-msg?
                          ExceptionInfo
@@ -1760,7 +1698,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to reviews table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use cumulative aggregations on accessible tables"
               (let [result (qp/process-query
@@ -1770,7 +1707,6 @@
                                :order-by [[:asc [:field (mt/id :checkins :date) {:temporal-unit :month}]]]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to use cumulative aggregations on restricted tables"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1793,7 +1729,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use multiple aggregations on accessible tables with joins"
               (let [result (qp/process-query
@@ -1808,7 +1743,6 @@
                                :breakout [[:field (mt/id :venues :category_id) {:join-alias "v"}]]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to join to restricted table in aggregation query"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1833,7 +1767,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use aggregations with filters on accessible fields"
               (let [result (qp/process-query
@@ -1843,7 +1776,6 @@
                                :filter [:> $venue_id 5] ; Filter condition
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to use aggregations on restricted tables"
               ;; This tests aggregations on blocked tables
               (is (thrown-with-msg?
@@ -1866,7 +1798,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to reviews table (which might contain sensitive rating data)
           (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to calculate shares from accessible data"
               (let [result (qp/process-query
@@ -1874,7 +1805,6 @@
                               {:aggregation [[:share [:> $venue_id 50]]] ; Share of checkins for venues > 50
                                :limit 1}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to calculate shares from restricted sensitive data"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1896,7 +1826,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
           ;; Block access to categories table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to aggregate with expressions across allowed joined tables"
               (let [result (qp/process-query
@@ -1911,7 +1840,6 @@
                                :breakout [[:field (mt/id :venues :name) {:join-alias "v"}]]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to aggregate across joins to restricted tables"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1936,7 +1864,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to reviews table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :reviews) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use basic aggregations on accessible tables"
               ;; Note: Window functions aren't fully supported in the test MBQL syntax,
@@ -1948,7 +1875,6 @@
                                :order-by [[:desc [:aggregation 0]]]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to aggregate on restricted tables"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -1974,7 +1900,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
           ;; Block access to users table completely
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to join venues and checkins (both allowed)"
               (let [result (qp/process-query
@@ -1986,7 +1911,6 @@
                                :fields [$id $name]
                                :limit 2}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to do three-way join with blocked users table"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2004,7 +1928,6 @@
                                             [:field (mt/id :users :id) {:join-alias "u"}]]}]
                        :fields [$id $name]
                        :limit 2})))))
-
             (testing "Should NOT be able to do three-way join with create-queries blocked categories table"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2032,7 +1955,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to self-join on accessible table"
               (let [result (qp/process-query
@@ -2045,7 +1967,6 @@
                                :filter [:!= $id [:field (mt/id :venues :id) {:join-alias "v2"}]] ; Different venues
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to self-join on restricted table"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2071,7 +1992,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to join using expressions when both tables are accessible"
               (let [result (qp/process-query
@@ -2085,7 +2005,6 @@
                                :fields [$id $name [:expression "venue_cat_calc"]]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to join using expressions when one table is restricted"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2114,7 +2033,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use right join with accessible tables"
               (let [result (qp/process-query
@@ -2127,7 +2045,6 @@
                                :fields [$id $name]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to use right join with restricted table"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2141,7 +2058,6 @@
                                 :strategy :right-join}]
                        :fields [$id $name]
                        :limit 3})))))
-
             (testing "Should be able to use left join (instead of full outer) with accessible tables"
               (let [result (qp/process-query
                             (mt/mbql-query venues
@@ -2153,7 +2069,6 @@
                                :fields [$id $name]
                                :limit 3}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to use left join with restricted table"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2182,7 +2097,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :query-builder)
           ;; Block access to users table
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-test-user :rasta
             (testing "Should be able to use multiple join strategies with all accessible tables"
               (let [result (qp/process-query
@@ -2200,7 +2114,6 @@
                                :fields [$id $name]
                                :limit 2}))]
                 (is (seq (mt/rows result)))))
-
             (testing "Should NOT be able to use multiple join strategies when one table is restricted"
               (is (thrown-with-msg?
                    ExceptionInfo
@@ -2235,7 +2148,6 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
           ;; Block access to users table completely
           (perms/set-table-permission! (perms/all-users-group) (mt/id :users) :perms/view-data :blocked)
-
           (mt/with-temp [:model/Collection collection]
             (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
             ;; Create a card with checkins data (allowed via collection permissions)
@@ -2255,7 +2167,6 @@
                                    :fields [$id $name]
                                    :limit 2}))]
                     (is (seq (mt/rows result)))))
-
                 (testing "Should be able to join multiple cards and tables in complex chain"
                   (let [result (qp/process-query
                                 (mt/mbql-query venues
@@ -2270,7 +2181,6 @@
                                    :fields [$id $name]
                                    :limit 2}))]
                     (is (seq (mt/rows result)))))
-
                 (testing "Should NOT be able to join to blocked table even in complex chain"
                   (is (thrown-with-msg?
                        ExceptionInfo
@@ -2287,3 +2197,230 @@
                                     :condition [:= $id [:field (mt/id :users :id) {:join-alias "u"}]]}]
                            :fields [$id $name]
                            :limit 2})))))))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                          Persisted-info source-query handling tests                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest e2e-persisted-info-native-source-query-test
+  (testing "persisted-info/native on an incoming source-query is resolved from the source-table, not the query map"
+    (testing "a query whose source-query carries persisted-info/native still reads from the source-table"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :people) :perms/create-queries :no)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (let [mp           (mt/metadata-provider)
+                venues-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                 (lib/limit 1))]
+            (testing "Sanity check: user can query venues normally"
+              (is (=? {:status :completed}
+                      (qp/process-query venues-query))))
+            (testing "Sanity check: user cannot query people normally"
+              (is (thrown-with-msg?
+                   ExceptionInfo
+                   #"You do not have permissions to run this query"
+                   (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                         (lib/limit 1))))))
+            (testing "persisted-info/native in the query map is ignored in favor of the source-table"
+              (let [people-sql (str "SELECT id AS ID, address AS NAME, 0 AS CATEGORY_ID,"
+                                    " 0.0 AS LATITUDE, 0.0 AS LONGITUDE, 0 AS PRICE FROM PEOPLE")
+                    ;; Inject the internally-managed :persisted-info/native key into the source stage
+                    ;; to confirm it is ignored in favor of the real source-table.
+                    result     (qp/process-query
+                                (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                    lib/append-stage
+                                    (lib/limit 1)
+                                    (assoc-in [:stages 0 :persisted-info/native] people-sql)))
+                    expected   (qp/process-query venues-query)]
+                (is (=? {:status :completed} result))
+                (testing "Results come from the source-table, not the inline native query"
+                  (is (= (mt/rows expected)
+                         (mt/rows result))))))))))))
+
+(deftest e2e-card-creation-perms-key-test
+  (testing "a :query-permissions/perms value in the dataset_query does not affect card-creation permission checks"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+        (mt/with-test-user :rasta
+          (testing "Sanity check: user cannot run a native query against this database"
+            (is (thrown-with-msg?
+                 ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (qp/process-query
+                  {:database (mt/id)
+                   :type     :native
+                   :native   {:query "SELECT * FROM VENUES"}}))))
+          ;; Disable malli enforcement so the endpoint sees the raw request map as it would in production.
+          (binding [mu.fn/*enforce* false]
+            (testing "Card creation with a :query-permissions/perms value in the query is rejected"
+              (mt/with-model-cleanup [:model/Card]
+                (mt/user-http-request :rasta :post 403 "card"
+                                      {:name                   "test-card"
+                                       :display                :table
+                                       :collection_id          collection-id
+                                       :dataset_query          {:database               (mt/id)
+                                                                :type                   :native
+                                                                :native                 {:query         "SELECT * FROM VENUES"
+                                                                                         :template-tags {}}
+                                                                :query-permissions/perms {:gtaps {:perms/create-queries :query-builder-and-native
+                                                                                                  :perms/view-data      :unrestricted}}}
+                                       :visualization_settings {}})))))))))
+
+(deftest at-least-as-permissive-rejects-unknown-values-test
+  (testing "at-least-as-permissive? should throw on values not in the permission type's value set"
+    (binding [mu.fn/*enforce* false]
+      (testing "String values should throw"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Invalid permission value"
+             (perms/at-least-as-permissive? :perms/create-queries "query-builder-and-native" :no))))
+      (testing "Unknown keyword values should throw"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Invalid permission value"
+             (perms/at-least-as-permissive? :perms/create-queries :bogus-value :no))))
+      (testing "Valid keyword values should still work"
+        (is (true? (perms/at-least-as-permissive? :perms/create-queries :query-builder-and-native :no)))
+        (is (false? (perms/at-least-as-permissive? :perms/create-queries :no :query-builder-and-native)))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                      Pivot Query Permission Tests                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- with-venues-only-access*! [thunk]
+  (mt/with-temp-copy-of-db
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :people) :perms/create-queries :no)
+      (mt/with-test-user :rasta
+        (thunk)))))
+
+(defmacro ^:private with-venues-only-access [& body]
+  `(with-venues-only-access*! (fn [] ~@body)))
+
+(deftest pivot-query-does-not-bind-card-id-test
+  (testing "run-pivot-query should not bind *card-id* from :info, so permission checks use the
+            full ad-hoc path even when :card-id is present in the query's :info map"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (with-venues-only-access
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Card {card-id :id} {:collection_id (:id collection)
+                                                  :dataset_query (mt/mbql-query venues)}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+          ;; User cannot query people directly
+          (is (thrown-with-msg? ExceptionInfo perms-error-msg
+                                (qp/process-query
+                                 {:database (mt/id)
+                                  :type     :query
+                                  :query    {:source-table (mt/id :people)
+                                             :limit        1}})))
+          ;; Pivot path with :card-id in :info still routes through the ad-hoc permission path.
+          ;; The pivot path wraps queries as userland, so permission errors are returned as
+          ;; {:status :failed} results rather than thrown exceptions.
+          (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (source-table)"
+            (let [result (qp.pivot/run-pivot-query
+                          {:database    (mt/id)
+                           :type        :query
+                           :info        {:executed-by (mt/user->id :rasta)
+                                         :context     :ad-hoc
+                                         :card-id     card-id}
+                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                           :query       {:source-table (mt/id :people)
+                                         :limit        1}})]
+              (is (= :failed (:status result)))
+              (is (re-find perms-error-msg (str (:error result))))))
+          ;; Pivot path with :card-id and a join still routes through the ad-hoc permission path
+          (testing "Pivot query uses the ad-hoc permission path when :card-id is in :info (join)"
+            (let [result (qp.pivot/run-pivot-query
+                          {:database    (mt/id)
+                           :type        :query
+                           :info        {:executed-by (mt/user->id :rasta)
+                                         :context     :ad-hoc
+                                         :card-id     card-id}
+                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                           :query       {:source-table (format "card__%d" card-id)
+                                         :joins        [{:source-table (mt/id :people)
+                                                         :alias        "p"
+                                                         :condition    [:=
+                                                                        [:field (mt/id :venues :id)]
+                                                                        [:field (mt/id :people :id) {:join-alias "p"}]]
+                                                         :fields       :all}]
+                                         :limit        5}})]
+              (is (= :failed (:status result)))
+              (is (re-find perms-error-msg (str (:error result)))))))))))
+
+(deftest pivot-query-with-card-id-bound-externally-test
+  (testing "When *card-id* is bound by the caller (e.g. card.clj), pivot queries should
+            still work correctly with card-level permission checks"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (with-venues-only-access
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Card {card-id :id} {:collection_id (:id collection)
+                                                  :dataset_query (mt/mbql-query venues
+                                                                   {:breakout    [$price]
+                                                                    :aggregation [[:count]]})}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+          ;; Simulates what card.clj does — binding *card-id* itself
+          (binding [qp.perms/*card-id* card-id]
+            (let [result (qp.pivot/run-pivot-query
+                          {:database    (mt/id)
+                           :type        :query
+                           :info        {:executed-by (mt/user->id :rasta)
+                                         :context     :ad-hoc
+                                         :card-id     card-id}
+                           :constraints {:max-results 10000 :max-results-bare-rows 2000}
+                           :query       {:source-table (format "card__%d" card-id)
+                                         :breakout     [[:field (mt/id :venues :price)]]
+                                         :aggregation  [[:count]]}})]
+              (is (=? {:status :completed} result)
+                  "Pivot query for an authorized card should succeed when *card-id* is bound by the caller"))))))))
+
+(deftest download-endpoint-replaces-info-test
+  (testing "POST /api/dataset/:format replaces :info entirely rather than merging it with the query map"
+    (with-venues-only-access
+      (mt/with-temp [:model/Collection collection {}
+                     :model/Card {card-id :id} {:collection_id (:id collection)
+                                                :dataset_query (mt/mbql-query venues)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+        (testing ":info in the request body is replaced by the server-generated :info"
+          (let [result (mt/user-http-request
+                        :rasta :post "dataset/json"
+                        {:query {:database (mt/id)
+                                 :type     :query
+                                 :info     {:card-id card-id
+                                            :executed-by 99999}
+                                 :query    {:source-table (mt/id :people)
+                                            :limit        1}}})]
+            (when (map? result)
+              (is (re-find #"(?i)permission" (str (:message result) (:error result) (:error_type result)))
+                  "Query to an unauthorized table is blocked regardless of the :info in the body"))))))))
+
+(deftest download-endpoint-pivot-join-permission-test
+  (testing "POST /api/dataset/:format with was-pivot applies permission checks to joins"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (with-venues-only-access
+        (mt/with-temp [:model/Collection collection {}
+                       :model/Card {card-id :id} {:collection_id (:id collection)
+                                                  :dataset_query (mt/mbql-query venues)}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+          (let [result (mt/user-http-request
+                        :rasta :post "dataset/json"
+                        {:query {:database   (mt/id)
+                                 :type       :query
+                                 :was-pivot  true
+                                 :query      {:source-table (format "card__%d" card-id)
+                                              :joins        [{:source-table (mt/id :people)
+                                                              :alias        "p"
+                                                              :condition    [:=
+                                                                             [:field (mt/id :venues :id)]
+                                                                             [:field (mt/id :people :id) {:join-alias "p"}]]
+                                                              :fields       :all}]
+                                              :limit        5}}})]
+            (when (map? result)
+              (is (re-find #"(?i)permission" (str (:message result) (:error result) (:error_type result)))
+                  "Join to an unauthorized table via pivot download is blocked"))))))))

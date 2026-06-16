@@ -40,7 +40,9 @@ describe("admin > MCP apps settings > Cursor install link", () => {
 
           const decoded = JSON.parse(atob(config as string));
 
-          expect(decoded.url).to.eq(`${Cypress.config("baseUrl")}/api/mcp`);
+          expect(decoded.url).to.eq(
+            `${Cypress.config("baseUrl")}/api/metabase-mcp`,
+          );
         });
 
       cy.log(

@@ -3,6 +3,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [metabase.llm.settings :as llm]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -11,7 +12,7 @@
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io BufferedReader Closeable)
+   (java.io BufferedReader Closeable InputStream)
    (java.util.concurrent Callable Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
@@ -498,32 +499,189 @@
 
            ;; otherwise: do nothing
            nil)
-
          (rf result chunk))))))
+
+(def ^:private max-body-preview-chars
+  "Cap on the body snippet spliced into provider error messages."
+  500)
+
+(defn- extract-error-message
+  "First non-blank string under `[:error :message]`, `:error`, `:detail`, or `:message`.
+  Non-strings and whitespace-only strings fall through to the next key."
+  [m]
+  ;; Filter per-lookup so a structured value (e.g. {:error {:code 500}}) never gets
+  ;; str-coerced into the user-facing exception message — bad shapes fall through to
+  ;; the next key instead.
+  (letfn [(s [v] (when (string? v) (not-empty (str/trim v))))]
+    (or (s (get-in m [:error :message]))
+        (s (:error m))
+        (s (:detail m))
+        (s (:message m)))))
+
+(def ^:private body-slurp-chunk-chars
+  "Read-chunk size for [[slurp-bounded]]. Keeps the transient buffer small so a tiny error
+  envelope costs a tiny allocation; only a body that actually reaches the cap pays for it."
+  8192)
+
+(defn- slurp-bounded
+  "Read at most `limit` chars from `r` as UTF-8, returning nil on read error or empty input.
+  Grows a `StringBuilder` in [[body-slurp-chunk-chars]] chunks so memory scales with the real
+  body rather than pre-allocating the worst-case `limit`-sized buffer up front."
+  [r limit]
+  (try
+    (with-open [rdr (io/reader r :encoding "UTF-8")]
+      (let [buf (char-array body-slurp-chunk-chars)
+            sb  (StringBuilder.)]
+        (loop []
+          (let [remaining (- limit (.length sb))]
+            (if (<= remaining 0)
+              (str sb)
+              (let [n (.read ^java.io.Reader rdr buf 0 (min remaining body-slurp-chunk-chars))]
+                (if (neg? n)
+                  (when (pos? (.length sb)) (str sb))
+                  (do (.append sb buf 0 n)
+                      (recur)))))))))
+    (catch Exception _ nil)))
+
+(def ^:private max-body-slurp-chars
+  "Cap on how many chars we read off an upstream InputStream body when decoding for error surfacing."
+  ;; Large enough to cover any realistic JSON error envelope; small enough to bound the
+  ;; pathological multi-MB case (e.g. a stuck stream from a misbehaving upstream).
+  1000000)
+
+(def ^:private max-body-log-chars
+  "Cap on the body `pr-str` spliced into warn/error log lines. Larger than the user-facing
+  preview cap since operators want more context, but still bounded so a multi-MB body — or
+  a near-cap slurped stream — can't flood the logs. The full body always survives in `ex-data`."
+  2000)
+
+(defn- decode-bounded-body
+  "Decode a clj-http response map's `:body` for error surfacing.
+  Returns the response map with `:body` set to the decoded value, or — on parse failure —
+  to the raw bounded string so [[body-preview]] still has something to surface."
+  [res]
+  ;; Bound-slurp InputStream bodies first so a giant upstream payload doesn't get pulled
+  ;; fully into memory. On parse failure (e.g. the cap truncated us mid-envelope) we keep
+  ;; the bounded string in :body rather than nil-ing it out.
+  (let [bounded (cond-> res
+                  (instance? InputStream (:body res))
+                  (update :body #(or (slurp-bounded % max-body-slurp-chars) "")))]
+    (try
+      (json/decode-body bounded)
+      (catch Exception _ bounded))))
+
+(defn- truncate-to
+  "Cap `s` at `limit` with a trailing ellipsis when it overflows."
+  [s limit]
+  (if (<= (count s) limit)
+    s
+    (str (subs s 0 limit) "…")))
+
+(defn- bounded-pr-str
+  "`pr-str` a body for error surfacing without first allocating an unbounded string.
+  Walks the body and slices every string leaf to `limit` before printing — so a parsed
+  JSON map like `{:detail \"<1MB>\"}` doesn't allocate the full 1MB leaf inside `pr-str`
+  only for the caller to truncate it back down. Collections also render under
+  `*print-length*`/`*print-level*` to bound element count and nesting depth."
+  [body limit]
+  (let [slice (fn [x] (cond-> x (string? x) (truncate-to limit)))]
+    (binding [*print-length* 100
+              *print-level*  10]
+      (pr-str (walk/postwalk slice body)))))
+
+(defn- truncate-to-preview-limit
+  "Cap `s` at [[max-body-preview-chars]] with a trailing ellipsis when it overflows."
+  [s]
+  (truncate-to s max-body-preview-chars))
+
+(defn body-for-log
+  "Bounded `pr-str` of a coerced body for warn/error log lines, capped at [[max-body-log-chars]].
+  Public so the agent loop's error logging bounds the body the same way.
+  Assumes a bounded input (a decoded ≤[[max-body-slurp-chars]] body) — the walk bounds rendered
+  output, not traversal, so a large unbounded collection would still be fully walked."
+  [body]
+  (truncate-to (bounded-pr-str body max-body-log-chars) max-body-log-chars))
+
+(defn- body-preview
+  "Short snippet of an upstream response body for the user-facing exception message.
+  Non-empty maps/arrays without a recognised human-readable field fall back to `pr-str` and emit a warn.
+  Nil/empty bodies return nil."
+  [body]
+  (let [extracted (cond
+                    (nil? body)        nil
+                    (string? body)     body
+                    (map? body)        (extract-error-message body)
+                    (sequential? body) (let [head (first body)]
+                                         (cond
+                                           (map? head)    (extract-error-message head)
+                                           (string? head) head
+                                           :else          nil))
+                    :else              nil)
+        ;; Surface *some* context in the message even for unrecognised shapes — a raw pr-str
+        ;; beats a bare "HTTP 500" with no clue what the upstream said. rethrow-api-error! logs
+        ;; the (bounded) body once already, so we don't warn again here.
+        s         (or extracted
+                      (when (and (or (map? body) (sequential? body)) (seq body))
+                        (truncate-to-preview-limit (bounded-pr-str body max-body-preview-chars))))]
+    (some-> s str/trim not-empty truncate-to-preview-limit)))
+
+(def ^:private auth-error-statuses
+  "Statuses whose upstream body may carry provider-side auth/account detail
+  (raw API keys, org/account names, tenant IDs). The full body still hits the
+  warn log; we just don't splice it into the message the caller sees."
+  #{401 403})
 
 (defn rethrow-api-error!
   "Rethrow a provider HTTP exception with a translated, user-facing message.
-
-  `res->message` receives the decoded response map and must return the message
-  to surface to the client.  If the exception already carries `:api-error true`
-  in its ex-data (e.g. a missing-API-key error from [[resolve-auth]]) it is
-  rethrown as-is so the original message is preserved."
-  [provider res->message e]
+  `res->message` receives the decoded response map and returns the provider-specific message.
+  A body preview is appended to the message except on 401/403 (see [[auth-error-statuses]]),
+  where the body may carry sensitive auth/account detail; the full body is still logged.
+  ex-data is an explicit allow-list of `:status`, `:reason-phrase`, `:headers`, `:body`, plus provider tags.
+  Exceptions already tagged `:api-error true` are rethrown unchanged."
+  [provider res->message ^Throwable e]
   (let [data (ex-data e)]
     (cond
-      (:api-error data) (throw e)
-      (:body data)      (let [res (json/decode-body data)]
-                          (throw (ex-info (res->message res)
-                                          (assoc res
-                                                 :api-error  true
-                                                 :provider   provider
-                                                 :error-code :provider-api-error)
-                                          e)))
-      :else             (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
-                                        {:api-error  true
-                                         :provider   provider
-                                         :error-code :provider-request-failed}
-                                        e)))))
+      (:api-error data)
+      (throw e)
+
+      (:body data)
+      (let [res     (decode-bounded-body data)
+            base    (res->message res)
+            preview (when-not (contains? auth-error-statuses (:status res))
+                      (body-preview (:body res)))
+            msg     (cond-> base
+                      preview (str " — " preview))]
+        ;; warnf (not warn) so the body renders into the message string, not as MDC.
+        ;; body-for-log caps the pr-str so a near-cap slurped stream can't flood the logs;
+        ;; the full body still survives in ex-data below.
+        (log/warnf "Provider API request failed: provider=%s status=%s body=%s"
+                   provider (:status res) (body-for-log (:body res)))
+        ;; Allow-list explicitly — clj-http responses carry :http-client (a Closeable),
+        ;; :trace-redirects, :orig-content-encoding, etc., none of which should propagate downstream.
+        ;; :headers is included so the retry path in metabase.metabot.self/parse-retry-after-header
+        ;; can still honor Retry-After on 429/529 responses.
+        (throw (ex-info msg
+                        (merge (select-keys res [:status :reason-phrase :headers :body])
+                               {:api-error  true
+                                :provider   provider
+                                :error-code :provider-api-error})
+                        e)))
+
+      :else
+      (let [exception-class (some-> e .getClass .getName)
+            msg             (ex-message e)]
+        (log/warnf "Provider API request failed (no response): provider=%s class=%s message=%s"
+                   provider exception-class msg)
+        ;; ex-message can be nil/blank for exceptions thrown without one (e.g. (RuntimeException.))
+        ;; — skip the colon when the cause has nothing to say.
+        (throw (ex-info (if (str/blank? msg)
+                          (tru "{0} API request failed" provider)
+                          (tru "{0} API request failed: {1}" provider msg))
+                        {:api-error       true
+                         :provider        provider
+                         :error-code      :provider-request-failed
+                         :exception-class exception-class}
+                        e))))))
 
 (defn missing-api-key-ex
   "Create a standardized missing-API-key exception for provider adapters."

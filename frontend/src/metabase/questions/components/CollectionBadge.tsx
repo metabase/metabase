@@ -1,5 +1,5 @@
 import { useGetCollectionQuery } from "metabase/api";
-import { Badge } from "metabase/common/components/Badge";
+import { Breadcrumb } from "metabase/common/components/Breadcrumb";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -20,16 +20,12 @@ const IRREGULAR_ICON_PROPS = {
 };
 
 type CollectionBadgeInnerProps = {
-  className?: string;
   collection: CollectionType;
-  isSingleLine?: boolean;
   onClick?: () => void;
 };
 
 const CollectionBadgeInner = ({
-  className,
   collection,
-  isSingleLine,
   onClick,
 }: CollectionBadgeInnerProps) => {
   const tc = useTranslateContent();
@@ -45,33 +41,28 @@ const CollectionBadgeInner = ({
     ...(isRegular ? { size: 16 } : IRREGULAR_ICON_PROPS),
   };
 
-  const clickActionProps = onClick
-    ? { onClick }
-    : { to: modelToUrl({ model: "collection", ...collection }) };
   return (
-    <Badge
-      className={className}
-      icon={icon}
-      activeColor={icon.color}
-      inactiveColor="text-tertiary"
-      isSingleLine={isSingleLine}
-      {...clickActionProps}
+    <Breadcrumb
+      icon={icon.name}
+      iconColor={icon.color}
+      to={
+        onClick ? undefined : modelToUrl({ model: "collection", ...collection })
+      }
+      onClick={onClick}
     >
       {tc(getName(collection))}
-    </Badge>
+    </Breadcrumb>
   );
 };
 
 type CollectionBadgeProps = {
-  className?: string;
   collectionId?: CollectionId;
-  isSingleLine?: boolean;
   onClick?: () => void;
 };
 
 export const CollectionBadge = ({
   collectionId,
-  ...rest
+  onClick,
 }: CollectionBadgeProps) => {
   const { data: collection } = useGetCollectionQuery({
     id: collectionId || "root",
@@ -79,5 +70,5 @@ export const CollectionBadge = ({
   if (!collection) {
     return null;
   }
-  return <CollectionBadgeInner collection={collection} {...rest} />;
+  return <CollectionBadgeInner collection={collection} onClick={onClick} />;
 };

@@ -29,12 +29,10 @@
                     (testing "response includes user_group_memberships"
                       (is (= #{{:id (:id (perms/all-external-users-group))}}
                              (set (:user_group_memberships resp)))))
-
                     (testing "user is actually assigned to all expected groups in database"
                       (let [created-user (t2/select-one :model/User :email email)]
                         (is (= #{"All tenant users"}
                                (user-test/user-group-names created-user)))))
-
                     (testing "tenant_id is set correctly"
                       (let [created-user (t2/select-one :model/User :email email)]
                         (is (= tenant-id (:tenant_id created-user)))))))))))))))
@@ -79,7 +77,6 @@
                                              :tenant_id tenant-id
                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id normal-group-id}]}))))
-
             (testing "internal users cannot be added to tenant groups via POST"
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :post 400 "user"
@@ -98,14 +95,12 @@
                                                                       :is_tenant_group true}
                        :model/PermissionsGroup {normal-group-id :id} {:name "Normal Group"
                                                                       :is_tenant_group false}]
-
           (testing "tenant users cannot be added to non-tenant groups via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
                       (mt/user-http-request :crowberto :put 400 (str "user/" external-user-id)
                                             {:user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id normal-group-id}]})))))
-
           (testing "internal users cannot be added to tenant groups via PUT"
             (mt/with-temp [:model/User {internal-user-id :id} {}]
               (is (=? {:message "Cannot add non-tenant user to tenant-group or vice versa"}
@@ -120,7 +115,6 @@
         (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test"}
                        :model/PermissionsGroup {tenant-group-id :id} {:name "Tenant Group"
                                                                       :is_tenant_group true}]
-
           (testing "cannot create tenant user as group manager via POST"
             (mt/with-model-cleanup [:model/User]
               (is (=? {:message "Tenant users cannot be made group managers"}
@@ -132,7 +126,6 @@
                                              :user_group_memberships [{:id (u/the-id (perms/all-external-users-group))}
                                                                       {:id tenant-group-id
                                                                        :is_group_manager true}]})))))
-
           (testing "cannot make external user group manager via PUT"
             (mt/with-temp [:model/User {external-user-id :id} {:tenant_id tenant-id}]
               ;; This test is expected to fail until group manager restrictions are implemented

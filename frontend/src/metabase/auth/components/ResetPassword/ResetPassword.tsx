@@ -4,13 +4,13 @@ import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
-import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
 import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
+import { resetPassword } from "metabase/redux/auth";
+import { Button } from "metabase/ui";
 
-import { resetPassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";
@@ -84,7 +84,7 @@ const ResetPasswordExpired = ({
       <InfoMessage>
         {t`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can request a new reset email.`}
       </InfoMessage>
-      <Button as={Link} primary to={forgotPasswordUrl}>
+      <Button component={Link} variant="filled" to={forgotPasswordUrl}>
         {t`Request a new reset email`}
       </Button>
     </InfoBody>

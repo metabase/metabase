@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import type { EntityId } from "metabase/admin/permissions/types";
 import {
   isSchemaEntityId,
   isTableEntityId,
@@ -17,12 +16,13 @@ import {
   DataPermissionValue,
   type GroupsPermissions,
   type NativePermissions,
+  type PermissionEntityId,
 } from "metabase-types/api";
 
 export function shouldRestrictNativeQueryPermissions(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   _permission: DataPermission,
   value: DataPermissionValue,
   _database: Database,
@@ -55,7 +55,7 @@ export function shouldRestrictNativeQueryPermissions(
 export function upgradeViewPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: EntityId,
+  entityId: PermissionEntityId,
   value: NativePermissions,
   database: Database,
 ) {

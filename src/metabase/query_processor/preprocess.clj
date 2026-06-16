@@ -27,10 +27,11 @@
    [metabase.query-processor.middleware.measures :as measures]
    [metabase.query-processor.middleware.metrics :as metrics]
    [metabase.query-processor.middleware.normalize-query :as normalize]
-   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
+   [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-clauses]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.persistence :as qp.persistence]
+   [metabase.query-processor.middleware.prefetch-metadata :as prefetch-metadata]
    [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
    [metabase.query-processor.middleware.remove-inactive-field-refs :as qp.remove-inactive-field-refs]
    [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
@@ -64,6 +65,7 @@
    #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
+   #'prefetch-metadata/prefetch-metadata
    #'fetch-source-query/resolve-source-cards
    #'drop-fields-in-summaries/drop-fields-in-summaries
    #'expand-aggregations/expand-aggregations
@@ -101,7 +103,7 @@
    #'qp.wrap-value-literals/wrap-value-literals
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
-   #'optimize-temporal-filters/optimize-temporal-filters
+   #'optimize-temporal-clauses/optimize-temporal-clauses
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
    #'qp.middleware.enterprise/apply-workspace-remapping

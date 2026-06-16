@@ -72,6 +72,7 @@ import { TopLevelCollectionsList } from "../TopLevelCollectionsList";
 
 import { DevInstanceUpsell } from "./DevInstanceUpsell";
 import { PullChangesButton } from "./PullChangesButton";
+import { TestConnectionButton } from "./TestConnectionButton";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -406,6 +407,9 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                     inputWrapperOrder: ["label", "description", "erorr"],
                   })}
                 />
+                <Box>
+                  <TestConnectionButton values={values} />
+                </Box>
               </RemoteSyncSettingsSection>
 
               {/* Section 2: Sync mode for this instance */}

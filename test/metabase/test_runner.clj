@@ -91,7 +91,7 @@
 (defn- default-options []
   {:namespace-pattern   #"^(?:(?:metabase.*)|(?:hooks\..*))" ; anything starting with `metabase*` (including `metabase-enterprise`) or `hooks.*`
    :exclude-directories excluded-directories
-   :test-warn-time      3000})
+   :test-warn-time      60000})
 
 (defn module-folders
   [modules]

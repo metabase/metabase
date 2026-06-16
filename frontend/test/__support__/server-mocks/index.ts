@@ -1,5 +1,6 @@
 export * from "./action";
 export * from "./activity";
+export * from "./advanced-config";
 export * from "./ai-entity-analysis";
 export * from "./alert";
 export * from "./api-key";
@@ -34,6 +35,7 @@ export * from "./metabot";
 export * from "./metric";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
+export * from "./oauth";
 export * from "./performance";
 export * from "./permissions";
 export * from "./premium-features";

@@ -57,6 +57,8 @@ export type ExportChangesRequest = {
   message?: string;
   branch?: string;
   force?: boolean;
+  /** Perform a 3-way merge when the remote branch has advanced (instead of refusing). */
+  merge?: boolean;
 };
 
 export type ExportChangesResponse = {
@@ -64,9 +66,37 @@ export type ExportChangesResponse = {
   task_id?: number;
 };
 
+/** Counts of remote changes a merge would fold into local content. */
+export type RemoteSyncMergeSummary = {
+  added: number;
+  updated: number;
+  removed: number;
+};
+
+/** Dry-run preview of what pushing the current state would do, given the live remote branch. */
+export type ExportPreflightResponse = {
+  /** Whether the remote branch has advanced beyond the last synced version. */
+  has_changes: boolean;
+  /** Whether a 3-way merge would apply with no conflicts. */
+  clean: boolean;
+  /** Human-readable labels of the entities that conflict (empty when clean). */
+  conflicts: string[];
+  summary: RemoteSyncMergeSummary;
+  /** "history-rewritten" when the remote was force-pushed/rebased so no merge base exists. */
+  reason: string | null;
+};
+
 export type ImportFromBranchRequest = {
   branch: string;
   force?: boolean;
+  /** Perform a local-only 3-way merge, keeping un-pushed local changes instead of overwriting them. */
+  merge?: boolean;
+  /**
+   * The branch the client believes is currently active. Rejected (409) if it disagrees with the
+   * configured remote-sync-branch — i.e. another session switched branches. Differs from `branch`
+   * on a branch switch, where `branch` is the target and this is the branch being switched away from.
+   */
+  expected_branch: string;
 };
 
 export type ImportFromBranchResponse = {
@@ -136,4 +166,13 @@ export type CreateBranchRequest = {
 export type CreateBranchResponse = {
   status: string;
   message: string;
+};
+
+export type TestRemoteSyncConnectionRequest = {
+  "remote-sync-url"?: string | null;
+  "remote-sync-token"?: string | null;
+};
+
+export type TestRemoteSyncConnectionResponse = {
+  status: "success";
 };

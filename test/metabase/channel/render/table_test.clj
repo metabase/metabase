@@ -2,11 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [hiccup.core :refer [html]]
+   [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
+   [metabase.models.visualization-settings :as mb.viz]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -262,6 +265,34 @@
                                                  :visualization_settings formatting-viz}]
         (testing "Minibar handles 0 gracefully"
           (is (some? (render.tu/render-card-as-hickory! card-id2))))))))
+
+(deftest table-minibar-missing-fingerprint-test
+  (testing "A minibar column whose fingerprint lacks numeric range stats renders the plain value
+            instead of crashing notification delivery (#74007)"
+    ;; A column can be numeric yet have no `:type/Number` fingerprint stats (an unsynced or
+    ;; computed column), leaving `min`/`max` nil. The bug surfaced only during notification
+    ;; delivery because `render-pulse-card` returns lazy hiccup: the NPE escaped its try/catch
+    ;; and fired later when the hiccup was realized into HTML. So we realize it here too.
+    (let [data    {:cols             [{:name "A" :display_name "A" :base_type :type/Integer :semantic_type nil}]
+                   :rows             [[5] [10]]
+                   :format-rows?     true
+                   :results_metadata {:columns [{:name "A" :base_type :type/Integer
+                                                 :fingerprint {:global {:distinct-count 2}}}]}
+                   :viz-settings     {::mb.viz/column-settings
+                                      {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
+          ;; render-pulse-card returns lazy hiccup, so realize it into HTML (as delivery does)
+          ;; before parsing; this is the step that throws on the unfixed code.
+          doc        (-> (channel.render/render-pulse-card :inline "UTC" render.tu/test-card nil {:data data})
+                         :content
+                         html
+                         hik/parse
+                         hik/as-hickory)
+          body-cells (hik.s/select (hik.s/descendant (hik.s/tag :tbody) (hik.s/tag :td)) doc)]
+      (testing "no minibar is rendered in any data cell - it falls back to the plain value"
+        (is (not-any? (fn [cell] (seq (hik.s/select (hik.s/tag :table) cell))) body-cells)))
+      (testing "the cell values are still rendered"
+        (is (seq (hik.s/select (hik.s/find-in-text #"^5$") doc)))
+        (is (seq (hik.s/select (hik.s/find-in-text #"^10$") doc)))))))
 
 (defn- render-table [dashcard results]
   (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))

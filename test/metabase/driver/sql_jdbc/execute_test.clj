@@ -68,7 +68,7 @@
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [driver db opts]
                                       (when (and (= db test-db-id) (:keep-open? opts))
-                                        (vreset! captured-connection-type driver.conn/*connection-type*))
+                                        (vreset! captured-connection-type @#'driver.conn/*connection-type*))
                                       (orig-fn driver db opts))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-fn driver/*driver* test-db-id {}))
@@ -132,16 +132,13 @@
                           (let [ret (original-recursive-fn)]
                             (vswap! connection-option-calls conj [:recursive-connection-check ret])
                             ret)))]
-
           (driver/do-with-resilient-connection
            driver/*driver* (mt/id)
            (fn [driver _db]
              (let [result (sql-jdbc.execute/try-ensure-open-conn! driver closed-conn)]
                ;; Should return the new connection
                (is (identical? new-conn result))
-
                (is (some #(= % [:recursive-connection-check false]) @connection-option-calls))
-
                ;; Should have set connection options (since it's non-recursive)
                (when is-default-options
                  (let [calls @connection-option-calls]
@@ -157,13 +154,11 @@
                    (isClosed [_] false)
                    (isValid [_ _] true))]
         (is (true? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
-
     (testing "returns false when connection is closed"
       (let [conn (reify Connection
                    (isClosed [_] true)
                    (isValid [_ _] true))]
         (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))))
-
     (testing "closes connection and returns false when connection is open but not valid"
       (let [close-called? (atom false)
             conn (reify Connection

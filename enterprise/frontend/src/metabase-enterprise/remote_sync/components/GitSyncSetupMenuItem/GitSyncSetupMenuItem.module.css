@@ -11,7 +11,7 @@
 
   &:hover {
     background-color: var(--mb-color-background-hover);
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
 
     .icon {
       color: inherit;

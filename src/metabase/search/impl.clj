@@ -264,6 +264,7 @@
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
+   [:vector-search-strategy              {:optional true} [:maybe string?]]
    [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
@@ -302,6 +303,7 @@
            models
            offset
            search-engine
+           vector-search-strategy
            search-native-query
            search-string
            table-db-id
@@ -315,7 +317,8 @@
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
-  (let [models (if (seq models) models search.config/all-models)
+  (let [context (some-> context search.config/normalized-context)
+        models (if (seq models) models search.config/all-models)
         engine (parse-engine search-engine)
         fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))
@@ -344,6 +347,7 @@
                  (some? table-db-id)                         (assoc :table-db-id table-db-id)
                  (some? limit)                               (assoc :limit-int limit)
                  (some? offset)                              (assoc :offset-int offset)
+                 (not (str/blank? vector-search-strategy))    (assoc :vector-search-strategy (keyword vector-search-strategy))
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
@@ -431,7 +435,11 @@
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
                             true (map (partial add-can-write search-ctx))
-                            true (map serialize))]
+                            true (map serialize)
+                            ;; Realize within the enclosing tracing span so hydration and
+                            ;; serialization time is attributed here rather than deferred to
+                            ;; JSON encoding after the span closes.
+                            true vec)]
     (cond-> {:data        paginated-results
              :limit       (:limit-int search-ctx)
              :models      (:models search-ctx)

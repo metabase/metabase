@@ -14,11 +14,11 @@ import type {
   MetricExpressionId,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
+  MetricsViewerDimensionBreakoutState,
+  MetricsViewerDimensionBreakoutType,
   MetricsViewerDisplayType,
   MetricsViewerFormulaEntity,
   MetricsViewerPageState,
-  MetricsViewerTabState,
-  MetricsViewerTabType,
 } from "../types/viewer-state";
 import { isExpressionEntry, isMetricEntry } from "../types/viewer-state";
 import {
@@ -183,7 +183,7 @@ interface SerializedSource {
 
 type SerializedFormulaEntity = SerializedExpressionEntry | SerializedSource;
 
-interface SerializedTabDef {
+interface SerializedDimensionBreakoutDef {
   slotIndex: number;
   dimensionId?: string;
 }
@@ -194,20 +194,22 @@ interface SerializedProjectionConfig {
   binning?: string;
 }
 
-interface SerializedTab {
+interface SerializedDimensionBreakout {
   id: string;
-  type: MetricsViewerTabType;
+  type: MetricsViewerDimensionBreakoutType;
   label: string | null;
   display: MetricsViewerDisplayType;
+  showColumnLabels?: boolean;
   visualizationSettings?: Partial<VisualizationSettings>;
-  definitions: SerializedTabDef[];
+  definitions: SerializedDimensionBreakoutDef[];
   projectionConfig?: SerializedProjectionConfig;
 }
 
 export interface SerializedMetricsViewerPageState {
   formulaEntities: SerializedFormulaEntity[];
-  tabs: SerializedTab[];
-  selectedTabId: string | null;
+  dimensionBreakouts: SerializedDimensionBreakout[];
+  selectedDimensionBreakoutId: string | null;
+  showColumnLabels?: boolean;
 }
 
 // ── Expression sub-token helpers ──
@@ -250,7 +252,7 @@ function deserializeSubToken(
     return {
       type: "metric",
       sourceId: token.sourceId as MetricSourceId,
-      count: 0,
+      occurrenceCount: 0,
       serializedDefinitionInfo: hasInfo
         ? {
             filters: token.filters,
@@ -330,24 +332,26 @@ function definitionToSource(def: MetricDefinition): SerializedSource | null {
   return null;
 }
 
-function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
+function dimensionBreakoutToSerializedDimensionBreakout(
+  dimensionBreakout: MetricsViewerDimensionBreakoutState,
+): SerializedDimensionBreakout {
   const { dimensionFilter, temporalUnit, binningStrategy } =
-    tab.projectionConfig;
+    dimensionBreakout.projectionConfig;
   const hasProjectionConfig =
     dimensionFilter !== undefined ||
     temporalUnit !== undefined ||
     binningStrategy;
 
   return {
-    id: tab.id,
-    type: tab.type,
-    label: tab.label,
-    display: tab.display,
-    ...(tab.visualizationSettings &&
-    Object.keys(tab.visualizationSettings).length > 0
-      ? { visualizationSettings: tab.visualizationSettings }
+    id: dimensionBreakout.id,
+    type: dimensionBreakout.type,
+    label: dimensionBreakout.label,
+    display: dimensionBreakout.display,
+    ...(dimensionBreakout.visualizationSettings &&
+    Object.keys(dimensionBreakout.visualizationSettings).length > 0
+      ? { visualizationSettings: dimensionBreakout.visualizationSettings }
       : {}),
-    definitions: getObjectEntries(tab.dimensionMapping).map(
+    definitions: getObjectEntries(dimensionBreakout.dimensionMapping).map(
       ([key, dimensionId]) => ({
         slotIndex: Number(key),
         ...(dimensionId != null ? { dimensionId } : {}),
@@ -363,27 +367,53 @@ function tabToSerializedTab(tab: MetricsViewerTabState): SerializedTab {
   };
 }
 
-export function deserializeTab(
-  serializedTab: SerializedTab,
-): MetricsViewerTabState {
+function getSerializableDimensionBreakouts(state: MetricsViewerPageState) {
+  const selectedDimensionBreakout = state.dimensionBreakouts.find(
+    (dimensionBreakout) =>
+      dimensionBreakout.id === state.selectedDimensionBreakoutId,
+  );
+
+  if (!selectedDimensionBreakout) {
+    return {
+      dimensionBreakouts: [],
+      selectedDimensionBreakoutId: null,
+    };
+  }
+
+  return {
+    dimensionBreakouts: [selectedDimensionBreakout],
+    selectedDimensionBreakoutId: selectedDimensionBreakout.id,
+  };
+}
+
+export function deserializeDimensionBreakout(
+  serializedDimensionBreakout: SerializedDimensionBreakout,
+): MetricsViewerDimensionBreakoutState {
   const dimensionMapping: Record<number, string | null> = {};
-  for (const serializedDefinition of serializedTab.definitions) {
+  for (const serializedDefinition of serializedDimensionBreakout.definitions) {
     dimensionMapping[serializedDefinition.slotIndex] =
       serializedDefinition.dimensionId ?? null;
   }
   return {
-    id: serializedTab.id,
-    type: serializedTab.type,
-    label: serializedTab.label,
-    display: serializedTab.display,
-    ...(serializedTab.visualizationSettings
-      ? { visualizationSettings: serializedTab.visualizationSettings }
+    id: serializedDimensionBreakout.id,
+    type: serializedDimensionBreakout.type,
+    label: serializedDimensionBreakout.label,
+    display: serializedDimensionBreakout.display,
+    ...(serializedDimensionBreakout.showColumnLabels === true
+      ? { showColumnLabels: true }
+      : {}),
+    ...(serializedDimensionBreakout.visualizationSettings
+      ? {
+          visualizationSettings:
+            serializedDimensionBreakout.visualizationSettings,
+        }
       : {}),
     dimensionMapping,
     projectionConfig: {
-      dimensionFilter: serializedTab.projectionConfig?.dimensionFilter,
-      temporalUnit: serializedTab.projectionConfig?.temporalUnit,
-      binningStrategy: serializedTab.projectionConfig?.binning,
+      dimensionFilter:
+        serializedDimensionBreakout.projectionConfig?.dimensionFilter,
+      temporalUnit: serializedDimensionBreakout.projectionConfig?.temporalUnit,
+      binningStrategy: serializedDimensionBreakout.projectionConfig?.binning,
     },
   };
 }
@@ -468,6 +498,8 @@ export function stateToSerializedState(
   state: MetricsViewerPageState,
 ): SerializedMetricsViewerPageState {
   const formulaEntities: SerializedFormulaEntity[] = [];
+  const { dimensionBreakouts, selectedDimensionBreakoutId } =
+    getSerializableDimensionBreakouts(state);
 
   for (const entity of state.formulaEntities) {
     if (isMetricEntry(entity)) {
@@ -497,8 +529,11 @@ export function stateToSerializedState(
 
   return {
     formulaEntities,
-    tabs: state.tabs.map(tabToSerializedTab),
-    selectedTabId: state.selectedTabId,
+    dimensionBreakouts: dimensionBreakouts.map(
+      dimensionBreakoutToSerializedDimensionBreakout,
+    ),
+    selectedDimensionBreakoutId,
+    ...(state.showColumnLabels ? { showColumnLabels: true } : {}),
   };
 }
 
@@ -531,10 +566,11 @@ const formulaEntitySchema = defineCompactSchema<SerializedFormulaEntity>({
   tokens: { key: "T", schema: expressionSubTokenSchema, optional: true },
 });
 
-const tabDefSchema = defineCompactSchema<SerializedTabDef>({
-  slotIndex: "i",
-  dimensionId: { key: "d", optional: true },
-});
+const dimensionBreakoutDefSchema =
+  defineCompactSchema<SerializedDimensionBreakoutDef>({
+    slotIndex: "i",
+    dimensionId: { key: "d", optional: true },
+  });
 
 const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
   dimensionFilter: { key: "f", optional: true },
@@ -542,30 +578,46 @@ const projectionConfigSchema = defineCompactSchema<SerializedProjectionConfig>({
   binning: { key: "b", optional: true },
 });
 
-const tabSchema = defineCompactSchema<SerializedTab>({
-  id: "i",
-  type: "t",
-  label: { key: "l", default: null },
-  display: { key: "d", default: "line" },
-  visualizationSettings: { key: "V", optional: true },
-  definitions: { key: "D", schema: tabDefSchema, default: [] },
-  projectionConfig: {
-    key: "p",
-    schema: projectionConfigSchema,
-    optional: true,
-  },
-});
+const dimensionBreakoutSchema =
+  defineCompactSchema<SerializedDimensionBreakout>({
+    id: "i",
+    type: "t",
+    label: { key: "l", default: null },
+    display: { key: "d", default: "line" },
+    showColumnLabels: { key: "c", optional: true },
+    visualizationSettings: { key: "V", optional: true },
+    definitions: {
+      key: "D",
+      schema: dimensionBreakoutDefSchema,
+      default: [],
+    },
+    projectionConfig: {
+      key: "p",
+      schema: projectionConfigSchema,
+      optional: true,
+    },
+  });
 
 const rootSchema = defineCompactSchema<SerializedMetricsViewerPageState>({
   formulaEntities: { key: "f", schema: formulaEntitySchema, default: [] },
-  tabs: { key: "t", schema: tabSchema, default: [] },
-  selectedTabId: { key: "a", default: null },
+  dimensionBreakouts: {
+    key: "t",
+    schema: dimensionBreakoutSchema,
+    default: [],
+  },
+  selectedDimensionBreakoutId: { key: "a", default: null },
+  showColumnLabels: { key: "c", optional: true },
 });
 
 // ── Encode / decode ──
 
 function emptyState(): SerializedMetricsViewerPageState {
-  return { formulaEntities: [], tabs: [], selectedTabId: null };
+  return {
+    formulaEntities: [],
+    dimensionBreakouts: [],
+    selectedDimensionBreakoutId: null,
+    showColumnLabels: false,
+  };
 }
 
 // After JSON.parse, Date values are ISO strings. Walk the decoded state and revive them.
@@ -603,18 +655,18 @@ function reviveStateDates(
       }
       return entity;
     }),
-    tabs: state.tabs.map((tab) =>
-      tab.projectionConfig?.dimensionFilter
+    dimensionBreakouts: state.dimensionBreakouts.map((dimensionBreakout) =>
+      dimensionBreakout.projectionConfig?.dimensionFilter
         ? {
-            ...tab,
+            ...dimensionBreakout,
             projectionConfig: {
-              ...tab.projectionConfig,
+              ...dimensionBreakout.projectionConfig,
               dimensionFilter: reviveFilter(
-                tab.projectionConfig.dimensionFilter,
+                dimensionBreakout.projectionConfig.dimensionFilter,
               ),
             },
           }
-        : tab,
+        : dimensionBreakout,
     ),
   };
 }

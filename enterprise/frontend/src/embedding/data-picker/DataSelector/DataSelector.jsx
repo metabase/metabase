@@ -5,17 +5,17 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  cardApi,
   databaseApi,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { Questions } from "metabase/entities/questions";
-import { entityCompatibleQuery } from "metabase/entities/utils";
 import { connect } from "metabase/redux";
 import { fetchTableMetadata } from "metabase/redux/tables";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -903,6 +903,7 @@ function withAvailableModels(WrappedComponent) {
       calculate_available_models: true,
       limit: 0,
       models: ["dataset"],
+      context: "data-picker",
     });
     const { data: _data, ...metadata } = response ?? {};
     return (
@@ -917,10 +918,19 @@ function withAvailableModels(WrappedComponent) {
   };
 }
 
+// Prefetches the saved-databases list and forwards its loading state as
+// `allLoading` so the picker waits for the databases (not just the models
+// search) before hydrating its initial step. Without this the picker would
+// briefly show only models and stream the databases in afterwards.
 function withSavedDatabasesPrefetch(WrappedComponent) {
   return function DataSelectorWithSavedDatabasesPrefetch(props) {
-    useListDatabasesQuery({ saved: true });
-    return <WrappedComponent {...props} />;
+    const { isLoading } = useListDatabasesQuery({ saved: true });
+    return (
+      <WrappedComponent
+        {...props}
+        allLoading={isLoading || (props.allLoading ?? false)}
+      />
+    );
   };
 }
 
@@ -957,14 +967,14 @@ const DataSelector = _.compose(
         }),
         hasDataAccess: canUserCreateQueries(state),
         hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-        selectedQuestion: Questions.selectors.getObject(state, {
-          entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
-        }),
+        selectedQuestion: getMetadata(state).question(
+          getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
+        ),
       };
     },
     (dispatch) => ({
       fetchDatabases: () =>
-        entityCompatibleQuery(
+        runRtkEndpoint(
           { saved: true },
           dispatch,
           databaseApi.endpoints.listDatabases,
@@ -972,10 +982,10 @@ const DataSelector = _.compose(
         ),
       fetchFields: (tableId) => dispatch(fetchTableMetadata({ id: tableId })),
       fetchQuestion: (id) =>
-        dispatch(
-          Questions.actions.fetch({
-            id: getQuestionIdFromVirtualTableId(id),
-          }),
+        runRtkEndpoint(
+          { id: getQuestionIdFromVirtualTableId(id) },
+          dispatch,
+          cardApi.endpoints.getCard,
         ),
     }),
   ),

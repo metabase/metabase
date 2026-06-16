@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -7,6 +8,10 @@ import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
+import {
+  extractFailedTests,
+  reportFailedTestsToConductor,
+} from "./ci_conductor";
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
@@ -75,6 +80,18 @@ const defaultConfig = {
   setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // Build custom-viz .tgz fixtures from sources
+    execFileSync(
+      "node",
+      [
+        path.resolve(
+          __dirname,
+          "../../enterprise/frontend/src/custom-viz/fixtures/build-example-custom-viz.mjs",
+        ),
+      ],
+      { stdio: "inherit" },
+    );
 
     // Use cypress-on-fix to enable multiple handlers
     const on = cypressOnFix(cypressOn);
@@ -165,9 +182,30 @@ const defaultConfig = {
       collectFailingTests(on, config);
     }
 
-    // this is an official workaround to keep recordings of the failed specs only
-    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
-    on("after:spec", (spec, results) => {
+    // Surface the resolved Cypress retry ceiling so the ci-conductor reporter
+    // can include it in the payload (CYPRESS_RETRIES isn't otherwise set in CI;
+    // the value lives in mainConfig.retries.runMode). DEV-1999.
+    const resolvedRetries =
+      typeof config.retries === "number"
+        ? config.retries
+        : (config.retries?.runMode ?? 0);
+    process.env.CYPRESS_RETRIES = String(resolvedRetries);
+
+    on("after:spec", async (spec, results) => {
+      // Report failures to ci-conductor mid-run (no-ops unless configured).
+      if (isCI) {
+        // Reporting to ci-conductor must NEVER break the test run, so this is
+        // a hard backstop around everything — extraction, payload build, and
+        // the request. The reporter also handles its own errors internally.
+        try {
+          await reportFailedTestsToConductor(extractFailedTests(spec, results));
+        } catch (error) {
+          console.error("[ci-conductor] reporting failed (ignored)", error);
+        }
+      }
+
+      // this is an official workaround to keep recordings of the failed specs only
+      // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
         if (results && results.video && results.stats.failures === 0) {

@@ -52,7 +52,8 @@ Metabase's reference documentation.
 - [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Remote sync](./installation-and-operation/remote-sync.md)
-- [Commands](./installation-and-operation/commands.md)
+- [Metabase CLI](./installation-and-operation/metabase-cli.md)
+- [Metabase JAR commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
 - [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
@@ -97,6 +98,7 @@ Metabase's reference documentation.
 - [Visualizing data](./questions/visualizations/visualizing-results.md)
 - [Box plots](./questions/visualizations/box-plot.md)
 - [Combo charts](./questions/visualizations/combo-chart.md)
+- [Custom visualizations](./questions/visualizations/custom.md)
 - [Detail](./questions/visualizations/detail.md)
 - [Funnel charts](./questions/visualizations/funnel.md)
 - [Gauge charts](./questions/visualizations/gauge.md)
@@ -158,6 +160,7 @@ Metabase's reference documentation.
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
 - [Metabot in Slack](./ai/metabot-slack.md)
+- [AI privacy](./ai/privacy.md)
 
 ### Exploration and organization
 

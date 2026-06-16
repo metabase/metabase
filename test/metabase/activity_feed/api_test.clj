@@ -76,7 +76,6 @@
                 (is (= (assoc dash-1 :collection (assoc crowberto-personal-coll :is_personal true) :view_count 1)
                        (mt/user-http-request :crowberto :get 200
                                              "activity/most_recently_viewed_dashboard")))))
-
             (testing "view a dashboard in a public collection"
               (events/publish-event! :event/dashboard-read {:object-id (:id dash-2) :user-id (mt/user->id :crowberto)})
               (is (= (assoc dash-2 :collection (assoc coll :is_personal false) :view_count 1)

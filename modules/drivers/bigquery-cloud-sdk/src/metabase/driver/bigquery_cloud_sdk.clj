@@ -53,6 +53,7 @@
     Field$Mode
     FieldValue
     FieldValueList
+    Job
     JobInfo
     QueryJobConfiguration
     Schema
@@ -237,7 +238,6 @@
   (let [[sql & params] (sql.qp/format-honeysql
                         driver
                         honeysql-form)]
-
     (*process-native*
      (fn [cols results]
        (let [col-names (map (comp keyword :name) (:cols cols))]
@@ -503,7 +503,6 @@
   (let [details     (driver.conn/effective-details database)
         project-id  (bigquery.common/get-project-id details)
         dataset-ids (or schema-names (list-datasets details))]
-
     ;; The contract of [[driver/describe-fields]] requires results ordered by:
     ;; `table-schema`, `table-name`, `database-position`
     ;;
@@ -761,7 +760,12 @@
         result-promise   (promise)
         request          (build-bigquery-request sql parameters)
         _                (driver.conn/track-connection-acquisition! database-details)
-        job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+        ;; Wrap exception to avoid responding with HTTP 500 and reporting "We're experiencing server issues"
+        ;; in the UI. (#71558)
+        ^Job job         (try
+                           (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
+                           (catch Throwable t
+                             (handle-bigquery-exception t sql parameters)))
         job-id           (.getJobId job)
         query-future     (future
                            ;; ensure the classloader is available within the future.
@@ -775,7 +779,6 @@
                                  (throw (ex-info "Null response from query" {}))))
                              (catch Throwable t
                                (deliver result-promise [:error t]))))]
-
     ;; This `go` is responsible for cancelling the *initial* job execution.
     ;; Future pages may still not be fetched and so the reducer needs to check `cancel-chan` as well.
     (when cancel-chan
@@ -783,7 +786,6 @@
         (when-let [cancelled (a/<! cancel-chan)]
           (deliver result-promise [:cancel cancelled])
           (some-> query-future future-cancel))))
-
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
     (let [[status result] @result-promise]
@@ -872,6 +874,11 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
+                              ;; falls back to a native `COUNT(*)` on the CTAS path.
+                              ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
+                              ;; statements by using a different driver-native API for affected-row counts.
+                              :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
@@ -1090,8 +1097,8 @@
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]
-           (or (and table-result (.getTotalRows table-result))
-               0))))
+           {:rows-affected (or (and table-result (.getTotalRows table-result))
+                               0)})))
       (catch Exception e
         (log/error e "Error executing BigQuery DDL")
         (throw e)))))

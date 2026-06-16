@@ -50,18 +50,14 @@ export const datasetApi = Api.injectEndpoints({
           return {
             method: "POST",
             url,
-            body: { formData },
-            formData: true,
-            fetch: true,
-            transformResponse: ({ response }: { response: Response }) =>
-              response,
+            body: formData,
+            rawResponse: true,
           };
         }
         return {
           method: "GET",
           url,
-          fetch: true,
-          transformResponse: ({ response }: { response: Response }) => response,
+          rawResponse: true,
         };
       },
     }),
@@ -74,10 +70,6 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset",
         body,
         noEvent: ignore_error,
-        // Use fetch so RTK Query's AbortSignal actually cancels the
-        // request. The XHR path only honors a `cancelled` promise, which
-        // we can't thread through `endpoint.initiate(...).abort()`.
-        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
       // Dataset results can be large and the cache key is the full
@@ -101,7 +93,6 @@ export const datasetApi = Api.injectEndpoints({
         url: "/api/dataset/pivot",
         body,
         noEvent: ignore_error,
-        fetch: true,
       }),
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,
