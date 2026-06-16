@@ -450,6 +450,14 @@
             (snapshot* fresh-source)))
         (throw e)))))
 
+(defn snapshot-at-version
+  "Builds a GitSnapshot for `source` at an already-fetched `version` (commit-ish), or nil if the version
+  cannot be resolved against local state (e.g. it was orphaned by a force-push or rebase). Does not fetch."
+  [source version]
+  (when version
+    (when-let [sha (commit-sha source version)]
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) sha (:token source) (:managed-dirs source)))))
+
 (defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
   (branches [source] (branches source))
@@ -461,7 +469,10 @@
     (default-branch this))
 
   (snapshot [this]
-    (snapshot this)))
+    (snapshot this))
+
+  (snapshot-at [this version]
+    (snapshot-at-version this version)))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.

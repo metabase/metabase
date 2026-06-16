@@ -399,3 +399,36 @@
                    clojure.lang.ExceptionInfo
                    #"No Anthropic API key is set"
                    (claude/list-models {}))))))))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "models that accept an explicit temperature"
+    (doseq [model ["claude-haiku-4-5" "claude-sonnet-4-6" "claude-sonnet-4-5"
+                   "claude-opus-4-5" "claude-opus-4-6" "claude-opus-4-1"]]
+      (is (true? (#'claude/model-supports-temperature? model))
+          model)))
+  (testing "sampling parameters were removed starting with Opus 4.7 and on Fable models"
+    (doseq [model ["claude-opus-4-7" "claude-opus-4-8" "claude-opus-4-8-20260415"
+                   "claude-opus-5" "claude-opus-5-0" "claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an anthropic. vendor prefix that is stripped before the check"
+    (doseq [model ["anthropic.claude-opus-4-8" "anthropic.claude-opus-4-7" "anthropic.claude-fable-5"]]
+      (is (false? (#'claude/model-supports-temperature? model))
+          model))
+    (is (true? (#'claude/model-supports-temperature? "anthropic.claude-haiku-4-5")))))
+
+(deftest ^:parallel temperature-omitted-for-removed-sampling-models-test
+  (let [request-body #(claude/claude-request-body {:model       %
+                                                   :input       [{:role :user :content "hi"}]
+                                                   :temperature 0.3})]
+    (testing "temperature is sent for models that accept it"
+      (is (= 0.3 (:temperature (request-body "claude-haiku-4-5")))))
+    (testing "temperature is omitted for models that reject sampling parameters"
+      (is (not (contains? (request-body "claude-opus-4-8") :temperature)))
+      (is (not (contains? (request-body "anthropic.claude-opus-4-8") :temperature))))))

@@ -52,7 +52,7 @@ export function TemporalUnitPicker({
       {!isExpanded && (
         <DefaultSelectItem
           value={t`More…`}
-          c="brand"
+          c="core-brand"
           onClick={() => setIsExpanded(true)}
           role="option"
         />

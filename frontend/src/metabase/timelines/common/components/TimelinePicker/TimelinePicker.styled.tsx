@@ -57,14 +57,14 @@ interface CardProps {
 }
 
 const selectedStyles = css`
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
     color: var(--mb-color-text-primary-inverse);
   }
 
   ${CardIcon} {
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 
   ${CardIconContainer} {

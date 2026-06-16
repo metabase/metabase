@@ -21,8 +21,8 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import { ControlledPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -156,29 +156,34 @@ const _TabButton = forwardRef(function TabButton(
         />
       </TabButtonInputWrapper>
       {showMenu && (
-        <ControlledPopoverWithTrigger
-          visible={isMenuOpen}
-          onOpen={() => setIsMenuOpen(true)}
-          onClose={() => setIsMenuOpen(false)}
-          renderTrigger={({ onClick }) => (
+        <Popover
+          opened={isMenuOpen}
+          onChange={setIsMenuOpen}
+          position="bottom-start"
+          trapFocus
+        >
+          <Popover.Target>
             <MenuButton
               icon="chevrondown"
               iconSize={10}
               isSelected={isSelected}
               isOpen={isMenuOpen}
-              onClick={onClick}
+              onClick={() => setIsMenuOpen(true)}
               ref={menuButtonRef}
               disabled={disabled}
             />
-          )}
-          popoverContent={({ closePopover }) => (
+          </Popover.Target>
+          <Popover.Dropdown
+            // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
+            setupSequencedCloseHandler={() => setIsMenuOpen(false)}
+          >
             <TabButtonMenu
               menuItems={menuItems}
               value={value}
-              closePopover={closePopover}
+              closePopover={() => setIsMenuOpen(false)}
             />
-          )}
-        />
+          </Popover.Dropdown>
+        </Popover>
       )}
     </TabButtonRoot>
   );
@@ -197,7 +202,7 @@ export interface RenameableTabButtonProps extends Omit<
 
 // These styles need to be here instead of .styled to avoid circular dependency
 const getBorderStyle = () => css`
-  box-shadow: 0px 0px 2px 1px var(--mb-color-brand);
+  box-shadow: 0px 0px 2px 1px var(--mb-color-core-brand);
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{
   isRenaming: boolean;

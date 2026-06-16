@@ -7,11 +7,13 @@
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.entity-usage :as entity-usage]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -50,7 +52,8 @@
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query :map]
-   [:visualization {:optional true} construct-visualization-schema]])
+   [:visualization {:optional true} construct-visualization-schema]
+   [:title :string]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -404,9 +407,10 @@
   construct-notebook-query-tool
   "Construct and visualize a notebook query from a metric, model, or table.
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`. See
+  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
+  short, human-friendly `title` shown above the resulting chart. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization title]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -418,7 +422,7 @@
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
                              :queries-state {(:query-id structured) (:query structured)}})
-              navigate-url (get-in chart-result [:reactions 0 :url])
+              results-url  (:results-url chart-result)
               full-structured (assoc structured
                                      :result-type   :query
                                      :chart-id      (:chart-id chart-result)
@@ -437,8 +441,15 @@
           (entity-usage/stamp-artifact-valid
            {:output (str "<result>\n" chart-xml "\n</result>\n"
                          "<instructions>\n" instruction-text "\n</instructions>")
-            :data-parts        (when navigate-url
-                                 [(streaming/navigate-to-part navigate-url)])
+            :data-parts        (when results-url
+                                 [(streaming/viz-part
+                                   {:inline?   (shared/inline-viz-capable?)
+                                    :entity-id (:chart-id chart-result)
+                                    :query-id  (:query-id structured)
+                                    :query     (links/->legacy-mbql (:query structured))
+                                    :display   chart-type
+                                    :title     title
+                                    :link      results-url})])
             :structured-output full-structured
             :instructions      instruction-text}
            true))

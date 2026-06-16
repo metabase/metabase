@@ -1,12 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+import { Link as RouterLink } from "react-router";
 import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
-import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { Icon } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -21,7 +21,6 @@ import {
   ActionTitle,
   CodeBlock,
   ImplicitActionCardContentRoot,
-  MenuIcon,
 } from "./ModelActionListItem.styled";
 
 interface Props {
@@ -38,7 +37,7 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
   if (!question.isNative()) {
     return (
       <CodeBlock>
-        <Icon name="warning" size={16} tooltip={t`No query found`} />
+        <Icon name="warning" tooltip={t`No query found`} />
       </CodeBlock>
     );
   }
@@ -80,24 +79,6 @@ function ModelActionListItem({
     });
   }, [action, askConfirmation, onArchive]);
 
-  const menuItems = useMemo(
-    () => [
-      {
-        title: canEdit ? t`Edit` : t`View`,
-        icon: canEdit ? "pencil" : "eye",
-        link: actionUrl,
-      },
-      canArchive
-        ? {
-            title: t`Archive`,
-            icon: "archive",
-            action: handleArchive,
-          }
-        : null,
-    ],
-    [actionUrl, canEdit, canArchive, handleArchive],
-  );
-
   return (
     <>
       <ActionHeader>
@@ -117,7 +98,33 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
+        <Menu position="bottom-end">
+          <Menu.Target>
+            <ActionIcon aria-label={t`Actions`} variant="subtle">
+              <Icon name="ellipsis" />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              component={RouterLink}
+              data-testid="entity-menu-link"
+              leftSection={
+                <Icon name={canEdit ? "pencil" : "eye"} aria-hidden />
+              }
+              to={actionUrl}
+            >
+              {canEdit ? t`Edit` : t`View`}
+            </Menu.Item>
+            {canArchive && (
+              <Menu.Item
+                leftSection={<Icon name="archive" aria-hidden />}
+                onClick={handleArchive}
+              >
+                {t`Archive`}
+              </Menu.Item>
+            )}
+          </Menu.Dropdown>
+        </Menu>
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (

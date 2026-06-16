@@ -1,3 +1,7 @@
+// TODO: delete this file entirely (the RENDERED_POPOVERS stack and all its
+// registrations) when the legacy Modal is migrated to Modal from metabase/ui
+// (GDGT-2575) — grep for useSequencedContentCloseHandler and
+// setupSequencedCloseHandler to find the consumers to clean up
 import { useCallback, useRef } from "react";
 import _ from "underscore";
 
@@ -15,6 +19,23 @@ export const RENDERED_POPOVERS: PopoverData[] = [];
 function isEventInsideElement(e: Event, el: Element) {
   const target = e.composedPath()[0];
   return isElement(target) && el.contains(target);
+}
+
+// An Escape originating inside a Mantine dropdown is handled by Mantine itself
+// (onKeyDownCapture on the dropdown element). It must not also close a stack
+// entry: Mantine closes the dropdown synchronously during the capture phase,
+// so by the time the event bubbles to this stack's document listener the
+// dropdown is already unregistered and a parent modal would wrongly become the
+// topmost entry. composedPath() is frozen at dispatch time, so the origin is
+// still detectable here.
+// TODO: goes away together with this file when the legacy Modal /
+// RENDERED_POPOVERS stack is no longer used (GDGT-2575)
+function isEventInsideMantinePopover(e: Event) {
+  const target = e.composedPath()[0];
+  return (
+    isElement(target) &&
+    target.closest('[data-element-id="mantine-popover"]') !== null
+  );
 }
 
 export function removePopoverData(popoverData: PopoverData) {
@@ -45,7 +66,8 @@ export function shouldClosePopover(
     return (
       mostRecentPopover &&
       mostRecentPopover === popoverData &&
-      e.key === "Escape"
+      e.key === "Escape" &&
+      !isEventInsideMantinePopover(e)
     );
   }
 
@@ -76,11 +98,15 @@ export function useSequencedContentCloseHandler() {
   }, [handleEvent]);
 
   const setupCloseHandler = useCallback(
-    (contentEl: Element | null, close: () => void) => {
+    (
+      contentEl: Element | null,
+      close: () => void,
+      ignoreEl?: Element | null,
+    ) => {
       removeCloseHandler();
 
       if (isElement(contentEl)) {
-        const popover = { contentEl, close };
+        const popover = { contentEl, close, ignoreEl: ignoreEl ?? undefined };
         RENDERED_POPOVERS.push(popover);
         popoverDataRef.current = popover;
 

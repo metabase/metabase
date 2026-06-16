@@ -111,7 +111,7 @@ export const DataPermissionsHelp = () => {
               )}
               <PermissionHelpDescription
                 icon="permissions_limited"
-                iconColor="brand"
+                iconColor="core-brand"
                 name={t`Row and column security (Pro)`}
                 description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
               />

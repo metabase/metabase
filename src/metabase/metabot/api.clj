@@ -35,6 +35,7 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -315,14 +316,22 @@
 (def ^:private metabot-settings-response-schema
   [:map
    [:value [:maybe :string]]
-   [:api-key-error {:optional true} [:maybe :string]]
+   [:credentials-error {:optional true} [:maybe :string]]
    [:models [:sequential llm-model-response-schema]]])
+
+(def ^:private bedrock-credentials-schema
+  [:map
+   [:access-key-id     {:optional true} [:maybe :string]]
+   [:secret-access-key {:optional true} [:maybe :string]]
+   [:region            {:optional true} [:maybe :string]]
+   [:session-token     {:optional true} [:maybe :string]]])
 
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
    [:model {:optional true} [:maybe :string]]
-   [:api-key {:optional true} [:maybe :string]]])
+   [:api-key {:optional true} [:maybe :string]]
+   [:credentials {:optional true} [:maybe bedrock-credentials-schema]]])
 
 (defn- provider-api-key-setting-key
   [provider]
@@ -347,7 +356,8 @@
 (def ^:private invalid-api-key-statuses
   #{401 403})
 
-(defn- invalid-api-key-error?
+(defn- invalid-credentials-error?
+  "Whether a provider api-error means the credentials were rejected (or missing)."
   [error]
   (let [status (or (:status (ex-data error))
                    (:status-code (ex-data error)))]
@@ -374,6 +384,13 @@
                  (map title-case-token)
                  (str/join " ")))))
 
+(defn- bedrock-model-group
+  [{:keys [id]}]
+  (cond
+    (str/starts-with? id "anthropic.") "Anthropic"
+    (str/starts-with? id "openai.")    "OpenAI"
+    :else                              nil))
+
 (defn- openrouter-model-group
   [{:keys [display_name id]}]
   (or (some-> display_name
@@ -388,6 +405,7 @@
   [provider model]
   (case provider
     "anthropic"  (assoc model :group (anthropic-model-group model))
+    "bedrock"    (assoc model :group (bedrock-model-group model))
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
@@ -405,7 +423,7 @@
                            (map normalize-metabase-model models)
                            models)
         decorated-models (map #(decorate-provider-model provider %) models)]
-    (if (contains? #{"anthropic" "openrouter"} provider)
+    (if (contains? #{"anthropic" "bedrock" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
              keys
@@ -415,35 +433,37 @@
       (vec decorated-models))))
 
 (defn- provider-models-response
+  "List a provider's models.
+  Validate against `credentials-override` when provided and the provider's saved credentials otherwise. The shape of
+  the credentials map varies by provider. See [[metabot.settings/configured-provider-credentials]]."
   ([provider]
    (provider-models-response provider nil))
-  ([provider api-key-override]
+  ([provider credentials-override]
    (if (= provider provider-util/metabase-provider-prefix)
      {:models (decorate-provider-models
                provider
                (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
-     (let [effective-api-key (or (non-blank-string api-key-override)
-                                 (non-blank-string
-                                  (metabot.settings/configured-provider-api-key provider)))]
-       (if (and provider effective-api-key)
+     (let [credentials (or credentials-override
+                           (metabot.settings/configured-provider-credentials provider))]
+       (if (and provider (metabot.settings/provider-credentials-complete? provider credentials))
          (try
            {:models (decorate-provider-models
                      provider
-                     (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+                     (:models (metabot.self/list-models provider {:credentials credentials})))}
            (catch clojure.lang.ExceptionInfo e
-             (if (invalid-api-key-error? e)
+             (if (invalid-credentials-error? e)
                {:models []
-                :api-key-error (.getMessage e)}
+                :credentials-error (.getMessage e)}
                (throw e))))
          {:models []})))))
 
 (defn- settings-response
   ([provider]
    (settings-response provider nil))
-  ([provider api-key-override]
+  ([provider credentials-override]
    (merge
     {:value (metabot.settings/llm-metabot-provider)}
-    (provider-models-response provider api-key-override))))
+    (provider-models-response provider credentials-override))))
 
 (defn- current-provider
   []
@@ -453,47 +473,114 @@
   []
   (provider-util/provider-and-model->outer-provider (metabot.settings/llm-metabot-provider)))
 
-(defn- throw-api-key-error!
+(defn- throw-credentials-error!
   [response]
-  (when-let [api-key-error (:api-key-error response)]
-    (throw (ex-info api-key-error
+  (when-let [credentials-error (:credentials-error response)]
+    (throw (ex-info credentials-error
                     {:status-code 400
                      :api-error true})))
   response)
 
 (api.macros/defendpoint :get "/settings"
   :- metabot-settings-response-schema
-  "Return available models for a provider using its configured API key."
+  "Return available models for a provider using its configured credentials."
   [_route-params
    {:keys [provider]} :- [:map
                           [:provider {:optional true} metabot-provider-schema]]]
   (perms/check-has-application-permission :setting)
   (settings-response (or provider (current-provider))))
 
+(def ^:private bedrock-credential-fields
+  [:access-key-id :secret-access-key :region :session-token])
+
+(defn- effective-bedrock-credentials
+  "The Bedrock credentials a settings request resolves to.
+
+  Each field follows the same presence contract as the top-level `:credentials` key: a field present in the request
+  replaces the saved `llm-bedrock-*` value, while an absent field keeps the saved value. Nil or blank means an
+  explicit clear. So an admin can blank a stale session token without re-entering the keys, and a region-only edit
+  doesn't touch anything else."
+  [supplied-creds]
+  (reduce (fn [creds field]
+            (cond-> creds
+              (contains? supplied-creds field) (assoc field (non-blank-string (get supplied-creds field)))))
+          (metabot.settings/configured-provider-credentials "bedrock")
+          bedrock-credential-fields))
+
+(defn- request-credentials
+  "The credentials override carried by a `PUT /api/metabot/settings` request body as a provider credentials map.
+
+  nil when the request does not touch credentials for `provider`.
+
+  An explicitly nil credential field in the body — `:api-key` for API-key providers, `:credentials` for Bedrock —
+  resolves to a credentials map whose key material is nil: an explicit clear. Fields *inside* the Bedrock credentials
+  map follow the same presence contract (see [[effective-bedrock-credentials]]). Throws a 400 when non-nil Bedrock
+  credentials don't resolve to a complete set."
+  [provider {:keys [api-key credentials] :as body}]
+  (if (= provider "bedrock")
+    (when (contains? body :credentials)
+      (if (nil? credentials)
+        {:access-key-id     nil
+         :secret-access-key nil
+         :session-token     nil
+         :region            nil}
+        (let [creds (effective-bedrock-credentials credentials)]
+          (when-not (metabot.settings/provider-credentials-complete? provider creds)
+            (throw (ex-info (tru "AWS Bedrock credentials are incomplete.")
+                            {:status-code  400
+                             :api-error    true
+                             :missing-keys (vec (remove #(non-blank-string (get creds %))
+                                                        [:access-key-id :secret-access-key]))})))
+          creds)))
+    (when (contains? body :api-key)
+      {:api-key (non-blank-string api-key)})))
+
+(defn- save-bedrock-credentials!
+  "Persist a Bedrock credentials map resolved by [[request-credentials]]; nil key material clears those settings.
+  The region is written only when the map carries it — a nil region resets the setting to its default. A top-level
+  credentials clear (disconnect) carries `:region nil`, so it resets the region too; a field-level edit that omits
+  `:region` leaves the saved value in place."
+  [{:keys [access-key-id secret-access-key session-token] :as credentials}]
+  (setting/set! :llm-bedrock-access-key-id access-key-id)
+  (setting/set! :llm-bedrock-secret-access-key secret-access-key)
+  (setting/set! :llm-bedrock-session-token session-token)
+  (when (contains? credentials :region)
+    (setting/set! :llm-bedrock-region (:region credentials))))
+
+(defn- save-credentials!
+  "Persist the credentials override resolved by [[request-credentials]]; nil leaves the saved settings untouched."
+  [provider credentials]
+  (when credentials
+    (if (= provider "bedrock")
+      (save-bedrock-credentials! credentials)
+      (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
+
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
-  "Update the Metabot provider API key and/or model setting and return the refreshed settings payload."
+  "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload."
   [_route-params
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider api-key] request-model :model} body
-        current-provider (current-setting-provider)
+  (let [{:keys [provider] request-model :model} body
+        credentials       (request-credentials provider body)
+        current-provider  (current-setting-provider)
         provider-changed? (not= current-provider provider)
-        model (cond
-                (non-blank-string request-model)
-                (effective-provider-model provider request-model)
+        model             (cond
+                            (non-blank-string request-model)
+                            (effective-provider-model provider request-model)
 
-                provider-changed?
-                (or (effective-provider-model provider request-model)
-                    (metabot.settings/default-model-for-provider provider))
+                            provider-changed?
+                            (or (effective-provider-model provider request-model)
+                                (metabot.settings/default-model-for-provider provider))
 
-                :else
-                nil)
-        response (-> (settings-response provider api-key)
-                     throw-api-key-error!)]
-    (when (contains? body :api-key)
-      (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
+                            :else
+                            nil)
+        ;; The model listing validates the request credentials before anything is saved.
+        response          (-> (settings-response provider credentials)
+                              throw-credentials-error!)]
+    (when credentials
+      (save-credentials! provider credentials))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
     (assoc response :value (metabot.settings/llm-metabot-provider))))

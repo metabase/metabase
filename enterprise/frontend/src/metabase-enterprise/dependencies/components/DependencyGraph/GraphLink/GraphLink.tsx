@@ -17,7 +17,7 @@ export function GraphLink({ label, icon, url }: GraphLinkProps) {
   return (
     <Box className={cx(S.link, CS.textWrap)} component={Link} to={url}>
       <Group gap="sm" align="center" wrap="nowrap">
-        <FixedSizeIcon name={icon} c="brand" />
+        <FixedSizeIcon name={icon} c="core-brand" />
         <Box lh="h4">{label}</Box>
       </Group>
     </Box>

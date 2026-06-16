@@ -163,7 +163,7 @@
                              "stages"   [{"lib/type"     "mbql.stage/mbql"
                                           "source-table" ["Sample" "PUBLIC" "DOES_NOT_EXIST"]
                                           "aggregation"  [["count" {}]]}]})
-              result       (construct/construct-notebook-query-tool {:query bad-query})
+              result       (construct/construct-notebook-query-tool {:query bad-query :title "Results"})
               expected-msg (try
                              (construct/execute-representations-query bad-query)
                              (catch clojure.lang.ExceptionInfo inner
@@ -179,7 +179,7 @@
                 "{:output \"Failed to construct...\"} result with empty entity-usage, not re-thrown")
     (with-redefs [construct/execute-representations-query
                   (fn [_] (throw (Exception. "boom")))]
-      (let [result (construct/construct-notebook-query-tool {:query {}})]
+      (let [result (construct/construct-notebook-query-tool {:query {} :title "Results"})]
         (is (= "Failed to construct notebook query: boom" (:output result)))
         (is (= construct/empty-entity-usage
                (get-in result [:structured-output :entity-usage])))))))

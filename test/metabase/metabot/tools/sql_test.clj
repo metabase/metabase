@@ -18,7 +18,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT 1"})
+                         :sql_query   "SELECT 1"
+                         :title       "Results"})
                 output   (:output result)
                 query-id (get-in result [:structured-output :query-id])]
             (is (string? output))
@@ -40,7 +41,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT ="})
+                         :sql_query   "SELECT ="
+                         :title       "Results"})
                 output   (:output result)]
             (is (string? output))
             (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
@@ -61,7 +63,8 @@
                               {:query_id  query-id
                                :checklist "- [x] checked"
                                :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT id"}]}))
+                                            :new_string "SELECT id"}]
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with edited content and correct attributes"
@@ -89,7 +92,8 @@
                               {:query_id  query-id
                                :checklist "- [x] checked"
                                :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT ="}]}))
+                                            :new_string "SELECT ="}]
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (is (str/starts-with? (:instructions result) "The SQL query has a syntax error"))
@@ -109,7 +113,8 @@
                              (agent-sql/replace-sql-query-tool
                               {:query_id  query-id
                                :checklist "- [x] checked"
-                               :new_query "SELECT 2"}))
+                               :new_query "SELECT 2"
+                               :title     "Results"}))
                   output   (:output result)]
               (is (string? output))
               (testing "includes query XML with replaced content and correct attributes"
@@ -136,7 +141,8 @@
                                                   (agent-sql/replace-sql-query-tool
                                                    {:query_id  query-id
                                                     :checklist "- [x] checked"
-                                                    :new_query "SELECT ="}))]
+                                                    :new_query "SELECT ="
+                                                    :title     "Results"}))]
               (is (string? output))
               (is (str/starts-with? instructions "The SQL query has a syntax error"))
               (is (str/starts-with? output "<result>\nSQL query construction failed.\n</result>\n<instructions>\nThe SQL query has a syntax error")))))))))
@@ -150,7 +156,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT * FROM {{#42}} JOIN {{#43-slug}} t ON t.id = 1"})
+                         :sql_query   "SELECT * FROM {{#42}} JOIN {{#43-slug}} t ON t.id = 1"
+                         :title       "Results"})
                 eu     (get-in result [:structured-output :entity-usage])]
             (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
             (is (= [] (:output eu)))
@@ -168,7 +175,8 @@
                         :dataset_query (mt/native-query {:query "SELECT * FROM checkins"})}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id (mt/id)
-                         :sql_query   (format "SELECT * FROM venues v JOIN {{#%d}} c ON true" card-id)})
+                         :sql_query   (format "SELECT * FROM venues v JOIN {{#%d}} c ON true" card-id)
+                         :title       "Results"})
                 eu     (get-in result [:structured-output :entity-usage])
                 input  (set (:input eu))]
             (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
@@ -186,7 +194,8 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :postgres}]
           (let [result (agent-sql/create-sql-query-tool
                         {:database_id db-id
-                         :sql_query   "SELECT ="})
+                         :sql_query   "SELECT ="
+                         :title       "Results"})
                 eu     (get-in result [:structured-output :entity-usage])]
             (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
             (is (= [{:type "database" :id db-id}] (:input eu)))
@@ -207,7 +216,8 @@
                               {:query_id  query-id
                                :checklist "- [x] checked"
                                :edits     [{:old_string "SELECT *"
-                                            :new_string "SELECT * FROM {{#7}}"}]}))
+                                            :new_string "SELECT * FROM {{#7}}"}]
+                               :title     "Results"}))
                   eu       (get-in result [:structured-output :entity-usage])]
               (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
               (is (= [{:type "database" :id db-id}
@@ -229,7 +239,8 @@
                              (agent-sql/replace-sql-query-tool
                               {:query_id  query-id
                                :checklist "- [x] checked"
-                               :new_query "SELECT * FROM {{#9}}"}))
+                               :new_query "SELECT * FROM {{#9}}"
+                               :title     "Results"}))
                   eu       (get-in result [:structured-output :entity-usage])]
               (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
               (is (= [{:type "database" :id db-id}
@@ -251,10 +262,48 @@
                              (agent-sql/replace-sql-query-tool
                               {:query_id  query-id
                                :checklist "- [x] checked"
-                               :new_query "SELECT = FROM {{#13}}"}))
+                               :new_query "SELECT = FROM {{#13}}"
+                               :title     "Results"}))
                   eu       (get-in result [:structured-output :entity-usage])]
               (is (nil? (mr/explain entity-usage/entity-usage-schema eu)))
               (is (= [{:type "database" :id db-id}
                       {:type "card"     :id 13}]
                      (:input eu)))
               (is (= [] (:output eu))))))))))
+
+(deftest edit-sql-query-inline-viz-test
+  (testing "edit_sql_query surfaces results inline in the NLQ profile and navigate otherwise"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Database {:as db} {:engine :h2}]
+          (mt/with-db db
+            (let [mp       (mt/metadata-provider)
+                  query-id "test-inline-q"
+                  query    (-> (lib/native-query mp "SELECT * FROM t") lib/->legacy-MBQL)
+                  run      (fn [{:keys [context profile-id]}]
+                             (let [memory (atom {:state   {:queries {query-id query}}
+                                                 :context context})]
+                               (binding [shared/*memory-atom* memory
+                                         shared/*profile-id* profile-id]
+                                 (agent-sql/edit-sql-query-tool
+                                  {:query_id  query-id
+                                   :checklist "- [x] checked"
+                                   :edits     [{:old_string "SELECT *" :new_string "SELECT id"}]
+                                   :title     "Results"}))))]
+              (testing "NLQ profile -> a single generated_entity (native) part"
+                (let [parts  (:data-parts (run {:profile-id :nlq}))
+                      entity (:data (first parts))]
+                  (is (= 1 (count parts)))
+                  (is (= "generated_entity" (:data-type (first parts))))
+                  (is (= "card" (:type entity)))
+                  (is (= :native (get-in entity [:query :query :type])))))
+              (testing "non-NLQ profile -> a single navigate_to part"
+                (let [parts (:data-parts (run {:profile-id :sql}))]
+                  (is (= 1 (count parts)))
+                  (is (= "navigate_to" (:data-type (first parts))))))
+              (testing "an open code-editor buffer wins regardless of profile"
+                (let [parts (:data-parts (run {:profile-id :nlq
+                                               :context    {:user_is_viewing [{:type    "code_editor"
+                                                                               :buffers [{:id "buf-1"}]}]}}))]
+                  (is (= 1 (count parts)))
+                  (is (= "code_edit" (:data-type (first parts)))))))))))))
