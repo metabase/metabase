@@ -6,10 +6,11 @@
   pipeline composition (extract → governance → temporal → metrics →
   subscores) that produces the per-conversation breakdown.
 
-  Conversations that carry neither prompt context nor any tool
-  entity-usage get a `pre-instrumentation` sentinel; conversations that throw
-  inside extract get an `extract-error` sentinel; conversations past the
-  assistant-turn ceiling get a `too-long-to-score` sentinel."
+  Conversations that show no sign of having run the instrumented agent loop
+  (see [[pre-instrumentation?]]) get a `pre-instrumentation` sentinel;
+  conversations that throw inside extract get an `extract-error` sentinel;
+  conversations past the assistant-turn ceiling get a `too-long-to-score`
+  sentinel."
   (:require
    [metabase.metabot.quality.attribution :as attribution]
    [metabase.metabot.quality.constants :as quality.constants]
@@ -108,8 +109,9 @@
 
 (mu/defn- build-breakdown :- ::quality.schema/full-breakdown
   "Build the JSON-encodable `quality_breakdown` map persisted on the
-  conversation row. Metric values read `1 = good`; `:na` serializes as
-  null. `:subscores` nests each subscore's `:value` and member `:metrics`
+  conversation row. Most metric values read `1 = good`
+  (`tool_call_failure_rate` is a badness rate, `0 = good`); `:na` serializes
+  as null. `:subscores` nests each subscore's `:value` and member `:metrics`
   (the shared [[subscores/project-json]] projection); `:diagnostics`
   carries the run-level iteration/tool/termination counts and the
   entity-set sizes."

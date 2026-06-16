@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
+   [metabase.config.core :as config]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as agent-tools]
@@ -272,6 +273,34 @@
            ExceptionInfo
            #"entity-usage violation"
            (wrapped-fn {}))))))
+
+(deftest entity-usage-validation-throws-in-every-non-prod-mode-test
+  (testing "the tripwire fires in any non-prod run-mode (e2e included), not just dev/test"
+    ;; Guards against the `(or is-dev? is-test?)` form, which let :e2e runs
+    ;; silently skip the throw and warn-log a tool-author shape bug instead.
+    (let [tool-var   (->fake-tool {:tool-name "fake_discovery_e2e"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] {:output "no entity-usage here"}))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery_e2e" tool-var} (atom {}) nil nil)
+                             ["fake_discovery_e2e" :fn])]
+      (with-redefs [config/is-prod? false]
+        (is (thrown-with-msg? ExceptionInfo #"entity-usage violation"
+                              (wrapped-fn {})))))))
+
+(deftest entity-usage-validation-warns-but-does-not-throw-in-prod-test
+  (testing "in prod a tool-author shape bug warn-logs and returns the result unchanged"
+    (let [bad-result {:output "no entity-usage here"}
+          tool-var   (->fake-tool {:tool-name "fake_discovery_prod"
+                                   :tool-type :discovery
+                                   :schema    [:=> [:cat :map] :map]}
+                                  (fn [_] bad-result))
+          wrapped-fn (get-in (agent-tools/wrap-tools-with-state
+                              {"fake_discovery_prod" tool-var} (atom {}) nil nil)
+                             ["fake_discovery_prod" :fn])]
+      (with-redefs [config/is-prod? true]
+        (is (= bad-result (wrapped-fn {})))))))
 
 (deftest entity-usage-validation-passes-valid-output-test
   (testing "a tool whose result satisfies its :tool-type contract executes cleanly"

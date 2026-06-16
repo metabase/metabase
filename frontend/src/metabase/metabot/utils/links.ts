@@ -4,6 +4,9 @@ export const METABSE_PROTOCOL_LINK =
 export const METABSE_PROTOCOL_MD_LINK =
   /\[(?<name>[^\]]+)\]\(metabase:\/\/(?<model>[^\/]+)\/(?<id>\d+)\)/;
 
+// The backend's `metabase-uri-re` regex (src/metabase/metabot/persistence.clj)
+// mirrors this list to parse @-mention refs out of user messages; keep the two
+// in sync.
 export const METABASE_PROTOCOL_ENTITY_MODELS = [
   "question",
   "dashboard",

@@ -5,7 +5,23 @@
   the tool received as input and the entities it surfaced to the LLM in its
   output. The shape is enforced by `entity-usage-schema`; whether the field
   must be present on a tool's result is governed by the tool's declared
-  `:tool-type`."
+  `:tool-type`.
+
+  When adding (or changing) a Metabot tool, the quality pipeline relies on
+  two obligations being met on the tool's result:
+
+  1. Declare a `:tool-type` (see [[tool-types]]). Every tool-type except
+     `:utility` MUST populate `:entity-usage` on *every* return branch (use
+     [[entity-usage-on-result]] / the `entity-usage-for-*` builders);
+     `:utility` tools MUST NOT emit it. [[validate-result]] enforces this —
+     and throws in non-prod via `tools/wrap-with-entity-usage-validation`.
+  2. Authoring tools (those that produce a query/transform/chart artifact)
+     MUST stamp `:artifact-valid` on every return branch via
+     [[stamp-artifact-valid]] — `true` only when the artifact is genuinely
+     resolvable/executable, `false` on a validation failure, exception, or
+     degraded result. The quality pipeline's `artifact-validity-share`
+     metric reads this back, so a missing stamp silently drops the call from
+     the metric."
   (:require
    [metabase.util.malli.registry :as mr]))
 

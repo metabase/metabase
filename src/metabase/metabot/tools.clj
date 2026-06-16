@@ -125,8 +125,8 @@
 
 (defn- wrap-with-entity-usage-validation
   "Wrap a tool fn so its returned `:entity-usage` is validated against the
-  tool's declared `:tool-type`. Dev/test: throw on violation so the bug is
-  caught loudly. Prod: warn-log and return the result unchanged so a
+  tool's declared `:tool-type`. Non-prod (dev/test/e2e): throw on violation so
+  the bug is caught loudly. Prod: warn-log and return the result unchanged so a
   tool-author bug doesn't break user-visible behavior."
   [f tool-name tool-type]
   (fn [args]
@@ -135,7 +135,7 @@
         (let [msg (str "Tool " tool-name " entity-usage violation")]
           (log/warnf "%s — tool-type=%s, problem=%s"
                      msg tool-type (pr-str problem))
-          (when (or config/is-dev? config/is-test?)
+          (when-not config/is-prod?
             (throw (ex-info msg {:tool-name tool-name
                                  :tool-type tool-type
                                  :problem   problem})))))
