@@ -290,7 +290,11 @@
   "Validates a native query by parsing it and ensuring that it is a single statement.
    Reads `:impersonation/allow-write?` on the query to decide what to require: when truthy (set by
    [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions) require a single
-   write statement (insert, update, delete); otherwise require a single select statement."
+   write statement (insert, update, delete); otherwise require a single select statement.
+
+   Queries that cannot be parsed are always rejected. Admins are allowed to run parseable queries that
+   aren't a single select/write statement (e.g. `SHOW TIMEZONE`); non-admins are restricted to a single
+   statement of the required type."
   [driver query]
   (update query :stages
           (fn [stages]
@@ -299,7 +303,7 @@
                       (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
-                            {:keys [is-single-stmt? sql error]}
+                            {:keys [is-single-stmt? allowed-stmt-type? sql error]}
                             (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
@@ -307,11 +311,15 @@
                                 (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
                                                 {:type qp.error-type/invalid-query
                                                  :sql  (:native stage)})))
-                              (not is-single-stmt?)
+
+                              (and is-single-stmt?
+                                   (or allowed-stmt-type? (:impersonation/admin? query)))
+                              (assoc stage :native sql)
+
+                              :else
                               (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
                                               {:type qp.error-type/invalid-query
-                                               :sql  (:native stage)}))
-                              :else (assoc stage :native sql)))
+                                               :sql  (:native stage)}))))
                       stage))
                   stages))))
 
