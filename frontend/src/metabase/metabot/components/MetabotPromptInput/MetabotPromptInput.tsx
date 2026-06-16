@@ -65,6 +65,14 @@ export const MetabotPromptInput = forwardRef<
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
     const serializedRef = useRef(value);
 
+    // editorProps closures are baked into the editor at creation and are not
+    // refreshed by tiptap when useEditor has a dependency array, so they must
+    // read the latest handlers through refs.
+    const onSubmitRef = useRef(onSubmit);
+    onSubmitRef.current = onSubmit;
+    const onStopRef = useRef(onStop);
+    onStopRef.current = onStop;
+
     const extensions = [
       Document,
       Paragraph,
@@ -87,89 +95,105 @@ export const MetabotPromptInput = forwardRef<
       }),
     ];
 
-    const editor = useEditor({
-      extensions,
-      content: parseMetabotMessageToTiptapDoc(value),
-      autofocus: autoFocus,
-      injectNonce: getCspNonce(),
-      onUpdate: ({ editor }) => {
-        const jsonContent = editor.getJSON();
-        serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
-        onChange(serializedRef.current);
-      },
-      editorProps: {
-        handleDOMEvents: {
-          copy: (view: EditorView, e: ClipboardEvent) => {
-            e.preventDefault();
-            const { from, to } = view.state.selection;
-            const slice = view.state.doc.slice(from, to);
-            const doc = view.state.schema.topNodeType.create(
-              null,
-              slice.content,
-            );
-            const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-            e.clipboardData?.setData("text/plain", serialized);
-            return true;
-          },
-          cut: (view: EditorView, e: ClipboardEvent) => {
-            e.preventDefault();
-            const { from, to } = view.state.selection;
-            const slice = view.state.doc.slice(from, to);
-            const doc = view.state.schema.topNodeType.create(
-              null,
-              slice.content,
-            );
-            const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
-            e.clipboardData?.setData("text/plain", serialized);
-
-            // Delete the selected text and position cursor at cut location
-            const tr = view.state.tr.deleteRange(from, to);
-            tr.setSelection(TextSelection.create(tr.doc, from));
-            view.dispatch(tr);
-
-            return true;
-          },
+    const editor = useEditor(
+      {
+        extensions,
+        content: parseMetabotMessageToTiptapDoc(value),
+        autofocus: autoFocus,
+        injectNonce: getCspNonce(),
+        onUpdate: ({ editor }) => {
+          const jsonContent = editor.getJSON();
+          serializedRef.current = serializeTiptapToMetabotMessage(jsonContent);
+          onChange(serializedRef.current);
         },
-        handleKeyDown: (view, event) => {
-          if (event.key === "Escape" || event.key === "Enter") {
-            // Defer enter handling to mention UI if open
-            const mentionState = MetabotMentionPluginKey.getState(view.state);
-            if (mentionState?.active) {
-              return false; // Let the suggestion system handle it
+        editorProps: {
+          handleDOMEvents: {
+            copy: (view: EditorView, e: ClipboardEvent) => {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+              return true;
+            },
+            cut: (view: EditorView, e: ClipboardEvent) => {
+              e.preventDefault();
+              const { from, to } = view.state.selection;
+              const slice = view.state.doc.slice(from, to);
+              const doc = view.state.schema.topNodeType.create(
+                null,
+                slice.content,
+              );
+              const serialized = serializeTiptapToMetabotMessage(doc.toJSON());
+              e.clipboardData?.setData("text/plain", serialized);
+
+              // Delete the selected text and position cursor at cut location
+              const tr = view.state.tr.deleteRange(from, to);
+              tr.setSelection(TextSelection.create(tr.doc, from));
+              view.dispatch(tr);
+
+              return true;
+            },
+          },
+          handleKeyDown: (view, event) => {
+            if (event.key === "Escape" || event.key === "Enter") {
+              // Defer enter handling to mention UI if open
+              const mentionState = MetabotMentionPluginKey.getState(view.state);
+              if (mentionState?.active) {
+                return false; // Let the suggestion system handle it
+              }
             }
-          }
 
-          if (event.key === "Enter") {
-            // Check for any modifier keys (shift, ctrl, meta, alt)
-            const isModifiedKeyPress =
-              event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
+            if (event.key === "Enter") {
+              // Check for any modifier keys (shift, ctrl, meta, alt)
+              const isModifiedKeyPress =
+                event.shiftKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.altKey;
 
-            if (!isModifiedKeyPress && onSubmit) {
+              if (!isModifiedKeyPress && onSubmitRef.current) {
+                event.preventDefault();
+                onSubmitRef.current();
+                return true;
+              }
+            }
+
+            if (event.key === "Escape") {
+              const mentionState = MetabotMentionPluginKey.getState(view.state);
+              if (mentionState?.active) {
+                return false;
+              }
+
               event.preventDefault();
-              onSubmit();
+              onStopRef.current();
               return true;
             }
-          }
 
-          if (event.key === "Escape") {
-            const mentionState = MetabotMentionPluginKey.getState(view.state);
-            if (mentionState?.active) {
-              return false;
-            }
-
-            event.preventDefault();
-            onStop();
-            return true;
-          }
-
-          return false;
+            return false;
+          },
+          clipboardTextSerializer: (content) => {
+            return serializeTiptapToMetabotMessage(content.toJSON());
+          },
+          clipboardTextParser: parseClipboardTextAsParagraphs,
         },
-        clipboardTextSerializer: (content) => {
-          return serializeTiptapToMetabotMessage(content.toJSON());
-        },
-        clipboardTextParser: parseClipboardTextAsParagraphs,
       },
-    });
+      // Extension config (including the suggestion closure over onlyDatabaseId)
+      // is captured by plugins at editor creation and cannot be updated via
+      // setOptions, so the editor must be recreated when it changes.
+      // suggestionModels is keyed by content because some consumers pass a
+      // fresh array on every render.
+      [
+        suggestionConfig.onlyDatabaseId,
+        suggestionConfig.suggestionModels.join(","),
+        placeholder,
+        siteUrl,
+      ],
+    );
 
     useImperativeHandle(ref, () => {
       if (!editor) {

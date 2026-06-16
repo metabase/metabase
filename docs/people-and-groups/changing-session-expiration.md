@@ -6,47 +6,54 @@ redirect_from:
 
 # Session expiration
 
-By default, Metabase sessions are valid for two weeks after a user last authenticated (e.g. by entering their email address/password or via an SSO provider). For example, even if you visit your Metabase instance every day, you'll still have to log in again every two weeks.
+When someone logs in — whether by email and password or through an SSO provider — Metabase creates a session that keeps them logged in across tabs and pages. A session can end in three ways: closing the browser, hitting the absolute session age limit, or going idle long enough to trigger an inactivity timeout. Here's how each is configured, how they interact, and when you'd want to use them.
 
-## Session age
+Clearing browser cookies or cache manually ends a session immediately, regardless of any of these settings.
 
-The session age is the maximum time that a person stays logged into Metabase (even if the person closes the browser).
+## Set the absolute session limit with `MAX_SESSION_AGE`
 
-You can set the environment variable [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age):
+MAX_SESSION_AGE controls the maximum number of minutes a session can live from the time of login. A person with hundreds of tabs open who hasn't rebooted in months will get logged out once MAX_SESSION_AGE is reached (even if they had checked the **Remember me** box on the login page).
 
-```
-# Change session expiration to 24 hours
+
+
+The default value is 14 days. To set a custom value, use the environment variable (in minutes):
+
+```sh
+# sessions expire after 24 hours
 MAX_SESSION_AGE=1440 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-or set the Java system property:
+This setting applies equally to everyone regardless of their browser behavior or activity patterns. Use it when your security policy requires people to log in again on a predictable schedule.
 
-```
-java -DMAX_SESSION_AGE=1440 -jar metabase.jar
-```
-
-`MAX_SESSION_AGE` is in minutes.
-
-## Session timeout
+## Log people out after inactivity
 
 {% include plans-blockquote.html feature="Session timeout" %}
 
-The session timeout is the maximum time that a person can be inactive (for example, if someone leaves Metabase open in a long-forgotten browser tab).
+`MB_SESSION_TIMEOUT` controls how long a session can be inactive before it ends. Someone who opens Metabase in the morning, uses it for an hour, and then spends the rest of the day in other tools will be logged out once the inactivity window closes.
 
-You can toggle this setting from **Admin** > **Authentication**, or set the environment variable [`MB_SESSION_TIMEOUT`](../configuring-metabase/environment-variables.md#mb_session_timeout).
+> **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab. Scheduled alerts and dashboard subscriptions are server-side operations and do not reset the inactivity timer.
 
-Session timeout is null by default. You can use a session timeout to log people out earlier than the max [session age](#session-age).
+To configure session time out, go to **Admin** > **Authentication** > **Overview**, or set an environment variable:
 
-## Session cookies
-
-Metabase also supports using [session cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies), which mean users will only stay authenticated until they close their browser. This can be enabled on a per-user basis by unchecking the "Remember me" box when logging in. Once the user closes their browser, the next time they visit Metabase they'll have to log in again. Session expiration still applies, so even if you leave your browser open forever, you'll still be required to re-authenticate after two weeks or whatever session expiration you've configured.
-
-You can tell Metabase to always use session cookies with the environment variable or Java system property `MB_SESSION_COOKIES`:
-
+```sh
+# log out after 2 hours of inactivity
+MB_SESSION_TIMEOUT='{"amount":120,"unit":"minutes"}' java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
+
+Note that if you're configuring session timeout in Metabase Admin settings, you need to specify the timeout only in minutes or hours, but the `MB_SESSION_TIMEOUT` variable also accepts `"unit":"seconds"`.
+
+When both `MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` are configured, a session ends at whichever limit hits first. Use it for shared workstations, forgotten open tabs, or any situation where a long-inactive session is a security concern.
+
+## Force everyone to use session cookies
+
+By default, the login page has **Remember me** checked, so sessions survive browser closes and restarts. Without **Remember me**, closing the browser ends the session.
+
+`MB_SESSION_COOKIES` controls whether sessions end when the browser closes. Setting it to `true` removes the **Remember me** checkbox and enforces browser-close logout for everyone.
+
+```sh
 MB_SESSION_COOKIES=true java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-Setting this environment variable will override the behavior of the "Remember me" checkbox and enforce the use of session cookies for all users.
+`MAX_SESSION_AGE` and `MB_SESSION_TIMEOUT` still apply — even someone who never closes their browser can be logged out by the age limit or an inactivity window.
 
-Note that browsers may use "session restoring", which means they automatically restore their previous session when reopened. In this case, the browser effectively acts as if it was never closed; session cookies will act the same as permanent cookies. For browsers that support this feature, this behavior is usually configurable.
+Many browsers support session restore, which automatically reopens tabs from the previous session on launch. When session restore is active, the browser behaves as if it was never closed, so session cookies persist across browser restarts. This is usually configurable in the browser's settings.

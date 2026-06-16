@@ -1,8 +1,7 @@
-import { useDebouncedCallback } from "@mantine/hooks";
+import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
 import { type Ref, forwardRef } from "react";
 
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { Group } from "metabase/ui";
+import { Group, Popover } from "metabase/ui";
 
 import { ColorPill } from "../ColorPill";
 
@@ -45,16 +44,20 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
 ) {
   const debouncedUpdate = useDebouncedCallback(onChange, debounceMs);
   const color = previewValue ?? originalColor;
+  const [isOpened, { open, close }] = useDisclosure(false);
 
   return (
-    <TippyPopoverWithTrigger
-      disableContentSandbox
-      renderTrigger={({ onClick }) => (
+    <Popover opened={isOpened} onClose={close} position="bottom-start">
+      <Popover.Target>
         <Group {...props} ref={ref} wrap="nowrap">
-          <ColorPill color={color} onClick={onClick} />
+          <ColorPill color={color} onClick={open} />
         </Group>
-      )}
-      popoverContent={
+      </Popover.Target>
+      <Popover.Dropdown
+        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
+        setupSequencedCloseHandler={close}
+        className={S.ColorPillPicker}
+      >
         <ColorPickerContent
           value={color}
           onChange={(nextColor) => {
@@ -65,8 +68,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
             debouncedUpdate(colorWithDefault);
           }}
         />
-      }
-      className={S.ColorPillPicker}
-    />
+      </Popover.Dropdown>
+    </Popover>
   );
 });

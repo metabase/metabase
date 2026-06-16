@@ -15,7 +15,7 @@ export const AlertListItemActionButton = ({
 }: Props): JSX.Element => (
   <Tooltip label={label}>
     <Button
-      color="brand"
+      color="core-brand"
       aria-label={label}
       leftSection={<Icon name={iconName} />}
       size="xs"

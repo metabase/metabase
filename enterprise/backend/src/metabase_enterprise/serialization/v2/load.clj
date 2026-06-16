@@ -42,12 +42,12 @@
   pointing to the dashboard it's in. But when we try to load that dashboard, we'll create all its dashcards, and one
   of those dashcards will point to the card we started with.
 
-  This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides a set of paths to
-  keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
-  indicate that all items in that vector should have a key removed."
-  {"Dashboard" #{:dashcards}
+  This map works around this: given a model (e.g. `Card`) that triggered a dependency loop, it provides the set of
+  top-level keys to remove from the model so that we'll be able to successfully load it. The stripped keys are restored
+  when the original (outer) load of the entity completes its full pass."
+  {"Dashboard" #{:dashcards :parameters}
    "Document"  #{:document}
-   "Card"      #{:dashboard_id :document_id}})
+   "Card"      #{:dashboard_id :document_id :parameters}})
 
 (def ^:private ^:dynamic *warned-version-mismatch*
   "Used to avoid double-logging on version mismatches. Warns if nil or set to true"
@@ -220,10 +220,19 @@
                   (serdes/load-one! ingested local-or-nil))))
             ctx
             (catch Exception e
-              ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
-              (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
-                              (path-error-data ::load-failure expanding path)
-                              e)))))))))
+              ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
+              ;; continue-on-error that stripped row survives the import, so leave a breadcrumb in the error
+              (let [stripped? (contains? (:circular ctx) path)]
+                ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
+                (throw (ex-info (format "Failed to load into database for %s%s"
+                                        (serdes/log-path-str path)
+                                        (if stripped?
+                                          (format " (it may have been left without these keys, which were stripped to break a circular dependency: %s)"
+                                                  (str/join ", " (sort (map name (keys-to-strip ingested)))))
+                                          ""))
+                                (cond-> (path-error-data ::load-failure expanding path)
+                                  stripped? (assoc :stripped-keys (keys-to-strip ingested)))
+                                e))))))))))
 
 (defn new-context
   "Given an ingestion create a new context for serialization.

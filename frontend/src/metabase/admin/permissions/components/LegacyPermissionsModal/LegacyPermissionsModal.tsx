@@ -39,14 +39,14 @@ export const LegacyPermissionsModal = ({
           <Text
             key="view-data"
             component="span"
-            c="brand"
+            c="core-brand"
             fw="bold"
           >{t`View data`}</Text>
         )} and ${(
           <Text
             key="create-queries"
             component="span"
-            c="brand"
+            c="core-brand"
             fw="bold"
           >{t`Create queries`}</Text>
         )}. Having separate settings for what people can view and what they can query makes data permissions more expressive and easier to reason about.`}

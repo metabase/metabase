@@ -12,7 +12,7 @@ import S from "./DimensionPillBar.module.css";
 
 export interface MetricDimensionItem {
   type: "metric";
-  id: number;
+  slotIndex: number;
   label?: string;
   icon?: IconName;
   colors?: string[];
@@ -36,8 +36,7 @@ export interface ExpressionMetricSource {
 
 export interface ExpressionDimensionItem {
   type: "expression";
-  /** Expression entity index — used as the React key. */
-  id: number;
+  entityIndex: number;
   colors?: string[];
   icon?: IconName;
   /** Aggregate label derived from selected dimensions. */
@@ -53,9 +52,13 @@ export type DimensionPillBarItem =
 
 export interface DimensionPillBarProps {
   items: DimensionPillBarItem[];
+  textSize?: "xs" | "sm";
 }
 
-export function DimensionPillBar({ items }: DimensionPillBarProps) {
+export function DimensionPillBar({
+  items,
+  textSize = "sm",
+}: DimensionPillBarProps) {
   if (items.length === 0) {
     return null;
   }
@@ -72,10 +75,15 @@ export function DimensionPillBar({ items }: DimensionPillBarProps) {
     >
       {items.map((item) => (
         <DimensionLabel
-          key={item.type === "expression" ? `expr-${item.id}` : item.id}
+          key={
+            item.type === "expression"
+              ? `expr-${item.entityIndex}`
+              : item.slotIndex
+          }
           label={item.label}
           icon={item.icon}
           colors={item.colors}
+          textSize={textSize}
         />
       ))}
     </Flex>
@@ -86,10 +94,12 @@ function DimensionLabel({
   label,
   icon,
   colors,
+  textSize,
 }: {
   label?: string;
   icon?: IconName;
   colors?: string[];
+  textSize: "xs" | "sm";
 }) {
   if (!label) {
     return null;
@@ -102,7 +112,7 @@ function DimensionLabel({
         fallbackIcon={icon ?? "add"}
         size={12}
       />
-      <Text size="sm" lh="1rem" c="text-primary">
+      <Text size={textSize} lh="1rem" c="text-primary">
         {label}
       </Text>
     </Flex>

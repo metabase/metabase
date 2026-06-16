@@ -9,7 +9,8 @@
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.test-util :as metabot.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,6 +92,30 @@
                         :completionTokens pos-int?}}]
               (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw-chunks))))))
 
+(deftest ^:parallel openai-reasoning-items-are-ignored-test
+  (testing "reasoning output items (emitted by GPT-5 / o-series models) are skipped without breaking the stream"
+    (let [base      (fixture "openai-text"
+                             {:input [{:role :user :content "Say hello briefly, in under 10 words."}]})
+          ;; GPT-5 reasoning models emit a reasoning output item before the text message item
+          reasoning [{:type "response.output_item.added" :item {:type "reasoning" :id "rs_1"}}
+                     {:type "response.output_item.done"  :item {:type "reasoning" :id "rs_1"}}]
+          ;; splice the reasoning events in right after response.created
+          patched   (into [] (mapcat (fn [chunk]
+                                       (if (= (:type chunk) "response.created")
+                                         (cons chunk reasoning)
+                                         [chunk])))
+                          base)]
+      (testing "no reasoning artifacts leak into the translated chunk types"
+        (is (=? [{:type :start} {:type :text-start} {:type :text-delta} {:type :text-end} {:type :usage}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (m/distinct-by :type)) patched))))
+      (testing "full pipeline still produces text + usage"
+        (is (=? [{:type :start}
+                 {:type :text :text string?}
+                 {:type  :usage
+                  :usage {:promptTokens     pos-int?
+                          :completionTokens pos-int?}}]
+                (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) patched)))))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Usage normalization tests
 ;;; ──────────────────────────────────────────────────────────────────
@@ -164,6 +189,45 @@
               :output  #"Error:.*failed"}]
             (openai/parts->openai-input
              [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; temperature support tests
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel model-supports-temperature?-test
+  (testing "non-reasoning models accept an explicit temperature"
+    (doseq [model ["gpt-4.1-mini" "gpt-4.1" "gpt-4o" "gpt-3.5-turbo"]]
+      (is (true? (#'openai/model-supports-temperature? model))
+          model)))
+  (testing "GPT-5 family and o-series reasoning models do not"
+    (doseq [model ["gpt-5" "gpt-5-mini" "gpt-5-nano" "gpt-5-2025-08-07"
+                   "o1" "o1-mini" "o3" "o3-mini" "o4-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))))
+
+(deftest ^:parallel model-supports-temperature?-bedrock-prefixed-test
+  (testing "Bedrock mantle ids carry an openai. vendor prefix that is stripped before the check"
+    (doseq [model ["openai.gpt-5.5" "openai.gpt-5.4" "openai.gpt-5.5-2026-04-23" "openai.o3-mini"]]
+      (is (false? (#'openai/model-supports-temperature? model))
+          model))
+    (is (true? (#'openai/model-supports-temperature? "openai.gpt-4.1-mini")))))
+
+(deftest temperature-omitted-for-reasoning-models-test
+  (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key "sk-test"]
+    (let [request-body (fn [opts]
+                         (with-redefs [self.core/sse-reducible identity
+                                       debug/capture-stream    (fn [r _] r)
+                                       http/request            (fn [req] {:body req})]
+                           (json/decode+kw (:body (openai/openai-raw
+                                                   (merge {:input [{:role :user :content "hi"}]
+                                                           :temperature 0.3}
+                                                          opts))))))]
+      (testing "temperature is sent for a non-reasoning model"
+        (is (= 0.3 (:temperature (request-body {:model "gpt-4.1-mini"})))))
+      (testing "temperature is omitted for a GPT-5 model"
+        (is (not (contains? (request-body {:model "gpt-5"}) :temperature))))
+      (testing "temperature is omitted for an o-series model"
+        (is (not (contains? (request-body {:model "o3-mini"}) :temperature)))))))
 
 (deftest openai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}

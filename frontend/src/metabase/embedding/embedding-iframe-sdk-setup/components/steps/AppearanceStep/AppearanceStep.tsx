@@ -17,16 +17,17 @@ export const AppearanceStep = () => {
   const {
     isFirstStep,
     isSimpleEmbedFeatureAvailable,
-    isSimpleEmbeddingTermsAccepted,
+    allowPreviewAndNavigation,
   } = useSdkIframeEmbedSetupContext();
 
   // When the wizard lands directly on this step (initialState) on a Pro
   // instance, the user needs to configure auth first — dim the option cards
-  // so the AuthenticationCard above takes focus.
+  // so the AuthenticationCard above takes focus. `allowPreviewAndNavigation`
+  // tracks the terms/enablement state of whichever auth type (SSO or Guest) is
+  // currently selected, so accepting the Guest terms un-dims the cards without
+  // forcing the user through the SSO flow.
   const isDimmed =
-    isFirstStep &&
-    isSimpleEmbedFeatureAvailable &&
-    !isSimpleEmbeddingTermsAccepted;
+    isFirstStep && isSimpleEmbedFeatureAvailable && !allowPreviewAndNavigation;
   const dimmedProps = {
     opacity: isDimmed ? 0.5 : 1,
     className: cx(isDimmed && CS.pointerEventsNone),

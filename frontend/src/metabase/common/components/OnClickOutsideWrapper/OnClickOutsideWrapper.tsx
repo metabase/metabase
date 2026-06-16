@@ -1,3 +1,6 @@
+// TODO: delete together with the legacy Modal when it is migrated to Modal
+// from metabase/ui (GDGT-2575, this is the legacy Modal's registration in the
+// RENDERED_POPOVERS stack)
 import type { ReactNode } from "react";
 import { Children, Component, createRef } from "react";
 

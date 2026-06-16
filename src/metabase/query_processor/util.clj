@@ -6,9 +6,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
-   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib only soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core]
    [metabase.lib.core :as lib]
    [metabase.query-processor.schema :as qp.schema]
@@ -76,41 +73,6 @@
       (str/replace #"_" "-")
       keyword))
 
-(def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
-  "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
-  #{:source-field :join-alias})
-
-(defn- field-normalizer
-  {:deprecated "0.57.0"}
-  [field]
-  (let [[type id-or-name options] (lib/normalize ::mbql.s/field field)]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    [type id-or-name (select-keys options field-options-for-identification)]))
-
-;;; TODO (Cam 9/10/25) -- this logic is all wrong and needs to use Lib instead
-(defn field->field-info
-  "Given a field ref and result_metadata, return a map of information about the field if result_metadata contains a
-  matched field.
-
-  DEPRECATED -- this is broken, please use Lib instead going forward."
-  {:deprecated "0.57.0"}
-  [field-ref cols]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [[_ttype id-or-name _options :as field-ref] (field-normalizer field-ref)]
-    (or
-     ;; try match field_ref first
-     (first (filter (fn [field-info]
-                      (= field-ref
-                         (-> field-info
-                             :field_ref
-                             field-normalizer)))
-                    cols))
-     ;; if not match name for aggregation or field with string id
-     (first (filter (fn [col]
-                      (= (:name col)
-                         id-or-name))
-                    cols)))))
-
 (def ^:private ^{:deprecated "0.57.0"} preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
@@ -136,22 +98,10 @@
         col))))
 
 (def ^:dynamic *execute-async?*
-  "Used to control `with-execute-async` to whether or not execute its body asynchronously."
+  "Whether to save QueryExecutions (and other post-execution side effects) asynchronously via the batch-processing
+  queue. Bind (or redef, when the query runs on another thread) to `false` in tests to save synchronously on the
+  calling thread."
   true)
-
-(defn do-with-execute-async
-  "Impl of `with-execute-async`"
-  [thunk]
-  (if *execute-async?*
-    (.submit clojure.lang.Agent/pooledExecutor ^Runnable thunk)
-    (thunk)))
-
-(defmacro with-execute-async
-  "Execute body asynchronously in a pooled executor.
-
-  Used for side effects during query execution like saving query execution info."
-  [thunk]
-  `(do-with-execute-async ~thunk))
 
 (mu/defn userland-query? :- :boolean
   "Returns true if the query is an userland query, else false."

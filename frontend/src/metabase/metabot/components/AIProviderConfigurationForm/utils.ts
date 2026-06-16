@@ -1,4 +1,4 @@
-import type { MetabotProvider } from "metabase-types/api";
+import type { MetabotProvider, SettingDefinition } from "metabase-types/api";
 
 type ApiKeylessProviders = "metabase";
 type ApiKeyProviders = Exclude<MetabotProvider, ApiKeylessProviders>;
@@ -41,6 +41,15 @@ export function getProviderOptions(
         addKeyUrl: "https://console.anthropic.com/settings/keys",
       },
     },
+    bedrock: {
+      value: "bedrock",
+      label: "Amazon Bedrock",
+      apiKey: {
+        placeholder: "AKIA...",
+        addKeyUrl:
+          "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html",
+      },
+    },
     openai: {
       value: "openai",
       label: "OpenAI",
@@ -62,7 +71,7 @@ export function getProviderOptions(
 
 export type MetabotApiKeyProvider = Exclude<
   MetabotProvider,
-  ApiKeylessProviders
+  "metabase" | "bedrock"
 >;
 
 export function isMetabotProvider(
@@ -71,14 +80,12 @@ export function isMetabotProvider(
   return !!value && value in getProviderOptions(true);
 }
 
-export function isApiKeyMetabotProvider(
-  provider: MetabotProvider,
-): provider is MetabotApiKeyProvider {
-  return "apiKey" in (getProviderOptions(true)[provider] ?? {});
-}
-
 export function isAvailableProvider(provider: MetabotProvider): boolean {
-  return provider === "anthropic" || provider === "metabase";
+  return (
+    provider === "anthropic" ||
+    provider === "bedrock" ||
+    provider === "metabase"
+  );
 }
 
 export const API_KEY_SETTING_BY_PROVIDER: Record<
@@ -102,3 +109,7 @@ export function parseProviderAndModel(value: string | null | undefined) {
 
   return { provider, model };
 }
+
+export const hasConfiguredSettingValue = (
+  setting: SettingDefinition | undefined,
+) => Boolean(setting?.value || setting?.is_env_setting);

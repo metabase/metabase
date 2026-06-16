@@ -184,7 +184,7 @@ export const QuestionDownloadWidget = ({
               <Link
                 target="_new"
                 to={pivotExcelExportsDocsLink}
-                style={{ color: "var(--mb-color-brand)" }}
+                style={{ color: "var(--mb-color-core-brand)" }}
               >
                 {t`Read the docs`}
               </Link>

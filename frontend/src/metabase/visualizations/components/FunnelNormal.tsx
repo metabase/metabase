@@ -315,7 +315,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={calculateStepOpacity(index, numSteps)}
-          fill={Color(color("brand")).hex()}
+          fill={Color(color("core-brand")).hex()}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

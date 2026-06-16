@@ -18,7 +18,7 @@ export const Root = styled(FullWidthContainer, {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
   background-color: ${(props) =>
-    alpha(props.admin ? "accent7" : "brand", 0.85)};
+    alpha(props.admin ? "accent7" : "core-brand", 0.85)};
 
   .${ButtonsS.Button} {
     color: var(--mb-color-text-primary-inverse);
@@ -29,13 +29,14 @@ export const Root = styled(FullWidthContainer, {
   }
 
   .${ButtonsS.ButtonPrimary} {
-    color: ${(props) => color(props.admin ? "text-primary" : "brand")};
+    color: ${(props) => color(props.admin ? "text-primary" : "core-brand")};
     background-color: var(--mb-color-background-primary);
   }
 
   .${ButtonsS.Button}:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: ${(props) => color(props.admin ? "accent7" : "brand")};
+    background-color: ${(props) =>
+      color(props.admin ? "accent7" : "core-brand")};
   }
 `;
 

@@ -58,7 +58,7 @@ export const getTimelineEventsSeries = (
       selectedEventsIds.includes(event.id),
     );
 
-    const color = getColor(isSelected ? "brand" : "text-tertiary");
+    const color = getColor(isSelected ? "core-brand" : "text-tertiary");
     const iconName =
       events.length === 1 ? (events[0].icon as IconName) : "star";
 
@@ -71,7 +71,7 @@ export const getTimelineEventsSeries = (
       symbolOffset: [0, 12],
       symbolRotate: 0,
       symbol: dataUri,
-      lineStyle: isSelected ? { color: getColor("brand") } : undefined,
+      lineStyle: isSelected ? { color: getColor("core-brand") } : undefined,
       label: {
         show: events.length > 1,
         formatter: () => String(events.length),
@@ -115,13 +115,13 @@ export const getTimelineEventsSeries = (
       },
       emphasis: {
         lineStyle: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
         label: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
         itemStyle: {
-          color: getColor("brand"),
+          color: getColor("core-brand"),
         },
       },
       symbol: "none",

@@ -9,33 +9,33 @@ const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
   black: "hsla(0, 0%, 0%, 1.00)",
 
-  // Brand colors (dynamic based on --mb-color-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
+  // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
-    100: "color-mix(in srgb, var(--mb-color-brand), black 86%)",
-    90: "color-mix(in srgb, var(--mb-color-brand), black 75%)",
-    80: "color-mix(in srgb, var(--mb-color-brand), black 62%)",
-    70: "color-mix(in srgb, var(--mb-color-brand), black 47%)",
-    60: "color-mix(in srgb, var(--mb-color-brand), black 28%)",
-    50: "color-mix(in srgb, var(--mb-color-brand), black 12%)",
-    40: "var(--mb-color-brand)", // This is the base brand color
-    30: "color-mix(in srgb, var(--mb-color-brand), white 35%)",
-    20: "color-mix(in srgb, var(--mb-color-brand), white 70%)",
-    10: "color-mix(in srgb, var(--mb-color-brand), white 91%)",
-    5: "color-mix(in srgb, var(--mb-color-brand), white 96%)",
+    100: "color-mix(in srgb, var(--mb-color-core-brand), black 86%)",
+    90: "color-mix(in srgb, var(--mb-color-core-brand), black 75%)",
+    80: "color-mix(in srgb, var(--mb-color-core-brand), black 62%)",
+    70: "color-mix(in srgb, var(--mb-color-core-brand), black 47%)",
+    60: "color-mix(in srgb, var(--mb-color-core-brand), black 28%)",
+    50: "color-mix(in srgb, var(--mb-color-core-brand), black 12%)",
+    40: "var(--mb-color-core-brand)", // This is the base brand color
+    30: "color-mix(in srgb, var(--mb-color-core-brand), white 35%)",
+    20: "color-mix(in srgb, var(--mb-color-core-brand), white 70%)",
+    10: "color-mix(in srgb, var(--mb-color-core-brand), white 91%)",
+    5: "color-mix(in srgb, var(--mb-color-core-brand), white 96%)",
   },
 
   filter: {
-    100: "color-mix(in srgb, var(--mb-color-filter), black 86%)",
-    90: "color-mix(in srgb, var(--mb-color-filter), black 75%)",
-    80: "color-mix(in srgb, var(--mb-color-filter), black 62%)",
-    70: "color-mix(in srgb, var(--mb-color-filter), black 47%)",
-    60: "color-mix(in srgb, var(--mb-color-filter), black 28%)",
-    50: "color-mix(in srgb, var(--mb-color-filter), black 12%)",
-    40: "var(--mb-color-filter)", // This is the base filter color
-    30: "color-mix(in srgb, var(--mb-color-filter), white 35%)",
-    20: "color-mix(in srgb, var(--mb-color-filter), white 70%)",
-    10: "color-mix(in srgb, var(--mb-color-filter), white 91%)",
-    5: "color-mix(in srgb, var(--mb-color-filter), white 96%)",
+    100: "color-mix(in srgb, var(--mb-color-core-filter), black 86%)",
+    90: "color-mix(in srgb, var(--mb-color-core-filter), black 75%)",
+    80: "color-mix(in srgb, var(--mb-color-core-filter), black 62%)",
+    70: "color-mix(in srgb, var(--mb-color-core-filter), black 47%)",
+    60: "color-mix(in srgb, var(--mb-color-core-filter), black 28%)",
+    50: "color-mix(in srgb, var(--mb-color-core-filter), black 12%)",
+    40: "var(--mb-color-core-filter)", // This is the base filter color
+    30: "color-mix(in srgb, var(--mb-color-core-filter), white 35%)",
+    20: "color-mix(in srgb, var(--mb-color-core-filter), white 70%)",
+    10: "color-mix(in srgb, var(--mb-color-core-filter), white 91%)",
+    5: "color-mix(in srgb, var(--mb-color-core-filter), white 96%)",
   },
 
   // Deprecated Blue
