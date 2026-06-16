@@ -1,25 +1,17 @@
-## Add query_cache.refresh_started_at to coordinate a single cross-process refresh of an expired entry
-## (stale-while-revalidate). One process claims the refresh lease via a conditional UPDATE; the others
-## serve the stale cached result instead of all stampeding the data warehouse.
-##
-## Backported to 60/61/62 as well: the same change exists in each version dir (v60/v61/v62/v63) and each
-## changeSet is skipped (MARK_RAN) if any of the others already ran, so the column is added exactly once
-## regardless of upgrade path.
+## Add query_cache.refresh_started_at -- cross-process refresh lease for stale-while-revalidate caching.
+## Backported across 60/61/62/63: the same change exists in each version dir; each changeSet is skipped
+## (MARK_RAN) if any of the others already ran, so the column is added exactly once. This v60 changeSet runs
+## first on a fresh install, so it carries the real rollback.
 
 databaseChangeLog:
-  - logicalFilePath: migrations/063_update_migrations.yaml
+  - logicalFilePath: migrations/060_update_migrations.yaml
 
   - changeSet:
-      id: v63.2026-06-16T00:00:00
+      id: v60.2026-06-16T00:00:00
       author: ranquild
       comment: Add query_cache.refresh_started_at as a cross-process refresh lease for stale-while-revalidate caching
       preConditions:
         - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v60.2026-06-16T00:00:00
-              author: ranquild
-              changeLogFile: migrations/060_update_migrations.yaml
         - not:
             changeSetExecuted:
               id: v61.2026-06-16T00:00:00
@@ -30,6 +22,11 @@ databaseChangeLog:
               id: v62.2026-06-16T00:00:00
               author: ranquild
               changeLogFile: migrations/062_update_migrations.yaml
+        - not:
+            changeSetExecuted:
+              id: v63.2026-06-16T00:00:00
+              author: ranquild
+              changeLogFile: migrations/063_update_migrations.yaml
       changes:
         - addColumn:
             tableName: query_cache
@@ -40,4 +37,7 @@ databaseChangeLog:
                   remarks: When a process claimed the lease to recompute this expired entry; NULL when no refresh is in progress. Used to elect a single refresher across processes so the others serve stale results.
                   constraints:
                     nullable: true
-      rollback: ""
+      rollback:
+        - dropColumn:
+            tableName: query_cache
+            columnName: refresh_started_at
