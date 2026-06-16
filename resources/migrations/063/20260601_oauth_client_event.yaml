@@ -57,7 +57,7 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-      rollback: ""
+      rollback: "" # rolling back in 62. See comment at the top of the file
 
   - changeSet:
       id: v63.r9w4xb
@@ -77,7 +77,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: oauth_client_id
-      rollback: ""
+      rollback: "" # rolling back in 62. See comment at the top of the file
 
   - changeSet:
       id: v63.x2d7kq
@@ -97,7 +97,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: user_id
-      rollback: ""
+      rollback: "" # rolling back in 62. See comment at the top of the file
 
   - changeSet:
       id: v63.t3z8np
@@ -118,7 +118,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_oauth_client_event_oauth_client_id
             onDelete: SET NULL
-      rollback: ""
+      rollback: "" # rolling back in 62. See comment at the top of the file
 
   - changeSet:
       id: v63.h5c1vj
@@ -139,4 +139,4 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_oauth_client_event_user_id
             onDelete: SET NULL
-      rollback: ""
+      rollback: "" # rolling back in 62. See comment at the top of the file
