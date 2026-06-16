@@ -370,12 +370,18 @@
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
-(defn- fetch-compatible-series*
+(mu/defn- fetch-compatible-series* :- [:sequential :map]
   "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card database-id->metadata-provider {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  [card    :- :map
+   {:keys [query last-cursor page-size exclude-ids] :as _options}
+   :- [:map {:closed true}
+       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
+       [:page-size   {:optional true} [:maybe ms/PositiveInt]]
+       [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [matching-cards  (t2/select :model/Card
                                    :archived false
                                    :display [:in supported-series-display-type]
@@ -396,15 +402,6 @@
                                      ;; this is just a heuristic, but it should be good enough
                                      page-size
                                      (assoc :limit (+ 10 page-size))))
-        database-ids (set (keys database-id->metadata-provider))
-        database-id->metadata-provider (->> matching-cards
-                                            (filter #(or (nil? (get-in % [:visualization_settings :graph.metrics]))
-                                                         (nil? (get-in % [:visualization_settings :graph.dimensions]))))
-                                            (keep :database_id)
-                                            (set)
-                                            (remove #(contains? database-ids %))
-                                            (into database-id->metadata-provider
-                                                  (map (juxt identity lib-be/application-database-metadata-provider))))
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
@@ -414,8 +411,8 @@
                                         (= (:query_type %) :native)
                                         (series-are-compatible? card %))))]
     (if page-size
-      [database-id->metadata-provider (take page-size compatible-cards)]
-      [database-id->metadata-provider compatible-cards])))
+      (take page-size compatible-cards)
+      compatible-cards)))
 
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
@@ -426,14 +423,10 @@
   - last-cursor: the id of the last card from the previous page
   - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
   ([card options]
-   (fetch-compatible-series
-    card
-    options
-    {(:database_id card) (lib-be/application-database-metadata-provider (:database_id card))}
-    []))
+   (fetch-compatible-series card options []))
 
-  ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]
-   (let [[database-id->metadata-provider cards] (fetch-compatible-series* card database-id->metadata-provider options)
+  ([card {:keys [page-size] :as options} current-cards]
+   (let [cards     (fetch-compatible-series* card options)
          new-cards (concat current-cards cards)]
      ;; if the total card fetches is less than page-size and there are still more, continue fetching
      (if (and (some? page-size)
@@ -443,7 +436,6 @@
                                 (merge options
                                        {:page-size   (- page-size (count cards))
                                         :last-cursor (:id (last cards))})
-                                database-id->metadata-provider
                                 new-cards)
        new-cards))))
 
@@ -781,9 +773,8 @@
   "Get all of the required query metadata for a card."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (lib-be/with-metadata-provider-cache
-    (let [resolved-id (eid-translation/->id-or-404 :card id)]
-      (queries/batch-fetch-card-metadata [(get-card resolved-id)]))))
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
