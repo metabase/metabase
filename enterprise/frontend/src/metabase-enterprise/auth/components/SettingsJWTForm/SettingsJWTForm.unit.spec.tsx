@@ -53,7 +53,7 @@ const setup = async ({
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
-  renderWithProviders(<SettingsJWTForm />);
+  renderWithProviders(<SettingsJWTForm />, { withUndos: true });
 
   await screen.findByText("Server Settings");
 };
@@ -135,6 +135,20 @@ describe("SettingsJWTForm", () => {
     const [{ url, body }] = puts;
     expect(url).toMatch(/\/api\/setting\/jwt-group-mappings$/);
     expect(body).toEqual({ value: { "cn=People": [] } });
+  });
+
+  it("shows a toast after saving", async () => {
+    await setup({ jwtEnabled: true, configured: true });
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      "/extra",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Save changes" }),
+    );
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 
   it("should not show tenant attribute unless tenanting is on", async () => {

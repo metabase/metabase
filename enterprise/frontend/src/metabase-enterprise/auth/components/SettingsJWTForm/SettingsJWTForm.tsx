@@ -11,6 +11,7 @@ import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
@@ -43,6 +44,7 @@ export const SettingsJWTForm = () => {
     refetch: refetchSettingDetails,
   } = useGetAdminSettingsDetailsQuery();
   const { value: jwtEnabled, updateSettings } = useAdminSetting("jwt-enabled");
+  const [sendToast] = useToast();
 
   const handleSubmit = async (values: Partial<JWTFormValues>) => {
     const { "jwt-shared-secret": jwtSecret, ...rest } = values;
@@ -65,6 +67,8 @@ export const SettingsJWTForm = () => {
     if (result.error) {
       throw new Error(t`Error saving JWT Settings`);
     }
+
+    sendToast({ message: t`Changes saved`, icon: "check_filled" });
   };
 
   if (isLoadingDetails) {
