@@ -41,20 +41,65 @@
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
 
+(defn- scan-nestable-sql
+  "Single forward pass over `sql`, tracking which SQL construct we are currently inside so that
+  semicolons and comments appearing inside string literals, quoted identifiers, or comments are
+  not treated as top-level. Returns a map with:
+
+    :cut   index where the trailing run of top-level semicolons / whitespace / comments begins
+           (the run begins with a `;` and continues to the end of the string), or nil if there
+           is no such run. Real top-level SQL after a semicolon resets this, so an interior `;`
+           is never a cut point.
+    :state the parser state at the end of the string, one of
+           #{:normal :string :dquote :backtick :line-comment :block-comment}."
+  [^String sql]
+  (let [n (.length sql)]
+    (loop [i 0, state :normal, cut nil]
+      (if (>= i n)
+        {:cut cut, :state state}
+        (let [c    (.charAt sql i)
+              next (when (< (inc i) n) (.charAt sql (inc i)))]
+          (case state
+            :normal        (cond
+                             (Character/isWhitespace c)      (recur (inc i) :normal cut)
+                             (= c \;)                        (recur (inc i) :normal (or cut i))
+                             (and (= c \-) (= next \-))      (recur (+ i 2) :line-comment cut)
+                             (and (= c \/) (= next \*))      (recur (+ i 2) :block-comment cut)
+                             (= c \')                        (recur (inc i) :string nil)
+                             (= c \")                        (recur (inc i) :dquote nil)
+                             (= c \`)                        (recur (inc i) :backtick nil)
+                             :else                           (recur (inc i) :normal nil))
+            ;; In string/identifier states a doubled quote is an escaped quote, not a terminator.
+            :string        (cond
+                             (not= c \')                     (recur (inc i) :string cut)
+                             (= next \')                     (recur (+ i 2) :string cut)
+                             :else                           (recur (inc i) :normal cut))
+            :dquote        (cond
+                             (not= c \")                     (recur (inc i) :dquote cut)
+                             (= next \")                     (recur (+ i 2) :dquote cut)
+                             :else                           (recur (inc i) :normal cut))
+            :backtick      (cond
+                             (not= c \`)                     (recur (inc i) :backtick cut)
+                             (= next \`)                     (recur (+ i 2) :backtick cut)
+                             :else                           (recur (inc i) :normal cut))
+            :line-comment  (if (= c \newline)
+                             (recur (inc i) :normal cut)
+                             (recur (inc i) :line-comment cut))
+            :block-comment (if (and (= c \*) (= next \/))
+                             (recur (+ i 2) :normal cut)
+                             (recur (inc i) :block-comment cut))))))))
+
 (defn make-nestable-sql*
-  "See [[make-nestable-sql]] but does not wrap in result in parens."
+  "See [[make-nestable-sql]] but does not wrap the result in parens."
   [sql]
-  (-> sql
-      ;; Strip the trailing run of semicolons / whitespace / line comments. Possessive quantifiers (`*+`) make
-      ;; this match in a single forward pass: without them the nested unbounded quantifiers over overlapping
-      ;; character classes backtrack super-linearly (O(n^2) on many trailing comment lines), which can wedge the JVM.
-      (str/replace #";[\s;]*+(?:--.*+[\s;]*+)*+$" "")
-      str/trimr
-      (as-> trimmed
-            ;; Query could potentially end with a comment.
-            (if (re-find #"--.*$" trimmed)
-              (str trimmed "\n")
-              trimmed))))
+  (let [cut     (:cut (scan-nestable-sql sql))
+        trimmed (-> (cond-> sql cut (subs 0 cut))
+                    str/trimr)]
+    ;; If the result ends inside a line comment, append a newline so the closing paren isn't
+    ;; swallowed by the comment.
+    (cond-> trimmed
+      (= :line-comment (:state (scan-nestable-sql trimmed)))
+      (str "\n"))))
 
 (defn make-nestable-sql
   "Do best effort edit to the `sql`, to make it nestable in subselect.
@@ -67,11 +112,13 @@
     comments were preceding semicolon.
   - Wrapping the result in parens.
 
-  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
-  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
+  This is done by [[scan-nestable-sql]], which scans the string once tracking whether we are inside a string
+  literal, a quoted identifier, or a comment, so that semicolons and comments inside those constructs are left
+  alone. For the original regex-based implementation and the discussion that motivated this approach, see:
   https://github.com/metabase/metabase/pull/30677
 
-  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
+  For the behaviour on various edge cases see the
+  [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"  [sql]
   (str "(" (make-nestable-sql* sql) ")"))
 
 (defn- format-sql-source-query [_clause [sql params]]
