@@ -1667,42 +1667,75 @@
                       {:color (resolve-svg-color fill)
                        :ds    (mapv second (re-seq #"d=\"([^\"]+)\"" body))}))})))
 
-(def ^:private two-thirds (/ 2.0 3.0))
+(def ^:private two-thirds
+  "The quadratic->cubic Bézier lift factor (see [[emit-shape!]])."
+  (/ 2.0 3.0))
 
 (defn- emit-shape!
-  "Stream `shape` -- transformed into page space by `xform` -- into `cs` as one filled path,
-  preserving holes (a single nonzero-winding fill). Quadratic segments (TrueType outlines) are
-  converted to cubics, which is all PDF supports."
+  "Append `shape` to the current PDFBox path as one filled region -- a single nonzero-winding `fill`,
+  so holes (the inside of an 'o', a counter, etc.) survive. `xform` maps the shape's coordinates into
+  page space; the result is emitted with PDFBox's `moveTo`/`lineTo`/`curveTo`/`closePath`.
+
+  Walks the shape with a `java.awt.geom.PathIterator`, whose segments are move/line/quadratic/cubic/
+  close. PDF has no quadratic curves, so a quadratic is raised to the equivalent cubic. Two points are
+  threaded through the walk:
+   - `pen`   -- the current point. The quadratic->cubic lift needs the segment's *start* point, which
+                the iterator never reports (it gives only the control and end points).
+   - `start` -- the start of the current subpath, where a close returns the pen."
   [^PDPageContentStream cs ^java.awt.Shape shape ^AffineTransform xform]
-  (let [it  (.getPathIterator shape xform)
-        c   (double-array 6)
-        cur (double-array 2)
-        st  (double-array 2)]
-    (while (not (.isDone it))
-      (case (.currentSegment it c)
-        0 (do (.moveTo cs (float (aget c 0)) (float (aget c 1)))                                  ; SEG_MOVETO
-              (aset cur 0 (aget c 0)) (aset cur 1 (aget c 1))
-              (aset st 0 (aget c 0)) (aset st 1 (aget c 1)))
-        1 (do (.lineTo cs (float (aget c 0)) (float (aget c 1)))                                  ; SEG_LINETO
-              (aset cur 0 (aget c 0)) (aset cur 1 (aget c 1)))
-        2 (let [px (aget cur 0) py (aget cur 1)                                                   ; SEG_QUADTO -> cubic
-                qx (aget c 0) qy (aget c 1) ex (aget c 2) ey (aget c 3)]
-            (.curveTo cs (float (+ px (* two-thirds (- qx px)))) (float (+ py (* two-thirds (- qy py))))
-                      (float (+ ex (* two-thirds (- qx ex)))) (float (+ ey (* two-thirds (- qy ey))))
-                      (float ex) (float ey))
-            (aset cur 0 ex) (aset cur 1 ey))
-        3 (do (.curveTo cs (float (aget c 0)) (float (aget c 1))                                  ; SEG_CUBICTO
-                        (float (aget c 2)) (float (aget c 3))
-                        (float (aget c 4)) (float (aget c 5)))
-              (aset cur 0 (aget c 4)) (aset cur 1 (aget c 5)))
-        4 (do (.closePath cs)                                                                     ; SEG_CLOSE
-              (aset cur 0 (aget st 0)) (aset cur 1 (aget st 1))))
-      (.next it))
-    (.fill cs)))
+  (let [iter   (.getPathIterator shape xform)
+        ;; `currentSegment` writes the segment's coordinates here: 1 point for move/line, 2 for a
+        ;; quadratic (control, end), 3 for a cubic (control1, control2, end). Reused each iteration.
+        coords (double-array 6)]
+    (loop [pen-x 0.0, pen-y 0.0, start-x 0.0, start-y 0.0]
+      (if (.isDone iter)
+        (.fill cs)
+        (let [seg (.currentSegment iter coords)]
+          (condp == seg
+            PathIterator/SEG_MOVETO                        ; begin a new subpath
+            (let [x (aget coords 0), y (aget coords 1)]
+              (.moveTo cs (float x) (float y))
+              (.next iter)
+              (recur x y x y))                             ; pen and subpath-start both move here
+
+            PathIterator/SEG_LINETO
+            (let [x (aget coords 0), y (aget coords 1)]
+              (.lineTo cs (float x) (float y))
+              (.next iter)
+              (recur x y start-x start-y))
+
+            PathIterator/SEG_QUADTO                         ; quadratic -> equivalent cubic
+            ;; a quadratic from `pen` through control `ctrl` to `end` is the cubic with control points
+            ;; `pen + 2/3*(ctrl - pen)` and `end + 2/3*(ctrl - end)`.
+            (let [ctrl-x (aget coords 0), ctrl-y (aget coords 1)
+                  end-x  (aget coords 2), end-y  (aget coords 3)]
+              (.curveTo cs
+                        (float (+ pen-x (* two-thirds (- ctrl-x pen-x))))
+                        (float (+ pen-y (* two-thirds (- ctrl-y pen-y))))
+                        (float (+ end-x (* two-thirds (- ctrl-x end-x))))
+                        (float (+ end-y (* two-thirds (- ctrl-y end-y))))
+                        (float end-x) (float end-y))
+              (.next iter)
+              (recur end-x end-y start-x start-y))
+
+            PathIterator/SEG_CUBICTO
+            (let [ctrl1-x (aget coords 0), ctrl1-y (aget coords 1)
+                  ctrl2-x (aget coords 2), ctrl2-y (aget coords 3)
+                  end-x   (aget coords 4), end-y   (aget coords 5)]
+              (.curveTo cs (float ctrl1-x) (float ctrl1-y) (float ctrl2-x) (float ctrl2-y)
+                        (float end-x) (float end-y))
+              (.next iter)
+              (recur end-x end-y start-x start-y))
+
+            PathIterator/SEG_CLOSE
+            (do (.closePath cs)
+                (.next iter)
+                (recur start-x start-y start-x start-y))))))))   ; pen returns to the subpath start
 
 (defn- draw-brand-logo!
-  "Draw the logo+wordmark SVG with its top-left at (`x`, `top`), scaled to height `h` preserving
-  aspect. Returns the drawn width."
+  "Draw the logo+wordmark SVG with its top-left at (`x`, `top`), scaled to height `h` preserving aspect.
+
+  Returns the drawn width."
   [^PDPageContentStream cs x top h]
   (let [{:keys [vw vh groups]} @brand-logo
         scale (/ (double h) vh)
@@ -1741,7 +1774,10 @@
   (let [bold (face :bold)
         top  (- (double page-height) margin)
         ;; "Made with Metabase" badge, vector-drawn in the empty top margin band, right-aligned
-        _    (draw-brand-badge! cs (+ margin content-w) (- (double page-height) (/ (- margin brand-logo-pt) 2.0)))
+        _    (draw-brand-badge! cs (+ margin content-w)
+                                (- (double page-height)
+                                   (/ (- margin brand-logo-pt)
+                                      2.0)))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold dashboard-title-pt
@@ -1758,8 +1794,8 @@
                   (- y2 tab-title-pt) tab-title))))
 
 (defn- add-link-annotations!
-  "Add a clickable URI link annotation to `pg` for each collected rectangle (invisible border --
-  the link text is already coloured)."
+  "Add a clickable URI link annotation to `pg` for each collected rectangle. This is an invisible border, the link
+  text is already coloured."
   [^PDPage pg rects]
   (when (seq rects)
     (let [annots (.getAnnotations pg)]
@@ -1771,21 +1807,23 @@
               link   (doto (PDAnnotationLink.)
                        (.setRectangle rect)
                        (.setBorderStyle border)
-                       (.setAction (doto (PDActionURI.) (.setURI (str href)))))]
+                       (.setAction (doto (PDActionURI.)
+                                     (.setURI (str href)))))]
           (.add annots link)))
       ;; re-attach the list so the /Annots array is written when the page has none yet
       (.setAnnotations pg annots))))
 
 (defn- with-cell-inline-params!
-  "Draw a virtual cell's content via `draw-content!` (a fn of the available content height),
-  reserving space at the bottom of the cell for its inline parameter chips and drawing them
-  there afterward -- mirroring how email renders a heading/text card's filters below it."
+  "Draw a virtual cell's content via `draw-content!` (a fn of the available content height), reserving space at the
+  bottom of the cell for its inline parameter chips and drawing them there afterward. Mirrors how email renders a
+  heading/text card's filters below it."
   [^PDPageContentStream cs x top-y cell-w cell-h inline-params draw-content!]
   (let [ip-lines (inline-param-lines inline-params cell-w)
         iph      (inline-params-height ip-lines)]
     (draw-content! (- (double cell-h) iph))
     (when (seq ip-lines)
-      (draw-inline-params! cs ip-lines x cell-w (- (double top-y) (- (double cell-h) iph))))))
+      (draw-inline-params! cs ip-lines x cell-w (- (double top-y)
+                                                   (- (double cell-h) iph))))))
 
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]
@@ -1807,11 +1845,15 @@
                 x      (+ margin (* (:col cell) unit) half)
                 top-y  (- card-area-top (* rr unit) half)
                 cell-w (- (* (:size_x cell) unit) gutter-pt)
-                cell-h (min (- (* (:size_y cell) unit) (if text? half gutter-pt))
-                            (- top-y margin))]
+                cell-h (min (- top-y margin)
+                            (- (* (:size_y cell) unit)
+                               (if text?
+                                 half
+                                 gutter-pt)))]
             (try
               ;; debug overlay: the full heading-card cell (blue), drawn behind its text
-              (when (and *debug-boxes* (= :heading (:kind cell)))
+              (when (and *debug-boxes*
+                         (= :heading (:kind cell)))
                 (fill-rect! cs debug-heading-color x top-y cell-w cell-h))
               (case (:kind cell)
                 :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
@@ -1833,10 +1875,10 @@
 ;; --------------------------------------------------------------------------------------------
 
 (defn- resolve-parameters
-  "Resolve the parameter values a subscription would use: start from the dashboard's own
-  parameters (treating each parameter's `:default` as its `:value`), then apply any explicitly
-  provided overrides by id. These feed both text-card `{{tag}}` substitution and dashcard query
-  filtering, matching how email subscriptions interpolate parameters."
+  "Resolve the parameter values a subscription would use: start from the dashboard's own parameters, treating each
+  parameter's `:default` as its `:value`, then apply any explicitly provided overrides by id. These feed both
+  text-card `{{tag}}` substitution and dashcard query filtering, matching how email subscriptions interpolate
+  parameters."
   [dashboard provided]
   (let [by-id (into {} (map (juxt :id identity)) provided)]
     (vec (for [{default-value :default :as p} (:parameters dashboard)]
@@ -1845,10 +1887,10 @@
              (by-id (:id p))       (merge (by-id (:id p))))))))
 
 (defn render-dashboard-to-pdf
-  "Render the dashboard with `dashboard-id` to PDF bytes, as user `user-id`, applying
-  `parameters` (a vector of dashboard parameter overrides; `[]` to use the dashboard's own
-  parameter defaults). `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the
-  dashboard's explicit 24-column grid."
+  "Render the dashboard with `dashboard-id` to PDF bytes, running queries as user `user-id`. `parameters` is a vector
+  of dashboard parameter overrides; `[]` to use the dashboard's own parameter defaults.
+
+  `paper-key` is `:a4` (default) or `:letter`. Lays cards out following the dashboard's explicit 24-column grid."
   (^bytes [dashboard-id user-id parameters]
    (render-dashboard-to-pdf dashboard-id user-id parameters :a4))
   (^bytes [dashboard-id user-id parameters paper-key]
@@ -1861,11 +1903,16 @@
            by-tab   (group-by :dashboard_tab_id dcs)
            resolved (resolve-parameters dash parameters)
            sections (if tabbed?
-                      (mapv (fn [t] {:tab-name (:name t) :cells (build-cells (get by-tab (:id t)) resolved)}) tabs)
-                      [{:tab-name nil :cells (build-cells dcs resolved)}])
-           timezone (some (fn [s] (some #(when (= :card (:kind %))
-                                           (render.card/defaulted-timezone (-> % :part :card)))
-                                        (:cells s)))
+                      (mapv (fn [t]
+                              {:tab-name (:name t)
+                               :cells    (build-cells (get by-tab (:id t)) resolved)})
+                            tabs)
+                      [{:tab-name nil
+                        :cells    (build-cells dcs resolved)}])
+           timezone (some (fn [s]
+                            (some #(when (= :card (:kind %))
+                                     (-> % :part :card render.card/defaulted-timezone))
+                                  (:cells s)))
                           sections)
            doc      (PDDocument.)]
        (try
@@ -1875,7 +1922,7 @@
                  inline-ids  (into #{} (mapcat :inline_parameters) dcs)
                  param-table (layout-param-table (dashboard-param-entries resolved inline-ids) content-w margin)
                  param-rows  (param-table-rows param-table (:unit dims))]
-             (doseq [[idx section] (map-indexed vector sections)
+             (doseq [[idx section] (m/indexed sections)
                      page          (pages-for-section section idx dims tabbed? (:name dash) param-table param-rows)]
                (render-page! doc dims timezone page)))
            (when (zero? (.getNumberOfPages doc))
