@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
