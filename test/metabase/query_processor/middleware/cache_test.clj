@@ -76,15 +76,18 @@
               max-age-ms (* (:multiplier strategy)
                             (:avg-execution-ms strategy))]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
-                                                                               (when (= hash hex-hash)
-                                                                                 entry))
-                                                                             @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/millis max-age-ms)))
-                                      results))]
-            (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is))
-            (respond nil))))
+          (if-let [{:keys [created results]} (some (fn [[hash entry]]
+                                                     (when (= hash hex-hash) entry))
+                                                   @store)]
+            (let [^bytes result-bytes results
+                  stale? (not (t/after? created (t/minus (t/instant) (t/millis max-age-ms))))]
+              ;; Mirror the db backend: only serve an expired entry when the caller opted in via
+              ;; `:allow-stale?`; otherwise treat it as a miss so the query re-runs.
+              (if (and stale? (not (:allow-stale? strategy)))
+                (respond nil false)
+                (with-open [is (java.io.ByteArrayInputStream. result-bytes)]
+                  (respond is stale?))))
+            (respond nil false))))
 
       (save-results! [this query-hash results]
         (let [hex-hash (codecs/bytes->hex query-hash)]
@@ -212,6 +215,32 @@
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
 
+(deftest expired-results-served-when-stale-opt-in-test
+  (testing "If the caller opts in via :allow-stale-results?, expired results are served (the FE refreshes them)"
+    (with-mock-cache! [save-chan]
+      (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
+      (mt/wait-for-result save-chan)
+      (Thread/sleep 200)
+      (is (= :cached
+             (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)
+                        :middleware {:allow-stale-results? true}))))))
+
+(deftest stale-flag-surfaced-on-opt-in-test
+  (testing "An opted-in stale hit is flagged :stale? true in :cache/details; a fresh hit is :stale? false"
+    (with-mock-cache! [save-chan]
+      (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
+      (mt/wait-for-result save-chan)
+      (Thread/sleep 200)
+      (is (=? {:cache/details {:cached true, :stale? true}}
+              (run-query* :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)
+                          :middleware {:allow-stale-results? true}))))
+    (testing "a fresh hit is never stale even when opted in"
+      (with-mock-cache! [save-chan]
+        (run-query)
+        (mt/wait-for-result save-chan)
+        (is (=? {:cache/details {:cached true, :stale? false}}
+                (run-query* :middleware {:allow-stale-results? true})))))))
+
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
     (with-mock-cache! [save-chan]
@@ -292,7 +321,7 @@
         (testing "Cached results should exist"
           (is (true?
                (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                                 some?))))
+                                 (fn [is _stale?] (some? is))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -308,7 +337,8 @@
           (is (=? {:data          {}
                    :cache/details {:cached     true
                                    :updated_at #t "2020-02-19T02:31:07.798Z[UTC]"
-                                   :cache-hash some?}
+                                   :cache-hash some?
+                                   :stale?     false}
                    :row_count     8
                    :status        :completed}
                   result)))))))
@@ -761,7 +791,7 @@
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
                                 (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
-          rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
+          rf ((cached-results-rff fresh-injecting-rff (byte-array 1) false)
               {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
           ;; result map (which used to stomp acc).

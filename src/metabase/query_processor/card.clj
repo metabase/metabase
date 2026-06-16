@@ -320,7 +320,7 @@
   all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache allow-stale]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -348,7 +348,9 @@
                        (assoc :viz-settings merged-viz)
                        (update :middleware (fn [middleware]
                                              (merge
-                                              {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
+                                              {:js-int-to-string?     true
+                                               :ignore-cached-results? ignore-cache
+                                               :allow-stale-results?   (boolean allow-stale)}
                                               middleware))))
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context

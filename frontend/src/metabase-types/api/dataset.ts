@@ -141,6 +141,8 @@ export interface Dataset {
   average_execution_time?: number;
   /** A date in ISO 8601 format */
   cached?: string;
+  /** True when the cached result is older than the configured TTL */
+  stale?: boolean;
   /** A date in ISO 8601 format */
   started_at?: string;
 }

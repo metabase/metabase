@@ -1,13 +1,15 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMount, useUpdateEffect } from "react-use";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
+import { QuestionLastUpdated } from "metabase/common/components/QuestionLastUpdated/QuestionLastUpdated";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { addParameter, duplicateCard } from "metabase/dashboard/actions";
+import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
@@ -39,6 +41,7 @@ import type {
   Card,
   DashCardId,
   DashboardCard,
+  Dataset,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -188,6 +191,34 @@ function DashCardInner({
     () => isDashcardLoading(dashcard, dashcardData),
     [dashcard, dashcardData],
   );
+
+  const mainDataset =
+    mainCard.id != null ? dashcardData?.[mainCard.id] : undefined;
+  const isStale = !isLoading && mainDataset?.stale === true;
+
+  // When the displayed result is stale, kick off a background refresh without
+  // clearing the card — the user keeps seeing data while the fresh query runs.
+  //
+  // We dispatch at most one refresh per stale dataset. fetchCardData({reload}) does
+  // NOT clear the card (so the stale data stays visible), which means isLoading never
+  // flips and isStale stays true for the whole in-flight window. Without this guard the
+  // effect would re-dispatch on every re-render (mainCard/dashcard get new object
+  // identities), cancelling and restarting the same uncached query repeatedly. Keying
+  // off the dataset object identity lets the next genuinely-new stale result refresh
+  // again while blocking re-render churn for the current one.
+  const refreshedDatasetRef = useRef<Dataset | undefined>(undefined);
+  useEffect(() => {
+    if (!isStale || refreshedDatasetRef.current === mainDataset) {
+      return;
+    }
+    refreshedDatasetRef.current = mainDataset;
+    dispatch(
+      fetchCardData(mainCard as Card, dashcard, {
+        reload: true,
+        ignoreCache: true,
+      }),
+    );
+  }, [isStale, mainDataset, dispatch, mainCard, dashcard]);
 
   const isAction = isActionCard(mainCard);
 
@@ -386,6 +417,15 @@ function DashCardInner({
             onEditVisualization={onEditVisualizationClick}
           />
         )}
+        {mainDataset?.cached ? (
+          <QuestionLastUpdated
+            result={mainDataset}
+            pos="absolute"
+            bottom="0.5rem"
+            right="0.5rem"
+            style={{ zIndex: 1, cursor: "default" }}
+          />
+        ) : null}
         <DashCardVisualization
           dashcard={dashcard}
           question={question}

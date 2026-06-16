@@ -404,6 +404,10 @@ export const fetchCardDataAction = createAsyncThunk<
               cardId: card.id,
               parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
+              // Opt in to stale results on a normal load; the DashCard kicks off a
+              // background refresh when the served result is stale. The refresh itself
+              // passes ignoreCache, so it bypasses the cache rather than re-reading stale.
+              allow_stale: !ignoreCache,
               dashboard_id: dashcard.dashboard_id,
               dashboard_load_id: dashboardLoadId,
             },

@@ -112,6 +112,13 @@ export const runDirtyQuestionQuery =
     return dispatch(runQuestionQuery({ shouldUpdateUrl }));
   };
 
+// AbortController for any in-progress background stale refresh. Aborted when
+// the user triggers a new explicit run so the stale refresh doesn't clobber
+// the running state. Keyed by `getState` (stable per Redux store) so multiple
+// concurrent QB instances — e.g. embedding/SDK with several questions — don't
+// abort each other's refresh. Entries are GC'd with their store.
+const staleRefreshControllers = new WeakMap<GetState, AbortController>();
+
 /**
  * Queries the result for the currently active question or alternatively for the card question provided in `overrideWithQuestion`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
@@ -126,6 +133,12 @@ export const runQuestionQuery = ({
   overrideWithQuestion?: Question | null;
 } = {}) => {
   return async (dispatch: Dispatch, getState: GetState) => {
+    // Cancel any silent background stale refresh before showing the running overlay.
+    const inFlightStaleRefresh = staleRefreshControllers.get(getState);
+    if (inFlightStaleRefresh) {
+      inFlightStaleRefresh.abort();
+      staleRefreshControllers.delete(getState);
+    }
     dispatch(loadStartUIControls());
 
     const question = overrideWithQuestion
@@ -164,6 +177,9 @@ export const runQuestionQuery = ({
       dispatch,
       signal: cancelQueryController.signal,
       ignoreCache: ignoreCache,
+      // Opt in to stale cached results: queryCompleted kicks off a background
+      // refresh when the served result is stale (see refreshStaleQueryResult).
+      allowStale: true,
       isDirty: isQueryDirty,
     })
       .then((queryResults) => dispatch(queryCompleted(question, queryResults)))
@@ -196,7 +212,13 @@ const loadStartUIControls = createThunkAction(
   },
 );
 
-export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
+export const queryCompleted = (
+  question: Question,
+  queryResults: Dataset[],
+  // `silent` is set by the background stale refresh: it updates the results without
+  // re-firing the "query is ready" favicon/title fanfare for a run the user didn't trigger.
+  { silent = false }: { silent?: boolean } = {},
+) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     const [{ data, error }] = queryResults;
     const prevCard = getCard(getState());
@@ -242,9 +264,47 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
         queryResults,
       },
     });
-    dispatch(loadCompleteUIControls());
+    if (!silent) {
+      dispatch(loadCompleteUIControls());
+    }
+
+    if (queryResults[0]?.stale) {
+      dispatch(refreshStaleQueryResult(question));
+    }
   };
 };
+
+// Re-run a stale cached result silently in the background. Unlike
+// runQuestionQuery, this never dispatches RUN_QUERY, so isRunning stays false
+// and the "Doing science…" overlay won't cover the data that is already on
+// screen. The footer's QuestionLastUpdated component shows "Refreshing…" via
+// result.stale while the fresh query is in flight.
+const refreshStaleQueryResult =
+  (question: Question) => async (dispatch: Dispatch, getState: GetState) => {
+    staleRefreshControllers.get(getState)?.abort();
+    const controller = new AbortController();
+    staleRefreshControllers.set(getState, controller);
+
+    try {
+      const freshResults = await apiRunQuestionQuery(question, {
+        dispatch,
+        signal: controller.signal,
+        ignoreCache: true,
+        isDirty: false,
+      });
+      if (staleRefreshControllers.get(getState) === controller) {
+        staleRefreshControllers.delete(getState);
+      }
+      // Guard against infinite loop if the server still returns stale data.
+      if (!freshResults[0]?.stale) {
+        dispatch(queryCompleted(question, freshResults, { silent: true }));
+      }
+    } catch (error) {
+      if (!isAbortError(error)) {
+        console.error("Background stale refresh failed:", error);
+      }
+    }
+  };
 
 export const queryErrored = createThunkAction(
   QUERY_ERRORED_TYPE,

@@ -15,6 +15,11 @@ interface RunQuestionQueryParams {
   parameterValues?: ParameterValuesMap;
   signal?: AbortSignal;
   dispatch: Dispatch;
+  // Bypass the cache entirely (used by the background stale refresh).
+  ignoreCache?: boolean;
+  // Opt in to receiving expired cache entries flagged `stale`. The caller must refresh
+  // them itself (see `useLoadQuestion`), otherwise stale data would be shown indefinitely.
+  allowStale?: boolean;
 }
 
 export async function runQuestionQuerySdk(
@@ -28,6 +33,8 @@ export async function runQuestionQuerySdk(
     parameterValues,
     signal,
     dispatch,
+    ignoreCache = false,
+    allowStale = false,
   } = params;
 
   if (question.isSaved()) {
@@ -53,7 +60,8 @@ export async function runQuestionQuerySdk(
     queryResults = await runQuestionQuery(question, {
       dispatch,
       signal,
-      ignoreCache: false,
+      ignoreCache,
+      allowStale,
       isDirty: isQueryDirty,
       token,
       ...(isGuestEmbed && {

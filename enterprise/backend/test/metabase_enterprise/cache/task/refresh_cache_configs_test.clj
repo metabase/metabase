@@ -473,7 +473,7 @@
   (let [clean-col    #(dissoc % :lib/source-uuid :lib/source_uuid)
         clean-result (fn [result]
                        (-> result
-                           (dissoc :running_time :average_execution_time :started_at :cached)
+                           (dissoc :running_time :average_execution_time :started_at :cached :stale)
                            (update-in [:data :cols] #(mapv clean-col %))
                            (update-in [:data :results_metadata :columns] #(mapv clean-col %))
                            (m/dissoc-in [:json_query :cache-strategy])))]

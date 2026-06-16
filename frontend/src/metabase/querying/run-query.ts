@@ -25,6 +25,9 @@ type RunQuestionQueryOptions = {
   isDirty?: boolean;
   token?: string | null;
   ignoreCache?: boolean;
+  // Opt in to receiving expired cache entries flagged `stale`. Only set this when the caller
+  // refreshes stale results itself (the interactive app does, via a background re-run).
+  allowStale?: boolean;
   collectionPreview?: boolean;
   // Ability to override or add extra query params to the request, used by Embedding SDK
   queryParamsOverride?: Record<string, unknown>;
@@ -33,6 +36,7 @@ type RunQuestionQueryOptions = {
 type SavedCardQueryOptions = {
   parameters: unknown[];
   ignoreCache?: boolean;
+  allowStale?: boolean;
   collectionPreview?: boolean;
   token?: string | null;
   queryParamsOverride?: Record<string, unknown>;
@@ -118,6 +122,7 @@ function runSavedCardQuery(
   {
     parameters,
     ignoreCache,
+    allowStale,
     collectionPreview,
     token,
     queryParamsOverride,
@@ -131,6 +136,7 @@ function runSavedCardQuery(
 
   const body = {
     ignore_cache: ignoreCache,
+    allow_stale: allowStale,
     collection_preview: collectionPreview,
     parameters,
     // Disambiguate the RTK cache key so two callers running the same saved card
@@ -180,6 +186,7 @@ export async function runQuestionQuery(
     isDirty = false,
     token,
     ignoreCache = false,
+    allowStale = false,
     collectionPreview = false,
     queryParamsOverride = {},
   }: RunQuestionQueryOptions,
@@ -199,6 +206,7 @@ export async function runQuestionQuery(
           {
             parameters,
             ignoreCache,
+            allowStale,
             collectionPreview,
             token,
             queryParamsOverride,

@@ -50,3 +50,14 @@ export const getTimePassedSince = ({
     return date.fromNow(withoutSuffix);
   }
 };
+
+export const getStaleCacheTooltipLabel = (
+  timestamp?: string | null,
+): string => {
+  try {
+    return c("{0} is a phrase like '1 minute ago' or '30 seconds ago'")
+      .t`Showing stale results from ${getTimePassedSince({ timestamp, withoutSuffix: false })} — refreshing`;
+  } catch {
+    return t`Showing stale results — refreshing`;
+  }
+};

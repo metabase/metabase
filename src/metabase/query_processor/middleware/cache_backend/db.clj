@@ -35,25 +35,56 @@
   [{:keys [results]}]
   results)
 
+;; NOTE: the result bytes MUST be materialized inside the query (via `select-one-fn`), not after the
+;; row is returned. On H2 app-dbs `:results` comes back as a lazy `JdbcBlob` tied to the open
+;; connection; reading it once the connection has closed throws "object is already closed", which the
+;; cache middleware swallows as a cache miss - silently disabling caching on H2.
+
+(defn- ->instant
+  "Coerce an app-db timestamp to an `Instant` for comparison. The app-db driver may return `:updated_at`
+  as a `LocalDateTime` (MySQL/MariaDB, stored in UTC), an `OffsetDateTime`/`ZonedDateTime` (H2/Postgres),
+  or a `java.util.Date`. `t/before?` throws on mixed temporal classes, so normalize first."
+  ^java.time.Instant [t]
+  (condp instance? t
+    java.time.Instant       t
+    java.time.LocalDateTime (.toInstant ^java.time.LocalDateTime t java.time.ZoneOffset/UTC)
+    java.util.Date          (.toInstant ^java.util.Date t)
+    (t/instant t)))
+
 (defn select-cache
-  "Select the result form the cache"
-  [query-hash updated-at]
-  (t2/select-one-fn results-as-bytes :model/QueryCache
-                    {:select [:results]
-                     :where [:and
-                             [:= :query_hash query-hash]
-                             [:>= :updated_at updated-at]]
-                     :order-by [[:updated_at :desc]]}))
+  "Return a cache entry for `query-hash` relative to `cutoff` as a map with `:bytes` and `:stale?`, or
+  nil if no usable entry exists.
+
+  By default (`allow-stale?` falsey) only a fresh entry (newer than `cutoff`) is returned and an
+  expired one is treated as a miss so the caller re-runs the query - so the SQL filters by age and
+  `:stale?` is always false. When `allow-stale?` is true the most recent entry is returned even when
+  expired, flagged `:stale?` accordingly; opting-in callers MUST refresh stale results themselves."
+  [query-hash cutoff allow-stale?]
+  (when-let [{:keys [bytes updated_at]}
+             (t2/select-one-fn (fn [row]
+                                 {:bytes      (results-as-bytes row)
+                                  :updated_at (:updated_at row)})
+                               :model/QueryCache
+                               {:select   [:results :updated_at]
+                                :where    (cond-> [:and [:= :query_hash query-hash]]
+                                            (not allow-stale?) (conj [:>= :updated_at cutoff]))
+                                :order-by [[:updated_at :desc]]})]
+    {:bytes  bytes
+     ;; In the default path the SQL already guarantees `updated_at >= cutoff`, so the entry is fresh -
+     ;; short-circuit to avoid the temporal comparison entirely. Only the opt-in stale path compares.
+     :stale? (boolean (and allow-stale? (.isBefore (->instant updated_at) (->instant cutoff))))}))
 
 (defn fetch-cache-stmt-ttl
-  "Make a prepared statement for :ttl caching strategy"
+  "Fetch a cache entry for :ttl caching strategy. Returns a map with `:bytes` and `:stale?`,
+  or nil when no entry exists."
   [strategy query-hash]
   (if-not (:avg-execution-ms strategy)
     (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
-    (let [max-age-ms     (* (:multiplier strategy)
-                            (:avg-execution-ms strategy))
-          invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
-      (select-cache query-hash invalidated-at))))
+    (let [max-age-ms (* (:multiplier strategy)
+                        (:avg-execution-ms strategy))
+          cutoff     (cond-> (ms-ago max-age-ms)
+                       (:invalidated-at strategy) (t/max (:invalidated-at strategy)))]
+      (select-cache query-hash cutoff (:allow-stale? strategy)))))
 
 (defenterprise fetch-cache-stmt
   "Returns prepared statement for a given strategy and query hash - on EE. Returns `::oss` on OSS."
@@ -63,10 +94,10 @@
     (fetch-cache-stmt-ttl strategy hash)))
 
 (defn- cached-results [query-hash strategy respond]
-  (if-let [cached (fetch-cache-stmt strategy query-hash)]
-    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. cached))]
-      (respond is))
-    (respond nil)))
+  (if-let [{:keys [bytes stale?]} (fetch-cache-stmt strategy query-hash)]
+    (with-open [is (encryption/maybe-decrypt-stream (ByteArrayInputStream. bytes))]
+      (respond is (boolean stale?)))
+    (respond nil false)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."

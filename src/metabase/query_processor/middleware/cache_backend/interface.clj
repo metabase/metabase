@@ -15,12 +15,14 @@
 
   The implementation is responsible for purging old cache entries when appropriate."
   (cached-results [this ^bytes query-hash strategy respond]
-    "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
-  expired; otherwise, call `respond` with `nil.
+    "Call `respond` with two arguments: an `InputStream` to the raw cached bytes (or nil if no entry
+  exists), and a boolean `stale?` indicating whether the entry is older than the strategy TTL.
 
     (cached-results [_ hash _ respond]
-      (with-open [is (...)]
-        (respond is)))
+      (if-let [entry ...]
+        (with-open [is (...)]
+          (respond is stale?))
+        (respond nil false)))
 
   `strategy` should be a map with cache configuration. This method *must* return the result of `respond`.")
 
@@ -35,13 +37,14 @@
 (defmacro with-cached-results
   "Macro version for consuming `cached-results` from a `backend`.
 
-    (with-cached-results backend query-hash strategy [is]
+    (with-cached-results backend query-hash strategy [is stale?]
       ...)
 
-  InputStream `is` will be `nil` if no cached results were available."
+  InputStream `is` will be `nil` if no cached results were available.
+  `stale?` is true when the entry exists but is older than the strategy TTL."
   {:style/indent 4}
-  [backend query-hash strategy [is-binding] & body]
-  `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
+  [backend query-hash strategy [is-binding stale?-binding] & body]
+  `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream) ~stale?-binding]
                                                     ~@body)))
 
 (defmulti cache-backend
