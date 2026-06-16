@@ -126,38 +126,41 @@
     (mapv #(% col) column-relevance-fns)))
 
 (defn- column-identity-with-live-field
-  "`canonical-column` for `col`, plus the *live* `:active`/`:visibility-type` of its backing field.
-  MBQL drops inactive/hidden columns, so a field retired in the warehouse breaks dependents even
-  when the card's stored result-metadata still lists the column unchanged."
+  "Like `canonical-column` for `col`, but also folds in the *live* `:active` and `:visibility-type`
+  of the field that `col` resolves to (by `:id`)."
   [metadata-provider col]
+  ;; Stored result-metadata can lag the warehouse: a field since retired or hidden still looks active
+  ;; there. A dependent referencing the column would break (its query drops inactive/hidden fields), so
+  ;; folding in the field's current state moves the hash and re-checks the dependent.
   (conj (canonical-column col)
         (when-let [field (some->> (:id col) (lib.metadata/field metadata-provider))]
           [(:active field) (:visibility-type field)])))
 
-(defmulti ^:private -output-identity
-  "Implementation multimethod for [[output-hash]]."
+(defmulti ^:private output-identity
+  "An entity's output identity: the parts of its output that dependents resolve references against.
+  A method must return a deterministic, map-free value that changes iff a breakage-relevant property
+  does."
   {:arglists '([metadata-provider entity-type entity-id])}
   (fn [_metadata-provider entity-type _entity-id] entity-type))
 
-(defmethod -output-identity :default
+(defmethod output-identity :default
   [_metadata-provider entity-type entity-id]
   ;; entities we can't characterize an output for still get a stable token
   [entity-type entity-id])
 
-(mu/defmethod -output-identity :card
+(mu/defmethod output-identity :card
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    card-id           :- ::lib.schema.id/card]
-  ;; Hash the card's STORED `:result-metadata` — that is literally what a native dependent reads
-  ;; (`card-column-exists?`), and what an MBQL dependent's source columns are derived from. We do
-  ;; NOT use `lib/returned-columns` of the card-as-source here: it live-merges field metadata and
-  ;; re-derives column names, which silently masks a stored rename that the native check WOULD see
-  ;; (an under-inclusion → missed breakage). Column order is part of the identity (alias dedup and
-  ;; duplicate detection are order-sensitive), so keep it.
+  ;; Source: the card's stored `:result-metadata`, order preserved — it is what a native dependent
+  ;; reads (`card-column-exists?`) and what an MBQL dependent's source columns derive from, and order
+  ;; is load-bearing (alias dedup and duplicate detection are order-sensitive).
+  ;; Do not substitute `lib/returned-columns` of the card-as-source: it re-derives names, masking a
+  ;; stored rename the native check catches (under-inclusion = missed breakage).
   (let [card (lib.metadata/card metadata-provider card-id)]
     [:card (mapv #(column-identity-with-live-field metadata-provider %) (:result-metadata card))]))
 
-(mu/defmethod -output-identity :transform
+(mu/defmethod output-identity :transform
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    transform-id      :- ::lib.schema.id/transform]
@@ -169,14 +172,12 @@
      ;; native dependents resolve a transform by its target name/schema
      [(:schema target) (:name target)]]))
 
-(mu/defmethod -output-identity :segment
+(mu/defmethod output-identity :segment
   [_metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
    segment-id         :- ::lib.schema.id/segment]
-  ;; A segment is a filter, not a column producer, and no breakage check resolves a dependent
-  ;; against a segment's definition — its floor is empty beyond existence. So the token is a
-  ;; constant per segment: it moves only when the segment first gets a finding and never
-  ;; re-propagates, which is correct — nothing a dependent reads changes when a segment is edited.
+  ;; Constant per segment: no dependent's breakage check resolves against a segment's definition, so
+  ;; nothing a dependent reads changes when a segment is edited.
   [:segment segment-id])
 
 (mu/defn output-hash :- :string
@@ -187,7 +188,7 @@
   ;; SHA-256 over the identity's `pr-str`. The identity is a deterministic, map-free structure, so
   ;; its `pr-str` is stable; SHA-256 keeps the token a fixed 64 chars and makes a collision — which
   ;; would silently skip a propagation, the dangerous direction — practically impossible.
-  (-> (-output-identity metadata-provider entity-type entity-id)
+  (-> (output-identity metadata-provider entity-type entity-id)
       pr-str
       buddy-hash/sha256
       codecs/bytes->hex))

@@ -201,7 +201,7 @@
                        "a kebab-only canonical-column would read nil for the type axes and miss this")))))))))
 
 ;; --- Segment soundness: breaking a segment must NOT flip a dependent's breakage ----------------
-;; `-output-identity :segment` returns a CONSTANT `[:segment id]` token, so a segment edit never
+;; `output-identity :segment` returns a CONSTANT `[:segment id]` token, so a segment edit never
 ;; moves the segment's output-hash and therefore never re-checks the segment's dependents
 ;; (`analyze-and-propagate!` only propagates when `upsert-analysis!` reports a change). That is sound
 ;; ONLY IF no dependent's breakage check resolves anything against the segment's `:definition` — i.e.
@@ -253,7 +253,7 @@
 (deftest breaking-a-segment-does-not-flip-a-dependent-cards-breakage-test
   (testing (str "Breaking a segment makes the SEGMENT report broken but does NOT flip a card that "
                 "uses it, and the segment's output-hash is a constant token unaffected by the break "
-                "(#75748). This is what makes the constant `-output-identity :segment` sound: no "
+                "(#75748). This is what makes the constant `output-identity :segment` sound: no "
                 "dependent breakage check resolves against a segment's definition. If `find-bad-refs` "
                 "ever learns to expand segments, this fails and forces the segment hash to track the "
                 "definition.")
