@@ -75,19 +75,17 @@
               success (empty? results)]
           (deps.analysis-finding/upsert-analysis!
            entity-type instance-id success results
-           ;; Guarded like `check-entity` above: `output-hash` runs the analyzer's
-           ;; `returned-columns`, which can throw on a broken-but-db-resolvable query (e.g. a
-           ;; transform referencing a dropped column). An unguarded throw here would roll back the
-           ;; whole analysis and leave the entity stale forever — the very non-termination this
-           ;; change exists to prevent (#75748). Fall back to the stable unanalyzable token.
+           ;; Guarded like `check-entity` above: `output-hash` runs `returned-columns`, which throws on
+           ;; a broken-but-db-resolvable query (a transform referencing a dropped column); an unguarded
+           ;; throw rolls back the analysis and strands the entity stale forever — the non-termination
+           ;; this change prevents (#75748). So we fall back to the stable unanalyzable token.
            (try (deps.analysis/output-hash mp entity-type instance-id)
                 (catch Exception e
                   (log/error e "Error computing output hash")
                   unanalyzable-output-hash))))
-        ;; No resolvable database and no pre-analysis error already explaining it: record a
-        ;; terminal error so the entity gets a finding (clearing its stale flag) instead of
-        ;; silently no-oping and being re-selected forever (#75748). Its output is unknowable, so
-        ;; it carries the stable unanalyzable token — it re-propagates once if it later resolves.
+        ;; No resolvable database, no pre-analysis error explaining it: record a terminal error so the
+        ;; entity gets a finding (clearing its stale flag) rather than no-oping forever (#75748). Output
+        ;; unknowable, so it carries the stable unanalyzable token; re-propagates once if it later resolves.
         (deps.analysis-finding/upsert-analysis!
          entity-type instance-id false
          [(lib/validation-exception-error "Could not resolve a database for this entity.")]
@@ -184,8 +182,9 @@
 
 (defn- analyze-and-propagate!
   "Analyze an entity and, *only if its output changed*, mark its immediate dependents stale.
-  Propagating only on change is what bounds the staleness wave — see
-  [[task.entity-check/check-entities!]] for the termination guarantee (#75748)."
+  A marked dependent is itself re-analyzed and can mark its own dependents in turn; gating on a real
+  output change bounds that cascade — see [[task.entity-check/check-entities!]] for the termination
+  guarantee (#75748)."
   [instance]
   (let [entity-type (deps.dependency-types/model->dependency-type (t2/model instance))]
     ;; in a transaction so a failure to mark dependents rolls the analysis back too, leaving the
@@ -197,11 +196,10 @@
 (mu/defn analyze-batch! :- [:set pos-int?]
   "Add or update analyses for a batch of entities.
 
-  Looks for a batch of entities of `type` (up to `batch-size`) with missing, outdated, or stale
-  AnalysisFindings, analyzes each, and returns the set of entity ids processed. Ids are returned
-  even for entities whose analysis threw (the failure is logged and caught) — they have still been
-  attempted this run, which is what the entity-check loop's per-run `seen` set needs to bound
-  itself."
+  Selects up to `batch-size` entities of `type` with missing, outdated, or stale AnalysisFindings,
+  analyzes each, and returns the set of entity ids *attempted* — including any whose analysis threw
+  (the failure is logged and caught). The returned set is every entity touched this run, regardless
+  of success."
   [type :- AnalyzableEntityType
    batch-size :- pos-int?]
   (let [instances (deps.analysis-finding/instances-for-analysis type batch-size)]

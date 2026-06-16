@@ -16,8 +16,7 @@
   "Process one batch across all analyzable entity types. Returns the set of `[entity-type id]`
   pairs processed in this batch."
   []
-  ;; Thread the remaining budget and the accumulated id-set through one accumulator; stop early
-  ;; once the budget is spent.
+  ;; stop early if the budget is spent
   (:processed
    (reduce (fn [{:keys [budget] :as acc} entity-type]
              (if (< budget 1)
@@ -35,16 +34,15 @@
   "Analyze stale/outdated entities until a pass turns up nothing new, then return.
 
   Guaranteed to terminate even when the dependency graph contains a cycle or an entity that can
-  never clear its stale flag — earlier this could spin until the instance ran out of memory
-  (#75748). Convergence is eventual, not necessarily within a single run: a node re-staled *after*
-  it was already analyzed this run (e.g. the bottom of a diamond whose parents are processed in the
-  wrong order) keeps its stale flag and is re-analyzed on the next run."
+  never clear its stale flag, so a runaway loop can't churn the instance into an OOM (#75748).
+  Convergence is eventual, not necessarily within a single run: a node re-staled *after* it was
+  already analyzed this run (e.g. the bottom of a diamond whose parents are processed in the wrong
+  order) keeps its stale flag and is re-analyzed on the next run."
   []
   (when (premium-features/has-feature? :dependencies)
-    ;; Each pass analyzes a batch and (via analyze-and-propagate!) marks the dependents of *changed*
-    ;; entities stale, to be picked up next pass. `seen` bounds the run: it grows monotonically and
-    ;; is capped by the entity count, and we recur only while a batch turns up an entity not already
-    ;; analyzed this run — so a cycle (or an unclearable entity) re-treads `seen` and stops.
+    ;; `seen` bounds the run: it grows monotonically, capped by the entity count, and we recur only
+    ;; while a batch turns up an entity not already analyzed this run — so a cycle (or an unclearable
+    ;; entity) re-treads `seen` and stops.
     (loop [seen #{}]
       (let [processed (process-one-batch!)]
         (when (some (complement seen) processed)

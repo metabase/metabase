@@ -43,13 +43,9 @@
     col))
 
 (def ^:private mbql-dependent-query
-  "The pMBQL query for dependent 903: sourced from upstream card 901 and *filtered* on its CATEGORY
-  column. Built once, with Lib only, against a pristine card 901 — so the field ref binds CATEGORY
-  by id. Filtering (rather than selecting via `lib/with-fields`) is deliberate: an inactive column
-  referenced from a `:fields` list is only a `:soft?` error (droppable, hence not breakage), but the
-  same ref in a `:filter` is a hard break — which is what lets 903 exercise the active axis. The query
-  is fixed; only the upstream's metadata mutates across providers, so dropping/deactivating CATEGORY
-  upstream is what flips 903's breakage."
+  "Card 901 filtered on its CATEGORY column. Filtering, not `:fields`, is deliberate: a ref to an
+  inactive column is only a droppable `:soft?` error in `:fields`, but a hard break in a `:filter` —
+  so deactivating CATEGORY upstream actually flips 903's breakage."
   (delay
     (let [base (deps.tu/mock-metadata-provider {})
           u    (deps.tu/mock-card base {:id      901
@@ -60,11 +56,9 @@
       (lib/filter q901 (lib/= (category-column q901) "Widget")))))
 
 (defn- field-overrides
-  "Live-field overrides derived from the mutated upstream `cols`. A source-card column with a backing
-  field id resolves through the *live* field metadata (which overrides the stored result-metadata), so
-  to let the MBQL dependent see an active/type/visibility mutation it must reach the field too — which is
-  also what the card's output-identity folds in. Mirrors the breakage-relevant column properties onto the
-  backing products field."
+  "Field-metadata overrides for the mutated upstream `cols`: for each col with a backing field id, the
+  live products field with that col's breakage-relevant properties (`:active`, `:visibility-type`, and
+  the type axes) merged in."
   [cols]
   (let [base (deps.tu/mock-metadata-provider {})]
     (keep (fn [col]
@@ -77,8 +71,7 @@
   "A mock provider holding upstream card 901 (stored result-metadata = `cols`) plus two dependents:
   a native dependent 902 that selects CATEGORY by name (breaks iff 901 stops exposing the *name*
   CATEGORY), and an MBQL dependent 903 that filters on CATEGORY by id (breaks iff 901 drops or
-  deactivates that column). The mutated columns are also reflected onto the backing fields, so id /
-  active / type / visibility mutations reach the MBQL resolver — axes the native dependent can't feel."
+  deactivates that column). `cols` is also reflected onto the backing fields (see `field-overrides`)."
   [cols]
   (let [base (deps.tu/mock-metadata-provider {})
         u    (deps.tu/mock-card base {:id      901
@@ -110,10 +103,7 @@
      [["reverse" (vec (reverse cols))]])))
 
 (deftest output-hash-covers-what-the-breakage-check-reads-test
-  (testing (str "Any upstream mutation that flips a dependent's breakage must move the upstream's "
-                "output-hash (#75748). Catches teaching check-entity a new sensitivity without "
-                "folding it into output-identity — e.g. the stored-result-metadata rename that the "
-                "native check reads but a returned-columns-based hash masked.")
+  (testing "Any upstream mutation that flips a dependent's breakage moves output-hash (#75748)."
     (let [cols      @base-cols
           base-mp   (provider-with-upstream cols)
           base-hash (u-hash base-mp)]
@@ -126,13 +116,12 @@
               :let [mp (provider-with-upstream mutated)]
               :when (not= base-broken (broken? mp dependent-id))]
         (is (not= base-hash (u-hash mp))
-            (str "mutation '" label "' flips dependent " dependent-id "'s breakage but leaves the "
-                 "upstream's output-hash unchanged — output-identity is missing something the "
-                 "breakage check reads"))))))
+            (str "mutation '" label "' flips dependent " dependent-id " but output-hash held — "
+                 "output-identity is missing something the breakage check reads"))))))
 
+;; Guards against output-identity silently shrinking below the floor.
 (deftest output-hash-is-sensitive-to-each-floor-property-test
-  (testing (str "output-hash changes when any known floor property of an upstream column changes "
-                "(#75748). Guards against output-identity silently shrinking below the floor.")
+  (testing "output-hash changes when any floor property of an upstream column changes (#75748)."
     (let [cols      @base-cols
           base-hash (u-hash (provider-with-upstream cols))]
       (doseq [[label mutated]
@@ -149,14 +138,9 @@
             (str "output-hash must change when an upstream column's " label " changes"))))))
 
 ;; --- Production (snake_case) drift guard -------------------------------------------------------
-;; The mock-based tests above build the upstream's stored result-metadata from `lib/returned-columns`
-;; (kebab Lib columns), and mock providers normalize to kebab. Production instead stores a card's
-;; `:result_metadata` as raw snake_case, and `lib.metadata/card` on a real app-DB card hands those
-;; columns back snake_case. A kebab-only `canonical-column` therefore hashed `nil` for base/effective/
-;; semantic-type and fk-target on every real card while the kebab mock guard stayed green (#75748,
-;; HIGH-1/MED-1). This test exercises the production shape: a real `:model/Card` with explicitly
-;; snake-cased `:result_metadata`, read through the real application-database metadata provider, and
-;; asserts the hash MOVES when each stored-column property changes.
+;; The mocks above feed kebab Lib columns; production stores `:result_metadata` as snake_case. This
+;; exercises that shape against a real app-DB card, asserting the hash moves on each stored-column
+;; change (#75748).
 
 (def ^:private snake-result-metadata
   "Two stored columns in the snake_case shape a real card's `:result_metadata` actually holds.
@@ -174,10 +158,7 @@
   (deps.analysis/output-hash (lib-be/application-database-metadata-provider db-id) :card card-id))
 
 (deftest ^:sequential output-hash-is-sensitive-to-stored-snake-properties-test
-  (testing (str "On a REAL app-DB card (snake_case stored result_metadata read through the real "
-                "provider), output-hash moves when each breakage-relevant stored property changes "
-                "(#75748). The kebab-shaped mock guards above can't see this — mock providers "
-                "normalize to kebab, while production stores snake.")
+  (testing "On a real app-DB card, output-hash moves when each stored property changes (#75748)."
     (mt/with-premium-features #{:dependencies}
       ;; the query is incidental here — output-hash reads the stored result_metadata, never the query
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query   (mt/native-query {:query "SELECT 1"})
@@ -197,8 +178,7 @@
               ;; restore before the next mutation so each axis is measured against the same baseline
               (t2/update! :model/Card card-id {:result_metadata snake-result-metadata})
               (is (not= base-hash mutated-hash)
-                  (str "output-hash must change when a real card's stored " label " changes — "
-                       "a kebab-only canonical-column would read nil for the type axes and miss this")))))))))
+                  (str "output-hash must change when a real card's stored " label " changes")))))))))
 
 ;; --- Segment soundness: breaking a segment must NOT flip a dependent's breakage ----------------
 ;; `output-identity :segment` returns a CONSTANT `[:segment id]` token, so a segment edit never
@@ -251,12 +231,8 @@
       {:clean clean-mp :broken broken-mp})))
 
 (deftest breaking-a-segment-does-not-flip-a-dependent-cards-breakage-test
-  (testing (str "Breaking a segment makes the SEGMENT report broken but does NOT flip a card that "
-                "uses it, and the segment's output-hash is a constant token unaffected by the break "
-                "(#75748). This is what makes the constant `output-identity :segment` sound: no "
-                "dependent breakage check resolves against a segment's definition. If `find-bad-refs` "
-                "ever learns to expand segments, this fails and forces the segment hash to track the "
-                "definition.")
+  (testing (str "Breaking a segment flips the segment's own breakage but not its dependent card's, "
+                "and leaves the segment's output-hash constant (#75748).")
     (let [{clean-mp :clean broken-mp :broken} @segment-soundness-fixture]
       (testing "baseline: the segment and the card that uses it are both clean"
         (is (empty? (deps.analysis/check-entity clean-mp :segment 700)))
@@ -266,9 +242,7 @@
         (is (seq (deps.analysis/check-entity broken-mp :segment 700))
             "the segment's own breakage check flips — its definition binds the now-inactive PRICE")
         (is (empty? (deps.analysis/check-entity broken-mp :card 800))
-            (str "the card that USES the segment stays clean — breaking the segment did NOT flip "
-                 "its breakage. If this fails, find-bad-refs now resolves against segment "
-                 "definitions and the constant segment output-hash is no longer sound.")))
+            "card 800 uses segment 700 but stays clean — breaking the segment must not flip its breakage"))
       (testing "the segment's output-hash is the constant token — unchanged across the break"
         (is (= (deps.analysis/output-hash clean-mp :segment 700)
                (deps.analysis/output-hash broken-mp :segment 700))
