@@ -201,9 +201,9 @@
 
 (defn- cache-fresh?
   "Whether a cache entry last written at `updated-at` is still within its TTL given `invalidated-at` (the strategy's
-  freshness boundary). `nil` `invalidated-at` means the strategy can't determine freshness, so nothing is fresh."
+  freshness boundary, which must be non-nil)."
   [updated-at invalidated-at]
-  (boolean (and updated-at invalidated-at
+  (boolean (and updated-at
                 (not (t/before? (t/instant updated-at) (t/instant invalidated-at))))))
 
 (mu/defn- maybe-serve-cached-results :- [:tuple
@@ -226,13 +226,14 @@
                                  (when is
                                    (let [invalidated-at (backend.db/strategy->invalidated-at strategy)]
                                      (cond
-                                       (cache-fresh? updated-at invalidated-at)
-                                       (when-let [result (reduce-cached-stream is rff query-hash)]
-                                         [::fresh result])
-
                                        ;; can't determine freshness for this strategy -> don't serve from cache
                                        (nil? invalidated-at)
                                        nil
+
+                                       ;; within its TTL -> serve the fresh entry
+                                       (cache-fresh? updated-at invalidated-at)
+                                       (when-let [result (reduce-cached-stream is rff query-hash)]
+                                         [::fresh result])
 
                                        ;; expired, and we won the refresh lease -> recompute (don't serve stale)
                                        (i/try-acquire-refresh-lease! *backend* query-hash *refresh-lease-duration-ms*)

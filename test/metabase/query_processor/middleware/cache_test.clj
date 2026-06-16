@@ -184,20 +184,6 @@
       :cached
       :not-cached)))
 
-(defn- run-query-rows
-  "Run the query and return the rows actually served (from `*rows*` if recomputed, or from the cache if a cache hit).
-  Lets a test tell a stale cache hit apart from a recompute by the data they return."
-  [& {:as query-kvs}]
-  (while (a/poll! *save-chan*))
-  (let [qp    (cache/maybe-return-cached-results qp.pipeline/*run*)
-        query (test-query query-kvs)]
-    (binding [driver.settings/*query-timeout-ms* 2000
-              qp.pipeline/*execute*             (fn [_driver _query respond]
-                                                  (Thread/sleep *query-execution-delay-ms*)
-                                                  (respond {} *rows*))]
-      (driver/with-driver :h2
-        (get-in (qp query qp.reducible/default-rff) [:data :rows])))))
-
 (defn- cacheable? [& {:as query-kvs}]
   (boolean (#'cache/is-cacheable? (merge {:cache-strategy (ttl-strategy), :query :abc} query-kvs))))
 
@@ -243,8 +229,23 @@
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
       (mt/wait-for-result save-chan)
       (Thread/sleep 200)
+      ;; expired and nobody else is refreshing -> we win the lease and recompute
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
+
+(deftest stale-while-revalidate-test
+  (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
+            recomputed, so concurrent requests don't stampede the data warehouse"
+    (with-mock-cache! [save-chan]
+      (let [strategy   (assoc (ttl-strategy) :multiplier 0.1)
+            query-hash (qp.util/query-hash (test-query {:cache-strategy strategy}))]
+        (run-query :cache-strategy strategy)
+        (mt/wait-for-result save-chan)
+        (Thread/sleep 200)                                                            ; entry is now expired
+        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000))) ; another process refreshes
+        ;; a cache hit (`:cached`) means we served the stale entry; a recompute would be `:not-cached`
+        (is (= :cached
+               (run-query :cache-strategy strategy)))))))
 
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
