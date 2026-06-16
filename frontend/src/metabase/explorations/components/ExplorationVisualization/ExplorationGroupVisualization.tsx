@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { useGetExplorationQueryResultQuery } from "metabase/api/exploration";
 import { Warnings } from "metabase/common/components/Warnings";
 import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
@@ -38,6 +39,23 @@ interface ExplorationGroupVisualizationProps {
 
 const STACK_PANEL_HEIGHT = 64;
 
+function ErrorComponent() {
+  return (
+    <Stack
+      align="center"
+      justify="center"
+      flex={1}
+      gap="sm"
+      ta="center"
+      role="alert"
+      aria-live="polite"
+    >
+      <Icon name="warning" c="error" size={32} />
+      <Text fw="bold">{t`Something’s gone wrong.`}</Text>
+    </Stack>
+  );
+}
+
 export function ExplorationGroupVisualization(
   props: ExplorationGroupVisualizationProps,
 ) {
@@ -59,7 +77,9 @@ export function ExplorationGroupVisualization(
         bdrs="md"
         p="lg"
       >
-        <ExplorationGroupVisualizationBody {...props} />
+        <ErrorBoundary errorComponent={ErrorComponent}>
+          <ExplorationGroupVisualizationBody {...props} />
+        </ErrorBoundary>
       </Stack>
     </Stack>
   );
