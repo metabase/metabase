@@ -511,7 +511,9 @@ export function DashCardVisualization({
     });
 
   const actionButtons = useMemo(() => {
-    const result = series[0] as unknown as Dataset;
+    const cardId = dashcard.card_id ?? dashcard.card?.id;
+    const cardResult = cardId ? datasets?.[cardId] : undefined;
+    const result = cardResult ?? (series[0] as unknown as Dataset);
 
     const showMenu =
       question &&
@@ -522,9 +524,6 @@ export function DashCardVisualization({
         result,
       });
 
-    const cardResult = dashcard.card_id
-      ? datasets?.[dashcard.card_id]
-      : undefined;
     const errorStatus =
       cardResult?.error && typeof cardResult.error === "object"
         ? cardResult.error.status
