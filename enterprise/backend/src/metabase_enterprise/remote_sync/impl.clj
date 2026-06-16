@@ -300,7 +300,7 @@
   caller must run the full [[load-snapshot!]] instead."
   :remote-sync/fallback)
 
-(def ^:private incremental-structural-models
+(def ^:private full-import-models
   "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
   descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
   remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly)."
@@ -327,16 +327,16 @@
         rows))
 
 (defn incremental-load-snapshot!
-  "Incremental mirror of [[load-snapshot!]]: loads only the entities whose files changed between
-  `last-version` and `snapshot`, deletes only those genuinely removed, and reconciles just those rows of
-  the RemoteSyncObject table — leaving everything else untouched. Assumes local state equals
-  `last-version`; the caller guarantees that (not a first import, not forced, not dirty).
+  "Loads only the entities whose files changed between `last-version` and `snapshot`, deletes only those genuinely
+  removed, and reconciles just those rows of the RemoteSyncObject table — leaving everything else untouched. Assumes
+  local state equals `last-version`; the caller guarantees that (not a first import, not forced, not dirty).
 
-  Returns [[incremental-fallback]] when the change can't be applied incrementally — no diff is available
-  (force-push/rebase or a non-diffable source), a structural/feature model changed, or a deleted file has
-  no recorded `file_path` to map back to a tracked entity. The caller then runs the full
-  [[load-snapshot!]], which self-heals. On success it performs the import (running `finalize!` inside the
-  reconcile transaction) and returns the imported-data map.
+  Returns `:remote-sync/fallback` when the change can't be applied incrementally
+    - no diff is available (force-push/rebase or a non-diffable source)
+    - a structural/feature model changed
+    - or a deleted file has no recorded `file_path` to map back to a tracked entity.
+  The caller then runs the full [[load-snapshot!]], which self-heals. On success it performs the import (running
+  `finalize!` inside the reconcile transaction) and returns the imported-data map.
 
   Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
   (an add), so the old path's delete is recognized as a rename and the entity is not removed."
@@ -351,13 +351,13 @@
           ;; a deleted file we can't map back to a tracked entity — can't safely remove it
           incremental-fallback
           (let [ingestable  (when (seq add-mod)
-                              (source.p/->ingestable snapshot {:path-filters (exact-path-filters add-mod)}))
+                              (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
                 add-models  (if ingestable
                               (into #{} (map #(:model (last %))) (serialization/ingest-list ingestable))
                               #{})
                 del-models  (into #{} (map :model_type) deleted-rsos)
                 all-models  (into add-models del-models)]
-            (if (or (some incremental-structural-models all-models)
+            (if (or (some full-import-models all-models)
                     (some (fn [m] (let [s (spec/spec-for-model-type m)]
                                     (or (nil? s) (not= :entity-id (:identity s)))))
                           all-models))
