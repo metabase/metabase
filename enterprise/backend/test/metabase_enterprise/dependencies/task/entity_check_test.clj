@@ -3,12 +3,11 @@
 
   The entity-check job must terminate on a cyclic dependency graph (e.g. a card that references
   itself, or two cards that reference each other) and on an entity that can never clear its stale
-  flag — earlier these spun the drain loop until the instance ran out of memory. Termination rests
-  on two properties:
-  1. `analyze-and-propagate!` marks dependents stale only when an entity's output actually changes,
-     so re-analyzing a cycle member that reproduces its output stops the wave.
-  2. `check-entities!` keeps a per-run visited set so no entity is analyzed twice in one run —
-     a structural backstop that bounds the loop regardless of propagation."
+  flag. Termination rests on two properties:
+  1. Staleness propagates only when an entity's output actually changes, so a cycle member that
+     reproduces its output on re-analysis stops the wave.
+  2. No entity is analyzed more than once per run — a structural bound that holds regardless of
+     propagation."
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.findings :as deps.findings]

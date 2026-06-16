@@ -25,7 +25,7 @@
                                        :analyzed_entity_type :card
                                        :analyzed_entity_id card-id)))
           ;; Now upsert a new analysis
-          (models.analysis-finding/upsert-analysis! :card card-id true [] "h")
+          (models.analysis-finding/upsert-analysis! :card card-id true [] "arbitrary-hash")
           ;; Verify stale is now false
           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
@@ -37,7 +37,7 @@
       (mt/with-temp [:model/Card {card-id :id} {}]
         (t2/with-transaction [_conn]
           ;; Upsert a new analysis (no existing finding)
-          (models.analysis-finding/upsert-analysis! :card card-id true [] "h")
+          (models.analysis-finding/upsert-analysis! :card card-id true [] "arbitrary-hash")
           ;; Verify stale is false
           (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
                                         :analyzed_entity_type :card
