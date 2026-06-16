@@ -109,6 +109,7 @@ export function getTreemapClickData({
 }
 
 export function getTreemapClickHandler({
+  chartRef,
   hasChildren,
   isDrilled,
   onDrillToGroup,
@@ -118,6 +119,7 @@ export function getTreemapClickHandler({
   settings,
   onVisualizationClick,
 }: {
+  chartRef: MutableRefObject<EChartsType | undefined>;
   hasChildren: boolean;
   isDrilled: boolean;
   onDrillToGroup: (viewRootId: string) => void;
@@ -134,6 +136,8 @@ export function getTreemapClickHandler({
       if (typeof id !== "string") {
         return;
       }
+
+      chartRef.current?.dispatchAction({ type: "hideTip" });
 
       // Sub-grouping + overview
       if (hasChildren && !isDrilled) {
@@ -215,6 +219,7 @@ export function getTreemapEventHandlers({
 }): EChartsEventHandler[] {
   return [
     getTreemapClickHandler({
+      chartRef,
       hasChildren,
       isDrilled,
       onDrillToGroup,

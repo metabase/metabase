@@ -1,5 +1,6 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 
 import { Box } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
@@ -36,6 +37,7 @@ export const TreemapChart = ({
   settings,
   fontFamily,
   onVisualizationClick,
+  clicked,
   isDashboard,
   isDocument,
   gridSize,
@@ -50,6 +52,7 @@ export const TreemapChart = ({
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
   const [viewRootId, setViewRootId] = useState<NodeId | null>(null);
   const viewRootIdRef = useRef<string | null>(null);
+  const clickedRef = useLatest(clicked);
   const handleViewRootChange = useCallback((id: NodeId | null) => {
     viewRootIdRef.current = id;
     setViewRootId(id);
@@ -121,6 +124,7 @@ export const TreemapChart = ({
         formatters.percent,
         containerRef,
         () => viewRootIdRef.current,
+        () => clickedRef.current != null,
         getTreemapInlineValueIds(labelLayout, parentLabelLayout),
         treemapColumns.grouping.column.display_name,
       ),
@@ -134,6 +138,7 @@ export const TreemapChart = ({
     labelLayout,
     parentLabelLayout,
     renderingContext,
+    clickedRef,
   ]);
 
   const handleInit = useCallback((chart: EChartsType) => {
