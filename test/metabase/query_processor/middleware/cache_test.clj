@@ -143,20 +143,24 @@
           :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
          query-kvs))
 
+(def ^:private ^:dynamic *rows*
+  "Rows the mock query execution returns. Bind to `[]` to exercise the empty-result path."
+  [[:toucan      71]
+   [:bald-eagle  92]
+   [:hummingbird 11]
+   [:owl         10]
+   [:chicken     69]
+   [:robin       96]
+   [:osprey      72]
+   [:flamingo    70]])
+
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
   (while (a/poll! *save-chan*))
   (while (a/poll! *purge-chan*))
   (let [qp       (cache/maybe-return-cached-results qp.pipeline/*run*)
         metadata {}
-        rows     [[:toucan      71]
-                  [:bald-eagle  92]
-                  [:hummingbird 11]
-                  [:owl         10]
-                  [:chicken     69]
-                  [:robin       96]
-                  [:osprey      72]
-                  [:flamingo    70]]
+        rows     *rows*
         query    (test-query query-kvs)]
     (binding [driver.settings/*query-timeout-ms* 2000
               qp.pipeline/*execute*             (fn [_driver _query respond]
@@ -202,6 +206,16 @@
       (mt/wait-for-result save-chan)
       (is (= :cached
              (run-query))))))
+
+(deftest cache-empty-results-test
+  (testing "a query that returns no rows is still cached, so a slow empty result isn't re-run at full cost every time"
+    (with-mock-cache! [save-chan]
+      (binding [*rows* []]
+        (is (= :not-cached
+               (run-query)))
+        (mt/wait-for-result save-chan)
+        (is (= :cached
+               (run-query)))))))
 
 (deftest expired-results-test
   (testing "If cached resutls are past their TTL, the cached results shouldn't be returned"
