@@ -13,7 +13,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private IndexRequest
+(def ^:private TableIndex
   [:map
    [:id ms/PositiveInt]
    [:transform_id ms/PositiveInt]
@@ -37,14 +37,14 @@
   [structured]
   (or (:name structured) (name (:kind structured))))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential IndexRequest]]]
+(api.macros/defendpoint :get "/" :- [:map [:data [:sequential TableIndex]]]
   "List the managed index requests for a transform."
   [_route-params
    {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
   (api/check-superuser)
-  {:data (mapv present (t2/select :model/IndexRequest :transform_id transform-id {:order-by [[:id :asc]]}))})
+  {:data (mapv present (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]}))})
 
-(api.macros/defendpoint :post "/" :- IndexRequest
+(api.macros/defendpoint :post "/" :- TableIndex
   "Create a managed index request on a transform's target table."
   [_route-params
    _query-params
@@ -56,33 +56,33 @@
   (api/check-404 (t2/exists? :model/Transform :id transform_id))
   (let [idx-name (index-name structured)]
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
-    (api/check-400 (not (t2/exists? :model/IndexRequest :transform_id transform_id :index_name idx-name))
+    (api/check-400 (not (t2/exists? :model/TableIndex :transform_id transform_id :index_name idx-name))
                    (tru "An index named \"{0}\" already exists for this transform." idx-name))
-    (present (t2/insert-returning-instance! :model/IndexRequest
+    (present (t2/insert-returning-instance! :model/TableIndex
                                             {:transform_id transform_id
                                              :index_name   idx-name
                                              :structured   structured
                                              :created_by   api/*current-user-id*}))))
 
-(api.macros/defendpoint :put "/:id" :- IndexRequest
+(api.macros/defendpoint :put "/:id" :- TableIndex
   "Replace the structured definition of a managed index request, resetting it to pending."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
   (api/check-superuser)
-  (api/check-404 (t2/exists? :model/IndexRequest :id id))
-  (t2/update! :model/IndexRequest id {:structured    structured
+  (api/check-404 (t2/exists? :model/TableIndex :id id))
+  (t2/update! :model/TableIndex id {:structured    structured
                                       :index_name    (index-name structured)
                                       :status        :pending
                                       :error_message nil})
-  (present (t2/select-one :model/IndexRequest :id id)))
+  (present (t2/select-one :model/TableIndex :id id)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a managed index request."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (pos? (t2/delete! :model/IndexRequest :id id)))
+  (api/check-404 (pos? (t2/delete! :model/TableIndex :id id)))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

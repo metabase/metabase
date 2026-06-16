@@ -5,10 +5,10 @@ databaseChangeLog:
   - changeSet:
       id: v63.ixrq01
       author: Ngoc Khuat
-      comment: Create metabase_index_request table for transform target index/clustering hints
+      comment: Create metabase_table_indexes table for transform target index/clustering hints
       changes:
         - createTable:
-            tableName: metabase_index_request
+            tableName: metabase_table_indexes
             remarks: Index/clustering hints declared on a transform target, reapplied on each full transform run
             columns:
               - column:
@@ -84,48 +84,48 @@ databaseChangeLog:
   - changeSet:
       id: v63.ixrq02
       author: Ngoc Khuat
-      comment: Add unique constraint on metabase_index_request (transform_id, index_name)
+      comment: Add unique constraint on metabase_table_indexes (transform_id, index_name)
       changes:
         - addUniqueConstraint:
-            tableName: metabase_index_request
+            tableName: metabase_table_indexes
             columnNames: transform_id, index_name
-            constraintName: uq_index_request_transform_id_index_name
+            constraintName: uq_table_indexes_transform_id_index_name
 
   - changeSet:
       id: v63.ixrq03
       author: Ngoc Khuat
-      comment: Add FK on metabase_index_request.transform_id
+      comment: Add FK on metabase_table_indexes.transform_id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: metabase_index_request
+            baseTableName: metabase_table_indexes
             baseColumnNames: transform_id
             referencedTableName: transform
             referencedColumnNames: id
-            constraintName: fk_index_request_transform_id
+            constraintName: fk_table_indexes_transform_id
             onDelete: CASCADE
 
   - changeSet:
       id: v63.ixrq04
       author: Ngoc Khuat
-      comment: Add FK on metabase_index_request.table_id
+      comment: Add FK on metabase_table_indexes.table_id
       changes:
         - addForeignKeyConstraint:
-            baseTableName: metabase_index_request
+            baseTableName: metabase_table_indexes
             baseColumnNames: table_id
             referencedTableName: metabase_table
             referencedColumnNames: id
-            constraintName: fk_index_request_table_id
+            constraintName: fk_table_indexes_table_id
             onDelete: CASCADE
 
   - changeSet:
       id: v63.ixrq05
       author: Ngoc Khuat
-      comment: Add FK on metabase_index_request.created_by
+      comment: Add FK on metabase_table_indexes.created_by
       changes:
         - addForeignKeyConstraint:
-            baseTableName: metabase_index_request
+            baseTableName: metabase_table_indexes
             baseColumnNames: created_by
             referencedTableName: core_user
             referencedColumnNames: id
-            constraintName: fk_index_request_created_by
+            constraintName: fk_table_indexes_created_by
             onDelete: SET NULL

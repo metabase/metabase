@@ -3170,7 +3170,7 @@
    :uses #{api
            models
            util}
-   :model-exports #{:model/IndexRequest}
+   :model-exports #{:model/TableIndex}
    :model-imports #{:model/Transform}}
 
   enterprise/library

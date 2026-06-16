@@ -63,7 +63,7 @@
 
 (mr/def ::index-structured
   "A single structured index definition, dispatched on `:kind`. The shape stored in
-  `metabase_index_request.structured` and handed to the driver index multimethods."
+  `metabase_table_indexes.structured` and handed to the driver index multimethods."
   [:multi {:dispatch :kind}
    [:btree ::classical-index] [:hash ::classical-index] [:gin ::classical-index]
    [:gist ::classical-index] [:brin ::classical-index] [:spgist ::classical-index]

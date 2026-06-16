@@ -1,5 +1,5 @@
 (ns metabase-enterprise.index-manager.models
-  "The `metabase_index_request` model: index/clustering hints declared on a transform target table.
+  "The `metabase_table_indexes` model: index/clustering hints declared on a transform target table.
 
   Each request binds to a transform (`:transform_id`), carries a structured index definition (see
   [[metabase-enterprise.index-manager.schema]]), and tracks a lifecycle `:status` (defaulting to `:pending`).
@@ -16,9 +16,9 @@
 
 (set! *warn-on-reflection* true)
 
-(methodical/defmethod t2/table-name :model/IndexRequest [_model] :metabase_index_request)
+(methodical/defmethod t2/table-name :model/TableIndex [_model] :metabase_table_indexes)
 
-(doto :model/IndexRequest
+(doto :model/TableIndex
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
@@ -30,13 +30,13 @@
    #(mu/validate-throw ::schema/index-structured %)
    schema/keywordize-structured))
 
-(t2/deftransforms :model/IndexRequest
+(t2/deftransforms :model/TableIndex
   {:structured transform-structured
    :status     (mi/transform-validator mi/transform-keyword (partial mi/assert-enum schema/statuses))})
 
 (def ^:private defaults
   {:status :pending})
 
-(t2/define-before-insert :model/IndexRequest
+(t2/define-before-insert :model/TableIndex
   [req]
   (merge defaults req))

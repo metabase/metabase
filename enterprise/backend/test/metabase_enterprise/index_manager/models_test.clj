@@ -15,11 +15,11 @@
   (testing "structured reads back with keyword-valued fields, and status defaults to :pending"
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (let [{:keys [id]} (t2/insert-returning-instance!
-                          :model/IndexRequest
+                          :model/TableIndex
                           {:transform_id transform-id
                            :index_name   "by_cat"
                            :structured   {:kind :btree :name "by_cat" :columns [{:name "category" :direction :asc}]}})
-            back (t2/select-one :model/IndexRequest :id id)]
+            back (t2/select-one :model/TableIndex :id id)]
         (is (= :pending (:status back)) "before-insert defaults status to :pending")
         (is (= :btree (get-in back [:structured :kind])) "kind re-keywordized on read")
         (is (= :asc (get-in back [:structured :columns 0 :direction])))
@@ -30,7 +30,7 @@
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (is (thrown?
            Exception
-           (t2/insert! :model/IndexRequest
+           (t2/insert! :model/TableIndex
                        {:transform_id transform-id
                         :index_name   "bad"
                         :structured   {:kind :not-a-kind :columns [{:name "a"}]}}))))))
@@ -40,7 +40,7 @@
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
       (is (thrown?
            Exception
-           (t2/insert! :model/IndexRequest
+           (t2/insert! :model/TableIndex
                        {:transform_id transform-id
                         :index_name   "bad-status"
                         :status       :bogus
