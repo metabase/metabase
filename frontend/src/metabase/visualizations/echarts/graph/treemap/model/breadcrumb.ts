@@ -1,12 +1,9 @@
 import type { TreemapTree } from "./types";
+import { getTreemapTotal } from "./value";
 
 export interface TreemapBreadcrumbModel {
   groupLabel: string | null;
   value: number;
-}
-
-function getGrandTotal(tree: TreemapTree): number {
-  return tree.reduce((sum, node) => sum + node.value, 0);
 }
 
 export function getTreemapBreadcrumbModel(
@@ -14,7 +11,7 @@ export function getTreemapBreadcrumbModel(
   viewRootId: string | null,
 ): TreemapBreadcrumbModel {
   if (viewRootId == null) {
-    return { groupLabel: null, value: getGrandTotal(tree) };
+    return { groupLabel: null, value: getTreemapTotal(tree) };
   }
 
   const group = tree[Number(viewRootId)];
@@ -22,5 +19,5 @@ export function getTreemapBreadcrumbModel(
     return { groupLabel: group.displayName, value: group.value };
   }
 
-  return { groupLabel: null, value: getGrandTotal(tree) };
+  return { groupLabel: null, value: getTreemapTotal(tree) };
 }
