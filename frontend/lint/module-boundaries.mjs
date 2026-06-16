@@ -95,11 +95,23 @@ const elements = [
   }),
   createElement({ type: "shared", name: "metabot" }),
   createElement({ type: "shared", name: "metadata" }),
+  createElement({ type: "shared", name: "moderation" }),
   createElement({ type: "feature", name: "models" }),
   createElement({ type: "shared", name: "new" }),
   createElement({ type: "shared", name: "notifications" }),
   createElement({ type: "shared", name: "palette" }),
   createElement({ type: "shared", name: "parameters" }),
+  // Enterprise plugin implementations (`<module>/plugin.{ts,tsx}`) are the
+  // sanctioned build-resolved targets of plugin imports (see resolve-aliases).
+  // Classify them as shared — and *before* the catch-all `feature/enterprise`
+  // element — so any module may import the resolved plugin in either edition.
+  // Their own enterprise-internal imports are intentionally not enforced.
+  createElement({
+    type: "shared",
+    name: "plugin-impl",
+    pattern: "enterprise/frontend/src/metabase-enterprise/**/plugin.{ts,tsx}",
+    mode: "full",
+  }),
   createElement({ type: "shared", name: "plugins" }),
   createElement({ type: "shared", name: "pulse" }),
   createElement({ type: "shared", name: "querying", enforceOutgoing: false }),
@@ -213,6 +225,13 @@ const rules = [
     from: ["shared/*"],
     allow: ["lib/*", "basic/*", "shared/*"],
     message: "Shared modules cannot import from feature modules",
+  },
+  {
+    // Plugin implementations are the build-resolved glue between feature code
+    // and an extension point: importable as `shared` (so any module may depend
+    // on the resolved plugin), but allowed to wire in feature/enterprise code.
+    from: ["shared/plugin-impl"],
+    allow: ["lib/*", "basic/*", "shared/*", "feature/*"],
   },
   {
     from: ["feature/*"],

@@ -43,6 +43,17 @@ const RESOLVE_ALIASES = {
   img: IMAGES_PATH,
   fonts: FONTS_PATH,
   docs: DOCS_PATH,
+  // Per-plugin build override (prototype): in EE builds, swap the OSS default
+  // moderation plugin for the enterprise implementation. This must precede the
+  // `metabase` alias below so the exact path wins (aliases match in order). The
+  // eslint boundary resolver loads this same config, so lint and the bundle
+  // resolve the plugin identically.
+  ...(process.env.MB_EDITION === "ee"
+    ? {
+        "metabase/moderation/plugin":
+          ENTERPRISE_SRC_PATH + "/moderation/plugin",
+      }
+    : {}),
   metabase: SRC_PATH,
   "metabase-lib": LIB_SRC_PATH,
   "metabase-enterprise": ENTERPRISE_SRC_PATH,
