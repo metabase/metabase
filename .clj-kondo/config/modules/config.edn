@@ -354,6 +354,7 @@
   audit-app
   {:team "UX West"
    :api  #{metabase.audit-app.core
+           metabase.audit-app.impl
            metabase.audit-app.init}
    :uses #{api
            app-db
@@ -3177,6 +3178,19 @@
            premium-features}
    :model-imports #{:model/Card :model/Collection :model/Table}}
 
+  enterprise/memoize-monitor
+  {:team "Graphy"
+   :api  #{metabase-enterprise.memoize-monitor.init}
+   :uses #{analytics
+           analytics-interface
+           audit-app
+           collections
+           driver
+           models
+           warehouse-schema
+           warehouses
+           enterprise/serialization}}
+
   enterprise/metabot
   {:team    "Metabot"
    :api     #{metabase-enterprise.metabot.api
@@ -3407,6 +3421,7 @@
    :api  #{metabase-enterprise.serialization.api
            metabase-enterprise.serialization.cmd
            metabase-enterprise.serialization.core
+           metabase-enterprise.serialization.dump
            metabase-enterprise.serialization.init
            metabase-enterprise.serialization.schema
            metabase-enterprise.serialization.v2.backfill-ids}
