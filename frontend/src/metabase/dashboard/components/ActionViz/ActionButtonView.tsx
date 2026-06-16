@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { Button, Ellipsified, Icon } from "metabase/ui";
@@ -6,7 +5,6 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
-import S from "./ActionButton.module.css";
 import { StyledButtonContent } from "./ActionButton.styled";
 
 const BUTTON_VARIANT_PROPS: Record<
@@ -45,10 +43,9 @@ function ActionButtonView({
 
   return (
     <Button
-      className={cx(S.actionButton, {
-        [S.fullHeight]: isFullHeight !== false,
-        [S.focus]: focus,
-      })}
+      p={0}
+      h={isFullHeight !== false ? "100%" : undefined}
+      bd={focus ? "2px solid var(--mb-color-focus)" : undefined}
       variant={buttonVariant}
       color={color}
       disabled={!!disabled}

@@ -6,7 +6,7 @@ import S from "./ChartSettingIconRadio.module.css";
 interface ChartSettingIconRadioProps {
   value: string;
   onChange: (val: string | null) => void;
-  options: { iconName: string; value: string }[];
+  options: { iconName: IconName; value: string }[];
 }
 
 export const ChartSettingIconRadio = ({
@@ -29,11 +29,11 @@ export const ChartSettingIconRadio = ({
           key={`radio-icon-${option.iconName}`}
           className={S.iconButton}
           variant={option.value === value ? "filled" : "default"}
-          size="2rem"
+          size="lg"
           ml="sm"
           onClick={() => handleClick(option.value)}
         >
-          <Icon name={option.iconName as IconName} />
+          <Icon name={option.iconName} />
         </ActionIcon>
       ))}
     </div>
