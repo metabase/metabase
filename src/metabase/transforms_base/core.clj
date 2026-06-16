@@ -42,9 +42,5 @@
   ([transform opts]
    (let [result (transforms-base.i/execute-base! transform opts)]
      (when (= :succeeded (:status result))
-       ;; This path has no run record, so apply indexes here (the run-tracked path does it in
-       ;; `run-cancelable-transform!` before marking the run succeeded). Mirrors that ordering: indexes first,
-       ;; then sync + events.
-       (transforms-base.u/apply-target-indexes! transform)
        (transforms-base.u/complete-execution! transform opts))
      result)))
