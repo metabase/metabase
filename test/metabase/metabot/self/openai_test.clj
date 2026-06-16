@@ -142,6 +142,20 @@
       (is (=? [{:type :start} {:type :error :errorText "The model provider failed to complete the response"}]
               (into [] (openai/openai->aisdk-chunks-xf) bare))))))
 
+(deftest ^:parallel openai-response-failed-reaches-wire-and-persistence-test
+  (testing "a response.failed error flows through to both the wire line and the persisted turn error"
+    ;; Regression guard: once collected into a part (via aisdk-chunks->part), the AI SDK v5 `:errorText`
+    ;; chunk must become an `{:error {:message ...}}` part, which is what self.core/format-error-line and
+    ;; metabot.api's finalize-turn `(:error part)` lookup both read.
+    (let [raw   [{:type "response.created" :response {:id "resp_1" :model "gpt-5.5"}}
+                 {:type "response.failed"  :response {:id "resp_1" :error {:code "server_error" :message "boom"}}}]
+          parts (into [] (comp (openai/openai->aisdk-chunks-xf) (self.core/aisdk-xf)) raw)
+          err   (m/find-first #(= :error (:type %)) parts)]
+      (testing "persistence picks up a non-nil error payload"
+        (is (=? {:message "boom"} (:error err))))
+      (testing "wire serializer emits the message (not an empty string)"
+        (is (= "3:\"boom\"" (self.core/format-error-line err)))))))
+
 (deftest ^:parallel openai-response-incomplete-keeps-partial-text-and-usage-test
   (testing "a terminal response.incomplete event keeps the partial text and still emits usage (not an error)"
     ;; An incomplete response (e.g. truncated at max_output_tokens) has valid partial output, so we record
