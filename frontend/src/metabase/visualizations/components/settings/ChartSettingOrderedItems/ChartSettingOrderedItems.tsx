@@ -58,7 +58,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   getItemColor = (item) => item.color,
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
-  const isDragDisabled = !isSortable || items.length < 1;
+  const isDragDisabled = !isSortable || items.length < 2;
   const sensors = useDndSensors({ distance: 15 });
 
   const renderItem = useCallback(
