@@ -70,3 +70,4 @@ export const isTouchDevice = () => {
 
 export const METAKEY = isMac() ? "⌘" : "Ctrl";
 export const ALTKEY = isMac() ? "⌥" : "Alt";
+export const SHIFTKEY = isMac() ? "⇧" : "Shift";

@@ -1,4 +1,3 @@
-export { Kbd } from "./Kbd";
-export type { KbdProps } from "./Kbd";
+export { Kbd, type KbdProps } from "@mantine/core";
 
 export * from "./Kbd.config";

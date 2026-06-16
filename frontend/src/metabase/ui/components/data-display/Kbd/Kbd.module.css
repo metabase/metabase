@@ -10,11 +10,3 @@
   font-weight: 500;
   line-height: 1rem;
 }
-
-.root:not([data-disabled]):hover {
-  background-color: var(--mb-color-background_surface-secondary-hover);
-}
-
-.root[data-disabled] {
-  color: var(--mb-color-text-disabled);
-}
