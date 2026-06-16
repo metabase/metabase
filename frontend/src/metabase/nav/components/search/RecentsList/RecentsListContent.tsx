@@ -11,11 +11,11 @@ import {
 import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import {
   EmptyStateContainer,
   SearchLoadingSpinner,
 } from "metabase/nav/components/search/SearchResults";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import { isSyncCompleted } from "metabase/utils/syncing";
@@ -92,7 +92,7 @@ export const RecentsListContent = ({
                     {getName(item)}
                   </ResultTitle>
                   <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={getModeratedStatus(item)}
+                    status={getModeratedStatus(item) || undefined}
                     filled
                     size={14}
                   />

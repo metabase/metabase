@@ -5,7 +5,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
 import {
@@ -131,7 +131,8 @@ export function ItemList({
                     {tc(item.name)}{" "}
                     <PLUGIN_MODERATION.ModerationStatusIcon
                       status={
-                        "moderated_status" in item && item.moderated_status
+                        ("moderated_status" in item && item.moderated_status) ||
+                        undefined
                       }
                       filled
                       size={14}

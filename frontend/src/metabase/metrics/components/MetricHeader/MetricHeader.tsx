@@ -5,7 +5,7 @@ import {
   PaneHeader,
   PanelHeaderTitle,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { Flex, Group } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 

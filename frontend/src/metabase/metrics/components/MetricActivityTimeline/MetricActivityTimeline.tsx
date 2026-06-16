@@ -4,7 +4,7 @@ import { useListRevisionsQuery, useRevertRevisionMutation } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { Card } from "metabase-types/api";
@@ -27,7 +27,7 @@ export function MetricActivityTimeline({ card }: MetricActivityTimelineProps) {
 
   const events = useMemo(() => {
     const moderationEvents = PLUGIN_MODERATION.getModerationTimelineEvents(
-      card.moderation_reviews,
+      card.moderation_reviews ?? [],
       currentUser,
     );
     const revisionEvents = getTimelineEvents({ revisions, currentUser });

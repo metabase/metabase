@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { RevisionOrModerationEvent } from "metabase/plugins";
+import type { RevisionOrModerationEvent } from "metabase/moderation/types";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
 import { RevisionHistoryTimeline } from "./RevisionHistoryTimeline";

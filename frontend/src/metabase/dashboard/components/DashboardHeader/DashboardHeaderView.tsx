@@ -21,10 +21,8 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import {
-  PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_MODERATION,
-} from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";

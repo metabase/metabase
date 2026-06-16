@@ -6,7 +6,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import {
   Box,
   Ellipsified,
@@ -95,7 +96,10 @@ export const SearchResults = ({
                 <Flex align="center">
                   <Ellipsified maw="21rem">{item.name} </Ellipsified>
                   <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={"moderated_status" in item && item.moderated_status}
+                    status={
+                      ("moderated_status" in item && item.moderated_status) ||
+                      undefined
+                    }
                     filled
                     size={14}
                     ml="0.5rem"

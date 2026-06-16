@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 
 import { trackSearchClick } from "metabase/common/search/analytics";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { useDispatch } from "metabase/redux";
 import { Group, Icon, Loader } from "metabase/ui";
 import { modelToUrl } from "metabase/urls";

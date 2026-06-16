@@ -16,7 +16,7 @@ import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/componen
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
 import { useDispatch } from "metabase/redux";
 import { onCloseQuestionInfo } from "metabase/redux/query-builder";

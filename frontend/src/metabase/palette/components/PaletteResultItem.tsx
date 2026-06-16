@@ -1,7 +1,7 @@
 import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { Box, Flex, Group, Stack, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";

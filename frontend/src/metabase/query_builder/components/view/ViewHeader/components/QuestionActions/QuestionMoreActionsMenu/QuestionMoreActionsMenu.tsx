@@ -5,8 +5,8 @@ import _ from "underscore";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   softReloadCard,
   turnModelIntoQuestion,

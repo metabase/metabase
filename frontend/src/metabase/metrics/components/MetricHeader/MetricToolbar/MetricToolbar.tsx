@@ -11,13 +11,9 @@ import {
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import type { MetricUrls } from "metabase/common/metrics/types";
 import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
-import {
-  PLUGIN_AUDIT,
-  PLUGIN_CACHING,
-  PLUGIN_LIBRARY,
-  PLUGIN_MODERATION,
-} from "metabase/plugins";
+import { PLUGIN_AUDIT, PLUGIN_CACHING, PLUGIN_LIBRARY } from "metabase/plugins";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { CardCopyModal } from "metabase/questions/components/CardCopyModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";

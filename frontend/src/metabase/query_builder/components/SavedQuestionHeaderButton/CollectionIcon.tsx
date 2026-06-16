@@ -1,7 +1,5 @@
-import {
-  PLUGIN_COLLECTION_COMPONENTS,
-  PLUGIN_MODERATION,
-} from "metabase/plugins";
+import { PLUGIN_MODERATION } from "metabase/moderation/plugin";
+import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection } from "metabase-types/api";
 
