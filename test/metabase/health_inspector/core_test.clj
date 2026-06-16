@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.health-inspector.core :as hi]
+   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (defn- test-check []
@@ -17,6 +18,21 @@
              (:test-check report))))
     (testing "validate-queries works"
       (is (= 100 (-> report :validate-queries :health))))))
+
+(deftest validate-queries*-works
+  (let [bad-query {"database" 1
+                   "query" {"expressions" "extremely invalid"
+                            "source-table" 2}
+                   "type" "query"}
+        bad-card (assoc (dissoc (t2/select-one :report_card) :id :entity_id)
+                        :dataset_query (json/encode bad-query)
+                        :description "bad query")
+        bad (t2/insert! :report_card bad-card)]
+    (try
+      (let [{:keys [health message]} (hi/validate-queries)]
+        (is (< 0 health 100))
+        (is (= "Some queries are invalid." message)))
+      (finally (t2/delete! :report_card bad)))))
 
 (deftest report-db-test
   (t2/delete! :health_inspector_runs)
