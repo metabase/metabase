@@ -3164,7 +3164,7 @@
            settings}}
 
   enterprise/index-manager
-  {:team "Graphy"
+  {:team "Gadget"
    :api  #{metabase-enterprise.index-manager.api
            metabase-enterprise.index-manager.core
            metabase-enterprise.index-manager.init}
