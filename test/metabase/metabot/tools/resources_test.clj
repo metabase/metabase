@@ -78,28 +78,32 @@
    to the dispatch should mean adding one row here. Args are positional and string-typed
    the way the dispatch passes them to the handler."
   [;; ----- Top-level navigation -----
-   ["metabase://databases"                                 :databases-list             []]
+   ["metabase://databases"                                 :databases-list             [nil]]
+   ["metabase://databases?page=2"                          :databases-list             [{:page "2"}]]
    ["metabase://collections"                               :collections-list           [nil]]
    ["metabase://collections?tree=true"                     :collections-list           [{:tree "true"}]]
    ["metabase://collections?tree=true&foo=bar"             :collections-list           [{:tree "true" :foo "bar"}]]
+   ["metabase://collections?page=2"                        :collections-list           [{:page "2"}]]
    ["metabase://user/recent-items"                         :user-recents               []]
    ;; ----- Database drill-down -----
    ["metabase://database/1"                                :database                   ["1"]]
-   ["metabase://database/1/tables"                         :database-tables            ["1"]]
-   ["metabase://database/1/models"                         :database-models            ["1"]]
-   ["metabase://database/1/schemas"                        :database-schemas           ["1"]]
-   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC"]]
-   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case"]]
+   ["metabase://database/1/tables"                         :database-tables            ["1" nil]]
+   ["metabase://database/1/tables?page=2"                  :database-tables            ["1" {:page "2"}]]
+   ["metabase://database/1/models"                         :database-models            ["1" nil]]
+   ["metabase://database/1/schemas"                        :database-schemas           ["1" nil]]
+   ["metabase://database/1/schemas/PUBLIC/tables"          :database-schema-tables     ["1" "PUBLIC" nil]]
+   ["metabase://database/1/schemas/lower_case/tables"      :database-schema-tables     ["1" "lower_case" nil]]
    ;; ----- Collection drill-down -----
    ["metabase://collection/2"                              :collection                 ["2"]]
-   ["metabase://collection/2/items"                        :collection-items           ["2"]]
-   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2"]]
+   ["metabase://collection/2/items"                        :collection-items           ["2" nil]]
+   ["metabase://collection/2/items?page=3"                 :collection-items           ["2" {:page "3"}]]
+   ["metabase://collection/2/subcollections"               :collection-subcollections  ["2" nil]]
    ;; ----- Table -----
    ["metabase://table/3"                                   :table                      ["3"]]
    ["metabase://table/3/fields"                            :table-fields               ["3"]]
    ["metabase://table/3/fields/42"                         :table-field                ["3" "42"]]
    ["metabase://table/3/fields/c75/17"                     :table-field                ["3" "c75/17"]]
-   ["metabase://table/3/derived"                           :table-derived              ["3"]]
+   ["metabase://table/3/derived"                           :table-derived              ["3" nil]]
    ;; ----- Model (a card type) -----
    ["metabase://model/4"                                   :card                       ["model" "4"]]
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
@@ -121,7 +125,8 @@
    ["metabase://transform/7/target"                        :transform-target           ["7"]]
    ;; ----- Dashboard -----
    ["metabase://dashboard/8"                               :dashboard                  ["8"]]
-   ["metabase://dashboard/8/items"                         :dashboard-items            ["8"]]])
+   ["metabase://dashboard/8/items"                         :dashboard-items            ["8" nil]]
+   ["metabase://dashboard/8/items?page=2"                  :dashboard-items            ["8" {:page "2"}]]])
 
 (deftest dispatch-routing-test
   (testing "every supported URI pattern routes to the expected handler with the expected args"
@@ -582,11 +587,13 @@
         (is (str/includes? output "<list type=\"recent-items\""))))))
 
 (deftest read-list-shape-test
-  (testing "list responses always carry total/showing/truncated attrs in the rendered XML"
+  (testing "list responses carry total/page/pages/showing/truncated attrs in the rendered XML"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
         (is (str/includes? output "<list type=\"databases\""))
         (is (str/includes? output "total="))
+        (is (str/includes? output "page="))
+        (is (str/includes? output "pages="))
         (is (str/includes? output "showing="))
         (is (str/includes? output "truncated="))))))
 
@@ -749,3 +756,114 @@
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
                     structured))))))))
+
+;; ===== Pagination =====
+
+(deftest paginate-list-test
+  (testing "page 1 returns first 25 items"
+    (let [items (mapv (fn [i] {:id i}) (range 1 51))
+          result (#'read-resource/paginate-list items nil)]
+      (is (= 1 (:page result)))
+      (is (= 2 (:pages result)))
+      (is (= 50 (:total result)))
+      (is (= 25 (count (:items result))))
+      (is (= 1 (-> result :items first :id)))
+      (is (= 25 (-> result :items last :id)))
+      (is (true? (:truncated result)))))
+  (testing "page 2 returns second 25 items, not truncated"
+    (let [items (mapv (fn [i] {:id i}) (range 1 51))
+          result (#'read-resource/paginate-list items "2")]
+      (is (= 2 (:page result)))
+      (is (= 26 (-> result :items first :id)))
+      (is (= 50 (-> result :items last :id)))
+      (is (false? (:truncated result)))))
+  (testing "out-of-bounds page clamps to last page"
+    (let [items (mapv (fn [i] {:id i}) (range 1 11))
+          result (#'read-resource/paginate-list items "999")]
+      (is (= 1 (:page result)))
+      (is (= 1 (:pages result)))
+      (is (= 10 (count (:items result))))))
+  (testing "list shorter than one page"
+    (let [items (mapv (fn [i] {:id i}) (range 1 6))
+          result (#'read-resource/paginate-list items nil)]
+      (is (= 1 (:page result)))
+      (is (= 1 (:pages result)))
+      (is (= 5 (:total result)))
+      (is (false? (:truncated result)))))
+  (testing "empty list"
+    (let [result (#'read-resource/paginate-list [] nil)]
+      (is (= 1 (:page result)))
+      (is (= 1 (:pages result)))
+      (is (= 0 (:total result)))
+      (is (false? (:truncated result))))))
+
+(deftest pagination-database-tables-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (doseq [i (range 1 31)]
+        (t2/insert! :model/Table {:name   (format "TABLE-%03d" i)
+                                  :db_id  db-id
+                                  :active true}))
+      (testing "page 1 returns first 25 tables, truncated with page/pages metadata"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables")]})
+              so     (get-in result [:resources 0 :content :structured-output])]
+          (is (= 1 (:page so)))
+          (is (= 2 (:pages so)))
+          (is (= 30 (:total so)))
+          (is (= 25 (count (:items so))))
+          (is (true? (:truncated so)))))
+      (testing "page 2 returns remaining 5 tables, not truncated"
+        (let [result (read-resource/read-resource
+                      {:uris [(str "metabase://database/" db-id "/tables?page=2")]})
+              so     (get-in result [:resources 0 :content :structured-output])]
+          (is (= 2 (:page so)))
+          (is (= 5 (count (:items so))))
+          (is (false? (:truncated so))))))))
+
+(deftest pagination-xml-output-test
+  (testing "truncated list XML includes page/pages attrs and a truncation note with next-page URI hint"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {db-id :id} {}]
+        (doseq [i (range 1 31)]
+          (t2/insert! :model/Table {:name   (format "TBL-%03d" i)
+                                    :db_id  db-id
+                                    :active true}))
+        (let [{:keys [output]} (read-resource/read-resource
+                                {:uris [(str "metabase://database/" db-id "/tables")]})]
+          (is (str/includes? output "page=\"1\""))
+          (is (str/includes? output "pages=\"2\""))
+          (is (str/includes? output "truncated=\"true\""))
+          (is (str/includes? output "?page=2") "truncation note should hint at next page URI"))))))
+
+;; ===== Collection tree ordering =====
+
+(deftest collections-tree-ordering-test
+  (testing "tree mode sorts by path name, not by raw location string (which would mis-order multi-digit IDs)"
+    (mt/with-current-user (mt/user->id :crowberto)
+      ;; Create roots whose IDs will cause lexicographic location-sort to diverge from
+      ;; alphabetical path-sort: a root with a high numeric ID gets a child whose
+      ;; location (/10/) would sort before the child of a lower-ID root (/2/).
+      ;; After the fix, children are sorted by their human-readable path.
+      (mt/with-temp
+        [:model/Collection {z-root :id} {:name "Z-Root" :location "/"}
+         :model/Collection {a-root :id} {:name "A-Root" :location "/"}
+         :model/Collection _ {:name "Z-Child" :location (str "/" z-root "/")}
+         :model/Collection _ {:name "A-Child" :location (str "/" a-root "/")}]
+        (let [result   (read-resource/read-resource {:uris ["metabase://collections?tree=true"]})
+              so       (get-in result [:resources 0 :content :structured-output])
+              paths    (mapv :path (:items so))
+              our-paths (filter #(str/starts-with? % "A-Root") paths)
+              z-paths   (filter #(str/starts-with? % "Z-Root") paths)]
+          (testing "A-Root and its child appear before Z-Root and its child"
+            (let [first-a (first (keep-indexed (fn [i p] (when (str/starts-with? p "A-Root") i)) paths))
+                  first-z (first (keep-indexed (fn [i p] (when (str/starts-with? p "Z-Root") i)) paths))]
+              (is (some? first-a))
+              (is (some? first-z))
+              (is (< first-a first-z) "A-Root subtree must come before Z-Root subtree")))
+          (testing "A-Root/A-Child appears immediately after A-Root"
+            (let [a-root-idx  (first (keep-indexed (fn [i p] (when (= "A-Root" p) i)) paths))
+                  a-child-idx (first (keep-indexed (fn [i p] (when (= "A-Root/A-Child" p) i)) paths))]
+              (is (some? a-root-idx))
+              (is (some? a-child-idx))
+              (is (= (inc a-root-idx) a-child-idx) "child should immediately follow its parent"))))))))
