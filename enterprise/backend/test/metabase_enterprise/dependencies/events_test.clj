@@ -334,6 +334,49 @@
                      :to_entity_id (mt/id :orders)}]
                    (t2/select :model/Dependency :from_entity_id transform-id :from_entity_type :transform)))))))))
 
+(deftest ^:sequential database-delete-marks-source-transforms-stale-test
+  (testing "deleting a database marks its source transforms' analysis findings stale so they surface on /dependency-diagnostics/broken (GDGT-2447)"
+    (run-with-dependencies-setup!
+     (fn [_mp]
+       (mt/with-temp [:model/Database {db-id :id} {}
+                      :model/Transform {transform-id :id}
+                      {:source {:type :query
+                                :query {:database db-id
+                                        :type :native
+                                        :native {:query "SELECT 1"}}}
+                       :target {:schema "public" :name "out" :type :table}}
+                      :model/AnalysisFinding _ {:analyzed_entity_type :transform
+                                                :analyzed_entity_id transform-id
+                                                :result true
+                                                :stale false
+                                                :analysis_version models.analysis-finding/*current-analysis-finding-version*
+                                                :analyzed_at :%now}]
+         (is (false? (t2/select-one-fn :stale :model/AnalysisFinding
+                                       :analyzed_entity_type :transform
+                                       :analyzed_entity_id transform-id))
+             "baseline: existing finding is fresh")
+         (t2/delete! :model/Database db-id)
+         (is (nil? (t2/select-one :model/Database db-id))
+             "the Database row is actually gone")
+         (is (true? (t2/select-one-fn :stale :model/AnalysisFinding
+                                      :analyzed_entity_type :transform
+                                      :analyzed_entity_id transform-id))
+             "after db-delete the transform's finding is marked stale")
+         (testing "and re-running the entity-check job flips :result false so the transform shows on broken-diagnostics"
+           (#'task.entity-check/check-entities!)
+           (let [{:keys [stale result]} (t2/select-one :model/AnalysisFinding
+                                                       :analyzed_entity_type :transform
+                                                       :analyzed_entity_id transform-id)]
+             (is (false? stale))
+             (is (false? result)))
+           (testing "an analysis_finding_error row points the transform at itself so the diagnostics page (`/graph/breaking`) surfaces it"
+             (is (=? {:source_entity_type :transform
+                      :source_entity_id   transform-id
+                      :error_type         :validation-exception-error}
+                     (t2/select-one :model/AnalysisFindingError
+                                    :analyzed_entity_type :transform
+                                    :analyzed_entity_id transform-id))))))))))
+
 (deftest ^:sequential transform-run-updates-dependencies-test
   (testing "transform run events trigger dependency calculations"
     (run-with-dependencies-setup!
