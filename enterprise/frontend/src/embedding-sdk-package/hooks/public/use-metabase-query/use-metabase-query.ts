@@ -20,7 +20,7 @@ import {
   isUnaryOperator,
 } from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import { buildMetricDatasetQuery } from "./metric-query-builder";
+import { buildDatasetQueryWithMetabaseLib } from "./metabase-lib-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
@@ -295,7 +295,7 @@ const useMetabaseQueryImpl = <
           return;
         }
 
-        const datasetQuery = buildMetricDatasetQuery(currentQuery);
+        const datasetQuery = createMetabaseQuery(currentQuery);
         const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
@@ -342,20 +342,5 @@ export function useMetabaseQueryObject(
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
-  if (isMetricQuery(query)) {
-    return buildMetricDatasetQuery(query);
-  }
-
-  const databaseId = getTableDatabaseId(query);
-
-  if (databaseId == null) {
-    throw new Error(
-      "Query creation requires a generated table schema, generated metric schema, or databaseId.",
-    );
-  }
-
-  return {
-    ...buildTableDatasetQuery(query),
-    database: Number(databaseId),
-  };
+  return buildDatasetQueryWithMetabaseLib(query);
 }
