@@ -17,6 +17,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -172,9 +173,19 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- card->filterable-columns-query
+(mr/def ::param-dashcard-info
+  "Internal bookkeeping for one parameter `mapping` on a hydrated `dashcard`: the dashcard, the mapping, and the
+  parameter target's Field ID when the target is already field-id-based (nil when it must be resolved from filterable
+  columns)."
+  [:map
+   [:dashcard              :map]
+   [:param-mapping         ::parameters.schema/parameter-mapping]
+   [:param-target-field-id [:maybe ::lib.schema.id/field]]])
+
+(mu/defn- card->filterable-columns-query :- [:maybe ::lib.schema/query]
   "Build the lib query whose filterable columns we want for `card` at `stage-number`, or nil when `card` has no query."
-  [card stage-number]
+  [card         :- :metabase.queries.schema/card
+   stage-number :- :int]
   (when (and (seq (:dataset_query card)) (pos-int? (:database_id card)))
     (let [metadata-provider (lib-be/application-database-metadata-provider (:database_id card))
           ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it
@@ -240,11 +251,11 @@
   {:card-id->filterable-columns {}
    :param-id->field-ids         {}})
 
-(defn- param-dashcard-info->card+stage
+(mu/defn- param-dashcard-info->card+stage :- [:maybe [:tuple [:maybe :metabase.queries.schema/card] :int]]
   "When `param-dashcard-info`'s parameter target is not already field-id-based (so we need filterable columns to
   resolve it), return `[card stage-number]` -- the Card and stage whose filterable columns must be computed. Returns
   nil when the target is field-id-based and no filterable-columns computation is needed."
-  [{:keys [param-mapping param-target-field-id] :as param-dashcard-info}]
+  [{:keys [param-mapping param-target-field-id] :as param-dashcard-info} :- ::param-dashcard-info]
   (when-not param-target-field-id
     (let [card-id      (:card_id param-mapping)
           card         (if card-id
@@ -302,24 +313,25 @@
       (string? (:type card))          (update :type keyword)
       (seq (:dataset_query card))     (update :dataset_query lib-be/normalize-query))))
 
-(defn- mapping->param-dashcard-info
+(mu/defn- mapping->param-dashcard-info :- ::param-dashcard-info
   "Build the `param-dashcard-info` for a parameter `mapping` on `dashcard`, resolving `:param-target-field-id` when the
   target is already field-id-based."
-  [dashcard mapping]
+  [dashcard :- :map
+   mapping  :- ::parameters.schema/parameter-mapping]
   (let [card (find-card-for-mapping dashcard mapping)]
     {:dashcard              dashcard
      :param-mapping         mapping
      :param-target-field-id (when (:target mapping)
                               (param-target->field-id (:target mapping) card))}))
 
-(defn- preload-param-filterable-columns!
+(mu/defn- preload-param-filterable-columns! :- :nil
   "Bulk-load up front the metadata that the per-Card [[filterable-columns-for-query]] computations (run lazily by
   [[field-id-into-context-rf]]) will need, so those computations hit the metadata-provider cache instead of fetching
   objects one at a time. Only Cards whose parameter target is not field-id-based need filterable columns; we build
   their queries here (the same way [[ensure-filterable-columns-for-card]] does, via [[card->filterable-columns-query]]),
   gather the entities they reference, and bulk-load them per Database. Requires a metadata-provider cache scope (asserted
   by [[card->filterable-columns-query]]), since there'd otherwise be no shared cache to warm."
-  [param-dashcard-infos]
+  [param-dashcard-infos :- [:sequential ::param-dashcard-info]]
   (doseq [[database-id cards+stages] (->> param-dashcard-infos
                                           (keep param-dashcard-info->card+stage)
                                           (filter (fn [[card _stage-number]] (pos-int? (:database_id card))))

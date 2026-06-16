@@ -80,9 +80,8 @@
   instead of fetching one entity at a time."
   [{query :dataset_query, :keys [id], :as _card}]
   (when (seq query)
-    (let [metadata-provider  (lib.metadata/->metadata-provider query)
-          value-source-query (lib/query metadata-provider (lib.metadata/card metadata-provider id))]
-      (lib-be/bulk-load-query-metadata! metadata-provider
+    (let [value-source-query (lib/query query (lib.metadata/card query id))]
+      (lib-be/bulk-load-query-metadata! query
                                         (lib/all-referenced-entity-ids [value-source-query]
                                                                        {:include-implicitly-joinable? true}))
       value-source-query)))
@@ -94,16 +93,16 @@
   (when query
     (let [card-id (lib/primary-source-card-id query)]
       (when-let [visible-columns (or (not-empty (lib/visible-columns query))
-                                     (log/warnf "Cannot get values from Card %s: Card query has no visible columns"
+                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
                                                 card-id))]
         (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %s: failed to find column for ref %s\nFound: %s"
+                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
                                                card-id
                                                (pr-str field-ref)
                                                (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
           (let [label-column    (when label-field
                                   (or (lib/find-matching-column query -1 label-field visible-columns)
-                                      (log/warnf "Cannot get labels from Card %s: failed to find column for ref %s"
+                                      (log/warnf "Cannot get labels from Card %d: failed to find column for ref %s"
                                                  card-id
                                                  (pr-str label-field))))
                 search-column   (or label-column value-column)
@@ -136,9 +135,11 @@
       (let [keep-idxs (into [] (keep-indexed (fn [i c] (when-not (drop-names (:name c)) i))) cols)]
         (perf/mapv (fn [row] (perf/mapv #(nth row %) keep-idxs)) rows)))))
 
-(defn- values-from-card*
+(mu/defn- values-from-card* :- ms/FieldValuesResult
   "Core of [[values-from-card]], working off a prebuilt value-source `query`."
-  [query field-ref opts]
+  [query     :- [:maybe ::lib.schema/query]
+   field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
+   opts      :- [:maybe ::values-from-card-query.options]]
   (let [mbql-query (values-from-card-query query field-ref opts)
         result     (some-> mbql-query qp/process-query)
         values     (some-> result result->rows)]
@@ -177,9 +178,11 @@
         (some? (lib/find-matching-column query -1 (lib/->mbql5 value-field)
                                          (lib/visible-columns query))))))
 
-(defn- card-values
+(mu/defn- card-values :- ms/FieldValuesResult
   "Given a prebuilt value-source `query`, the parameter's `config`, and a `query-string`, return the values."
-  [query config query-string]
+  [query        :- [:maybe ::lib.schema/query]
+   config       :- ::parameters.schema/values-source-config
+   query-string :- [:maybe ms/NonBlankString]]
   (values-from-card* query
                      (lib/->mbql5 (:value_field config))
                      (cond-> {:query-string query-string}

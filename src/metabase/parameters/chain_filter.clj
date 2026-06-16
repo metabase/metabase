@@ -336,8 +336,8 @@
 
 (def ^:private ^{:arglists '([db-id source-table field-ids other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[db-id source-table-id field-ids other-table-ids enable-reverse-joins?]]
-                         [(mdb/unique-identifier) db-id source-table-id field-ids other-table-ids enable-reverse-joins?])}
+   ^{::memoize/args-fn (fn [[_db-id source-table-id field-ids other-table-ids enable-reverse-joins?]]
+                         [(mdb/unique-identifier) source-table-id field-ids other-table-ids enable-reverse-joins?])}
    (fn [db-id source-table-id field-ids other-table-ids enable-reverse-joins?]
      (let [all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
                              other-table-ids)]
@@ -450,29 +450,29 @@
    {:keys [original-field-id limit]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
   ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
-  ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `metadata-provider`.
+  ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `mp`.
   (let [database-id       (field/field-id->database-id field-id)
-        metadata-provider (lib-be/application-database-metadata-provider database-id)
-        field-table-id    (:table-id (lib.metadata/field metadata-provider field-id))
-        original-table-id (when original-field-id (:table-id (lib.metadata/field metadata-provider original-field-id)))
+        mp                (lib-be/application-database-metadata-provider database-id)
+        field-table-id    (:table-id (lib.metadata/field mp field-id))
+        original-table-id (when original-field-id (:table-id (lib.metadata/field mp original-field-id)))
         ;; When the original (FK) field lives on a different table, reverse the join direction:
         ;; make the original field's table the source and join the label table. The original table
         ;; is typically the large fact table; putting it on the right side of a JOIN can OOM on
         ;; engines like ClickHouse that materialize the right side in memory.
         reversed?         (and original-table-id (not= original-table-id field-table-id))
         source-table-id   (if reversed? original-table-id field-table-id)
-        joins             (find-all-joins metadata-provider database-id source-table-id
+        joins             (find-all-joins mp database-id source-table-id
                                           (cond-> (set (map :field-id constraints))
                                             reversed?       (conj field-id)
                                             (not reversed?) (cond-> original-field-id (conj original-field-id))))
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
-        field             (cond-> (lib.metadata/field metadata-provider field-id)
+        field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
         original-field    (when original-field-id
                             (if reversed?
                               ;; reversed: original field is on the source table, no alias
-                              (lib.metadata/field metadata-provider original-field-id)
-                              (cond-> (lib.metadata/field metadata-provider original-field-id)
+                              (lib.metadata/field mp original-field-id)
+                              (cond-> (lib.metadata/field mp original-field-id)
                                 (not= field-table-id original-table-id)
                                 (lib/with-join-alias (joined-table-alias original-table-id)))))]
     (when original-field-id
@@ -482,7 +482,7 @@
     (when (seq joins)
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                   (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
-    (-> (lib/query metadata-provider (lib.metadata/table metadata-provider source-table-id))
+    (-> (lib/query mp (lib.metadata/table mp source-table-id))
         ;; return the lesser of limit (if set) or max results
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)

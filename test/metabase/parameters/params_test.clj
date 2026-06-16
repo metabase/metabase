@@ -271,7 +271,7 @@
                    (mt/id :products :id)}
                  (params/card->template-tag-field-ids card))))))))
 
-(deftest dashcards->param-field-ids-bulk-loads-metadata-test
+(deftest ^:parallel dashcards->param-field-ids-bulk-loads-metadata-test
   (testing "name-based parameter targets are resolved via filterable-columns, whose metadata is bulk-loaded across all
             the dashboard's cards up front instead of one card at a time (no N+1)"
     (mt/dataset test-data

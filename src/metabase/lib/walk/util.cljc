@@ -4,10 +4,10 @@
   (:require
    [clojure.set :as set]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]
@@ -263,7 +263,7 @@
   [:map
    [:include-implicitly-joinable? {:optional true} :boolean]])
 
-(defn- implicitly-joinable-table-ids
+(mu/defn- implicitly-joinable-table-ids :- [:set ::lib.schema.id/table]
   "The ids of Tables reachable by one FK hop out of the columns of `source-table-ids` and the result metadata of
   `source-card-ids` -- i.e. the Tables a caller exposing implicitly-joinable columns would need on top of the directly
   referenced ones. Loads those columns/Fields and the FK-target Fields into `metadata-providerable`'s cache while
@@ -271,17 +271,18 @@
 
   Note `implicitly-joined-field-ids` above means Fields *already* joined in a query; this is about Fields that are
   *joinable* (reachable via an FK) but not joined yet."
-  [metadata-providerable source-table-ids source-card-ids]
-  (let [provider      (lib.metadata/->metadata-provider metadata-providerable)
-        table-columns (when (seq source-table-ids)
-                        (lib.metadata.protocols/metadatas provider {:lib/type :metadata/column, :table-ids source-table-ids}))
-        cards         (lib.metadata/bulk-metadata metadata-providerable :metadata/card source-card-ids)
-        result-cols   (mapcat :result-metadata cards)
-        card-columns  (lib.metadata/bulk-metadata metadata-providerable :metadata/column
-                                                  (into #{} (keep :id) result-cols))
-        fk-fields     (lib.metadata/bulk-metadata metadata-providerable :metadata/column
-                                                  (into #{} (keep :fk-target-field-id)
-                                                        (concat table-columns card-columns result-cols)))]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   source-table-ids      :- [:set ::lib.schema.id/table]
+   source-card-ids       :- [:set ::lib.schema.id/card]]
+  (let [table-columns  (when (seq source-table-ids)
+                         (lib.metadata/metadatas metadata-providerable {:lib/type :metadata/column, :table-ids source-table-ids}))
+        cards          (lib.metadata/bulk-metadata metadata-providerable :metadata/card source-card-ids)
+        result-columns (mapcat :result-metadata cards)
+        card-columns   (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                   (into #{} (keep :id) result-columns))
+        fk-fields      (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                   (into #{} (keep :fk-target-field-id)
+                                                         (concat table-columns card-columns result-columns)))]
     (into #{} (keep :table-id) fk-fields)))
 
 (mu/defn all-referenced-entity-ids :- ::referenced-entity-ids
@@ -290,7 +291,7 @@
   With `:include-implicitly-joinable?` true, `:table` additionally includes the Tables reachable by one FK hop out of
   the source Tables' columns and the source Cards' result metadata (see [[implicitly-joinable-table-ids]]); discovering
   them warms those columns/Fields in `(first queries)`'s cache. Defaults to false."
-  ([queries]
+  ([queries :- [:sequential ::lib.schema/query]]
    (all-referenced-entity-ids queries nil))
 
   ([queries :- [:sequential ::lib.schema/query]
@@ -310,10 +311,9 @@
          all-field-table-ids (when (seq queries)
                                (->> (lib.metadata/bulk-metadata (first queries) :metadata/column all-field-ids*)
                                     (into #{} (keep :table-id))))
-         implicitly-joinable-table-ids* (if (and include-implicitly-joinable? (seq queries))
-                                          (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids)
-                                          #{})]
-     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids implicitly-joinable-table-ids*)
+         implicitly-joinable-table-ids (when (and include-implicitly-joinable? (seq queries))
+                                         (implicitly-joinable-table-ids (first queries) source-table-ids all-card-ids))]
+     {:table (set/union source-table-ids all-field-table-ids template-tag-table-ids implicitly-joinable-table-ids)
       :card all-card-ids
       :metric metric-ids
       :measure measure-ids

@@ -370,12 +370,18 @@
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
-(defn- fetch-compatible-series*
+(mu/defn- fetch-compatible-series* :- [:sequential :map]
   "Implementation of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card {:keys [query last-cursor page-size exclude-ids] :as _options}]
+  [card    :- :map
+   {:keys [query last-cursor page-size exclude-ids] :as _options}
+   :- [:map {:closed true}
+       [:query       {:optional true} [:maybe ms/NonBlankString]]
+       [:last-cursor {:optional true} [:maybe ms/PositiveInt]]
+       [:page-size   {:optional true} [:maybe ms/PositiveInt]]
+       [:exclude-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
   (let [matching-cards  (t2/select :model/Card
                                    :archived false
                                    :display [:in supported-series-display-type]

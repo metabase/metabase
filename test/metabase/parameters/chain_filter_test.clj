@@ -1066,7 +1066,7 @@
     {:first  (t2/with-call-count [call-count] (#'chain-filter/chain-filter-mbql-query field-id constraints nil) (call-count))
      :second (t2/with-call-count [call-count] (#'chain-filter/chain-filter-mbql-query field-id constraints nil) (call-count))}))
 
-(deftest chain-filter-mbql-query-no-constraints-test
+(deftest ^:parallel chain-filter-mbql-query-no-constraints-test
   (mt/dataset test-data
     (mt/$ids
       (let [{:keys [first second]} (chain-filter-mbql-query-call-counts %venues.name [])]
@@ -1077,7 +1077,7 @@
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
-(deftest chain-filter-mbql-query-one-constraint-test
+(deftest ^:parallel chain-filter-mbql-query-one-constraint-test
   (mt/dataset test-data
     (mt/$ids
       ;; a constraint on the source Table does not add a join
@@ -1090,7 +1090,7 @@
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
-(deftest chain-filter-mbql-query-three-constraints-test
+(deftest ^:parallel chain-filter-mbql-query-three-constraints-test
   (mt/dataset test-data
     (mt/$ids
       (let [{:keys [first second]} (chain-filter-mbql-query-call-counts
@@ -1107,7 +1107,7 @@
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
-(deftest chain-filter-mbql-query-one-join-test
+(deftest ^:parallel chain-filter-mbql-query-one-join-test
   (mt/dataset test-data
     (mt/$ids
       ;; a constraint on another Table (categories) forces a venues -> categories join
@@ -1122,7 +1122,7 @@
         (testing "a second build reuses the cached metadata and makes no app-DB calls"
           (is (= 0 second)))))))
 
-(deftest chain-filter-mbql-query-multi-hop-joins-test
+(deftest ^:parallel chain-filter-mbql-query-multi-hop-joins-test
   (mt/dataset airports
     (mt/$ids
       ;; airport -> municipality -> region is two joins
