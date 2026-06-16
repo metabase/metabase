@@ -378,6 +378,11 @@ function assertNoDatabaseSelected() {
 }
 
 function selectDatabase(database) {
+  // The picker popover auto-opens and fetches the database list, which flips the
+  // dropdown through a loading -> loaded re-render (and a floating-ui reposition).
+  // Wait for the option to settle, then re-query the popover for the click so a
+  // mid-load re-render can't detach the node we're about to click.
+  H.popover().findByText(database).should("be.visible");
   H.popover().findByText(database).click();
   cy.findByTestId("selected-database").should("have.text", database);
 }
