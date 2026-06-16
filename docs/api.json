@@ -11339,7 +11339,7 @@
       "metabase.lib.schema.validate.source-entity-type" : {
         "description" : "The type of the source entity causing an error.",
         "type" : "string",
-        "enum" : [ "table", "card" ]
+        "enum" : [ "table", "card", "transform" ]
       },
       "metabase.lib.schema.validate.validate-error-type" : {
         "type" : "string",
@@ -46194,6 +46194,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -46409,6 +46412,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -46416,6 +46422,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {
@@ -46529,6 +46538,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_read" : {
+                      "type" : "boolean"
                     },
                     "source_type" : {
                       "type" : "string"
@@ -46745,6 +46757,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -46752,6 +46767,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -48681,6 +48699,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -48896,6 +48917,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -48903,6 +48927,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -49025,6 +49052,9 @@
                         "type" : "null"
                       } ]
                     },
+                    "can_read" : {
+                      "type" : "boolean"
+                    },
                     "source_type" : {
                       "type" : "string"
                     },
@@ -49240,6 +49270,9 @@
                         "minimum" : 1
                       }
                     },
+                    "can_write" : {
+                      "type" : "boolean"
+                    },
                     "collection_id" : {
                       "oneOf" : [ {
                         "type" : "integer",
@@ -49247,6 +49280,9 @@
                       }, {
                         "type" : "null"
                       } ]
+                    },
+                    "can_execute" : {
+                      "type" : "boolean"
                     },
                     "source" : { },
                     "last_checkpoint_value" : {
@@ -49506,6 +49542,9 @@
                           "type" : "null"
                         } ]
                       },
+                      "can_read" : {
+                        "type" : "boolean"
+                      },
                       "source_type" : {
                         "type" : "string"
                       },
@@ -49721,6 +49760,9 @@
                           "minimum" : 1
                         }
                       },
+                      "can_write" : {
+                        "type" : "boolean"
+                      },
                       "collection_id" : {
                         "oneOf" : [ {
                           "type" : "integer",
@@ -49728,6 +49770,9 @@
                         }, {
                           "type" : "null"
                         } ]
+                      },
+                      "can_execute" : {
+                        "type" : "boolean"
                       },
                       "source" : { },
                       "last_checkpoint_value" : {
