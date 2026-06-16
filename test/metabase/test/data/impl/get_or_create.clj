@@ -444,7 +444,7 @@
   (try
     (load-dataset-data-if-needed! driver database-definition)
     (create-and-sync-Database! driver database-definition)
-    (catch Throwable e
+    #_(catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
       (throw e))))

@@ -339,20 +339,20 @@
               (recur (dec num-retries))
               (throw e))))))))
 
-(defn delete-old-datasets!
-  []
+(defn delete-old-datasets! []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets`"
+                           " WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 hour))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -14 day))")
                       (project-id)
                       (project-id)
                       (project-id))]
     (doseq [outdated (map first all-outdated)]
-      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (log/info (u/format-color 'blue "Deleting temporary dataset: %s`." outdated))
       (destroy-dataset! outdated))))
 
 ;;; ---------------------- Workspace isolation orphan cleanup ----------------------
@@ -529,7 +529,7 @@
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [driver {:keys [database-name table-definitions options] :as db-def} & _]
   {:pre [(seq database-name) (sequential? table-definitions)]}
-  (delete-old-datasets-if-needed!)
+  ;; (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
     (if (database-exists?! db-def)
       (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
