@@ -527,6 +527,40 @@ describe("scenarios > dashboard > subscriptions", () => {
         expect(email.html).to.include(questionDetails.name);
       });
     });
+
+    it("renders a region (choropleth) map as an image in a subscription email", () => {
+      const questionDetails = {
+        name: "Region map static-viz smoke",
+        native: {
+          query:
+            "SELECT 'CA' AS state, 99999 AS metric " +
+            "UNION ALL SELECT 'NY' AS state, 11111 AS metric",
+        },
+        display: "map",
+        visualization_settings: {
+          "map.type": "region",
+          "map.region": "us_states",
+          "map.dimension": "STATE",
+          "map.metric": "METRIC",
+        },
+      };
+
+      H.createNativeQuestionAndDashboard({ questionDetails }).then(
+        ({ dashboardId }) => {
+          assignRecipient({ dashboard_id: dashboardId });
+        },
+      );
+
+      H.sendEmailAndAssert(({ html }) => {
+        expect(html).not.to.include(
+          "An error occurred while displaying this card.",
+        );
+        // The map rasterizes to a PNG <img>; a table fallback would instead leak these values as text.
+        expect(html).to.include("<img");
+        expect(html).not.to.include("99999");
+        expect(html).not.to.include("11111");
+      });
+    });
   });
 
   describe("with Slack set up", () => {
