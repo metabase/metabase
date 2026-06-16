@@ -136,6 +136,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
@@ -203,6 +204,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -286,6 +288,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -341,6 +344,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
@@ -390,6 +394,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
@@ -439,6 +444,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
@@ -489,6 +495,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-h2:
     needs: determine-driver-skips
@@ -520,6 +527,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-h2-oss:
     needs: determine-driver-skips
@@ -552,6 +560,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
@@ -683,6 +692,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -764,6 +774,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -847,6 +858,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
@@ -893,6 +905,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -979,6 +992,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-postgres:
     needs: determine-driver-skips
@@ -1084,6 +1098,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+          quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
       - name: Cleanup python-runner
         if: always()
         uses: ./.github/actions/cleanup-python-runner
@@ -1172,6 +1187,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
@@ -1257,6 +1273,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1340,6 +1357,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1393,6 +1411,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
@@ -1435,6 +1454,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   be-tests-sqlserver:
     needs: determine-driver-skips
@@ -1512,6 +1532,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
     - name: Cleanup python-runner
       if: ${{ always() && matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/cleanup-python-runner
@@ -1639,6 +1660,7 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
         previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
+        quarantine-skipped: ${{ steps.test-driver.outputs.quarantine-skipped }}
 
   drivers-tests-result:
     needs:

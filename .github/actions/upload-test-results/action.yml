@@ -23,17 +23,25 @@ inputs:
     default: ""
   previous-step-outcome:
     required: true
+  quarantine-skipped:
+    required: false
+    default: ""
+    description: >-
+      Set to 'true' when the driver was skipped via the ci-test-config ignored list,
+      so this action becomes a no-op (no JUnit XMLs exist to upload).
 
 runs:
   using: "composite"
   steps:
     - name: Configure AWS credentials
+      if: inputs.quarantine-skipped != 'true'
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ inputs.aws-access-key-id }}
         aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
         aws-region: ${{ inputs.aws-region }}
     - name: zip test results
+      if: inputs.quarantine-skipped != 'true'
       env:
         INPUT_DIR: ${{ inputs.input-path }}
         OUTPUT_FILE: ${{ inputs.output-name }}
@@ -41,6 +49,7 @@ runs:
       run: | # sh
         zip ${OUTPUT_FILE}.zip $INPUT_DIR/*.xml
     - name: Upload test results to S3
+      if: inputs.quarantine-skipped != 'true'
       env:
         BUCKET: ${{ inputs.bucket }}
         OUTPUT_FILE: ${{ inputs.output-name }}
@@ -53,7 +62,7 @@ runs:
       # Important!
       # 1. This step must always run because it controls job's exit code.
       # 2. There's no point in running this outside the organization
-      if: always() && github.repository_owner == 'metabase'
+      if: always() && github.repository_owner == 'metabase' && inputs.quarantine-skipped != 'true'
       uses: trunk-io/analytics-uploader@main
       env:
         TRUNK_REPO_URL: git@github.com:metabase/metabase.git
