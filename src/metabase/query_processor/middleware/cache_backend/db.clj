@@ -73,8 +73,10 @@
 
 (def ^:private lease-free-sentinel
   "Substituted (via COALESCE) for a NULL `refresh_started_at` so that 'no refresh in progress' counts as a free lease.
-  Any timestamp older than every realistic lease cutoff works."
-  (t/offset-date-time "1970-01-01T00:00Z"))
+  Any timestamp older than every realistic lease cutoff works, but it must stay inside MySQL's `TIMESTAMP` range
+  (>= 1970-01-01 00:00:01 UTC): the epoch itself underflows that range (worse once shifted by a non-UTC session zone),
+  making the comparison evaluate to NULL so no process ever wins the lease."
+  (t/offset-date-time "2000-01-01T00:00Z"))
 
 (defn try-acquire-refresh-lease!
   "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`, via a conditional
