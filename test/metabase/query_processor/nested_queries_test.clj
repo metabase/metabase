@@ -1510,8 +1510,7 @@
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
                                                   (format (str "SELECT \"__mb_source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) AS \"__mb_source\" "
-                                                               "LIMIT 1048575")
+                                                               "FROM (%s) AS \"__mb_source\"")
                                                           s)))
                        (qp.compile/compile q2))))
               (is (= [[543]]
