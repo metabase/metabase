@@ -6,7 +6,7 @@ import { mainReducers } from "metabase/reducers-main";
 import { reducer as entitiesReducer } from "metabase/redux/entities";
 import type { State } from "metabase/redux/store";
 // Re-exported from the test-support tier so specs can build a main-app store
-// without importing `metabase/reducers-main` (app tier) directly, which would
+// without importing `metabase/reducers-main` directly, which would
 // cross module boundaries. The test-support tier is exempt from those rules.
 
 export { mainReducers };

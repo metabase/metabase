@@ -1,7 +1,6 @@
-// Exercises the multi-series settings UI (ChartNestedSettingSeries). It lives
-// here, next to DashboardChartSettings, because that widget is only shown in
-// dashboard context (getHidden when !isDashboard), so it can only be rendered
-// through DashboardChartSettings.
+// Exercises the multi-series settings UI (ChartNestedSettingSeries)
+// It lives here because widget is only shown in dashboard context
+// so it can only be rendered through DashboardChartSettings.
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";

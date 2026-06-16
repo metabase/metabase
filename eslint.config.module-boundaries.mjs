@@ -33,8 +33,7 @@ const alwaysPassingRule = {
 };
 
 // Resolve any rule name to the always-passing stub, so eslint-disable
-// directives referencing rules from plugins we don't load here don't error
-// with "Definition for rule ... was not found".
+// directives don't error with "Definition for rule ... was not found".
 const alwaysPassingPlugin = {
   rules: new Proxy(
     {},
