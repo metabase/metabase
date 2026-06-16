@@ -559,28 +559,14 @@
 
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
-(defn target-indexes
-  "The indexes declared on a transform `target`, normalized into the structured shape drivers expect. They are
-  stored on the target JSON, so keyword-valued fields (`:kind`, `:style`, `:type`, and each column's `:direction`)
-  come back as strings and must be re-keywordized before a driver can dispatch on them. This is the single
-  declared-indexes read used at every creation seam; it becomes a `metabase_index_request` read later."
-  [target]
-  (mapv (fn [index]
-          (cond-> index
-            (:kind index)    (update :kind keyword)
-            (:style index)   (update :style keyword)
-            (:type index)    (update :type keyword)
-            (:columns index) (update :columns (fn [cols]
-                                                (mapv #(cond-> % (:direction %) (update :direction keyword)) cols)))))
-        (:indexes target)))
-
 (defn- apply-standalone-indexes!
   "Create the target table's `:standalone` indexes as separate DDL statements, now that the table exists. Each
   driver's `supported-index-methods` decides which index kinds it applies this way; `:inline` kinds (and inline-only
   drivers) render inside the table-creation statement and are skipped here, so passing the full index list is safe.
-  Runs synchronously and is required, not best-effort: a failure here propagates and fails the run."
+  Reads the indexes hydrated onto the target by `metabase.transforms.execute/execute!`. Runs synchronously and is
+  required, not best-effort: a failure here propagates and fails the run."
   [database target]
-  (when-let [indexes (not-empty (target-indexes target))]
+  (when-let [indexes (not-empty (:indexes target))]
     (let [driver     (:engine database)
           methods    (driver/supported-index-methods driver database)
           standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]

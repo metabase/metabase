@@ -112,26 +112,30 @@
    :body            "def transform(transforms_products):\n    return transforms_products"})
 
 (defn- test-declared-indexes!
-  "Shared body for both transform kinds: declare the driver's `:indexes` on a fresh target, run a transform whose
-  source is built by the 0-arg `make-source`, and assert `:physical-indexes` reads `:expected` back from the
-  catalog. Runs twice to prove the indexes survive a full rebuild."
+  "Shared body for both transform kinds: run a transform whose source is built by the 0-arg `make-source` with the
+  driver's `:indexes` hydrated onto its target, and assert `:physical-indexes` reads `:expected` back from the
+  catalog. Runs twice to prove the indexes survive a full rebuild.
+
+  Indexes reach the run via `execute!`'s hydration seam, not the target JSON. The `metabase_index_request` store
+  doesn't exist yet, so stub the hydration read to inject this case's indexes; the next PR swaps the stub for the
+  real read and seeds rows instead."
   [{:keys [indexes expected physical-indexes]} make-source]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     (with-transform-cleanup! [{table-name :name :as target}
-                              {:type    "table"
-                               :schema  schema
-                               :name    "idx_products"
-                               :indexes indexes}]
+                              {:type   "table"
+                               :schema schema
+                               :name   "idx_products"}]
       (mt/with-temp [:model/Transform transform {:name   "index-transform"
                                                  :source (make-source)
                                                  :target target}]
-        (testing "a full run applies the declared indexes to the physical table"
-          (transforms.execute/execute! transform {:run-method :manual})
-          (transforms.tu/wait-for-table table-name 10000)
-          (is (= expected (physical-indexes (mt/db) schema table-name))))
-        (testing "a re-run rebuilds the table and the indexes come back with it"
-          (transforms.execute/execute! transform {:run-method :manual})
-          (is (= expected (physical-indexes (mt/db) schema table-name))))))))
+        (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
+          (testing "a full run applies the declared indexes to the physical table"
+            (transforms.execute/execute! transform {:run-method :manual})
+            (transforms.tu/wait-for-table table-name 10000)
+            (is (= expected (physical-indexes (mt/db) schema table-name))))
+          (testing "a re-run rebuilds the table and the indexes come back with it"
+            (transforms.execute/execute! transform {:run-method :manual})
+            (is (= expected (physical-indexes (mt/db) schema table-name)))))))))
 
 (deftest ^:synchronized declared-indexes-applied-and-replayed-test
   (mt/test-drivers (index-test-drivers)

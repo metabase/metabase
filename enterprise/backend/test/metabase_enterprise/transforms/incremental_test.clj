@@ -694,20 +694,21 @@
       (mt/with-premium-features #{:transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [checkpoint-config (:integer checkpoint-configs)
-                indexed-target    (assoc (target-table-gen "incremental_index")
-                                         :indexes [{:kind :btree :name "incr_by_category" :columns [{:name "category"}]}])]
-            (with-transform-cleanup! [target indexed-target]
+                ;; Indexes reach the run via `execute!`'s hydration seam (stubbed until the index-request model lands).
+                indexes           [{:kind :btree :name "incr_by_category" :columns [{:name "category"}]}]]
+            (with-transform-cleanup! [target (target-table-gen "incremental_index")]
               (let [payload (make-incremental-transform-payload "Incremental Index Transform" target :mbql checkpoint-config)
                     schema  (:schema target)
                     table   (:name target)]
                 (mt/with-temp [:model/Transform transform payload]
-                  (testing "first (full) run creates the declared btree"
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (transforms.tu/wait-for-table table 10000)
-                    (is (contains? (pg-index-names schema table) "incr_by_category")))
-                  (testing "append run preserves the btree without re-creating it"
-                    (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
-                                                  :price 379.99 :created-at "2024-01-20T10:00:00"}]
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
-                        (transforms.execute/execute! transform {:run-method :manual})
-                        (is (contains? (pg-index-names schema table) "incr_by_category"))))))))))))))
+                  (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
+                    (testing "first (full) run creates the declared btree"
+                      (transforms.execute/execute! transform {:run-method :manual})
+                      (transforms.tu/wait-for-table table 10000)
+                      (is (contains? (pg-index-names schema table) "incr_by_category")))
+                    (testing "append run preserves the btree without re-creating it"
+                      (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
+                                                    :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                        (let [transform (t2/select-one :model/Transform (:id transform))]
+                          (transforms.execute/execute! transform {:run-method :manual})
+                          (is (contains? (pg-index-names schema table) "incr_by_category")))))))))))))))

@@ -184,7 +184,7 @@
         (do
           (log/info "New table")
           (create-table-and-insert-data! driver db-id
-                                         (table-schema table-name metadata (transforms-base.u/target-indexes target))
+                                         (table-schema table-name metadata (:indexes target))
                                          data-source))
         ;; Append into an existing table: no create, so no inline indexes to apply.
         (insert-data! driver db-id (table-schema table-name metadata nil) data-source)))))
@@ -195,7 +195,7 @@
    metadata temp-file]
   (let [table-name (transforms-base.u/qualified-table-name driver target)
         table-exists? (transforms-base.u/target-table-exists? transform)
-        indexes (transforms-base.u/target-indexes target)
+        indexes (:indexes target)
         data-source {:type :jsonl-file
                      :file temp-file}]
     (cond
