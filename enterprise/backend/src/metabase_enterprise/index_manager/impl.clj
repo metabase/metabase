@@ -1,11 +1,11 @@
-(ns metabase-enterprise.index-manager.core
+(ns metabase-enterprise.index-manager.impl
   "Service layer for managed index requests: create / update / delete / read, with the GDGT-2602 ownership rule that
   a request may only target a Metabase-owned transform output (enforced by requiring an existing `:transform_id`).
 
   HTTP concerns (auth, request shape) live in [[metabase-enterprise.index-manager.api]]; this namespace is the
   testable surface and the seam the run-path will read from later."
   (:require
-   [metabase-enterprise.index-manager.models :as models]
+   [metabase-enterprise.index-manager.schema :as schema]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -29,7 +29,7 @@
   "Create a `:pending` index request binding `structured` to `transform-id`. Returns the inserted instance."
   [transform-id structured & {:keys [created-by]}]
   (check-transform-exists! transform-id)
-  (let [structured (models/validate-structured! structured)]
+  (let [structured (schema/validate-structured! structured)]
     (t2/insert-returning-instance! :model/IndexRequest
                                    {:transform_id transform-id
                                     :index_name   (index-name structured)
@@ -42,7 +42,7 @@
   instance, or nil if no such request."
   [id structured]
   (when (t2/exists? :model/IndexRequest :id id)
-    (let [structured (models/validate-structured! structured)]
+    (let [structured (schema/validate-structured! structured)]
       (t2/update! :model/IndexRequest id {:structured    structured
                                           :index_name    (index-name structured)
                                           :status        :pending

@@ -3166,7 +3166,6 @@
   enterprise/index-manager
   {:team "Gadget"
    :api  #{metabase-enterprise.index-manager.api
-           metabase-enterprise.index-manager.core
            metabase-enterprise.index-manager.init}
    :uses #{api
            models
