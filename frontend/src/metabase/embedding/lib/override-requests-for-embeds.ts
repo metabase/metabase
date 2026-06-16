@@ -1,11 +1,8 @@
 import { sessionPropertiesPath } from "metabase/api";
 import { type RequestMethod, api } from "metabase/api/client";
 import { isEmbedPreview } from "metabase/embedding/config";
-import {
-  PLUGIN_API,
-  PLUGIN_CONTENT_TRANSLATION,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 

@@ -12,11 +12,9 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/embedding/sdk-plugin";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
-import {
-  PLUGIN_EMBEDDING_IFRAME_SDK,
-  PLUGIN_EMBEDDING_SDK,
-} from "metabase/plugins";
+import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
