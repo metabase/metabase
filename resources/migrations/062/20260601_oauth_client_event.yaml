@@ -1,11 +1,22 @@
 ## Append-only audit trail for the OAuth dynamic client registration (DCR) lifecycle.
 ## One row is recorded when a client registers, and one row per approve/deny decision.
+##
+## Backport from v63 (migrations/063/20260601_oauth_client_event.yaml). Each changeset is
+## guarded with a MARK_RAN precondition against its v63 counterpart so a v63 -> v62 downgrade
+## (where the v63 changeset already created the object) skips instead of failing.
 
 databaseChangeLog:
   - changeSet:
       id: v62.k7m2qd
       author: bshepherdson
       comment: Create oauth_client_event table to audit DCR registration and decision events
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.k7m2qd
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
       changes:
         - createTable:
             tableName: oauth_client_event
@@ -49,6 +60,13 @@ databaseChangeLog:
       id: v62.r9w4xb
       author: bshepherdson
       comment: Add index on oauth_client_event.oauth_client_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.r9w4xb
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
       changes:
         - createIndex:
             tableName: oauth_client_event
@@ -61,6 +79,13 @@ databaseChangeLog:
       id: v62.x2d7kq
       author: bshepherdson
       comment: Add index on oauth_client_event.user_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.x2d7kq
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
       changes:
         - createIndex:
             tableName: oauth_client_event
@@ -73,6 +98,13 @@ databaseChangeLog:
       id: v62.t3z8np
       author: bshepherdson
       comment: Add FK on oauth_client_event.oauth_client_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.t3z8np
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
       changes:
         - addForeignKeyConstraint:
             baseTableName: oauth_client_event
@@ -86,6 +118,13 @@ databaseChangeLog:
       id: v62.h5c1vj
       author: bshepherdson
       comment: Add FK on oauth_client_event.user_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v63.h5c1vj
+              author: bshepherdson
+              changeLogFile: migrations/063/20260601_oauth_client_event.yaml
       changes:
         - addForeignKeyConstraint:
             baseTableName: oauth_client_event
