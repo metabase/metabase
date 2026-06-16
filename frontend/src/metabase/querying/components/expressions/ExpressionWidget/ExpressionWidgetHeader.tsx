@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
-import { Flex } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
@@ -22,8 +21,8 @@ export const ExpressionWidgetHeader = ({
     <Flex className={ExpressionWidgetHeaderS.Header}>
       <Button
         className={ExpressionWidgetHeaderS.HeaderButton}
-        icon={onBack ? "chevronleft" : undefined}
-        onlyText
+        variant="subtle"
+        leftSection={onBack ? <Icon name="chevronleft" /> : undefined}
         onClick={onBack}
         disabled={!onBack}
       >

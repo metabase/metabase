@@ -149,7 +149,9 @@ describe(
 
       cy.findByRole("listitem", { name: "Delete Order" }).should("not.exist");
 
-      cy.findByLabelText("Actions menu").click();
+      cy.findByTestId("model-actions-header")
+        .findByLabelText("Actions")
+        .click();
       H.popover().findByText("Disable basic actions").click();
       H.modal().within(() => {
         cy.findByText("Disable basic actions?").should("be.visible");

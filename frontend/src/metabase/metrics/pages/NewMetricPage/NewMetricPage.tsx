@@ -8,6 +8,7 @@ import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import type { MetricUrls } from "metabase/common/metrics/types";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import {
   PaneHeader,
@@ -25,7 +26,6 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type { Card as CardApiType } from "metabase-types/api";
 
-import type { MetricUrls } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 
