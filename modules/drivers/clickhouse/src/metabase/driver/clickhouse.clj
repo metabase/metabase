@@ -286,6 +286,14 @@
   [opts]
   (format "ORDER BY (%s)" (str/join ", " (map quote-name (order-by-columns opts)))))
 
+(defn- allow-nullable-key-setting
+  "The `allow_nullable_key = 1` MergeTree setting, or nil when the table has no sorting key. Transform target columns
+  are nullable (the Python path marks every column nullable; a CTAS inherits the source's nullability), and MergeTree
+  rejects a nullable sorting key unless this is set. So any target with an ORDER BY needs it."
+  [opts]
+  (when (seq (order-by-columns opts))
+    "allow_nullable_key = 1"))
+
 (defn- skip-index-type-sql
   [type type-args]
   (if (seq type-args)
@@ -312,8 +320,10 @@
             [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
              "ENGINE = MergeTree"
              (order-by-clause opts)
-             ;; disable insert idempotency to allow duplicate inserts
-             "SETTINGS replicated_deduplication_window = 0"]))
+             ;; disable insert idempotency to allow duplicate inserts; permit a nullable sorting key (see
+             ;; `allow-nullable-key-setting`).
+             (str "SETTINGS replicated_deduplication_window = 0"
+                  (when-let [s (allow-nullable-key-setting opts)] (str ", " s)))]))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:as opts}]
@@ -419,11 +429,14 @@
   [driver {:keys [query output-table indexes]}]
   (let [{sql-query :query sql-params :params} query
         ;; MergeTree requires an ORDER BY. With an inline `:order-by` index we use its columns as the sorting key;
-        ;; otherwise it stays the empty tuple `ORDER BY ()` (an unsorted table).
-        pieces [(sql.qp/format-honeysql driver {:create-table output-table})
-                (sql.qp/format-honeysql driver {:raw (order-by-clause {:indexes indexes})})
-                ["AS"]
-                [sql-query sql-params]]
+        ;; otherwise it stays the empty tuple `ORDER BY ()` (an unsorted table). A sorting key needs
+        ;; `allow_nullable_key` (see `allow-nullable-key-setting`); the SETTINGS clause goes before `AS SELECT`.
+        settings (when-let [s (allow-nullable-key-setting {:indexes indexes})]
+                   (sql.qp/format-honeysql driver {:raw (str "SETTINGS " s)}))
+        pieces (cond-> [(sql.qp/format-honeysql driver {:create-table output-table})
+                        (sql.qp/format-honeysql driver {:raw (order-by-clause {:indexes indexes})})]
+                 settings (conj settings)
+                 :always  (conj ["AS"] [sql-query sql-params]))
         sql (str/join " " (map first pieces))]
     (into [sql] (mapcat rest) pieces)))
 
