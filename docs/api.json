@@ -39335,6 +39335,82 @@
         "tags" : [ "/api/notify" ]
       }
     },
+    "/api/oauth/authorizations" : {
+      "get" : {
+        "operationId" : "get-api-oauth-authorizations",
+        "summary" : "GET /api/oauth/authorizations",
+        "description" : "List OAuth dynamic client registration events (registered, approved, or denied), newest first.\n   Joins client info and, for decision events, the deciding user. Superuser only.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "client-id",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "event-type",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "registered", "approved", "denied" ]
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "data" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "object",
+                        "properties" : { }
+                      }
+                    },
+                    "limit" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "offset" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    },
+                    "total" : {
+                      "description" : "value must be an integer greater or equal to than zero.",
+                      "type" : "integer",
+                      "minimum" : 0
+                    }
+                  },
+                  "required" : [ "total", "limit", "offset", "data" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/oauth" ]
+      }
+    },
     "/api/permissions/graph" : {
       "get" : {
         "operationId" : "get-api-permissions-graph",
