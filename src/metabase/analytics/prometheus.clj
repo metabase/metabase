@@ -15,6 +15,7 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.analytics.memoize-monitor :as memoize-monitor]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -209,6 +210,12 @@
          (collect
            ([] (run-all!))
            ([_sampleNameFilter] (run-all!))))))))
+
+(defmethod pull-collector ::memoize-cache-sizes [_]
+  {:min-interval-s 60
+   :f (fn []
+        (doseq [[cache-name n] (memoize-monitor/cache-sizes)]
+          (analytics.interface/set-gauge! :metabase-memoize/cache-size {:cache cache-name} n)))})
 
 (defn- jvm-collectors
   "JVM collectors. Essentially duplicating [[iapetos.collector.jvm]] namespace so we can set our own namespaces rather
@@ -773,7 +780,11 @@
    ;; metaplow analytics metrics
    (prometheus/counter :metabase-metaplow/errors
                        {:description "Metaplow event pipeline errors by stage."
-                        :labels [:stage]})])
+                        :labels [:stage]})
+   ;; memoization cache sizes (see metabase.util.memoize.monitor)
+   (prometheus/gauge :metabase-memoize/cache-size
+                     {:description "Number of entries currently held in a monitored in-memory memoization cache."
+                      :labels [:cache]})])
 
 (defn- quartz-collectors
   []
