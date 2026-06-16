@@ -564,7 +564,10 @@
   driver's `supported-index-methods` decides which index kinds it applies this way; `:inline` kinds (and inline-only
   drivers) render inside the table-creation statement and are skipped here, so passing the full index list is safe.
   Reads the indexes hydrated onto the target by `metabase.transforms.execute/execute!`. Runs synchronously and is
-  required, not best-effort: a failure here propagates and fails the run."
+  required, not best-effort: a failure here propagates and fails the run.
+
+  Each create is emitted with `:if-not-exists` so a rebuild that finds the index already there is a no-op rather
+  than an error."
   [database target]
   (when-let [indexes (not-empty (:indexes target))]
     (let [driver     (:engine database)
@@ -576,7 +579,22 @@
               table     (:name target)]
           (doseq [index standalone]
             (driver/execute-raw-queries! driver conn-spec
-                                         (driver/compile-create-index driver schema table index))))))))
+                                         (driver/compile-create-index driver schema table
+                                                                      (assoc index :if-not-exists true)))))))))
+
+(defn apply-target-indexes!
+  "Create the target table's standalone indexes, on full-create runs only: a full `:table` run recreates the table
+  (so indexes must be reinstalled), as does a first/full-reset incremental run. Plain append runs preserve the
+  existing table and its live indexes, so they skip this. No-op for inline-only drivers/kinds, or a target with no
+  declared indexes.
+
+  Called inside the run's cancelable scope, *before* the run is marked succeeded and before the target is synced, so
+  a failure fails the run record (not just the `execute!` call) and the synced metadata sees the indexes."
+  [transform]
+  (when (or (= :table (keyword (:type (:target transform))))
+            (full-incremental-run? transform))
+    (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
+      (apply-standalone-indexes! database (:target transform)))))
 
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
@@ -585,24 +603,17 @@
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
-   - Create/drop secondary indexes
 
    This is called after the core execution completes. Callers that use
    `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
-   to preserve the correct order of operations."
+   to preserve the correct order of operations. Standalone indexes are applied earlier, by
+   `apply-target-indexes!`, so a failure there can still fail the run."
   [transform opts]
   (let [{:keys [target]} transform
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
-    ;; Apply standalone indexes once the table exists, before sync so the synced metadata sees them. Only on
-    ;; full-create runs: a full `:table` run recreates the table (so indexes must be reinstalled), as does a
-    ;; first/full-reset incremental run. Plain append runs preserve the existing table and its live indexes, so they
-    ;; skip this. No-op for inline-only drivers/kinds.
-    (when (or (= :table (keyword (:type target)))
-              (full-incremental-run? transform))
-      (apply-standalone-indexes! database target))
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when-let [table (sync-target! target database)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
