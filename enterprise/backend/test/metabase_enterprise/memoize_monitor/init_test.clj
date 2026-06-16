@@ -1,11 +1,13 @@
 (ns metabase-enterprise.memoize-monitor.init-test
   (:require
+   [clj-memory-meter.core :as mm]
    [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.memoize-monitor.init :as memoize-monitor]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,6 +48,41 @@
           ;; bytes is nil only if the agent couldn't attach; when present it's a positive count
           (is (or (nil? bytes) (and (integer? bytes) (pos? bytes))) (str cache " bytes")))))))
 
+(defn- big-complex-cache
+  "A clojure.core.memoize cache populated with `n` entries whose keys and values resemble real cached data:
+  map/vector keys (field/query refs) and nested map+string+vector values."
+  [n]
+  (let [f (memoize/memo
+           (fn [field-ref opts]
+             {:field-ref      field-ref
+              :options        opts
+              :display-name   (str "Column " (second field-ref))
+              :effective-type :type/Text
+              :fingerprint    {:global {:distinct-count (* 7 (second field-ref))}
+                               :type   {:type/Text {:percent-json 0.0
+                                                    :average-length 12.3}}}
+              :history        (vec (repeat 10 {:ts (str "2026-06-" (mod (second field-ref) 30))
+                                               :by  (str "user-" (second field-ref))}))}))]
+    (doseq [i (range n)]
+      (f [:field i {:base-type :type/Text, :join-alias (str "j_" i)}]
+         {:source-table i, :aggregation [[:count] [:sum [:field i nil]]], :breakout [[:field i nil]]}))
+    f))
+
+(deftest large-cache-measurement-cost-test
+  (testing "measuring a 1000-entry cache with complex keys/values"
+    (let [cache (#'memoize-monitor/cache-object (big-complex-cache 1000))]
+      (is (= 1000 (count cache)))
+      (if @#'memoize-monitor/memory-measurement-available?
+        (let [start-ns   (System/nanoTime)
+              bytes      (mm/measure cache :bytes true)
+              measure-ms (/ (- (System/nanoTime) start-ns) 1e6)]
+          (is (pos? bytes))
+          (is (and (number? measure-ms) (not (neg? measure-ms))))
+          ;; surface the cost: this is the per-cache penalty the monitor pays on each scrape
+          (log/infof "[memoize-monitor] 1000-entry complex cache: %,d bytes measured in %.2f ms"
+                     (long bytes) (double measure-ms)))
+        (log/info "[memoize-monitor] skipping byte-measurement cost test: JVM self-attach unavailable")))))
+
 (deftest pull-collector-emits-all-metrics-test
   (testing "the pull collector populates the entries, bytes, and measure-duration gauges at scrape time"
     (let [reporter (analytics.interface/get-reporter)]
@@ -56,7 +93,7 @@
               (#'prometheus/install-real-reporter!)
               ;; run the pull collector's refresh fn directly (avoids interop with the registry Collector)
               ((:f (prometheus/pull-collector ::memoize-monitor/memoize-cache-sizes)))
-              (let [cache "metabase.warehouse-schema.models.field/field-id->table-id"
+              (let [cache  "metabase.warehouse-schema.models.field/field-id->table-id"
                     labels {:cache cache}]
                 ;; gauges exist and were set (entries/measure-ms always; bytes when the agent attached)
                 (is (some? (mt/metric-value system :metabase-memoize/cache-size labels)))
