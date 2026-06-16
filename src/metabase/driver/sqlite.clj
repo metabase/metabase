@@ -44,7 +44,6 @@
           :display-name (tru "Filename")
           :placeholder  "/path/to/toucan_sightings.sqlite"
           :required     true}
-         driver.common/cloud-ip-address-info
          driver.common/advanced-options-start
          driver.common/default-advanced-options]))
 
