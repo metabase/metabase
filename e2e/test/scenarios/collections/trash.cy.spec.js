@@ -852,14 +852,14 @@ describe("scenarios > collections > trash", () => {
     cy.visit("/trash");
 
     toggleEllipsisMenuFor("Orders");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")
       .and("contain", "Delete permanently");
 
     toggleEllipsisMenuFor("Orders, Count");
-    cy.findAllByRole("dialog")
+    cy.findAllByRole("menu")
       .should("have.length", 1)
       .and("contain", "Move")
       .and("contain", "Restore")

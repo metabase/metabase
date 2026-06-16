@@ -1,15 +1,29 @@
 (ns metabase.llm.settings
-  "Settings for LLM integration (API keys, model defaults, provider configuration)."
+  "Settings for LLM integration (provider credentials, model defaults, provider configuration)."
   (:require
    [clojure.string :as str]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru tru]])
+  (:import
+   (software.amazon.awssdk.regions Region)))
+
+(set! *warn-on-reflection* true)
+
+(def known-aws-regions
+  "The set of AWS region ids known to the bundled AWS SDK, e.g. `\"us-east-1\"`.
+  Used to validate [[llm-bedrock-region]]."
+  (into #{} (map str) (Region/regions)))
 
 (defn- trimmed-string
   [value]
   (when (string? value)
     (not-empty (str/trim value))))
+
+(defn- set-trimmed-string!
+  "Set a string setting to the trimmed `new-value`; blank values are stored as nil."
+  [setting-key new-value]
+  (setting/set-value-of-type! :string setting-key (trimmed-string new-value)))
 
 (defn- set-prefixed-api-key!
   [setting-key prefix deferred-message new-value]
@@ -119,6 +133,58 @@
                              "sk-or-v1-"
                              (deferred-tru "Invalid OpenRouter API key format. Key must start with ''sk-or-v1-''."))
   :doc              false)
+
+;;; ----------------------------------------------- Amazon Bedrock ----------------------------------------------
+
+(defsetting llm-bedrock-access-key-id
+  (deferred-tru "The AWS Access Key ID for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-access-key-id))
+
+(defsetting llm-bedrock-secret-access-key
+  (deferred-tru "The AWS Secret Access Key for Amazon Bedrock.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-secret-access-key))
+
+(defsetting llm-bedrock-session-token
+  (deferred-tru "The AWS Session Token for Amazon Bedrock. Only needed for temporary credentials.")
+  :sensitive?  true
+  :visibility  :settings-manager
+  :export?     false
+  :doc         false
+  :setter      (partial set-trimmed-string! :llm-bedrock-session-token))
+
+(defn- set-bedrock-region!
+  [new-value]
+  (let [region (trimmed-string new-value)]
+    (when (and region (not (contains? known-aws-regions region)))
+      (throw (ex-info (tru "Invalid AWS region {0}." (pr-str region)) {:status-code 400})))
+    (setting/set-value-of-type! :string :llm-bedrock-region region)))
+
+(defsetting llm-bedrock-region
+  (deferred-tru "The AWS region for Amazon Bedrock (e.g. us-east-1).")
+  :encryption  :no
+  :visibility  :settings-manager
+  :default     "us-east-1"
+  :export?     false
+  :doc         false
+  :setter      set-bedrock-region!)
+
+(defsetting llm-bedrock-configured?
+  "Whether the required AWS Bedrock credentials are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :export?    false
+  :getter     #(boolean (and (trimmed-string (llm-bedrock-access-key-id))
+                             (trimmed-string (llm-bedrock-secret-access-key))))
+  :doc        false)
 
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 

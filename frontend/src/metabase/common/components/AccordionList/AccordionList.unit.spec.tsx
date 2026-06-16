@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { fireEvent, render, screen } from "__support__/ui";
-import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
+import { HoverCard } from "metabase/ui";
 
 import { AccordionList } from "./AccordionList";
 
@@ -160,9 +160,12 @@ describe("AccordionList", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
       const renderItemWrapper = (itemContent: ReactNode) => {
         return (
-          <TippyPopover content={<div>popover</div>}>
-            <div>{itemContent}</div>
-          </TippyPopover>
+          <HoverCard>
+            <HoverCard.Target>
+              <div>{itemContent}</div>
+            </HoverCard.Target>
+            <HoverCard.Dropdown>popover</HoverCard.Dropdown>
+          </HoverCard>
         );
       };
 

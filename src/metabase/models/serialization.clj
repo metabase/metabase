@@ -1084,7 +1084,7 @@
   [[*import-database-fk*]] is the inverse."
   [id]
   (when id
-    (t2/select-one-fn :name [:model/Database :id :name] :id id)))
+    (resolve/export-fk-keyed (export-resolver) id :model/Database :name)))
 
 (defn ^:dynamic *import-database-fk*
   "Given a portable database name, resolve it back to a numeric ID.
@@ -1101,9 +1101,7 @@
   [[*import-table-fk*]] is the inverse."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id)
-          db-name                     (*export-database-fk* db_id)]
-      [db-name schema name])))
+    (resolve/export-table-fk (export-resolver) table-id)))
 
 (mu/defn ^:dynamic *import-table-fk*
   "Given a `table_id` as exported by [[*export-table-fk*]], resolve it back into a numeric `table_id`.
@@ -1176,6 +1174,13 @@
               [:= :name field]
               [:= :parent_id (recursively-find-field-q table-id rest)]]}))
 
+;; NOTE: field lookups are intentionally NOT routed through the cached resolver, unlike the
+;; database and table exporters above. Fields are unbounded in number (millions on large
+;; instances), and the dominant traffic — each field's own path during a data-model export —
+;; has no reuse, so a cache would retain an O(field-count) map for near-zero hits and can OOM
+;; the export. Export order can't be arranged around field-fk reuse either, so even a bounded
+;; cache has no reliable hit rate. If caching is ever added here (e.g. for the reuse-heavy
+;; FK-target refs), it MUST be bounded so no O(field-count) structure can blow up memory.
 (mu/defn ^:dynamic *export-field-fk*
   "Given a numeric `field_id`, return a portable field reference.
   That has the form `[db-name schema table-name field-name]`, where the `schema` might be nil.
