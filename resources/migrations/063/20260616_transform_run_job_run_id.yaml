@@ -1,0 +1,49 @@
+## Add job_run_id to transform_run to link each transform execution to its parent job run
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:00
+      author: bronsa
+      comment: Add job_run_id to transform_run to link each transform execution to its parent job run
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform_run
+                columnName: job_run_id
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: job_run_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: job_run_id
+
+  - changeSet:
+      id: v63.2026-06-16T00:00:01
+      author: bronsa
+      comment: Index transform_run on job_run_id for efficient drill-down queries
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: transform_run
+                indexName: idx_transform_run_job_run_id
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_job_run_id
+            columns:
+              - column:
+                  name: job_run_id
+      rollback:
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_job_run_id
