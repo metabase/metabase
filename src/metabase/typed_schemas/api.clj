@@ -160,6 +160,12 @@
   [v]
   (contains? #{true "true" "1"} v))
 
+(def ^:private library-data-entity-id
+  "librarylibrarydatadat")
+
+(def ^:private library-metrics-entity-id
+  "librarylibrarymetrics")
+
 (defn- query-database-value
   [query-params]
   (some-> (or (query-param query-params :database)
@@ -223,6 +229,16 @@
                                               :libraryCollections
                                               :collections]))
 
+(defn- query-include-data-library?
+  [query-params]
+  (truthy-query-param? (or (query-param query-params :include-data-library)
+                           (query-param query-params :includeDataLibrary))))
+
+(defn- query-include-metric-library?
+  [query-params]
+  (truthy-query-param? (or (query-param query-params :include-metric-library)
+                           (query-param query-params :includeMetricLibrary))))
+
 (defn- query-question-collection-values
   [query-params]
   (query-comma-separated-values query-params [:question-collections
@@ -244,9 +260,19 @@
            (filter mi/can-read?)
            first))))
 
-(defn- library-collection-for-id
-  [collection-id]
-  (->> (t2/select :model/Collection :id collection-id)
+(defn- library-collection-for-ref
+  [collection-value]
+  (let [collection-id (parse-id collection-value)]
+    (->> (if collection-id
+           (t2/select :model/Collection :id collection-id)
+           (t2/select :model/Collection :entity_id collection-value))
+         (filter #(contains? collection/library-collection-types (:type %)))
+         (filter mi/can-read?)
+         first)))
+
+(defn- library-collection-for-entity-id
+  [entity-id]
+  (->> (t2/select :model/Collection :entity_id entity-id)
        (filter #(contains? collection/library-collection-types (:type %)))
        (filter mi/can-read?)
        first))
@@ -296,9 +322,39 @@
   [collection-values]
   (when (seq collection-values)
     (let [collections (for [collection-value collection-values]
-                        (or (library-collection-for-id (parse-collection-id collection-value))
+                        (or (library-collection-for-ref collection-value)
                             (api/check-404 false)))]
       (library-collection-scope* collections))))
+
+(defn- included-library-root-collections
+  [query-params]
+  (keep (fn [[include? entity-id]]
+          (when include?
+            (or (library-collection-for-entity-id entity-id)
+                (api/check-404 false))))
+        [[(query-include-data-library? query-params) library-data-entity-id]
+         [(query-include-metric-library? query-params) library-metrics-entity-id]]))
+
+(defn- library-scope
+  [query-params]
+  (let [library-value             (query-library-value query-params)
+        library-collection-values (query-library-collection-values query-params)
+        included-roots            (included-library-root-collections query-params)
+        collection-scope          (cond
+                                    library-value
+                                    (library-collection-scope library-value)
+
+                                    library-collection-values
+                                    (library-collections-scope library-collection-values))]
+    (cond
+      (and collection-scope (seq included-roots))
+      (library-collection-scope* (concat (:library-collections collection-scope) included-roots))
+
+      (seq included-roots)
+      (library-collection-scope* included-roots)
+
+      :else
+      collection-scope)))
 
 (defn- select-cards
   ([card-type database-ids]
@@ -757,12 +813,17 @@
   (let [library-value              (query-library-value query-params)
         library-collection-values  (query-library-collection-values query-params)
         question-collection-values (query-question-collection-values query-params)
-        collection-scoped?         (or library-value library-collection-values question-collection-values)
+        include-library-root?      (or (query-include-data-library? query-params)
+                                       (query-include-metric-library? query-params))
+        collection-scoped?         (or library-value
+                                       library-collection-values
+                                       question-collection-values
+                                       include-library-root?)
         database-value             (query-database-value query-params)
         questions-only             (truthy-query-param? (query-param query-params :questions))]
     (api/check-400
-     (not (and library-value library-collection-values))
-     "The library and library-collections query parameters are mutually exclusive.")
+     (not (and library-value (or library-collection-values include-library-root?)))
+     "The library query parameter is mutually exclusive with library-collections, includeDataLibrary, and includeMetricLibrary.")
     (api/check-400
      (not (and collection-scoped? database-value))
      "Collection-scoped query parameters and database query parameters are mutually exclusive.")
@@ -789,6 +850,7 @@
   (let [library-value              (query-library-value query-params)
         library-collection-values  (query-library-collection-values query-params)
         question-collection-values (query-question-collection-values query-params)
+        library-scope              (library-scope query-params)
         database-ids               (database-ids-for-value (query-database-value query-params))
         question-collection-ids    (collection-scope question-collection-values)
         models                     (cond
@@ -802,14 +864,8 @@
                                      [])
         questions-only             (truthy-query-param? (query-param query-params :questions))]
     (cond
-      (or library-value library-collection-values question-collection-values)
-      (let [library-scope       (cond
-                                  library-value
-                                  (library-collection-scope library-value)
-
-                                  library-collection-values
-                                  (library-collections-scope library-collection-values))
-            questions           (if question-collection-values
+      (or library-value library-collection-values library-scope question-collection-values)
+      (let [questions           (if question-collection-values
                                   (question-schemas nil question-collection-ids)
                                   [])
             library-schema      (some-> library-scope
