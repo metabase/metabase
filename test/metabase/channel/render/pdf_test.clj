@@ -10,6 +10,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.channel.render.pdf :as pdf]
+   [metabase.channel.render.pdf.font :as font]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util.memoize :as memo])
   (:import
@@ -45,7 +46,7 @@
         (.addPage doc page)
         (let [cs (PDPageContentStream. doc page)
               md "[docs](https://metabase.com) [mail](mailto:a@b.com) [rel](/x) [js](javascript:1)"]
-          (binding [pdf/*fonts*      (#'pdf/load-fonts! doc)
+          (binding [font/*fonts*      (#'font/load-fonts! doc)
                     pdf/*link-rects* (atom [])]
             (#'pdf/draw-markdown-in-cell! doc cs 40.0 800.0 500.0 100.0 md)
             (.close cs)
@@ -85,7 +86,7 @@
 (deftest branding-badge-render-smoke-test
   (testing "draw-brand-badge! draws the localized prefix (body face) + SVG-vector logo into a saveable PDF"
     (with-open [doc (PDDocument.)]
-      (binding [pdf/*fonts* (#'pdf/load-fonts! doc)]
+      (binding [font/*fonts* (#'font/load-fonts! doc)]
         (let [page (PDPage. PDRectangle/A4)]
           (.addPage doc page)
           (with-open [cs (PDPageContentStream. doc page)]
@@ -252,17 +253,17 @@
 
 (deftest ^:parallel visual-order-test
   (testing "left-to-right text is returned unchanged (no bidi processing)"
-    (is (= "Hello, world 123" (#'pdf/visual-order "Hello, world 123")))
-    (is (= "" (#'pdf/visual-order "")))
-    (is (= "日本語" (#'pdf/visual-order "日本語"))))
+    (is (= "Hello, world 123" (#'font/visual-order "Hello, world 123")))
+    (is (= "" (#'font/visual-order "")))
+    (is (= "日本語" (#'font/visual-order "日本語"))))
   (testing "Hebrew (non-joining) is reordered logical->visual, i.e. reversed, so a left-to-right
             renderer draws it right-to-left; the letters themselves are unchanged"
     (let [shalom "שלום"]              ; שלום
-      (is (= (apply str (reverse shalom)) (#'pdf/visual-order shalom)))))
+      (is (= (apply str (reverse shalom)) (#'font/visual-order shalom)))))
   (testing "Arabic is shaped to positional presentation forms (Presentation-Forms-B / -A) and
             reordered to visual order"
     (let [marhaba "مرحبا"        ; مرحبا, base (non-presentation) letters
-          out     (#'pdf/visual-order marhaba)]
+          out     (#'font/visual-order marhaba)]
       ;; every output char is a joined presentation form, none is a bare base letter
       (is (every? (fn [c] (or (<= 0xFB50 (int c) 0xFDFF) (<= 0xFE70 (int c) 0xFEFF)))
                   out))
@@ -271,22 +272,22 @@
   (testing "Arabic vowel marks (tashkeel) are dropped, leaving the bare consonant skeleton
             (no zero-width combining marks, no spacing FE70-block tashkeel that would float)"
     ;; مُحَمَّدٌ (vocalised 'Muhammad') and مرحبا shape to the same consonants once marks are gone
-    (let [vocalised (#'pdf/visual-order "مُحَمَّدٌ")]
+    (let [vocalised (#'font/visual-order "مُحَمَّدٌ")]
       (is (= 4 (count vocalised)))                              ; د م ح م, no marks left
       (is (not-any? (fn [c] (<= 0xFE70 (int c) 0xFE7F)) vocalised))  ; no spacing tashkeel forms
-      (is (= (#'pdf/visual-order "مرحبا")
-             (#'pdf/visual-order "مَرْحَبًا"))))))               ; vocalised == plain once stripped
+      (is (= (#'font/visual-order "مرحبا")
+             (#'font/visual-order "مَرْحَبًا"))))))               ; vocalised == plain once stripped
 
 (deftest ^:parallel base-rtl?-test
   (testing "base direction is RTL only when the first strong character is RTL"
-    (is (true?  (boolean (#'pdf/base-rtl? "שלום עולם"))))            ; Hebrew
-    (is (true?  (boolean (#'pdf/base-rtl? "مرحبا بكم"))))            ; Arabic
-    (is (true?  (boolean (#'pdf/base-rtl? "مرحبا Metabase"))))       ; RTL-first, embedded LTR
-    (is (false? (boolean (#'pdf/base-rtl? "Metabase مرحبا"))))       ; LTR-first, embedded RTL
-    (is (true?  (boolean (#'pdf/base-rtl? "123 مرحبا"))))            ; digits are neutral; first STRONG char is Arabic
-    (is (false? (boolean (#'pdf/base-rtl? "Hello world"))))
-    (is (false? (boolean (#'pdf/base-rtl? ""))))
-    (is (false? (boolean (#'pdf/base-rtl? "日本語"))))))            ; CJK is LTR
+    (is (true?  (boolean (#'font/base-rtl? "שלום עולם"))))            ; Hebrew
+    (is (true?  (boolean (#'font/base-rtl? "مرحبا بكم"))))            ; Arabic
+    (is (true?  (boolean (#'font/base-rtl? "مرحبا Metabase"))))       ; RTL-first, embedded LTR
+    (is (false? (boolean (#'font/base-rtl? "Metabase مرحبا"))))       ; LTR-first, embedded RTL
+    (is (true?  (boolean (#'font/base-rtl? "123 مرحبا"))))            ; digits are neutral; first STRONG char is Arabic
+    (is (false? (boolean (#'font/base-rtl? "Hello world"))))
+    (is (false? (boolean (#'font/base-rtl? ""))))
+    (is (false? (boolean (#'font/base-rtl? "日本語"))))))            ; CJK is LTR
 
 (deftest ^:parallel reorder-bidi-items-test
   (let [mk    (fn [t sp] {:text t :space-before? sp})
@@ -353,10 +354,10 @@
     (let [page (PDPage. PDRectangle/A4)
           _    (.addPage doc page)
           cs   (PDPageContentStream. doc page)]
-      (binding [pdf/*fonts*      (#'pdf/load-fonts! doc)
+      (binding [font/*fonts*      (#'font/load-fonts! doc)
                 pdf/*link-rects* (atom [])]
-        (let [reg  (#'pdf/face :regular)
-              bold (#'pdf/face :bold)
+        (let [reg  (#'font/face :regular)
+              bold (#'font/face :bold)
               ;; draw-text-block! (plain text path) and draw-markdown-in-cell! (markdown path)
               dtb  (fn [face pt x y w h text] #(#'pdf/draw-text-block! cs face pt nil x y w h text))
               dmic (fn [x y w h text] #(#'pdf/draw-markdown-in-cell! doc cs x y w h text))]
@@ -441,30 +442,30 @@
 
 (deftest em-width-memoization-test
   (with-open [doc (PDDocument.)]
-    (binding [pdf/*fonts* (#'pdf/load-fonts! doc)]
-      (let [reg   (#'pdf/face :regular)
-            inner @#'pdf/raw-em-width-inner
+    (binding [font/*fonts* (#'font/load-fonts! doc)]
+      (let [reg   (#'font/face :regular)
+            inner @#'font/raw-em-width-inner
             strs  ["Hello world" "مرحبا بكم" "これはテスト" "" "שלום עולם"]
-            width (fn [s pt] (#'pdf/text-width reg pt s))]
+            width (fn [s pt] (#'font/text-width reg pt s))]
         (testing "text-width is identical whether *em-width* is the default (uncached) or memoized"
           (let [uncached (mapv #(width % 11.0) strs)
-                cached   (binding [pdf/*em-width* (memo/memo inner)] (mapv #(width % 11.0) strs))]
+                cached   (binding [font/*em-width* (memo/memo inner)] (mapv #(width % 11.0) strs))]
             (is (= uncached cached))))
         (testing "each [face string] is measured once and reused across font sizes (the fit-scale win)"
           (let [calls    (atom 0)
                 counting (fn [face s] (swap! calls inc) (inner face s))]
-            (binding [pdf/*em-width* (memo/memo counting)]
+            (binding [font/*em-width* (memo/memo counting)]
               (width "Hello world" 10.0)
               (width "Hello world" 20.0)    ; same face+string, different size -> no recompute
               (width "Goodbye now" 10.0))
             (is (= 2 @calls) "two distinct strings -> two inner computations; the sizes share the cache")))
         (testing "scaled widths are exactly proportional to font size (ems are size-independent)"
-          (binding [pdf/*em-width* (memo/memo inner)]
+          (binding [font/*em-width* (memo/memo inner)]
             (is (= (* 2.0 (width "Hello world" 10.0))
                    (width "Hello world" 20.0)))))
         (testing "the memoization cache is introspectable and clearable (clojure.core.memoize tooling)"
           (let [m (memo/memo inner)]
-            (binding [pdf/*em-width* m]
+            (binding [font/*em-width* m]
               (width "Hello world" 10.0)
               (width "Goodbye now" 10.0))
             (is (ccm/memoized? m))

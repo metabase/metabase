@@ -18,12 +18,12 @@
   above. Text and heading cards are drawn as native PDF text within their cell.
 
   Native text (titles, text/heading cards, parameters) is drawn with embedded Noto Sans fonts (via `PDType0Font`), with
-  per-glyph font fallback (see `font-runs`), so it renders Unicode. We support the Latin, Cyrillic, Greek, Arabic,
+  per-glyph font fallback (see `font/font-runs`), so it renders Unicode. We support the Latin, Cyrillic, Greek, Arabic,
   Hebrew alphabets (with accents and unique characters like Polish ł and German ß), Devanagari, (Simplified) Chinese,
   Japanese and Korean. Bold face is supported for all languages; CJK has no italic and fall back to upright.
   Mixed-script text picks the right font per character.
 
-  Right-to-left text (Hebrew, Arabic) is shaped and reordered per line, via ICU4J (see [[visual-order]]). This is a
+  Right-to-left text (Hebrew, Arabic) is shaped and reordered per line, via ICU4J (see [[font/visual-order]]). This is a
   pragmatic approach that produces good results, but it is an approximation and not a full *bidi* implementation. There
   are some scripts left out (Indic, Thai) but they could be added if there's a call for them.
 
@@ -40,6 +40,8 @@
    [medley.core :as m]
    [metabase.channel.render.card :as render.card]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.render.pdf.common :as common]
+   [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.markdown :as md]
    [metabase.channel.render.util :as render.util]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -52,74 +54,19 @@
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
-   (com.ibm.icu.text ArabicShaping Bidi)
+   (com.ibm.icu.text Bidi)
    (java.awt Color)
    (java.awt.geom AffineTransform PathIterator)
    (java.io ByteArrayOutputStream StringReader)
    (org.apache.batik.parser AWTPathProducer)
-   (org.apache.fontbox.ttf CmapLookup TrueTypeFont TTFParser)
-   (org.apache.pdfbox.io RandomAccessReadBuffer)
    (org.apache.pdfbox.pdmodel PDDocument PDPage PDPageContentStream)
    (org.apache.pdfbox.pdmodel.common PDRectangle)
-   (org.apache.pdfbox.pdmodel.font PDFont PDType0Font)
+   (org.apache.pdfbox.pdmodel.font PDFont)
    (org.apache.pdfbox.pdmodel.graphics.image PDImageXObject)
    (org.apache.pdfbox.pdmodel.interactive.action PDActionURI)
    (org.apache.pdfbox.pdmodel.interactive.annotation PDAnnotationLink PDBorderStyleDictionary)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private margin 36.0)
-(def ^:private grid-cols 24)
-
-(def ^:private paper
-  "Paper specs. `:rows` is the number of square grid cells we lay down vertically -- A4's
-  printable height is ~35.31 units so we use 35 and accept the slack; Letter is exactly 32."
-  {:a4     {:rect PDRectangle/A4     :rows 35}
-   :letter {:rect PDRectangle/LETTER :rows 32}})
-
-(def ^:private dashboard-title-pt 20.0)
-(def ^:private tab-title-pt 15.0)
-(def ^:private heading-card-pt 13.0)
-(def ^:private text-card-pt 10.5)
-(def ^:private chart-title-pt 11.0)
-(def ^:private param-pt 9.5)
-(def ^:private param-chip-gap 16.0)
-(def ^:private line-height-factor 1.3)
-(def ^:private ruby-scale
-  "Furigana (ruby) reading font size as a fraction of the base text size; the reading is drawn
-  centered above the base, e.g. {kanji|reading}."
-  0.55)
-(def ^:private header-pad-pt 6.0)
-
-(def ^:private gutter-pt
-  "Points of empty space between adjacent cards. Realized as a half-gutter inset on all sides of a card's grid
-  rectangle, so two neighbours are separated by a full gutter while the outermost cards sit half a gutter inside
-  the page margin (and the first row sits half a gutter below the header).
-
-  Heading/text cells skip the *bottom* half of the inset (see [[render-page!]]) so a one-row section header --
-  whose cell is barely taller than its text -- still has room to render."
-  9.0)
-
-(def ^:private dpi
-  "Pixels per inch used to size rasterized charts. Higher = crisper but larger PDFs.
-
-  A grid cell's pixel dimensions are derived from its printed point size and this DPI. NOTE: this also sets the
-  chart's *logical* layout size, so raising it shrinks chart fonts/labels rather than just sharpening. Use
-  [[chart-supersample]] for pure sharpness."
-  150.0)
-
-(def ^:private chart-supersample
-  "Supersampling factor for isomorphic (ECharts/visx) chart rasters: the chart is laid out at its `dpi`-derived
-  logical pixel size (so fonts/labels are unchanged) but the SVG is rasterized to this many times more pixels, then
-  drawn into the same on-page box -- crisper at the same page size.
-
-  1.0 = no supersampling; 2.0 makes a 150-DPI chart effectively 300 DPI (for print/zoom) at ~+12% PDF size.
-  See [[metabase.channel.render.js.svg/*chart-size*]]."
-  2.0)
-
-(def ^:private body-color (Color. 0x6B 0x73 0x80))
-(def ^:private link-color (Color. 0x1B 0x6F 0xC2))
-(def ^:private code-color (Color. 0x3B 0x3B 0x3B))
 
 (def ^:dynamic *debug-boxes*
   "When true, fill the *allocated* bounding box (the full space available, not the content's actual extent) behind
@@ -138,219 +85,13 @@
   #{:line :area :bar :combo :scatter :boxplot :waterfall :sankey :row})
 
 ;; --------------------------------------------------------------------------------------------
-;; Fonts -- embedded Noto Sans (TrueType, via PDType0Font) so we can render Unicode (Latin, Cyrillic, Greek, CJK, ...)
-;; rather than the ASCII-only Standard-14 fonts. PDType0Fonts are tied to a specific PDDocument, so we load a
-;; registry once per render and bind it to `*fonts*`.
+;; Page geometry
 ;; --------------------------------------------------------------------------------------------
-
-(def ^:private physical-font-resources
-  "Physical font keyword -> classpath resource. The fonts are TrueType (glyf) format, so PDFBox can subset them and
-  the output PDF only carries the glyphs actually used.
-
-  Lato regular and bold are preferred, as that's the Metabase UI's main body text, as well as the font for our logo and
-  other branding. Noto Sans has further coverage of Latin accents and special characters, plus Devanagari (Hindi et al),
-  Cyrillic and Greek. Hebrew and Arabic are handled by specific font faces, and finally the per-region Noto Sans
-  JP/KR/SC faces cover Japanese, Korean and Simplified Chinese.
-
-  See [[visual-order]] for RTL reordering for Hebrew and Arabic, and for *shaping* of Arabic."
-  {:noto-regular     "fonts/pdf/NotoSans-Regular.ttf"
-   :noto-bold        "fonts/pdf/NotoSans-Bold.ttf"
-   :noto-italic      "fonts/pdf/NotoSans-Italic.ttf"
-   :noto-bold-italic "fonts/pdf/NotoSans-BoldItalic.ttf"
-   :noto-mono        "fonts/pdf/NotoSansMono-Regular.ttf"
-
-   ;; TODO: (bshepherdson 2026-06-11) We reuse the FE's bundled Lato asset directly rather than duplicating it into a
-   ;; BE-owned path (it has full Latin/Cyrillic/Greek/Vietnamese coverage and is already shipped). This couples us to
-   ;; the `frontend_client` asset layout. These files should be moved to a BE-owned part of `resources/` and the static
-   ;; asset serving adjusted to preserve the FE URLs.
-   :brand-regular    "frontend_client/app/fonts/Lato/Lato-Regular.ttf"
-   :brand-bold       "frontend_client/app/fonts/Lato/lato-v16-latin-700.ttf"
-
-   :arabic-regular   "fonts/pdf/NotoSansArabic-Regular.ttf"
-   :arabic-bold      "fonts/pdf/NotoSansArabic-Bold.ttf"
-   :hebrew-regular   "fonts/pdf/NotoSansHebrew-Regular.ttf"
-   :hebrew-bold      "fonts/pdf/NotoSansHebrew-Bold.ttf"
-   :jp-regular       "fonts/pdf/NotoSansJP-Regular.ttf"
-   :jp-bold          "fonts/pdf/NotoSansJP-Bold.ttf"
-   :kr-regular       "fonts/pdf/NotoSansKR-Regular.ttf"
-   :kr-bold          "fonts/pdf/NotoSansKR-Bold.ttf"
-   :sc-regular       "fonts/pdf/NotoSansSC-Regular.ttf"
-   :sc-bold          "fonts/pdf/NotoSansSC-Bold.ttf"})
-
-(def ^:dynamic *fonts*
-  "Per-document map of `{face-keyword {:fallbacks [<phys> ...]} ...}`, where each `<phys>` is
-  `{:font <PDType0Font> :cmap <CmapLookup>}`. Bound while a document is being rendered, because `PDType0Fonts` are
-  tied to a specific `PDDocument`; see [[load-fonts!]].
-
-  Latin keeps the Lato (or Noto Sans) look across all styles; the CJK regional faces are ordered fallbacks so mixed
-  English/Japanese text renders per-glyph from the right font.
-
-  CJK has no italic, so italic CJK falls back to the upright CJK face."
-  nil)
-
-(defn- load-phys
-  "Reads a physical font from its `resource-path` within the classpath. Registers the font with the `PDDocument`."
-  [^PDDocument doc resource-path]
-  (let [bytes  (with-open [is (io/input-stream (io/resource resource-path))]
-                 (.readAllBytes is))
-        ^TrueTypeFont ttf (.parse (TTFParser.) (RandomAccessReadBuffer. ^bytes bytes))]
-    {:font (PDType0Font/load doc ttf true)
-     :cmap (.getUnicodeCmapLookup ttf)}))
-
-;; TODO: (bshepherdson 2026-06-11) It's wasteful of CPU time and memory to read these up front, when most of the
-;; physical fonts won't be used at all. Instead, load them on demand and cache them for the life of the PDDocument.
-(defn- load-fonts!
-  "Load the font registry into `doc`. Call once per document; PDFBox subsets the embedded fonts at
-  save time, so only the glyphs actually used end up in the output PDF."
-  [^PDDocument doc]
-  (let [phys  (update-vals physical-font-resources #(load-phys doc %))
-        ;; `:id` is a stable keyword identifying the face -- used as a cheap cache key (see
-        ;; [[*em-width*]]) instead of the heavy `{:fallbacks ...}` map.
-        face* (fn [id & fallbacks]
-                {:id        id
-                 :fallbacks (mapv phys (flatten fallbacks))})
-        regulars [:hebrew-regular :arabic-regular :jp-regular :kr-regular :sc-regular]
-        bolds    [:hebrew-bold    :arabic-bold    :jp-bold    :kr-bold    :sc-bold]]
-    ;; The fallback order for each style is important: first ordering by preference in case they overlap; and then
-    ;; where there's no overlap (especially CJK) to put the heaviest fonts last.
-    {:regular     (face* :regular     :brand-regular :noto-regular regulars)
-     :bold        (face* :bold        :brand-bold    :noto-bold    bolds)
-     :italic      (face* :italic      :noto-italic                 regulars)
-     :bold-italic (face* :bold-italic :noto-bold-italic            bolds)
-     :mono        (face* :mono        :noto-mono                   regulars)}))
-
-(defn- face [k]
-  (get *fonts* k))
-
-(defn- covers?
-  "Checks if a physical font can render a given codepoint `cp`."
-  [phys cp]
-  (pos? (.getGlyphId ^CmapLookup (:cmap phys) (int cp))))
-
-(defn- normalize-ws
-  "Turn tabs, newlines and other control chars into spaces. PDFBox `showText` doesn't handle them."
-  ^String [s]
-  (let [s  (str s)
-        n  (.length s)
-        sb (StringBuilder. n)]
-    (loop [i 0]
-      (when (< i n)
-        (let [cp (.codePointAt s i)]
-          (.appendCodePoint sb (if (< cp 32) (int \space) cp))
-          (recur (+ i (Character/charCount cp))))))
-    (.toString sb)))
-
-(defn- contains-rtl?
-  "True if `s` contains any character the bidi algorithm treats as right-to-left (e.g. Arabic, Hebrew).
-
-  This allows the LTR-only common case skip all shaping/reordering work."
-  [^String s]
-  (let [chars (.toCharArray s)]
-    (Bidi/requiresBidi chars 0 (alength chars))))
-
-(defn- base-rtl?
-  "True if the bidi base direction of `s` is right-to-left -- i.e. its first strong directional character is RTL
-  (Arabic/Hebrew). This is the per-paragraph direction used to right-align RTL titles, headings, and paragraphs.
-  A block has a single base direction shared by all its lines."
-  [^String s]
-  (let [s (str s)]
-    (and (contains-rtl? s)
-         (not (.baseIsLeftToRight (Bidi. s (int Bidi/LEVEL_DEFAULT_LTR)))))))
-
-(def ^:private arabic-tashkeel
-  "Arabic combining marks: harakat/tanwin (fatha, kasra, damma, sukun, shadda, ...), the superscript alef, and
-  Quranic annotation signs.
-
-  These are zero-width marks that the font expects to anchor above/below their consonant via GPOS mark-to-base
-  positioning -- which PDFBox's `showText` doesn't perform.
-
-  Worse, ICU's shaper rewrites them into spacing presentation forms (U+FE70-block, with real advance widths) that then
-  render *after* the letter over empty space. We drop them before shaping, yielding clean unvocalised Arabic -- the
-  normal written form -- rather than mispositioned marks. Correctly stacking vowel marks would require a GPOS-aware
-  shaper such as HarfBuzz, which drags us into native library hell.
-
-  Apologies for the Unicode escapes here - these characters are mostly zero-width and are unreadable in code editors."
-  #"[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]")
-
-(defn- visual-order
-  "The heart of RTL support: if `s` contains right-to-left text (Arabic or Hebrew), return it shaped and reordered
-  for a left-to-right renderer; otherwise return it unchanged.
-
-  PDFBox's `showText` lays glyphs out left-to-right in the order given and does no OpenType shaping, so RTL text drawn
-  naively comes out reversed and (for Arabic) as disconnected isolated letters. We approximate proper rendering with
-  ICU4J, no native HarfBuzz needed:
-   - Arabic vowel marks (tashkeel) are stripped (see [[arabic-tashkeel]]) -- positioning them needs GPOS, which we can't
-     do; unvocalised Arabic is the normal written form anyway.
-   - `ArabicShaping` rewrites plain Arabic letters to their positional presentation forms -- initial, medial, final, and
-     isolated, plus the lam-alef ligature. The Noto Sans Arabic cmap covers that Presentation-Forms-B block, and the
-     result is properly joined Arabic.
-   - `Bidi` reorders the (shaped) logical string into visual order and mirrors brackets.
-
-  This runs per drawn line, not per paragraph, so it is a deliberate approximation rather than full bidi: a pure
-  Arabic/Hebrew line reads correctly, and mixed LTR/RTL is close enough for the short strings used for dashboard titles,
-  headings, etc."
-  ^String [^String s]
-  (if-not (contains-rtl? s)
-    s
-    (let [s      (str/replace s arabic-tashkeel "")
-          shaped (try (.shape (ArabicShaping. (int ArabicShaping/LETTERS_SHAPE)) s)
-                      (catch Exception _ s))]
-      (.writeReordered (Bidi. ^String shaped (int Bidi/LEVEL_DEFAULT_LTR))
-                       (int (bit-or Bidi/DO_MIRRORING Bidi/KEEP_BASE_COMBINING))))))
-
-(defn- cp-font
-  "Given a face and a codepoint, returns the physical font with the best matching glyph for the given codepoint.
-
-  Checks each of the `:fallbacks` in order. If none of the fonts has a glyph for this codepoint, returns nil."
-  [{:keys [fallbacks] :as _face} cp]
-  (m/find-first #(covers? % cp) fallbacks))
-
-(defn- font-runs
-  "Split `s` into maximal `[phys ^String chunk]` runs that all use the same physical font.
-
-  For each codepoint, the physical font chosen is the first one in this order that has the glyph:
-
-  - each of face's the `:fallbacks` in order
-  - abandon this codepoint, and fall back to ASCII `?`, and repeat the search.
-
-  Since every codepoint is resolved to some glyph, `showText` will never throw."
-  ;; TODO: (bshepherdson, 2026-06-09) Consider using the "tofu" placeholder box ☐ instead.
-  [face ^String s]
-  (let [n    (.length s)
-        emit (fn [out cur ^StringBuilder sb]
-               (cond-> out
-                 (some? cur) (conj! [cur (.toString sb)])))]
-    (loop [i                 0
-           cur               nil
-           ^StringBuilder sb nil
-           out               (transient [])]
-      (b/cond
-        (>= i n) (persistent! (emit out cur sb))
-
-        :let [cp   (.codePointAt s i)
-              phys (cp-font face cp)
-              ;; If the codepoint doesn't have a matching glyph in any font, phys is nil. In that case, default `ch`
-              ;; to `?` and search for `phys` again.
-              ch   (if phys cp (int \?))
-              phys (or phys (cp-font face ch))]
-        ;; At this point, `phys` is a physical font and `ch` is the codepoint to use within that font.
-        ;; `cp` itself holds the proper input codepoint, which we still need to gets its `charCount` and advance the
-        ;; right distance through the input string.
-
-        ;; No change of font, so keep appending to the current StringBuilder.
-        (identical? phys cur) (do (.appendCodePoint sb ch)
-                                  (recur (+ i (Character/charCount cp)) cur sb out))
-
-        ;; Hit a seam between fonts, so append the current run to `out` and start a new one.
-        :else (recur (+ i (Character/charCount cp))
-                     phys
-                     (doto (StringBuilder.) (.appendCodePoint ch))
-                     (emit out cur sb))))))
 
 (defn- header-block-pt
   "Vertical points a header line of `font-pt` occupies (line height + a little padding)."
   [font-pt]
-  (+ (* font-pt line-height-factor) header-pad-pt))
+  (+ (* font-pt common/line-height-factor) common/header-pad-pt))
 
 (defn- rows-for-pt
   "How many *whole* grid rows are needed to hold `pt` points of vertical space."
@@ -359,68 +100,11 @@
 
 (defn- paper-dims
   [paper-key]
-  (let [{:keys [^PDRectangle rect rows]} (paper paper-key)]
+  (let [{:keys [^PDRectangle rect rows]} (common/paper paper-key)]
     {:rect rect
      :rows rows
-     :unit (/ (- (.getWidth rect) (* 2 margin))
-              grid-cols)}))
-
-;; --------------------------------------------------------------------------------------------
-;; Text helpers
-;; --------------------------------------------------------------------------------------------
-(defn- ^{:clojure.core.memoize/args-fn (fn [face ^String s]
-                                         [(:id face) s])}
-  raw-em-width-inner
-  "Don't call this; use the memoized version [[*raw-em-width*]].
-  "
-  ^double [face ^String s]
-  (transduce (map (fn [[phys ^String chunk]]
-                    (/ (.getStringWidth ^PDFont (:font phys) chunk) 1000.0)))
-             + 0.0
-             (font-runs face (visual-order (normalize-ws s)))))
-
-(def ^{:dynamic true
-       :arglists '([face ^String s])}
-  *em-width*
-  "Compute the width of `s` in `face` measured in *ems* (1.0 = the font size), so it can be multiplied by any font
-  size to get points.
-
-  Measures the *shaped* form (see [[visual-order]]) exactly as `draw-line!` draws it, so scripts (e.g. Arabic) where
-  isolated letters are wider than their joined-up presentation forms are measured on the presentation form that will
-  actually be rendered. A naive sum over isolated letter widths would overstate the space needed, leaving big gaps
-  after each word in such scripts.
-
-  Memoized within the context of each render, keyed on `[(:id face) s]`. Since ems are independent of font size, this
-  can be reused for whatever font size. We compute the size of each string repeatedly, so this saves a bunch of
-  recomputation. Bound in [[render-dashboard-to-pdf]] to the memoized version; defaults when unbound to the uncached
-  inner function."
-  raw-em-width-inner)
-
-(defn- text-width
-  "Width in points of `s` drawn with `face` at `font-pt`. The per-glyph measurement lives in (cached) [[*em-width*]];
-  this just scales it by the font size."
-  ^double [face font-pt ^String s]
-  (* (double font-pt) (*em-width* face s)))
-
-(defn- cjk-char?
-  "Codepoints from scripts that don't use spaces between words. Line breaks are allowed between adjacent characters from
-  these scripts. (CJK ideographs, kana, hangul, and CJK punctuation/fullwidth forms)."
-  [cp]
-  (or
-   ;; 2E80-2FFF CJK radicals, Kangxi
-   ;; 3000-303F CJK symbols and punctuation
-   ;; 3040-30FF hiragana + katakana
-   (<= 0x2E80 cp 0x30FF)
-   (<= 0x3400 cp 0x4DBF)   ; CJK ext A
-   (<= 0x4E00 cp 0x9FFF)   ; CJK unified ideographs
-   (<= 0xAC00 cp 0xD7A3)   ; hangul syllables
-   (<= 0xF900 cp 0xFAFF)   ; CJK compat ideographs
-   (<= 0xFF00 cp 0xFFEF))) ; halfwidth & fullwidth forms
-
-(def ^:private no-break-before-chars
-  "CJK characters that must not start a line (closing punctuation, small kana); they attach to the previous break unit.
-  This is a simplified kinsoku rule."
-  (set "、。，．・：；！？）］｝」』】〕〉》〜ー…ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ"))
+     :unit (/ (- (.getWidth rect) (* 2 common/margin))
+              common/grid-cols)}))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Greedy streaming grouping (`segment`)
@@ -483,13 +167,6 @@
                   (do (vreset! state r)
                       result)))))))))))
 
-(defn- no-break-before?
-  "True if `cp` is a CJK character that must not start a line (closing punctuation, small kana), so
-  it sticks to the previous break-unit. A simplified kinsoku rule (see [[no-break-before-chars]])."
-  [cp]
-  (and (<= (int cp) 0xFFFF)
-       (contains? no-break-before-chars (char cp))))
-
 (defn- text->codepoint-items
   "`text` as a seq of `{:cp <codepoint>}` items, one per codepoint (surrogate pairs kept intact) --
   the input stream to the [[runs->words]] pipeline. `.toArray` materialises the codepoint
@@ -547,14 +224,14 @@
   "[[segment]] policy for grouping the run-item stream into break-units (words) that can't break across a line. This
   decides *word* boundaries only: the boundaries are whitespace and CJK char boundaries, NOT style changes, so
   `\"**bo**ld\"` stays one indivisible word. Each CJK character is its own word, except for a few no-break-before
-  characters ([[no-break-before?]]) which stick onto the end of the open word (kinsoku). `:break?`/`:ruby?` items are
+  characters ([[font/no-break-before?]]) which stick onto the end of the open word (kinsoku). `:break?`/`:ruby?` items are
   atomic words. The accumulator just collects the word's raw codepoint items in `:cps` -- splitting them into styled
   `:pieces` is [[close-word]]'s job. `:cjk-unit?` means the word can no longer take an ordinary character."
   ([item]
    (if-let [cp (:cp item)]
      {:space-before? (boolean (:space-before? item))
       :cps           [item]
-      :cjk-unit?     (cjk-char? (int cp))}
+      :cjk-unit?     (font/cjk-char? (int cp))}
      {:atomic item}))
   ([acc item]
    (cond
@@ -564,9 +241,9 @@
      (let [cp (int (:cp item))]
        (cond
          ;; a no-break-before char glues onto the open word even across a space (kinsoku wins)
-         (no-break-before? cp) (-> acc (assoc :cjk-unit? true) (update :cps conj item))
+         (font/no-break-before? cp) (-> acc (assoc :cjk-unit? true) (update :cps conj item))
          (:space-before? item) ::reject               ; whitespace preceded -> new word
-         (cjk-char? cp)        ::reject               ; each CJK char is its own word
+         (font/cjk-char? cp)        ::reject               ; each CJK char is its own word
          (:cjk-unit? acc)      ::reject
          :else                 (update acc :cps conj item))))))
 
@@ -603,7 +280,7 @@
              :let [text (String. (Character/toChars (int cp)))]]
          (merge (select-keys piece [:font :pt :color :href])
                 {:text text
-                 :ww   (text-width font pt text)}))
+                 :ww   (font/text-width font pt text)}))
        (map-indexed (fn [i p]
                       {:space-before? (and space-before? (zero? i))
                        :sp            sp
@@ -677,18 +354,18 @@
   [^PDPageContentStream cs face font-pt x baseline-y ^String text]
   (.beginText cs)
   (.newLineAtOffset cs (float x) (float baseline-y))
-  (doseq [[phys ^String chunk] (font-runs face (visual-order (normalize-ws text)))]
+  (doseq [[phys ^String chunk] (font/font-runs face (font/visual-order (font/normalize-ws text)))]
     (.setFont cs ^PDFont (:font phys) (float font-pt))
     (.showText cs chunk))
   (.endText cs))
 
 (defn- run-font [{:keys [bold? italic? code?]}]
-  (face (cond
-          code?               :mono
-          (and bold? italic?) :bold-italic
-          bold?               :bold
-          italic?             :italic
-          :else               :regular)))
+  (font/face (cond
+               code?               :mono
+               (and bold? italic?) :bold-italic
+               bold?               :bold
+               italic?             :italic
+               :else               :regular)))
 
 (defn- heading-pt [level]
   (case (long level)
@@ -718,8 +395,8 @@
 
 (defn- run-color [style]
   (or (:color style)                     ; an explicit colour overrides (e.g. gray parameter values)
-      (cond (:link? style) link-color
-            (:code? style) code-color
+      (cond (:link? style) common/link-color
+            (:code? style) common/code-color
             :else          Color/BLACK)))
 
 (defmulti ^:private ->measured-item
@@ -741,9 +418,9 @@
   ;; furigana group: base text with a smaller reading centered above; the item is atomic
   ;; (the reading must never wrap away from its base), and as wide as the wider of the two.
   (let [font    (run-font (cond-> style heading? (assoc :bold? true)))
-        ruby-pt (* base-pt ruby-scale)
-        bw      (text-width font base-pt base)
-        rw      (text-width font ruby-pt reading)]
+        ruby-pt (* base-pt common/ruby-scale)
+        bw      (font/text-width font base-pt base)
+        rw      (font/text-width font ruby-pt reading)]
     (merge (select-keys w [:base :reading :space-before?])
            {:ruby?      true
             :font       font
@@ -754,7 +431,7 @@
             :color      (run-color style)
             :href       (:href style)
             :ww         (max bw rw)
-            :sp         (text-width font base-pt " ")})))
+            :sp         (font/text-width font base-pt " ")})))
 
 (defmethod ->measured-item :default [{:keys [pieces space-before?]} base-pt heading?]
   ;; a word is a sequence of same-style pieces; each piece resolves its own font/colour and the word's
@@ -763,13 +440,13 @@
   (let [measured (mapv (fn [{:keys [style text]}]
                          (let [font (run-font (cond-> style heading? (assoc :bold? true)))]
                            {:font font :pt base-pt :color (run-color style) :href (:href style)
-                            :text text :ww (text-width font base-pt text)}))
+                            :text text :ww (font/text-width font base-pt text)}))
                        pieces)]
     {:space-before? space-before?
      :pieces        measured
      :ww            (transduce (map :ww) + 0.0 measured)
      ;; one leading space, drawn in the first piece's font when this word follows another on a line
-     :sp            (let [{:keys [font]} (first measured)] (text-width font base-pt " "))}))
+     :sp            (let [{:keys [font]} (first measured)] (font/text-width font base-pt " "))}))
 
 (defn- words->lines
   "Greedily wrap `words` to `max-w`, resolving each word's font/colour. Returns a vector of lines,
@@ -780,13 +457,13 @@
 (defn- line-extra
   "Extra vertical space a line needs above its base text -- the furigana band, if it has any ruby."
   [line base-pt]
-  (if (some :ruby? line) (* base-pt ruby-scale 1.2) 0.0))
+  (if (some :ruby? line) (* base-pt common/ruby-scale 1.2) 0.0))
 
 (defn- lines-height
   "Total vertical points a sequence of wrapped item-lines consumes at `base-pt`, including any
   furigana bands (see [[line-extra]])."
   [lines base-pt]
-  (let [lh (* base-pt line-height-factor)]
+  (let [lh (* base-pt common/line-height-factor)]
     (reduce (fn [acc line] (+ acc lh (line-extra line base-pt))) 0.0 lines)))
 
 (defmulti ^:private block-height
@@ -808,7 +485,7 @@
   (-> (str text)
       str/split-lines
       count
-      (* 9.0 scale line-height-factor)
+      (* 9.0 scale common/line-height-factor)
       (+ 2.0)))
 
 (defmethod block-height :default
@@ -816,10 +493,10 @@
   (let [heading?  (= :heading kind)
         base-pt   (* (if heading?
                        (heading-pt level)
-                       text-card-pt)
+                       common/text-card-pt)
                      scale)
         marker-w  (if marker
-                    (text-width (face :regular) base-pt marker)
+                    (font/text-width (font/face :regular) base-pt marker)
                     0.0)
         content-w (- cell-w
                      (* 14.0 (long (or indent 0)))
@@ -875,13 +552,13 @@
     :else  ""))
 
 (defn- any-rtl? [items]
-  (boolean (some #(contains-rtl? (item-text %))
+  (boolean (some #(font/contains-rtl? (item-text %))
                  items)))
 
 (defn- reorder-bidi-items
   "Reorder a wrapped markdown line's word items from logical to visual order, so a right-to-left paragraph reads
   right-to-left at the word level. Each item's own glyphs are shaped/reversed separately by `draw-line!`
-  (via `visual-order`); this handles the *order of the words*.
+  (via `font/visual-order`); this handles the *order of the words*.
 
   We resolve bidi levels with ICU over the line's logical text (one representative offset per item), apply rule L2
   via `Bidi/reorderVisual`, then recompute each item's `:space-before?` for its new neighbour so inter-word spacing
@@ -990,7 +667,7 @@
 
   Returns the y just below the last line actually drawn. Shared by [[draw-block!]] and [[draw-text-block!]]."
   [^PDPageContentStream cs lines content-x content-w top-y bottom base-pt rtl? marker marker-x marker-font]
-  (let [lh (* base-pt line-height-factor)]
+  (let [lh (* base-pt common/line-height-factor)]
     (when marker
       (draw-line! cs marker-font base-pt marker-x (- top-y base-pt) marker))
     (reduce (fn [y line]
@@ -1035,7 +712,7 @@
                                   (mapv #(assoc % :color color) line))))
                       (words->lines (runs->words runs) font-pt false max-w))
           y     (draw-item-lines! cs lines x max-w top-y (- (double top-y) max-h)
-                                  font-pt (base-rtl? text) nil x nil)]
+                                  font-pt (font/base-rtl? text) nil x nil)]
       (- (double top-y) y))))
 
 (defn- draw-code-block!
@@ -1043,10 +720,10 @@
 
   Returns the `y` below the block. Restores the font and color."
   [^PDPageContentStream cs block x top-y _cell-w _bottom scale]
-  (.setNonStrokingColor cs ^Color code-color)
-  (let [font (face :mono)
+  (.setNonStrokingColor cs ^Color common/code-color)
+  (let [font (font/face :mono)
         pt   (* 9.0 scale)
-        lh   (* pt line-height-factor)
+        lh   (* pt common/line-height-factor)
         y    (reduce (fn [y line]
                        (draw-line! cs font pt (+ x 4.0) (- y pt) line)
                        (- y lh))
@@ -1077,9 +754,9 @@
 
   Returns the y below the block."
   [^PDPageContentStream cs {:keys [alt src] :as _block} x top-y cell-w bottom scale]
-  (let [pt   (* text-card-pt scale)
+  (let [pt   (* common/text-card-pt scale)
         txt  (if (str/blank? alt) src alt)
-        used (draw-text-block! cs (face :regular) pt link-color x top-y cell-w
+        used (draw-text-block! cs (font/face :regular) pt common/link-color x top-y cell-w
                                (- (double top-y) bottom) txt)]
     (when (and *link-rects* (clickable-href? src))
       (swap! *link-rects* conj {:x0   (double x)
@@ -1104,7 +781,7 @@
   (let [y (- (double top-y)
              (* 5.0 scale))]
     (doto cs
-      (.setStrokingColor ^Color body-color)
+      (.setStrokingColor ^Color common/body-color)
       (.moveTo (float x) (float y))
       (.lineTo (float (+ x cell-w)) (float y))
       (.stroke)
@@ -1118,20 +795,20 @@
   (let [heading?    (= :heading kind)
         base-pt     (* scale (if heading?
                                (heading-pt level)
-                               text-card-pt))
+                               common/text-card-pt))
         indent-x    (+ (double x)
                        (* 14.0 (long (or indent 0))))
         ;; markers ("- ", "1. ") are ASCII; keep their trailing space (sanitize would trim it)
-        marker-font (face :regular)
+        marker-font (font/face :regular)
         marker-w    (if marker
-                      (text-width marker-font base-pt marker)
+                      (font/text-width marker-font base-pt marker)
                       0.0)
         content-x   (+ indent-x marker-w)
         content-w   (- (+ (double x) cell-w) content-x)
         ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
         ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
         rtl?        (and (nil? marker)
-                         (base-rtl? (apply str (map item-text runs))))
+                         (font/base-rtl? (apply str (map item-text runs))))
         lines       (words->lines (runs->words runs) base-pt heading? content-w)]
     (draw-item-lines! cs lines content-x content-w top-y bottom base-pt rtl? marker indent-x marker-font)))
 
@@ -1281,8 +958,8 @@
   only the very first section's first page carries the dashboard title, and (when tabbed) every section's first page
   carries the tab title."
   [section idx {:keys [unit rows]} tabbed? dash-name param-table param-rows]
-  (let [dash-rows (rows-for-pt (header-block-pt dashboard-title-pt) unit)
-        tab-rows  (rows-for-pt (header-block-pt tab-title-pt)       unit)
+  (let [dash-rows (rows-for-pt (header-block-pt common/dashboard-title-pt) unit)
+        tab-rows  (rows-for-pt (header-block-pt common/tab-title-pt)       unit)
         ;; the parameter table shows once, on the dashboard's very first page (section 0)
         first-hdr (cond-> 0
                     (zero? idx) (+ dash-rows param-rows)
@@ -1330,7 +1007,7 @@
     (.drawImage cs img (float dx) (float (- top-y dh)) (float dw) (float dh))))
 
 (defn- pt->px [pt]
-  (-> pt double (* dpi) (/ 72.0) Math/round long))
+  (-> pt double (* common/dpi) (/ 72.0) Math/round long))
 
 (defn- card-title [card dashcard]
   (or (get-in dashcard [:visualization_settings :card.title])
@@ -1360,7 +1037,7 @@
 
 (defn- sized-chart-png
   "Render an isomorphic chart to a PNG, telling static-viz to lay the chart out into a `w-px` x `h-px` logical box
-  (so it fills it the way the frontend does), rasterized at [[chart-supersample]] times that pixel size for crispness.
+  (so it fills it the way the frontend does), rasterized at [[common/chart-supersample]] times that pixel size for crispness.
 
   Used for rectangular charts and for square/wide pies (which then place their legend to the side).
 
@@ -1368,7 +1045,7 @@
   ^bytes [card dashcard data w-px h-px]
   (binding [js.svg/*chart-size* {:width  w-px
                                  :height h-px
-                                 :scale  chart-supersample}]
+                                 :scale  common/chart-supersample}]
     (let [viz                    (or (:visualization_settings dashcard)
                                      (:visualization_settings card))
           {:keys [content type]} (js.svg/*javascript-visualization* (cards-with-data card dashcard data) viz)]
@@ -1382,7 +1059,7 @@
   [face font-pt max-w max-h text]
   (if (str/blank? (str text))
     0.0
-    (let [lh    (* font-pt line-height-factor)
+    (let [lh    (* font-pt common/line-height-factor)
           runs  [(merge {:text (str text)}
                         (get face-id->style (:id face)))]
           lines (words->lines (runs->words runs) font-pt false max-w)
@@ -1406,7 +1083,7 @@
 
   The search bottoms out at the widest single unit (= word).
 
-  Inexpensive -- a handful of greedy line wrap calls, with each unit's measurements cached (see [[*em-width*]])."
+  Inexpensive -- a handful of greedy line wrap calls, with each unit's measurements cached (see [[font/*em-width*]])."
   [units max-w split-fn]
   (if (empty? units)
     0.0
@@ -1441,20 +1118,20 @@
   (param-entries (remove #(contains? inline-ids (:id %)) params)))
 
 (defn- styled-run-lines
-  "Wrap a single styled run (`text` with `style`, e.g. {:bold? true} or {:color ...}) to `max-w` at `param-pt`,
+  "Wrap a single styled run (`text` with `style`, e.g. {:bold? true} or {:color ...}) to `max-w` at `common/param-pt`,
   returning drawable item-lines via the shared pipeline."
   [text style max-w]
   (-> [(merge {:text (str text)}
               style)]
       runs->words
-      (words->lines param-pt false max-w)))
+      (words->lines common/param-pt false max-w)))
 
 (defn- measured-name-units
-  "Pre-measured word items for a parameter name (bold, `param-pt`) -- input to [[min-column-width]].
+  "Pre-measured word items for a parameter name (bold, `common/param-pt`) -- input to [[min-column-width]].
   Runs through the same words pipeline as everything else, as a single run of bold text."
   [name]
-  (mapv #(->measured-item % param-pt false)
-        (runs->words [{:text  (normalize-ws name)
+  (mapv #(->measured-item % common/param-pt false)
+        (runs->words [{:text  (font/normalize-ws name)
                        :bold? true}])))
 
 (defn- layout-param-table
@@ -1467,23 +1144,23 @@
   per row, and the total `:height`."
   [entries avail-w x]
   (when (seq entries)
-    (let [rtl?     (base-rtl? (:name (first entries)))
+    (let [rtl?     (font/base-rtl? (:name (first entries)))
           max-nw   (* 0.4 avail-w)
           name-w   (min max-nw (transduce (map #(min-column-width (measured-name-units (:name %))
                                                                   max-nw split-word-into-chars))
                                           max 0.0 entries))
-          value-w  (- avail-w name-w param-chip-gap)
+          value-w  (- avail-w name-w common/param-chip-gap)
           name-x   (cond-> (double x)
-                     rtl? (+ value-w param-chip-gap))
+                     rtl? (+ value-w common/param-chip-gap))
           value-x  (cond-> (double x)
-                     (not rtl?) (+ name-w param-chip-gap))
+                     (not rtl?) (+ name-w common/param-chip-gap))
           rows     (mapv (fn [{:keys [name value]}]
                            (let [nl (styled-run-lines name  {:bold? true}       name-w)
-                                 vl (styled-run-lines value {:color body-color} value-w)]
+                                 vl (styled-run-lines value {:color common/body-color} value-w)]
                              {:name-lines  nl
                               :value-lines vl
-                              :height      (max (lines-height nl param-pt)
-                                                (lines-height vl param-pt))}))
+                              :height      (max (lines-height nl common/param-pt)
+                                                (lines-height vl common/param-pt))}))
                          entries)]
       {:name-x  name-x  :name-w  name-w
        :value-x value-x :value-w value-w
@@ -1495,14 +1172,14 @@
   [table unit]
   (if table
     (rows-for-pt (+ (:height table)
-                    header-pad-pt)
+                    common/header-pad-pt)
                  unit)
     0))
 
 (defn- lines-rtl?
   "Given a seq of lines, check if the first line starts with RTL characters."
   [lines]
-  (-> lines ffirst :text (or "") base-rtl?))
+  (-> lines ffirst :text (or "") font/base-rtl?))
 
 (defn- draw-param-table!
   "Draw the parameter `table` from `top-y` (the columns already hold absolute x positions).
@@ -1512,9 +1189,9 @@
   (let [{:keys [name-x name-w value-x value-w rows]} table]
     (- (reduce (fn [y {:keys [name-lines value-lines height] :as _row}]
                  (let [bottom (- y height 1.0)]
-                   (draw-item-lines! cs name-lines name-x name-w y bottom param-pt
+                   (draw-item-lines! cs name-lines name-x name-w y bottom common/param-pt
                                      (lines-rtl? name-lines) nil name-x nil)
-                   (draw-item-lines! cs value-lines value-x value-w y bottom param-pt
+                   (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
                                      (lines-rtl? value-lines) nil value-x nil)
                    (- y height)))
                (double top-y)
@@ -1532,27 +1209,27 @@
                                                 [{:text "  "}]) ; gap before each param after the first
                                               [{:text (:name e) :bold? true}
                                                {:text ": "}
-                                               {:text (:value e) :color body-color}])))
+                                               {:text (:value e) :color common/body-color}])))
                        cat)
               entries)
         runs->words
-        (words->lines param-pt false cell-w))))
+        (words->lines common/param-pt false cell-w))))
 
 (defn- inline-params-height
   "Vertical points a card's inline parameter lines consume (0 when there are none)."
   [lines]
   (if (empty? lines)
     0.0
-    (+ 4.0 (lines-height lines param-pt))))
+    (+ 4.0 (lines-height lines common/param-pt))))
 
 (defn- draw-inline-params!
   "Draw inline-parameter `lines` from `top-y` within `[x, x+content-w]`."
   [^PDPageContentStream cs lines x content-w top-y]
   (when (seq lines)
     (draw-item-lines! cs lines x content-w top-y (- (double top-y)
-                                                    (lines-height lines param-pt)
+                                                    (lines-height lines common/param-pt)
                                                     1.0)
-                      param-pt (lines-rtl? lines) nil x nil)))
+                      common/param-pt (lines-rtl? lines) nil x nil)))
 
 (defn- fill-rect!
   "Fill the box whose top-left is `[x, top-y]` (and is `w` x `h`) with `color`, then reset to black.
@@ -1576,7 +1253,7 @@
     :as part}
    x top-y cell-w cell-h]
   (let [title      (card-title card dashcard)
-        title-h    (text-block-height (face :bold) chart-title-pt cell-w (* 0.5 cell-h) title)
+        title-h    (text-block-height (font/face :bold) common/chart-title-pt cell-w (* 0.5 cell-h) title)
         ;; Inline parameters (filters attached to this card) render between the title and the chart body,
         ;; like the email subscription does.
         ip-lines   (inline-param-lines inline-params cell-w)
@@ -1600,7 +1277,7 @@
       (when (pos? title-h)  (fill-rect! cs debug-heading-color x top-y cell-w title-h))
       (when (> body-h 12.0) (fill-rect! cs debug-chart-color x body-top cell-w body-h)))
     ;; Native title for every card type.
-    (draw-text-block! cs (face :bold) chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
+    (draw-text-block! cs (font/face :bold) common/chart-title-pt nil x top-y cell-w (* 0.5 cell-h) title)
     ;; Inline parameters.
     (when (seq ip-lines)
       (draw-inline-params! cs ip-lines x cell-w (- top-y title-h)))
@@ -1625,14 +1302,14 @@
   `[x, x+box-w]`: flush-right when the text's base direction is RTL, flush-left otherwise."
   [face font-pt x box-w ^String text]
   (cond-> (double x)
-    (base-rtl? text) (+ (max 0.0 (- box-w (text-width face font-pt text))))))
+    (font/base-rtl? text) (+ (max 0.0 (- box-w (font/text-width face font-pt text))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; "Made with Metabase" branding badge -- drawn top-right of every page. The logo + "Metabase"
 ;; wordmark come from an SVG whose glyphs are already `<path>` outlines, streamed into the content
 ;; stream as moveTo/lineTo/curveTo/fill so they stay crisp at any zoom. The "Made with" prefix is
 ;; ordinary text in the regular body face (Lato, with the usual per-glyph Noto/CJK fallback -- see
-;; [[load-fonts!]] and [[font-runs]]). The badge sits in the empty top margin band, so it never
+;; [[font/load-fonts!]] and [[font/font-runs]]). The badge sits in the empty top common/margin band, so it never
 ;; collides with the dashboard title (left) or the first card row.
 ;; --------------------------------------------------------------------------------------------
 
@@ -1750,16 +1427,16 @@
 
 (defn- draw-brand-badge!
   "Draw the 'Made with [logo] Metabase' badge, right-aligned to `right`, with the logo's top at
-  `logo-top` (placed in the page's top margin band). The 'Made with' prefix is localized to the
+  `logo-top` (placed in the page's top common/margin band). The 'Made with' prefix is localized to the
   current user's locale ([[tru]]) and drawn in the regular body face -- Lato, with the usual
-  per-glyph Noto/CJK fallback (see [[font-runs]]) -- so it renders across scripts; the logo +
+  per-glyph Noto/CJK fallback (see [[font/font-runs]]) -- so it renders across scripts; the logo +
   'Metabase' wordmark are locale-independent SVG vectors."
   [^PDPageContentStream cs right logo-top]
   (let [{:keys [vw vh]} @brand-logo
-        text-face (face :regular)
+        text-face (font/face :regular)
         prefix    (str (tru "Made with"))
         logo-w    (* brand-logo-pt (/ (double vw) (double vh)))
-        text-w    (text-width text-face brand-text-pt prefix)
+        text-w    (font/text-width text-face brand-text-pt prefix)
         logo-x    (- (double right) logo-w)
         text-x    (- logo-x brand-gap-pt text-w)
         ;; vertically center the text's cap (~0.7*pt tall) on the logo's middle
@@ -1771,27 +1448,27 @@
 
 (defn- draw-header!
   [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
-  (let [bold (face :bold)
-        top  (- (double page-height) margin)
-        ;; "Made with Metabase" badge, vector-drawn in the empty top margin band, right-aligned
-        _    (draw-brand-badge! cs (+ margin content-w)
+  (let [bold (font/face :bold)
+        top  (- (double page-height) common/margin)
+        ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned
+        _    (draw-brand-badge! cs (+ common/margin content-w)
                                 (- (double page-height)
-                                   (/ (- margin brand-logo-pt)
+                                   (/ (- common/margin brand-logo-pt)
                                       2.0)))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
-               (do (draw-line! cs bold dashboard-title-pt
-                               (line-start-x bold dashboard-title-pt margin content-w dashboard-title)
-                               (- top dashboard-title-pt) dashboard-title)
-                   (- top (header-block-pt dashboard-title-pt)))
+               (do (draw-line! cs bold common/dashboard-title-pt
+                               (line-start-x bold common/dashboard-title-pt common/margin content-w dashboard-title)
+                               (- top common/dashboard-title-pt) dashboard-title)
+                   (- top (header-block-pt common/dashboard-title-pt)))
                top)
         y2   (if param-table
                (draw-param-table! cs param-table y1)
                y1)]
     (when tab-title
-      (draw-line! cs bold tab-title-pt
-                  (line-start-x bold tab-title-pt margin content-w tab-title)
-                  (- y2 tab-title-pt) tab-title))))
+      (draw-line! cs bold common/tab-title-pt
+                  (line-start-x bold common/tab-title-pt common/margin content-w tab-title)
+                  (- y2 common/tab-title-pt) tab-title))))
 
 (defn- add-link-annotations!
   "Add a clickable URI link annotation to `pg` for each collected rectangle. This is an invisible border, the link
@@ -1831,25 +1508,25 @@
         _             (.addPage doc pg)
         ph            (.getHeight rect)
         cs            (PDPageContentStream. doc pg)
-        card-area-top (- ph margin (* (:header-rows page) unit))]
+        card-area-top (- ph common/margin (* (:header-rows page) unit))]
     (binding [*link-rects* (atom [])]
       (try
-        (draw-header! cs ph (* grid-cols unit) page)
+        (draw-header! cs ph (* common/grid-cols unit) page)
         (doseq [cell (:cards page)]
           (let [rr     (- (:row cell) (:base page))
-                half   (/ gutter-pt 2.0)
+                half   (/ common/gutter-pt 2.0)
                 ;; inset each card's grid rectangle by half a gutter so neighbours are separated
                 ;; by a full gutter; heading/text cells keep their bottom half (so a one-row
                 ;; section header still fits its text -- it gets a half gutter below instead).
                 text?  (contains? #{:heading :text} (:kind cell))
-                x      (+ margin (* (:col cell) unit) half)
+                x      (+ common/margin (* (:col cell) unit) half)
                 top-y  (- card-area-top (* rr unit) half)
-                cell-w (- (* (:size_x cell) unit) gutter-pt)
-                cell-h (min (- top-y margin)
+                cell-w (- (* (:size_x cell) unit) common/gutter-pt)
+                cell-h (min (- top-y common/margin)
                             (- (* (:size_y cell) unit)
                                (if text?
                                  half
-                                 gutter-pt)))]
+                                 common/gutter-pt)))]
             (try
               ;; debug overlay: the full heading-card cell (blue), drawn behind its text
               (when (and *debug-boxes*
@@ -1858,13 +1535,13 @@
               (case (:kind cell)
                 :card    (render-card-cell! doc cs timezone (:part cell) x top-y cell-w cell-h)
                 :heading (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
-                           #(draw-text-block! cs (face :bold) heading-card-pt nil x top-y cell-w % (:text cell)))
+                           #(draw-text-block! cs (font/face :bold) common/heading-card-pt nil x top-y cell-w % (:text cell)))
                 :text    (with-cell-inline-params! cs x top-y cell-w cell-h (:inline-params cell)
                            #(draw-markdown-in-cell! doc cs x top-y cell-w % (:text cell)))
                 nil)
               (catch Throwable e
                 (log/error e "Error rendering dashboard PDF cell; substituting placeholder")
-                (draw-text-block! cs (face :regular) 10.0 nil x top-y cell-w cell-h
+                (draw-text-block! cs (font/face :regular) 10.0 nil x top-y cell-w cell-h
                                   "[Unable to render this card]")))))
         (finally
           (.close cs)))
@@ -1916,11 +1593,11 @@
                           sections)
            doc      (PDDocument.)]
        (try
-         (binding [*fonts*       (load-fonts! doc)
-                   *em-width*    (memo/memo raw-em-width-inner)]
-           (let [content-w   (* grid-cols (:unit dims))
+         (binding [font/*fonts*       (font/load-fonts! doc)
+                   font/*em-width*    (memo/memo font/raw-em-width-inner)]
+           (let [content-w   (* common/grid-cols (:unit dims))
                  inline-ids  (into #{} (mapcat :inline_parameters) dcs)
-                 param-table (layout-param-table (dashboard-param-entries resolved inline-ids) content-w margin)
+                 param-table (layout-param-table (dashboard-param-entries resolved inline-ids) content-w common/margin)
                  param-rows  (param-table-rows param-table (:unit dims))]
              (doseq [[idx section] (m/indexed sections)
                      page          (pages-for-section section idx dims tabbed? (:name dash) param-table param-rows)]
