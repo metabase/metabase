@@ -42,6 +42,7 @@ import {
   getInterestingTimelineIds,
   getMostInterestingTimelineId,
 } from "../components/ExplorationVisualization/utils";
+import { setCurrentExploration } from "../explorations.slice";
 
 const QUERY_POLL_INTERVAL_MS = 2000;
 
@@ -133,7 +134,15 @@ export function ExplorationPage({
 
   useEffect(() => {
     setShouldPoll(hasUnsettledQueries(exploration));
-  }, [exploration]);
+    dispatch(setCurrentExploration(exploration));
+  }, [exploration, dispatch]);
+
+  // This is important as it will affect collection breadcrumbs in the appbar
+  useEffect(() => {
+    return () => {
+      dispatch(setCurrentExploration(undefined));
+    };
+  }, [dispatch]);
 
   const [sendToast] = useToast();
 

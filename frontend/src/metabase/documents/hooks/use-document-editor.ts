@@ -156,6 +156,13 @@ export function useDocumentEditor({
     }
   }, [documentData, documentId, dispatch, isNewDocument]);
 
+  // This is important as it will affect collection breadcrumbs in the appbar
+  useEffect(() => {
+    return () => {
+      dispatch(setCurrentDocument(null));
+    };
+  }, [dispatch]);
+
   useRegisterDocumentMetabotContext();
 
   useBeforeUnload(() => {
