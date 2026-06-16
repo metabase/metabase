@@ -284,3 +284,20 @@
       (testing "Should use column-specific GBP currency, not global AUD currency"
         (is (str/starts-with? result "£")
             (str "Expected GBP symbol (£) but got: " result))))))
+
+(deftest pivot-make-formatters-inlines-currency-test
+  (testing "Pivot value formatters render the currency symbol inline even when currency-in-header is the default (UXW-4499).
+            In-app pivot tables always show the currency symbol in the cell because measures have no column header to carry it."
+    (let [col {:name "sum" :base_type :type/Float :effective_type :type/Float :field_ref [:aggregation 0]}]
+      (doseq [[label viz] [["currency-in-header unset (default)"
+                            {::mb.viz/column-settings
+                             {{::mb.viz/column-name "sum"} {::mb.viz/number-style "currency"
+                                                            ::mb.viz/currency      "USD"}}}]
+                           ["currency-in-header explicitly true"
+                            {::mb.viz/column-settings
+                             {{::mb.viz/column-name "sum"} {::mb.viz/number-style       "currency"
+                                                            ::mb.viz/currency           "USD"
+                                                            ::mb.viz/currency-in-header true}}}]]]
+        (testing label
+          (let [val-fmt (first (:val-formatters (formatter/make-formatters [col] [] [] [0] viz nil true)))]
+            (is (= "$632.14" (str (val-fmt 632.14))))))))))
