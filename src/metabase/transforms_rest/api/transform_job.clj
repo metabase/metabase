@@ -320,10 +320,10 @@
    [:checkpoint_hi_value {:optional true} [:maybe :string]]])
 
 (api.macros/defendpoint :get "/:job-id/runs" :- [:map {:closed true}
-                                                  [:data [:sequential JobRunResponse]]
-                                                  [:limit pos-int?]
-                                                  [:offset :int]
-                                                  [:total :int]]
+                                                 [:data [:sequential JobRunResponse]]
+                                                 [:limit pos-int?]
+                                                 [:offset :int]
+                                                 [:total :int]]
   "Get paginated run history for a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    query-params :- [:map
@@ -341,8 +341,8 @@
 (api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential TransformRunForJobRunResponse]
   "Get the transform runs that made up a specific job run."
   [{:keys [job-id run-id]} :- [:map
-                                [:job-id ms/PositiveInt]
-                                [:run-id ms/PositiveInt]]
+                               [:job-id ms/PositiveInt]
+                               [:run-id ms/PositiveInt]]
    _query-params]
   (api/check-data-analyst)
   (api/check-404 (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))

@@ -365,21 +365,18 @@
               (is (= 3 (count (:data response))))
               (is (pos? (:limit response)))
               (is (integer? (:offset response)))))
-
           (testing "filters by status"
             (let [response (mt/user-http-request :lucky :get 200
                                                  (str "transform-job/" job-id "/runs")
                                                  :status "failed")]
               (is (= [r2-id] (map :id (:data response))))
               (is (= 1 (:total response)))))
-
           (testing "sorts by start_time asc"
             (let [response (mt/user-http-request :lucky :get 200
                                                  (str "transform-job/" job-id "/runs")
                                                  :sort-column "start_time"
                                                  :sort-direction "asc")]
               (is (= r1-id (-> response :data first :id)))))
-
           (testing "response shape"
             (let [run (first (filter #(= r1-id (:id %))
                                      (:data (mt/user-http-request :lucky :get 200
@@ -389,10 +386,8 @@
               (is (= "succeeded" (:status run)))
               (is (= (utc-timestamp "2025-09-01T10:00:00") (:start_time run)))
               (is (= (utc-timestamp "2025-09-01T10:05:00") (:end_time run)))))
-
           (testing "returns 404 for non-existent job"
             (mt/user-http-request :lucky :get 404 "transform-job/999999/runs"))
-
           (testing "does not return runs from other jobs"
             (mt/with-temp [:model/TransformJob {other-job-id :id} {:name "Other Job" :schedule "0 0 0 * * ?"}
                            :model/TransformJobRun _ {:job_id     other-job-id
@@ -451,7 +446,6 @@
                                                    (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))]
                 (is (= #{tr1-id tr2-id} (into #{} (map :id) response)))
                 (is (= 2 (count response)))))
-
             (testing "response shape"
               (let [response (mt/user-http-request :lucky :get 200
                                                    (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))
@@ -461,12 +455,10 @@
                 (is (= "cron" (:run_method tr1)))
                 (is (= "succeeded" (:status tr1)))
                 (is (= "TR1" (:transform_name tr1)))))
-
             (testing "orders by start_time ascending"
               (let [response (mt/user-http-request :lucky :get 200
                                                    (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))]
                 (is (= [tr1-id tr2-id] (map :id response)))))
-
             (testing "does not include transform runs from other job runs"
               (mt/with-temp [:model/TransformJobRun {other-run-id :id} {:job_id     job-id
                                                                         :status     "succeeded"
@@ -481,15 +473,12 @@
                 (let [response (mt/user-http-request :lucky :get 200
                                                      (str "transform-job/" job-id "/runs/" run-id "/transform-runs"))]
                   (is (every? #(= run-id (:job_run_id %)) response)))))
-
             (testing "returns 404 for non-existent job"
               (mt/user-http-request :lucky :get 404
                                     (str "transform-job/999999/runs/" run-id "/transform-runs")))
-
             (testing "returns 404 for non-existent run"
               (mt/user-http-request :lucky :get 404
                                     (str "transform-job/" job-id "/runs/999999/transform-runs")))
-
             (testing "returns 404 when run does not belong to job"
               (mt/with-temp [:model/TransformJob {other-job-id :id} {:name "Other" :schedule "0 0 0 * * ?"}]
                 (mt/user-http-request :lucky :get 404
