@@ -1,6 +1,8 @@
 import * as Yup from "yup";
 
 import type {
+  CardDisplayType,
+  DatasetQuery,
   MetabotCodeEdit,
   MetabotTodoItem,
   SuggestedTransform,
@@ -18,6 +20,7 @@ export const knownDataPartTypes = [
   "todo_list",
   "code_edit",
   "transform_suggestion",
+  "generated_entity",
   "adhoc_viz",
   "static_viz",
 ];
@@ -33,12 +36,28 @@ export type StaticVizValue = {
   entity_id: number;
 };
 
+export type GeneratedQuery = {
+  id: string;
+  query: DatasetQuery;
+};
+
+export type GeneratedCard = {
+  type: "card";
+  id: string;
+  title: string;
+  query: GeneratedQuery;
+  display?: CardDisplayType;
+};
+
+export type GeneratedEntity = GeneratedCard;
+
 export type KnownDataPart =
   | { type: "navigate_to"; version: 1; value: string }
   | { type: "state"; version: 1; value: Record<string, any> }
   | { type: "todo_list"; version: 1; value: MetabotTodoItem[] }
   | { type: "transform_suggestion"; version: 1; value: SuggestedTransform }
   | { type: "code_edit"; version: 1; value: MetabotCodeEdit }
+  | { type: "generated_entity"; version: 1; value: GeneratedEntity }
   | { type: "adhoc_viz"; version: 1; value: AdhocVizValue }
   | { type: "static_viz"; version: 1; value: StaticVizValue };
 

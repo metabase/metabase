@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component, useCallback } from "react";
+import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -8,16 +8,8 @@ import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
+import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
-import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
-import {
-  getIsShowingRawTable,
-  getRowIndexToPKMap,
-  getUiControls,
-  getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
@@ -37,36 +29,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hideLegend",
 ];
 
-export function VisualizationResult(props) {
-  const dispatch = useDispatch();
-  const isRawTable = useSelector(getIsShowingRawTable);
-  const scrollToLastColumn = useSelector(
-    (state) => getUiControls(state)?.scrollToLastColumn ?? false,
-  );
-  const rowIndexToPkMap = useSelector(getRowIndexToPKMap);
-  const zoomedObjectId = useSelector(getZoomedObjectId);
-  const onZoomRow = useCallback(
-    (rowIndex) => {
-      const objectId = rowIndexToPkMap?.[rowIndex] ?? rowIndex;
-      if (objectId === zoomedObjectId) {
-        dispatch(resetRowZoom());
-      } else {
-        dispatch(zoomInRow({ objectId }));
-      }
-    },
-    [dispatch, rowIndexToPkMap, zoomedObjectId],
-  );
-  return (
-    <VisualizationResultInner
-      {...props}
-      isRawTable={isRawTable}
-      scrollToLastColumn={scrollToLastColumn}
-      onZoomRow={onZoomRow}
-    />
-  );
-}
-
-class VisualizationResultInner extends Component {
+export class VisualizationResult extends Component {
   state = {
     showCreateAlertModal: false,
   };
@@ -98,6 +61,8 @@ class VisualizationResultInner extends Component {
       renderEmptyMessage,
       isRawTable,
       scrollToLastColumn,
+      onZoomRow,
+      getExtraDataForClick,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -146,7 +111,8 @@ class VisualizationResultInner extends Component {
             }
           />
           {showCreateAlertModal && (
-            <CreateOrEditQuestionAlertModalWithQuestion
+            <CreateOrEditQuestionAlertModal
+              question={question}
               onClose={this.onCloseCreateAlertModal}
               onAlertCreated={this.onCloseCreateAlertModal}
             />
@@ -183,8 +149,8 @@ class VisualizationResultInner extends Component {
             timelineEvents={timelineEvents}
             token={token}
             selectedTimelineEventIds={selectedTimelineEventIds}
-            getExtraDataForClick={() => ({ zoomInRow })}
-            onZoomRow={this.props.onZoomRow}
+            getExtraDataForClick={getExtraDataForClick}
+            onZoomRow={onZoomRow}
             handleVisualizationClick={this.props.handleVisualizationClick}
             onOpenTimelines={this.props.onOpenTimelines}
             onSelectTimelineEvents={this.props.selectTimelineEvents}

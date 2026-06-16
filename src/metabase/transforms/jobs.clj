@@ -1,5 +1,6 @@
 (ns metabase.transforms.jobs
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
@@ -13,9 +14,11 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.freshness :as freshness]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
@@ -157,6 +160,10 @@
   (when-let [{:keys [database schema name]} (:target transform)]
     [database schema name]))
 
+(defn- app-db-now
+  []
+  (:now (t2/query-one {:select [[[:raw "current_timestamp"] :now]]})))
+
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
@@ -172,8 +179,16 @@
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
-  [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
+  [run-id transform-ids-to-run {:keys [run-method start-promise user-id skip-fresh-deps?]
+                                :or   {skip-fresh-deps? true}}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
+        requested    (set transform-ids-to-run)
+        closure      (into #{} (map :id) plan)
+        ;; Only deps pulled into the plan (not directly requested) are freshness-gated. Seeding them
+        ;; as :succeeded lets their dependents dispatch while they themselves are never submitted.
+        skip         (or (when skip-fresh-deps?
+                           (freshness/fresh-dep-ids (app-db-now) (set/difference closure requested)))
+                         #{})
         n            (max 1 (transforms.settings/transform-run-job-sql-concurrency))
         sql-executor (Executors/newFixedThreadPool n (named-thread-factory "transforms-sql-worker-%d"))
         py-executor  (Executors/newSingleThreadExecutor (named-thread-factory "transforms-python-worker-%d"))
@@ -181,7 +196,7 @@
                       :py  {:executor py-executor  :capacity 1}}
         lane-for     (fn [t] (if (transforms-base.u/python-transform? t) :py :sql))
         completions  (ArrayBlockingQueue. (max 2 (inc n)))
-        state        (volatile! {:succeeded         #{}
+        state        (volatile! {:succeeded         skip
                                  :failed            #{}
                                  :failures          []
                                  :in-flight         {:sql #{} :py #{}}
@@ -239,6 +254,8 @@
                               :else st)))
                         st
                         plan))]
+    (when (seq skip)
+      (log/infof "Skipping %d fresh pulled-in dependency transform(s): %s" (count skip) (pr-str skip)))
     (when start-promise (deliver start-promise :started))
     (try
       (vreset! state (dispatch! @state))
@@ -280,11 +297,20 @@
       #{})))
 
 (defn job-transforms
-  "Return the transforms that are executed when running the job with ID `job-id`.
+  "Return the transforms that are executed when running the job with ID `job-id`, in execution order.
 
-  The transforms are returned in the order of their execution."
+  Transforms pulled into the plan only as dependencies are marked with `:dependency true`
+  and `:scheduled` (whether any active job's schedule covers them)."
   [job-id]
-  (:order (get-plan (job-transform-ids job-id))))
+  (let [tagged    (job-transform-ids job-id)
+        plan      (:order (get-plan tagged))
+        dep-ids   (into #{} (comp (map :id) (remove tagged)) plan)
+        scheduled (set (keys (transform-tag/schedules-for-transforms dep-ids)))]
+    (map (fn [{:keys [id] :as transform}]
+           (cond-> transform
+             (contains? dep-ids id) (assoc :dependency true
+                                           :scheduled  (contains? scheduled id))))
+         plan)))
 
 (defn- compile-transform-failure-messages [failures]
   (->> failures
@@ -357,19 +383,6 @@
                                                  :message (structure-message (::message failure))})
                                               failures)}))))
 
-(defn- notify-job-failure
-  "Notify admins of a catastrophic job failure (not individual transform failures)."
-  [job-id message]
-  (let [job (t2/select-one :model/TransformJob job-id)
-        admin-emails (keep :email (active-admins))]
-    (doseq [email admin-emails]
-      (events/publish-event! :event/transform-failed
-                             {:email email
-                              :job_name (:name job)
-                              :job_href (urls/transform-job-url job-id)
-                              :failure_count 1
-                              :failures [{:message (structure-message message)}]}))))
-
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
   [job-id {:keys [run-method] :as opts}]
@@ -395,13 +408,11 @@
                                 (log/error e "Error when failing a transform run.")))))
                 (catch Throwable t
                   ;; We don't expect a catastrophic failure, but neither did the Titanic.
-                  ;; We should clean up in this case and notify the admin users.
                   (try
                     (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-                    (when (= :cron run-method)
-                      (if (::transform-failure (ex-data t))
-                        (notify-transform-failures job-id (::failures (ex-data t)))
-                        (notify-job-failure job-id (.getMessage t))))
+                    (when (and (::transform-failure (ex-data t))
+                               (= :cron run-method)) ;; Catastrophic job failures are included in the digest
+                      (notify-transform-failures job-id (::failures (ex-data t))))
                     (catch Exception e
                       (log/error e "Error when failing a transform job run.")))
                   (throw t)))))
@@ -409,27 +420,20 @@
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
-(defn- timeout-and-notify-old-runs!
-  "Time out stale job runs and notify admins for each cron-scheduled run that was
-  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
-  notification behavior."
+(defn- timeout-old-runs!
+  "Time out stale transform job runs."
   []
   (let [timed-out (transforms.job-run/timeout-old-runs!
                    (transforms.settings/transform-timeout) :minute)]
     (when (seq timed-out)
       (log/infof "Timed out %d transform job run(s)." (count timed-out)))
-    (doseq [{:keys [job_id run_method message]} timed-out
-            :when (= run_method :cron)]
-      (try
-        (notify-job-failure job_id (or message "Timed out by metabase"))
-        (catch Throwable t
-          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
+    timed-out))
 
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
   (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "job"}
-    (timeout-and-notify-old-runs!)))
+    (timeout-old-runs!)))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))

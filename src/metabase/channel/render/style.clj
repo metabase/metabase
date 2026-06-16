@@ -75,6 +75,14 @@
   "Used as color for the border of table, table header, and table body rows for charts with `:table` visualization."
   "#F0F0F0")
 
+(def ^:const color-pivot-header-bg
+  "Background fill for the column-header cells of a rendered `:pivot` table."
+  "#F5F6F7")
+
+(def ^:const color-pivot-label-bg
+  "Background fill for the row-label cells of a rendered `:pivot` table."
+  "#FAFAFA")
+
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
 (defn primary-color
@@ -191,3 +199,27 @@
    :max-height "30px"
    :object-fit "contain"
    :display    "block"})
+
+(defn pivot-table-style
+  "Style for the `<table>` element of a rendered `:pivot` table."
+  []
+  (merge (font-style)
+         {:border-collapse :collapse
+          :font-size       (format "%spx" font-size)}))
+
+(defn pivot-cell-style
+  "Style for one cell of a rendered `:pivot` table. `header?`/`label?` select the cell role; `bg`, when
+  non-nil, is the conditional-formatting background color for a value cell."
+  [header? label? bg]
+  (merge {:border      (str "1px solid " color-border)
+          :padding     "5px 10px"
+          :white-space :nowrap}
+         (cond
+           header? {:background  color-pivot-header-bg
+                    :font-weight 700
+                    :text-align  :left}
+           label?  {:background  color-pivot-label-bg
+                    :font-weight 600
+                    :text-align  :left}
+           :else   {:text-align :right})
+         (when bg {:background-color bg})))

@@ -30,7 +30,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field-values :as field-values]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -59,11 +58,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(defmethod mi/can-read? :model/Dashboard
-  ([instance]
-   (perms/can-read-audit-helper :model/Dashboard instance))
-  ([_ pk]
-   (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
+(perms/define-collection-based-visibility! :model/Dashboard)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -255,7 +250,7 @@
       (log/info "Referenced Fields in Dashboard params have changed: Was:" old-param-field-ids
                 "Is Now:" new-param-field-ids
                 "Newly Added:" newly-added-param-field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids))))
+      ((requiring-resolve 'metabase.sync.field-values/update-field-values-for-on-demand-dbs!) newly-added-param-field-ids))))
 
 (defn add-dashcards!
   "Add Cards to a Dashboard.
@@ -375,8 +370,14 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set ::parameters.schema/parameter-mapping]]]])
 
-(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
-  [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
+(mu/defn dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+  "Return map of Dashboard parameter key -> param with resolved `:mappings` (see the `:resolved-params` hydration
+  below for an example). Callers that only need the mappings (e.g. the QP) can pass slim dashcards instead of paying
+  for the full hydration."
+  [dashboard :- [:map
+                 [:parameters [:maybe [:sequential :map]]]
+                 [:dashcards [:maybe [:sequential [:map
+                                                   [:parameter_mappings [:maybe [:sequential :map]]]]]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
                              (for [dashcard (:dashcards dashboard)

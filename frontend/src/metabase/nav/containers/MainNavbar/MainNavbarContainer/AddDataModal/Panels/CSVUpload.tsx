@@ -218,7 +218,7 @@ export const CSVUpload = ({
               <Box component={IconCSVWarning} h={50} />
             ) : (
               <Box
-                c={uploadState.file ? "brand" : "text-secondary-inverse"}
+                c={uploadState.file ? "core-brand" : "text-secondary-inverse"}
                 component={IconCSV}
                 h={50}
               />

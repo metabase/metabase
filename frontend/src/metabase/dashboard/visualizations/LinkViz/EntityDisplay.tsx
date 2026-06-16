@@ -34,7 +34,7 @@ export const EntityDisplay = ({
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <EntityIcon color="brand" {...getSearchIcon(entity)} />
+        <EntityIcon color="core-brand" {...getSearchIcon(entity)} />
         <EllipsifiedEntityContainer>{entity?.name}</EllipsifiedEntityContainer>
       </LeftContainer>
       {showDescription && entity?.description && (
@@ -68,7 +68,7 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   return (
     <EntityDisplayContainer>
       <LeftContainer>
-        <Icon c={"brand"} name={urlIcon} />
+        <Icon c={"core-brand"} name={urlIcon} />
         <EllipsifiedEntityContainer>
           {!isEmpty(url) ? url : t`Choose a link`}
         </EllipsifiedEntityContainer>

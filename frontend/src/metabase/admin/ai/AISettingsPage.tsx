@@ -20,10 +20,10 @@ import {
 import { useRouter } from "metabase/router/useRouter";
 import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
+import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
 import { EmbeddedMetabotUpsell } from "./EmbeddedMetabotUpsell";
 import { McpAppsSettings } from "./McpAppsSettings";
 import { MetabotSettingsPanel } from "./MetabotSettingsPanel";
-import { MetabotSetup } from "./MetabotSetup";
 
 type MetabotTabId =
   | typeof FIXED_METABOT_IDS.DEFAULT
@@ -71,7 +71,7 @@ export function AISettingsPage() {
     >
       {areAiFeaturesEnabled && (
         <>
-          <MetabotSetup id={SETUP_SECTION_ID} />
+          <AIProviderSettingsSection id={SETUP_SECTION_ID} />
           <DisabledSection disabled={!isConfigured}>
             <MetabotSettingsSection
               hasEmbedding={hasEmbedding}

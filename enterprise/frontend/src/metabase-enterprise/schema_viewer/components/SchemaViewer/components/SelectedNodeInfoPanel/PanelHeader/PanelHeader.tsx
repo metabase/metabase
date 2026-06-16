@@ -39,7 +39,7 @@ export function PanelHeader({
   const breadcrumbs = getBreadcrumbs(node, database);
   const metadataUrl = Urls.dataStudioData({
     databaseId: node.data.db_id,
-    schemaName: node.data.schema ?? undefined,
+    schemaName: node.data.schema ?? "",
     tableId: node.data.table_id,
   });
 
@@ -52,7 +52,7 @@ export function PanelHeader({
   return (
     <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
       <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background-secondary">
-        <FixedSizeIcon name="table" c="brand" size={20} />
+        <FixedSizeIcon name="table" c="core-brand" size={20} />
       </Center>
       <Stack gap="xs" flex={1}>
         {onTitleClick != null ? (

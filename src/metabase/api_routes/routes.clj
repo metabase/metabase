@@ -28,6 +28,7 @@
    [metabase.frontend-errors.api]
    [metabase.geojson.api]
    [metabase.glossary.api]
+   [metabase.health-inspector.api]
    [metabase.indexed-entities.api]
    [metabase.llm.api]
    [metabase.logger.api]
@@ -41,6 +42,7 @@
    [metabase.model-persistence.api]
    [metabase.native-query-snippets.api]
    [metabase.notification.api]
+   [metabase.oauth-server.api.admin]
    [metabase.permissions-rest.api]
    [metabase.premium-features.api]
    [metabase.product-feedback.api]
@@ -96,6 +98,7 @@
          metabase.login-history.api/keep-me
          metabase.mcp.api/keep-me
          metabase.mcp.callback-api/keep-me
+         metabase.oauth-server.api.admin/keep-me
          metabase.measures.api/keep-me
          metabase.metrics.api/keep-me
          metabase.model-persistence.api/keep-me
@@ -188,18 +191,23 @@
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)
    "/google"               (+auth metabase.sso.api/google-auth-routes)
+   "/health-inspector"     (+auth 'metabase.health-inspector.api)
    "/ldap"                 (+auth metabase.sso.api/ldap-routes)
    "/llm"                  (+auth metabase.llm.api/routes)
    "/logger"               (+auth 'metabase.logger.api)
    "/login-history"        (+auth 'metabase.login-history.api)
+   ;; `/mcp` is a legacy alias of the canonical `/metabase-mcp` below, kept for back-compat with
+   ;; existing clients. See [[metabase.mcp.api/endpoint-paths]].
    "/mcp"                  (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/measure"              (+auth 'metabase.measures.api)
+   "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/metabot"              metabase.metabot.api/routes
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
    "/notification"         metabase.notification.api/notification-routes
    "/notify"               (+static-apikey metabase.sync.api/notify-routes)
+   "/oauth"                (+auth 'metabase.oauth-server.api.admin)
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.api/routes)

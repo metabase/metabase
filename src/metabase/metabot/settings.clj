@@ -93,15 +93,26 @@
                     (setting/get-value-of-type :boolean :embedded-metabot-enabled?))
   :export?    true)
 
+(defsetting metabot-recent-views-enabled?
+  (deferred-tru "Whether the user''s recently viewed items are included in the Metabot system prompt.")
+  :type       :boolean
+  :visibility :internal
+  :default    true
+  :export?    false)
+
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
 
 (def ^:private direct-providers
   "Providers that can be used directly (not via the metabase/ proxy prefix)."
-  #{"anthropic" "openai" "openrouter"})
+  #{"anthropic" "bedrock" "openai" "openrouter"})
 
 (def ^:private default-anthropic-llm-metabot-model
   "Default Anthropic model used for Metabot when no explicit model is selected."
   "claude-sonnet-4-6")
+
+(def ^:private default-bedrock-llm-metabot-model
+  "Default Bedrock model used for Metabot when no explicit model is selected."
+  "anthropic.claude-opus-4-8")
 
 (def default-llm-metabot-provider
   "Default provider/model used for Metabot when no explicit model is selected."
@@ -112,7 +123,8 @@
 
   Values match the shape expected in the request body for each provider: direct providers use a bare model ID, while the
   managed `metabase` provider uses the proxied `provider/model` form."
-  {"anthropic"                       default-anthropic-llm-metabot-model
+  {"anthropic"                            default-anthropic-llm-metabot-model
+   "bedrock"                              default-bedrock-llm-metabot-model
    provider-util/metabase-provider-prefix default-llm-metabot-provider})
 
 (def default-metabase-llm-metabot-provider
@@ -221,35 +233,60 @@
                         (validate-metabot-provider! new-value))
                       (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
 
-(defn- token-configured?
-  [token]
-  (boolean (and (string? token)
-                (not (str/blank? token)))))
+(defn- non-blank
+  [value]
+  (when (string? value)
+    (let [trimmed (str/trim value)]
+      (when-not (str/blank? trimmed)
+        trimmed))))
 
-(defn configured-provider-api-key
-  "Returns the configured API key for the given provider, or nil if unrecognized."
+(defn- configured-api-key-credentials
+  [api-key]
+  (when-let [k (non-blank api-key)]
+    {:api-key k}))
+
+(defn configured-provider-credentials
+  "Returns the configured credentials map for the given provider, or nil if unrecognized or unconfigured.
+
+  The shape of the map varies by provider: API-key providers return `{:api-key ...}`, while Bedrock returns
+  `:access-key-id`, `:secret-access-key`, `:session-token`, and `:region` from the `llm-bedrock-*` settings. Bedrock
+  counts as configured only when both the access key ID and secret access key are set."
   [provider]
   (case provider
-    "anthropic"  (llm.settings/llm-anthropic-api-key)
-    "openai"     (llm.settings/llm-openai-api-key)
-    "openrouter" (llm.settings/llm-openrouter-api-key)
+    "anthropic"  (configured-api-key-credentials (llm.settings/llm-anthropic-api-key))
+    "bedrock"    (when (llm.settings/llm-bedrock-configured?)
+                   {:access-key-id     (non-blank (llm.settings/llm-bedrock-access-key-id))
+                    :secret-access-key (non-blank (llm.settings/llm-bedrock-secret-access-key))
+                    :session-token     (non-blank (llm.settings/llm-bedrock-session-token))
+                    :region            (non-blank (llm.settings/llm-bedrock-region))})
+    "openai"     (configured-api-key-credentials (llm.settings/llm-openai-api-key))
+    "openrouter" (configured-api-key-credentials (llm.settings/llm-openrouter-api-key))
     nil))
+
+(defn provider-credentials-complete?
+  "Whether a credentials map carries everything `provider` needs to make requests: both the AWS access key ID and
+  secret access key for Bedrock, an `:api-key` for the other direct providers."
+  [provider credentials]
+  (boolean
+   (if (= provider "bedrock")
+     (and (non-blank (:access-key-id credentials))
+          (non-blank (:secret-access-key credentials)))
+     (non-blank (:api-key credentials)))))
 
 (defn- llm-provider-configured?
   "Check if a provider-and-model string has the necessary configuration.
   For `metabase/*` providers, checks that the proxy URL is set.
-  For direct providers, checks that a BYOK API key is set."
+  For direct providers, checks that credentials are configured (see [[configured-provider-credentials]])."
   [provider-and-model]
   (boolean
    (if (provider-util/metabase-provider? provider-and-model)
      (some? (llm.settings/llm-proxy-base-url))
      (some-> provider-and-model
              provider-util/provider-and-model->provider
-             configured-provider-api-key
-             token-configured?))))
+             configured-provider-credentials))))
 
 (defsetting llm-metabot-configured?
-  "Whether the API key for the selected Metabot provider is configured."
+  "Whether credentials for the selected Metabot provider are configured."
   :type       :boolean
   :visibility :public
   :setter     :none

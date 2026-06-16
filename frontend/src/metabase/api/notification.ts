@@ -104,7 +104,7 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (params) => ({
         method: "GET",
-        url: "/api/ee/notifications",
+        url: "/api/notification/admin",
         params: params ?? undefined,
       }),
       providesTags: (result) =>
@@ -118,7 +118,7 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: "/api/ee/notifications/bulk",
+        url: "/api/notification/admin/bulk",
         body,
       }),
       invalidatesTags: (_result, error, { notification_ids }) =>
@@ -135,7 +135,7 @@ export const notificationApi = Api.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/ee/notifications/${id}`,
+        url: `/api/notification/admin/${id}`,
       }),
       providesTags: (result) =>
         result ? provideAdminNotificationTags(result) : [],

@@ -1,6 +1,14 @@
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import {
+  ItemIcon,
+  LoadingSection,
+  ResultNameSection,
+  ResultTitle,
+  SearchResultContainer,
+} from "metabase/common/components/SearchResult";
+import { SearchResultLink } from "metabase/common/components/SearchResultLink";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import {
@@ -8,14 +16,6 @@ import {
   SearchLoadingSpinner,
 } from "metabase/nav/components/search/SearchResults";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import {
-  ItemIcon,
-  LoadingSection,
-  ResultNameSection,
-  ResultTitle,
-  SearchResultContainer,
-} from "metabase/search/components/SearchResult";
-import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import { Group, Loader, Stack, Title } from "metabase/ui";
 import { getName } from "metabase/utils/name";
 import { isSyncCompleted } from "metabase/utils/syncing";

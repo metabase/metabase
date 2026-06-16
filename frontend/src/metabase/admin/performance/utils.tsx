@@ -1,10 +1,18 @@
 import { match } from "ts-pattern";
 import { c } from "ttag";
+import * as Yup from "yup";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import { getScheduleStrings } from "metabase/common/components/Schedule/strings";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import {
+  PLUGIN_CACHING,
+  type PerformanceTabId,
+  type StrategyData,
+  type StrategyLabel,
+  defaultMinDurationMs,
+  strategies,
+} from "metabase/plugins";
 import { isNullOrUndefined } from "metabase/utils/types";
 import type {
   AdaptiveStrategy,
@@ -14,8 +22,7 @@ import type {
   CacheableModel,
 } from "metabase-types/api";
 
-import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { PerformanceTabId, StrategyData, StrategyLabel } from "./types";
+import { rootId } from "./constants/simple";
 
 type ErrorWithMessage = { data: { message: string } };
 export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
@@ -97,6 +104,40 @@ export const getStrategyValidationSchema = (strategyData: StrategyData) => {
     return strategyData.validationSchema;
   }
 };
+
+export const strategyValidationSchema = Yup.object().test(
+  "strategy-validation",
+  "The object must match one of the strategy validation schemas",
+  function (value) {
+    if (!value) {
+      return this.createError({
+        message: "Strategy is falsy",
+      });
+    }
+    const { type } = value as unknown as { type: string };
+    if (!isValidStrategyName(type)) {
+      return this.createError({
+        message: `"${type}" is not a valid strategy name`,
+        path: "type",
+      });
+    }
+    const schema = getStrategyValidationSchema(strategies[type]);
+    try {
+      schema.validateSync(value);
+      return true;
+    } catch (error: unknown) {
+      if (error instanceof Yup.ValidationError) {
+        return this.createError({
+          message: error.message,
+          path: error.path,
+        });
+      } else {
+        console.error("Unhandled error:", error);
+        return false;
+      }
+    }
+  },
+) as Yup.AnySchema;
 
 export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;

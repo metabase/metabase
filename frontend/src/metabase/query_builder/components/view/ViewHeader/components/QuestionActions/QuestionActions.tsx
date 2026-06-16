@@ -61,7 +61,9 @@ export const QuestionActions = ({
     [isShowingQuestionInfoSidebar, isBookmarked],
   );
 
-  const infoButtonColor = isShowingQuestionInfoSidebar ? "brand" : undefined;
+  const infoButtonColor = isShowingQuestionInfoSidebar
+    ? "core-brand"
+    : undefined;
 
   const hasCollectionPermissions = question.canWrite();
   const canAppend =

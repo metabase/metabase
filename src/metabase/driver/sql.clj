@@ -5,7 +5,6 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution]
@@ -58,6 +57,13 @@
                  :window-functions/cumulative
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
+
+;; True when the driver's `run-transform!` `:rows-affected` reflects rows actually written.
+;; Drivers whose CTAS count is unreliable override to false; the transforms layer then falls back
+;; to a native `COUNT(*)` on the target.
+(defmethod driver/database-supports? [:sql :transforms/accurate-rows-affected]
+  [_driver _feature _db]
+  true)
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
@@ -165,9 +171,10 @@
 
 (defn- create-table-and-insert-data!
   [driver transform-details conn-spec]
-  (let [create-query  (driver/compile-transform driver transform-details)
-        rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
-    rows-affected))
+  (let [create-query (driver/compile-transform driver transform-details)]
+    ;; `execute-raw-queries!` returns one `{:rows-affected N}` map per statement; the last
+    ;; statement's map is the transform's row count. Return it as-is — callers propagate it.
+    (last (driver/execute-raw-queries! driver conn-spec [create-query]))))
 
 (defn- run-with-rename-tables-strategy!
   [driver database output-table transform-details conn-spec]
@@ -175,11 +182,11 @@
         old-temp (driver.u/temp-table-name driver output-table)]
     (try
       (let [new-temp-details (assoc transform-details :output-table new-temp)
-            rows-affected    (create-table-and-insert-data! driver new-temp-details conn-spec)]
+            result           (create-table-and-insert-data! driver new-temp-details conn-spec)]
         (driver/rename-tables! driver (:id database) {output-table old-temp
                                                       new-temp     output-table})
         (driver/drop-table! driver (:id database) old-temp)
-        {:rows-affected rows-affected})
+        result)
       (catch Exception e
         (log/error e "Failed to run transform using rename-tables strategy")
         (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
@@ -190,10 +197,10 @@
   (let [tmp-table (driver.u/temp-table-name driver output-table)]
     (try
       (let [tmp-table-details (assoc transform-details :output-table tmp-table)
-            rows-affected     (create-table-and-insert-data! driver tmp-table-details conn-spec)]
+            result            (create-table-and-insert-data! driver tmp-table-details conn-spec)]
         (driver/drop-table! driver (:id database) output-table)
         (driver/rename-table! driver (:id database) tmp-table output-table)
-        {:rows-affected rows-affected})
+        result)
       (catch Exception e
         (log/error e "Failed to run transform using create-drop-rename strategy")
         (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
@@ -203,13 +210,13 @@
   [driver database output-table transform-details conn-spec]
   (try
     (driver/drop-table! driver (:id database) output-table)
-    {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
+    (create-table-and-insert-data! driver transform-details conn-spec)
     (catch Exception e
       (log/error e "Failed to run transform using drop-create strategy")
       (throw e))))
 
 ;; Follows similar logic to `transfer-file-to-db :table`
-(defmethod driver/run-transform! [:sql :table]
+(mu/defmethod driver/run-transform! [:sql :table] :- ::driver/run-transform-result
   [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
   (let [table-exists? (driver/table-exists? driver database
                                             {:schema (namespace output-table)
@@ -231,14 +238,15 @@
       :else
       (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
 
-(defmethod driver/run-transform! [:sql :table-incremental]
+(mu/defmethod driver/run-transform! [:sql :table-incremental] :- ::driver/run-transform-result
   [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
   (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
                                                            :name (name output-table)})
                   (driver/compile-insert driver transform-details)
                   (driver/compile-transform driver transform-details))]
     (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
+    ;; `execute-raw-queries!` already yields `{:rows-affected N}` maps; take the last as-is.
+    (last (driver/execute-raw-queries! driver conn-spec [queries]))))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -280,15 +288,15 @@
 
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
-   Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
-   For regular impersonated queries, ensure that it is a single select statement.
-   For custom actions, ensure that it is a single write statement (insert, update, delete)."
+   Reads `:impersonation/allow-write?` on the query to decide what to require: when truthy (set by
+   [[metabase.query-processor.writeback/execute-write-query!]] for custom write actions) require a single
+   write statement (insert, update, delete); otherwise require a single select statement."
   [driver query]
   (update query :stages
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [[stmt-type allowed-stmts] (if (= driver.conn/*connection-type* :write-data)
+                      (let [[stmt-type allowed-stmts] (if (:impersonation/allow-write? query)
                                                         ["write" (tru "insert, update, or delete")]
                                                         ["read" (tru "select")])
                             {:keys [is-single-stmt? sql error]}

@@ -167,7 +167,7 @@ export const BreakoutPopover = ({
       hasBinning
       hasTemporalBucketing
       withInfoIcons
-      color="summarize"
+      color="core-summarize"
       checkIsColumnSelected={(item) => checkColumnSelected(item, breakoutIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = breakout != null;

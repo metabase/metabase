@@ -90,6 +90,29 @@
         (is (nil? (:fk_target_field_id pk-field)))
         (is (nil? (:fk_target_table_id pk-field)))))))
 
+(deftest erd-graph-field-order-test
+  (mt/with-premium-features #{:schema-viewer}
+    (testing "fields come back ordered by [position asc, lower(name) asc] — same as /api/table/:id/query_metadata"
+      ;; Insertion order deliberately scrambled relative to the expected order so
+      ;; an unsorted DB read would not accidentally pass. `position` is the primary
+      ;; key; `lower(name)` breaks ties (and proves the sort is case-insensitive).
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {tid :id} {:db_id db-id :name "t" :schema "PUBLIC"}
+                     :model/Field _ {:table_id tid :name "zulu"   :position 2
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "Bravo"  :position 1
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "alpha"  :position 1
+                                     :database_type "INTEGER" :base_type :type/Integer}
+                     :model/Field _ {:table_id tid :name "yankee" :position 0
+                                     :database_type "INTEGER" :base_type :type/Integer}]
+        (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
+                                             :database-id db-id
+                                             :table-ids tid)
+              node     (first (filter #(= tid (:table_id %)) (:nodes response)))]
+          (is (= ["yankee" "alpha" "Bravo" "zulu"]
+                 (mapv :name (:fields node)))))))))
+
 (deftest erd-external-fk-target-resolution-test
   (mt/with-premium-features #{:schema-viewer}
     (testing "FK field pointing to a readable table beyond the hop budget still carries the target IDs"
@@ -274,9 +297,9 @@
           (is (empty? (:nodes response)))
           (is (empty? (:edges response))))))))
 
-(deftest erd-endpoint-excludes-hidden-and-sensitive-metadata-test
+(deftest erd-endpoint-includes-hidden-tables-and-all-field-visibility-test
   (mt/with-premium-features #{:schema-viewer}
-    (testing "hidden tables are omitted; all field visibility types are included"
+    (testing "all tables (incl. hidden/technical/cruft) are surfaced; all field visibility types are included"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {visible-table-id :id} {:db_id db-id :name "visible" :schema "PUBLIC"}
                      :model/Field _ {:table_id visible-table-id :name "visible_id"
@@ -291,18 +314,28 @@
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :visibility_type "retired"}
                      :model/Table _ {:db_id db-id :name "hidden_table" :schema "PUBLIC"
-                                     :visibility_type "hidden"}]
-        (let [response    (mt/user-http-request :rasta :get 200 "ee/erd"
-                                                :database-id db-id
-                                                :schema "PUBLIC")
-              node-names  (set (map :name (:nodes response)))
-              field-names (set (map :name (mapcat :fields (:nodes response))))]
-          (is (= #{"visible"} node-names))
-          (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names)))))))
+                                     :visibility_type "hidden"}
+                     :model/Table _ {:db_id db-id :name "technical_table" :schema "PUBLIC"
+                                     :visibility_type "technical"}
+                     :model/Table _ {:db_id db-id :name "cruft_table" :schema "PUBLIC"
+                                     :visibility_type "cruft"}]
+        (let [response       (mt/user-http-request :rasta :get 200 "ee/erd"
+                                                   :database-id db-id
+                                                   :schema "PUBLIC")
+              node-names     (set (map :name (:nodes response)))
+              field-names    (set (map :name (mapcat :fields (:nodes response))))
+              visibility-by-name (into {} (map (juxt :name :visibility_type)) (:nodes response))]
+          (is (= #{"visible" "hidden_table" "technical_table" "cruft_table"} node-names))
+          (is (= #{"visible_id" "hidden_field" "secret" "retired_field"} field-names))
+          (is (= {"visible"         nil
+                  "hidden_table"    "hidden"
+                  "technical_table" "technical"
+                  "cruft_table"     "cruft"}
+                 visibility-by-name)))))))
 
-(deftest erd-endpoint-does-not-leak-hidden-fk-targets-test
+(deftest erd-endpoint-resolves-hidden-fk-targets-test
   (mt/with-premium-features #{:schema-viewer}
-    (testing "FK targets in hidden tables are nulled and do not produce edges; FKs to sensitive fields resolve"
+    (testing "FK targets in hidden tables resolve into nodes and edges; FKs to sensitive fields resolve too"
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target" :schema "PUBLIC"
                                                                 :visibility_type "hidden"}
@@ -331,12 +364,14 @@
               fields-by-id  (into {} (map (juxt :id identity)) (:fields source-node))
               hidden-fk     (get fields-by-id hidden-table-fk-id)
               sensitive-fk  (get fields-by-id sensitive-field-fk-id)]
-          (is (not (contains? nodes-by-name "hidden_target")))
+          (is (contains? nodes-by-name "hidden_target"))
           (is (contains? nodes-by-name "visible_target"))
-          (testing "FK to a field in a hidden table is nulled and produces no edge"
-            (is (nil? (:fk_target_table_id hidden-fk)))
-            (is (nil? (:fk_target_field_id hidden-fk)))
-            (is (not-any? #(= hidden-table-fk-id (:source_field_id %)) (:edges response))))
+          (testing "FK to a field in a hidden table resolves and produces an edge"
+            (is (= hidden-target-table-id (:fk_target_table_id hidden-fk)))
+            (is (= hidden-target-field-id (:fk_target_field_id hidden-fk)))
+            (is (some #(and (= hidden-table-fk-id (:source_field_id %))
+                            (= hidden-target-field-id (:target_field_id %)))
+                      (:edges response))))
           (testing "FK to a sensitive field in a visible table resolves normally"
             (is (= visible-target-table-id (:fk_target_table_id sensitive-fk)))
             (is (= sensitive-target-field-id (:fk_target_field_id sensitive-fk)))

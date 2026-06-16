@@ -62,6 +62,12 @@
       :state
       :country)))
 
+(deftest ^:parallel detect-pulse-chart-type-pivot-test
+  (testing "pivot cards route to :pivot"
+    (is (= :pivot (channel.render/detect-pulse-chart-type
+                   {:display :pivot} nil
+                   {:cols [{:base_type :type/Text} {:base_type :type/Number}] :rows [["a" 1]]})))))
+
 (deftest ^:parallel detect-pulse-chart-type-test-2
   (testing "Queries resulting in no rows return `:empty`."
     (is (= :empty

@@ -52,7 +52,7 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
       step={step}
       stageIndex={step.stageIndex}
       query={step.query}
-      color="summarize"
+      color="core-summarize"
       isLastOpened={false}
       reportTimezone="UTC"
       updateQuery={updateQuery}
