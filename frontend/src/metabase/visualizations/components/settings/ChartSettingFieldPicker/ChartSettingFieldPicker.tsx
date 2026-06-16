@@ -12,9 +12,9 @@ import type { DatasetColumn, Series } from "metabase-types/api";
 
 import { ChartSettingActionIcon } from "../ChartSettingActionIcon";
 import { ChartSettingColorPicker } from "../ChartSettingColorPicker";
+import { ChartSettingSelect } from "../ChartSettingSelect";
 
 import S from "./ChartSettingFieldPicker.module.css";
-import { ChartSettingSelect } from "./ChartSettingSelect";
 
 const RIGHT_SECTION_PADDING = 16;
 const RIGHT_SECTION_BUTTON_WIDTH = 22;
