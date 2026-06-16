@@ -558,8 +558,8 @@ describe("ObjectDetailPanel", () => {
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
   const actionsMenu = await screen.findByTestId("actions-menu");
   await userEvent.click(actionsMenu);
-  const popover = await screen.findByRole("dialog");
-  const action = within(popover).queryByText(name);
+  const menu = await screen.findByRole("menu");
+  const action = within(menu).queryByText(name);
   return action;
 }
 

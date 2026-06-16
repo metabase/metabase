@@ -96,6 +96,12 @@
 
 (def ^:private temperature 0.3)
 
+(def ^:private max-tokens
+  "Output-token ceiling for a single generation. The answer itself is tiny, but reasoning models spend output tokens
+  reasoning *before* emitting the forced structured_output tool call, so the cap must leave room for that or the call
+  returns no tool call.  Non-reasoning providers stop well under this, so the higher ceiling costs them nothing."
+  2048)
+
 (defn- call-llm
   "Make a structured LLM call for example question generation.
   Delegates to the shared self/call-llm-structured infrastructure which provides
@@ -106,7 +112,7 @@
    [{:role "user" :content rendered-prompt}]
    questions-json-schema
    temperature
-   300
+   max-tokens
    {:request-id (str (random-uuid))
     ;; example_question_generation_batch was the name of the old ai-service api endpoint
     :source     "example_question_generation_batch"

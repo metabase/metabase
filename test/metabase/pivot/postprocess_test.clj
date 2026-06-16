@@ -1,7 +1,7 @@
-(ns metabase.query-processor.pivot.postprocess-test
+(ns metabase.pivot.postprocess-test
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor.pivot.postprocess :as pivot.postprocess]))
+   [metabase.pivot.postprocess :as pivot.postprocess]))
 
 (deftest ^:parallel build-top-headers-test
   (testing "builds top headers with single level hierarchy"
