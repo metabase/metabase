@@ -40,6 +40,10 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+const SHOULD_STACK_CUTOFF = 8;
+const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;
+const MIN_ROWS_TO_SHOW_LINE_OR_BAR = 3;
+
 interface BuildSeriesGroupsParams {
   queries: ExplorationQuery[];
   datasets: Dataset[];
@@ -78,8 +82,6 @@ function getChartLabel(group: SeriesGroup): string | null {
   }
   return QUERY_TYPE_TO_LABEL_MAP[group.queryType]?.() ?? null;
 }
-
-const SHOULD_STACK_CUTOFF = 8;
 
 const QUERY_TYPE_TO_LABEL_MAP: Record<
   ExplorationQueryType,
@@ -320,15 +322,17 @@ export function buildSeriesGroups({
     queriesWithDatasetGroups,
   );
 
-  const seriesGroups = queriesWithDatasetGroups.map((queriesWithDatasets) => {
-    const dimensionId = queriesWithDatasets[0]?.dimension_id ?? "";
-    return buildSeries({
-      ...rest,
-      queriesWithDatasets,
-      categoryColors: categoryColorsByDimension.get(dimensionId),
-      topNBarColors: geoTopNColorsByDimension.get(dimensionId),
-    });
-  });
+  const seriesGroups = queriesWithDatasetGroups
+    .map((queriesWithDatasets) => {
+      const dimensionId = queriesWithDatasets[0]?.dimension_id ?? "";
+      return buildSeriesGroup({
+        ...rest,
+        queriesWithDatasets,
+        categoryColors: categoryColorsByDimension.get(dimensionId),
+        topNBarColors: geoTopNColorsByDimension.get(dimensionId),
+      });
+    })
+    .filter((group) => group.series.length > 0);
 
   const layoutStrategy = getChartsGroupLayoutStrategy(seriesGroups);
 
@@ -400,7 +404,7 @@ type BuildSeriesParams = Omit<
   topNBarColors?: Record<string, string>;
 };
 
-export function buildSeries({
+export function buildSeriesGroup({
   queriesWithDatasets,
   selectedTimelineId,
   categoryColors,
@@ -418,153 +422,108 @@ export function buildSeries({
     color: colors[name],
   }));
 
-  const series = queriesWithDatasets.map((queryWithDataset, i) => {
-    const { dataset, ...query } = queryWithDataset;
+  const series = queriesWithDatasets
+    .filter((queryWithDataset) => queryWithDataset.dataset.data.rows.length > 0)
+    .map((queryWithDataset, i) => {
+      const { dataset, ...query } = queryWithDataset;
 
-    const queriesWithSegments = queriesWithDatasets.filter(
-      (query) => query.segment_id != null,
-    );
+      const queriesWithSegments = queriesWithDatasets.filter(
+        (query) => query.segment_id != null,
+      );
 
-    const {
-      display,
-      settings,
-      isTimeseries: isTimeseriesForQuery,
-      stackCount: stackCountForQuery,
-    } = getDisplay(
-      queryWithDataset,
-      queriesWithDatasets.length,
-      queriesWithSegments.length,
-      selectedTimelineId,
-    );
-    isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
-    // this works because we should always get the same stackCount for all queries in a group
-    // but that's only because we don't run queries for segments and breakouts at the same time
-    // so this is somewhat fragile and will need to be revisited if we ever support that
-    stackCount = stackCountForQuery;
-    const isCartesian = isCartesianChart(display);
-    const cardVizSettings: VisualizationSettings = { ...settings };
-    if (isCartesian) {
-      // disable axis labels unless explicitly set
-      if (!cardVizSettings["graph.y_axis.labels_enabled"]) {
-        cardVizSettings["graph.y_axis.labels_enabled"] = false;
-      }
-      if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
-        cardVizSettings["graph.x_axis.labels_enabled"] = false;
-      }
+      const {
+        display,
+        settings,
+        isTimeseries: isTimeseriesForQuery,
+        stackCount: stackCountForQuery,
+      } = getDisplay(
+        queryWithDataset,
+        queriesWithDatasets.length,
+        queriesWithSegments.length,
+        selectedTimelineId,
+      );
+      isTimeseries = isTimeseries || Boolean(isTimeseriesForQuery);
+      // this works because we should always get the same stackCount for all queries in a group
+      // but that's only because we don't run queries for segments and breakouts at the same time
+      // so this is somewhat fragile and will need to be revisited if we ever support that
+      stackCount = stackCountForQuery;
+      const isCartesian = isCartesianChart(display);
+      const cardVizSettings: VisualizationSettings = { ...settings };
+      if (isCartesian) {
+        // disable axis labels unless explicitly set
+        if (!cardVizSettings["graph.y_axis.labels_enabled"]) {
+          cardVizSettings["graph.y_axis.labels_enabled"] = false;
+        }
+        if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
+          cardVizSettings["graph.x_axis.labels_enabled"] = false;
+        }
 
-      if (categoryColors && queriesWithDatasets.length === 1) {
-        if (
-          display === "bar" &&
-          query.query_type === "default" &&
-          Object.keys(categoryColors.barColorByRawString).length > 0
-        ) {
-          cardVizSettings["graph._dimension_value_colors"] =
-            categoryColors.barColorByRawString;
-        } else if (
-          display === "line" &&
-          query.query_type === "time-facet" &&
-          dataset.data.cols.length === 3
-        ) {
-          cardVizSettings.series_settings = {
-            ...cardVizSettings.series_settings,
-            ...seriesSettingsFromColors(categoryColors.barColorByRawString),
-          };
-          // Order the over-time series to match the regular bar's category
-          // order (the top chart). `graph.series_order` is only honored when
-          // every entry carries a color AND `graph.series_order_dimension`
-          // matches the breakout dimension (`graph.dimensions[1]`) — otherwise
-          // the chart falls back to the default order. We must set both.
-          const breakoutDimension =
-            cardVizSettings["graph.dimensions"]?.[1] ??
-            dataset.data.cols[0]?.name;
-          if (breakoutDimension != null) {
-            cardVizSettings["graph.series_order_dimension"] = breakoutDimension;
-            cardVizSettings["graph.series_order"] =
-              categoryColors.overtimeOrder.map((key) => ({
-                key,
-                name: key,
-                color: categoryColors.barColorByRawString[key],
-                enabled: true,
-              }));
+        if (categoryColors && queriesWithDatasets.length === 1) {
+          if (
+            display === "bar" &&
+            query.query_type === "default" &&
+            Object.keys(categoryColors.barColorByRawString).length > 0
+          ) {
+            cardVizSettings["graph._dimension_value_colors"] =
+              categoryColors.barColorByRawString;
+          } else if (
+            display === "line" &&
+            query.query_type === "time-facet" &&
+            dataset.data.cols.length === 3
+          ) {
+            cardVizSettings.series_settings = {
+              ...cardVizSettings.series_settings,
+              ...seriesSettingsFromColors(categoryColors.barColorByRawString),
+            };
+            // Order the over-time series to match the regular bar's category
+            // order (the top chart). `graph.series_order` is only honored when
+            // every entry carries a color AND `graph.series_order_dimension`
+            // matches the breakout dimension (`graph.dimensions[1]`) — otherwise
+            // the chart falls back to the default order. We must set both.
+            const breakoutDimension =
+              cardVizSettings["graph.dimensions"]?.[1] ??
+              dataset.data.cols[0]?.name;
+            if (breakoutDimension != null) {
+              cardVizSettings["graph.series_order_dimension"] =
+                breakoutDimension;
+              cardVizSettings["graph.series_order"] =
+                categoryColors.overtimeOrder.map((key) => ({
+                  key,
+                  name: key,
+                  color: categoryColors.barColorByRawString[key],
+                  enabled: true,
+                }));
+            }
           }
         }
-      }
 
-      if (
-        topNBarColors &&
-        display === "bar" &&
-        query.query_type === "top-n-other"
-      ) {
-        // Color a "Top N" bar (`top-n-other`) by the choropleth shade each value gets on the companion region map, so the bar matches the map.
-        cardVizSettings["graph._dimension_value_colors"] = topNBarColors;
+        if (
+          topNBarColors &&
+          display === "bar" &&
+          query.query_type === "top-n-other"
+        ) {
+          // Color a "Top N" bar (`top-n-other`) by the choropleth shade each value gets on the companion region map, so the bar matches the map.
+          cardVizSettings["graph._dimension_value_colors"] = topNBarColors;
+        }
+      } else if (display === "map") {
+        const segmentName = segmentNames[i];
+        const color = colors[segmentName];
+        if (color) {
+          cardVizSettings["map.colors"] = getColorplethColorScale(color);
+        }
       }
-    } else if (display === "map") {
-      const segmentName = segmentNames[i];
-      const color = colors[segmentName];
-      if (color) {
-        cardVizSettings["map.colors"] = getColorplethColorScale(color);
-      }
-    }
-    const card = createSeriesCard(
-      query.id,
-      query.name,
-      display,
-      cardVizSettings,
-      query.dataset_query,
-    );
-    return { card, data: dataset.data };
-  });
-
-  let finalSeries: SingleSeries[] = series;
-
-  if (series[0]?.card.display === "table") {
-    finalSeries = [
-      getHeatMapSeries({
-        series,
-        legendItems,
-      }),
-    ];
-  } else if (isCartesianChart(series[0]?.card.display) && series.length > 1) {
-    // use the segment names in the legend and tooltip
-    const seriesVizSettingsKeys = series.map((s, i) =>
-      getSeriesVizSettingsKey(
-        s.data.cols[1], // column
-        true, // hasMultipleCards
-        i === 0, // isFirstCard
-        1, // metricsCount
-        null, // breakoutName
-        s.card.name, // cardName
-      ),
-    );
-    const seriesSettings: Record<string, SeriesSettings> = {};
-    seriesVizSettingsKeys.forEach((key, i) => {
-      seriesSettings[key] = {
-        title: legendItems[i].name,
-        color: legendItems[i].color,
-      };
+      const card = createSeriesCard(
+        query.id,
+        query.name,
+        display,
+        cardVizSettings,
+        query.dataset_query,
+      );
+      return { card, data: dataset.data };
     });
-    // getStoredSettingsForSeries only looks at settings on the first series
-    finalSeries = series.map((s, i) =>
-      i !== 0
-        ? s
-        : {
-            ...s,
-            card: {
-              ...s.card,
-              visualization_settings: {
-                ...s.card.visualization_settings,
-                series_settings: {
-                  ...s.card.visualization_settings.series_settings,
-                  ...seriesSettings,
-                },
-              },
-            },
-          },
-    );
-  }
 
   return {
-    series: finalSeries,
+    series: getFinalSeries({ series, legendItems }),
     isTimeseries,
     stackCount,
     queryType: queriesWithDatasets[0]?.query_type || "default",
@@ -579,8 +538,6 @@ interface GetDisplayResult {
   stackCount?: number;
   isTimeseries?: boolean;
 }
-
-const MIN_SEGMENTS_TO_SHOW_HEATMAP = 4;
 
 function getDisplay(
   queryWithDataset: ExplorationQueryWithDataset,
@@ -711,16 +668,126 @@ function composeChartsForGroup(
   return [{ queryIds, label, display, visualization_settings }];
 }
 
-interface GetHeatMapSeriesParams {
+interface GetFinalSeriesParams {
   series: SingleSeries[];
   legendItems: LegendItem[];
+}
+
+function getFinalSeries({
+  series,
+  legendItems,
+}: GetFinalSeriesParams): SingleSeries[] {
+  if (series.length === 0) {
+    return series;
+  }
+
+  const firstSeries = series[0];
+  const display = firstSeries.card.display;
+  const { rows } = firstSeries.data;
+
+  let finalSeries: SingleSeries[] = series;
+
+  if (display === "table") {
+    finalSeries = getHeatMapSeries({ series, legendItems });
+  } else if (shouldFallBackToRow(firstSeries)) {
+    // fallback to a row chart for small datasets
+    // for a line, it doesn't make sense to display a time series with only a few rows
+    // for a bar, the bars are very wide and don't use the space well with only a few rows
+    finalSeries = series.map((s) => ({
+      ...s,
+      card: {
+        ...s.card,
+        display: "row",
+      },
+    }));
+  } else if (display === "bar" && rows.some((row) => row[0] == null)) {
+    // if we have a bar chart with null values, make sure the x-axis is ordinal
+    finalSeries = series.map((s) => ({
+      ...s,
+      card: {
+        ...s.card,
+        visualization_settings: {
+          ...s.card.visualization_settings,
+          "graph.x_axis.scale": "ordinal",
+        },
+      },
+    }));
+  }
+
+  return combineSeriesSettings({ series: finalSeries, legendItems });
+}
+
+function shouldFallBackToRow(series: SingleSeries): boolean {
+  const { card, data } = series;
+  const { display } = card;
+  const { rows, cols } = data;
+  let numRows: number;
+  if (cols.length === 3) {
+    // here we'll consider the number of "rows" the number of unique dates
+    const dates = new Set<RowValue>();
+    for (const row of rows) {
+      dates.add(row[1]);
+    }
+    numRows = dates.size;
+  } else {
+    numRows = rows.length;
+  }
+  return (
+    (display === "line" || display === "bar") &&
+    numRows <= MIN_ROWS_TO_SHOW_LINE_OR_BAR
+  );
+}
+
+function combineSeriesSettings({
+  series,
+  legendItems,
+}: GetFinalSeriesParams): SingleSeries[] {
+  if (isCartesianChart(series[0]?.card.display) && series.length > 1) {
+    // use the segment names in the legend and tooltip
+    const seriesVizSettingsKeys = series.map((s, i) =>
+      getSeriesVizSettingsKey(
+        s.data.cols[1], // column
+        true, // hasMultipleCards
+        i === 0, // isFirstCard
+        1, // metricsCount
+        null, // breakoutName
+        s.card.name, // cardName
+      ),
+    );
+    const seriesSettings: Record<string, SeriesSettings> = {};
+    seriesVizSettingsKeys.forEach((key, i) => {
+      seriesSettings[key] = {
+        title: legendItems[i].name,
+        color: legendItems[i].color,
+      };
+    });
+    // getStoredSettingsForSeries only looks at settings on the first series
+    return series.map((s, i) =>
+      i !== 0
+        ? s
+        : {
+            ...s,
+            card: {
+              ...s.card,
+              visualization_settings: {
+                ...s.card.visualization_settings,
+                series_settings: {
+                  ...s.card.visualization_settings.series_settings,
+                  ...seriesSettings,
+                },
+              },
+            },
+          },
+    );
+  }
+  return series;
 }
 
 // the Table viz only supports one series, so we have to combine them
 export function getHeatMapSeries({
   series,
   legendItems,
-}: GetHeatMapSeriesParams): SingleSeries {
+}: GetFinalSeriesParams): SingleSeries[] {
   const { card, data } = series[0];
   const segmentCol: DatasetColumn = {
     name: "Segment",
@@ -776,20 +843,22 @@ export function getHeatMapSeries({
       },
     },
   };
-  return {
-    card: {
-      ...card,
-      visualization_settings: {
-        ...card.visualization_settings,
-        ...settings,
+  return [
+    {
+      card: {
+        ...card,
+        visualization_settings: {
+          ...card.visualization_settings,
+          ...settings,
+        },
+      },
+      data: {
+        ...data,
+        cols,
+        rows,
       },
     },
-    data: {
-      ...data,
-      cols,
-      rows,
-    },
-  };
+  ];
 }
 
 /**
