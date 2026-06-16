@@ -484,7 +484,7 @@
   [dataset-query :- [:maybe ::queries.schema/query]
    card-type     :- [:maybe ::queries.schema/card-type]]
   (when (and (seq dataset-query) (= card-type :metric))
-    (when-not (lib/can-save dataset-query card-type)
+    (when-not (lib/can-save? dataset-query card-type)
       (throw (ex-info (tru "Card of type {0} is invalid, cannot be saved." (name card-type))
                       {:type        card-type
                        :status-code 400})))))

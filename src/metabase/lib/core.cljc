@@ -1560,7 +1560,7 @@
   ->query
   can-preview
   can-run
-  can-save
+  can-save?
   check-card-overwrite
   native?
   preview-query

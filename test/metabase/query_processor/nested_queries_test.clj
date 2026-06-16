@@ -1663,12 +1663,9 @@
                     [str int]
                     (qp/process-query query))))))))))
 
-;;; TODO -- not clear why this test is hardcoded to only run against Postgres, and not to run against our other DBs that
-;;; support JSON unfolding e.g. MySQL. FIXME
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel unfolded-json-with-custom-expression-test
   (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
-    (mt/test-driver :postgres
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset json
         (let [field-id (mt/id :json "json_bit → title")]
           (is (=? {:status :completed}
