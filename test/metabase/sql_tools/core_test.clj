@@ -200,7 +200,7 @@
         "DROP TABLE table" true
         "SET ROLE NONE; DROP TABLE table" false
         "SELECT set_config('role', 'none', false); DROP TABLE table" false
-        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" (= driver/*driver* :postgres)))
+        "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;" (isa? driver/hierarchy driver/*driver* :postgres)))
     (testing "A single insert, update or delete statement returns true and the reconstructed SQL"
       (are [sql] (=? {:is-single-stmt? true :allowed-stmt-type? true :sql string?}
                      (sql-tools/is-single-stmt-of-type? driver/*driver* sql "write"))
