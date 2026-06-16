@@ -81,7 +81,7 @@
   (mapv #(lib/display-name q %) clauses))
 
 (deftest default-temporal-order-test
-  (testing "default over a temporal dim filters null dates and orders by date desc,
+  (testing "default over a temporal dim orders by date desc,
             so a fired cap keeps the most recent contiguous window"
     (let [ctx {:mp      (mt/metadata-provider)
                :card    (orders-count-card 9000003)
@@ -90,8 +90,7 @@
                :segment nil
                :params  {}}
           q   (variants/dataset-query "default" ctx)]
-      (is (= ["Created At: Month is not empty"]
-             (clause-names q (lib/filters q))))
+      (is (= [] (clause-names q (lib/filters q))))
       (is (= ["Created At: Month descending" "Count descending"]
              (clause-names q (lib/order-bys q))))
       (with-redefs [variants/default-max-rows 3]
@@ -118,7 +117,7 @@
              (clause-names q (lib/order-bys q)))))))
 
 (deftest time-facet-temporal-order-test
-  (testing "time-facet filters null dates and orders by date desc then metric desc,
+  (testing "time-facet orders by date desc then metric desc,
             so a fired cap keeps the most recent months across all dim values"
     (let [ctx {:mp      (mt/metadata-provider)
                :card    (orders-count-by-month-card 9000005)
@@ -127,8 +126,7 @@
                :segment nil
                :params  {}}
           q   (variants/dataset-query "time-facet" ctx)]
-      (is (= ["Created At: Month is not empty"]
-             (clause-names q (lib/filters q))))
+      (is (= [] (clause-names q (lib/filters q))))
       (is (= ["Created At: Month descending" "Count descending"]
              (clause-names q (lib/order-bys q))))
       (with-redefs [variants/default-max-rows 8]
@@ -146,8 +144,7 @@
                    :data :rows vec)))))))
 
 (deftest per-value-time-series-cap-test
-  (testing "per-value-time-series carries a date-desc row cap (it previously had none)
-            and filters null dates"
+  (testing "per-value-time-series carries a date-desc row cap (it previously had none)"
     (let [ctx {:mp      (mt/metadata-provider)
                :card    (orders-count-by-month-card 9000006)
                :target  (orders-category-target)
@@ -156,7 +153,7 @@
                :params  {:k 1 :value_index 0}}
           q   (variants/dataset-query "per-value-time-series" ctx)]
       ;; Discovery resolves value 0 to the top category by count: Widget.
-      (is (= ["Category is Widget" "Created At: Month is not empty"]
+      (is (= ["Category is Widget"]
              (clause-names q (lib/filters q))))
       (is (= ["Created At: Month descending" "Count descending"]
              (clause-names q (lib/order-bys q))))

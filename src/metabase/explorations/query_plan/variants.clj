@@ -63,20 +63,14 @@
         (lib/limit n))))
 
 (defn- order-by-temporal-and-limit
-  "Apply `filter not-null → order-by temporal desc → order-by aggregation 0 desc
-  → limit n` to `q`, where `temporal-breakout` is the breakout column on `q`'s
-  time axis. When the cap fires, the most recent contiguous time window
-  survives instead of a gap-riddled scatter of high-metric buckets; the
-  aggregation tiebreak keeps the highest-metric cells when the cap splits the
-  oldest surviving bucket across dim values.
-
-  The not-null filter drops the NULL date bucket: it can't render on a time
-  axis (the FE discards it), and its position under `order-by desc` is
-  warehouse-dependent (Postgres sorts NULLs first, MySQL last), so leaving it
-  in makes which rows survive the cap non-deterministic."
+  "Apply `order-by temporal desc → order-by aggregation 0 desc → limit n` to `q`,
+  where `temporal-breakout` is the breakout column on `q`'s time axis. When the
+  cap fires, the most recent contiguous time window survives instead of a
+  gap-riddled scatter of high-metric buckets; the aggregation tiebreak keeps the
+  highest-metric cells when the cap splits the oldest surviving bucket across dim
+  values."
   [q temporal-breakout n]
   (-> q
-      (lib/filter (lib/not-null temporal-breakout))
       (lib/order-by temporal-breakout :desc)
       (cond-> (seq (lib/aggregations q))
         (lib/order-by (lib/aggregation-ref q 0) :desc))
