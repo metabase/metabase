@@ -30,15 +30,15 @@ export function getTreemapChartColumns<TColumn extends DatasetColumn>(
   columns: TColumn[],
   settings: Pick<ComputedVisualizationSettings, TreemapSettingsColumns>,
 ): TreemapChartColumns | null {
-  const groupingColumName = settings["treemap.grouping"];
+  const groupingColumnName = settings["treemap.grouping"];
   const valueColumnName = settings["treemap.value"];
   const subGroupingColumnName = settings["treemap.sub_grouping"];
 
-  if (groupingColumName == null || valueColumnName == null) {
+  if (groupingColumnName == null || valueColumnName == null) {
     return null;
   }
 
-  const grouping = getColumnDescriptors([groupingColumName], columns)[0];
+  const grouping = getColumnDescriptors([groupingColumnName], columns)[0];
   const value = getColumnDescriptors([valueColumnName], columns)[0];
 
   if (!grouping?.column || !value?.column) {
