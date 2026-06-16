@@ -28,6 +28,7 @@
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
+  com.clojure-goes-fast/clj-memory-meter   {:mvn/version "0.4.0"}              ; measure retained size of in-memory caches (memoize cache telemetry)
   com.clojure-goes-fast/jvm-alloc-rate-meter {:mvn/version "0.1.4"}              ; Monitor heap allocation rate.
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
@@ -257,8 +258,6 @@
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
-    com.clojure-goes-fast/clj-memory-meter
-    {:mvn/version "0.4.0"}                     ; Enables easy memory measurement
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     com.github.erosb/json-sKema  {:mvn/version "0.25.0"}                    ; validating MBQL JSON Schema
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library

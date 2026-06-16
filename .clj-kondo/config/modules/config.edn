@@ -3187,6 +3187,7 @@
            collections
            driver
            models
+           util
            warehouse-schema
            warehouses
            enterprise/serialization}}
