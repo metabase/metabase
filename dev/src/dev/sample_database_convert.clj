@@ -5,10 +5,10 @@
 
   Run via REPL: `(dev.sample-database-convert/convert!)`.
 
-  This exists so the SQLite sample-DB POC has a reproducible derivation from the
-  pre-existing H2 artifact. Once we commit to SQLite long-term we should replace
-  this with a generator that builds the dataset from source rather than
-  re-deriving it from H2."
+  This exists so the SQLite sample-DB POC has a reproducible derivation from
+  the pre-existing H2 artifact. Once we stop using H2 in E2E tests and retire
+  the H2 snapshot DB for good we should replace this with a generator that
+  builds the dataset from source rather than re-deriving it from H2."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
