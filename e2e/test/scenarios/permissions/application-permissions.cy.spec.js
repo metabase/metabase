@@ -69,7 +69,8 @@ describe("scenarios > admin > permissions > application", () => {
 
         H.visitQuestion(ORDERS_QUESTION_ID);
         H.tableInteractive().should("be.visible");
-        H.sharingMenuButton().should("be.disabled");
+        // No public link: the share button only copies the app link, no menu.
+        H.sharingMenuButton().should("have.attr", "aria-label", "Copy link");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
