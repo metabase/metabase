@@ -1,5 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
 import { Box } from "metabase/ui";
@@ -14,7 +14,6 @@ import {
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
-import type { NodeId } from "metabase/visualizations/echarts/graph/treemap/model/types";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getChartPadding } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
@@ -31,6 +30,7 @@ import { dispatchTreemapViewRoot, useChartEvents } from "./events";
 import { type TreemapHoverOverlay, hideTreemapHoverOverlay } from "./overlay";
 import { getTreemapTooltipOption } from "./tooltip";
 import { useLabelMeasurement } from "./use-label-measurement";
+import { useTreemapNavigation } from "./use-treemap-navigation";
 
 export const TreemapChart = ({
   rawSeries,
@@ -50,14 +50,8 @@ export const TreemapChart = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const overlayRef = useRef<TreemapHoverOverlay | null>(null);
-  const [viewRootId, setViewRootId] = useState<NodeId | null>(null);
-  const viewRootIdRef = useRef<string | null>(null);
   const isAnimatingRef = useRef(false);
   const clickedRef = useLatest(clicked);
-  const handleViewRootChange = useCallback((id: NodeId | null) => {
-    viewRootIdRef.current = id;
-    setViewRootId(id);
-  }, []);
 
   const chartData = useMemo(() => {
     const cols = rawSeriesWithRemappings[0]?.data?.cols ?? [];
@@ -75,6 +69,10 @@ export const TreemapChart = ({
     const colors = getTreemapColors(tree, treemapRows);
     return { tree, colors, treemapColumns };
   }, [rawSeriesWithRemappings, settings]);
+
+  const { viewRootId, viewRootIdRef, setViewRoot } = useTreemapNavigation(
+    chartData?.tree ?? null,
+  );
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
@@ -137,6 +135,7 @@ export const TreemapChart = ({
     formatters,
     settings,
     viewRootId,
+    viewRootIdRef,
     labelLayout,
     parentLabelLayout,
     renderingContext,
@@ -159,7 +158,7 @@ export const TreemapChart = ({
     overlayRef,
     hasChildren,
     isDrilled: viewRootId != null,
-    onDrillToGroup: handleViewRootChange,
+    onDrillToGroup: setViewRoot,
     tree: chartData?.tree ?? [],
     treemapColumns: chartData?.treemapColumns ?? null,
     rawSeries: rawSeriesWithRemappings,
@@ -179,10 +178,6 @@ export const TreemapChart = ({
     ],
     [eventHandlers, handleFinished],
   );
-
-  useEffect(() => {
-    handleViewRootChange(null);
-  }, [chartData, handleViewRootChange]);
 
   // reapply current zoom level that lives outside echarts
   useEffect(() => {
@@ -207,8 +202,8 @@ export const TreemapChart = ({
     : null;
 
   const handleBreadcrumbBack = useCallback(() => {
-    handleViewRootChange(null);
-  }, [handleViewRootChange]);
+    setViewRoot(null);
+  }, [setViewRoot]);
 
   useCloseTooltipOnScroll(chartRef);
 
