@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log])
   (:import
@@ -56,6 +57,6 @@
          (catch InterruptedException e (throw e))
          (catch Throwable t
            (log/error t "Error sending run-tracking heartbeat")))
-       (Thread/sleep (long (* interval-minutes 60000)))
+       (Thread/sleep (long (u/minutes->ms interval-minutes)))
        (recur))
      (catch InterruptedException _ nil))))
