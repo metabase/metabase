@@ -129,20 +129,39 @@
 
 (deftest document-content-search-test
   (testing "Documents are searchable by their body content, not just their name (UXW-4199)"
-    (search.tu/with-temp-index-table
-      (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
-                                                   :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
+    ;; Both engines search document bodies: the appdb engine indexes clean text (via ast->text),
+    ;; the legacy in-place engine LIKE-matches the raw prose-mirror JSON.
+    (mt/with-temp [:model/Document {doc-id :id} {:name "Annual Summary"
+                                                 :document (documents.test-util/text->prose-mirror-ast "quarterly revenue projections and growth")}]
+      (search.tu/with-new-search-and-legacy-search
         (testing "found by a term that appears only in the body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "projections" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
         (testing "still found by its name"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Annual" :models "document")]
+            (is (contains? (set (map :id (:data results))) doc-id))))
+        (testing "not matched by prose-mirror JSON structure keywords"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "paragraph" :models "document")]
+            (is (not (contains? (set (map :id (:data results))) doc-id)))))))))
+
+(deftest document-smart-link-label-search-test
+  (testing "Documents are searchable by the visible label of an embedded smart link (UXW-4199)"
+    (mt/with-temp [:model/Document {doc-id :id}
+                   {:name "Reference Doc"
+                    :document {:type "doc"
+                               :content [{:type "paragraph"
+                                          :content [{:type "text" :text "see"}
+                                                    {:type "smartLink"
+                                                     :attrs {:model "card" :entityId "abc" :label "Customer Retention"}}]}]}}]
+      (search.tu/with-new-search-and-legacy-search
+        (testing "found by a term that appears only in the smart-link label"
+          (let [results (mt/user-http-request :crowberto :get 200 "search" :q "Retention" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))))))
 
 (deftest document-content-search-on-update-test
   (testing "Editing a document's body re-indexes its content for search (UXW-4199)"
-    ;; the search-term field (:body_text) is derived by before-update, not supplied by the caller, so the
-    ;; realtime after-update reindex only fires if that derived field reaches (t2/changes instance) — guard it.
+    ;; The appdb engine indexes the :document column (extracting body text via ast->text at index time),
+    ;; so editing the body lands in (t2/changes instance) and triggers a realtime reindex.
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Document {doc-id :id} {:name "Quarterly Report"
                                                    :document (documents.test-util/text->prose-mirror-ast "initial draft contents")}]

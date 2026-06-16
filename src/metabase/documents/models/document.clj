@@ -8,9 +8,11 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.search.config :as search.config]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -104,11 +106,7 @@
 
 (t2/define-after-select :model/Document
   [document]
-  ;; :body_text is a derived column that only feeds the search index (see before-insert/before-update);
-  ;; never expose it through the app or API, where it would just duplicate the document body.
-  (-> document
-      (dissoc :body_text)
-      public-sharing/remove-public-uuid-if-public-sharing-is-disabled))
+  (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -117,6 +115,27 @@
   [:name (serdes/hydrated-hash :collection) :created-at])
 
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
+
+(defn- document->search-text
+  "Extract the plain searchable text from a document's prose-mirror body for the search index.
+
+  Receives the raw `:document` value as it comes off the ingestion query (a JSON string).
+  Returns nil if it can't be parsed, so a malformed/oversized body never blocks the rest of the
+  document (e.g. its name) from being indexed."
+  [document]
+  (when document
+    (try
+      (-> (cond-> document (string? document) json/decode+kw)
+          prose-mirror/ast->text
+          not-empty)
+      (catch Throwable _ nil))))
+
+;; The legacy (in-place) search engine LIKE-matches the raw `:document` JSON in SQL, but scores results
+;; against this cleaned-up text. Extracting prose here means a query that only hits JSON structure
+;; (e.g. "paragraph") matches no real content and is correctly dropped as a non-match.
+(defmethod search.config/column->string [:document :document]
+  [value _model _column]
+  (or (document->search-text value) ""))
 
 (search.spec/define-spec "document"
   {:model :model/Document
@@ -128,7 +147,8 @@
            :updated-at :updated_at
            :last-viewed-at :last_viewed_at
            :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]}
-   :search-terms [:name :body_text]
+   :search-terms {:name true
+                  :document document->search-text}
    :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}
    :render-terms {:document-name :name
                   :document-id :id
@@ -197,8 +217,7 @@
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
   {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
-   ;; :body_text is derived from :document and re-populated by before-insert on import.
-   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id :body_text]
+   :skip [:view_count :last_viewed_at :public_uuid :made_public_by_id]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :document {:export-with-context export-document-content
@@ -244,25 +263,10 @@
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
 
-(defn- with-body-text
-  "Assoc the search-indexed `:body_text` onto `model`, derived from its prose-mirror body `ast`.
-  A no-op for non-prose-mirror documents, whose body carries no extractable text (gated like the
-  export/import/deps paths above)."
-  [model ast]
-  (cond-> model
-    (= (:content_type model) prose-mirror/prose-mirror-content-type)
-    (assoc :body_text (prose-mirror/ast->text ast))))
-
 (t2/define-before-insert :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id model))
-  (cond-> model
-    (some? (:document model))
-    (with-body-text (:document model))))
+  model)
 
 (t2/define-before-update :model/Document [model]
-  (let [changes (t2/changes model)]
-    (collection/check-allowed-content :model/Document (:collection_id changes))
-    ;; keep the search-indexed body text in sync whenever the body itself changes
-    (cond-> model
-      (contains? changes :document)
-      (with-body-text (:document changes)))))
+  (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
+  model)

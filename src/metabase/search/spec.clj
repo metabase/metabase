@@ -92,7 +92,9 @@
   ;; - `metabase.search.impl/add-dataset-collection-hierarchy` reads `:collection_location` to hydrate
   ;;   `:collection_effective_ancestors`, and the collection-result hydration path reads `:location` from
   ;;   the toucan instance (which the render-term keeps populated).
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer})
+  ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
+  ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
+  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :data_layer :document})
 
 (def attr-types
   "The abstract types of each attribute."

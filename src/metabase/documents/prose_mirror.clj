@@ -58,15 +58,20 @@
        (keep collector)))
 
 (defn ast->text
-  "Extract the concatenated plain text from a prose-mirror document AST (the value of a
+  "Extract the concatenated user-visible text from a prose-mirror document AST (the value of a
   document's `:document` field).
 
-  Walks every node and joins the text from `text` nodes with spaces. Structural and
-  reference nodes (card embeds, smart links, layout containers) carry no inline text and
-  contribute nothing. Returns a (possibly empty) string."
+  Walks every node, in document order, and joins:
+  - the `:text` of `text` nodes, and
+  - the `:label` attr of reference nodes (smart links, mentions) — the text the editor actually
+    renders in place of the node.
+
+  Nodes that render no inline prose (card embeds, layout containers) contribute nothing.
+  Returns a (possibly empty) string."
   [ast]
   (->> (tree-seq :content :content ast)
-       (keep :text)
+       (mapcat (juxt :text (comp :label :attrs)))
+       (remove str/blank?)
        (str/join " ")))
 
 (defn card-ids

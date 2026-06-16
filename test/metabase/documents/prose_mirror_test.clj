@@ -325,7 +325,16 @@
                          {:type "paragraph" :content [{:type "text" :text "Hello"}
                                                       {:type "text" :text "world"}]}]}]
       (is (= "Title Hello world" (prose-mirror/ast->text ast)))))
-  (testing "ignores non-text nodes (card embeds, smart links, layout containers)"
+  (testing "includes the visible label of reference nodes (smart links, mentions), in document order"
+    (let [ast {:type "doc"
+               :content [{:type "paragraph"
+                          :content [{:type "text" :text "see"}
+                                    {:type prose-mirror/smart-link-type
+                                     :attrs {:model "card" :entityId "abc" :label "Orders Question"}}
+                                    {:type "text" :text "and"}
+                                    {:type "mention" :attrs {:id 7 :label "Jane Doe"}}]}]}]
+      (is (= "see Orders Question and Jane Doe" (prose-mirror/ast->text ast)))))
+  (testing "ignores nodes that render no inline prose (card embeds, label-less references, layout containers)"
     (let [ast {:type "doc"
                :content [{:type "paragraph" :content [{:type "text" :text "before"}]}
                          {:type prose-mirror/card-embed-type :attrs {:id 42}}

@@ -30,6 +30,12 @@
 (def ^:private true-clause [:inline [:= 1 1]])
 (def ^:private false-clause [:inline [:= 0 1]])
 
+(def ^:private max-document-search-length
+  "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
+  A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
+  documents. Mirrors the appdb engine's `metabase.search.ingestion/max-searchable-value-length`."
+  500000)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Required Filters                                         ;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -85,6 +91,10 @@
          (and (#{"action"} model)
               (= column (search.config/column-with-model-alias model :dataset_query)))
          [:like [:lower :query_action.dataset_query] wildcarded-token]
+
+         (and (= model "document")
+              (= column (search.config/column-with-model-alias "document" :document)))
+         [:like [:lower [:left column [:inline max-document-search-length]]] wildcarded-token]
 
          :else
          [:like [:lower column] wildcarded-token])))))
