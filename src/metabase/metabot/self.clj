@@ -137,10 +137,17 @@
        jitter)))
 
 (defn- report-aisdk-errors-xf
-  "Transducer that increments the llm-errors counter for :error parts in the aisdk stream."
+  "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
   (map (fn [part]
          (when (= (:type part) :error)
+           ;; A streamed `:error` part means the provider failed mid-response (e.g. an OpenAI
+           ;; `response.failed`) without throwing, so nothing else logs it. Surface it here so it
+           ;; shows up in the server logs alongside the metric and the persisted turn error.
+           (log/error "Metabot LLM stream returned an error"
+                      {:model  (:model tracking-opts "unknown")
+                       :source (:tag tracking-opts "none")
+                       :error  (:error part)})
            (analytics/inc! :metabase-metabot/llm-errors
                            {:model      (:model tracking-opts "unknown")
                             :source     (:tag tracking-opts "none")
