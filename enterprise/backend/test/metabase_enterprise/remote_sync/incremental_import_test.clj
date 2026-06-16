@@ -86,17 +86,33 @@
     (impl/handle-task-result! result task)
     result))
 
+(defn- import-v1-under-test!
+  "Runs the under-test import of v1 (force? false), spying on incremental-load-snapshot! to report which
+  path it took. Returns [result path], where path is :incremental (the fast-path ran) or :fallback (it
+  declined and import! ran the full load-snapshot!)."
+  [src]
+  (let [real @#'impl/incremental-load-snapshot!
+        path (atom :fallback)]
+    (with-redefs [impl/incremental-load-snapshot!
+                  (fn [& args] (let [r (apply real args)]
+                                 (reset! path (if (= r :remote-sync/fallback) :fallback :incremental))
+                                 r))]
+      [(import-at! src "v1" :force? false) @path])))
+
 (defn- run-differential!
   "Imports `f0` as the baseline, then runs the full (oracle) and under-test imports of `f1` and asserts the
-  resulting state is identical. `f0`/`f1` are {path content} trees."
+  resulting state is identical. `f0`/`f1` are {path content} trees. Returns the path the under-test import
+  took (:incremental or :fallback) so the caller can assert the v1 scope boundary."
   [f0 f1]
   (let [src (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")]
     (is (= :success (:status (import-at! src "v0" :force? true))) "baseline import of v0 succeeds")
     (is (= :success (:status (import-at! src "v1" :force? true))) "oracle full import of v1 succeeds")
     (let [oracle (state-vector)]
       (is (= :success (:status (import-at! src "v0" :force? true))) "reset back to v0 succeeds")
-      (is (= :success (:status (import-at! src "v1" :force? false))) "under-test import of v1 succeeds")
-      (assert-equivalent oracle (state-vector)))))
+      (let [[result path] (import-v1-under-test! src)]
+        (is (= :success (:status result)) "under-test import of v1 succeeds")
+        (assert-equivalent oracle (state-vector))
+        path))))
 
 (defn- do-with-bench!
   "Sets up a remote-synced `Bench` collection with cards A and B, then calls `f` with the V0 tree
@@ -121,7 +137,7 @@
     (do-with-bench!
      (fn [f0]
        ;; identical content under a new version — exercises the empty-diff fast path
-       (run-differential! f0 f0)))))
+       (is (= :incremental (run-differential! f0 f0)))))))
 
 (deftest edit-card-equivalence-test
   (testing "GHY-3779: editing a single card's content imports equivalently full vs. under-test"
@@ -129,7 +145,16 @@
      (fn [f0]
        (let [b-path (path-with f0 "card_b")
              f1     (update f0 b-path str/replace "display: table" "display: line")]
-         (run-differential! f0 f1))))))
+         (is (= :incremental (run-differential! f0 f1))))))))
+
+(deftest edit-multiple-cards-equivalence-test
+  (testing "GHY-3779: editing several cards in one pull loads just those cards, equivalently to a full import"
+    (do-with-bench!
+     (fn [f0]
+       (let [f1 (-> f0
+                    (update (path-with f0 "card_a") str/replace "display: table" "display: line")
+                    (update (path-with f0 "card_b") str/replace "display: table" "display: bar"))]
+         (is (= :incremental (run-differential! f0 f1))))))))
 
 (deftest add-card-equivalence-test
   (testing "GHY-3779: adding a new card imports equivalently full vs. under-test"
@@ -144,7 +169,7 @@
                         (str/replace "label: card_b" "label: card_c"))
              c-path (str/replace b-path "card_b" "card_c")
              f1     (assoc f0 c-path c-yaml)]
-         (run-differential! f0 f1))))))
+         (is (= :incremental (run-differential! f0 f1))))))))
 
 (deftest delete-card-equivalence-test
   (testing "GHY-3779: deleting a card remotely imports equivalently full vs. under-test"
@@ -152,7 +177,7 @@
      (fn [f0]
        (let [b-path (path-with f0 "card_b")
              f1     (dissoc f0 b-path)]
-         (run-differential! f0 f1))))))
+         (is (= :incremental (run-differential! f0 f1))))))))
 
 (deftest incremental-search-update-only-changed-test
   (testing "GHY-3779: an incremental edit re-indexes only the changed entity (we skip the full reindex),
@@ -183,4 +208,23 @@
                          (str/replace "name: Card B" "name: Card B Renamed")
                          (str/replace "label: card_b" "label: card_b_renamed"))
              f1      (-> f0 (dissoc b-path) (assoc (str/replace b-path "card_b" "card_b_renamed") renamed))]
-         (run-differential! f0 f1))))))
+         (is (= :incremental (run-differential! f0 f1))))))))
+
+;;; --------------------------------------- Structural changes: fall back to full ---------------------------------------
+
+(deftest collection-rename-falls-back-test
+  (testing "GHY-3779: a Collection change falls back to the full import (a rename moves descendant paths),
+            and still reconciles to the same state as the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       (let [c-path (path-with f0 "bench.yaml")
+             f1     (update f0 c-path str/replace "name: Bench" "name: Workbench")]
+         (is (= :fallback (run-differential! f0 f1))))))))
+
+(deftest collection-delete-with-contents-falls-back-test
+  (testing "GHY-3779: deleting a collection and its contents falls back to the full import (avoids the
+            cascade trap), and still reconciles to the same state as the full oracle"
+    (do-with-bench!
+     (fn [f0]
+       ;; remove the whole bench subtree (collection + both cards)
+       (is (= :fallback (run-differential! f0 {})))))))
