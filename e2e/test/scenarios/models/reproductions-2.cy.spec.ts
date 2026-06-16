@@ -555,7 +555,7 @@ describe("Issue 30712", () => {
   });
 });
 
-describe("issue 60930", { tags: "@skip" }, () => {
+describe("issue 60930", () => {
   const modelDetails: StructuredQuestionDetails = {
     name: "Model",
     type: "model",

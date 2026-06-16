@@ -5,10 +5,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.query-analyzer :as nqa]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.used-tables :as used-tables]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
@@ -612,6 +614,36 @@
       (let [[row chat-msg] (start-and-finalize! :error "boom")]
         (is (= "\"boom\"" (:error row)))
         (is (= "boom" (:error chat-msg)))))))
+
+(deftest finalize-persists-streamed-error-text-part-to-error-column-test
+  ;; Regression guard: before the `aisdk-chunks->part` fix the error chunk passed through unchanged, so the
+  ;; part carried `:errorText` (not `:error`); api.clj's `(:error (u/seek ...))` extraction then returned nil
+  ;; and the error column silently stayed NULL — an errored turn looked like a success in the appdb.
+  (testing "a streamed AI SDK v5 :errorText part lands in the assistant row's error column as a {:message ...} map"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [conversation-id            (str (random-uuid))
+              {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                          conversation-id "internal"
+                                          {:role "user" :content "go"})
+              ;; Provider adapters emit AI SDK v5 chunks; `aisdk-xf` collects them into the parts
+              ;; vector that feeds finalize in `metabase.metabot.api`.
+              parts                      (into [] (self.core/aisdk-xf)
+                                               [{:type :start :messageId "m1"}
+                                                {:type      :error
+                                                 :errorText "The model provider failed to complete the response"}])
+              error-data                 (:error (u/seek #(= :error (:type %)) parts))]
+          (is (= {:message "The model provider failed to complete the response"} error-data)
+              "the error part carries an :error map (not a passed-through :errorText), so api.clj's extraction is non-nil")
+          (metabot-persistence/finalize-assistant-turn!
+           conversation-id assistant-msg-id parts
+           :error error-data)
+          (let [row (t2/select-one :model/MetabotMessage assistant-msg-id)]
+            (is (= {:message "The model provider failed to complete the response"}
+                   (json/decode+kw (:error row)))
+                "the streamed errorText is persisted into the error column as a {:message ...} map")
+            (is (true? (:finished row))
+                "an errored turn still finalizes as finished")))))))
 
 (deftest messages-chat-messages-skips-in-flight-placeholders-test
   (testing "in-flight placeholders (assistant role, finished=nil, recent created_at)

@@ -113,35 +113,34 @@
         (log/errorf e "Error saving query results to cache: %s" (ex-message e))))))
 
 (defn- save-results-xform [start-time-ns metadata query-hash strategy rf]
-  (let [has-rows? (volatile! false)]
-    (add-object-to-cache! (assoc metadata
-                                 :cache-version cache-version
-                                 :last-ran      (t/zoned-date-time)))
-    (fn
-      ([] (rf))
+  (add-object-to-cache! (assoc metadata
+                               :cache-version cache-version
+                               :last-ran      (t/zoned-date-time)))
+  (fn
+    ([] (rf))
 
-      ([result]
-       (add-object-to-cache! (if (map? result)
-                               (m/dissoc-in result [:data :rows])
-                               {}))
-       (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
-             min-duration-ms (:min-duration-ms strategy 0)
-             eligible?       (and @has-rows?
-                                  (> duration-ms min-duration-ms))]
-         (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
-                    (i/short-hex-hash query-hash)
-                    (u/format-milliseconds duration-ms)
-                    (u/format-milliseconds min-duration-ms)
-                    (if eligible? "eligible" "not eligible"))
-         (when eligible?
-           (cache-results! query-hash))
-         (rf (cond-> result
-               (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
+    ([result]
+     (add-object-to-cache! (if (map? result)
+                             (m/dissoc-in result [:data :rows])
+                             {}))
+     (let [duration-ms     (/ (- (System/nanoTime) start-time-ns) 1e6)
+           min-duration-ms (:min-duration-ms strategy 0)
+           ;; cache any query that ran long enough -- including ones that returned no rows, so a slow empty result
+           ;; doesn't get re-run at full cost on every request
+           eligible?       (> duration-ms min-duration-ms)]
+       (log/infof "Query %s took %s to run; minimum for cache eligibility is %s; %s"
+                  (i/short-hex-hash query-hash)
+                  (u/format-milliseconds duration-ms)
+                  (u/format-milliseconds min-duration-ms)
+                  (if eligible? "eligible" "not eligible"))
+       (when eligible?
+         (cache-results! query-hash))
+       (rf (cond-> result
+             (map? result) (update :cache/details assoc :hash query-hash :stored (boolean eligible?))))))
 
-      ([acc row]
-       (add-object-to-cache! row)
-       (vreset! has-rows? true)
-       (rf acc row)))))
+    ([acc row]
+     (add-object-to-cache! row)
+     (rf acc row))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 

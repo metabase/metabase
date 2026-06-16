@@ -492,6 +492,7 @@
            driver
            events
            formatter
+           geojson
            lib
            lib-be
            models
@@ -505,6 +506,7 @@
            slackbot
            system
            task
+           tiles
            timeline
            types
            util}
@@ -993,7 +995,8 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
-           metabase.geojson.init}
+           metabase.geojson.init
+           metabase.geojson.settings}
    :uses #{api
            config
            permissions
@@ -1483,8 +1486,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -2264,7 +2266,8 @@
   tiles
   {:team "UX West"
    :api  #{metabase.tiles.api
-           metabase.tiles.init}
+           metabase.tiles.init
+           metabase.tiles.settings}
    :uses #{api
            legacy-mbql
            lib
