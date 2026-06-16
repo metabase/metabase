@@ -1,14 +1,15 @@
-(ns metabase-enterprise.index-manager.models
-  "The `metabase_table_indexes` model: index/clustering hints declared on a transform target table.
+(ns metabase.indexes.models.table-index
+  "The `metabase_table_indexes` model: index/clustering hints for a table.
 
-  Each request binds to a transform (`:transform_id`), carries a structured index definition (see
-  [[metabase-enterprise.index-manager.schema]]), and tracks a lifecycle `:status` (defaulting to `:pending`).
-  `:table_id` is backfilled once the target table first syncs.
+  Today every row binds to a transform (`:transform_id`) whose target it indexes, carries a structured index
+  definition (see [[metabase.indexes.schema]]), and tracks a lifecycle `:status` (defaulting to `:pending`).
+  `:table_id` is backfilled once the target table first syncs. The table is named generically so it can hold synced
+  indexes for non-transform tables later too.
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered.
   Callers use toucan2 directly; there are no wrapper functions."
   (:require
-   [metabase-enterprise.index-manager.schema :as schema]
+   [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]

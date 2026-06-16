@@ -1044,6 +1044,15 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
+  indexes
+  {:team "Gadget"
+   :api  #{metabase.indexes.api}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/TableIndex}
+   :model-imports #{:model/Transform}}
+
   initialization-status
   {:team "UX West"
    :api  #{metabase.initialization-status.core}
@@ -3162,16 +3171,6 @@
    :api  #{}
    :uses #{premium-features
            settings}}
-
-  enterprise/index-manager
-  {:team "Gadget"
-   :api  #{metabase-enterprise.index-manager.api
-           metabase-enterprise.index-manager.init}
-   :uses #{api
-           models
-           util}
-   :model-exports #{:model/TableIndex}
-   :model-imports #{:model/Transform}}
 
   enterprise/library
   {:team "UX West"

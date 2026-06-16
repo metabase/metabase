@@ -1,12 +1,10 @@
-(ns metabase-enterprise.index-manager.api
-  "Superuser CRUD over managed index requests, scoped to a transform. Mounted at `/api/ee/index-manager` behind the
-  transforms premium feature. Validation and the `:status` default live in the model's hooks; these endpoints use
-  toucan2 directly."
+(ns metabase.indexes.api
+  "Superuser CRUD over managed table indexes, mounted at `/api/indexes`. Validation and the `:status` default live
+  in the model's hooks; these endpoints use toucan2 directly."
   (:require
-   [metabase-enterprise.index-manager.schema :as schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.api.routes.common :refer [+auth]]
+   [metabase.indexes.schema :as schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -16,7 +14,7 @@
 (def ^:private TableIndex
   [:map
    [:id ms/PositiveInt]
-   [:transform_id ms/PositiveInt]
+   [:transform_id [:maybe ms/PositiveInt]]
    [:table_id [:maybe ms/PositiveInt]]
    [:index_name ms/NonBlankString]
    ;; The real structured schema (not a bare `:map`) so response coercion doesn't strip its keys.
@@ -38,14 +36,26 @@
   (or (:name structured) (name (:kind structured))))
 
 (api.macros/defendpoint :get "/" :- [:map [:data [:sequential TableIndex]]]
-  "List the managed index requests for a transform."
+  "List the managed indexes for a transform or a table. At least one of `transform_id` / `table_id` is required."
   [_route-params
-   {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
+   {:keys [transform-id table-id]} :- [:map
+                                       [:transform-id {:optional true} [:maybe ms/PositiveInt]]
+                                       [:table-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
-  {:data (mapv present (t2/select :model/TableIndex :transform_id transform-id {:order-by [[:id :asc]]}))})
+  (api/check-400 (or transform-id table-id) (tru "transform_id or table_id is required."))
+  (let [where (cond-> [:and]
+                transform-id (conj [:= :transform_id transform-id])
+                table-id     (conj [:= :table_id table-id]))]
+    {:data (mapv present (t2/select :model/TableIndex {:where where, :order-by [[:id :asc]]}))}))
+
+(api.macros/defendpoint :get "/:id" :- TableIndex
+  "Fetch a single managed index (e.g. to poll its status)."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (present (api/check-404 (t2/select-one :model/TableIndex :id id))))
 
 (api.macros/defendpoint :post "/" :- TableIndex
-  "Create a managed index request on a transform's target table."
+  "Create a managed index on a transform's target table."
   [_route-params
    _query-params
    {:keys [transform_id structured]} :- [:map
@@ -65,26 +75,22 @@
                                              :created_by   api/*current-user-id*}))))
 
 (api.macros/defendpoint :put "/:id" :- TableIndex
-  "Replace the structured definition of a managed index request, resetting it to pending."
+  "Replace the structured definition of a managed index, resetting it to pending."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/TableIndex :id id))
   (t2/update! :model/TableIndex id {:structured    structured
-                                      :index_name    (index-name structured)
-                                      :status        :pending
-                                      :error_message nil})
+                                    :index_name    (index-name structured)
+                                    :status        :pending
+                                    :error_message nil})
   (present (t2/select-one :model/TableIndex :id id)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
-  "Delete a managed index request."
+  "Delete a managed index."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (pos? (t2/delete! :model/TableIndex :id id)))
   api/generic-204-no-content)
-
-(def ^{:arglists '([request respond raise])} routes
-  "Ring routes for the Index Manager API."
-  (api.macros/ns-handler *ns* +auth))

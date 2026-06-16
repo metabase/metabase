@@ -1,5 +1,5 @@
-(ns metabase-enterprise.index-manager.schema
-  "Malli schemas and normalization for managed index requests: the structured index definitions handed to the driver
+(ns metabase.indexes.schema
+  "Malli schemas and normalization for managed table indexes: the structured index definitions handed to the driver
   index multimethods, and the request lifecycle statuses.
 
   JSON storage flattens the structured map's keyword-valued fields (`:kind`, `:style`, `:type`, and each column's
@@ -73,7 +73,7 @@
    [:order-by ::order-by] [:skip-index ::skip-index]])
 
 (def statuses
-  "Valid lifecycle states for an index request."
+  "Valid lifecycle states for a table index request."
   #{:pending :running :succeeded :failed :dropped})
 
 (defn keywordize-structured

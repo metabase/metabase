@@ -1,4 +1,4 @@
-(ns metabase-enterprise.index-manager.models-test
+(ns metabase.indexes.models.table-index-test
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]

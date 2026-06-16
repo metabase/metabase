@@ -15,7 +15,6 @@
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.gsheets.init]
-   [metabase-enterprise.index-manager.init]
    [metabase-enterprise.metabot.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
