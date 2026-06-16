@@ -17,6 +17,10 @@ describe(
       cy.intercept("PUT", "/api/setting/last-used-native-database-id").as(
         "persistDatabase",
       );
+      // The picker popover's final load step fetches the saved-questions database
+      // (the only `saved=true` call in this flow); waiting on it lets the option list
+      // settle before we click, instead of clicking into a mid-load re-render.
+      cy.intercept("GET", "/api/database?*saved=true*").as("databasesLoaded");
 
       H.restore("postgres-12");
       cy.signInAsAdmin();
@@ -119,6 +123,7 @@ describe(
       H.startNewAction();
       assertNoDatabaseSelected();
 
+      cy.wait("@databasesLoaded");
       selectDatabase("Sample Database");
       cy.get("@persistDatabase").should("be.null");
 
@@ -127,11 +132,13 @@ describe(
       cy.log(
         "Persisting a database for a native model should not affect actions",
       );
+      cy.wait("@databasesLoaded");
       selectDatabase(postgresName);
       cy.wait("@persistDatabase");
 
       cy.visit("/");
       H.startNewAction();
+      cy.wait("@databasesLoaded");
       assertNoDatabaseSelected();
     });
 
