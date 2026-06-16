@@ -41,7 +41,7 @@
    :table            {:runtime [:kind :id :name :databaseId :fields :segments :measures]
                       :comment [:key :entityId :description :databaseName :schemaName :tableName]}
    :field            {:runtime [:name :jsType :fieldId :tableId :defaultTemporalBucket]
-                      :comment [:key :id :displayName :description :baseType :effectiveType :semanticType :unit]}
+                      :comment [:key :displayName :description :baseType :effectiveType :semanticType :unit]}
    :segment          {:runtime [:kind :id :tableId :name]
                       :comment [:key :entityId :description]}
    :measure          {:runtime [:kind :id :tableId :name :columns]
