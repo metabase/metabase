@@ -25,7 +25,6 @@ import { initializePlugin as initializeDatabaseReplication } from "./database_re
 import { initializePlugin as initializeDatabaseRouting } from "./database_routing";
 import { initializePlugin as initializeDependencies } from "./dependencies";
 import { initializePlugin as initializeEmbedding } from "./embedding";
-import { initializePlugin as initializeEmbeddingSdk } from "./embedding-sdk";
 import { initializePlugin as initializeEmbeddingIframeSdk } from "./embedding_iframe_sdk";
 import { initializePlugin as initializeEmbeddingIframeSdkSetup } from "./embedding_iframe_sdk_setup";
 import { initializePlugin as initializeFeatureLevelPermissions } from "./feature_level_permissions";
@@ -73,7 +72,6 @@ export function initializePlugins() {
   initializeReplacement();
   initializeWhitelabel();
   initializeEmbedding();
-  initializeEmbeddingSdk();
   initializeEmbeddingIframeSdk();
   initializeEmbeddingIframeSdkSetup();
   initializeSnippets();
