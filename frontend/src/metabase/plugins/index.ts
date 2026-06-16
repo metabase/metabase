@@ -93,10 +93,6 @@ export {
 } from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
-  PLUGIN_MODERATION,
-  type RevisionOrModerationEvent,
-} from "./oss/moderation";
-export {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
@@ -197,7 +193,6 @@ import { reinitialize as reinitializeEmbeddingSdk } from "./oss/embedding-sdk";
 import { reinitialize as reinitializeLibrary } from "./oss/library";
 import { reinitialize as reinitializeMetabot } from "./oss/metabot";
 import { reinitialize as reinitializeModelPersistence } from "./oss/model-persistence";
-import { reinitialize as reinitializeModeration } from "./oss/moderation";
 import { reinitialize as reinitializePermissions } from "./oss/permissions";
 import { reinitialize as reinitializeRemoteSync } from "./oss/remote-sync";
 import { reinitialize as reinitializeReplacement } from "./oss/replacement";
@@ -241,7 +236,6 @@ export function reinitialize() {
   reinitializeLibrary();
   reinitializeMetabot();
   reinitializeModelPersistence();
-  reinitializeModeration();
   reinitializePermissions();
   reinitializeRemoteSync();
   reinitializeReplacement();

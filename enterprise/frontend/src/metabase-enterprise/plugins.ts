@@ -32,7 +32,6 @@ import { initializePlugin as initializeFeatureLevelPermissions } from "./feature
 import { initializePlugin as initializeGroupManagers } from "./group_managers";
 import { initializePlugin as initializeMetabot } from "./metabot";
 import { initializePlugin as initializeModelPersistence } from "./model_persistence";
-import { initializePlugin as initializeModeration } from "./moderation";
 import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
@@ -80,7 +79,6 @@ export function initializePlugins() {
   initializeSnippets();
   initializeSmtpOverride();
   initializeSharing();
-  initializeModeration();
   initializeAdvancedPermissions();
   initializeAuditApp();
   initializeMetabot();
