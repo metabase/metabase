@@ -852,9 +852,7 @@
          :model/Collection _ {:name "A-Child" :location (str "/" a-root "/")}]
         (let [result   (read-resource/read-resource {:uris ["metabase://collections?tree=true"]})
               so       (get-in result [:resources 0 :content :structured-output])
-              paths    (mapv :path (:items so))
-              our-paths (filter #(str/starts-with? % "A-Root") paths)
-              z-paths   (filter #(str/starts-with? % "Z-Root") paths)]
+              paths    (mapv :path (:items so))]
           (testing "A-Root and its child appear before Z-Root and its child"
             (let [first-a (first (keep-indexed (fn [i p] (when (str/starts-with? p "A-Root") i)) paths))
                   first-z (first (keep-indexed (fn [i p] (when (str/starts-with? p "Z-Root") i)) paths))]
