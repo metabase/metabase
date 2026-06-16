@@ -41,7 +41,7 @@ import type { Dispatch, GetState } from "metabase/redux/store";
 import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { DashboardApi, EmbedApi, PublicApi } from "metabase/services";
+import { EmbedApi, PublicApi } from "metabase/services";
 import {
   getDashboardType,
   isQuestionDashCard,
@@ -772,8 +772,10 @@ export const fetchDashboard = createAsyncThunk(
         dashId = result.id = String(dashId);
       } else {
         const [response] = await Promise.all([
-          DashboardApi.get(
-            { dashId: dashId, dashboard_load_id: dashboardLoadId },
+          runRtkEndpoint(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboard,
             { signal: fetchDashboardCancellation.signal },
           ),
           runRtkEndpoint(
@@ -790,15 +792,24 @@ export const fetchDashboard = createAsyncThunk(
 
       const isUsingCachedResults = entities != null;
       if (!isUsingCachedResults) {
-        // copy over any virtual cards from the dashcard to the underlying card/question
-        result.dashcards.forEach((card: DashboardCard) => {
-          if (card.visualization_settings?.virtual_card) {
-            card.card = Object.assign(
-              card.card || {},
-              card.visualization_settings.virtual_card,
-            );
-          }
-        });
+        // Copy over any virtual cards from the dashcard to the underlying
+        // card/question. The result can come straight from RTK Query, whose
+        // responses are deeply frozen, so build new objects rather than
+        // mutating in place.
+        result = {
+          ...result,
+          dashcards: result.dashcards.map((card: DashboardCard) =>
+            card.visualization_settings?.virtual_card
+              ? {
+                  ...card,
+                  card: {
+                    ...(card.card ?? {}),
+                    ...card.visualization_settings.virtual_card,
+                  },
+                }
+              : card,
+          ),
+        };
       }
 
       if (result.param_fields) {
