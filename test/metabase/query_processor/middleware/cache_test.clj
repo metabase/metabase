@@ -17,6 +17,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
+   [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -58,7 +59,8 @@
 (defn- test-backend
   "In in-memory cache backend implementation."
   [save-chan purge-chan]
-  (let [store (atom nil)]
+  (let [store  (atom nil)
+        leases (atom {})]
     (reify
       pretty/PrettyPrintable
       (pretty [_]
@@ -68,27 +70,20 @@
                                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
       i/CacheBackend
-      (cached-results [this query-hash strategy respond]
-        (assert (= :ttl (:type strategy)))
-        (assert (contains? strategy :avg-execution-ms))
-        (let [hex-hash   (codecs/bytes->hex query-hash)
-              max-age-ms (* (:multiplier strategy)
-                            (:avg-execution-ms strategy))]
+
+      (cached-results [this query-hash respond]
+        (let [hex-hash (codecs/bytes->hex query-hash)]
           (log/tracef "Fetch results for %s store: %s" hex-hash (pretty/pretty this))
-          (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
-                                                                               (when (= hash hex-hash)
-                                                                                 entry))
-                                                                             @store)]
-                                    (when (t/after? created (t/minus (t/instant) (t/millis max-age-ms)))
-                                      results))]
+          (if-let [{:keys [^bytes results created]} (get @store hex-hash)]
             (with-open [is (java.io.ByteArrayInputStream. results)]
-              (respond is))
-            (respond nil))))
+              (respond is created))
+            (respond nil nil))))
 
       (save-results! [this query-hash results]
         (let [hex-hash (codecs/bytes->hex query-hash)]
           (swap! store assoc hex-hash {:results results
                                        :created (t/instant)})
+          (swap! leases dissoc hex-hash) ; release the refresh lease now that fresh results are stored
           (log/tracef "Save results for %s --> store: %s" hex-hash (pretty/pretty this)))
         (a/>!! save-chan results))
 
@@ -98,7 +93,19 @@
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
         (log/tracef "Purge old entries --> store: %s" (pretty/pretty this))
-        (a/>!! purge-chan ::purge)))))
+        (a/>!! purge-chan ::purge))
+
+      (try-acquire-refresh-lease! [_this query-hash lease-ms]
+        (let [hex-hash (codecs/bytes->hex query-hash)
+              now      (t/instant)
+              won      (volatile! false)]
+          (swap! leases (fn [ls]
+                          (let [held (get ls hex-hash)]
+                            (if (or (nil? held) (t/before? held now))
+                              (do (vreset! won true)
+                                  (assoc ls hex-hash (t/plus now (t/millis lease-ms))))
+                              ls))))
+          @won)))))
 
 (defn do-with-mock-cache! [f]
   (mt/with-open-channels [save-chan  (a/chan 10)
@@ -225,6 +232,32 @@
       (is (= :not-cached
              (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1)))))))
 
+(deftest refresh-lease-test
+  (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
+                                                               :results    (byte-array [0])
+                                                               :updated_at (t/offset-date-time)}]
+      (testing "the first caller wins the lease"
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
+      (testing "a concurrent caller loses while the lease is still held"
+        (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
+      (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash -1)))))))
+
+(deftest stale-while-revalidate-test
+  (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
+            recomputed, so concurrent requests don't stampede the data warehouse"
+    (with-mock-cache! [save-chan]
+      (let [strategy   (assoc (ttl-strategy) :multiplier 0.1)
+            query-hash (qp.util/query-hash (test-query {:cache-strategy strategy}))]
+        (run-query :cache-strategy strategy)
+        (mt/wait-for-result save-chan)
+        (Thread/sleep 200)
+        (is (true? (i/try-acquire-refresh-lease! cache/*backend* query-hash 600000)))
+        (is (= :cached
+               (run-query :cache-strategy strategy)))))))
+
 (deftest ignore-valid-results-when-caching-is-disabled-test
   (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
     (with-mock-cache! [save-chan]
@@ -304,8 +337,8 @@
       (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (true?
-               (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                                 some?))))
+               (i/cached-results cache/*backend* query-hash
+                                 (fn [is _updated-at] (some? is))))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
