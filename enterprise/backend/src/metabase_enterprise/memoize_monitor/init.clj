@@ -90,13 +90,14 @@
   (keep memoization-cache-stats monitored-cache-vars))
 
 ;; Export the size of every monitored memoization cache, one sample per cache per metric. The byte measurement is
-;; potentially expensive, so we also export how long each measurement took and refresh no more than once a minute.
+;; potentially expensive, so we also export how long each measurement took and refresh no more than once every 10
+;; minutes.
 (defmethod analytics/pull-collector ::memoize-cache-sizes [_]
-  {:min-interval-s 60
-   :f (fn []
-        (doseq [{:keys [cache entries bytes measure-ms]} (all-cache-stats)]
-          (analytics.interface/set-gauge! :metabase-memoize/cache-size {:cache cache} entries)
-          (when measure-ms
-            (analytics.interface/set-gauge! :metabase-memoize/cache-measure-duration-ms {:cache cache} measure-ms))
-          (when bytes
-            (analytics.interface/set-gauge! :metabase-memoize/cache-bytes {:cache cache} bytes))))})
+  {:min-interval-s (* 10 60)
+   :f              (fn []
+                     (doseq [{:keys [cache entries bytes measure-ms]} (all-cache-stats)]
+                       (analytics.interface/set-gauge! :metabase-memoize/cache-size {:cache cache} entries)
+                       (when measure-ms
+                         (analytics.interface/set-gauge! :metabase-memoize/cache-measure-duration-ms {:cache cache} measure-ms))
+                       (when bytes
+                         (analytics.interface/set-gauge! :metabase-memoize/cache-bytes {:cache cache} bytes))))})
