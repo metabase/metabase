@@ -27,6 +27,8 @@
    [toucan2.core :as t2])
   (:import (metabase_enterprise.remote_sync.source.protocol SourceSnapshot)))
 
+(set! *warn-on-reflection* true)
+
 (defn- snapshot-has-transforms?
   "Checks if the snapshot contains any Transform, PythonLibrary entities,
    non-built-in TransformTags, or transforms-namespace collections.
@@ -290,6 +292,107 @@
     (remote-sync.task/update-progress! task-id 0.95)
     imported-data))
 
+;;; ------------------------------------------- Incremental Import Fast-Path -------------------------------------------
+
+(def ^:private incremental-fallback
+  "Sentinel returned by [[incremental-load-snapshot!]] when a change can't be applied incrementally and the
+  caller must run the full [[load-snapshot!]] instead."
+  :remote-sync/fallback)
+
+(def ^:private incremental-structural-models
+  "Models whose change forces a full import on the incremental fast-path: Collection (a rename moves every
+  descendant's file, a delete cascades to its contents) and the feature models (their presence drives the
+  remote-sync-transforms / library settings, which need whole-snapshot knowledge to toggle correctly)."
+  #{"Collection" "Transform" "TransformTag" "PythonLibrary" "NativeQuerySnippet"})
+
+(defn- legal-yaml-path?
+  "True for a managed-directory `.yaml` entity file — the only changed paths the importer acts on."
+  [^String path]
+  (and (str/ends-with? path ".yaml")
+       (not (str/starts-with? path "."))
+       (when-let [i (str/index-of path "/")]
+         (contains? serialization/legal-top-level-paths (subs path 0 i)))))
+
+(defn- exact-path-filters
+  "Regexes that `re-matches` exactly each path in `paths` (used to scope an ingestable to just those files)."
+  [paths]
+  (mapv #(re-pattern (java.util.regex.Pattern/quote %)) paths))
+
+(defn- rso-where-for
+  "HoneySQL :where matching the RemoteSyncObject rows for the given `[{:model_type :model_id}]` maps."
+  [rows]
+  (into [:or] (map (fn [{:keys [model_type model_id]}]
+                     [:and [:= :model_type model_type] [:= :model_id model_id]]))
+        rows))
+
+(defn incremental-load-snapshot!
+  "Incremental mirror of [[load-snapshot!]]: loads only the entities whose files changed between
+  `last-version` and `snapshot`, deletes only those genuinely removed, and reconciles just those rows of
+  the RemoteSyncObject table — leaving everything else untouched. Assumes local state equals
+  `last-version`; the caller guarantees that (not a first import, not forced, not dirty).
+
+  Returns [[incremental-fallback]] when the change can't be applied incrementally — no diff is available
+  (force-push/rebase or a non-diffable source), a structural/feature model changed, or a deleted file has
+  no recorded `file_path` to map back to a tracked entity. The caller then runs the full
+  [[load-snapshot!]], which self-heals. On success it performs the import (running `finalize!` inside the
+  reconcile transaction) and returns the imported-data map.
+
+  Renames are handled by entity identity, not path: a rename re-loads the same entity_id at the new path
+  (an add), so the old path's delete is recognized as a rename and the entity is not removed."
+  [snapshot task-id sync-timestamp last-version & {:keys [finalize!]}]
+  (let [changed (source.p/changed-files snapshot last-version)]
+    (if (nil? changed)
+      incremental-fallback
+      (let [add-mod      (into #{} (filter legal-yaml-path?) (into (:added changed) (:modified changed)))
+            deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
+            deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p)) deleted)]
+        (if (some nil? deleted-rsos)
+          ;; a deleted file we can't map back to a tracked entity — can't safely remove it
+          incremental-fallback
+          (let [ingestable  (when (seq add-mod)
+                              (source.p/->ingestable snapshot {:path-filters (exact-path-filters add-mod)}))
+                add-models  (if ingestable
+                              (into #{} (map #(:model (last %))) (serialization/ingest-list ingestable))
+                              #{})
+                del-models  (into #{} (map :model_type) deleted-rsos)
+                all-models  (into add-models del-models)]
+            (if (or (some incremental-structural-models all-models)
+                    (some (fn [m] (let [s (spec/spec-for-model-type m)]
+                                    (or (nil? s) (not= :entity-id (:identity s)))))
+                          all-models))
+              incremental-fallback
+              (let [load-result   (when ingestable
+                                    (serdes/with-cache
+                                      (serialization/load-metabase!
+                                       (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable)
+                                       :backfill? false :reindex? false)))
+                    imported-data (spec/extract-imported-entities (:seen load-result))
+                    loaded-eid?   (fn [model-type eid]
+                                    ;; by-entity-id holds sets of raw entity_id strings, keyed by model type
+                                    (contains? (get-in imported-data [:by-entity-id model-type]) eid))
+                    ;; A tracked entity whose entity_id was NOT re-loaded is a genuine delete; if it WAS
+                    ;; re-loaded (at a new path) it's a rename, so we keep it.
+                    deletes       (for [{:keys [model_type model_id]} deleted-rsos
+                                        :let [model-key (:model-key (spec/spec-for-model-type model_type))
+                                              eid (when model-key (t2/select-one-fn :entity_id model-key :id model_id))]
+                                        :when (not (loaded-eid? model_type eid))]
+                                    {:model_type model_type :model_id model_id :model-key model-key})
+                    sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
+                (remote-sync.task/update-progress! task-id 0.8)
+                (t2/with-transaction [_conn]
+                  (doseq [{:keys [model-key model_id]} deletes]
+                    (t2/delete! model-key :id model_id))
+                  (when (seq deletes)
+                    (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
+                  (when (seq sync-rows)
+                    (t2/delete! :model/RemoteSyncObject {:where (rso-where-for sync-rows)})
+                    (t2/insert! :model/RemoteSyncObject sync-rows))
+                  (when ingestable
+                    (record-exported-paths! (source.ingestable/cached-file-paths ingestable)))
+                  (when finalize! (finalize!)))
+                (remote-sync.task/update-progress! task-id 0.95)
+                imported-data))))))))
+
 (defn- capture-dirty-objects
   "Returns the current non-synced RemoteSyncObject rows — the local changes that have not been pushed.
   Captured before a local-only merge so they can be restored afterwards (see [[import-merged!]])."
@@ -392,35 +495,51 @@
       (try
         (if merge?
           (import-merged! snapshot base-snapshot task-id sync-timestamp)
-          (let [snapshot-version (source.p/version snapshot)
+          (let [snapshot-version      (source.p/version snapshot)
                 last-imported-version (remote-sync.task/last-version)
-                first-import? (nil? last-imported-version)
-                path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
-                base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
+                first-import?         (nil? last-imported-version)
+                finalize!             #(remote-sync.task/set-version! task-id (source.p/version snapshot))
+                success               (fn []
+                                        (log/info "Successfully reloaded entities from git repository")
+                                        {:status :success
+                                         :version (source.p/version snapshot)
+                                         :message "Successfully reloaded from git repository"})]
             (cond
-              (and first-import? (not force?) (seq conflicts))
-              (u/prog1 {:status :conflict
-                        :version (source.p/version snapshot)
-                        :conflicts summary  ; Keep backward compatibility: return set of category names
-                        :conflict-details conflicts  ; New: detailed conflict info
-                        :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
-                (log/infof (:message <>)))
-
-              (and (not force?) (= last-imported-version snapshot-version))
+              ;; Cheap no-op pull: nothing changed remotely. Returns before reading the tree — conflict
+              ;; detection is hoisted into the first-import branch below (the only one that uses it, and
+              ;; the only one a version match can never be — last-imported-version is nil on a first import).
+              (and (not force?) (not first-import?) (= last-imported-version snapshot-version))
               (u/prog1 {:status :success
-                        :version (source.p/version snapshot)
+                        :version snapshot-version
                         :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
                 (log/infof (:message <>)))
 
+              first-import?
+              (let [path-filters    (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
+                    base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
+                    {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
+                (if (and (not force?) (seq conflicts))
+                  (u/prog1 {:status :conflict
+                            :version snapshot-version
+                            :conflicts summary  ; Keep backward compatibility: return set of category names
+                            :conflict-details conflicts  ; New: detailed conflict info
+                            :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
+                    (log/infof (:message <>)))
+                  (do
+                    (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)
+                    (success))))
+
               :else
-              (do
-                (load-snapshot! snapshot task-id sync-timestamp
-                                :finalize! #(remote-sync.task/set-version! task-id (source.p/version snapshot)))
-                (log/info "Successfully reloaded entities from git repository")
-                {:status :success
-                 :version (source.p/version snapshot)
-                 :message "Successfully reloaded from git repository"}))))
+              ;; Subsequent import: attempt the incremental fast-path (load only what changed), falling back
+              ;; to the full reload when it isn't safe. A forced import or local drift always takes the full
+              ;; path, which is the only one that truly discards local changes.
+              (let [result (if (and (not force?) (not (remote-sync.object/dirty?)))
+                             (incremental-load-snapshot! snapshot task-id sync-timestamp last-imported-version
+                                                         :finalize! finalize!)
+                             incremental-fallback)]
+                (when (= result incremental-fallback)
+                  (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!))
+                (success)))))
         (catch Exception e
           (handle-import-exception e snapshot))
         (finally

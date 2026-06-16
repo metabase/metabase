@@ -293,8 +293,22 @@ width: fixed
       :or   {current "v-remote" branch "main" managed-dirs ingest/legal-top-level-paths}}]
   (let [managed     (set managed-dirs)
         state       (atom {:current current :trees (or trees {}) :counter 0})
+        diff-trees  (fn [old-tree new-tree]
+                      (let [oks (set (keys old-tree)) nks (set (keys new-tree))]
+                        {:added    (into #{} (remove oks) nks)
+                         :deleted  (into #{} (remove nks) oks)
+                         :modified (into #{} (filter #(and (contains? old-tree %) (not= (old-tree %) (new-tree %)))) nks)}))
         mk-snapshot (fn mk-snapshot [version]
-                      (reify source.p/SourceSnapshot
+                      (reify
+                        source.p/Diffable
+                        ;; In-memory mirror of git's tree diff: nil when the base version is unknown (models
+                        ;; a base orphaned by force-push), so the importer falls back to a full import.
+                        (changed-files* [_ from-version]
+                          (let [trees (:trees @state)]
+                            (when (and (contains? trees from-version) (contains? trees version))
+                              (diff-trees (get trees from-version) (get trees version)))))
+
+                        source.p/SourceSnapshot
                         (list-files [_] (vec (keys (get-in @state [:trees version] {}))))
                         (read-file [_ path] (get-in @state [:trees version path]))
                         (write-files! [_ _message files]

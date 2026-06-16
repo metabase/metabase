@@ -152,3 +152,16 @@
        (let [b-path (path-with f0 "card_b")
              f1     (dissoc f0 b-path)]
          (run-differential! f0 f1))))))
+
+(deftest rename-card-equivalence-test
+  (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old
+            path's delete must be recognized as a rename, not remove the entity"
+    (do-with-bench!
+     (fn [f0]
+       (let [b-path  (path-with f0 "card_b")
+             ;; same entity_id, new name → new slug/path: a rename shows up as delete(old) + add(new)
+             renamed (-> (get f0 b-path)
+                         (str/replace "name: Card B" "name: Card B Renamed")
+                         (str/replace "label: card_b" "label: card_b_renamed"))
+             f1      (-> f0 (dissoc b-path) (assoc (str/replace b-path "card_b" "card_b_renamed") renamed))]
+         (run-differential! f0 f1))))))

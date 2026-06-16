@@ -431,7 +431,11 @@
     (apply-changes! this message upserts delete-paths))
 
   (version [this]
-    (:version this)))
+    (:version this))
+
+  source.p/Diffable
+  (changed-files* [this from-version]
+    (changed-files this from-version)))
 
 (def ^:private jgit (atom {}))
 

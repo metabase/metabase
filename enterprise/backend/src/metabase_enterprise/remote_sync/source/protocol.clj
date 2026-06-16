@@ -84,6 +84,23 @@
 
     Returns a version identifier string (e.g., a git SHA)."))
 
+(defprotocol Diffable
+  "Optional capability for snapshots that can cheaply report which files changed since a prior version.
+  Implemented by sources backed by real history (git, in-memory versioned test sources); snapshots that
+  can't diff simply don't implement it and `changed-files` returns nil for them."
+  (changed-files* [snapshot from-version]
+    "Returns `{:added #{} :modified #{} :deleted #{}}` path sets between `from-version` and this
+    snapshot's version, or nil when `from-version` can't be resolved. Prefer calling [[changed-files]]."))
+
+(defn changed-files
+  "Paths that changed between `from-version` and `snapshot`'s version, as
+  `{:added #{} :modified #{} :deleted #{}}`, or nil when an incremental diff isn't available — the base
+  can't be resolved (force-push/rebase), or the snapshot's source type doesn't support diffing. A nil
+  result signals callers to fall back to a full import."
+  [snapshot from-version]
+  (when (satisfies? Diffable snapshot)
+    (changed-files* snapshot from-version)))
+
 (methodical/defmulti ->ingestable
   "Creates an ingestable snapshot for remote sync operations.
 
