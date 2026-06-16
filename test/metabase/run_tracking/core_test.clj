@@ -52,7 +52,7 @@
                      :model/TransformRun {fresh :id} {:transform_id t2 :status :started :is_active true
                                                       :run_method :manual :start_time (minutes-ago 10)
                                                       :last_heartbeat (minutes-ago 1)}]
-        (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
+        (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:= :is_active true]
                                      :stale [:< :last_heartbeat (rt/cutoff 5 :minute)]
                                      :terminal {:status :timeout :is_active nil :end_time :%now
                                                 :message "reaped"}})]
@@ -62,7 +62,7 @@
           (is (= "reaped" (t2/select-one-fn :message :model/TransformRun :id stale)))
           (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh))))
         (testing "second sweep is empty — the row is no longer active"
-          (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
+          (is (empty? (rt/reap-rows! {:model :model/TransformRun :active [:= :is_active true]
                                       :stale [:< :last_heartbeat (rt/cutoff 5 :minute)]
                                       :terminal {:status :timeout :is_active nil :end_time :%now}}))))))))
 
@@ -73,7 +73,7 @@
                      :model/TransformRun {old-start :id} {:transform_id tid :status :started :is_active true
                                                           :run_method :manual :start_time (minutes-ago 120)
                                                           :last_heartbeat (minutes-ago 1)}]
-        (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:is_active true]
+        (let [reaped (rt/reap-rows! {:model :model/TransformRun :active [:= :is_active true]
                                      :stale [:or [:< :last_heartbeat (rt/cutoff 5 :minute)]
                                              [:< :start_time (rt/cutoff 60 :minute)]]
                                      :terminal {:status :timeout :is_active nil :end_time :%now}})]
@@ -88,7 +88,7 @@
                    :model/TaskRun {fresh :id} {:run_type :sync :entity_type :database :entity_id 1
                                                :status :started :started_at (minutes-ago 1)
                                                :updated_at (minutes-ago 1) :process_uuid "test"}]
-      (let [reaped (rt/reap-rows! {:model :model/TaskRun :active [:status :started]
+      (let [reaped (rt/reap-rows! {:model :model/TaskRun :active [:= :status :started]
                                    :stale [:< :updated_at (rt/cutoff 60 :minute)]
                                    :terminal {:status :abandoned}})]
         (is (= [stale] (mapv :id reaped)))
@@ -111,10 +111,10 @@
                    :model/TransformRun {done :id} {:transform_id t1 :status :succeeded :is_active nil
                                                    :run_method :manual :start_time (minutes-ago 10)
                                                    :last_heartbeat (minutes-ago 10)}]
-      (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat [beat done])
+      (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat [beat done])
       (let [recent? (fn [id] (.isAfter ^OffsetDateTime (t2/select-one-fn :last_heartbeat :model/TransformRun :id id)
                                        (minutes-ago 1)))]
         (is (recent? beat) "a passed, still-active id is stamped")
         (is (not (recent? skip)) "an id not in the list is left to go stale")
         (is (not (recent? done)) "an inactive id is not stamped (active guard)")
-        (is (nil? (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat [])) "empty id list is a no-op")))))
+        (is (nil? (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat [])) "empty id list is a no-op")))))

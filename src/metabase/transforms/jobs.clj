@@ -276,7 +276,7 @@
   of any that another path (reaper, force-fail) already terminated, so its coordinator aborts."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformJobRun
-                                :active     [:is_active true]
+                                :active     [:= :is_active true]
                                 :ids        (keys @active-runs)
                                 :heartbeat! transforms.job-run/heartbeat-runs!
                                 :on-gone    (fn [run-id]

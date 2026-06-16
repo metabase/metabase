@@ -55,7 +55,7 @@
   owning node holds a run's `cancel-chan`."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
-                                :active     [:is_active true]
+                                :active     [:= :is_active true]
                                 :ids        (keys @connections)
                                 :heartbeat! transform-run/heartbeat-runs!
                                 :on-gone    chan-signal-cancel!}))

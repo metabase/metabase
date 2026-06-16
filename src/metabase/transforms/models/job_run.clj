@@ -78,7 +78,7 @@
 (defn heartbeat-runs!
   "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
   [run-ids]
-  (rt/heartbeat-ids! :model/TransformJobRun [:is_active true] :last_heartbeat run-ids))
+  (rt/heartbeat-ids! :model/TransformJobRun [:= :is_active true] :last_heartbeat run-ids))
 
 (defn reap-orphaned-runs!
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
@@ -86,7 +86,7 @@
   [stale-minutes]
   (rt/reap-orphaned!
    {:model    :model/TransformJobRun
-    :active   [:is_active true]
+    :active   [:= :is_active true]
     :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
     :terminal {:status :timeout :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
     :metrics  {:total-metric   :metabase-transforms/timeouts-total
