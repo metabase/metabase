@@ -17,12 +17,10 @@ import {
   ActionButton,
   type ActionButtonHandle,
 } from "metabase/common/components/ActionButton";
-import { Button } from "metabase/common/components/Button";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getSemanticTypeIcon } from "metabase/common/utils/fields";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import {
   setDatasetEditorTab,
@@ -53,7 +51,7 @@ import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -682,7 +680,8 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
         buttons={[
           <Button
             key="cancel"
-            small
+            variant="subtle"
+            size="sm"
             onClick={handleCancelClick}
           >{t`Cancel`}</Button>,
           <Tooltip
@@ -700,11 +699,8 @@ const DatasetEditorInnerView = (props: DatasetEditorInnerProps) => {
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
-              className={cx(
-                ButtonsS.Button,
-                ButtonsS.ButtonPrimary,
-                ButtonsS.ButtonSmall,
-              )}
+              variant="filled"
+              size="sm"
             />
           </Tooltip>,
         ]}
