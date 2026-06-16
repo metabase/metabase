@@ -163,7 +163,7 @@
                   {:model    :model/TransformRun
                    :active   [:= :is_active true]
                    :stale    [:< stale-column (rt/cutoff age unit)]
-                   :terminal {:status :timeout :end_time :%now :is_active nil :message message}
+                   :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
                    :metrics  {:total-metric   :metabase-transforms/timeouts-total
                               :latency-metric :metabase-transforms/timeout-detection-latency-ms
                               :tags           {:type "transform"}

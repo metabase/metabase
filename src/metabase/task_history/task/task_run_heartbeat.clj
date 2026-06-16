@@ -42,8 +42,8 @@
   []
   (let [orphaned (tracing/with-span :tasks "task.heartbeat.mark-orphaned-runs" {}
                    (rt/reap-rows! {:model    :model/TaskRun
-                                   :active   [:= :status :started]
-                                   :terminal {:status :abandoned :ended_at (mi/now)}
+                                   :active   [:= :status "started"]
+                                   :terminal {:status "abandoned" :ended_at (mi/now)}
                                    :stale    [:or
                                               [:< :updated_at (rt/cutoff orphan-threshold-hours :hour)]
                                               [:< :started_at (rt/cutoff max-run-duration-hours :hour)]]}))]

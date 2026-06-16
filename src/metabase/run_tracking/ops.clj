@@ -34,7 +34,9 @@
   `active` is a HoneySQL predicate, e.g. `[:= :is_active true]`."
   [model active heartbeat-column ids]
   (when (seq ids)
-    (t2/update! model {:where [:and active [:in :id ids]]} {heartbeat-column :%now})))
+    (t2/query {:update (t2/table-name model)
+               :set    {heartbeat-column :%now}
+               :where  [:and active [:in :id ids]]})))
 
 (defn heartbeat-and-reconcile!
   "Per-node tick for the runs this process owns: call `(heartbeat! ids)`, then `(on-gone id)` for
@@ -58,7 +60,9 @@
   [{:keys [model active stale terminal]}]
   (t2/with-transaction [_conn]
     (when-let [rows (not-empty (t2/select model {:where [:and active stale] :for :update}))]
-      (t2/update! model {:where [:and active [:in :id (mapv :id rows)]]} terminal)
+      (t2/query {:update (t2/table-name model)
+                 :set    terminal
+                 :where  [:and active [:in :id (mapv :id rows)]]})
       rows)))
 
 (defn reap-orphaned!
