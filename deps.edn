@@ -284,6 +284,7 @@
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
+    org.testcontainers/testcontainers {:mvn/version "2.0.5"}               ; throwaway docker containers for tests (e.g. raw MySQL FK-cascade probes)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
