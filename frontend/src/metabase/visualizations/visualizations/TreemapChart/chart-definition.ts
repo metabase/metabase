@@ -10,6 +10,7 @@ import {
   dimensionSetting,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
+import { columnsAreValid } from "metabase/visualizations/lib/utils";
 import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import { getTreemapRows } from "metabase/visualizations/shared/settings/treemap";
 import type {
@@ -122,15 +123,32 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
       );
       return secondDimension?.name;
     },
-    getProps: ([{ data }], vizSettings, onChange) => ({
-      options: data.cols
-        .filter(isDimension)
-        .map((col) => ({ name: col.display_name, value: col.name })),
-      columns: data.cols,
-      onRemove: vizSettings["treemap.sub_grouping"]
-        ? () => onChange(null as never)
-        : null,
-    }),
+    isValid: ([{ card, data }]) =>
+      columnsAreValid(
+        [card.visualization_settings["treemap.sub_grouping"]],
+        data,
+        isDimension,
+      ),
+    getHidden: ([{ data }], vizSettings) => {
+      const grouping = vizSettings["treemap.grouping"];
+      const value = vizSettings["treemap.value"];
+      return !data.cols.some(
+        (col) =>
+          isDimension(col) && col.name !== grouping && col.name !== value,
+      );
+    },
+    getProps: ([{ data }], vizSettings, onChange) => {
+      const grouping = vizSettings["treemap.grouping"];
+      return {
+        options: data.cols
+          .filter((col) => isDimension(col) && col.name !== grouping)
+          .map((col) => ({ name: col.display_name, value: col.name })),
+        columns: data.cols,
+        onRemove: vizSettings["treemap.sub_grouping"]
+          ? () => onChange(null as never)
+          : null,
+      };
+    },
     readDependencies: ["treemap.grouping", "treemap.value"],
   }),
   ...metricSetting("treemap.value", {

@@ -1,5 +1,6 @@
 import { checkNotNull } from "metabase/utils/types";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import type { RowValues } from "metabase-types/api/dataset";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -223,6 +224,60 @@ describe("TREEMAP_CHART_DEFINITION", () => {
           "treemap.value": "Amount",
         }),
       ).toBeUndefined();
+    });
+
+    it("hides sub-grouping when no second dimension is available", () => {
+      const getHidden = checkNotNull(subGroupingSetting.getHidden);
+      expect(
+        getHidden(makeSeries(baseColumns, [["A", 10]]), {
+          "treemap.grouping": "Category",
+          "treemap.value": "Amount",
+        }),
+      ).toBe(true);
+      expect(
+        getHidden(makeSeries(columnsWithSubgrouping, [["A", "x", 10]]), {
+          "treemap.grouping": "Category",
+          "treemap.value": "Amount",
+        }),
+      ).toBe(false);
+    });
+
+    it("excludes the main grouping column from sub-grouping options", () => {
+      const getProps = checkNotNull(subGroupingSetting.getProps);
+      const { options } = getProps(
+        makeSeries(columnsWithSubgrouping, [["A", "x", 10]]),
+        {
+          "treemap.grouping": "Category",
+          "treemap.value": "Amount",
+        },
+        () => undefined,
+        undefined,
+        () => undefined,
+      );
+
+      expect(options?.map(({ value }) => value)).toContain("SubCategory");
+      expect(options?.map(({ value }) => value)).not.toContain("Category");
+    });
+
+    it("keeps sub-grouping unset when explicitly cleared", () => {
+      const series = makeSeries(columnsWithSubgrouping, [["A", "x", 10]]);
+      const storedSettings = {
+        "treemap.grouping": "Category",
+        "treemap.value": "Amount",
+        "treemap.sub_grouping": null,
+      };
+
+      const computedSettings = getComputedSettings(
+        {
+          "treemap.grouping": groupingSetting,
+          "treemap.value": valueSetting,
+          "treemap.sub_grouping": subGroupingSetting,
+        },
+        series,
+        storedSettings,
+      );
+
+      expect(computedSettings["treemap.sub_grouping"]).toBeNull();
     });
   });
 
