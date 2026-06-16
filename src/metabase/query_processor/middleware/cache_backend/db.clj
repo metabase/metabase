@@ -68,7 +68,7 @@
 (def ^:private lease-free-sentinel
   "Substituted (via COALESCE) for a NULL `refresh_started_at` so that 'no refresh in progress' counts as a free lease.
   Any timestamp older than every realistic lease cutoff works."
-  (t/offset-date-time 1970 1 1 0 0 0 0 (t/zone-offset 0)))
+  (t/offset-date-time "1970-01-01T00:00Z"))
 
 (defn try-acquire-refresh-lease!
   "Atomically claim, across processes, the right to recompute the expired entry for `query-hash`, via a conditional

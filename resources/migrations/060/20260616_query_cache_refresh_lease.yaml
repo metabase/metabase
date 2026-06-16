@@ -8,7 +8,7 @@ databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
 
   - changeSet:
-      id: v60.2026-06-16T00:00:00
+      id: v60.query-cache-refresh-lease
       author: ranquild
       comment: Add query_cache.refresh_started_at as a cross-process refresh lease for stale-while-revalidate caching
       changes:

@@ -245,7 +245,7 @@
       (testing "a concurrent caller loses while the lease is still held"
         (is (false? (backend.db/try-acquire-refresh-lease! query-hash (u/minutes->ms 5)))))
       (testing "an abandoned lease (older than the caller's tolerance) can be taken over"
-        (is (true? (backend.db/try-acquire-refresh-lease! query-hash 0)))))))
+        (is (true? (backend.db/try-acquire-refresh-lease! query-hash -1)))))))
 
 (deftest stale-while-revalidate-test
   (testing "an expired entry whose refresh lease is already held by another process is served stale instead of
