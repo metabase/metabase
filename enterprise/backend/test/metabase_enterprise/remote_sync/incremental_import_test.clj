@@ -29,6 +29,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as rs.test]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -152,6 +153,24 @@
        (let [b-path (path-with f0 "card_b")
              f1     (dissoc f0 b-path)]
          (run-differential! f0 f1))))))
+
+(deftest incremental-search-update-only-changed-test
+  (testing "GHY-3779: an incremental edit re-indexes only the changed entity (we skip the full reindex),
+            keeping search-index cost proportional to the change"
+    (do-with-bench!
+     (fn [f0]
+       (let [a-eid   (second (re-find #"entity_id: (\S+)" (get f0 (path-with f0 "card_a"))))
+             b-path  (path-with f0 "card_b")
+             b-eid   (second (re-find #"entity_id: (\S+)" (get f0 b-path)))
+             f1      (update f0 b-path str/replace "display: table" "display: line")
+             src     (rs.test/versioned-source :trees {"v0" f0 "v1" f1} :current "v0")
+             indexed (atom #{})]
+         (import-at! src "v0" :force? true)              ; baseline (full) — local == v0
+         (with-redefs [search/update! (fn [inst] (swap! indexed conj (:entity_id inst)))
+                       search/delete! (fn [& _] nil)]
+           (import-at! src "v1"))                        ; incremental edit of card_b only
+         (is (contains? @indexed b-eid) "the edited card is re-indexed")
+         (is (not (contains? @indexed a-eid)) "the unchanged card is NOT re-indexed"))))))
 
 (deftest rename-card-equivalence-test
   (testing "GHY-3779: renaming a card (same entity_id at a new path) imports equivalently — the old

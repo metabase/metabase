@@ -19,6 +19,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -390,6 +391,16 @@
                   (when ingestable
                     (record-exported-paths! (source.ingestable/cached-file-paths ingestable)))
                   (when finalize! (finalize!)))
+                ;; We skipped the whole-appdb reindex; update the search index for just the changed
+                ;; entities so it stays consistent at a cost proportional to the change. Runs after the
+                ;; reconcile commits so the index reflects committed state.
+                (doseq [{:keys [model-key model_id]} deletes]
+                  (search/delete! model-key [model_id]))
+                (doseq [{:keys [model_type model_id]} sync-rows
+                        :let [model-key (:model-key (spec/spec-for-model-type model_type))
+                              instance  (when model-key (t2/select-one model-key :id model_id))]
+                        :when instance]
+                  (search/update! instance))
                 (remote-sync.task/update-progress! task-id 0.95)
                 imported-data))))))))
 
