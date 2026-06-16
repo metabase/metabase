@@ -7,9 +7,10 @@
   reads each cache's size on a periodic basis via a Prometheus `pull-collector`. For each monitored cache we emit:
 
   - `:metabase-memoize/cache-size`             -- number of entries
-  - `:metabase-memoize/cache-bytes`            -- approximate retained size in bytes ([[clj-memory-meter.core]])
-  - `:metabase-memoize/cache-measure-duration-ms` -- wall-clock time spent measuring that cache's bytes, so the cost
-                                                     of running this monitor is itself observable
+  - `:metabase-memoize/cache-bytes`            -- approximate retained size in bytes, estimated by measuring a sample
+                                                  of entries and extrapolating ([[clj-memory-meter.core]])
+  - `:metabase-memoize/cache-measure-duration-ms` -- wall-clock time spent producing that estimate, so the cost of
+                                                     running this monitor is itself observable
 
   This lives in enterprise because the monitored caches span both OSS and enterprise modules
   ([[metabase-enterprise.serialization.dump]]); an OSS namespace cannot depend on enterprise code. OSS-only builds get
@@ -19,8 +20,9 @@
   [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`) can be measured, because their
   backing cache is reachable through the memoized function's metadata.
 
-  NOTE: counting entries is O(1) and copies nothing, but the byte measurement walks the whole cache object graph and
-  is potentially expensive for large caches. That's exactly why we also export the measurement duration."
+  NOTE: counting entries is O(1) and copies nothing. The byte figure is an estimate from a small sample of entries
+  (see [[estimate-cache-bytes]]) rather than a full-cache walk, keeping the cost roughly constant regardless of cache
+  size; we still export the measurement duration so its cost stays observable."
   (:require
    [clj-memory-meter.core :as mm]
    [metabase-enterprise.serialization.dump :as serialization.dump]
@@ -63,25 +65,44 @@
 (def ^:private memory-measurement-available?
   (contains? #{"" "true"} (System/getProperty "jdk.attach.allowAttachSelf")))
 
+(def ^:private sample-size
+  "Number of cache entries to actually measure before extrapolating to the full entry count."
+  10)
+
+(defn- estimate-cache-bytes
+  "Approximate retained size in bytes of `cache` (a `clojure.core.cache` cache holding `entries` entries).
+
+  Rather than walk the whole cache (potentially millions of entries) on every scrape, measure a small sample of
+  entries and scale by the total count. This keeps the cost roughly constant regardless of cache size; the result is
+  an estimate, not an exact figure (a uniform per-entry size is assumed, and structure shared across entries is
+  effectively counted once per sample then scaled up)."
+  [cache entries]
+  (let [sample (into [] (take sample-size) cache)]
+    (if (empty? sample)
+      0
+      (long (* (mm/measure sample :bytes true)
+               (/ entries (double (count sample))))))))
+
 (defn- memoization-cache-stats
   "Map of `{:cache name, :entries n, :bytes b, :measure-ms ms}` given a var holding a memoized function with a
   reachable backing cache, or `nil` otherwise.
 
-  Entry counts are always reported. The byte measurement walks the whole cache graph and self-attaches a memory-
+  Entry counts are always reported. The byte estimate (see [[estimate-cache-bytes]]) self-attaches a memory-
   measurement Java agent, so it only runs when [[memory-measurement-available?]]; otherwise `:bytes` and `:measure-ms`
-  are nil. `:bytes` is also nil if measurement throws."
+  are nil. `:bytes` is also nil if measurement throws. `:measure-ms` is the time spent producing the estimate."
   [cache-var]
   (when-let [cache (cache-object @cache-var)]
-    (let [[bytes measure-ms] (when memory-measurement-available?
+    (let [entries (count cache)
+          [bytes measure-ms] (when memory-measurement-available?
                                (let [start-ns (System/nanoTime)
                                      bytes    (try
-                                                (mm/measure cache :bytes true)
+                                                (estimate-cache-bytes cache entries)
                                                 (catch Throwable e
                                                   (log/warn e "Error measuring memoization cache size" (symbol cache-var))
                                                   nil))]
                                  [bytes (/ (- (System/nanoTime) start-ns) 1e6)]))]
       {:cache      (str (symbol cache-var))
-       :entries    (count cache)
+       :entries    entries
        :bytes      bytes
        :measure-ms measure-ms})))
 

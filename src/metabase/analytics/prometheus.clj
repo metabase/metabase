@@ -778,10 +778,10 @@
                      {:description "Number of entries currently held in a monitored in-memory memoization cache."
                       :labels [:cache]})
    (prometheus/gauge :metabase-memoize/cache-bytes
-                     {:description "Approximate retained size in bytes of a monitored in-memory memoization cache."
+                     {:description "Approximate retained size in bytes of a monitored in-memory memoization cache, estimated by sampling entries."
                       :labels [:cache]})
    (prometheus/gauge :metabase-memoize/cache-measure-duration-ms
-                     {:description "Wall-clock milliseconds spent measuring one cache's retained size. Indicates the runtime cost of the memoization-cache monitor itself."
+                     {:description "Wall-clock milliseconds spent estimating one cache's retained size. Indicates the runtime cost of the memoization-cache monitor itself."
                       :labels [:cache]})])
 
 (defn- quartz-collectors

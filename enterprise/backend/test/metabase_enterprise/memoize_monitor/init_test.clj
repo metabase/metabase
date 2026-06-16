@@ -45,8 +45,8 @@
       (fn []
         (doseq [{:keys [cache bytes measure-ms]} (#'memoize-monitor/all-cache-stats)]
           (is (and (number? measure-ms) (not (neg? measure-ms))) (str cache " measure-ms"))
-          ;; bytes is nil only if the agent couldn't attach; when present it's a positive count
-          (is (or (nil? bytes) (and (integer? bytes) (pos? bytes))) (str cache " bytes")))))))
+          ;; bytes is nil only if the agent couldn't attach; otherwise a non-negative estimate (0 for an empty cache)
+          (is (or (nil? bytes) (and (integer? bytes) (not (neg? bytes)))) (str cache " bytes")))))))
 
 (defn- big-complex-cache
   "A clojure.core.memoize cache populated with `n` entries whose keys and values resemble real cached data:
@@ -69,18 +69,22 @@
     f))
 
 (deftest large-cache-measurement-cost-test
-  (testing "measuring a 1000-entry cache with complex keys/values"
+  (testing "estimating bytes of a 1000-entry cache with complex keys/values via sampling"
     (let [cache (#'memoize-monitor/cache-object (big-complex-cache 1000))]
       (is (= 1000 (count cache)))
       (if @#'memoize-monitor/memory-measurement-available?
         (let [start-ns   (System/nanoTime)
-              bytes      (mm/measure cache :bytes true)
-              measure-ms (/ (- (System/nanoTime) start-ns) 1e6)]
-          (is (pos? bytes))
+              estimate   (#'memoize-monitor/estimate-cache-bytes cache (count cache))
+              measure-ms (/ (- (System/nanoTime) start-ns) 1e6)
+              actual     (mm/measure cache :bytes true)
+              ratio      (/ (double estimate) actual)]
+          (is (pos? estimate))
           (is (and (number? measure-ms) (not (neg? measure-ms))))
-          ;; surface the cost: this is the per-cache penalty the monitor pays on each scrape
-          (log/infof "[memoize-monitor] 1000-entry complex cache: %,d bytes measured in %.2f ms"
-                     (long bytes) (double measure-ms)))
+          ;; the sampled estimate should land within a small factor of a full-cache measurement
+          (is (< 0.25 ratio 4.0) (format "estimate %d vs actual %d (ratio %.2f)" estimate actual ratio))
+          ;; surface the cost: sampling is what the monitor actually pays on each scrape
+          (log/infof "[memoize-monitor] 1000-entry complex cache: est %,d bytes (actual %,d, ratio %.2f) sampled in %.2f ms"
+                     (long estimate) (long actual) (double ratio) (double measure-ms)))
         (log/info "[memoize-monitor] skipping byte-measurement cost test: JVM self-attach unavailable")))))
 
 (deftest pull-collector-emits-all-metrics-test
