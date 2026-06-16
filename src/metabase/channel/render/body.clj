@@ -243,6 +243,67 @@
     {:content     table-body
      :attachments nil}))
 
+(defn- blank-cell-value?
+  "True when a raw cell value should render as an empty placeholder (nil, or a blank string)."
+  [raw]
+  (or (nil? raw) (and (string? raw) (str/blank? raw))))
+
+(defn- object-detail-pairs
+  "`[label value]` pairs for the prepared object-detail `row`: each column's display name paired with its
+  formatted value; `value` is nil for missing cells (rendered as a muted \"Empty\" placeholder)."
+  [timezone-id card cols row viz-settings]
+  (let [formatters (mapv #(formatter/create-formatter timezone-id % viz-settings) cols)]
+    (into []
+          (map-indexed (fn [idx col]
+                         (let [raw (nth row idx nil)]
+                           [(column-name card col)
+                            (when-not (blank-cell-value? raw)
+                              ((nth formatters idx) raw))])))
+          cols)))
+
+(defn- object-detail-row
+  "A single label/value `[:tr ...]` for the object-detail table; `last?` drops the bottom border."
+  [label value label-style value-style last?]
+  (let [border {:border-bottom (if last? 0 style/object-detail-border)}]
+    [:tr
+     [:td {:style (style/style label-style border)} (h label)]
+     [:td {:style (style/style value-style border)}
+      (if (nil? value)
+        ;; Match the live viz: missing values show a muted "Empty" placeholder rather than a blank cell.
+        [:span {:style (style/style (style/object-detail-empty-value-style))} (tru "Empty")]
+        (h value))]]))
+
+(mu/defmethod render :object :- ::RenderedPartCard
+  [_chart-type
+   _render-type
+   timezone-id :- [:maybe :string]
+   card
+   _dashcard
+   {:keys [rows viz-settings] :as unordered-data}]
+  ;; Single-record key/value view: render the first row only (a static email can't paginate).
+  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        {prepared-cols :cols
+         prepared-rows :rows}        (table-data/prepare-table-data ordered-cols
+                                                                    (take 1 ordered-rows)
+                                                                    table-data/show-in-object-detail?)
+        pairs                        (object-detail-pairs timezone-id card prepared-cols (first prepared-rows) viz-settings)
+        row-count                    (count rows)
+        last-idx                     (dec (count pairs))
+        label-style                  (style/object-detail-label-style)
+        value-style                  (style/object-detail-value-style)]
+    {:attachments nil
+     :content
+     [:div {:style (style/style (style/section-style))}
+      [:table {:style       (style/style (style/object-detail-table-style))
+               :cellpadding "0"
+               :cellspacing "0"}
+       [:tbody
+        (for [[idx [label value]] (m/indexed pairs)]
+          (object-detail-row label value label-style value-style (= idx last-idx)))]]
+      (when (> row-count 1)
+        [:div {:style (style/style (style/object-detail-more-records-style))}
+         (tru "Showing 1 of {0} records." row-count)])]}))
+
 (def ^:private default-date-styles
   {:year "YYYY"
    :quarter "[Q]Q - YYYY"

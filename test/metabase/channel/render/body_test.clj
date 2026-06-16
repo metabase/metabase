@@ -10,6 +10,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.color :as js.color]
+   [metabase.channel.render.style :as style]
    [metabase.config.core :as config]
    [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
@@ -342,6 +343,68 @@
                  :content     vector?
                  :render/text "40\nUp 133.33% vs. previous month: 30"}
                 (body/render :smartscalar nil pacific-tz nil nil results)))))))
+
+(def ^:private object-card
+  {:name "T" :display :object})
+
+(def ^:private object-id-col
+  {:name "id" :display_name "ID" :base_type :type/BigInteger :semantic_type :type/PK})
+
+(defn- render-object-html [data]
+  (html (:content (body/render :object nil pacific-tz object-card nil data))))
+
+(deftest ^:parallel object-detail-test
+  (let [data     {:cols [object-id-col
+                         {:name "name" :display_name "Name" :base_type :type/Text}
+                         {:name "created" :display_name "Created" :base_type :type/DateTime}]
+                  :rows [[1 "Widget" "2014-04-01T08:30:00.0000"]
+                         [2 "Gadget" "2015-01-01T00:00:00.0000"]]}
+        html-str (render-object-html data)]
+    (testing "renders each column as a label/value pair for the first row, with per-column formatting"
+      (is (str/includes? html-str "Name"))
+      (is (str/includes? html-str "Widget"))
+      (is (str/includes? html-str "April 1, 2014, 8:30 AM")))
+    (testing "only the first row is rendered (a static email can't paginate)"
+      (is (not (str/includes? html-str "Gadget"))))
+    (testing "notes when more records exist"
+      (is (str/includes? html-str "Showing 1 of 2 records")))))
+
+(deftest ^:parallel object-detail-single-row-test
+  (testing "a single row shows no 'more records' note"
+    (let [data {:cols [{:name "id" :display_name "ID" :base_type :type/Text}]
+                :rows [["only"]]}]
+      (is (not (str/includes? (render-object-html data) "Showing 1 of"))))))
+
+(deftest ^:parallel object-detail-details-only-columns-test
+  (testing "details-only columns (hidden in tables) ARE shown in object detail"
+    (let [data {:cols [object-id-col
+                       {:name "notes" :display_name "Notes" :base_type :type/Text :visibility_type :details-only}]
+                :rows [[1 "internal note"]]}
+          html-str (render-object-html data)]
+      (is (str/includes? html-str "Notes"))
+      (is (str/includes? html-str "internal note")))))
+
+(deftest ^:parallel object-detail-hidden-columns-test
+  (testing "sensitive columns are dropped"
+    (let [data {:cols [object-id-col
+                       {:name "ssn" :display_name "SSN" :base_type :type/Text :visibility_type :sensitive}]
+                :rows [[1 "999-99-9999"]]}
+          html-str (render-object-html data)]
+      (is (not (str/includes? html-str "999-99-9999")))
+      (is (not (str/includes? html-str "SSN"))))))
+
+(deftest ^:parallel object-detail-empty-values-test
+  (testing "missing values (nil or blank) render as a muted 'Empty' placeholder, like the live viz"
+    (let [data     {:cols [object-id-col
+                           {:name "name" :display_name "Name" :base_type :type/Text}
+                           {:name "note" :display_name "Note" :base_type :type/Text}]
+                    :rows [[1 nil "   "]]}
+          html-str (render-object-html data)
+          empties  (count (re-seq #"Empty" html-str))]
+      (testing "both the nil and the blank-string values are shown as Empty"
+        (is (= 2 empties)))
+      (testing "the placeholder is styled in the secondary/muted color, not left blank"
+        (is (str/includes? html-str style/color-gray-3))))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]
