@@ -141,7 +141,9 @@
    options        :- ::lib.metadata.calculation/returned-columns.options]
   (when card-id
     (when-let [card (lib.metadata/card query card-id)]
-      (not-empty (lib.metadata.calculation/returned-columns query stage-number card options)))))
+      (not-empty
+       (into [] (remove :remapped-from)
+             (lib.metadata.calculation/returned-columns query stage-number card options))))))
 
 ;;; TODO (Cam 8/6/25) -- this should probably live in [[metabase.lib.metric]]
 (mu/defn- metric-visible-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
