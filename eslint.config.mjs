@@ -290,12 +290,7 @@ const configs = [
     },
     settings: {
       "boundaries/elements": boundaryElements,
-      "boundaries/ignore": [
-        "**/*.unit.spec.*",
-        "**/e2e/**",
-        "*.stories.*",
-        "test/**",
-      ],
+      "boundaries/ignore": ["**/e2e/**", "test/**"],
     },
     rules: {
       "boundaries/element-types": [

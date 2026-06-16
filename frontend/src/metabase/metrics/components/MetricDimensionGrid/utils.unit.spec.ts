@@ -3,7 +3,7 @@ import {
   createMockMetricDimension,
   createMockNormalizedMetric,
   setupDefinition,
-} from "metabase/metrics-viewer/utils/__tests__/test-helpers";
+} from "__support__/metrics";
 
 import { getDefaultDimensions } from "./utils";
 

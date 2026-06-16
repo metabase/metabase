@@ -1,17 +1,17 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import {
+  REVENUE_METRIC,
+  createMetricMetadata,
+  setupDefinition,
+} from "__support__/metrics";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import type {
   MetricsViewerDefinitionEntry,
   SelectedMetric,
 } from "metabase/metrics-viewer/types";
-import {
-  REVENUE_METRIC,
-  createMetricMetadata,
-  setupDefinition,
-} from "metabase/metrics-viewer/utils/__tests__/test-helpers";
 
 import { MetricPill } from "./MetricPill";
 
