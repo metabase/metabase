@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useField } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
@@ -11,20 +10,12 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import { Button } from "metabase/common/components/Button";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
-import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
-import { Group, Icon, Text, Tooltip } from "metabase/ui";
+import { Flex, Group, Icon, Text, Tooltip, rem } from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
-import AddMappingRow from "./AddMappingRow";
+import { AddMappingRow } from "./AddMappingRow";
 import S from "./GroupMappingsWidget.module.css";
-import {
-  GroupMappingsWidgetAbout as About,
-  GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
-  GroupMappingsWidgetHeader as Header,
-  GroupMappingsWidgetRoot as Root,
-  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
-} from "./GroupMappingsWidget.styled";
 import { MappingRow } from "./MappingRow";
 
 const groupIsMappable = (group: GroupInfo) => !isDefaultGroup(group);
@@ -153,32 +144,33 @@ export function GroupMappingsWidgetView({
   const hasMappings = Object.keys(mappings).length > 0;
 
   return (
-    <WidgetAndErrorRoot>
+    <Flex direction="column" w="100%">
       <Group mb="md" gap="sm">
         <Text fw="bold">{t`Synchronize Group Memberships`}</Text>
         <FormSwitch data-testid="group-sync-switch" name={setting.key} />
       </Group>
 
-      <Root>
-        <Header>
+      <Flex className={S.root} direction="column" maw={rem(720)} w="100%">
+        <Flex
+          className={S.header}
+          align="center"
+          bg="background-secondary"
+          mih={rem(56)}
+          px="md"
+          py="sm"
+        >
           {!showAddRow && (
             <Button primary small type="button" onClick={handleShowAddRow}>
               {t`New mapping`}
             </Button>
           )}
-          <About>
-            <Tooltip
-              label={helpText(mappingSetting)}
-              position="top"
-              maw="20rem"
-            >
-              <AboutContentRoot>
-                <Icon name="info" />
-                <span>{t`About mappings`}</span>
-              </AboutContentRoot>
-            </Tooltip>
-          </About>
-        </Header>
+          <Tooltip label={helpText(mappingSetting)} position="top" maw="20rem">
+            <Flex align="center" gap="sm" c="text-secondary" ml="auto">
+              <Icon name="info" />
+              <span>{t`About mappings`}</span>
+            </Flex>
+          </Tooltip>
+        </Flex>
 
         {showAddRow && (
           <AddMappingRow
@@ -218,10 +210,12 @@ export function GroupMappingsWidgetView({
             />
           )
         )}
-      </Root>
+      </Flex>
       {saveError && (
-        <div className={cx(CS.textError, CS.textBold, CS.m1)}>{saveError}</div>
+        <Text c="error" fw="bold" m="sm">
+          {saveError}
+        </Text>
       )}
-    </WidgetAndErrorRoot>
+    </Flex>
   );
 }

@@ -1,10 +1,10 @@
-import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
 import type { MappingsType } from "metabase/admin/types";
-import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
+import { Button, Flex, Group } from "metabase/ui";
+
+import S from "./AddMappingRow.module.css";
 
 type AddMappingRowProps = {
   mappings: MappingsType;
@@ -13,7 +13,7 @@ type AddMappingRowProps = {
   onAdd: (value: string) => void | Promise<void>;
 };
 
-function AddMappingRow({
+export function AddMappingRow({
   mappings,
   placeholder,
   onCancel,
@@ -44,22 +44,16 @@ function AddMappingRow({
   const isMappingNameUnique = value && mappings[value] === undefined;
 
   return (
-    <div
-      className={cx(
-        CS.m2,
-        CS.p1,
-        CS.bordered,
-        CS.borderBrand,
-        CS.justifyBetween,
-        CS.rounded,
-        CS.relative,
-        CS.flex,
-        CS.alignCenter,
-      )}
+    <Flex
+      className={S.inputRow}
+      align="center"
+      justify="space-between"
+      m="md"
+      p="sm"
     >
       <input
         aria-label={t`New group mapping name`}
-        className={cx(CS.inputBorderless, CS.h3, CS.ml1, CS.flexFull)}
+        className={S.input}
         type="text"
         value={value}
         placeholder={placeholder}
@@ -67,22 +61,18 @@ function AddMappingRow({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
       />
-      <div>
+      <Group gap="md">
         <Button
           variant="subtle"
           onClick={handleCancelClick}
         >{t`Cancel`}</Button>
         <Button
-          className={CS.ml2}
           type="button"
           variant={isMappingNameUnique ? "filled" : "default"}
           disabled={!isMappingNameUnique}
           onClick={() => (isMappingNameUnique ? handleAdd() : undefined)}
         >{t`Add`}</Button>
-      </div>
-    </div>
+      </Group>
+    </Flex>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AddMappingRow;

@@ -23,3 +23,13 @@
 .emptyState {
   padding-bottom: var(--mantine-spacing-md);
 }
+
+.root {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+}
+
+.header {
+  border-top-left-radius: var(--mantine-radius-md);
+  border-top-right-radius: var(--mantine-radius-md);
+}

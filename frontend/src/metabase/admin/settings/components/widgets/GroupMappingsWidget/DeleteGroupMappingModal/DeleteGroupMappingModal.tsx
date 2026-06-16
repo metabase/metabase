@@ -8,14 +8,7 @@ import type {
 import { Modal } from "metabase/common/components/Modal";
 import { ModalFooter } from "metabase/common/components/ModalContent";
 import { Radio } from "metabase/common/components/Radio";
-import CS from "metabase/css/core/index.css";
-import { Button } from "metabase/ui";
-
-import {
-  ModalHeader,
-  ModalRadioRoot,
-  ModalSubtitle,
-} from "./DeleteGroupMappingModal.styled";
+import { Box, Button } from "metabase/ui";
 
 export type DeleteGroupMappingModalProps = {
   name: string;
@@ -28,7 +21,7 @@ export type DeleteGroupMappingModalProps = {
   onHide: () => void;
 };
 
-const DeleteGroupMappingModal = ({
+export const DeleteGroupMappingModal = ({
   name,
   groupIds,
   onConfirm,
@@ -66,36 +59,39 @@ const DeleteGroupMappingModal = ({
   return (
     <Modal>
       <div>
-        <ModalHeader>{t`Remove this group mapping?`}</ModalHeader>
-        <ModalSubtitle>{subtitle}</ModalSubtitle>
-        <ModalRadioRoot>
+        <Box component="h2" p="xl">{t`Remove this group mapping?`}</Box>
+        <Box component="p" px="xl">
+          {subtitle}
+        </Box>
+        <Box px="xl" py="xs">
           <p>{whatShouldHappenText}</p>
 
-          <Radio
-            className={CS.ml2}
-            vertical
-            value={value as DeleteMappingModalValueType | undefined}
-            options={[
-              {
-                name: t`Nothing, just remove the mapping`,
-                value: "nothing",
-              },
-              {
-                name: t`Also remove all group members (except from Admin)`,
-                value: "clear",
-              },
-              {
-                name:
-                  groupIds.length > 1
-                    ? t`Also delete the groups (except Admin)`
-                    : t`Also delete the group`,
-                value: "delete",
-              },
-            ]}
-            showButtons
-            onChange={handleChange}
-          />
-        </ModalRadioRoot>
+          <Box ml="md">
+            <Radio
+              vertical
+              value={value as DeleteMappingModalValueType | undefined}
+              options={[
+                {
+                  name: t`Nothing, just remove the mapping`,
+                  value: "nothing",
+                },
+                {
+                  name: t`Also remove all group members (except from Admin)`,
+                  value: "clear",
+                },
+                {
+                  name:
+                    groupIds.length > 1
+                      ? t`Also delete the groups (except Admin)`
+                      : t`Also delete the group`,
+                  value: "delete",
+                },
+              ]}
+              showButtons
+              onChange={handleChange}
+            />
+          </Box>
+        </Box>
         <ModalFooter fullPageModal={false} formModal={true}>
           <Button onClick={onHide}>{t`Cancel`}</Button>
           <Button variant="filled" color="error" onClick={handleConfirm}>
@@ -106,6 +102,3 @@ const DeleteGroupMappingModal = ({
     </Modal>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteGroupMappingModal;

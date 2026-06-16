@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
@@ -10,20 +9,18 @@ import {
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
 import { Select } from "metabase/common/components/Select";
-import CS from "metabase/css/core/index.css";
-import { Box, Icon, Popover } from "metabase/ui";
-import { color } from "metabase/ui/colors";
+import { Box, Flex, Icon, Popover } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isAdminGroup(group)) {
-    return color("core-filter");
-  } else if (isDefaultGroup(group)) {
-    return color("text-secondary");
-  } else {
-    return color("core-brand");
+    return "var(--mb-color-core-filter)";
   }
+  if (isDefaultGroup(group)) {
+    return "var(--mb-color-text-secondary)";
+  }
+  return "var(--mb-color-core-brand)";
 }
 
 type GroupSelectProps = {
@@ -65,14 +62,14 @@ export const GroupSelect = ({
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
   const triggerElement = (
-    <div className={cx(CS.flex, CS.alignCenter)}>
+    <Flex align="center">
       <GroupSummary
         mr="0.5rem"
         groups={groups}
         selectedGroupIds={selectedGroupIds}
       />
-      <Icon className={CS.textLight} name="chevrondown" size={10} />
-    </div>
+      <Icon c="text-tertiary" name="chevrondown" size={10} />
+    </Flex>
   );
 
   if (groups.length === 0) {
@@ -115,6 +112,3 @@ export const GroupSelect = ({
     />
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default GroupSelect;

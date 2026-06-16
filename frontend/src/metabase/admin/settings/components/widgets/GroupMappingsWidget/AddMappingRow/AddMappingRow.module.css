@@ -1,0 +1,19 @@
+.inputRow {
+  border: 1px solid var(--mb-color-brand);
+  border-radius: var(--mantine-radius-md);
+}
+
+.input {
+  flex: 1 0 auto;
+  margin-left: var(--mantine-spacing-sm);
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  outline: 0;
+  font-size: var(--mantine-font-size-lg);
+}
+
+.input:focus {
+  box-shadow: none;
+  outline: 0;
+}
