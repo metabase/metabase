@@ -7,7 +7,7 @@ import type {
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 
 import type { ParentLabelLayout, TreemapLabelLayout } from "./labels";
-import { getTreemapNodeId, parseTreemapNodeId } from "./tree";
+import { getSiblings, isOverview, parseTreemapNodeId } from "./tree";
 import type { TreemapNode, TreemapTree } from "./types";
 import { getTreemapTotal } from "./value";
 
@@ -48,9 +48,11 @@ export function isTreemapTooltipSuppressed(
   isTwoLevel: boolean,
   { fullLeafIds, valuePercentHeaderIds }: TreemapInlineValueIds,
 ): boolean {
-  if (viewRootId == null && isTwoLevel) {
-    const { rootIndex } = parseTreemapNodeId(id);
-    return valuePercentHeaderIds.has(getTreemapNodeId(rootIndex));
+  const { leafIndex } = parseTreemapNodeId(id);
+  const isGroupHeader =
+    isOverview(viewRootId) && isTwoLevel && leafIndex == null;
+  if (isGroupHeader) {
+    return valuePercentHeaderIds.has(id);
   }
   return fullLeafIds.has(id);
 }
@@ -63,16 +65,32 @@ export function getTreemapTooltipContext(
 ): TreemapTooltipContext | null {
   const { rootIndex, leafIndex } = parseTreemapNodeId(id);
 
-  if (viewRootId == null) {
-    const focusedNode = tree[rootIndex];
-    if (focusedNode == null) {
+  if (isOverview(viewRootId)) {
+    const isHeader = leafIndex == null;
+    if (isHeader) {
+      const focusedNode = tree[rootIndex];
+      if (focusedNode == null) {
+        return null;
+      }
+      return { header: groupingHeader, siblings: tree, focusedNode };
+    }
+
+    const parent = tree[rootIndex];
+    const siblings = getSiblings(tree, id);
+    const focusedNode = siblings?.[leafIndex];
+    if (parent == null || siblings == null || focusedNode == null) {
       return null;
     }
-    return { header: groupingHeader, siblings: tree, focusedNode };
+    return {
+      header: parent.displayName,
+      siblings,
+      focusedNode,
+      parentNode: parent,
+    };
   }
 
   const root = tree[Number(viewRootId)];
-  const siblings = root?.children;
+  const siblings = getSiblings(tree, id);
   const focusedNode = siblings?.[leafIndex ?? -1];
   if (root == null || siblings == null || focusedNode == null) {
     return null;

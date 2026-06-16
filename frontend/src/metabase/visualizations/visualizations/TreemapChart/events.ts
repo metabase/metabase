@@ -5,6 +5,7 @@ import { isNative } from "metabase/common/utils/card";
 import {
   getNodesFromPath,
   getTreemapRootNodeId,
+  isOverview,
 } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import type {
   TreemapChartColumns,
@@ -33,7 +34,7 @@ export function dispatchTreemapViewRoot(
   chartRef: MutableRefObject<EChartsType | undefined>,
   viewRootId: string | null,
 ): void {
-  if (viewRootId == null) {
+  if (isOverview(viewRootId)) {
     return;
   }
   chartRef.current?.dispatchAction({

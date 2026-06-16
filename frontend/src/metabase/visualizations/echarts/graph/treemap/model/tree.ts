@@ -84,6 +84,11 @@ export function getTreemapRootNodeId(id: NodeId): NodeId {
   return id.split(NODE_ID_SEP)[0];
 }
 
+/** Whether the chart shows the top-level overview rather than a drilled-in group. */
+export function isOverview(viewRootId: NodeId | null): boolean {
+  return viewRootId == null;
+}
+
 export function parseTreemapNodeId(id: NodeId): {
   rootIndex: number;
   leafIndex?: number;
@@ -148,4 +153,13 @@ export function getNodesFromPath(
     nodes = node.children;
   }
   return path;
+}
+
+/** The nodes on the same level as `id` */
+export function getSiblings(
+  tree: TreemapTree,
+  id: NodeId,
+): TreemapTree | undefined {
+  const { rootIndex, leafIndex } = parseTreemapNodeId(id);
+  return leafIndex == null ? tree : tree[rootIndex]?.children;
 }

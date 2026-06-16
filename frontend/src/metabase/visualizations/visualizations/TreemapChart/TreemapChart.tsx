@@ -14,6 +14,7 @@ import {
 import { getTreemapFormatters } from "metabase/visualizations/echarts/graph/treemap/model/formatters";
 import { shouldShowParentLabels } from "metabase/visualizations/echarts/graph/treemap/model/labels";
 import { getTreemapInlineValueIds } from "metabase/visualizations/echarts/graph/treemap/model/tooltip";
+import { isOverview } from "metabase/visualizations/echarts/graph/treemap/model/tree";
 import { getTreemapChartOption } from "metabase/visualizations/echarts/graph/treemap/option/option";
 import { getChartPadding } from "metabase/visualizations/echarts/graph/treemap/style";
 import {
@@ -157,7 +158,7 @@ export const TreemapChart = ({
     chartRef,
     overlayRef,
     hasChildren,
-    isDrilled: viewRootId != null,
+    isDrilled: !isOverview(viewRootId),
     onDrillToGroup: setViewRoot,
     tree: chartData?.tree ?? [],
     treemapColumns: chartData?.treemapColumns ?? null,
