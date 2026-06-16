@@ -526,8 +526,9 @@
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        dashboard                                      (t2/select-one :model/Dashboard :id dashboard-id)
         {parameters                 :parameters
-         published-embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+         published-embedding-params :embedding_params} dashboard
         ;; when previewing an embed, embedding-params should come from the token,
         ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
         ;; the settings to the Appdb.
@@ -552,7 +553,7 @@
         (try
           (binding [api/*current-user-permissions-set* (atom #{"/"})
                     api/*is-superuser?*                true]
-            (parameters.dashboard/param-values (t2/select-one :model/Dashboard :id dashboard-id) searched-param-id merged-id-params prefix))
+            (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix))
           (catch Throwable e
             (throw (ex-info (.getMessage e)
                             {:merged-id-params merged-id-params}
