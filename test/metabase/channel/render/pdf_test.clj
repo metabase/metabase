@@ -369,7 +369,7 @@
         table [:table {:style "border: 1px solid #F0F0F0; border-radius: 6px; margin: 16px;"}
                [:thead [:tr {} (list (th "a") (th "b") (th "c"))]]
                [:tbody [:tr {} [:td {:style "x"} "1"]]]]
-        [_ attrs [_ [_ _ th-a th-b th-c]] tbody] (#'pdf/restyle-table table)]
+        [_table attrs [_thead [_tr _tr-attrs th-a th-b th-c]] tbody] (#'pdf/restyle-table table)]
     (testing "the <table> fills its frame and drops its own border/radius/margin"
       (is (str/includes? (:style attrs) "width:100%"))
       (is (str/includes? (:style attrs) "border:none")))

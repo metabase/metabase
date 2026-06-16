@@ -45,9 +45,10 @@
     .getStyleSheets))
 
 (defn- scale-px
-  "`px` scaled by `scale`, rounded to the nearest whole pixel."
+  "`px` scaled by `scale`, rounded *up* to a whole pixel so the scaled box never falls short of the
+  content it has to hold."
   ^long [px scale]
-  (Math/round (* (double px) (double scale))))
+  (long (Math/ceil (* (double px) (double scale)))))
 
 (defn- redraw-at-scale!
   "Re-render the already-laid-out boxes of `graphics-engine` into a fresh image `scale`x the device size
