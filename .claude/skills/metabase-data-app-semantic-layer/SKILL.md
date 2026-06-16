@@ -56,14 +56,44 @@ Correlate those representation files with the user's request and offer concrete 
 
 Warn the user before exporting the whole instance. Including everything is noisy: it bloats context, makes agents more likely to pick irrelevant entities, and weakens the intended boundary between the curated semantic layer and the presentation layer.
 
-Ask the user for a Metabase API key when needed, then generate the scoped schema:
+The Metabase URL and API key live in the **repo-root** `.env.local` as
+`VITE_MB_URL` and `VITE_MB_API_KEY` (one file per repo, usually two levels up
+from the app dir, not in the app dir). The command below `source`s that file so
+the shell substitutes the values straight into `curl` — you never read, extract,
+or handle the credentials yourself.
+
+> **Never ask the user to paste the API key into the chat, and never `cat` /
+> `echo` `.env.local`** — it's git-ignored and may hold other secrets, so its
+> contents must stay out of the conversation. `source` it so the shell uses the
+> values without exposing them. If `$VITE_MB_API_KEY` or `$VITE_MB_URL` is empty
+> after sourcing (the repo-root file is missing or lacks those vars), ask the
+> user to add them themselves, then continue.
+
+Source the credentials from the repo-root `.env.local` and generate the scoped
+schema:
 
 ```bash
-curl \
-  -o src/metabase.data.ts \
-  -H "x-api-key: <YOUR_API_KEY>" \
-  -H "Accept: text/typescript" \
-  "http://localhost:3000/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=10,11"
+# Resolve the repo root first; an unguarded $(git ...) would expand to
+# "/.env.local" outside a repo and source a system-level file.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$ROOT" ]; then
+  echo "Not inside the connected git repo — cd into it first." >&2
+  exit 1
+fi
+# Subshell: the credentials are used by curl but never exported or left behind.
+(
+  source "$ROOT/.env.local" 2>/dev/null
+  # Fail early (before curl) if either var is missing — never print the values.
+  if [ -z "$VITE_MB_URL" ] || [ -z "$VITE_MB_API_KEY" ]; then
+    echo "VITE_MB_URL / VITE_MB_API_KEY not set in repo-root .env.local" >&2
+    exit 1
+  fi
+  curl \
+    -o src/metabase.data.ts \
+    -H "x-api-key: $VITE_MB_API_KEY" \
+    -H "Accept: text/typescript" \
+    "$VITE_MB_URL/api/typed-schemas/v1/typescript?includeDataLibrary=true&includeMetricLibrary=true&questionCollections=10,11"
+)
 ```
 
 Other useful filters:
