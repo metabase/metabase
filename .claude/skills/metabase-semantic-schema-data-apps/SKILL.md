@@ -1,1 +1,0 @@
-../metabase-data-app-semantic-layer/SKILL.md
