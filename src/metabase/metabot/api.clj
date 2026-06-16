@@ -343,12 +343,12 @@
     (or (non-blank-string model)
         (metabot.settings/default-model-for-provider provider))))
 
-(defn- invalid-credentials-error?
+(defn- provider-client-error?
   "Whether a provider api-error is a client-side 4xx we should surface rather than treat as an
   outage. Covers rejected or missing credentials (401/403) and a request the provider refused
   outright (e.g. a custom base URL pointing at the wrong surface, which 400s). `rethrow-api-error!`
   tags these with `:status`; other callers throw with `:status-code`. Provider 5xx and network
-  failures are left to propagate as 500s so outages aren't reported as credential problems."
+  failures are left to propagate as 500s so outages aren't reported as client errors."
   [error]
   (let [{:keys [api-error status status-code]} (ex-data error)
         status (or status status-code)]
@@ -445,7 +445,7 @@
                      (:models (metabot.self/list-models provider (cond-> {:credentials credentials}
                                                                    model (assoc :model model)))))}
            (catch clojure.lang.ExceptionInfo e
-             (if (invalid-credentials-error? e)
+             (if (provider-client-error? e)
                {:models []
                 :credentials-error (.getMessage e)}
                (throw e))))
@@ -599,6 +599,19 @@
       "azure"   (save-azure-credentials! credentials)
       (setting/set! (provider-api-key-setting-key provider) (:api-key credentials)))))
 
+(defn- credential-setting-keys
+  "The app-DB settings that persisting `provider`'s resolved `credentials` map would write
+  (mirrors [[save-credentials!]]). Used to reject writes to env-shadowed settings up front: a write
+  to an env-shadowed setting persists a DB row the env var then silently wins over. Bedrock writes
+  `:llm-bedrock-region` only when the credentials carry it (see [[save-bedrock-credentials!]]), so it
+  is guarded only then; the other fields are always written."
+  [provider credentials]
+  (case provider
+    "bedrock" (cond-> [:llm-bedrock-access-key-id :llm-bedrock-secret-access-key :llm-bedrock-session-token]
+                (contains? credentials :region) (conj :llm-bedrock-region))
+    "azure"   [:llm-azure-api-key :llm-azure-api-base-url]
+    [(provider-api-key-setting-key provider)]))
+
 (api.macros/defendpoint :put "/settings"
   :- metabot-settings-response-schema
   "Update the Metabot provider credentials and/or model setting and return the refreshed settings payload."
@@ -631,16 +644,11 @@
                                                :provider    provider})))
                             (when model
                               (metabot.settings/validate-azure-model! (str provider "/" model) model)))
-        ;; Reject writes to env-shadowed settings before verifying or persisting anything: they'd
-        ;; write a DB row the env var silently wins over. Guard the api-key setting for API-key
-        ;; providers (Bedrock's per-field credential settings are left to the credentials path),
-        ;; both Azure settings (an Azure credentials save writes both), and the provider/model
-        ;; setting whenever a provider/model write would happen.
+        ;; Reject writes to env-shadowed settings before verifying or persisting anything: guard every
+        ;; credential setting a save would touch (see [[credential-setting-keys]]), plus the
+        ;; provider/model setting whenever a provider/model write would happen.
         _                 (when credentials
-                            (case provider
-                              "bedrock" nil
-                              "azure"   (run! check-not-env-shadowed! [:llm-azure-api-key :llm-azure-api-base-url])
-                              (check-not-env-shadowed! (provider-api-key-setting-key provider))))
+                            (run! check-not-env-shadowed! (credential-setting-keys provider credentials)))
         _                 (when model
                             (check-not-env-shadowed! :llm-metabot-provider))
         ;; Azure connect validation needs the candidate model's wire family; credential-only

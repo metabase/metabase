@@ -52,8 +52,9 @@
                      "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
                      "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
                      "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
-                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. See the system "
-                     "instructions for the full operator catalog, joins, expressions, and multi-stage rules.")
+                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
+                     "`construct-notebook-query-*` skills for the full operator catalog, joins, expressions, "
+                     "and multi-stage rules.")
    :required    ["lib/type" "stages"]
    :properties  {"lib/type" {:type        "string"
                              :const       "mbql/query"

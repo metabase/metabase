@@ -1285,6 +1285,18 @@
         (is (= "us-east-2" (llm.settings/llm-bedrock-region)))
         (is (= "test-token" (llm.settings/llm-bedrock-session-token)))))))
 
+(deftest settings-put-rejects-env-shadowed-bedrock-credential-test
+  (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
+                                mb-llm-bedrock-secret-access-key "env-secret"]
+    (mt/with-dynamic-fn-redefs [metabot.self/list-models (fn [_provider _opts]
+                                                           (is false "should reject before verifying credentials"))]
+      (let [response (mt/user-http-request :crowberto :put 400 "metabot/settings"
+                                           {:provider    "bedrock"
+                                            :credentials {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                                          :secret-access-key "test-secret"}})]
+        (is (re-find #"MB_LLM_BEDROCK_SECRET_ACCESS_KEY" (:message response))
+            "a bedrock credentials write is rejected when one of its settings is env-controlled")))))
+
 (deftest settings-put-bedrock-rejects-incomplete-credentials-test
   (mt/with-temp-env-var-value! [mb-llm-metabot-provider          nil
                                 mb-llm-bedrock-access-key-id     nil

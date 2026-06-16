@@ -155,6 +155,32 @@
                                :input [{:role :user :content "hi"}]}))))
 
 ;;; ──────────────────────────────────────────────────────────────────
+;;; AI proxy (unsupported)
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest list-models-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      nil
+                                       llm.settings/llm-azure-api-base-url nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for Azure"
+             (azure/list-models {:model "openai/gpt-4.1-mini" :ai-proxy? true})))))))
+
+(deftest azure-raw-ai-proxy-unsupported-test
+  (testing "ai-proxy? throws before credentials are even consulted"
+    (mt/with-temporary-setting-values [llm.settings/llm-azure-api-key      nil
+                                       llm.settings/llm-azure-api-base-url nil]
+      (with-redefs [http/request (fn [_] (throw (ex-info "should never be called" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"AI proxy is not supported for Azure"
+             (azure/azure-raw {:model     "openai/gpt-4.1-mini"
+                               :input     [{:role :user :content "hi"}]
+                               :ai-proxy? true})))))))
+
+;;; ──────────────────────────────────────────────────────────────────
 ;;; Stream translation (xf selection by model family)
 ;;; ──────────────────────────────────────────────────────────────────
 

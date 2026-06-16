@@ -15,7 +15,6 @@
   exactly like the Bedrock adapter. Only the v1 surfaces are supported (no classic
   deployment-scoped endpoints or Entra ID auth)."
   (:require
-   [clj-http.client :as http]
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
    [metabase.metabot.provider-util :as provider-util]
@@ -66,6 +65,11 @@
             :error-code  :api-key-missing
             :status-code 403}))
 
+(defn- ai-proxy-unsupported-ex []
+  (ex-info (tru "AI proxy is not supported for Azure")
+           {:api-error  true
+            :error-code :proxy-unsupported}))
+
 (defn- ensure-credentials
   "Validate an Azure credentials map, falling back to [[settings-credentials]] when nil.
   Throws when the API key or base URL is missing."
@@ -90,12 +94,22 @@
 (defn- azure-request
   "Perform an HTTP request against the Azure resource's compatible surface.
   `credentials` is an optional `{:api-key ... :base-url ...}` map; when nil, the
-  `llm-azure-*` settings are used. `headers` are extra headers (e.g. `anthropic-version`)."
-  [{:keys [method path body as headers credentials]}]
-  (let [{:keys [api-key base-url]} (ensure-credentials credentials)]
-    (http/request (cond-> {:method  method
-                           :url     (str base-url path)
-                           :headers (merge {"Authorization" (str "Bearer " api-key)} headers)}
+  `llm-azure-*` settings are used. `headers` are extra headers (e.g. `anthropic-version`).
+  `ai-proxy?` is accepted for parity with the other provider adapters but is not supported:
+  throws when true. Auth is resolved through [[core/resolve-auth]]/[[core/request]] so proxy
+  redirection is already wired up should Azure proxying ever be supported."
+  [{:keys [method path body as headers credentials ai-proxy?]}]
+  (when ai-proxy?
+    (throw (ai-proxy-unsupported-ex)))
+  (let [{:keys [api-key base-url]} (ensure-credentials credentials)
+        auth (core/resolve-auth "azure" "Azure"
+                                {:url     base-url
+                                 :headers {"Authorization" (str "Bearer " api-key)}}
+                                ai-proxy?)]
+    (core/request auth
+                  (cond-> {:method  method
+                           :url     path
+                           :headers headers}
                     as   (assoc :as as)
                     body (-> (assoc :body body)
                              (assoc-in [:headers "Content-Type"] "application/json"))))))
@@ -105,8 +119,8 @@
 (defn- validate-openai-surface!
   "Round-trip the `/openai` surface: `GET /v1/models` succeeds (with the regional catalog,
   which we discard) iff the key and base URL reach an authenticated OpenAI-compatible surface."
-  [credentials]
-  (azure-request {:method :get :path "/v1/models" :as :json :credentials credentials}))
+  [credentials ai-proxy?]
+  (azure-request {:method :get :path "/v1/models" :as :json :credentials credentials :ai-proxy? ai-proxy?}))
 
 (defn- validate-anthropic-surface!
   "Round-trip the `/anthropic` surface, which exposes no GET routes (they 404 with
@@ -114,13 +128,14 @@
   returns 400 `no_model_name` from the messages route itself — auth is checked before
   routing (bad keys 401, wrong paths 404) — so a 400 proves surface + auth without
   invoking a model."
-  [credentials]
+  [credentials ai-proxy?]
   (try
     (azure-request {:method      :post
                     :path        "/v1/messages"
                     :body        "{}"
                     :headers     {"anthropic-version" anthropic-version}
-                    :credentials credentials})
+                    :credentials credentials
+                    :ai-proxy?   ai-proxy?})
     (catch Exception e
       (when-not (= 400 (:status (ex-data e)))
         (throw e)))))
@@ -141,15 +156,16 @@
   and [[validate-anthropic-surface!]]); deployment existence is not validated and first fails at
   chat time with `DeploymentNotFound`.
 
-  Opts: `:credentials` (`{:api-key ... :base-url ...}`) and `:model` (the `{family}/{deployment}`
-  string selecting which surface family to validate; defaults to the saved Azure model)."
+  Opts: `:credentials` (`{:api-key ... :base-url ...}`), `:model` (the `{family}/{deployment}`
+  string selecting which surface family to validate; defaults to the saved Azure model), and
+  `:ai-proxy?`, which is not supported for Azure and throws when true."
   ([] (list-models {}))
-  ([{:keys [credentials model]}]
+  ([{:keys [credentials model ai-proxy?]}]
    (when-let [model (or (not-empty model) (configured-azure-model))]
      (try
        (case (model->family model)
-         :anthropic (validate-anthropic-surface! credentials)
-         :openai    (validate-openai-surface! credentials))
+         :anthropic (validate-anthropic-surface! credentials ai-proxy?)
+         :openai    (validate-openai-surface! credentials ai-proxy?))
        (catch Exception e
          (core/rethrow-api-error! "azure" azure-error-msg e))))
    {:models []}))
@@ -157,8 +173,9 @@
 ;;; --------------------------------------------------- Streaming -----------------------------------------------
 
 (mu/defn azure-raw
-  "Perform a streaming request to an Azure-hosted model deployment."
-  [{:keys [model input tools] :as opts} :- core/LLMRequestOpts]
+  "Perform a streaming request to an Azure-hosted model deployment.
+  `:ai-proxy?` is not supported for Azure and throws when true."
+  [{:keys [model input tools ai-proxy?] :as opts} :- core/LLMRequestOpts]
   (let [family (model->family model)
         opts   (assoc opts :model (model->deployment model))
         {:keys [path headers req]}
@@ -174,11 +191,12 @@
                       :msg-count  (count input)
                       :tool-count (count tools)}
       (try
-        (let [response (azure-request {:method  :post
-                                       :path    path
-                                       :as      :stream
-                                       :headers headers
-                                       :body    (json/encode req)})]
+        (let [response (azure-request {:method    :post
+                                       :path      path
+                                       :as        :stream
+                                       :headers   headers
+                                       :body      (json/encode req)
+                                       :ai-proxy? ai-proxy?})]
           (-> (core/sse-reducible (:body response))
               (debug/capture-stream {:provider "azure"
                                      :model    model
