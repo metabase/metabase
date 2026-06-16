@@ -11,7 +11,7 @@ import { Button } from "metabase/common/components/Button";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useToast } from "metabase/common/hooks";
 import { FormSwitch } from "metabase/forms";
-import { Flex, Group, Icon, Text, Tooltip, rem } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text, Tooltip, rem } from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import { AddMappingRow } from "./AddMappingRow";
@@ -29,7 +29,7 @@ const helpText = (mappingSetting: string) => {
 
 const noMappingText = (mappingSetting: string, syncSwitchValue: boolean) => {
   if (!syncSwitchValue) {
-    return `No mappings yet, group sync is not on`;
+    return t`No mappings yet, group sync is not on`;
   }
   if (mappingSetting === "jwt-group-mappings") {
     return t`No mappings yet, groups will be automatically assigned by exactly matching names`;
@@ -150,7 +150,12 @@ export function GroupMappingsWidgetView({
         <FormSwitch data-testid="group-sync-switch" name={setting.key} />
       </Group>
 
-      <Flex className={S.root} direction="column" maw={rem(720)} w="100%">
+      <Flex
+        bd="1px solid var(--mb-color-border)"
+        bdrs="md"
+        direction="column"
+        w="100%"
+      >
         <Flex
           className={S.header}
           align="center"
@@ -202,12 +207,13 @@ export function GroupMappingsWidgetView({
           </AdminContentTable>
         ) : (
           !showAddRow && (
-            <EmptyState
-              className={S.emptyState}
-              illustrationElement={<img src={NoResults} alt="" />}
-              message={noMappingText(mappingSetting, groupSyncSwitchValue)}
-              spacing="sm"
-            />
+            <Box pb="md">
+              <EmptyState
+                illustrationElement={<img src={NoResults} alt="" />}
+                message={noMappingText(mappingSetting, groupSyncSwitchValue)}
+                spacing="sm"
+              />
+            </Box>
           )
         )}
       </Flex>

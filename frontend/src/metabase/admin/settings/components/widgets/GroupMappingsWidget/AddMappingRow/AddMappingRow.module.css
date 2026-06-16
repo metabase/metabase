@@ -1,8 +1,6 @@
-.inputRow {
-  border: 1px solid var(--mb-color-brand);
-  border-radius: var(--mantine-radius-md);
-}
-
+/* A bare borderless input: Mantine's TextInput (even variant="unstyled")
+   keeps a themed border in Metabase, which would double up with the brand
+   border on the surrounding row. */
 .input {
   flex: 1 0 auto;
   margin-left: var(--mantine-spacing-sm);

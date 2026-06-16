@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
@@ -8,10 +9,20 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
-import { Select } from "metabase/common/components/Select";
-import { Box, Flex, Icon, Popover } from "metabase/ui";
+import {
+  Box,
+  Checkbox,
+  Combobox,
+  Flex,
+  Icon,
+  UnstyledButton,
+  rem,
+  useCombobox,
+} from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
+
+import S from "./GroupSelect.module.css";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isAdminGroup(group)) {
@@ -20,7 +31,7 @@ function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isDefaultGroup(group)) {
     return "var(--mb-color-text-secondary)";
   }
-  return "var(--mb-color-core-brand)";
+  return "var(--mb-color-text-primary)";
 }
 
 type GroupSelectProps = {
@@ -34,9 +45,9 @@ type GroupSelectProps = {
 function getSections(groups: GroupInfo[]) {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
-  const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
+  const topGroups = [defaultGroup, adminGroup].filter(isNotNull);
   const groupsExceptDefaultAndAdmin = groups.filter(
-    (g) => !isAdminGroup(g) && !isDefaultGroup(g),
+    (group) => !isAdminGroup(group) && !isDefaultGroup(group),
   );
 
   if (topGroups.length === 0) {
@@ -46,10 +57,7 @@ function getSections(groups: GroupInfo[]) {
   return [
     { items: topGroups },
     groupsExceptDefaultAndAdmin.length > 0
-      ? {
-          items: groupsExceptDefaultAndAdmin as any,
-          name: t`Groups`,
-        }
+      ? { items: groupsExceptDefaultAndAdmin, name: t`Groups` }
       : null,
   ].filter(isNotNull);
 }
@@ -61,54 +69,81 @@ export const GroupSelect = ({
   isCurrentUser = false,
   emptyListMessage = t`No groups`,
 }: GroupSelectProps) => {
-  const triggerElement = (
-    <Flex align="center">
-      <GroupSummary
-        mr="0.5rem"
-        groups={groups}
-        selectedGroupIds={selectedGroupIds}
-      />
-      <Icon c="text-tertiary" name="chevrondown" size={10} />
-    </Flex>
-  );
+  const combobox = useCombobox();
 
-  if (groups.length === 0) {
-    return (
-      <Popover withinPortal={false} position="bottom-start">
-        <Popover.Target>{triggerElement}</Popover.Target>
-        <Popover.Dropdown style={{ boxSizing: "border-box" }}>
-          <Box p="sm">{emptyListMessage}</Box>
-        </Popover.Dropdown>
-      </Popover>
-    );
-  }
+  const handleOptionSubmit = (value: string) => {
+    const groupId = Number(value);
+    const group = groups.find((candidate) => candidate.id === groupId);
+    if (group == null) {
+      return;
+    }
+    onGroupChange(group, !selectedGroupIds.includes(groupId));
+  };
 
   const sections = getSections(groups);
 
   return (
-    <Select
-      triggerElement={triggerElement}
-      onChange={({ target: { value } }: { target: { value: any } }) => {
-        groups
-          .filter(
-            // find the differing groups between the new `value` on previous `selectedGroupIds`
-            (group) =>
-              (selectedGroupIds.includes(group.id) as any) ^
-              value.includes(group.id),
-          )
-          .forEach((group) => onGroupChange(group, value.includes(group.id)));
-      }}
-      optionDisabledFn={(group: GroupInfo) =>
-        (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)
-      }
-      optionValueFn={(group: GroupInfo) => group.id}
-      optionNameFn={getGroupNameLocalized}
-      optionStylesFn={(group: GroupInfo) => ({
-        color: getGroupColor(group),
-      })}
-      value={selectedGroupIds}
-      sections={sections}
-      multiple
-    />
+    <Combobox
+      store={combobox}
+      position="bottom-start"
+      width={rem(240)}
+      classNames={{ groupLabel: S.groupLabel }}
+      onOptionSubmit={handleOptionSubmit}
+    >
+      <Combobox.Target>
+        <UnstyledButton onClick={() => combobox.toggleDropdown()}>
+          <Flex align="center">
+            <GroupSummary
+              mr="sm"
+              groups={groups}
+              selectedGroupIds={selectedGroupIds}
+            />
+            <Icon c="text-tertiary" name="chevrondown" size={10} />
+          </Flex>
+        </UnstyledButton>
+      </Combobox.Target>
+
+      <Combobox.Dropdown>
+        {groups.length === 0 ? (
+          <Box p="sm">{emptyListMessage}</Box>
+        ) : (
+          <Combobox.Options>
+            {sections.map((section, index) => {
+              const options = section.items.map((group) => (
+                <Combobox.Option
+                  key={group.id}
+                  value={String(group.id)}
+                  disabled={
+                    (isAdminGroup(group) && isCurrentUser) ||
+                    !canEditMembership(group)
+                  }
+                >
+                  <Flex align="center" gap="sm">
+                    <Checkbox
+                      checked={selectedGroupIds.includes(group.id)}
+                      readOnly
+                      aria-hidden
+                      tabIndex={-1}
+                      style={{ pointerEvents: "none" }}
+                    />
+                    <span style={{ color: getGroupColor(group) }}>
+                      {getGroupNameLocalized(group)}
+                    </span>
+                  </Flex>
+                </Combobox.Option>
+              ));
+
+              return "name" in section ? (
+                <Combobox.Group key={index} label={section.name}>
+                  {options}
+                </Combobox.Group>
+              ) : (
+                <Fragment key={index}>{options}</Fragment>
+              );
+            })}
+          </Combobox.Options>
+        )}
+      </Combobox.Dropdown>
+    </Combobox>
   );
 };

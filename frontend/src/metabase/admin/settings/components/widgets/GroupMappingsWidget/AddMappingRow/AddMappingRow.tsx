@@ -45,9 +45,10 @@ export function AddMappingRow({
 
   return (
     <Flex
-      className={S.inputRow}
       align="center"
       justify="space-between"
+      bd="1px solid var(--mb-color-core-brand)"
+      bdrs="md"
       m="md"
       p="sm"
     >
