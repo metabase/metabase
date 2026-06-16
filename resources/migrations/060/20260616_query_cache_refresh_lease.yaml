@@ -2,8 +2,7 @@
 ## (stale-while-revalidate). One process claims the refresh lease via a conditional UPDATE; the others
 ## serve the stale cached result instead of all stampeding the data warehouse.
 ##
-## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60 and
-## runs exactly once -- no per-version guards needed.
+## Lives in 060 (the oldest backported release) so the same changeSet is shared across all versions >= 60.
 
 databaseChangeLog:
   - logicalFilePath: migrations/060_update_migrations.yaml
