@@ -39,11 +39,17 @@
   "The most recent cache entry for `query-hash` *regardless of TTL* (`query_hash` is the PK, so there's at most one):
   `{:results <raw bytes>, :updated-at <timestamp>}`, or nil if there's no entry. The caller compares `:updated-at`
   against the strategy's freshness boundary to decide whether to serve the entry, serve it stale while refreshing, or
-  recompute (see [[strategy->invalidated-at]])."
+  recompute (see [[strategy->invalidated-at]]).
+
+  Reads the `results` blob *inside* the query reduction (via `select-one-fn`): an H2 `JdbcBlob` is only valid while
+  its result set is open, so materializing the row first and reading the blob afterwards throws \"object is already
+  closed\"."
   [query-hash]
-  (when-let [row (t2/select-one [:model/QueryCache :results :updated_at] :query_hash query-hash)]
-    {:results    (results-as-bytes row)
-     :updated-at (:updated_at row)}))
+  (t2/select-one-fn (fn [row]
+                      {:results    (results-as-bytes row)
+                       :updated-at (:updated_at row)})
+                    [:model/QueryCache :results :updated_at]
+                    :query_hash query-hash))
 
 (defn invalidated-at-ttl
   "Freshness boundary for a `:ttl` strategy: cache entries with `updated_at` older than this are stale. Returns nil when
