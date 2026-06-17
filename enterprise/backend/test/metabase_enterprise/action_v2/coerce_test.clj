@@ -63,8 +63,8 @@
   (testing "all coercion pair have to have an in and out function"
     (doseq [[k {:keys [in out]}] coerce/coercion-fns]
       (testing k
-        (is (ifn? in) ":in")
-        (is (ifn? out) ":out"))))
+        (is (or (fn? in) (fn? @in)) ":in")
+        (is (or (fn? out) (fn? @in)) ":out"))))
   ;; TODO: fix this test by implementing all strategies
   (let [implemented (set (keys coerce/coercion-fns))
         expected-fns (into #{} (filter (comp #{"Coercion"} namespace)) (descendants :Coercion/*))
