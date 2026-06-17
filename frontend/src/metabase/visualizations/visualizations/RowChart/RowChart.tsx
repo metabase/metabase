@@ -12,7 +12,10 @@ import {
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
+import {
+  GRAPH_COLORS_SETTINGS,
+  GRAPH_DATA_SETTINGS,
+} from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
   getBreakoutCardinality,
@@ -327,6 +330,7 @@ const RowChartVisualization = ({
           xLabel={xLabel}
           yLabel={yLabel}
           xScaleType={settings["graph.y_axis.scale"]}
+          dimensionValueColors={settings["graph._dimension_value_colors"]}
           xValueRange={xValueRange}
           labelledSeries={labelledSeries}
           hasXAxis={hasXAxis}
@@ -362,6 +366,7 @@ const RowViz: VisualizationDefinition = {
         return t`Y-axis`;
       },
     },
+    ...GRAPH_COLORS_SETTINGS,
   },
   isSensible: ({ cols, rows }: DatasetData) => {
     return (

@@ -909,20 +909,6 @@ export const TimeFacet_FewRows = ScenarioStory({
 });
 
 // --- Top-N-other (high-cardinality categorical dims) ----------------------
-//
-// The BE emits top-n-other when distinct-count is unknown or > 20. Between 21
-// and 100 it pairs with default; above 100 (or unknown fingerprint) default
-// is skipped entirely. time-facet only appears when cardinality ≤ 20.
-
-export const TopN_WithDefault = ScenarioStory({
-  title: "Top-N — mid cardinality (default + top 10)",
-  description:
-    "Cardinality 21–100 band: full bar chart plus a bounded Top-K rollup below",
-  configs: buildTopNScenario(
-    Array.from({ length: 30 }, (_, i) => `Category ${i + 1}`),
-    { k: 10, includeDefault: true },
-  ),
-});
 
 export const TopN_Only = ScenarioStory({
   title: "Top-N — high cardinality (top 10 only)",
