@@ -560,6 +560,23 @@
                 (is @import-called?
                     "Should call async-import! in read-only mode")))))))))
 
+(deftest finish-remote-config!-does-not-force-transform-deletion-test
+  (testing "GHY-3900: the enable-triggered import must not force transform deletion (passes :force-deletion? false)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
+      (let [mock-source    (test-helpers/create-mock-source)
+            captured-args  (atom nil)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :read-only]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& args] (reset! captured-args args) {:id 123})]
+              (impl/finish-remote-config!)
+              (let [[_branch _force? _import-args & kvs] @captured-args]
+                (is (false? (:force-deletion? (apply hash-map kvs)))
+                    "finish-remote-config! should pass :force-deletion? false so deletions surface as conflicts")))))))))
+
 (deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
   (testing "finish-remote-config! does nothing when collection exists in read-write mode"
     (mt/with-model-cleanup [:model/Collection]
