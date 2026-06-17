@@ -15,6 +15,7 @@
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -144,15 +145,16 @@
             (try
               (doseq [stmt create]
                 (jdbc/execute! spec [stmt]))
-              (is (= expected
-                     (into #{} (map #(dissoc % :definition))
-                           (driver/fetch-table-indexes driver/*driver* (mt/db) nil table))))
+              (let [indexes (driver/fetch-table-indexes driver/*driver* (mt/db) nil table)]
+                (is (nil? (mr/explain :metabase.driver/fetch-table-indexes.result indexes))
+                    "result conforms to ::fetch-table-indexes.result")
+                (is (= expected (into #{} (map #(dissoc % :definition)) indexes))))
               (finally
                 (jdbc/execute! spec [(str "DROP TABLE IF EXISTS " table)])))))
         (testing "a table that does not exist returns [] rather than throwing"
           (is (= [] (driver/fetch-table-indexes driver/*driver* (mt/db) nil "mb_fetch_does_not_exist"))))))))
 
-(deftest fetch-table-indexes-unsupported-driver-test
+(deftest ^:parallel fetch-table-indexes-unsupported-driver-test
   (testing "fetch-table-indexes has no safe default: a driver that can't introspect indexes throws"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
                           (driver/fetch-table-indexes :h2 nil "public" "t")))))

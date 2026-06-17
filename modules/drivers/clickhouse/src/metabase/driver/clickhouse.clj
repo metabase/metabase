@@ -335,17 +335,17 @@
                               "ORDER BY name")
                          db table])
                        (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
-                                    {:name              name
-                                     :kind              :skip-index
-                                     :access_method     type
-                                     :is_unique         false
-                                     :is_primary        false
-                                     :is_valid          true
-                                     :key_columns       (expr->columns expr)
-                                     :include_columns   []
-                                     :partial_predicate nil
-                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
-                                                                name expr type_full granularity)})))
+                               {:name              name
+                                :kind              :skip-index
+                                :access-method     type
+                                :is-unique         false
+                                :is-primary        false
+                                :is-valid          true
+                                :key-columns       (expr->columns expr)
+                                :include-columns   []
+                                :partial-predicate nil
+                                :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                           name expr type_full granularity)})))
         sorting   (-> (jdbc/query
                        conn-spec
                        [(str "SELECT sorting_key FROM system.tables "
@@ -355,13 +355,13 @@
     (cond-> skip-idxs
       (perf/not-empty sorting) (conj {:name              nil
                                       :kind              :order-by
-                                      :access_method     nil
-                                      :is_unique         false
-                                      :is_primary        false
-                                      :is_valid          true
-                                      :key_columns       (expr->columns sorting)
-                                      :include_columns   []
-                                      :partial_predicate nil
+                                      :access-method     nil
+                                      :is-unique         false
+                                      :is-primary        false
+                                      :is-valid          true
+                                      :key-columns       (expr->columns sorting)
+                                      :include-columns   []
+                                      :partial-predicate nil
                                       :definition        (format "ORDER BY (%s)" sorting)}))))
 
 (defn- create-table!-sql

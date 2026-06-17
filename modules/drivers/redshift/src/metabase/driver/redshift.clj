@@ -264,13 +264,13 @@
             columns      (perf/mapv :column_name rows)]
         [{:name              nil
           :kind              :sortkey
-          :access_method     nil
-          :is_unique         false
-          :is_primary        false
-          :is_valid          true
-          :key_columns       columns
-          :include_columns   []
-          :partial_predicate nil
+          :access-method     nil
+          :is-unique         false
+          :is-primary        false
+          :is-valid          true
+          :key-columns       columns
+          :include-columns   []
+          :partial-predicate nil
           :definition        (format "%s SORTKEY (%s)"
                                      (if interleaved? "INTERLEAVED" "COMPOUND")
                                      (str/join ", " columns))}])

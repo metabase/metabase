@@ -84,8 +84,8 @@
   "A normalized [[metabase.driver/fetch-table-indexes]] entry (sans `:definition`) with defaults, for terse `:expected`."
   [nm kind access-method key-columns & {:keys [unique primary include partial]
                                         :or   {unique false primary false include [] partial nil}}]
-  {:name nm :kind kind :access_method access-method :is_unique unique :is_primary primary :is_valid true
-   :key_columns key-columns :include_columns include :partial_predicate partial})
+  {:name nm :kind kind :access-method access-method :is-unique unique :is-primary primary :is-valid true
+   :key-columns key-columns :include-columns include :partial-predicate partial})
 
 (def fetch-cases
   "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index

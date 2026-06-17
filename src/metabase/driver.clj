@@ -1597,23 +1597,41 @@
   [_driver _database _schema _table _transform-type]
   nil)
 
+(mr/def ::table-index
+  "One physical index from [[fetch-table-indexes]], normalized into a cross-driver shape."
+  [:map
+   {:closed true}
+   ;; the physical index name, or nil for an unnamed inline key
+   [:name              [:maybe :string]]
+   ;; cross-driver category: :btree / :skip-index / :order-by / :sortkey
+   [:kind              :keyword]
+   ;; warehouse-native type: btree/gin/... (PG), minmax/set/... (CH), nil for inline keys
+   [:access-method     [:maybe :string]]
+   [:is-unique         :boolean]
+   [:is-primary        :boolean]
+   [:is-valid          :boolean]
+   ;; key columns in index order; an element is nil for an expression column (e.g. lower(email))
+   [:key-columns       [:sequential [:maybe :string]]]
+   ;; non-key INCLUDE / covering columns
+   [:include-columns   [:sequential [:maybe :string]]]
+   ;; the WHERE clause of a partial index, else nil
+   [:partial-predicate [:maybe :string]]
+   ;; the catalog's own DDL/clause, the most faithful representation
+   [:definition        [:maybe :string]]])
+
+(mr/def ::fetch-table-indexes.result
+  [:sequential [:ref ::table-index]])
+
 (defmulti fetch-table-indexes
   "Fetch the indexes that physically exist on the transform target `table` in `schema` of `database`, as a vector of
-  normalized index maps (one per index in the warehouse catalog):
-
-    {:name              \"idx_events_user_id\"  ; the physical index name, or nil for an unnamed inline key
-     :kind              :btree                  ; cross-driver category: :btree / :skip-index / :order-by / :sortkey
-     :access_method     \"btree\"               ; warehouse-native type: btree/gin/... (PG), minmax/set/... (CH), nil for inline keys
-     :is_unique         false
-     :is_primary        false
-     :is_valid          true
-     :key_columns       [\"user_id\"]           ; key columns, in index order
-     :include_columns   []                      ; non-key INCLUDE / covering columns
-     :partial_predicate nil                     ; the WHERE clause of a partial index, else nil
-     :definition        \"CREATE INDEX ...\"}   ; the catalog's own DDL/clause, the most faithful representation
+  normalized index maps (one per index in the warehouse catalog). Results should match `::fetch-table-indexes.result`.
 
   Callers join each index against `IndexRequest` rows: named indexes by `:name`, unnamed inline sort keys (ClickHouse
-  `ORDER BY`, Redshift `SORTKEY`, with `:name nil`) by `:kind` + `:key_columns`."
+  `ORDER BY`, Redshift `SORTKEY`, with `:name nil`) by `:kind` + `:key-columns`.
+
+  This is the index-manager read side, and is distinct from [[describe-table-indexes]]/[[describe-indexes]]: those are
+  the sync-side methods that capture only single-column indexes to flag fields as indexed, whereas this returns the
+  full physical detail (uniqueness, partial predicate, INCLUDE columns, key order, raw DDL)."
   {:added "0.63.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
