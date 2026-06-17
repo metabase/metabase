@@ -401,6 +401,8 @@ export const GitSyncControls = () => {
           variant={conflictVariant}
           canMerge={conflictPreflight?.clean}
           conflicts={conflictPreflight?.conflicts}
+          forcePushCasualties={conflictPreflight?.force_push_casualties}
+          historyRewritten={conflictPreflight?.reason === "history-rewritten"}
         />
       )}
 

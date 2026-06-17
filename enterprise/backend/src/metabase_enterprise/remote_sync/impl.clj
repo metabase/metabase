@@ -1069,12 +1069,14 @@
   - `:clean?`    - whether a 3-way merge would apply with no conflicts
   - `:conflicts` - human-readable labels of the entities that conflict (empty when clean)
   - `:summary`   - `{:added :updated :removed}` counts of remote changes a merge would fold in
+  - `:force-push-casualties` - `{:deleted :overwritten}` labels of remote content a force push would discard
   - `:reason`    - `:history-rewritten` when the remote was force-pushed/rebased so no merge base exists
 
   `branch` is the branch to preview against — the caller is responsible for having validated it against
   the `remote-sync-branch` setting."
   [branch]
-  (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+  (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+                    :force-push-casualties {:deleted [] :overwritten []}}
         source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
@@ -1086,8 +1088,14 @@
           (if-let [models (spec/extract-entities-for-export)]
             (assoc (source/preview-merge models snapshot base-snapshot nil) :diverged? true)
             (assoc no-changes :diverged? true)))
+        ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
+        ;; still offered, so surface what it would discard (every remote entity not identical to ours).
         {:diverged? true :clean? false :reason :history-rewritten
-         :conflicts [] :summary {:added 0 :updated 0 :removed 0}}))))
+         :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+         :force-push-casualties (serdes/with-cache
+                                  (if-let [models (spec/extract-entities-for-export)]
+                                    (source/force-push-casualties-no-base models snapshot)
+                                    {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`

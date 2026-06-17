@@ -109,6 +109,13 @@
    [:updated :int]
    [:removed :int]])
 
+(def ForcePushCasualties
+  "Remote content a force push would discard, keyed by how: entities removed entirely (`:deleted`) or
+  whose remote-side edits would be replaced (`:overwritten`). Each is human-readable entity labels."
+  [:map
+   [:deleted [:sequential :string]]
+   [:overwritten [:sequential :string]]])
+
 (def ExportPreflightResponse
   "Schema for GET /export-preflight response."
   [:map
@@ -116,6 +123,7 @@
    [:clean :boolean]
    [:conflicts [:sequential :string]]
    [:summary MergeSummary]
+   [:force_push_casualties ForcePushCasualties]
    [:reason [:maybe :string]]])
 
 (def SettingsUpdateResponse
