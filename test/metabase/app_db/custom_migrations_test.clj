@@ -1688,7 +1688,7 @@
           (is (not (contains? card-revision-object "type")))
           (is (not (contains? model-revision-object "type"))))))))
 
-(deftest ^:mb/old-migrations-test card-revision-add-type-null-character-
+(deftest ^:mb/old-migrations-test card-revision-add-type-null-character-test
   (testing "CardRevisionAddType migration works even if there's a null character in revision.object (metabase#40835)"
     (impl/test-migrations "v49.2024-01-22T11:52:00" [migrate!]
       (let [user-id          (:id (new-instance-with-default :core_user))
