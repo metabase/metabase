@@ -26,17 +26,11 @@ export type QuestionSchema = {
   parameters?: readonly SchemaParameter[];
 };
 
-export type MetricDimensionSchema = SchemaColumn & {
-  id: string | number;
-  fieldId?: number;
-  metricId: string | number;
-  tableId?: number;
-};
-
 export type FieldSchema = SchemaColumn & {
   id?: string | number;
   fieldId?: number;
   tableId?: number;
+  sourceFieldId?: number;
 };
 
 export type SegmentSchema<TTableId extends number = number> = {
@@ -65,9 +59,10 @@ export type MetricSchema = {
   id: number;
   databaseId?: number;
   sourceTableId?: number;
+  sourceCardId?: number;
   columns: readonly SchemaColumn[];
   mappedTableIds?: readonly number[];
-  dimensions?: Record<string, MetricDimensionSchema>;
+  dimensions?: Record<string, Record<string, FieldSchema>>;
 };
 
 export type SchemaValue<TColumn extends SchemaColumn> =

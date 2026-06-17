@@ -15,7 +15,6 @@ export { DataAppLink } from "./components/public/DataAppLink";
 export { useDataAppLocation } from "./hooks/public/use-data-app-location";
 export {
   breakout,
-  createMetabaseQuery,
   filter,
   useMetabaseQuery,
   useMetabaseQueryObject,

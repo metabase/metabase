@@ -1,4 +1,4 @@
-import type { FieldSchema, MetricDimensionSchema } from "../data-schema";
+import type { FieldSchema } from "../data-schema";
 
 export type ID = string | number;
 
@@ -83,6 +83,7 @@ export type MetricReferenceRuntime = {
   id: ID;
   databaseId?: ID;
   sourceTableId?: ID;
+  sourceCardId?: ID;
   mappedTableIds: readonly number[];
 };
 
@@ -93,18 +94,10 @@ export type DimensionFilterRuntime = {
   values?: readonly unknown[];
 };
 
-export type MetricDimensionFilterRuntime = DimensionFilterRuntime & {
-  dimension: MetricDimensionSchema;
-};
-
 export type BreakoutObjectRuntime = {
-  dimension: string | FieldSchema | MetricDimensionSchema;
+  dimension: string | FieldSchema;
   bucket?: unknown;
   binning?: unknown;
 };
 
-export type BreakoutRuntime =
-  | string
-  | FieldSchema
-  | MetricDimensionSchema
-  | BreakoutObjectRuntime;
+export type BreakoutRuntime = string | FieldSchema | BreakoutObjectRuntime;

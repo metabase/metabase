@@ -21,7 +21,7 @@ export type ExecuteActionResult = Record<string, unknown>;
 
 /**
  * Triggers a pre-existing Metabase action. The curried `(store) => fn`
- * shape mirrors `createDashboard` / `queryQuestion` / `queryMetric` so the
+ * shape mirrors `createDashboard` / `queryQuestion` so the
  * package hook can read `executeAction(reduxStore)({...})` off
  * `window.METABASE_EMBEDDING_SDK_BUNDLE`. The store isn't actually used
  * today — the call is a same-origin POST — but the signature is preserved

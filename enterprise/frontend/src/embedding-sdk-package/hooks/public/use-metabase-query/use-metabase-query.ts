@@ -20,10 +20,7 @@ import {
   isUnaryOperator,
 } from "./guards";
 import { mapDatasetQueryData } from "./map-dataset-query-data";
-import {
-  buildMetricDatasetQuery,
-  buildMetricDefinition,
-} from "./metric-query-builder";
+import { buildMetricDatasetQuery } from "./metric-query-builder";
 import { stableStringifyQuery } from "./stable-query-key";
 import { buildTableDatasetQuery } from "./table-query-builder";
 import type {
@@ -235,7 +232,6 @@ const useMetabaseQueryImpl = <
   const queryQuestion =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryQuestion;
   const queryDataset = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryDataset;
-  const queryMetric = getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.queryMetric;
 
   const [data, setData] =
     useState<UseMetabaseQueryResult<TEntity, TQuery>["data"]>(null);
@@ -295,12 +291,12 @@ const useMetabaseQueryImpl = <
       }
 
       if (isMetricQuery(currentQuery)) {
-        if (!queryMetric) {
+        if (!queryDataset) {
           return;
         }
 
-        const definition = buildMetricDefinition(currentQuery);
-        const result = await queryMetric(reduxStore)({ definition });
+        const datasetQuery = buildMetricDatasetQuery(currentQuery);
+        const result = await queryDataset(reduxStore)({ datasetQuery });
 
         setData(mapDatasetQueryData(result));
       }
@@ -310,7 +306,7 @@ const useMetabaseQueryImpl = <
     } finally {
       setIsLoading(false);
     }
-  }, [queryDataset, queryMetric, queryQuestion, reduxStore]);
+  }, [queryDataset, queryQuestion, reduxStore]);
 
   useEffect(() => {
     if (loginStatus?.status === "success") {
@@ -326,10 +322,10 @@ const useMetabaseQueryImpl = <
   };
 };
 
-/** @internal */
+/** @notExported useMetabaseQuery */
 export const useMetabaseQuery = useMetabaseQueryImpl as UseMetabaseQuery;
 
-/** @internal */
+/** @notExported useMetabaseQueryObject */
 export function useMetabaseQueryObject(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
@@ -342,7 +338,7 @@ export function useMetabaseQueryObject(
   return useMemo(() => createMetabaseQuery(queryRef.current), [queryKey]);
 }
 
-/** @internal */
+/** @notExported createMetabaseQuery */
 export function createMetabaseQuery(
   query: TableQuery<unknown> | MetricQuery<unknown>,
 ): StructuredDatasetQuery {
