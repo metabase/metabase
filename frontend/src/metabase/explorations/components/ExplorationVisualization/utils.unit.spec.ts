@@ -5,9 +5,9 @@ import {
 } from "metabase/explorations/test-utils";
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
-import { buildColorScale } from "metabase/visualizations/lib/choropleth";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { formatBreakoutValue } from "metabase/visualizations/echarts/cartesian/model/series";
+import { buildColorScale } from "metabase/visualizations/lib/choropleth";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
@@ -26,7 +26,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  buildSeries,
+  buildSeriesGroup,
   buildSeriesGroups,
   getDocumentsForDocumentMenu,
   getHeatMapSeries,
@@ -85,7 +85,7 @@ describe("getHeatMapSeries", () => {
         { name: "Enterprise", color: "#88BF4D" },
         { name: "SMB", color: "#A989C5" },
       ],
-    });
+    })[0];
 
     const segmentColumn = data.rows.map((row) => row[row.length - 1]);
     expect(segmentColumn).toEqual(["(All)", "Enterprise", "SMB"]);
@@ -436,7 +436,7 @@ describe("buildSeries (display selection)", () => {
         dataset: d,
       })),
     ];
-    return buildSeries({
+    return buildSeriesGroup({
       queriesWithDatasets: group,
       selectedTimelineId: null,
     });
@@ -541,7 +541,7 @@ describe("buildSeries (display selection)", () => {
     );
     const group = buildOneSeries(query, dataset);
     expect(group.series[0].card.display).toBe("bar");
-    // No category color map was supplied (buildSeries called without
+    // No category color map was supplied (buildSeriesGroup called without
     // `categoryColors`), so the bar keeps default coloring — a strict no-op.
     expect(
       group.series[0].card.visualization_settings[
@@ -561,7 +561,7 @@ describe("buildSeries (display selection)", () => {
       ],
       [["A", 1]],
     );
-    const group = buildSeries({
+    const group = buildSeriesGroup({
       queriesWithDatasets: queries.map((q) => ({ ...q, dataset: categorical })),
       selectedTimelineId: null,
     });
@@ -580,7 +580,7 @@ describe("buildSeries (display selection)", () => {
       ],
       [["CA", 10]],
     );
-    const group = buildSeries({
+    const group = buildSeriesGroup({
       queriesWithDatasets: [
         {
           ...makeQuery({ id: 1, segment_id: 1, segment_name: "US" }),
