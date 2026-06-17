@@ -283,8 +283,11 @@
   [{:keys [mp card target segment]} unit]
   (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
         ref-clause (qp.mbql/normalize-target-ref target)
-        bucketed   (lib/breakout base-query (lib/with-temporal-bucket ref-clause unit))]
-    (maybe-segment-filtered bucketed segment)))
+        breakout   (lib/with-temporal-bucket ref-clause unit)
+        bucketed   (lib/breakout base-query breakout)]
+    (-> bucketed
+        (maybe-segment-filtered segment)
+        (lib/order-by breakout :asc))))
 
 (defmethod dataset-query "temporal-pattern-day"
   [_ ctx] (temporal-pattern-mbql ctx :day-of-week))
