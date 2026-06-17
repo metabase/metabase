@@ -1432,15 +1432,18 @@
 
 (defn- fetch-table-indexes-row->index
   [^ResultSet rs]
-  {:name              (.getString rs "index_name")
-   :access_method     (.getString rs "access_method")
-   :is_unique         (.getBoolean rs "is_unique")
-   :is_primary        (.getBoolean rs "is_primary")
-   :is_valid          (.getBoolean rs "is_valid")
-   :key_columns       (index-array->vec (.getArray rs "key_columns"))
-   :include_columns   (index-array->vec (.getArray rs "include_columns"))
-   :partial_predicate (.getString rs "partial_predicate")
-   :definition        (.getString rs "definition")})
+  (let [access-method (.getString rs "access_method")]
+    {:name              (.getString rs "index_name")
+     ;; On Postgres the access method is the kind: a btree index is kind :btree.
+     :kind              (keyword access-method)
+     :access_method     access-method
+     :is_unique         (.getBoolean rs "is_unique")
+     :is_primary        (.getBoolean rs "is_primary")
+     :is_valid          (.getBoolean rs "is_valid")
+     :key_columns       (index-array->vec (.getArray rs "key_columns"))
+     :include_columns   (index-array->vec (.getArray rs "include_columns"))
+     :partial_predicate (.getString rs "partial_predicate")
+     :definition        (.getString rs "definition")}))
 
 ;; Index detail beyond what `describe-table-indexes` gives us: key columns (ordered), INCLUDE columns, the partial
 ;; predicate, access method, uniqueness/primary, validity, and `pg_get_indexdef` (the catalog's own DDL, the most

@@ -21,7 +21,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -303,6 +304,60 @@
               target (if if-not-exists "IF NOT EXISTS " "") idx expr
               (skip-index-type-sql type type-args) (or granularity 1))]
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
+
+(defn- expr->columns
+  "Best-effort split of a ClickHouse key expression into column names. Skip-index exprs read back parenthesized
+  (`(a, b)`), sorting keys don't (`a, b`); strip the wrapper, then split. A real expression (`lower(email)`) stays one
+  element and the faithful form lives in `:definition`."
+  [expr]
+  (when (perf/not-empty expr)
+    (-> (str/replace expr #"^\(|\)$" "")
+        (str/split #",")
+        (->> (perf/mapv str/trim)))))
+
+;; Named skip-indexes (`system.data_skipping_indices`) join by `:name`; the inline MergeTree sorting key
+;; (`system.tables.sorting_key`) has no name, so it's emitted with `:name nil`, and none when the table is unsorted.
+;; Blank `schema` falls back to `currentDatabase()`.
+(defmethod driver/fetch-table-indexes :clickhouse
+  [_driver database schema table]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+        db        (perf/not-empty schema)
+        skip-idxs (->> (jdbc/query
+                        conn-spec
+                        [(str "SELECT name, type, type_full, expr, granularity "
+                              "FROM system.data_skipping_indices "
+                              "WHERE database = coalesce(?, currentDatabase()) AND table = ? "
+                              "ORDER BY name")
+                         db table])
+                       (perf/mapv (fn [{:keys [name type type_full expr granularity]}]
+                                    {:name              name
+                                     :kind              :skip-index
+                                     :access_method     type
+                                     :is_unique         false
+                                     :is_primary        false
+                                     :is_valid          true
+                                     :key_columns       (expr->columns expr)
+                                     :include_columns   []
+                                     :partial_predicate nil
+                                     :definition        (format "INDEX %s %s TYPE %s GRANULARITY %s"
+                                                                name expr type_full granularity)})))
+        sorting   (-> (jdbc/query
+                       conn-spec
+                       [(str "SELECT sorting_key FROM system.tables "
+                             "WHERE database = coalesce(?, currentDatabase()) AND name = ?")
+                        db table])
+                      first :sorting_key)]
+    (cond-> skip-idxs
+      (perf/not-empty sorting) (conj {:name              nil
+                                      :kind              :order-by
+                                      :access_method     nil
+                                      :is_unique         false
+                                      :is_primary        false
+                                      :is_valid          true
+                                      :key_columns       (expr->columns sorting)
+                                      :include_columns   []
+                                      :partial_predicate nil
+                                      :definition        (format "ORDER BY (%s)" sorting)}))))
 
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,

@@ -158,47 +158,47 @@
     (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
   [{:label    "single-column btree"
     :ddl      "CREATE INDEX fc_btree ON %s (user_id)"
-    :expected {:name "fc_btree" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_btree" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["user_id"] :include_columns [] :partial_predicate nil}}
    {:label    "unique btree"
     :ddl      "CREATE UNIQUE INDEX fc_unique ON %s (email)"
-    :expected {:name "fc_unique" :access_method "btree" :is_unique true :is_primary false :is_valid true
+    :expected {:name "fc_unique" :kind :btree :access_method "btree" :is_unique true :is_primary false :is_valid true
                :key_columns ["email"] :include_columns [] :partial_predicate nil}}
    {:label    "composite btree preserves key column order"
     :ddl      "CREATE INDEX fc_ab ON %s (a, b)"
-    :expected {:name "fc_ab" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_ab" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["a" "b"] :include_columns [] :partial_predicate nil}}
    {:label    "the reverse composite is a distinct index with the reverse order"
     :ddl      "CREATE INDEX fc_ba ON %s (b, a)"
-    :expected {:name "fc_ba" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_ba" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["b" "a"] :include_columns [] :partial_predicate nil}}
    {:label    "covering index splits key columns from INCLUDE columns"
     :ddl      "CREATE INDEX fc_include ON %s (a) INCLUDE (b, email)"
-    :expected {:name "fc_include" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_include" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["a"] :include_columns ["b" "email"] :partial_predicate nil}}
    {:label    "DESC ordering still reports the bare column name"
     :ddl      "CREATE INDEX fc_desc ON %s (created_at DESC)"
-    :expected {:name "fc_desc" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_desc" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["created_at"] :include_columns [] :partial_predicate nil}}
    {:label    "partial index carries its normalized predicate"
     :ddl      "CREATE INDEX fc_partial ON %s (user_id) WHERE user_id IS NOT NULL"
-    :expected {:name "fc_partial" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_partial" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns ["user_id"] :include_columns [] :partial_predicate "(user_id IS NOT NULL)"}}
    {:label    "gin index over jsonb reports its access method"
     :ddl      "CREATE INDEX fc_gin ON %s USING gin (data)"
-    :expected {:name "fc_gin" :access_method "gin" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_gin" :kind :gin :access_method "gin" :is_unique false :is_primary false :is_valid true
                :key_columns ["data"] :include_columns [] :partial_predicate nil}}
    {:label    "brin index reports its access method"
     :ddl      "CREATE INDEX fc_brin ON %s USING brin (created_at)"
-    :expected {:name "fc_brin" :access_method "brin" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_brin" :kind :brin :access_method "brin" :is_unique false :is_primary false :is_valid true
                :key_columns ["created_at"] :include_columns [] :partial_predicate nil}}
    {:label    "hash index reports its access method"
     :ddl      "CREATE INDEX fc_hash ON %s USING hash (email)"
-    :expected {:name "fc_hash" :access_method "hash" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_hash" :kind :hash :access_method "hash" :is_unique false :is_primary false :is_valid true
                :key_columns ["email"] :include_columns [] :partial_predicate nil}}
    {:label    "expression index has no plain key column (raw-form territory): the expression slot reports as nil"
     :ddl      "CREATE INDEX fc_expr ON %s (lower(email))"
-    :expected {:name "fc_expr" :access_method "btree" :is_unique false :is_primary false :is_valid true
+    :expected {:name "fc_expr" :kind :btree :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns [nil] :include_columns [] :partial_predicate nil}}])
 
 (deftest fetch-table-indexes-test
@@ -232,7 +232,7 @@
                   (is (= expected (dissoc (get indexes (:name expected)) :definition))))))
             (testing "managed and unmanaged indexes are both returned, keyed by the name callers join on"
               (testing "the Metabase-managed index (created via compile-create-index) is present"
-                (is (= {:name "mb_managed_user_id" :access_method "btree"
+                (is (= {:name "mb_managed_user_id" :kind :btree :access_method "btree"
                         :is_unique false :is_primary false :is_valid true
                         :key_columns ["user_id"] :include_columns [] :partial_predicate nil}
                        (dissoc (get indexes "mb_managed_user_id") :definition))))

@@ -161,3 +161,34 @@
                      (-> (only-skip-index conn-spec "default" table)
                          (select-keys [:type :expr :granularity])))))
             (finally (drop!))))))))
+
+(deftest ^:synchronized fetch-table-indexes-live-test
+  (testing "fetch-table-indexes reports the named skip-index (joined by name) and the inline ORDER BY (name nil)"
+    (mt/test-driver :clickhouse
+      (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
+            table     (str (gensym "mb_fetch_"))
+            drop!     (fn [] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" table)]))]
+        (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
+          (drop!)
+          (try
+            (driver/create-table! :clickhouse (:id db) (keyword table)
+                                  order-by-columns {:indexes [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]})
+            (driver/execute-raw-queries! :clickhouse conn-spec
+                                         (driver/compile-create-index
+                                          :clickhouse nil table
+                                          {:name "evt_minmax" :columns [{:name "a"}] :type :minmax :granularity 4}))
+            (let [indexes (driver/fetch-table-indexes :clickhouse db "default" table)
+                  skip    (first (filter #(= :skip-index (:kind %)) indexes))
+                  ob      (first (filter #(= :order-by (:kind %)) indexes))]
+              (testing "the named skip-index joins by name"
+                (is (= {:name "evt_minmax" :kind :skip-index :access_method "minmax"
+                        :is_unique false :is_primary false :is_valid true
+                        :key_columns ["a"] :include_columns [] :partial_predicate nil}
+                       (dissoc skip :definition))))
+              (testing "the inline ORDER BY is reported unnamed, to be reconciled by kind + columns"
+                (is (= {:name nil :kind :order-by :access_method nil
+                        :is_unique false :is_primary false :is_valid true
+                        :key_columns ["a" "b"] :include_columns [] :partial_predicate nil}
+                       (dissoc ob :definition)))))
+            (finally (drop!))))))))

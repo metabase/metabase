@@ -1601,19 +1601,20 @@
   "Fetch the indexes that physically exist on the transform target `table` in `schema` of `database`, as a vector of
   normalized index maps (one per index in the warehouse catalog):
 
-    {:name              \"idx_events_user_id\"  ; the physical index name
-     :access_method     \"btree\"               ; btree / gin / gist / brin / hash / spgist / ...
+    {:name              \"idx_events_user_id\"  ; the physical index name, or nil for an unnamed inline key
+     :kind              :btree                  ; cross-driver category: :btree / :skip-index / :order-by / :sortkey
+     :access_method     \"btree\"               ; warehouse-native type: btree/gin/... (PG), minmax/set/... (CH), nil for inline keys
      :is_unique         false
      :is_primary        false
      :is_valid          true
      :key_columns       [\"user_id\"]           ; key columns, in index order
      :include_columns   []                      ; non-key INCLUDE / covering columns
      :partial_predicate nil                     ; the WHERE clause of a partial index, else nil
-     :definition        \"CREATE INDEX ...\"}   ; the catalog's own DDL, the most faithful representation
+     :definition        \"CREATE INDEX ...\"}   ; the catalog's own DDL/clause, the most faithful representation
 
-  The `:name` is what callers join against app-DB `IndexRequest` rows to tell Metabase-managed hints from indexes a
-  DBA created by hand; the catalog itself has no concept of who owns an index. Implemented only by drivers that can
-  introspect indexes (Postgres in phase 2)."
+  Callers join each index against `IndexRequest` rows to tell Metabase-managed hints from DBA-made ones. Named indexes
+  (Postgres, ClickHouse skip-indexes) join by `:name`; unnamed inline sort keys (ClickHouse `ORDER BY`, Redshift
+  `SORTKEY`) carry `:name nil` and reconcile by `:kind` + `:key_columns`. Implemented by Postgres, ClickHouse, Redshift."
   {:added "0.63.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

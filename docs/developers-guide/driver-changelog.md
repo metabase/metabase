@@ -7,9 +7,9 @@ title: Driver interface changelog
 ## Metabase 0.63.0
 
 - `metabase.driver/fetch-table-indexes` has been added. It returns the indexes that physically exist on a table, as a
-  vector of normalized index maps (name, access method, key/include columns, uniqueness, partial predicate, and the
-  catalog's own DDL). It has no safe default: the default implementation throws, so only drivers that can introspect
-  indexes need to implement it. Postgres implements it.
+  vector of normalized index maps (name, kind, access method, key/include columns, uniqueness, partial predicate, and
+  the catalog's own DDL). It has no safe default: the default implementation throws, so only drivers that can
+  introspect indexes need to implement it. Postgres, ClickHouse, and Redshift implement it.
 
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support

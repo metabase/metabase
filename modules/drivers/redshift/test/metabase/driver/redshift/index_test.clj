@@ -128,3 +128,29 @@
                                             inline-columns {:indexes indexes})
                       (is (= expected (sortkey-info spec schema create-table)))
                       (finally (drop! create-table)))))))))))))
+
+(deftest fetch-table-indexes-live-test
+  (testing "fetch-table-indexes reports the inline sortkey unnamed (name nil), to be reconciled by kind + columns"
+    (mt/test-driver :redshift
+      (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details db-details}]
+          (let [schema   (redshift.tx/unique-session-schema)
+                spec     (sql-jdbc.conn/db->pooled-connection-spec database)
+                sk-table (tx/db-qualified-table-name (:name database) "fetch_sk")
+                no-sk    (tx/db-qualified-table-name (:name database) "fetch_nosk")
+                drop!    (fn [t] (jdbc/execute! spec (format "DROP TABLE IF EXISTS \"%s\".\"%s\"" schema t)))]
+            (try
+              (driver/create-table! :redshift (u/the-id database) (keyword schema sk-table)
+                                    inline-columns {:indexes [{:kind :sortkey :columns [{:name "a"} {:name "b"}]}]})
+              (driver/create-table! :redshift (u/the-id database) (keyword schema no-sk) inline-columns {})
+              (testing "a table with a sortkey returns one unnamed :sortkey entry"
+                (is (= [{:name nil :kind :sortkey :access_method nil
+                         :is_unique false :is_primary false :is_valid true
+                         :key_columns ["a" "b"] :include_columns [] :partial_predicate nil}]
+                       (mapv #(dissoc % :definition)
+                             (driver/fetch-table-indexes :redshift database schema sk-table)))))
+              (testing "a table with no sortkey returns []"
+                (is (= [] (driver/fetch-table-indexes :redshift database schema no-sk))))
+              (finally
+                (drop! sk-table)
+                (drop! no-sk)))))))))
