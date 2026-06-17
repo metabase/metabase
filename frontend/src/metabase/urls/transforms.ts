@@ -6,6 +6,8 @@ import type {
   TableId,
   TransformId,
   TransformJobId,
+  TransformJobRunSortColumn,
+  TransformJobRunStatus,
   TransformRunMethod,
   TransformRunSortColumn,
   TransformRunStatus,
@@ -91,6 +93,36 @@ export function newTransformJob() {
 
 export function transformJob(id: TransformJobId) {
   return `${JOBS_ROOT_URL}/${id}`;
+}
+
+export type TransformJobRunListParams = {
+  page?: number;
+  status?: TransformJobRunStatus;
+  sortColumn?: TransformJobRunSortColumn;
+  sortDirection?: SortDirection;
+};
+
+export function transformJobRuns(
+  id: TransformJobId,
+  { page, status, sortColumn, sortDirection }: TransformJobRunListParams = {},
+) {
+  const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
+  if (status != null) {
+    searchParams.set("status", status);
+  }
+  if (sortColumn != null) {
+    searchParams.set("sort-column", sortColumn);
+  }
+  if (sortDirection != null) {
+    searchParams.set("sort-direction", sortDirection);
+  }
+
+  const queryString = searchParams.toString();
+  const baseUrl = `${JOBS_ROOT_URL}/${id}/runs`;
+  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
 }
 
 export type TransformRunListParams = {
