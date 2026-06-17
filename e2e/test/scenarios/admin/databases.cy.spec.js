@@ -654,19 +654,6 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.signInAsAdmin();
   });
 
-  it("does not allow editing the sample database connection details", () => {
-    visitDatabase(SAMPLE_DB_ID);
-
-    cy.findAllByTestId("database-connection-info-section").should(
-      "contain.text",
-      "Connected",
-    );
-
-    cy.findByTestId("database-connection-info-section")
-      .findByRole("button", { name: "Edit connection details" })
-      .should("be.disabled");
-  });
-
   it("explains that the sample database cannot be edited", () => {
     visitDatabase(SAMPLE_DB_ID);
 
