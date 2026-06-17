@@ -322,6 +322,8 @@
   (let [changed      (when last-version (source.p/changed-files snapshot last-version))
         add-mod      (into #{} (filter legal-yaml-path?) (into (:added changed) (:modified changed)))
         deleted      (into #{} (filter legal-yaml-path?) (:deleted changed))
+        ;; N+1: one query per deleted path (bounded by deletions in a single pull; left un-batched because
+        ;; file_path values are long, making an IN clause bulky for marginal gain).
         deleted-rsos (mapv (fn [p] (t2/select-one :model/RemoteSyncObject :file_path p)) deleted)
         ingestable (when (seq add-mod)
                      (source.p/->ingestable snapshot {:path-filters (mapv #(re-pattern (java.util.regex.Pattern/quote %)) add-mod)}))
@@ -368,6 +370,8 @@
         ;; A tracked entity whose entity_id was NOT re-loaded is a genuine delete; if it WAS
         ;; re-loaded (at a new path) it's a rename, so we keep it.
         deletes       (for [{:keys [model_type model_id]} deleted-rsos
+                            ;; N+1: one entity_id query per delete candidate (bounded by deletions in a single
+                            ;; pull; batching would need grouping by model-key into per-table IN queries).
                             :let [model-key (:model-key (spec/spec-for-model-type model_type))
                                   eid (when model-key (t2/select-one-fn :entity_id model-key :id model_id))]
                             :when (not (loaded-eid? model_type eid))]
