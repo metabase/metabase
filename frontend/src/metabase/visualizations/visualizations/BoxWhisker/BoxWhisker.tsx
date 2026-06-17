@@ -59,8 +59,38 @@ function BoxWhiskerInner({ rawSeries, settings }: VisualizationProps) {
 
     const brandColor = color("brand");
 
+    const shouldScroll = categories.length > 50;
+    const scrollEnd = shouldScroll
+      ? Math.min(100, (50 / categories.length) * 100)
+      : 100;
+    const dataZoom = shouldScroll
+      ? [
+          {
+            type: "slider" as const,
+            show: true,
+            xAxisIndex: 0,
+            start: 0,
+            end: scrollEnd,
+            bottom: 0,
+            height: 20,
+          },
+          {
+            type: "inside" as const,
+            xAxisIndex: 0,
+            start: 0,
+            end: scrollEnd,
+          },
+        ]
+      : undefined;
+
     return {
-      grid: { left: 60, right: 20, top: 20, bottom: 40, containLabel: true },
+      grid: {
+        left: 60,
+        right: 20,
+        top: 20,
+        bottom: shouldScroll ? 70 : 40,
+        containLabel: true,
+      },
       xAxis: {
         type: "category" as const,
         data: categories,
@@ -74,6 +104,7 @@ function BoxWhiskerInner({ rawSeries, settings }: VisualizationProps) {
         axisLine: { lineStyle: { color: color("border") } },
         splitLine: { lineStyle: { color: color("border") } },
       },
+      ...(dataZoom ? { dataZoom } : {}),
       series: [
         {
           name: t`Box and Whisker`,
