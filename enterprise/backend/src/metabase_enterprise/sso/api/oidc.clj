@@ -171,7 +171,7 @@
   (premium-features/assert-has-feature :sso-oidc (tru "OIDC authentication"))
   (let [issuer-uri    (:issuer-uri body)
         client-id     (:client-id body)
-        stored        (when-let [k (:key body)] (sso-settings/get-oidc-provider k))
+        stored        (some-> body :key sso-settings/get-oidc-provider)
         client-secret (let [s (:client-secret body)]
                         (if (str/blank? s)
                           (:client-secret stored)
