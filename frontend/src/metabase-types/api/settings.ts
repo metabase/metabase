@@ -534,6 +534,8 @@ interface SettingsManagerSettings {
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
+  "llm-azure-api-key"?: string | null;
+  "llm-azure-api-base-url"?: string | null;
   "llm-bedrock-access-key-id"?: string | null;
   "llm-bedrock-secret-access-key"?: string | null;
   "llm-bedrock-region"?: string | null;

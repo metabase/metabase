@@ -15,7 +15,7 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
-import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import { api } from "metabase/api/client";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
@@ -100,8 +100,7 @@ export const useInitDataInternal = ({
 
   const fetchRefreshTokenFnFromStore = useLazySelector(getFetchRefreshTokenFn);
 
-  const sdkPackageVersion =
-    getBuildInfo("METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO").version ?? null;
+  const sdkPackageVersion = getSdkPackageVersion();
 
   // We have to initialize the API fields before other possible API calls
   if (api.basename !== authConfig.metabaseInstanceUrl) {

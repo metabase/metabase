@@ -114,14 +114,23 @@
                                                                 :function_call {:type           :tool-input-delta
                                                                                 :toolCallId     (:toolCallId @payload)
                                                                                 :inputTextDelta delta}))
-             (= (:type chunk)
-                "response.completed")           (rf {:type  :usage
-                                                     :usage (let [u (:usage response)]
-                                                              {:promptTokens     (:input_tokens u 0)
-                                                               :completionTokens (:output_tokens u 0)})
-                                                     ;; non-standard extension, not in AISDK5
-                                                     :id    (:id response)
-                                                     :model @model-name})
+             ;; `response.completed` and `response.incomplete` are both terminal events carrying final usage.
+             ;; An incomplete response (e.g. truncated at max_output_tokens or stopped by a content filter)
+             ;; still has valid partial output, so we record its usage rather than treating it as an error.
+             (contains? #{"response.completed" "response.incomplete"} t)
+             (rf {:type  :usage
+                  :usage (let [u (:usage response)]
+                           {:promptTokens     (:input_tokens u 0)
+                            :completionTokens (:output_tokens u 0)})
+                  ;; non-standard extension, not in AISDK5
+                  :id    (:id response)
+                  :model @model-name})
+             ;; `response.failed` is the Responses API's terminal failure event. Its error lives nested under
+             ;; `response.error`, not in a top-level `error` event, so surface it explicitly.
+             (= t "response.failed")            (rf {:type      :error
+                                                     :errorText (or (get-in response [:error :message])
+                                                                    (get-in response [:error :code])
+                                                                    (tru "The model provider failed to complete the response"))})
              (= t "error")                      (rf {:type      :error
                                                      :errorText (or (:message error) (:message chunk))}))))))))
 

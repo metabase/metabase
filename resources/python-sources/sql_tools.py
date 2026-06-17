@@ -1634,13 +1634,15 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
     """
-    result = {"is_single_stmt?": False}
+    result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
         stmts = sqlglot.parse(sql, read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type != "read": allowed_types = (exp.Update, exp.Insert, exp.Delete)
-        if len(stmts) == 1 and isinstance(stmts[0], allowed_types):
+        if len(stmts) == 1:
             result["is_single_stmt?"] = True
+            if isinstance(stmts[0], allowed_types):
+                result["allowed_stmt_type?"] = True
             result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
     except Exception as e:
         result["error"] = str(e)
