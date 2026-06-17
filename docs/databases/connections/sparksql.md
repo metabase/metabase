@@ -81,22 +81,27 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
-## Troubleshooting: Hive database name becomes defaultnull
-If you're connecting SparkSQL to Apache Hive and Metabase reports an error like:
-
-Could not open client transport with JDBC Uri: jdbc:hive2://<host>:10000/defaultnull
-
-Metabase may be appending null to the database name when Additional JDBC connection string options is left empty.
-
-As a workaround, enter # in Additional JDBC connection string options. This causes Metabase to build a valid JDBC URL instead of appending null to the database name.
-
-For example, if your database name is default, using # in that field should produce a URL shaped like:
-
-jdbc:hive2://<host>:10000/default#
-
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).
+
+## Troubleshooting: Hive database name becomes defaultnull
+
+If you're connecting SparkSQL to Apache Hive and Metabase reports an error like:
+
+```
+Could not open client transport with JDBC Uri: jdbc:hive2://<host>:10000/defaultnull
+```
+
+Metabase may be appending `null` to the database name when **Additional JDBC** connection string options is left empty.
+
+As a workaround, enter `#` in Additional JDBC connection string options. This causes Metabase to build a valid JDBC URL instead of appending null to the database name.
+
+For example, if your database name is `default`, using `#` in that field should produce a URL shaped like:
+
+```
+jdbc:hive2://<host>:10000/default#
+```
 
 ## Further reading
 
