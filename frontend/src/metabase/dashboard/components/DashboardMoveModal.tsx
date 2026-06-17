@@ -80,7 +80,7 @@ const DashboardMoveToast = ({
             className={S.CollectionLink}
             to={Urls.collection(collection)}
             style={{ marginInlineStart: ".25em" }}
-            color={color("brand")}
+            color={color("core-brand")}
           >
             {collection.name}
           </Link>
@@ -94,7 +94,7 @@ export const DashboardMoveModalConnected = ({
   params,
   onClose,
 }: {
-  params: { slug: string };
+  params: { slug?: string };
   onClose: () => void;
 }) => {
   const id = Urls.extractCollectionId(params.slug);

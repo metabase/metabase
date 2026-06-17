@@ -352,7 +352,7 @@ class BaseSelect<
             globalSearch={this.props.globalSearch}
             data-testid={testId ? `${testId}-list` : null}
             style={{
-              color: "var(--mb-color-brand)",
+              color: "var(--mb-color-core-brand)",
               outline: "none",
             }}
           />

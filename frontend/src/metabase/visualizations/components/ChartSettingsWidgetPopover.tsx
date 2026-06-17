@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Box, Space, Tabs } from "metabase/ui";
+import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 
 import type { Widget } from "../types";
 
@@ -44,64 +45,52 @@ export const ChartSettingsWidgetPopover = ({
   };
 
   return (
-    <TippyPopover
-      reference={anchor}
-      content={
-        widgets.length > 0 ? (
-          <Box
-            pt={hasMultipleSections ? 0 : undefined}
-            ref={contentRef}
-            mah="40rem"
-            miw="336px"
-            className={CS.overflowYAuto}
-          >
-            {hasMultipleSections && (
-              <Tabs
-                px="md"
-                pt="xs"
-                value={currentSection}
-                onChange={(section) => setCurrentSection(String(section))}
-              >
-                <Tabs.List grow>
-                  {sections.current.map((sectionName) => (
-                    <Tabs.Tab
-                      key={sectionName}
-                      value={String(sectionName)}
-                      p="md"
-                    >
-                      {sectionName}
-                    </Tabs.Tab>
-                  ))}
-                </Tabs.List>
-              </Tabs>
-            )}
-            <Space py="sm"></Space>
-            {widgets
-              .filter((widget) => widget.section === currentSection)
-              ?.map((widget) => (
-                <ChartSettingsWidget
-                  key={widget.id}
-                  {...widget}
-                  hidden={false}
-                />
-              ))}
-          </Box>
-        ) : null
-      }
-      visible={!!anchor}
-      onClose={onClose}
-      placement="right"
-      offset={[10, 10]}
-      popperOptions={{
-        modifiers: [
-          {
-            name: "preventOverflow",
-            options: {
-              padding: 16,
-            },
-          },
-        ],
+    <PopoverWithRef
+      anchorEl={anchor}
+      opened={!!anchor && widgets.length > 0}
+      onDismiss={onClose}
+      position="right"
+      offset={{ mainAxis: 10, crossAxis: 10 }}
+      middlewares={{
+        shift: { padding: 16 },
+        flip: { fallbackStrategy: "initialPlacement" },
+        size: { padding: 5 },
       }}
-    />
+      {...(isEmbeddingSdk() && {
+        withinPortal: false,
+        floatingStrategy: "fixed",
+      })}
+    >
+      <Box
+        pt={hasMultipleSections ? 0 : undefined}
+        ref={contentRef}
+        mah="40rem"
+        miw="336px"
+        className={CS.overflowYAuto}
+      >
+        {hasMultipleSections && (
+          <Tabs
+            px="md"
+            pt="xs"
+            value={currentSection}
+            onChange={(section) => setCurrentSection(String(section))}
+          >
+            <Tabs.List grow>
+              {sections.current.map((sectionName) => (
+                <Tabs.Tab key={sectionName} value={String(sectionName)} p="md">
+                  {sectionName}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
+          </Tabs>
+        )}
+        <Space py="sm"></Space>
+        {widgets
+          .filter((widget) => widget.section === currentSection)
+          ?.map((widget) => (
+            <ChartSettingsWidget key={widget.id} {...widget} hidden={false} />
+          ))}
+      </Box>
+    </PopoverWithRef>
   );
 };

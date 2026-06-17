@@ -515,6 +515,45 @@
                                           fields)))]
     (u/assoc-dissoc joinable :fields fields)))
 
+(defn- stranded-join-refs
+  "Refs in `a-join`'s conditions or exposed `:fields` that point at source columns missing from `cols` (a proposed new
+  source projection). Non-empty means narrowing the source to `cols` would leave the join referencing columns its
+  subquery no longer returns."
+  [a-join cols]
+  (let [join-alias (:alias a-join)
+        field-refs (when (sequential? (:fields a-join))
+                     (:fields a-join))
+        cond-refs  (when join-alias
+                     (match/match-many (:conditions a-join)
+                       [:field (opts :guard (= (:join-alias opts) join-alias)) _] &match))]
+    (into []
+          (remove (fn [a-ref]
+                    (lib.equality/find-matching-column
+                     (lib.options/update-options a-ref dissoc :join-alias :source-field) cols)))
+          (concat field-refs cond-refs))))
+
+(mu/defn with-join-source-fields :- ::lib.join.util/partial-join
+  "Set the `:fields` projection on the join's source subquery (the first stage of `a-join`). `cols` is a coll of
+  column metadatas from the source Table or Card; `nil`/empty dissocs, reverting to implicit-all.
+
+  Throws if the join's first stage is not an MBQL stage, or if narrowing the source to `cols` would strand a column the
+  join still references in its conditions or its exposed `:fields`.
+
+  For what the join EXPOSES to its outer stage, see [[with-join-fields]]."
+  [a-join :- ::lib.join.util/partial-join
+   cols   :- [:maybe [:sequential some?]]] ; ideally [:sequential ::lib.schema.metadata/column]
+  (let [first-stage-type (-> a-join :stages first :lib/type)]
+    (when-not (= :mbql.stage/mbql first-stage-type)
+      (throw (ex-info "with-join-source-fields requires the join's first stage to be an MBQL stage"
+                      {:first-stage-type first-stage-type
+                       :join             a-join}))))
+  (let [refs (not-empty (mapv lib.ref/ref cols))]
+    (when refs
+      (when-let [stranded (not-empty (stranded-join-refs a-join cols))]
+        (throw (ex-info "with-join-source-fields would strand references the join still needs"
+                        {:join a-join, :cols cols, :stranded stranded}))))
+    (update-in a-join [:stages 0] u/assoc-dissoc :fields refs)))
+
 (defn- select-home-column
   [home-cols cond-fields]
   (when (seq cond-fields)

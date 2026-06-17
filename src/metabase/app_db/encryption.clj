@@ -3,10 +3,33 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;; All columns encrypted via `mi/transform-encrypted-json`. The on-disk format of such a column is
+;; `encrypt(json-string)`, so rotating the key only requires decrypting the raw value with the current key and
+;; re-encrypting the resulting string. We list raw table names (not models) so this also works for enterprise models
+;; (e.g. WorkspaceDatabase) that aren't loaded in every edition.
+(def ^:private encrypted-json-columns
+  [[:metabase_database :details]
+   [:metabase_database :settings]
+   [:metabase_database :write_data_details]
+   [:metabase_database :admin_details]
+   [:core_user :settings]
+   [:channel :details]
+   [:workspace_database :database_details]])
+
+(defn- reencrypt-encrypted-json-column!
+  "Re-encrypt `column` for every row in `table` using `encrypt-str-fn`. See `encrypted-json-columns`."
+  [conn table column encrypt-str-fn]
+  (doseq [{:keys [id value]} (t2/select [table :id [column :value]])]
+    (when (some? value)
+      (let [decrypted (encryption/maybe-decrypt value)]
+        (when (encryption/possibly-encrypted-string? decrypted)
+          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY")
+                          {:table table, :id id, :column column})))
+        (t2/update! :conn conn table {:id id} {column (encrypt-str-fn decrypted)})))))
 
 (defn- do-encryption
   "Encrypt or decrypts the db using the current `MB_ENCRYPTION_SECRET_KEY` to read data.
@@ -16,12 +39,8 @@
   (let [encrypt-str-fn (make-encrypt-fn encryption/maybe-encrypt)
         encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
     (t2/with-transaction [conn {:datasource data-source}]
-      (doseq [[id details] (t2/select-pk->fn :details :model/Database)]
-        (when (encryption/possibly-encrypted-string? details)
-          (throw (ex-info (trs "Can''t decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
-        (t2/update! :conn conn :metabase_database
-                    {:id id}
-                    {:details (encrypt-str-fn (json/encode details))}))
+      (doseq [[table column] encrypted-json-columns]
+        (reencrypt-encrypted-json-column! conn table column encrypt-str-fn))
       (doseq [[key value] (t2/select-fn->fn :key :value :model/Setting)]
         (case key
           "settings-last-updated" (let [current-timestamp-as-string-honeysql (h2x/cast (if (= db-type :mysql) :char :text)

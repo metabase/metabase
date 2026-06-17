@@ -6,7 +6,7 @@
 }
 
 .cardSelected {
-  border: 2px solid var(--mb-color-brand);
+  border: 2px solid var(--mb-color-core-brand);
   padding: 7px;
 }
 

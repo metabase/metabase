@@ -1,4 +1,4 @@
-import api from "metabase/api/legacy-client";
+import { api } from "metabase/api/client";
 
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);

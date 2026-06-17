@@ -593,3 +593,11 @@
                (mt/rows (qp/process-query query))))
         (is (= "select count(1) from checkins where __time >= '2014-04-07'"
                (:query (qp.compile/compile-with-inline-parameters query))))))))
+
+(deftest ^:parallel null-timestamp-test
+  (mt/test-driver :druid-jdbc
+    (is (= [[nil]]
+           (-> (mt/metadata-provider)
+               (lib/native-query "SELECT CAST(NULL AS TIMESTAMP) FROM checkins LIMIT 1")
+               qp/process-query
+               mt/rows)))))

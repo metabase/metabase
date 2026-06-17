@@ -214,22 +214,10 @@ describe("DataStudioLayout", () => {
       expect(tab).toHaveAttribute("href", Urls.workspaces());
     });
 
-    it("non-admin with manage-workspaces permission sees the tab linking to the workspaces index", async () => {
+    it("non-admin does not see the tab", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         isAdmin: false,
-        canManageWorkspaces: true,
-      });
-
-      const tab = await screen.findByLabelText("Workspaces");
-      expect(tab).toHaveAttribute("href", Urls.workspaces());
-    });
-
-    it("non-admin without manage-workspaces permission does not see the tab", async () => {
-      setup({
-        ...DEFAULT_EE_SETTINGS,
-        isAdmin: false,
-        canManageWorkspaces: false,
       });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();

@@ -9,7 +9,12 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { Group, GroupsPermissions } from "metabase-types/api";
+import type {
+  DatabaseEntityId,
+  Group,
+  GroupsPermissions,
+  SpecialGroupType,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
@@ -17,12 +22,7 @@ import {
   limitDatabasePermission,
   navigateToGranularPermissions,
 } from "../../permissions";
-import type {
-  DataPermissionValue,
-  DatabaseEntityId,
-  PermissionSectionConfig,
-  SpecialGroupType,
-} from "../../types";
+import type { DataPermissionValue, PermissionSectionConfig } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {
   getPermissionWarning,
@@ -202,7 +202,6 @@ export const buildSchemasPermissions = ({
   database,
   permissionView,
   showTransformPermissions,
-  showWorkspacesPermissions,
 }: {
   entityId: DatabaseEntityId;
   groupId: number;
@@ -213,7 +212,6 @@ export const buildSchemasPermissions = ({
   database: Database;
   permissionView: "group" | "database";
   showTransformPermissions: boolean;
-  showWorkspacesPermissions: boolean;
 }): PermissionSectionConfig[] => {
   const isAdmin = groupType === "admin";
 
@@ -254,7 +252,6 @@ export const buildSchemasPermissions = ({
       permissionSubject: "schemas",
       permissionView,
       showTransformPermissions,
-      showWorkspacesPermissions,
     }),
   ]);
 };

@@ -5,6 +5,6 @@
   transition: border 0.2s ease-in-out;
 
   &:hover {
-    border-color: var(--mb-color-brand);
+    border-color: var(--mb-color-core-brand);
   }
 }

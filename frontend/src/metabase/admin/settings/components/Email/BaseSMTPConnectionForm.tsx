@@ -235,13 +235,13 @@ export const BaseSMTPConnectionForm = ({
                       label={t`SMTP Port`}
                       groupProps={{ mt: "0.5rem" }}
                     >
-                      <Chip value={"465"} variant="brand">
+                      <Chip value={"465"} variant="filled">
                         465
                       </Chip>
-                      <Chip value={"587"} variant="brand">
+                      <Chip value={"587"} variant="filled">
                         587
                       </Chip>
-                      <Chip value={"2525"} variant="brand">
+                      <Chip value={"2525"} variant="filled">
                         2525
                       </Chip>
                     </FormChipGroup>
@@ -264,7 +264,7 @@ export const BaseSMTPConnectionForm = ({
                     groupProps={{ mt: "0.5rem" }}
                   >
                     {securityOptions.map(({ value, label }) => (
-                      <Chip key={value} value={value} variant="brand">
+                      <Chip key={value} value={value} variant="filled">
                         {label}
                       </Chip>
                     ))}
@@ -305,7 +305,7 @@ export const BaseSMTPConnectionForm = ({
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
                     loading={isSubmitting}
-                    variant="filled"
+                    variant="brand"
                   />
                 </Flex>
               </Stack>

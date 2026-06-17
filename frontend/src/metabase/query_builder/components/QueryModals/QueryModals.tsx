@@ -13,10 +13,14 @@ import { type ToastArgs, useToast } from "metabase/common/hooks";
 import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
+import { updateUrl } from "metabase/query_builder/actions/url";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
-import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import {
+  getQuestionWithoutComposing,
+  getVisualizationSettings,
+} from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
@@ -70,6 +74,11 @@ export function QueryModals({
 
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
+  const visualizationSettings = useSelector(getVisualizationSettings);
+
+  const handleAlertCreatedOrUpdated = useCallback(() => {
+    dispatch(updateUrl(question, { dirty: false }));
+  }, [dispatch, question]);
 
   const handleSaveAndClose = useCallback(
     async (question: Question) => {
@@ -209,7 +218,13 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <QuestionAlertListModal question={question} onClose={onCloseModal} />
+        <QuestionAlertListModal
+          question={question}
+          visualizationSettings={visualizationSettings}
+          onAlertCreated={handleAlertCreatedOrUpdated}
+          onAlertUpdated={handleAlertCreatedOrUpdated}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (

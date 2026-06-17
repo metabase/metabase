@@ -518,21 +518,23 @@
 (deftest auth-method-test
   (testing "auth-method prefers route-based override on special routes"
     (let [f #'mw.session/auth-method]
-      (are [session-info api-key-info embedding-route expected]
-           (= expected (f session-info api-key-info embedding-route))
+      (are [session-info api-key-info oauth-info embedding-route expected]
+           (= expected (f session-info api-key-info oauth-info embedding-route))
         ;; session-based auth on non-special routes
-        {:auth-provider "password"} nil nil            "password"
-        {:auth-provider "saml"}     nil nil            "saml"
-        {:auth-provider "jwt"}      nil nil            "jwt"
-        {:auth-provider "ldap"}     nil nil            "ldap"
-        {}                          nil nil            "session"
+        {:auth-provider "password"} nil nil nil            "password"
+        {:auth-provider "saml"}     nil nil nil            "saml"
+        {:auth-provider "jwt"}      nil nil nil            "jwt"
+        {:auth-provider "ldap"}     nil nil nil            "ldap"
+        {}                          nil nil nil            "session"
         ;; api-key on non-special route
-        nil                         {}  nil            "api-key"
+        nil                         {}  nil nil            "api-key"
+        ;; oauth bearer on non-special route
+        nil                         nil {:metabase-user-id 1} nil "oauth"
         ;; route override: special routes win over credentials
-        nil                         {}  "guest-embed"  "guest"   ; api-key + embed -> guest
-        nil                         nil "guest-embed"  "guest"   ; anon guest embed
-        nil                         nil "public"       "public"
-        nil                         nil "metabot"      "metabot"
-        nil                         nil "agent-api"    "agent-api"
+        nil                         {}  nil "guest-embed"  "guest"   ; api-key + embed -> guest
+        nil                         nil nil "guest-embed"  "guest"   ; anon guest embed
+        nil                         nil nil "public"       "public"
+        nil                         nil nil "metabot"      "metabot"
+        nil                         nil nil "agent-api"    "agent-api"
         ;; fully anonymous, non-special route
-        nil                         nil nil            nil))))
+        nil                         nil nil nil            nil))))

@@ -477,6 +477,11 @@
   Returns true when they are all successfully delivered.
   Returns false when tracking is disabled or any emission failed."
   [{:keys [library universe metabot meta]}]
+  ;; TODO (Chris 2026-06-02) -- add an optional `computed_at` field to the data_complexity Snowplow schema
+  ;; (1-0-1) and emit it, sourced from (:calculated-at meta) on the re-publish path and from compute-time
+  ;; `now` on the fresh path.
+  ;; Until then a re-published cached score (see [[republish-score!]]) is dated by Snowplow's collector
+  ;; ingest time, overstating freshness by up to the cron cooldown window (12h).
   (let [base   {:event           :data_complexity_scoring
                 :batch_id        (str (random-uuid))
                 :formula_version (:formula-version meta)
@@ -489,6 +494,18 @@
             ;; Since events cannot be empty, we don't need to worry about returning a vacuous true.
             true
             events)))
+
+(defn republish-score!
+  "Re-emit an already-computed `score` map to Snowplow without recomputing — for retrying a publish
+  that failed after the snapshot was already persisted. Returns the score carrying
+  `::snowplow-published?` metadata, mirroring [[complexity-scores]] so callers share the
+  `maybe-advance-last-fingerprint!` gate."
+  [score]
+  (with-meta score
+             {::snowplow-published? (boolean (try
+                                               (emit-snowplow! score)
+                                               (catch Throwable t
+                                                 (log/warn t "Failed to re-publish cached complexity score to Snowplow"))))}))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
