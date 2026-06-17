@@ -1,9 +1,9 @@
 (ns metabase.indexes.models.table-index
   "The `metabase_table_indexes` model: index/clustering hints for a table.
 
-  Today every row binds to a transform (`:transform_id`) whose target it indexes, carries a structured index
-  definition (see [[metabase.indexes.schema]]), and tracks a lifecycle `:status` (defaulting to `:pending`).
-  `:table_id` is backfilled once the target table first syncs. The table is named generically so it can hold synced
+  Every row binds to a transform (`:transform_id`) whose target it indexes, carries a structured index definition
+  (see [[metabase.indexes.schema]]), and tracks a lifecycle `:status` (defaulting to `:pending`). The target table is
+  read off the transform's `:target_table_id`, not mirrored here. The table is named generically so it can hold
   indexes for non-transform tables later too.
 
   `:structured` and `:status` are validated at the transform layer (on read and write), so every writer is covered.
@@ -11,6 +11,7 @@
   (:require
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -41,3 +42,14 @@
 (t2/define-before-insert :model/TableIndex
   [req]
   (merge defaults req))
+
+;; Inlined into the owning transform's serialization (see the Transform make-spec's `:indexes`). Only the index
+;; definition travels; lifecycle is local, so an imported index starts fresh as `:pending`. `:structured` holds
+;; physical column names (no portable refs), so it copies verbatim. `:created_by` is skipped: a nested child's own
+;; FKs aren't declared in the transform's `dependencies`, so the user may not resolve on import.
+(defmethod serdes/make-spec "TableIndex"
+  [_model-name _opts]
+  {:copy      [:index_name :structured]
+   :skip      [:status :error_message :last_executed_at :created_by]
+   :transform {:transform_id (serdes/parent-ref)
+               :created_at   (serdes/date)}})

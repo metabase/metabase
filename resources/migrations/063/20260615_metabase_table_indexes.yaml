@@ -1,5 +1,5 @@
 ## Index/clustering hints declared on a transform target table, reapplied on each full transform run.
-## Each request binds to a transform; table_id is backfilled once the target first syncs.
+## Each request binds to a transform; the target table is read off the transform's target_table_id.
 
 databaseChangeLog:
   - changeSet:
@@ -25,12 +25,6 @@ databaseChangeLog:
                   remarks: FK to the transform that owns this index request
                   constraints:
                     nullable: false
-              - column:
-                  name: table_id
-                  type: int
-                  remarks: FK to metabase_table; backfilled after the target first syncs
-                  constraints:
-                    nullable: true
               - column:
                   name: index_name
                   type: varchar(255)
@@ -96,18 +90,6 @@ databaseChangeLog:
   ## (the FK is dropped before the index it would otherwise still need). Postgres
   ## doesn't auto-index FKs, which is what fks-are-indexed-test checks for.
   - changeSet:
-      id: v63.ixrq03
-      author: Ngoc Khuat
-      comment: Index metabase_table_indexes.table_id
-      changes:
-        - createIndex:
-            tableName: metabase_table_indexes
-            indexName: idx_table_indexes_table_id
-            columns:
-              - column:
-                  name: table_id
-
-  - changeSet:
       id: v63.ixrq04
       author: Ngoc Khuat
       comment: Index metabase_table_indexes.created_by
@@ -130,19 +112,6 @@ databaseChangeLog:
             referencedTableName: transform
             referencedColumnNames: id
             constraintName: fk_table_indexes_transform_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v63.ixrq06
-      author: Ngoc Khuat
-      comment: Add FK on metabase_table_indexes.table_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabase_table_indexes
-            baseColumnNames: table_id
-            referencedTableName: metabase_table
-            referencedColumnNames: id
-            constraintName: fk_table_indexes_table_id
             onDelete: CASCADE
 
   - changeSet:

@@ -28,6 +28,10 @@
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
                                                      (str "indexes?transform-id=" transform-id))]
             (is (= [(:id created)] (map :id data)))))
+        (testing "the listed index carries no mirrored table_id"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200
+                                                     (str "indexes?transform-id=" transform-id))]
+            (is (not (contains? (first data) :table_id)))))
         (testing "GET /:id fetches one (status poll)"
           (is (= "by_cat" (:index_name (mt/user-http-request :crowberto :get 200
                                                              (str "indexes/" (:id created)))))))
@@ -48,10 +52,10 @@
              (mt/user-http-request :rasta :post 403 "indexes"
                                    {:transform_id transform-id :structured btree}))))))
 
-(deftest list-requires-a-filter-test
-  (testing "GET requires transform_id or table_id"
-    (is (re-find #"required"
-                 (mt/user-http-request :crowberto :get 400 "indexes")))))
+(deftest list-requires-transform-id-test
+  (testing "GET requires transform-id"
+    (is (re-find #"transform-id"
+                 (str (mt/user-http-request :crowberto :get 400 "indexes"))))))
 
 (deftest unknown-transform-404s-test
   (testing "creating an index for a non-existent transform 404s"

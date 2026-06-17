@@ -53,6 +53,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
+   "TableIndex"
    "TimelineEvent"
    "TransformJobTransformTag"
    "TransformTransformTag"])
@@ -142,7 +143,6 @@
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
    "SupportAccessGrantLog"
-   "TableIndex"
    "TableRemapping"
    "TaskHistory"
    "TaskRun"

@@ -23,8 +23,7 @@
             back (t2/select-one :model/TableIndex :id id)]
         (is (= :pending (:status back)) "before-insert defaults status to :pending")
         (is (= :btree (get-in back [:structured :kind])) "kind re-keywordized on read")
-        (is (= :asc (get-in back [:structured :columns 0 :direction])))
-        (is (nil? (:table_id back)) "table_id starts null, backfilled after sync")))))
+        (is (= :asc (get-in back [:structured :columns 0 :direction])))))))
 
 (deftest invalid-structured-rejected-test
   (testing "the :structured transform validates against the schema on write"
