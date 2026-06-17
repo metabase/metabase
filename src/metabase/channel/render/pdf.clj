@@ -901,6 +901,44 @@
     (.drawImage cs img (float x) (float (- (double body-top) dh)) (float dw) (float dh))
     (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
 
+(def ^:private no-results-image-bytes
+  "Raw bytes of the 'no results' sail-boat asset (the same image the email/dashboard empty state uses), read once."
+  (delay
+    (with-open [is (io/input-stream (io/resource "frontend_client/app/assets/img/no_results.png"))]
+      (.readAllBytes is))))
+
+(def ^:private no-results-icon-pt
+  "On-page size (points) of the no-results sail-boat icon, before shrinking to fit a small card body."
+  84.0)
+
+(defn- draw-no-results!
+  "Draw the empty-state placeholder -- the sail-boat icon above a centered 'No results' label -- centered in a card's
+  body area. Shown when a card's query returns no rows (e.g. everything filtered out): rather than letting chart
+  rendering fail and overprint the title with an error box, we show the same friendly empty state the dashboard and
+  email do (see [[metabase.channel.render.body/render]] `:empty`).
+
+  Drawn natively (asset image + native text) rather than via the HTML pipeline so it centers crisply and reliably.
+  The icon + label form one block, centered both horizontally and vertically in the body rectangle; the icon shrinks
+  to fit when the body is short."
+  [^PDDocument doc ^PDPageContentStream cs x body-top cell-w body-h]
+  (let [label          (str (tru "No results"))
+        label-pt       common/text-card-pt
+        gap            6.0
+        img            (PDImageXObject/createFromByteArray doc @no-results-image-bytes "no-results")
+        ;; square icon, capped to its design size and shrunk to leave room for the label in a short body
+        side           (max 0.0 (min no-results-icon-pt (double cell-w) (- (double body-h) label-pt gap)))
+        block-h        (+ side gap label-pt)
+        ;; top edge of the icon, so the whole icon+label block is vertically centered in the body band
+        icon-top       (- (double body-top) (max 0.0 (/ (- (double body-h) block-h) 2.0)))
+        icon-x         (+ (double x) (/ (- (double cell-w) side) 2.0))
+        label-w        (font/text-width (font/face :regular) label-pt label)
+        label-x        (+ (double x) (/ (- (double cell-w) label-w) 2.0))
+        label-baseline (- icon-top side gap label-pt)]
+    (.drawImage cs img (float icon-x) (float (- icon-top side)) (float side) (float side))
+    (.setNonStrokingColor cs ^Color common/body-color)
+    (draw-line! cs (font/face :regular) label-pt label-x label-baseline label)
+    (.setNonStrokingColor cs Color/BLACK)))
+
 (defn- render-card-cell!
   "Render a chart/query card into its cell rectangle. The title is drawn natively at the PDF level (crisp text) and
   the space it consumes is reserved before the body is rendered. Card descriptions are intentionally omitted -- they
@@ -932,8 +970,11 @@
         fill?      (or (contains? rectangular-displays display)
                        (and (= :pie display)
                             (>= cell-w body-h)))
-        ;; tables, pivots, and table fallbacks (map/object/unknown) all detect as :table
-        table?     (= :table (render.card/detect-pulse-chart-type card dashcard data))]
+        ;; tables, pivots, and table fallbacks (map/object/unknown) all detect as :table; a result with no
+        ;; rows (e.g. filtered out) detects as :empty regardless of display, and gets the no-results placeholder.
+        chart-type (render.card/detect-pulse-chart-type card dashcard data)
+        table?     (= :table chart-type)
+        empty?     (= :empty chart-type)]
     ;; Debug overlays (drawn first, so content sits on top): the full title box (blue) and the full
     ;; chart-body box (red) -- the *allocated* space, regardless of how much the content fills.
     (when *debug-boxes*
@@ -950,6 +991,10 @@
       (binding [js.svg/*svg-background-color* (when-not *debug-boxes*
                                                 js.svg/*svg-background-color*)]
         (b/cond
+          ;; no rows: show the centered no-results placeholder instead of attempting (and failing) to draw a chart
+          empty?
+          (draw-no-results! doc cs x body-top cell-w body-h)
+
           :let [png (when fill?
                       (sized-chart-png card dashcard data (pt->px cell-w) (pt->px body-h)))]
 
@@ -1294,5 +1339,8 @@
 
 (comment
   ;; main dashboard = 1, the i18n sample dashboard = 18
-  (binding [*debug-boxes* true]
-    (render-dashboard-to-pdf-file 1 1 {} "/tmp/dash-debug2.pdf")))
+  (binding [*debug-boxes* false]
+    (render-dashboard-to-pdf-file 1 1 [{:id "b1a2d47f"
+                                        :value [0]
+                                        :type "number/<="}]
+                                  "/tmp/dash-debug7.pdf")))

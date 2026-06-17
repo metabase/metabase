@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.channel.render.card :as render.card]
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
@@ -627,3 +628,29 @@
               (* ss px-w))))
     (testing "height is capped to the cell even though 50 rows don't fit"
       (is (<= 1 (.getHeight img) (* ss px-h))))))
+
+;; not ^:parallel: exercises the real CSSBox/PDFBox rendering path (font loading + the no-results HTML->PNG asset)
+(deftest ^:synchronized no-results-card-render-test
+  (testing "a card whose query returns no rows renders the centered no-results placeholder, not a failing chart"
+    (let [data {:cols [{:name "x" :display_name "X" :base_type :type/Integer}
+                       {:name "y" :display_name "Y" :base_type :type/Integer}]
+                :rows []}
+          ;; :line would normally take the rectangular fill path (which fails on no data); the empty result
+          ;; must short-circuit to the placeholder regardless of display. This is the UXW-4519 regression.
+          part {:card     {:display "line" :name "Number of subscriptions"}
+                :dashcard nil
+                :result   {:data data}}]
+      (testing "no rows detect as :empty regardless of the (line) display"
+        (is (= :empty (render.card/detect-pulse-chart-type (:card part) (:dashcard part) data))))
+      (testing "the shared no-results sail-boat asset is present on the classpath"
+        (is (pos? (alength ^bytes @@#'pdf/no-results-image-bytes))))
+      (testing "render-card-cell! draws it without throwing, producing a saveable PDF"
+        (with-open [doc (PDDocument.)]
+          (binding [font/*fonts* (#'font/load-fonts! doc)]
+            (let [page (PDPage. PDRectangle/A4)]
+              (.addPage doc page)
+              (with-open [cs (PDPageContentStream. doc page)]
+                (#'pdf/render-card-cell! doc cs nil part 36.0 760.0 480.0 360.0))
+              (let [baos (ByteArrayOutputStream.)]
+                (.save doc baos)
+                (is (pos? (count (.toByteArray baos))))))))))))
