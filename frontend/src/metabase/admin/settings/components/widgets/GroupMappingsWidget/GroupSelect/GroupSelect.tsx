@@ -113,6 +113,7 @@ export const GroupSelect = ({
                 <Combobox.Option
                   key={group.id}
                   value={String(group.id)}
+                  aria-label={getGroupNameLocalized(group)}
                   disabled={
                     (isAdminGroup(group) && isCurrentUser) ||
                     !canEditMembership(group)
