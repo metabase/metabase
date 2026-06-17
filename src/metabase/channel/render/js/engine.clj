@@ -23,7 +23,7 @@
   (reify java.util.function.Predicate
     (test [_ _] false)))
 
-(def ^:private trusted-host-access
+(def ^:private ^HostAccess trusted-host-access
   "Host access for trusted first-party JS: read Clojure collections (list/array/iterable), but no class lookup,
   method invocation, or filesystem I/O. A singleton (see above)."
   (.. (HostAccess/newBuilder)
