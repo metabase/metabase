@@ -412,6 +412,16 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
         "manyTypesMetadata",
       );
       TablePicker.getTable("Many Data Types").click();
+      // The cy.wait below matches any /api/table/*/query_metadata* hit
+      // and can resolve on a stale/sibling request before the router lands
+      // Many Data Types. aria-selected (derived from URL path.tableId via
+      // the TreeTable selectedRowId) is a deterministic signal that the
+      // navigation actually completed.
+      TablePicker.getTable("Many Data Types").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.wait("@manyTypesMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
@@ -425,6 +435,12 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       cy.log("formatting");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("ordersMetadata");
       TablePicker.getTable("Orders").click();
+      // Same anchor as the Many Data Types switch above.
+      TablePicker.getTable("Orders").should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
       cy.wait("@ordersMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
