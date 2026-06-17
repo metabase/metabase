@@ -700,6 +700,24 @@
                                 {:name "New Name"})
           (is (= "New Name" (t2/select-one-fn :name :model/Database :id db-id))))))))
 
+(deftest database-modifiability-flags-test
+  (testing "GET /api/database/:id returns the is_sample and is_attached_dwh flags the admin UI uses to disable editing"
+    (testing "sample database"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver, :is_sample true}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (true? (:is_sample db)))
+          (is (false? (:is_attached_dwh db))))))
+    (testing "attached DWH"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver, :is_attached_dwh true}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (true? (:is_attached_dwh db)))
+          (is (false? (:is_sample db))))))
+    (testing "ordinary database is editable (both flags false)"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+        (let [db (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
+          (is (false? (:is_sample db)))
+          (is (false? (:is_attached_dwh db))))))))
+
 (deftest update-database-provider-name-test
   (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `provider_name`"
