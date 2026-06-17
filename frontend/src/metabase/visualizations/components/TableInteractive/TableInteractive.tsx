@@ -47,6 +47,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { formatValue } from "metabase/utils/formatting";
 import {
@@ -484,14 +485,25 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isMinibar = columnSettings["show_mini_bar"];
       const cellVariant = getBodyCellVariant(col);
       const isImage = columnSettings["view_as"] === "image";
+      const isPercent = columnSettings["number_style"] === "percent";
       const headerVariant = mode != null || isDashboard ? "light" : "outline";
       const getBackgroundColor = memoize(
-        (value: RowValue, rowIndex: number) =>
-          settings["table._cell_background_getter"]?.(
+        (value: RowValue, rowIndex: number) => {
+          const conditionalColor = settings["table._cell_background_getter"]?.(
             value,
             rowIndex,
             col.name,
-          ) ?? tableTheme?.cell?.backgroundColor,
+          );
+          if (conditionalColor) {
+            return conditionalColor;
+          }
+          if (isPercent && typeof value === "number" && isFinite(value)) {
+            const clamped = Math.max(0, Math.min(1, value));
+            const opacity = Math.round(clamped * 100);
+            return `color-mix(in srgb, ${color("brand")} ${opacity}%, white)`;
+          }
+          return tableTheme?.cell?.backgroundColor;
+        },
       );
 
       const formatter = columnFormatters[columnIndex];

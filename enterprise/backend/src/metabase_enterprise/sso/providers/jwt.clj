@@ -21,8 +21,7 @@
 (derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
-;; 3 minutes is the time used by Zendesk for their JWT SSO
-(def ^:private ^:const three-minutes-in-seconds 180)
+(def ^:private ^:const twenty-four-hours-in-seconds (* 24 60 60))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email
   (comp keyword sso-settings/jwt-attribute-email))
@@ -71,7 +70,7 @@
   [token]
   (try
     (jwt/unsign token (sso-settings/jwt-shared-secret)
-                {:max-age three-minutes-in-seconds})
+                {:max-age twenty-four-hours-in-seconds})
     (catch Throwable e
       (throw (ex-info (ex-message e)
                       {:status-code 401
