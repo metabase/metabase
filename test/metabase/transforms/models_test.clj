@@ -405,6 +405,19 @@
           (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :status "failed"})]
             (is (= [r2-id] (map :id (:data result))))
             (is (= 1 (:total result)))))
+        (testing "filters by run-method"
+          (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :run-method "manual"})]
+            (is (= [r2-id] (map :id (:data result))))
+            (is (= 1 (:total result)))))
+        (testing "filters by start-time (date string range)"
+          (testing "exact date matches only runs on that day"
+            (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :start-time "2025-09-01"})]
+              (is (= [r1-id] (map :id (:data result))))
+              (is (= 1 (:total result)))))
+          (testing "range string matches both runs"
+            (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :start-time "2025-09-01~2025-09-03"})]
+              (is (= #{r1-id r2-id} (into #{} (map :id) (:data result))))
+              (is (= 2 (:total result))))))
         (testing "honors offset/limit"
           (let [result (transforms.job-run/paged-job-runs {:job-id j1-id :limit 1 :offset 0})]
             (is (= 1 (count (:data result))))

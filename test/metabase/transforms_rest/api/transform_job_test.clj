@@ -371,6 +371,18 @@
                                                  :status "failed")]
               (is (= [r2-id] (map :id (:data response))))
               (is (= 1 (:total response)))))
+          (testing "filters by run-method"
+            (let [response (mt/user-http-request :lucky :get 200
+                                                 (str "transform-job/" job-id "/runs")
+                                                 :run-method "manual")]
+              (is (= [r2-id] (map :id (:data response))))
+              (is (= 1 (:total response)))))
+          (testing "filters by start-time"
+            (let [response (mt/user-http-request :lucky :get 200
+                                                 (str "transform-job/" job-id "/runs")
+                                                 :start-time "2025-09-01")]
+              (is (= [r1-id] (map :id (:data response))))
+              (is (= 1 (:total response)))))
           (testing "sorts by start_time asc"
             (let [response (mt/user-http-request :lucky :get 200
                                                  (str "transform-job/" job-id "/runs")
