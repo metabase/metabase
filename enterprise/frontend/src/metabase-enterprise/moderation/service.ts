@@ -1,9 +1,6 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { contentVerificationApi } from "metabase/api";
-import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import type { Dispatch } from "metabase/redux/store";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -16,51 +13,6 @@ import type {
 import { MODERATION_STATUS_ICONS } from "./constants";
 
 export { MODERATION_STATUS } from "./constants";
-
-export function verifyItem(
-  {
-    text,
-    itemId,
-    itemType,
-  }: {
-    text: string;
-    itemId: number;
-    itemType: string;
-  },
-  dispatch: Dispatch,
-) {
-  return runRtkEndpoint(
-    {
-      status: "verified",
-      moderated_item_id: itemId,
-      moderated_item_type: itemType,
-      text,
-    },
-    dispatch,
-    contentVerificationApi.endpoints.editItemVerification,
-  );
-}
-
-export function removeReview(
-  {
-    itemId,
-    itemType,
-  }: {
-    itemId: number;
-    itemType: string;
-  },
-  dispatch: Dispatch,
-) {
-  return runRtkEndpoint(
-    {
-      status: null,
-      moderated_item_id: itemId,
-      moderated_item_type: itemType,
-    },
-    dispatch,
-    contentVerificationApi.endpoints.editItemVerification,
-  );
-}
 
 type NoIcon = Record<string, never>;
 
