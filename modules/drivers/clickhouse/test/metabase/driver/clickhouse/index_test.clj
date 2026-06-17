@@ -168,9 +168,11 @@
       (let [details   (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})
             conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)
             table     (str (gensym "mb_fetch_"))
-            drop!     (fn [] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" table)]))]
+            empty     (str (gensym "mb_fetch_empty_"))
+            drop!     (fn [t] (jdbc/execute! conn-spec [(format "DROP TABLE IF EXISTS `%s`" t)]))]
         (mt/with-temp [:model/Database db {:engine :clickhouse, :details details}]
-          (drop!)
+          (drop! table)
+          (drop! empty)
           (try
             (driver/create-table! :clickhouse (:id db) (keyword table)
                                   order-by-columns {:indexes [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]})
@@ -191,4 +193,11 @@
                         :is_unique false :is_primary false :is_valid true
                         :key_columns ["a" "b"] :include_columns [] :partial_predicate nil}
                        (dissoc ob :definition)))))
-            (finally (drop!))))))))
+            (testing "an unsorted table with no skip index returns [] (ORDER BY () contributes nothing)"
+              (driver/create-table! :clickhouse (:id db) (keyword empty) order-by-columns {})
+              (is (= [] (driver/fetch-table-indexes :clickhouse db "default" empty))))
+            (testing "a table that does not exist returns [] rather than throwing"
+              (is (= [] (driver/fetch-table-indexes :clickhouse db "default" "mb_fetch_does_not_exist"))))
+            (finally
+              (drop! table)
+              (drop! empty))))))))
