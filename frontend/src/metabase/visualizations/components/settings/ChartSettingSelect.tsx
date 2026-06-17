@@ -17,26 +17,29 @@ type ChartSettingSelectOption = {
   value: ChartSettingSelectValue;
 };
 
-type ChartSettingSelectProps = {
-  className?: string;
-  defaultDropdownOpened?: boolean;
+type ChartSettingSelectProps = Pick<
+  SelectProps,
+  | "className"
+  | "defaultDropdownOpened"
+  | "id"
+  | "leftSection"
+  | "leftSectionWidth"
+  | "pl"
+  | "pr"
+  | "rightSection"
+  | "w"
+> & {
   footer?: ReactNode;
   hasLeftSection?: boolean;
   icon?: SelectProps["leftSection"];
   iconWidth?: SelectProps["leftSectionWidth"];
-  id?: string;
-  leftSection?: SelectProps["leftSection"];
   onChange: (value: ChartSettingSelectValue) => void;
   options?: ChartSettingSelectOption[];
-  pl?: SelectProps["pl"];
   placeholder?: string;
   placeholderNoOptions?: string;
-  pr?: SelectProps["pr"];
-  rightSection?: SelectProps["rightSection"];
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
-  w?: SelectProps["w"];
 };
 
 export const ChartSettingSelect = ({
