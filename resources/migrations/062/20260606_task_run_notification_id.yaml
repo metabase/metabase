@@ -5,7 +5,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v61.2026-06-06T00:00:00
+      id: v62.2026-06-06T00:00:00
       author: qnkhuat
       comment: Add task_run.notification_id to attribute a run to the notification that produced it
       preConditions:
@@ -14,6 +14,10 @@ databaseChangeLog:
             - columnExists:
                 tableName: task_run
                 columnName: notification_id
+      # No FK on notification_id, intentionally matching the polymorphic entity_id column on this
+      # table (entity_id points at card/dashboard/database by entity_type, so a single FK is
+      # impossible). task_run is a high-churn 90-day operational log, not a relational parent, so a
+      # referential cascade isn't wanted here.
       changes:
         - addColumn:
             tableName: task_run
@@ -30,7 +34,7 @@ databaseChangeLog:
             columnName: notification_id
 
   - changeSet:
-      id: v61.2026-06-06T00:00:01
+      id: v62.2026-06-06T00:00:01
       author: qnkhuat
       comment: Index task_run by (notification_id, started_at) for per-notification latest-run lookups
       preConditions:
@@ -53,15 +57,16 @@ databaseChangeLog:
             tableName: task_run
             indexName: idx_task_run_notification_id_started_at
 
-  # Backfill the 90-day display window from the notification-send task_history child of each run.
-  # The notification_id lives in task_details JSON (top-level on success, nested under
-  # `original-info` when the send failed and with-task-history wrapped it). Native JSON extraction is
-  # fast and degrades gracefully: a row that's valid JSON but missing the key yields NULL (no error),
-  # so partial/unexpected data is simply left NULL. `notification-send` rows are always serializer-
-  # written JSON, so there is no malformed-text row in this set to abort on. Postgres + MySQL only —
-  # H2 self-heals as runs age out of the 90-day window.
+  # Backfill the 90-day display window from the notification-send task_history child of each run,
+  # for both alerts (card) and subscriptions (dashboard). The notification_id lives in task_details
+  # JSON (top-level on success, nested under `original-info` when the send failed and
+  # with-task-history wrapped it). task_details is always written through the task_history
+  # `transform-json-eliding` model transform, so every notification-send row is machine-serialized
+  # JSON, never hand-authored: the cast can't hit malformed text and abort the migration. A row
+  # that's valid JSON but missing the key yields NULL (no error), so partial data is left NULL.
+  # Postgres + MySQL only. H2 self-heals as runs age out of the 90-day window.
   - changeSet:
-      id: v61.2026-06-06T00:00:02
+      id: v62.2026-06-06T00:00:02
       author: qnkhuat
       comment: Backfill task_run.notification_id for the last 90 days (Postgres)
       dbms: postgresql
@@ -76,13 +81,13 @@ databaseChangeLog:
               FROM task_history th
               WHERE th.run_id = tr.id
                 AND th.task = 'notification-send'
-                AND tr.run_type = 'alert'
+                AND tr.run_type IN ('alert', 'subscription')
                 AND tr.notification_id IS NULL
                 AND tr.started_at > now() - interval '90 days';
       rollback: # nothing to do — column drop in the first changeSet covers it
 
   - changeSet:
-      id: v61.2026-06-06T00:00:03
+      id: v62.2026-06-06T00:00:03
       author: qnkhuat
       comment: Backfill task_run.notification_id for the last 90 days (MySQL/MariaDB)
       dbms: mysql,mariadb
@@ -96,7 +101,7 @@ databaseChangeLog:
                     JSON_UNQUOTE(JSON_EXTRACT(th.task_details, '$."original-info".notification_id'))
                   ) AS UNSIGNED)
               WHERE th.task = 'notification-send'
-                AND tr.run_type = 'alert'
+                AND tr.run_type IN ('alert', 'subscription')
                 AND tr.notification_id IS NULL
                 AND tr.started_at > now() - interval 90 day;
       rollback: # nothing to do — column drop in the first changeSet covers it
