@@ -89,15 +89,15 @@
     border 300ms linear;
 
   &:hover:not([data-active="true"]) {
-    color: var(--mb-color-core-summarize);
+    color: var(--mb-color-core-brand);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-core-summarize) 40%,
+      var(--mb-color-core-brand) 40%,
       var(--mb-color-white)
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-core-summarize) 15%,
+      var(--mb-color-core-brand) 15%,
       var(--mb-color-white)
     );
   }
