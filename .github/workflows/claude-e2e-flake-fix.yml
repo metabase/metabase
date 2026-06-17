@@ -95,6 +95,37 @@ jobs:
               }
             }' > ~/.claude.json
 
+      # Fail fast if the model API is unreachable or the key is bad / over quota.
+      - name: Preflight — model API reachable & authorized
+        if: steps.dedup.outputs.exists == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_E2E_FLAKE_FIX }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+            https://api.anthropic.com/v1/models \
+            -H "x-api-key: $ANTHROPIC_API_KEY" \
+            -H "anthropic-version: 2023-06-01") \
+            || { echo "::error::Anthropic API unreachable (connect/timeout) — runner egress likely blocked"; exit 1; }
+          echo "Anthropic /v1/models -> HTTP $code"
+          case "$code" in
+            200)     ;;
+            401|403) echo "::error::Anthropic API auth failed (HTTP $code) — check ANTHROPIC_FLAKE_FIX_API_KEY"; exit 1 ;;
+            429)     echo "::error::Anthropic API rate limited / over quota (HTTP $code)"; exit 1 ;;
+            *)       echo "::error::Anthropic API unexpected status $code"; exit 1 ;;
+          esac
+
+          # Linear is non-fatal: surface egress/auth trouble without blocking an otherwise-fine run
+          # (the live path uses Bearer auth via MCP; this raw-key GraphQL probe may differ).
+          lcode=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+            -X POST https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data '{"query":"{ viewer { id } }"}') \
+            || { echo "::warning::Linear API unreachable (connect/timeout)"; lcode=000; }
+          echo "Linear /graphql -> HTTP $lcode"
+          [ "$lcode" = "200" ] || echo "::warning::Linear API check returned HTTP $lcode — not blocking"
+
       - name: Run /fix-flaky-test with Claude Code
         id: claude
         if: steps.dedup.outputs.exists == 'false'
@@ -107,7 +138,7 @@ jobs:
           GITHUB_ACTIONS_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         timeout-minutes: 350
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_E2E_FLAKE_FIX }}
           github_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           allowed_bots: linear
           prompt: |
