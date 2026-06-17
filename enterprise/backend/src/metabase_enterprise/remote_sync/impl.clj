@@ -365,8 +365,8 @@
         sync-rows     (spec/sync-all-entities! sync-timestamp imported-data)]
     (remote-sync.task/update-progress! task-id 0.8)
     (t2/with-transaction [_conn]
-      (doseq [{:keys [model-key model_id]} deletes]
-        (t2/delete! model-key :id model_id))
+      (doseq [[model-key ds] (group-by :model-key deletes)]
+        (t2/delete! model-key :id [:in (mapv :model_id ds)]))
       (when (seq deletes)
         (t2/delete! :model/RemoteSyncObject {:where (rso-where-for deletes)}))
       (when (seq sync-rows)
@@ -378,8 +378,8 @@
     ;; We skip the whole-appdb reindex the full load runs. Added/modified entities are already
     ;; re-indexed by the load itself — serdes' t2 insert!/update! fire the :hook/search-index
     ;; after-insert/after-update hooks. Deletes have no such hook, so remove them explicitly.
-    (doseq [{:keys [model-key model_id]} deletes]
-      (search/delete! model-key [model_id]))
+    (doseq [[model-key ds] (group-by :model-key deletes)]
+      (search/delete! model-key (mapv :model_id ds)))
     (remote-sync.task/update-progress! task-id 0.95)
     (log/info "Successfully reloaded entities from git repository")
     {:status :success
