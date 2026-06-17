@@ -144,8 +144,8 @@ const AutomaticDashboardAppInner = () => {
                     ) : (
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
-                        success
-                        borderless
+                        variant="filled"
+                        color="success"
                         // The dashboard isn't always loaded when the header first
                         // renders. Without this guard, "Save this" is clickable while
                         // `dashboard` is undefined, which fires a false `x-ray_saved`

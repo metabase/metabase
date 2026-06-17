@@ -938,17 +938,17 @@
                                       "decimal_col"    (bigdec decimal-val)
                                       "bignumeric_col" (bigdec bignumeric-val)
                                       "bigdecimal_col" (bigdec bigdecimal-val)}]
-              (testing (format "filtering against %s" col-nm))
-              (is (= 1
-                     (-> (mt/first-row
-                          (mt/run-mbql-query nil
-                            {:source-table (mt/id tbl-nm)
-                             :aggregation  [[:count]]
-                             :parameters   [{:name   col-nm
-                                             :type   :number/=
-                                             :target [:field (mt/id tbl-nm col-nm)]
-                                             :value  [param-v]}]}))
-                         first))))))))))
+              (testing (format "filtering against %s" col-nm)
+                (is (= 1
+                       (-> (mt/first-row
+                            (mt/run-mbql-query nil
+                              {:source-table (mt/id tbl-nm)
+                               :aggregation  [[:count]]
+                               :parameters   [{:name   col-nm
+                                               :type   :number/=
+                                               :target [:field (mt/id tbl-nm col-nm)]
+                                               :value  [param-v]}]}))
+                           first)))))))))))
 
 (deftest sync-table-with-array-test
   (mt/test-driver

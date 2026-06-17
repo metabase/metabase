@@ -287,14 +287,15 @@
 
 (defn list-models
   "List available Anthropic models.
-  No-arg uses the configured API key. Opts map supports `:api-key` and `:ai-proxy?`."
+  No-arg uses the configured API key. Opts map supports `:credentials` (`{:api-key ...}`) and `:ai-proxy?`."
   ([] (list-models {}))
-  ([{:keys [api-key ai-proxy?]}]
-   (when (and api-key (str/blank? api-key))
+  ([{:keys [credentials ai-proxy?]}]
+   (when (and credentials (str/blank? (:api-key credentials)))
      (throw (core/missing-api-key-ex "Anthropic")))
    (try
      (let [auth   (core/resolve-auth "anthropic" "Anthropic"
-                                     (when-let [k (or (not-empty api-key) (not-empty (llm/llm-anthropic-api-key)))]
+                                     (when-let [k (or (not-empty (:api-key credentials))
+                                                      (not-empty (llm/llm-anthropic-api-key)))]
                                        {:url     (llm/llm-anthropic-api-base-url)
                                         :headers {"x-api-key" k}})
                                      ai-proxy?)
@@ -307,17 +308,22 @@
      (catch Exception e
        (core/rethrow-api-error! "anthropic" anthropic-error-msg e)))))
 
-(mu/defn claude-raw
-  "Perform a streaming request to Claude API.
+(defn- model-supports-temperature?
+  "Whether `model` accepts an explicit `temperature` parameter.
 
-  `:thinking` accepts either of Anthropic's two extended-thinking shapes:
-   - Legacy / explicit budget (Sonnet 4.6 and earlier):
-       `{:type \"enabled\" :budget_tokens <int>}`
-   - Adaptive (required by Opus 4.7+):
-       `{:type \"adaptive\" :effort \"high\"|\"medium\"|\"low\"}`
-  When `:effort` is present it is split out into the top-level `output_config`
-  field that the adaptive API expects — callers can keep passing one map and
-  not care about the wire format split."
+   Sampling parameters (`temperature`, `top_p`, `top_k`) were removed starting with Claude Opus 4.7.  Strips an
+   optional vendor prefix (e.g. Bedrock's `anthropic.`) before checking."
+  [model]
+  (let [model (str/replace-first (str model) #"^anthropic\." "")]
+    (not (or (str/starts-with? model "claude-fable")
+             (when-let [[_ major minor] (re-find #"^claude-opus-(\d+)(?:-(\d+))?" model)]
+               (let [major (parse-long major)
+                     minor (or (some-> minor parse-long) 0)]
+                 (or (> major 4)
+                     (and (= major 4) (>= minor 7)))))))))
+
+(mu/defn claude-request-body
+  "Build the Anthropic Messages API request body for an LLM request."
   [{:keys [model system input tools schema tool_choice temperature max-tokens ai-proxy? thinking cache?]
     :or   {model "claude-haiku-4-5" cache? true}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
@@ -333,27 +339,46 @@
                              {:type "auto"}
                              {:type "tool" :name "structured_output"})
         effort        (some-> thinking :effort)
-        thinking-body (some-> thinking (dissoc :effort))
-        req       (cond-> {:model         model
-                           :max_tokens    (or max-tokens 4096)
-                           :stream        true
-                           :messages      messages}
-                    cache?            (assoc :cache_control {:type "ephemeral"})
-                    system            (assoc :system (if cache?
-                                                       (system->cached-content-blocks system)
-                                                       [{:type "text" :text system}]))
-                    all-tools         (assoc :tools all-tools)
-                    (and all-tools
-                         tool_choice) (assoc :tool_choice (case (name tool_choice)
-                                                            "auto"     {:type "auto"}
-                                                            "required" {:type "any"}))
-                    temperature       (assoc :temperature temperature)
-                    schema            (assoc :tool_choice schema-tool-choice
-                                             :tools [{:name         "structured_output"
-                                                      :description  "Output structured data"
-                                                      :input_schema schema}])
-                    thinking-body     (assoc :thinking thinking-body)
-                    effort            (assoc :output_config {:effort effort}))]
+        thinking-body (some-> thinking (dissoc :effort))]
+    (cond-> {:model         model
+             :max_tokens    (or max-tokens 4096)
+             :stream        true
+             :messages      messages}
+      cache?            (assoc :cache_control {:type "ephemeral"})
+      system            (assoc :system (if cache?
+                                         (system->cached-content-blocks system)
+                                         [{:type "text" :text system}]))
+      all-tools         (assoc :tools all-tools)
+      schema            (assoc :tool_choice schema-tool-choice
+                               :tools [{:name         "structured_output"
+                                        :description  "Output structured data"
+                                        :input_schema schema}])
+      thinking-body     (assoc :thinking thinking-body)
+      effort            (assoc :output_config {:effort effort})
+
+      (and all-tools tool_choice)
+      (assoc :tool_choice (case (name tool_choice)
+                            "auto"     {:type "auto"}
+                            "required" {:type "any"}))
+
+      (and temperature (model-supports-temperature? model))
+      (assoc :temperature temperature))))
+
+(mu/defn claude-raw
+  "Perform a streaming request to Claude API.
+
+  `:thinking` accepts either of Anthropic's two extended-thinking shapes:
+   - Legacy / explicit budget (Sonnet 4.6 and earlier):
+       `{:type \"enabled\" :budget_tokens <int>}`
+   - Adaptive (required by Opus 4.7+):
+       `{:type \"adaptive\" :effort \"high\"|\"medium\"|\"low\"}`
+  When `:effort` is present it is split out into the top-level `output_config`
+  field that the adaptive API expects — callers can keep passing one map and
+  not care about the wire format split."
+  [{:keys [model input tools ai-proxy?]
+    :or   {model "claude-haiku-4-5"}
+    :as   opts} :- core/LLMRequestOpts]
+  (let [req (claude-request-body opts)]
     (with-span :info {:name       :metabot.claude/request
                       :model      model
                       :msg-count  (count input)

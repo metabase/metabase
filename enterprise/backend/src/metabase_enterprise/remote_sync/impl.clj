@@ -154,6 +154,15 @@
     (some-> e ex-cause ex-message (str/includes? "database not found"))
     (format "Import failed: A referenced database does not exist on this instance. %s" (ex-message (ex-cause e)))
 
+    (seq (:ingest-errors (ex-data e)))
+    (let [ingest-errors (:ingest-errors (ex-data e))]
+      (format "Failed to read %d file(s) from the repository: %s"
+              (count ingest-errors)
+              (str/join "; " (for [ie ingest-errors
+                                   :let [{:keys [file reason]} (ex-data ie)]]
+                               (cond-> file
+                                 reason (str ": " reason))))))
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 
@@ -176,14 +185,15 @@
        :details {:error-type (type e)}})))
 
 (defn- get-conflicts
-  "Detects conflicts that would prevent or complicate import.
-   Returns a map with :conflicts (detailed list) and :summary (set of category names).
+  "Detects conflicts that would prevent or complicate import. Returns a map with two classes:
+   - :first-import-conflicts - feature/namespace/library conflicts that only block on the very first import
+   - :deletion-conflicts     - unsynced local entities of all-or-nothing models (transforms) that the import
+                               would wholesale-delete; these block on EVERY import, not just the first
 
    Conflict types detected:
-   - :entity-id-conflict - Items with existing entity IDs that are NOT already synced
    - :library-conflict - First import only, local Library exists, import has Library
-   - :transforms-not-enabled - Import has Transform/TransformTag/PythonLibrary, setting disabled
-   - :snippets-without-library - Import has NativeQuerySnippet, Library not remote-synced"
+   - :transforms-conflict / :snippets-conflict - import has matching content but local has unsynced entities
+   - :*-conflict (deletion) - import lacks transforms/tags/libraries that exist locally and unsynced (GHY-3900)"
   [ingestable first-import?]
   (let [ingest-list (serialization/ingest-list ingestable)
         imported-data (spec/extract-imported-entities ingest-list)
@@ -217,12 +227,12 @@
                              {:type :library-conflict
                               :category "Library"
                               :message "Import contains Library but local instance has an unsynced Library collection"}))
-        all-conflicts (concat
-                       feature-conflicts
-                       ns-coll-conflicts
-                       (when library-conflict [library-conflict]))]
-    {:conflicts (vec all-conflicts)
-     :summary (into #{} (map :category) all-conflicts)}))
+        first-import-conflicts (concat
+                                feature-conflicts
+                                ns-coll-conflicts
+                                (when library-conflict [library-conflict]))]
+    {:first-import-conflicts (vec first-import-conflicts)
+     :deletion-conflicts     (spec/check-deletion-conflicts imported-data)}))
 
 (defn- record-exported-paths!
   "Records each exported entity's repo file path on its RemoteSyncObject row, so later renames and
@@ -366,7 +376,10 @@
   "Imports and reloads Metabase entities from a remote snapshot.
 
   Takes a SourceSnapshot instance, a RemoteSyncTask ID for progress tracking, and optional keyword arguments:
-  - :force? - forces import even when the snapshot version matches the last imported version
+  - :force? - forces import even when the snapshot version matches the last imported version or has first-import conflicts
+  - :force-deletion? - forces past deletion conflicts (unsynced local transforms the import would delete); defaults
+    to :force?. Kept separate so the setup/enable flow can force past version/dirty guards (force? true) while still
+    surfacing transform-deletion as a conflict the admin must confirm (force-deletion? false) — see GHY-3900.
   - :merge? - perform a local-only 3-way merge (keep un-pushed local changes) instead of overwriting local
   - :base-snapshot - the merge base (last synced version), required when :merge? is set
   - :pre-task-branch - the value of `remote-sync-branch` at scheduling time; if it differs
@@ -378,7 +391,7 @@
 
   Returns a map with :status (either :success or :error), :version, and :message keys. Various exceptions may be
   thrown during import and are caught and converted to error status maps."
-  [^SourceSnapshot snapshot task-id & {:keys [force? merge? base-snapshot pre-task-branch]}]
+  [^SourceSnapshot snapshot task-id & {:keys [force? force-deletion? merge? base-snapshot pre-task-branch]}]
   (when (branch-changed-since-scheduling? pre-task-branch)
     (log/warnf "Aborting import: remote-sync-branch changed from %s to %s since task was scheduled"
                pre-task-branch (settings/remote-sync-branch))
@@ -395,15 +408,21 @@
           (let [snapshot-version (source.p/version snapshot)
                 last-imported-version (remote-sync.task/last-version)
                 first-import? (nil? last-imported-version)
+                ;; force-deletion? is optional; when a caller doesn't pass it, deletion follows force?
+                force-deletion? (if (nil? force-deletion?) force? force-deletion?)
                 path-filters (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
                 base-ingestable (source.p/->ingestable snapshot {:path-filters path-filters})
-                {:keys [conflicts summary]} (get-conflicts base-ingestable first-import?)]
+                {:keys [first-import-conflicts deletion-conflicts]} (get-conflicts base-ingestable first-import?)
+                ;; First-import conflicts only block on the first import; deletion conflicts block on every
+                ;; import (an already-configured instance must not silently delete unsynced transforms).
+                blocking-conflicts (vec (concat (when (and first-import? (not force?)) first-import-conflicts)
+                                                (when (not force-deletion?) deletion-conflicts)))]
             (cond
-              (and first-import? (not force?) (seq conflicts))
+              (seq blocking-conflicts)
               (u/prog1 {:status :conflict
                         :version (source.p/version snapshot)
-                        :conflicts summary  ; Keep backward compatibility: return set of category names
-                        :conflict-details conflicts  ; New: detailed conflict info
+                        :conflicts (into #{} (map :category) blocking-conflicts)  ; Backward compat: set of category names
+                        :conflict-details blocking-conflicts  ; Detailed conflict info
                         :message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)}
                 (log/infof (:message <>)))
 
@@ -995,7 +1014,7 @@
 
   Returns a RemoteSyncTask. Throws ExceptionInfo with status 400 and :conflicts true if there
   are unsaved changes and neither force? nor merge? is set."
-  [branch force? import-args & {:keys [on-success merge?]}]
+  [branch force? import-args & {:keys [on-success merge? force-deletion?]}]
   (guards/ensure-no-active-task!)
   (let [pre-task-branch        (settings/remote-sync-branch)
         source                 (source/source-from-settings branch)
@@ -1019,6 +1038,7 @@
                   (import! snapshot task-id
                            (assoc import-args
                                   :force?           force?
+                                  :force-deletion?  force-deletion?
                                   :merge?           merge?
                                   :base-snapshot    base-snapshot
                                   :pre-task-branch  pre-task-branch)))
@@ -1069,12 +1089,14 @@
   - `:clean?`    - whether a 3-way merge would apply with no conflicts
   - `:conflicts` - human-readable labels of the entities that conflict (empty when clean)
   - `:summary`   - `{:added :updated :removed}` counts of remote changes a merge would fold in
+  - `:force-push-casualties` - `{:deleted :overwritten}` labels of remote content a force push would discard
   - `:reason`    - `:history-rewritten` when the remote was force-pushed/rebased so no merge base exists
 
   `branch` is the branch to preview against — the caller is responsible for having validated it against
   the `remote-sync-branch` setting."
   [branch]
-  (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}}
+  (let [no-changes {:diverged? false :clean? true :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+                    :force-push-casualties {:deleted [] :overwritten []}}
         source         (source/source-from-settings branch)
         snapshot       (source.p/snapshot source)
         remote-version (source.p/version snapshot)
@@ -1086,8 +1108,14 @@
           (if-let [models (spec/extract-entities-for-export)]
             (assoc (source/preview-merge models snapshot base-snapshot nil) :diverged? true)
             (assoc no-changes :diverged? true)))
+        ;; No merge base — the remote history was rewritten. A merge is impossible, but a force push is
+        ;; still offered, so surface what it would discard (every remote entity not identical to ours).
         {:diverged? true :clean? false :reason :history-rewritten
-         :conflicts [] :summary {:added 0 :updated 0 :removed 0}}))))
+         :conflicts [] :summary {:added 0 :updated 0 :removed 0}
+         :force-push-casualties (serdes/with-cache
+                                  (if-let [models (spec/extract-entities-for-export)]
+                                    (source/force-push-casualties-no-base models snapshot)
+                                    {:deleted [] :overwritten []}))}))))
 
 (defn create-branch!
   "Creates a new remote branch from `base-branch` and switches `remote-sync-branch`
@@ -1120,6 +1148,8 @@
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
       (when (= :read-only (settings/remote-sync-type))
-        (:id (async-import! (settings/remote-sync-branch) true {}))))
+        ;; force? true bypasses the version/dirty guards for setup, but force-deletion? false keeps unsynced
+        ;; local transforms from being silently destroyed — they surface as a conflict instead (GHY-3900).
+        (:id (async-import! (settings/remote-sync-branch) true {} :force-deletion? false))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))

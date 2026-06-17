@@ -11,13 +11,6 @@ export const StoreApi = {
   tokenStatus: GET("/api/premium-features/token/status"),
 };
 
-export const DashboardApi = {
-  get: GET("/api/dashboard/:dashId"),
-  parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
-  parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
-  validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
-};
-
 export const CollectionsApi = {
   get: GET("/api/collection/:id"),
   graph: GET("/api/collection/graph"),

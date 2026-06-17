@@ -64,12 +64,15 @@ export function trackSchemaEvent<S extends SchemaType>(
   }
 
   if (shouldSendSnowplow) {
-    Snowplow.trackSelfDescribingEvent({
-      event: {
-        schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
-        data: event,
+    Snowplow.trackSelfDescribingEvent(
+      {
+        event: {
+          schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
+          data: event,
+        },
       },
-    });
+      ["sp"],
+    );
   }
 
   if (Settings.get("metaplow-tracking-enabled")) {
