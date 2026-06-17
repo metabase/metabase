@@ -8,6 +8,7 @@ export const ROW_ID_COLUMN_ID = `\0_INDEX`;
 export const TRUNCATE_LONG_CELL_WIDTH = 780;
 export const DEFAULT_FONT_SIZE = "12.5px";
 export const FOOTER_HEIGHT = 30;
+export const IMAGE_HEIGHT = 150;
 export const PINNED_BORDER_SEPARATOR_WIDTH = 3;
 export const DATASET_INDEX_ATTRIBUTE_NAME = "data-dataset-index";
 export const VIRTUAL_INDEX_ATTRIBUTE_NAME = "data-index";

@@ -1,3 +1,4 @@
+import { IMAGE_HEIGHT } from "metabase/data-grid/constants";
 import type { OptionsType } from "metabase/utils/formatting/types";
 
 import { getUrlProtocol } from "./url";
@@ -10,7 +11,7 @@ export function formatImage(
   const protocol = getUrlProtocol(url);
   const acceptedProtocol = protocol === "http:" || protocol === "https:";
   if (jsx && rich && view_as === "image" && acceptedProtocol) {
-    return <img src={url} style={{ height: 30 }} />;
+    return <img src={url} style={{ height: IMAGE_HEIGHT }} />;
   } else {
     return url;
   }
