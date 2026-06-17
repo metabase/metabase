@@ -457,8 +457,15 @@ function verifyAndCloseToast(message: string) {
 }
 
 function verifyToastAndUndo(message: string) {
-  H.undoToast().should("contain.text", message);
-  H.undoToast().button("Undo").click();
-  H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click({ force: true });
+  // Under network throttling, clicking Undo creates a new "Change undone"
+  // toast alongside the original (Mantine notifications stack rather than
+  // mutate in place). The original auto-dismisses, but the dismiss can lag
+  // past Cypress's 4s retry window, so cy.findByTestId("toast-undo")
+  // singular sees two elements and fails with "Found multiple elements".
+  // Scope each step to the toast matching the expected text so we always
+  // operate on the right one.
+  H.undoToastList().filter(`:contains("${message}")`).first().should("contain.text", message);
+  H.undoToastList().filter(`:contains("${message}")`).first().button("Undo").click();
+  H.undoToastList().filter(':contains("Change undone")').first().should("contain.text", "Change undone");
+  H.undoToastList().filter(':contains("Change undone")').first().icon("close").click({ force: true });
 }
