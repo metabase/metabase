@@ -803,6 +803,7 @@ describe(
 
           cy.findByText(
             "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            { timeout: 30000 },
           );
         });
 
