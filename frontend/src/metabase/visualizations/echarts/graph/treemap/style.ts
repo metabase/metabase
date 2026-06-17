@@ -22,6 +22,7 @@ export const groupHeader = {
   fontWeight: 700,
   fontSize: 12,
   height: 32,
+  compactHeight: 24,
   paddingX: 12,
   percentFontWeight: 400,
   valuePercentGap: 8,
@@ -50,10 +51,8 @@ export function getGroupHeaderBgTint(
     .string();
 }
 
-const PADDING_COMPACT = 24;
-
 export function getChartPadding(isCompact: boolean) {
-  return isCompact ? PADDING_COMPACT : `1rem 2rem 2rem 2rem`;
+  return isCompact ? "0 24px 24px 24px" : `0rem 2rem 2rem 2rem`;
 }
 
 export const TREEMAP_HOVER_OVERLAY_FILL = Color("black")

@@ -2,7 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLatest } from "react-use";
 
-import { Box } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { extractRemappings } from "metabase/visualizations";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getTreemapBreadcrumbModel } from "metabase/visualizations/echarts/graph/treemap/model/breadcrumb";
@@ -97,6 +97,8 @@ export const TreemapChart = ({
       gridSize,
     });
 
+  const isCompact = isDashboard || isDocument;
+
   const option = useMemo(() => {
     const showLeafLabels = settings["treemap.show_leaf_labels"] ?? true;
     if (!chartData || !formatters) {
@@ -109,6 +111,7 @@ export const TreemapChart = ({
       isDrilled: viewRootId !== null,
       showParentLabels: shouldShowParentLabels(gridSize, settings),
       showLeafLabels,
+      isCompact,
       labelLayout,
       parentLabelLayout,
       formatValue: formatters.value,
@@ -138,6 +141,7 @@ export const TreemapChart = ({
     settings,
     viewRootId,
     viewRootIdRef,
+    isCompact,
     labelLayout,
     parentLabelLayout,
     renderingContext,
@@ -213,8 +217,6 @@ export const TreemapChart = ({
 
   useCloseTooltipOnScroll(chartRef);
 
-  const isCompact = isDashboard || isDocument;
-
   const colorsCss = useInjectSeriesColorsClasses(
     useMemo(() => Object.values(chartData?.colors ?? {}), [chartData]),
   );
@@ -224,7 +226,13 @@ export const TreemapChart = ({
   }
 
   return (
-    <Box w="100%" h="100%" display="flex" style={{ flexDirection: "column" }}>
+    <Stack
+      w="100%"
+      h="100%"
+      display="flex"
+      style={{ flexDirection: "column" }}
+      gap={isCompact ? "md" : 28}
+    >
       {breadcrumb && formatters && (
         <TreemapBreadcrumb
           groupLabel={breadcrumb.groupLabel}
@@ -247,7 +255,7 @@ export const TreemapChart = ({
         />
         {colorsCss}
       </Box>
-    </Box>
+    </Stack>
   );
 };
 

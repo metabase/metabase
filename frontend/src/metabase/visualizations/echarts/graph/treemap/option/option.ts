@@ -42,6 +42,7 @@ export type TreemapChartOptionConfig = {
   formatPercent?: (ratio: number) => string;
   showLeafLabels?: boolean;
   showParentLabels?: boolean;
+  isCompact?: boolean;
   labelLayout?: Record<string, TreemapLabelLayout>;
   parentLabelLayout?: Record<string, ParentLabelLayout>;
   renderingContext: RenderingContext;
@@ -67,13 +68,19 @@ const HIDDEN_LABEL_OVERRIDE: Pick<TreemapSeriesNode, "label"> = {
 export function getTreemapChartOption(config: TreemapChartOptionConfig): {
   series: TreemapChartSeriesOption;
 } {
-  const { tree, showParentLabels = true, renderingContext } = config;
+  const {
+    tree,
+    showParentLabels = true,
+    isCompact = false,
+    renderingContext,
+  } = config;
   const buildConfig = createSeriesBuildConfig(config);
   const hasNestedChildren = tree.some(hasChildren);
 
   const groupUpperLabel = getUpperLabelDefault({
     showParentLabels,
     isDrilled: buildConfig.isDrilled,
+    isCompact,
     renderingContext,
   });
 
@@ -372,19 +379,22 @@ function getTileLabelOverride({
 function getUpperLabelDefault({
   showParentLabels,
   isDrilled,
+  isCompact,
   renderingContext,
 }: {
   showParentLabels: boolean;
   isDrilled: boolean;
+  isCompact: boolean;
   renderingContext: RenderingContext;
 }): NonNullable<TreemapChartSeriesOption["upperLabel"]> {
+  const height = isCompact ? groupHeader.compactHeight : groupHeader.height;
   return {
     show: showParentLabels && !isDrilled,
     color: renderingContext.getColor("text-primary"),
-    height: groupHeader.height,
+    height,
     fontSize: groupHeader.fontSize,
     fontWeight: groupHeader.fontWeight,
-    lineHeight: groupHeader.height,
+    lineHeight: height,
     padding: [0, groupHeader.paddingX],
   };
 }
