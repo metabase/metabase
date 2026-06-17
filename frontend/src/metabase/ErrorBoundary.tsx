@@ -76,7 +76,7 @@ export default forwardRef<HTMLDivElement, ErrorBoundaryProps>(
       <ErrorBoundaryInner
         {...props}
         forwardedRef={ref}
-        onReportError={() => reportFrontendError({ type: "component-crash" })}
+        onReportError={() => void reportFrontendError({ type: "component-crash" })}
       />
     );
   },

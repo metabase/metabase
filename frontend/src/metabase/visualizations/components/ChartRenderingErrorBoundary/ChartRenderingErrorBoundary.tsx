@@ -29,7 +29,7 @@ export function ChartRenderingErrorBoundary(
   return (
     <ChartRenderingErrorBoundaryInner
       {...props}
-      onReportError={() => reportFrontendError({ type: "chart-render-error" })}
+      onReportError={() => void reportFrontendError({ type: "chart-render-error" })}
     />
   );
 }
