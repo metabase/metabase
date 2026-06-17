@@ -217,3 +217,141 @@
          java.lang.UnsupportedOperationException
          #"You cannot set ai-usage-max-retention-days"
          (setting/set! :ai-usage-max-retention-days 30)))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-bedrock-test
+  (testing "accepts valid direct bedrock provider string"
+    (mt/with-temporary-setting-values [llm-metabot-provider "bedrock/anthropic.claude-haiku-4-5"]
+      (is (= "bedrock/anthropic.claude-haiku-4-5" (metabot.settings/llm-metabot-provider))))))
+
+(deftest metabot-configured-with-bedrock-credentials-test
+  (testing "returns true when bedrock has both the access key ID and secret access key set"
+    (mt/with-temporary-setting-values [llm-metabot-provider           "bedrock/anthropic.claude-haiku-4-5"
+                                       llm-bedrock-access-key-id      "AKIAIOSFODNN7EXAMPLE"
+                                       llm-bedrock-secret-access-key  "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-partial-bedrock-credentials-test
+  (testing "returns false when bedrock has an access key ID but no secret access key"
+    (mt/with-temporary-setting-values [llm-metabot-provider          "bedrock/anthropic.claude-haiku-4-5"
+                                       llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm-bedrock-secret-access-key nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-bedrock-fully-configured-test
+  (testing "returns the AWS credentials map when bedrock is fully configured"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm-bedrock-secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+                                       llm-bedrock-session-token     nil
+                                       llm-bedrock-region            "us-east-2"]
+      (is (= {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+              :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
+              :session-token     nil
+              :region            "us-east-2"}
+             (metabot.settings/configured-provider-credentials "bedrock"))))))
+
+(deftest configured-provider-credentials-bedrock-partial-credentials-test
+  (testing "returns nil when bedrock has an access key ID but no secret access key"
+    (mt/with-temporary-setting-values [llm-bedrock-access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                                       llm-bedrock-secret-access-key nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "bedrock"))))))
+
+(deftest provider-credentials-complete?-bedrock-test
+  (testing "bedrock credentials are complete only with both the access key ID and secret access key"
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "bedrock"
+                {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                 :secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "bedrock"
+                 {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                  :secret-access-key ""})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "bedrock"
+                 {:access-key-id     "AKIAIOSFODNN7EXAMPLE"
+                  :secret-access-key nil})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "bedrock"
+                 {:access-key-id "AKIAIOSFODNN7EXAMPLE"})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "bedrock"
+                 {:secret-access-key "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "bedrock" nil)))))
+
+(deftest validate-metabot-provider-accepts-valid-direct-azure-test
+  (testing "accepts azure provider strings with a wire family and deployment name"
+    (mt/with-temporary-setting-values [llm-metabot-provider "azure/anthropic/claude-sonnet-4-5"]
+      (is (= "azure/anthropic/claude-sonnet-4-5" (metabot.settings/llm-metabot-provider))))
+    (mt/with-temporary-setting-values [llm-metabot-provider "azure/openai/my-gpt-deployment"]
+      (is (= "azure/openai/my-gpt-deployment" (metabot.settings/llm-metabot-provider))))))
+
+(deftest validate-metabot-provider-rejects-invalid-azure-models-test
+  (testing "rejects an unsupported wire family"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Azure model"
+         (metabot.settings/llm-metabot-provider! "azure/gemini/some-deployment"))))
+  (testing "rejects a missing deployment name"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Azure model"
+         (metabot.settings/llm-metabot-provider! "azure/anthropic/")))
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Azure model"
+         (metabot.settings/llm-metabot-provider! "azure/anthropic"))))
+  (testing "rejects a deployment name containing a slash (Azure deployment names cannot contain /)"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Invalid Azure model"
+         (metabot.settings/llm-metabot-provider! "azure/anthropic/a/b")))))
+
+(deftest metabot-configured-with-azure-credentials-test
+  (testing "returns true when azure has both the API key and base URL set"
+    (mt/with-temporary-setting-values [llm-metabot-provider  "azure/anthropic/claude-sonnet-4-5"
+                                       llm-azure-api-key     "azure-key"
+                                       llm-azure-api-base-url "https://my-resource.services.ai.azure.com/anthropic"]
+      (is (true? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest metabot-configured-with-partial-azure-credentials-test
+  (testing "returns false when azure has an API key but no base URL"
+    (mt/with-temporary-setting-values [llm-metabot-provider   "azure/anthropic/claude-sonnet-4-5"
+                                       llm-azure-api-key      "azure-key"
+                                       llm-azure-api-base-url nil]
+      (is (false? (metabot.settings/llm-metabot-configured?))))))
+
+(deftest configured-provider-credentials-azure-fully-configured-test
+  (testing "returns the api-key/base-url credentials map when azure is fully configured"
+    (mt/with-temporary-setting-values [llm-azure-api-key      "azure-key"
+                                       llm-azure-api-base-url "https://my-resource.services.ai.azure.com/openai"]
+      (is (= {:api-key  "azure-key"
+              :base-url "https://my-resource.services.ai.azure.com/openai"}
+             (metabot.settings/configured-provider-credentials "azure"))))))
+
+(deftest configured-provider-credentials-azure-partial-credentials-test
+  (testing "returns nil when azure has a base URL but no API key"
+    (mt/with-temporary-setting-values [llm-azure-api-key      nil
+                                       llm-azure-api-base-url "https://my-resource.services.ai.azure.com/openai"]
+      (is (nil? (metabot.settings/configured-provider-credentials "azure"))))))
+
+(deftest provider-credentials-complete?-azure-test
+  (testing "azure credentials are complete only with both a non-blank API key and base URL"
+    (is (true? (metabot.settings/provider-credentials-complete?
+                "azure"
+                {:api-key "azure-key" :base-url "https://my-resource.services.ai.azure.com/openai"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "azure" {:api-key "azure-key"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "azure" {:api-key "azure-key" :base-url "  "})))
+    (is (false? (metabot.settings/provider-credentials-complete?
+                 "azure"
+                 {:base-url "https://my-resource.services.ai.azure.com/openai"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "azure" nil)))))
+
+(deftest provider-credentials-complete?-api-key-provider-test
+  (testing "API-key provider credentials are complete only with a non-blank :api-key"
+    (is (true? (metabot.settings/provider-credentials-complete? "openai" {:api-key "sk-valid"})))
+    (is (false? (metabot.settings/provider-credentials-complete? "openai" {:api-key ""})))
+    (is (false? (metabot.settings/provider-credentials-complete? "openai" {:api-key nil})))
+    (is (false? (metabot.settings/provider-credentials-complete? "openai" nil)))))
+
+(deftest configured-provider-credentials-api-key-provider-test
+  (testing "API-key providers return an {:api-key ...} credentials map, or nil when unset"
+    (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-valid"]
+      (is (= {:api-key "sk-ant-valid"}
+             (metabot.settings/configured-provider-credentials "anthropic"))))
+    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+      (is (nil? (metabot.settings/configured-provider-credentials "anthropic"))))))

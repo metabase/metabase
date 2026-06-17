@@ -7,13 +7,14 @@ import { Button } from "metabase/common/components/Button";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 
-interface RunButtonProps {
+export interface RunButtonProps {
   className?: string;
   isRunning: boolean;
   isDirty: boolean;
   circular?: boolean;
   medium?: boolean;
   hidden?: boolean;
+  disabled?: boolean;
   onlyIcon?: boolean;
   iconSize?: number;
   onRun?: () => void;

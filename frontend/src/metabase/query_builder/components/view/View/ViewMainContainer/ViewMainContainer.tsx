@@ -4,8 +4,9 @@ import cx from "classnames";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import CS from "metabase/css/core/index.css";
 import { ObjectDetailSidesheet } from "metabase/query_builder/components/ObjectDetailSidesheet";
-import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
+import { useVisualizationResultQBProps } from "metabase/query_builder/hooks";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
+import { SyncedParametersList } from "metabase/querying/components/SyncedParametersList";
 import type { QueryModalType } from "metabase/querying/constants";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
@@ -98,6 +99,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
+  const visualizationResultProps = useVisualizationResultQBProps();
+
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
@@ -140,6 +143,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       >
         <QueryVisualization
           {...props}
+          {...visualizationResultProps}
           noHeader
           className={CS.spread}
           mode={queryMode}

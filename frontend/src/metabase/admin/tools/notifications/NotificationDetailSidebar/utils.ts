@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import type {
-  NotificationHandlerHttp,
-  NotificationRecipient,
-} from "metabase-types/api";
+import type { NotificationRecipient } from "metabase-types/api";
 
 export const getEmailRowText = (
   recipient: NotificationRecipient,
@@ -37,13 +34,13 @@ export const getWebhookLabel = (count: number): string =>
 type ChannelSummaryInput = {
   emailRecipientCount: number;
   slackChannelCount: number;
-  httpHandler: NotificationHandlerHttp | undefined;
+  webhookCount: number;
 };
 
 export const formatChannelSummary = ({
   emailRecipientCount,
   slackChannelCount,
-  httpHandler,
+  webhookCount,
 }: ChannelSummaryInput): string => {
   const parts: string[] = [];
   if (emailRecipientCount > 0) {
@@ -52,8 +49,8 @@ export const formatChannelSummary = ({
   if (slackChannelCount > 0) {
     parts.push(getSlackChannelLabel(slackChannelCount));
   }
-  if (httpHandler && httpHandler.recipients.length > 0) {
-    parts.push(getWebhookLabel(httpHandler.recipients.length));
+  if (webhookCount > 0) {
+    parts.push(getWebhookLabel(webhookCount));
   }
   return parts.join(", ");
 };

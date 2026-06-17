@@ -1,13 +1,15 @@
 (ns metabase.lib.drill-thru.zoom-in-geographic-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -388,9 +390,9 @@
                                        :value      50.0}]}
           drill         (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic)
                                       (lib/available-drill-thrus query -1 context))]
-      (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru,
-               :type      :drill-thru/zoom-in.geographic,
-               :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon,
+      (is (=? {:lib/type  :metabase.lib.drill-thru/drill-thru
+               :type      :drill-thru/zoom-in.geographic
+               :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
                :latitude  {:column    {:name                       "LATITUDE"
                                        :lib/binning {:strategy :default}}
                            :bin-width 1.0
@@ -471,11 +473,15 @@
                                        :column-ref (lib/ref col-longitude)
                                        :value      50.0}]}]
       (testing "for nil latitude"
-        (let [context (assoc-in base-context [:row 0 :value] nil)]
+        (let [context (-> base-context
+                          (assoc-in [:row 0 :value] nil)
+                          (assoc-in [:dimensions 0 :value] nil))]
           (is (nil? (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic)
                                   (lib/available-drill-thrus query context))))))
       (testing "for nil longitude"
-        (let [context (assoc-in base-context [:row 1 :value] nil)]
+        (let [context (-> base-context
+                          (assoc-in [:row 1 :value] nil)
+                          (assoc-in [:dimensions 1 :value] nil))]
           (is (nil? (m/find-first #(= (:type %) :drill-thru/zoom-in.geographic)
                                   (lib/available-drill-thrus query context)))))))))
 
@@ -575,3 +581,51 @@
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :latitude)]
                                   [:field {:binning {:strategy :bin-width, :bin-width 1}} (meta/id :people :longitude)]]}]}
             (lib/drill-thru query -1 nil zoom-in)))))
+
+(deftest ^:parallel zoom-in-on-binned-lat-lon-test
+  (testing "Zoom in for binned lat/lon should work correctly (#46919, QUE2-209)"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (-> (meta/field-metadata :people :latitude)
+                                          (lib/with-binning {:strategy :default})))
+                        (lib/breakout (-> (meta/field-metadata :people :longitude)
+                                          (lib/with-binning {:strategy :default}))))
+          cols      (lib/returned-columns query)
+          count-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})
+          lat-col   (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Latitude: Auto binned"})
+          lon-col   (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Longitude: Auto binned"})
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      6
+                     :dimensions [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      50}
+                                  {:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      -170}]}
+          drills    (->> (lib/available-drill-thrus query context)
+                         (filter #(str/includes? (name (:type %)) "zoom-in")))]
+      (testing "Should return 1 'zoom in drill -- should be geographic"
+        (is (=? [{:type         :drill-thru/zoom-in.geographic
+                  :display-name "Zoom in: Lat/Lon"}]
+                drills)))
+      (testing "Applying drill should zoom in lat and lon together"
+        (when-let [drill (first drills)]
+          (is (=? {:stages
+                   [{:aggregation [[:count {}]],
+                     :breakout    [[:field {:binning {:bin-width 1.0, :strategy :bin-width}}
+                                    (meta/id :people :latitude)]
+                                   [:field {:binning {:bin-width 1.0, :strategy :bin-width}}
+                                    (meta/id :people :longitude)]]
+                     :filters     [[:>= {} [:field {:binning {:strategy :default}} (meta/id :people :latitude)]
+                                    50]
+                                   [:< {}
+                                    [:field {:binning {:strategy :default}} (meta/id :people :latitude)]
+                                    60.0]
+                                   [:>= {}
+                                    [:field {:binning {:strategy :default}} (meta/id :people :longitude)]
+                                    -170]
+                                   [:< {}
+                                    [:field {:binning {:strategy :default}} (meta/id :people :longitude)]
+                                    -160.0]]}]}
+                  (lib/drill-thru query drill))))))))

@@ -15,7 +15,7 @@
 
   &[data-active="true"] {
     background-color: var(--mb-color-background-selected);
-    color: var(--mb-color-brand);
+    color: var(--mb-color-core-brand);
   }
 }
 

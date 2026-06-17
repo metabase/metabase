@@ -1650,6 +1650,38 @@
           (is (seq (filter #(= "Database" (-> % :serdes/meta last :model)) extracted))
               "Databases should be exported even when cards reference personal collections"))))))
 
+(deftest escape-continue-on-error-test
+  (testing "continue-on-error lets the export proceed past escape analysis instead of aborting (#74622)"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [;; non-H2 engine so the database survives serdes extract filtering
+                         :model/Database      {db-id :id}            {:engine :postgres}
+                         :model/Collection    {coll-id  :id
+                                               coll-eid :entity_id}  {:name "Target Collection"}
+                         :model/Card          {clean-eid :entity_id} {:name          "Clean Card"
+                                                                      :collection_id coll-id
+                                                                      :database_id   db-id}
+                         :model/Dashboard     {dash-id  :id
+                                               dash-eid :entity_id}  {:name "A Dashboard" :collection_id coll-id}
+                         ;; this card lives outside the target collection, so it "escapes"
+                         :model/Card          {escaped-eid :entity_id
+                                               escaped-id  :id}      {:name "Escaped Card" :database_id db-id}
+                         :model/DashboardCard _                      {:card_id escaped-id :dashboard_id dash-id}]
+        (let [opts {:targets [["Collection" coll-id]] :no-settings true :no-data-model true}]
+          (testing "without the flag, escape analysis aborts the whole export"
+            (is (empty? (into [] (extract/extract opts)))))
+          (testing "with continue-on-error, everything in the target collection is exported and the escaped card is left out"
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (let [extracted (into [] (extract/extract (assoc opts :continue-on-error true)))]
+                (is (= #{coll-eid} (ids-by-model "Collection" extracted)))
+                (is (= #{dash-eid} (ids-by-model "Dashboard" extracted)))
+                (is (contains? (ids-by-model "Card" extracted) clean-eid)
+                    "the clean card inside the target collection is exported")
+                (is (not (contains? (ids-by-model "Card" extracted) escaped-eid))
+                    "the escaped card outside the target collection is not exported")
+                (is (some #(str/starts-with? % "Failed to export Dashboard")
+                          (map :message (messages)))
+                    "the escape report is still logged as a warning")))))))))
+
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db!
     (mt/with-temp [:model/Collection {parent-id  :id
@@ -2239,6 +2271,47 @@
           (testing "transforms are extracted"
             (is (= #{transform-eid python-transform-eid}
                    (ids-by-model "Transform" (extract/extract {}))))))))))
+
+(deftest transform-with-null-source-database-extract-test
+  (testing "A transform whose source database has been deleted serializes as a tombstone (GDGT-2447)"
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Soon-to-be-deleted DB"}
+                           :model/Transform {transform-id :id transform-eid :entity_id}
+                           {:name "Orphan Transform"
+                            :entity_id "orphanXxxxxxxxxxxxxxx"
+                            :source {:type "query"
+                                     :query {:database db-id
+                                             :type "native"
+                                             :native {:query "SELECT 1"}}}
+                            :target {:database db-id
+                                     :type "table"
+                                     :schema "public"
+                                     :name "orphan_target"}}]
+          ;; Delete the database — ON DELETE SET NULL nulls source_database_id and target_db_id.
+          (t2/delete! :model/Database db-id)
+          (let [reloaded (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags)
+                ser (serdes/extract-one "Transform" {} reloaded)]
+            (is (nil? (:source_database_id reloaded))
+                "Database deletion should have nulled the column")
+            (testing "exported entity carries a nil source_database_id"
+              (is (=? {:serdes/meta [{:model "Transform" :id transform-eid}]
+                       :name "Orphan Transform"}
+                      ser))
+              (is (nil? (:source_database_id ser))))
+            (testing "exported source is marked :serdes/unresolved with the dead :database ref nulled"
+              ;; The :database slot is nulled because the numeric id refers to a now-deleted database —
+              ;; keeping it would make the destination instance's before-insert hook bind
+              ;; source_database_id to a stale id and crash the FK.
+              (is (true? (get-in ser [:source :serdes/unresolved])))
+              (is (nil? (get-in ser [:source :query :database]))))
+            (testing "the native SQL body is preserved verbatim as a breadcrumb"
+              ;; `lib-be/normalize-query` rewrites the raw query to MBQL5 (`:stages [...]`) at read time,
+              ;; so the native text now lives under `:stages [0] :native`.
+              (is (= "SELECT 1" (get-in ser [:source :query :stages 0 :native]))))
+            (testing "Transform/dependencies does not emit a Database dep when source_database_id is nil"
+              (is (not-any? #(some (fn [{:keys [model]}] (= "Database" model)) %)
+                            (serdes/dependencies (assoc reloaded :tags [])))))))))))
 
 (deftest table-with-transform-id-dependency-test
   (testing "Table created by a Transform declares the Transform as a serdes dependency (GDGT-2444)"

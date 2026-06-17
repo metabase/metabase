@@ -12,6 +12,8 @@ interface BranchSwitchOptionsProps {
   isRemoteSyncReadOnly: boolean;
   optionValue?: OptionValue;
   variant: RemoteSyncConflictVariant;
+  /** When true (push variant only), offer a "Merge changes" option. */
+  canMerge?: boolean;
 }
 
 interface OutOfSyncOption {
@@ -26,6 +28,7 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
     isRemoteSyncReadOnly,
     optionValue,
     variant,
+    canMerge,
   } = props;
 
   const options = useMemo<OutOfSyncOption[]>(() => {
@@ -43,6 +46,14 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       label: c("{0} is the current GitHub branch name")
         .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
     };
+    // Push merges and pushes the result; pull merges into local only (the push happens later).
+    const mergeOption: OutOfSyncOption = {
+      value: "merge",
+      label:
+        variant === "pull"
+          ? t`Merge the remote changes into your local content`
+          : t`Merge the remote changes with yours and push`,
+    };
     const discardOption: OutOfSyncOption = {
       value: "discard",
       label: t`Delete unsynced changes (can’t be undone)`,
@@ -50,7 +61,9 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
 
     switch (variant) {
       case "push":
-        return [newBranchOption, forcePushOption];
+        return canMerge
+          ? [mergeOption, newBranchOption, forcePushOption]
+          : [newBranchOption, forcePushOption];
       case "switch-branch":
         return [pushOption, newBranchOption, discardOption];
       case "setup":
@@ -58,11 +71,14 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
           ? [discardOption]
           : [newBranchOption, discardOption];
       default: // pull
-        return isRemoteSyncReadOnly
-          ? [discardOption]
+        if (isRemoteSyncReadOnly) {
+          return [discardOption];
+        }
+        return canMerge
+          ? [mergeOption, forcePushOption, newBranchOption, discardOption]
           : [forcePushOption, newBranchOption, discardOption];
     }
-  }, [currentBranch, isRemoteSyncReadOnly, variant]);
+  }, [currentBranch, isRemoteSyncReadOnly, variant, canMerge]);
 
   return (
     <Box mt="xl">

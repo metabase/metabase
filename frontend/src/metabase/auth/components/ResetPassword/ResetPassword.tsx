@@ -8,9 +8,9 @@ import { Link } from "metabase/common/components/Link";
 import { useValidatePassword } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/redux";
+import { resetPassword } from "metabase/redux/auth";
 import { Button } from "metabase/ui";
 
-import { resetPassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";

@@ -73,6 +73,13 @@ export type RecentCollectionItem = BaseRecentItem & {
   collection_type?: CollectionType;
 };
 
+/**
+ * Model retrieved through the recent views endpoint
+ */
+export interface RecentModel extends RecentCollectionItem {
+  model: "dataset";
+}
+
 export type RecentItem = RecentTableItem | RecentCollectionItem;
 
 export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>

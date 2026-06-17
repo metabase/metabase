@@ -17,6 +17,7 @@ import {
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCardQueryMetadata,
@@ -67,6 +68,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       const { history } = await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
 
       await startNewNotebookModel();
@@ -82,6 +84,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
 
       await startNewNotebookModel();
@@ -95,6 +98,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
       setupCardCreateEndpoint();
       setupCardEndpoints(TEST_NATIVE_CARD);
