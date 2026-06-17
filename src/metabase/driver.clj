@@ -1597,7 +1597,7 @@
   [_driver _database _schema _table _transform-type]
   nil)
 
-(defmulti fetch-indexes
+(defmulti fetch-table-indexes
   "Fetch the indexes that physically exist on the transform target `table` in `schema` of `database`, as a vector of
   normalized index maps (one per index in the warehouse catalog):
 
@@ -1618,9 +1618,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod fetch-indexes :default
+(defmethod fetch-table-indexes :default
   [driver _database _schema _table]
-  (throw (ex-info (format "fetch-indexes is not implemented for driver %s" driver)
+  (throw (ex-info (format "fetch-table-indexes is not implemented for driver %s" driver)
                   {:driver driver})))
 
 (defmulti drop-table!

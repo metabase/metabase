@@ -27,9 +27,9 @@
     (is (false? (driver/database-supports? :h2 :index/standalone-create nil)))
     (is (= {} (driver/supported-index-methods :h2 nil)))
     (is (nil? (driver/refresh-table-stats! :h2 nil "public" "t" :table))))
-  (testing "fetch-indexes has no safe default: a driver that can't introspect indexes throws"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-indexes is not implemented for driver :h2"
-                          (driver/fetch-indexes :h2 nil "public" "t")))))
+  (testing "fetch-table-indexes has no safe default: a driver that can't introspect indexes throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"fetch-table-indexes is not implemented for driver :h2"
+                          (driver/fetch-table-indexes :h2 nil "public" "t")))))
 
 ;;; ------------------------------------------ DDL rendering ------------------------------------------
 
@@ -148,11 +148,11 @@
             (finally
               (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"perf_idx_legacy\""]))))))))
 
-;;; ----------------------------------------- fetch-indexes ------------------------------------------
+;;; ----------------------------------------- fetch-table-indexes ------------------------------------------
 
 (def ^:private fetch-cases
-  "Each case creates one index on the shared `fetch-indexes-test` table (`:ddl` is a `format` template taking the
-  qualified table name) and the normalized map `fetch-indexes` must report for it, sans `:definition`. Add a row to
+  "Each case creates one index on the shared `fetch-table-indexes-test` table (`:ddl` is a `format` template taking the
+  qualified table name) and the normalized map `fetch-table-indexes` must report for it, sans `:definition`. Add a row to
   cover a new access method, column shape, or catalog wrinkle. The shared table is:
 
     (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
@@ -201,7 +201,7 @@
     :expected {:name "fc_expr" :access_method "btree" :is_unique false :is_primary false :is_valid true
                :key_columns [nil] :include_columns [] :partial_predicate nil}}])
 
-(deftest fetch-indexes-test
+(deftest fetch-table-indexes-test
   (mt/test-driver :postgres
     (mt/with-empty-db
       (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -210,7 +210,7 @@
             table      "fetch_target"
             qtable     (str (sql.u/quote-name :postgres :schema schema) "."
                             (sql.u/quote-name :postgres :table table))
-            by-name    #(into {} (map (juxt :name identity)) (driver/fetch-indexes :postgres (mt/db) schema %))]
+            by-name    #(into {} (map (juxt :name identity)) (driver/fetch-table-indexes :postgres (mt/db) schema %))]
         (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])
         (jdbc/execute! admin-spec [(format (str "CREATE TABLE %s (id INT PRIMARY KEY, user_id INT, email TEXT, "
                                                 "a INT, b INT, data JSONB, created_at TIMESTAMP)")
@@ -253,19 +253,19 @@
           (testing "a table with no indexes returns an empty vector, not nil"
             (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"fetch_empty\""])
             (jdbc/execute! admin-spec ["CREATE TABLE \"public\".\"fetch_empty\" (a INT, b INT)"])
-            (is (= [] (driver/fetch-indexes :postgres (mt/db) schema "fetch_empty")))
+            (is (= [] (driver/fetch-table-indexes :postgres (mt/db) schema "fetch_empty")))
             (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"fetch_empty\""]))
           (testing "a table that does not exist returns an empty vector, not an error"
-            (is (= [] (driver/fetch-indexes :postgres (mt/db) schema "does_not_exist"))))
+            (is (= [] (driver/fetch-table-indexes :postgres (mt/db) schema "does_not_exist"))))
           (finally
             (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])))))))
 
-(deftest fetch-indexes-schema-scoping-test
-  (testing "fetch-indexes is scoped to one schema, and a blank schema falls back to current_schema()"
+(deftest fetch-table-indexes-schema-scoping-test
+  (testing "fetch-table-indexes is scoped to one schema, and a blank schema falls back to current_schema()"
     (mt/test-driver :postgres
       (mt/with-empty-db
         (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              names      #(set (map :name (driver/fetch-indexes :postgres (mt/db) %1 %2)))]
+              names      #(set (map :name (driver/fetch-table-indexes :postgres (mt/db) %1 %2)))]
           (try
             ;; same table name in two schemas, each with a distinctly-named index
             (jdbc/execute! admin-spec ["CREATE SCHEMA IF NOT EXISTS fetch_other"])
