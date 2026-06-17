@@ -40,7 +40,7 @@ export const PinDropTargetIndicator = styled.div<PinDropTargetRenderArgs>`
   border-left: ${(props) =>
     `4px solid ${
       props.hovered
-        ? "var(--mb-color-brand)"
+        ? "var(--mb-color-core-brand)"
         : "var(--mb-color-background-tertiary)"
     }`};
   display: ${(props) => !(props.hovered || props.highlighted) && "none"};

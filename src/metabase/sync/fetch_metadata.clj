@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
@@ -102,8 +103,8 @@
                (try
                  (let [table (t2/select-one :model/Table table-id)
                        table-fields (table-fields-metadata database table)]
-                  ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
-                  ;; connection is closed before moving to the next table.
+                   ;; Realize the fields from this table (from `table-fields-metadata`) immediately to ensure the
+                   ;; connection is closed before moving to the next table.
                    (mapv #(assoc % :table-schema (:schema table) :table-name (:name table))
                          table-fields))
                  (catch Throwable e
@@ -130,33 +131,15 @@
         (mu.fn/instrument-ns? *ns*)
         (eduction (map #(mu.fn/validate-output {} i/FieldMetadataEntry %)))))))
 
-(defn- describe-fks-using-describe-table-fks
-  "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
-  which is deprecated."
-  [driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
-    (eduction
-     (mapcat (fn [table]
-               #_{:clj-kondo/ignore [:deprecated-var]}
-               (for [x (driver/describe-table-fks driver database table)]
-                 {:fk-table-name   (:name table)
-                  :fk-table-schema (:schema table)
-                  :fk-column-name  (:fk-column-name x)
-                  :pk-table-name   (:name (:dest-table x))
-                  :pk-table-schema (:schema (:dest-table x))
-                  :pk-column-name  (:dest-column-name x)})))
-     tables)))
-
 (mu/defn fk-metadata
   "Effectively a wrapper for [[metabase.driver/describe-fks]] that also validates the output against the schema.
-  If the driver doesn't support [[metabase.driver/describe-fks]] it uses [[driver/describe-table-fks]] instead.
-  This will be deprecated in
 
   In workspace mode, expands `:schema-names` to include workspace-isolation schemas so
   the warehouse driver finds FKs on the physical tables that back canonical Tables, then
   back-translates workspace-side identifiers in the result so the rows match canonical
   Table rows in app-db."
-  [database :- i/DatabaseInstance & {:as args}]
+  [database     :- i/DatabaseInstance
+   & {:as args} :- ::driver/describe-fks.options]
   (log-if-error "fk-metadata"
     (let [driver        (driver.u/database->driver database)
           db-id         (:id database)
@@ -164,12 +147,7 @@
                           (:schema-names args)
                           (update :schema-names ws.table-remapping/expand-schema-names-with-workspace db-id))]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (let [describe-fks-fn (if (driver.u/supports? driver :describe-fks database)
-                                driver/describe-fks
-                                ;; In version 52 we'll remove [[driver/describe-table-fks]]
-                                ;; and we'll just use [[driver/describe-fks]] here
-                                describe-fks-using-describe-table-fks)
-              ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
+        (let [ ;; Workspace cross-DB swaps (today: MySQL whose iso table lives in a
               ;; *different* bound database than the canonical) need describe-fks to
               ;; run with the JDBC connection pointed at the iso DB. Loop per iso-DB
               ;; via the workspace hook and concatenate row results. OSS fallback
@@ -177,7 +155,9 @@
               row-batches    (ws.table-remapping/call-with-fk-probe-iso-dbs
                               db-id
                               (fn []
-                                (vec (describe-fks-fn driver database expanded-args))))
+                                (into [] (driver/describe-fks driver
+                                                              (lib-be/instance->metadata database :metadata/database)
+                                                              expanded-args))))
               raw-rows       (vec (mapcat identity row-batches))
               rewritten-rows (ws.table-remapping/rewrite-fk-result-canonical raw-rows db-id)]
           (cond->> rewritten-rows

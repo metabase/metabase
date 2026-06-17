@@ -103,7 +103,7 @@ export const TenantsListing = ({
                   user={{ first_name: tenant.name }}
                   bg={tenantIdToColor(tenant.id)}
                 />
-                <Box component="span" fw={700} c="brand">
+                <Box component="span" fw={700} c="core-brand">
                   {tenant.name}
                 </Box>
               </Flex>

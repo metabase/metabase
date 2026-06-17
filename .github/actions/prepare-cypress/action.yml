@@ -16,7 +16,7 @@ runs:
   using: "composite"
   steps:
     - name: Install Chrome v144
-      uses: browser-actions/setup-chrome@v2
+      uses: browser-actions/setup-chrome@2e1d749697dd1612b833dba4a722266286fbefcd # v2.1.2
       with:
         chrome-version: 144
       id: setup-chrome
@@ -26,7 +26,7 @@ runs:
       id: get-cache-keys
 
     - name: Get Cypress cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ~/.cache/Cypress
         key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}

@@ -14,7 +14,7 @@
    [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
    (java.time.temporal Temporal)
    (org.apache.commons.codec.digest MurmurHash2)
@@ -130,8 +130,8 @@
      (u.date/extract-units unit)
      :type/Integer
 
-       ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
-       ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
+     ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
+     ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
      (isa? (or effective-type base-type) :type/Temporal)
      :type/DateTime
 
@@ -253,43 +253,38 @@
     (/ (double (reduce + 0.0 (take n (sort > (vals counts)))))
        (double total))))
 
+(deftype ^:private ModeStatsTracker [^:volatile-mutable counts, ^:volatile-mutable ^long total]
+  ;; Save the trouble of introducing a dedicated protocol/interface to interact with mutable fields by implementing
+  ;; two arities of IFn interface.
+  clojure.lang.IFn
+  (invoke [_]
+    {:mode-fraction  (top-n-fraction counts total 1)
+     :top-3-fraction (top-n-fraction counts total 3)})
+  (invoke [this x]
+    (set! total (inc total))
+    (when-not (nil? x)
+      ;; Key the frequency map on (hash x), not x itself: mode-fraction / top-3-fraction need only
+      ;; value frequencies, never the values, and retaining raw values is high memory cost.
+      (let [k (hash x)]
+        (cond (contains? counts k)                        (set! counts (update counts k inc))
+              (< (count counts) mode-stats-max-distinct)  (set! counts (assoc counts k 1)))))
+    this))
+
 (defn- mode-stats
   "Reducer that tracks value frequencies (bounded at `mode-stats-max-distinct` entries)
   and, on completion, returns {:mode-fraction, :top-3-fraction}. High mode-fraction
   signals single-value dominance; high top-3-fraction with moderate mode-fraction signals
   bimodal / few-real-categories distributions."
-  ([] [{} 0])
-  ([[counts total]]
-   {:mode-fraction  (top-n-fraction counts total 1)
-    :top-3-fraction (top-n-fraction counts total 3)})
-  ([[counts total] x]
-   (cond
-     (nil? x)                                    [counts (inc total)]
-     (contains? counts x)                        [(update counts x inc) (inc total)]
-     (< (count counts) mode-stats-max-distinct)  [(assoc counts x 1) (inc total)]
-     :else                                       [counts (inc total)])))
-
-(defn- ->millis-from-epoch
-  "Coerce a `java.time.temporal.Temporal` (as produced by `->temporal`) to long epoch millis.
-  Returns nil for unsupported types; callers typically wrap with `(keep ->millis-from-epoch)`
-   to strip non-coerceable values."
-  [t]
-  (cond (instance? Instant t)        (.toEpochMilli ^Instant t)
-        (instance? OffsetDateTime t) (.toEpochMilli (.toInstant ^OffsetDateTime t))
-        (instance? ZonedDateTime t)  (.toEpochMilli (.toInstant ^ZonedDateTime t))
-        (instance? LocalDate t)      (recur (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
-        (instance? LocalDateTime t)  (recur (t/offset-date-time t (t/zone-offset 0)))
-        (instance? LocalTime t)      (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
-        (instance? OffsetTime t)     (recur (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t)))
-        :else                        nil))
+  ([] (->ModeStatsTracker {} 0))
+  ([tracker] (tracker))
+  ([tracker x] (tracker x)))
 
 (deffingerprinter :type/DateTime
   ((map ->temporal)
    (redux/post-complete
     (robust-fuse {:earliest   earliest
                   :latest     latest
-                  :skewness   ((keep ->millis-from-epoch) stats/skewness)
-                  :mode-stats ((keep ->millis-from-epoch) mode-stats)})
+                  :mode-stats ((filter some?) mode-stats)})
     (fn [{:keys [mode-stats] :as fused}]
       (-> fused
           (dissoc :mode-stats)

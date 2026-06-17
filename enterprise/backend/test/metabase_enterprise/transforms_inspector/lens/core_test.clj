@@ -89,7 +89,6 @@
                                           :from-table-id 10
                                           :native-context {:join-structure [{:strategy :left-join
                                                                              :source-table nil}]}})))
-
     (is (not (lens.core/lens-applicable? :join-analysis
                                          {:has-joins? true
                                           :from-table-id 10

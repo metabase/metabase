@@ -6,7 +6,6 @@ export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
 export const FIXED_METABOT_IDS = {
   DEFAULT: 1 as const,
   EMBEDDED: 2 as const,
-  SLACKBOT: 3 as const,
 };
 
 export const METABOT_REQUEST_IDS = {
@@ -16,7 +15,6 @@ export const METABOT_REQUEST_IDS = {
 export const FIXED_METABOT_ENTITY_IDS = {
   DEFAULT: "metabotmetabotmetabot" as const,
   EMBEDDED: "embeddedmetabotmetabo" as const,
-  SLACKBOT: "slackbotmetabotmetabo" as const,
 };
 
 export const METABOT_PROFILES = {
@@ -79,6 +77,7 @@ export function renderMetabotProfileLabel(id: string): string {
 
 export const METABOT_PROFILE_OVERRIDES = {
   DEFAULT: undefined,
+  NLQ: "nlq",
   SQL: "sql",
   TRANSFORMS_CODEGEN: "transforms_codegen",
 } as const satisfies Record<string, MetabotProfileId | undefined>;

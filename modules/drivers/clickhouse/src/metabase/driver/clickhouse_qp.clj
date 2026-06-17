@@ -300,7 +300,6 @@
     [:case
      [:< position 1]
      ""
-
      :else
      [:'arrayElement
       [:'splitByString (sql.qp/->honeysql driver divider) [:'assumeNotNull (sql.qp/->honeysql driver text)]]
@@ -547,9 +546,9 @@
     (when-let [zdt (.getObject rs i ZonedDateTime)]
       (let [db-type (remove-low-cardinality-and-nullable (.getColumnTypeName rsmeta i))]
         (if (= db-type "datetime64(3, 'gmt0')")
-              ;; a hack for some MB test assertions only; GMT0 is a legacy tz
+          ;; a hack for some MB test assertions only; GMT0 is a legacy tz
           (.toLocalDateTime ^ZonedDateTime (zdt-in-report-timezone zdt))
-              ;; this is the normal behavior
+          ;; this is the normal behavior
           (.toOffsetDateTime (.withZoneSameInstant
                               ^ZonedDateTime (zdt-in-report-timezone zdt)
                               (java.time.ZoneId/of "UTC"))))))))
@@ -595,7 +594,7 @@
         (ipv4-column->string rs i)
         (= normalized-db-type "ipv6")
         (ipv6-column->string rs i)
-            ;; _
+        ;; _
         :else (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]

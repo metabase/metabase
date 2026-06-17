@@ -1,4 +1,6 @@
-import type { WorkspaceId } from "metabase-types/api";
+import yaml from "js-yaml";
+
+import type { AdvancedConfig } from "metabase-types/api";
 
 import { modal } from "./e2e-ui-elements-helpers";
 
@@ -8,36 +10,45 @@ export const WorkspaceListPage = {
     cy.visit("/data-studio/workspaces");
     WorkspaceListPage.get().should("be.visible");
   },
-  newButton: ({ first = true }: { first?: boolean } = {}) =>
+  newButton: ({ primary = true }: { primary?: boolean } = {}) =>
     WorkspaceListPage.get().findByRole("button", {
-      name: first ? "Create a workspace" : "New",
+      name: primary ? "Create a workspace" : "New",
+    }),
+  setupInstanceButton: () =>
+    WorkspaceListPage.get().findByRole("button", {
+      name: "Upload a workspace config",
     }),
   workspaceList: () => WorkspaceListPage.get().findByTestId("workspace-list"),
   workspace: (name: string) =>
     WorkspaceListPage.get().findByRole("region", { name }),
+  workspaceMenuButton: (name: string) =>
+    WorkspaceListPage.workspace(name).findByRole("button", {
+      name: "Workspace options",
+    }),
+  renameMenuItem: () => cy.findByRole("menuitem", { name: "Rename" }),
+  downloadConfigMenuItem: () =>
+    cy.findByRole("menuitem", { name: /Download config\.yml/ }),
+  deleteMenuItem: () => cy.findByRole("menuitem", { name: "Delete" }),
 };
 
 export const NewWorkspaceModal = {
   get: () => modal(),
   nameInput: () => NewWorkspaceModal.get().findByLabelText("Name"),
+  databaseCheckbox: (name: string) =>
+    NewWorkspaceModal.get().findByRole("checkbox", { name }),
   createButton: () =>
-    NewWorkspaceModal.get().findByRole("button", { name: "Create" }),
+    NewWorkspaceModal.get().findByRole("button", { name: "Create workspace" }),
   cancelButton: () =>
     NewWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };
 
-export const WorkspacePage = {
-  get: () => cy.findByTestId("workspace-page"),
-  visit: (id: WorkspaceId) => {
-    cy.visit(`/data-studio/workspaces/${id}`);
-    WorkspacePage.get().should("be.visible");
-  },
-  nameInput: () => WorkspacePage.get().findByTestId("workspace-name-input"),
-  breadcrumbs: () =>
-    WorkspacePage.get().findByTestId("data-studio-breadcrumbs"),
-  menuButton: () =>
-    WorkspacePage.get().findByRole("button", { name: "Workspace actions" }),
-  deleteMenuItem: () => cy.findByRole("menuitem", { name: "Delete" }),
+export const RenameWorkspaceModal = {
+  get: () => modal(),
+  nameInput: () => RenameWorkspaceModal.get().findByLabelText("Name"),
+  renameButton: () =>
+    RenameWorkspaceModal.get().findByRole("button", { name: "Rename" }),
+  cancelButton: () =>
+    RenameWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };
 
 export const DeleteWorkspaceModal = {
@@ -50,78 +61,45 @@ export const DeleteWorkspaceModal = {
     DeleteWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };
 
-export const WorkspaceDatabaseSection = {
-  get: () => cy.findByTestId("workspace-database-section"),
-  addDatabaseButton: ({ first = true }: { first?: boolean } = {}) =>
-    WorkspaceDatabaseSection.get().findByRole("button", {
-      name: first ? "Add database" : "Add another database",
-    }),
-  databaseList: () =>
-    WorkspaceDatabaseSection.get().findAllByTestId("workspace-database-item"),
-  database: (name: string) =>
-    WorkspaceDatabaseSection.get().findByRole("region", { name }),
-  databaseMenuButton: (name: string) =>
-    WorkspaceDatabaseSection.database(name).findByRole("button", {
-      name: "Database actions",
-    }),
-  editMenuItem: () => cy.findByRole("menuitem", { name: "Edit" }),
-  removeMenuItem: () => cy.findByRole("menuitem", { name: "Remove" }),
-};
-
-export const NewWorkspaceDatabaseModal = {
+export const SetupWorkspaceModal = {
   get: () => modal(),
-  databaseRadio: (name: string) =>
-    NewWorkspaceDatabaseModal.get().findByRole("radio", { name }),
-  schemasInput: () =>
-    NewWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
-  submitButton: () =>
-    NewWorkspaceDatabaseModal.get().findByRole("button", {
-      name: "Add database",
-    }),
+  configInput: () => SetupWorkspaceModal.get().get('input[type="file"]'),
+  setupButton: () =>
+    SetupWorkspaceModal.get().findByRole("button", { name: "Set up" }),
   cancelButton: () =>
-    NewWorkspaceDatabaseModal.get().findByRole("button", { name: "Cancel" }),
+    SetupWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
+  uploadConfig: (config: AdvancedConfig) => {
+    SetupWorkspaceModal.configInput().selectFile(
+      {
+        contents: Cypress.Buffer.from(yaml.dump(config)),
+        fileName: "config.yml",
+        mimeType: "application/yaml",
+      },
+      { force: true },
+    );
+  },
 };
 
-export const UpdateWorkspaceDatabaseModal = {
-  get: () => modal(),
-  schemasInput: () =>
-    UpdateWorkspaceDatabaseModal.get().findByLabelText("Schemas to include"),
-  saveButton: () =>
-    UpdateWorkspaceDatabaseModal.get().findByRole("button", {
-      name: "Save changes",
-    }),
-  cancelButton: () =>
-    UpdateWorkspaceDatabaseModal.get().findByRole("button", { name: "Cancel" }),
-};
-
-export const RemoveWorkspaceDatabaseModal = {
-  get: () => modal(),
-  confirmButton: () =>
-    RemoveWorkspaceDatabaseModal.get().findByRole("button", { name: "Remove" }),
-  cancelButton: () =>
-    RemoveWorkspaceDatabaseModal.get().findByRole("button", { name: "Cancel" }),
-};
-
-export const WorkspaceSetupSection = {
-  get: () => cy.findByTestId("workspace-setup-section"),
-  downloadConfigButton: () =>
-    WorkspaceSetupSection.get().findByRole("link", {
-      name: /Download config\.yml/,
-    }),
-};
-
-export const WorkspaceInstancePage = {
-  get: () => cy.findByTestId("workspace-instance-page"),
+export const CurrentWorkspacePage = {
+  get: () => cy.findByTestId("current-workspace-page"),
   visit: () => {
-    cy.visit("/data-studio/workspaces/instance");
-    WorkspaceInstancePage.get().should("be.visible");
+    cy.visit("/data-studio/workspaces");
+    CurrentWorkspacePage.get().should("be.visible");
   },
   database: (name: string) =>
-    WorkspaceInstancePage.get().findByRole("region", { name }),
-  emptyState: () =>
-    WorkspaceInstancePage.get().findByText(
-      /Tables will be remapped here the first time a transform runs/,
-    ),
+    CurrentWorkspacePage.get().findByRole("region", { name }),
   remappingRow: (canonicalName: string) =>
-    WorkspaceInstancePage.get().findByText(canonicalName),
+    CurrentWorkspacePage.get().findByText(canonicalName),
+  leaveButton: () =>
+    CurrentWorkspacePage.get().findByRole("button", {
+      name: "Leave workspace",
+    }),
+};
+
+export const LeaveWorkspaceModal = {
+  get: () => modal(),
+  confirmButton: () =>
+    LeaveWorkspaceModal.get().findByRole("button", { name: "Leave workspace" }),
+  cancelButton: () =>
+    LeaveWorkspaceModal.get().findByRole("button", { name: "Cancel" }),
 };

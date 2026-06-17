@@ -1,6 +1,6 @@
 .ButtonLink {
   display: inline-flex;
-  background-color: var(--mb-color-brand);
+  background-color: var(--mb-color-core-brand);
   color: var(--mb-color-text-primary-inverse);
   align-items: center;
   font-weight: bold;
@@ -19,5 +19,5 @@
 }
 
 .LinkRoot:focus-visible {
-  outline: 2px solid var(--mb-color-brand);
+  outline: 2px solid var(--mb-color-core-brand);
 }

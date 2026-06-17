@@ -15,7 +15,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { mockGetBoundingClientRect } from "__support__/utils";
 import { serializeCardForUrl } from "metabase/common/utils/card";
+import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   createMockCardQueryMetadata,
@@ -47,19 +49,15 @@ registerVisualizations();
 
 describe("QueryBuilder - unsaved changes warning", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  mockGetBoundingClientRect();
 
   beforeEach(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
-    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
   });
 
   afterEach(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
 
     jest.resetAllMocks();
     setupJestCanvasMock();
@@ -70,6 +68,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       const { history } = await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
 
       await startNewNotebookModel();
@@ -85,6 +84,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
 
       await startNewNotebookModel();
@@ -98,6 +98,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await setup({
         card: null,
         initialRoute: "/model/new",
+        newModelOptionsComponent: NewModelOptions,
       });
       setupCardCreateEndpoint();
       setupCardEndpoints(TEST_NATIVE_CARD);

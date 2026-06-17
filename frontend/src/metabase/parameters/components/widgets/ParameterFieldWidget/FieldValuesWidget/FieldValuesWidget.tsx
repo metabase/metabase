@@ -47,7 +47,7 @@ import {
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
 import Field from "metabase-lib/v1/metadata/Field";
-import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
+import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
@@ -92,7 +92,7 @@ function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
 }
 
 export interface IFieldValuesWidgetProps {
-  color?: "brand";
+  color?: "core-brand";
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
@@ -730,9 +730,7 @@ function RemappedValue({
   const { uuid, token } = useEmbeddingEntityContext();
   const entityIdentifier = uuid ?? token ?? null;
 
-  const isRemapped =
-    Field.remappedField(fields) != null ||
-    getSourceType(parameter) === "static-list";
+  const isRemapped = hasRemappedParameterValues(parameter, fields);
 
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped

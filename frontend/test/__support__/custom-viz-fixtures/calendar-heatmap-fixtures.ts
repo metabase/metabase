@@ -57,14 +57,21 @@ export function useHeatmapPlugin() {
   const [ready, setReady] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    loadCustomVizPlugin({
-      id: 1,
-      bundle_hash: "dev",
-      bundle_url: `${PLUGIN_BASE_URL}/index.js`,
-      display_name: "Calendar Heatmap",
-      identifier: PLUGIN_IDENTIFIER,
-      icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
-    }).then(() => {
+    loadCustomVizPlugin(
+      {
+        id: 1,
+        bundle_hash: "dev",
+        bundle_url: `${PLUGIN_BASE_URL}/index.js`,
+        display_name: "Calendar Heatmap",
+        identifier: PLUGIN_IDENTIFIER,
+        icon: `${PLUGIN_BASE_URL}/assets/calendar.svg`,
+      },
+      {
+        // Storybook has no backend for the sandbox-host endpoint and no strict
+        // parent CSP, so use about:blank instead of the iframe-src sandbox.
+        sandboxMode: "blank",
+      },
+    ).then(() => {
       if (!cancelled) {
         setReady(true);
       }

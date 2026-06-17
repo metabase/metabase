@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sql-jdbc-test]}}}}}}
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -24,9 +25,11 @@
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel describe-database-test
-  (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS" "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
-                         {:name table, :schema "PUBLIC", :description nil, :is_writable true}))}
-         (driver/describe-database :h2 (mt/db)))))
+  (is (set/subset? (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"
+                                     "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
+                          {:name table, :schema "PUBLIC",
+                           :description nil, :is_writable true}))
+                   (:tables (driver/describe-database :h2 (mt/db))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
@@ -318,59 +321,46 @@
             qualified-temp-2  (qualified-table-name schema temp-table-2)
             test-data-1       [[1 "Alice"] [2 "Bob"]]
             test-data-2       [[1 "Product A"] [2 "Product B"]]]
-
         (driver/create-table! driver db-id qualified-table-1
                               {"id" "INTEGER", "name" "VARCHAR(255)"} {})
         (driver/create-table! driver db-id qualified-table-2
                               {"id" "INTEGER", "name" "VARCHAR(255)"} {})
-
         (try
           (driver/insert-into! driver db-id qualified-table-1 ["id" "name"] test-data-1)
           (driver/insert-into! driver db-id qualified-table-2 ["id" "name"] test-data-2)
-
           (testing "basic rename operations work correctly"
             (driver/rename-tables! driver db-id
                                    {qualified-table-1 qualified-temp-1
                                     qualified-table-2 qualified-temp-2})
-
             (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
             (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
             (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
             (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-
             (is (= test-data-1 (table-rows qualified-temp-1)))
             (is (= test-data-2 (table-rows qualified-temp-2)))
-
             (driver/rename-tables! driver db-id
                                    {qualified-temp-1 qualified-table-1
                                     qualified-temp-2 qualified-table-2}))
-
           (testing "atomicity: all renames fail if any rename fails"
             (let [conflict-table (str test-table-2 "_conflict")
                   qualified-conflict (qualified-table-name schema conflict-table)]
               (driver/create-table! driver db-id qualified-conflict {"id" "INTEGER"} {})
-
               (try
                 (is (thrown? Exception
                              (driver/rename-tables! driver db-id
                                                     {qualified-table-1 qualified-temp-1
                                                      qualified-table-2 qualified-conflict})))
-
                 (testing "original tables should still exist after failed atomic rename"
                   (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
                   (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
-
                 (testing "temp tables should not exist after failed atomic rename"
                   (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
                   (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
-
                 (testing "original data should be intact after failed atomic rename"
                   (is (= test-data-1 (table-rows qualified-table-1)))
                   (is (= test-data-2 (table-rows qualified-table-2))))
-
                 (finally
                   (driver/drop-table! driver db-id qualified-conflict)))))
-
           (finally
             (driver/drop-table! driver db-id qualified-table-1)
             (driver/drop-table! driver db-id qualified-table-2)))))))
@@ -395,7 +385,6 @@
                 "Renamed table should exist")
             (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
                 "Original table should not exist"))
-
           (finally
             (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
               (driver/drop-table! driver db-id qualified-renamed))

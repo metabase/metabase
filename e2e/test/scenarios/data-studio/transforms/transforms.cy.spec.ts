@@ -50,9 +50,6 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
     cy.intercept("POST", "/api/transform-tag").as("createTag");
     cy.intercept("PUT", "/api/transform-tag/*").as("updateTag");
     cy.intercept("DELETE", "/api/transform-tag/*").as("deleteTag");
-    cy.intercept("POST", "/api/ee/dependencies/check-transform").as(
-      "checkTransformDependencies",
-    );
   });
 
   afterEach(() => {
@@ -195,7 +192,23 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
         cy.log("Select database");
         H.popover().findByText(DB_NAME).click();
 
+        cy.log("open the editor search panel with Cmd/Ctrl+F (metabase#73290)");
+        H.PythonEditor.focus();
+        cy.realPress([H.metaKey, "f"]);
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("be.visible");
+
         getPythonDataPicker().findByText("Select a table…").click();
+
+        cy.log(
+          "the editor search panel must not paint over the modal (metabase#73290)",
+        );
+        H.entityPickerModal().should("be.visible");
+        cy.findByTestId("python-editor")
+          .find(".cm-panels")
+          .should("not.be.visible");
+
         H.entityPickerModal().findByText("Animals").click();
 
         getPythonDataPicker().within(() => {
@@ -346,10 +359,10 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
     it("should be possible to convert an MBQL transform to a SQL transform", () => {
       const EXPECTED_QUERY = `SELECT
-  "Schema Q"."Animals"."name" AS "name",
-  "Schema Q"."Animals"."score" AS "score"
+  "Schema A"."Animals"."name" AS "name",
+  "Schema A"."Animals"."score" AS "score"
 FROM
-  "Schema Q"."Animals"
+  "Schema A"."Animals"
 LIMIT
   5`;
 
@@ -1807,6 +1820,66 @@ LIMIT
     });
   });
 
+  describe("disconnected database", () => {
+    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
+      cy.log("create a transform");
+      createMbqlTransform({ visitTransform: false });
+
+      cy.log("go to admin and delete the writable database");
+      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
+      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
+      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+      cy.button("Remove this database").click();
+      cy.wait("@usageInfo");
+
+      cy.log(
+        "verify the delete modal warns about transforms that will stop working",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/1 transform will stop working/)
+          .should("not.be.checked")
+          .click()
+          .should("be.checked");
+        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
+        cy.findByText("Delete this DB connection").click();
+        cy.wait("@deleteDb");
+      });
+
+      cy.log(
+        "visit the transform query page and verify the disconnected banner",
+      );
+      cy.visit("/data-studio/transforms/1");
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log("edit definition button should not be visible");
+      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
+
+      cy.log(
+        "visit the run page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.runTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the settings page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.settingsTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the inspect page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.inspectTab().click();
+      verifyDisconnectedDatabaseBanner();
+
+      cy.log(
+        "visit the dependencies page and verify the disconnected banner is visible",
+      );
+      H.DataStudio.Transforms.dependenciesTab().click();
+      verifyDisconnectedDatabaseBanner();
+    });
+  });
+
   describe("cancelation", () => {
     function createSlowTransform(seconds: number = 100) {
       H.createTransform(
@@ -2709,10 +2782,10 @@ LIMIT
       cy.log("'Change target' button is not displayed");
       cy.findByRole("button", { name: /Change target/ }).should("not.exist");
 
-      cy.log("'Only process new and changed data' switch is not displayed");
-      cy.findByRole("switch", {
-        name: /Only process new and changed data/,
-      }).should("be.disabled");
+      cy.log("'Only process new data' switch is not displayed");
+      cy.findByRole("switch", { name: /Only process new data/ }).should(
+        "be.disabled",
+      );
 
       cy.log("visiting edit mode url directly redirects to view-only mode");
       cy.visit("/data-studio/transforms/1/edit");
@@ -3784,13 +3857,23 @@ describe("scenarios > admin > transforms", () => {
     cy.log("create a new transform");
     visitTransformListPage();
     cy.findByRole("heading", {
-      name: "To use transforms, you need a writable database connection",
+      name: "No compatible database connection",
     }).should("exist");
     cy.findByRole("link", { name: "View your database connections" }).should(
       "exist",
     );
   });
 });
+
+function verifyDisconnectedDatabaseBanner() {
+  return cy
+    .findByRole("alert")
+    .should("be.visible")
+    .and(
+      "contain.text",
+      "The database this transform depends on has been disconnected",
+    );
+}
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Transforms" });

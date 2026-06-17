@@ -38,7 +38,7 @@ export const LabelContainer = styled.div<{ color?: ColorName }>`
   column-gap: 0.3em;
   font-size: 1em;
   font-weight: normal;
-  color: ${({ color: _color = "brand" }) => color(_color)};
+  color: ${({ color: _color = "core-brand" }) => color(_color)};
   margin-bottom: 0.5rem;
 `;
 
@@ -71,7 +71,7 @@ export const LoadingSpinner = styled(LoadingSpinnerBase)`
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 `;
 
 export const Table = styled.table`

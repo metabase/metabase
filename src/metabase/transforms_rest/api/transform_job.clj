@@ -80,6 +80,8 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
+   [:dependency {:optional true} :boolean]
+   [:scheduled {:optional true} :boolean]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
@@ -201,7 +203,8 @@
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
       (-> (t2/select-one :model/TransformJob :id job-id)
-          (t2/hydrate :tag_ids :last_run)))))
+          (t2/hydrate :tag_ids :last_run)
+          (update :last_run transforms-base.u/present-run)))))
 
 (api.macros/defendpoint :delete "/:job-id" :- nil
   "Delete a transform job."
@@ -215,14 +218,19 @@
 (api.macros/defendpoint :post "/:job-id/run" :- [:map {:closed true}
                                                  [:message :string]
                                                  [:job_run_id :string]]
-  "Run a transform job manually."
-  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
+  "Run a transform job manually. By default, fresh pulled-in dependencies are skipped; pass `run_all`
+  to force-refresh the whole plan."
+  [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
+   _query-params
+   {:keys [run_all]} :- [:map
+                         [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
   (api/write-check (t2/select-one :model/TransformJob :id job-id))
   (u.jvm/in-virtual-thread*
    (try
-     (transforms.core/run-job! job-id {:run-method :manual
-                                       :user-id api/*current-user-id*})
+     (transforms.core/run-job! job-id {:run-method       :manual
+                                       :user-id          api/*current-user-id*
+                                       :skip-fresh-deps? (not run_all)})
      (catch Throwable t
        (log/error "Error executing transform job" job-id)
        (log/error t))))
@@ -235,7 +243,8 @@
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
   (-> (api/read-check (t2/select-one :model/TransformJob :id job-id))
-      (t2/hydrate :tag_ids :last_run)))
+      (t2/hydrate :tag_ids :last_run)
+      (update :last_run transforms-base.u/present-run)))
 
 (defn- add-next-run
   [{id :id :as job}]
@@ -272,8 +281,8 @@
                 (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
                 (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                 (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms-base.u/localize-run-timestamps))
-                (map #(update % :next_run transforms-base.u/localize-run-timestamps)))
+                (map #(update % :last_run transforms-base.u/present-run))
+                (map #(update % :next_run transforms-base.u/present-run)))
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes

@@ -786,7 +786,6 @@
               (is (= (mi/perms-objects-set collection :read)
                      (mi/perms-objects-set card-1 :read)
                      (mi/perms-objects-set card-2 :read)))
-
               (testing "\nSanity check: shouldn't be able to read before we grant permissions\n"
                 (doseq [[object-name object] {"Collection" collection
                                               "Card 1"     card-1
@@ -795,7 +794,6 @@
                     (testing object-name
                       (is (= false
                              (mi/can-read? object)))))))
-
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
                 (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
@@ -805,7 +803,6 @@
                     (testing object-name
                       (is (true?
                            (mi/can-read? object)))))
-
                   (testing "\nshould be able to run the query"
                     (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3]
                             [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
@@ -846,7 +843,6 @@
           (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
-
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
@@ -856,7 +852,6 @@
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
-
         (testing "Card in a different Collection for which we do not have perms"
           ;; allowing `with-temp` here since we need it to make Collections
           #_{:clj-kondo/ignore [:discouraged-var]}
@@ -865,7 +860,6 @@
             (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
-
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             ;; allowing `with-temp` here since we need it to make Collections
@@ -874,7 +868,6 @@
               (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (= "You don't have permissions to do that."
                      (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
-
           (testing "Try to save in a different Collection for which we do not have perms"
             ;; allowing `with-temp` here since we need it to make Collections
             #_{:clj-kondo/ignore [:discouraged-var]}
@@ -1517,8 +1510,7 @@
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
                                                   (format (str "SELECT \"__mb_source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) AS \"__mb_source\" "
-                                                               "LIMIT 1048575")
+                                                               "FROM (%s) AS \"__mb_source\"")
                                                           s)))
                        (qp.compile/compile q2))))
               (is (= [[543]]
@@ -1699,7 +1691,6 @@
                                                                  (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                                       "Space Table Alias"))])))
-
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :lib/original-join-alias)
                                                    (lib/breakoutable-columns $q)))
                     (lib/append-stage $q)

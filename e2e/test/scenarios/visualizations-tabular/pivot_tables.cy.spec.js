@@ -614,6 +614,74 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("3,798"); // subtotal value
     });
+
+    it("should show no-results then hide an empty pivot dashcard (UXW-4145)", () => {
+      const FILTER_ID = "d7988e02";
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 16,
+          size_y: 8,
+        },
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        cy.log(
+          "Add an ID filter to the dashboard and map it to the pivot card",
+        );
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: [{ id: FILTER_ID, name: "ID", slug: "id", type: "id" }],
+          dashcards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 16,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: FILTER_ID,
+                  card_id,
+                  target: ["dimension", ["field", ORDERS.ID]],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashboard_id);
+      });
+
+      cy.log("Filtering to a value with no rows shows the no-results state");
+      H.filterWidget().click();
+      H.dashboardParametersPopover().within(() => {
+        cy.findByPlaceholderText("Enter an ID").type("-1{enter}");
+        cy.button("Add filter").click();
+      });
+      // Pre-fix this rendered a blank pivot; the grand-total row hid the emptiness.
+      H.getDashboardCard(0).findByText("No results!").should("be.visible");
+
+      cy.log("Enabling 'hide if empty' removes the now-empty card");
+      H.editDashboard();
+      cy.findByTestId("dashboardcard-actions-panel").within(() => {
+        cy.icon("palette").click({ force: true });
+      });
+      cy.findByRole("dialog").within(() => {
+        cy.findByLabelText("Hide this card if there are no results").click({
+          force: true,
+        });
+        cy.button("Done").click();
+      });
+      H.saveDashboard();
+
+      cy.findByTestId("dashcard").should("not.exist");
+    });
   });
 
   describe("sharing (metabase#14447)", () => {

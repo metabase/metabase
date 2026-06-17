@@ -104,7 +104,10 @@
   (cond-> (name kw)
     (= :h2 (mdb/db-type)) u/upper-case-en))
 
-(defn- exists? [table]
+(defn exists?
+  "Whether the given index `table` actually exists in the appdb (the tracked active/pending table can be
+  briefly stale relative to what has been dropped)."
+  [table]
   (when table
     (t2/exists? :information_schema.tables :table_name (table-name table))))
 
@@ -211,7 +214,7 @@
         (or pending
             (let [table-name (gen-table-name)]
               (log/infof "Creating pending index %s for lang %s" table-name (i18n/site-locale-string))
-            ;; We may fail to insert a new metadata row if we lose a race with another instance.
+              ;; We may fail to insert a new metadata row if we lose a race with another instance.
               (when (search-index-metadata/create-pending! :appdb (search.spec/index-version-hash) table-name)
                 (try
                   (create-table! table-name)
@@ -227,6 +230,15 @@
                 (log/infof "New pending index %s" pending)
                 pending)))))))
 
+(defn- analyze-table!
+  "Refresh the table's statistics so size estimates are accurate as soon as it becomes active.
+  Best-effort: a failure here must never block activation."
+  [table-name]
+  (try
+    (specialization/analyze-table! table-name)
+    (catch Exception e
+      (log/warnf e "Failed to analyze index table %s" table-name))))
+
 (defn activate-table!
   "Make the pending index active if it exists. Returns true if it did so."
   []
@@ -235,11 +247,13 @@
       ;; The atoms are the only source of truth, we must not update the metadata.
       (boolean
        (when-let [pending (:pending @*indexes*)]
+         (analyze-table! pending)
          (reset! *indexes* {:pending nil, :active pending}) true))
       ;; Ensure the metadata is updated and pruned.
       (let [{:keys [pending]} (sync-tracking-atoms!)]
         (log/infof "Activating pending index %s" pending)
         (when pending
+          (analyze-table! pending)
           (let [active (keyword (search-index-metadata/active-pending! :appdb (search.spec/index-version-hash)))]
             (reset! *indexes* {:pending nil :active active})
             (log/infof "Activated pending index %s" active)))
@@ -353,12 +367,7 @@
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
                               (t2/query ["commit"]))
-                            (log/trace "indexed documents for " <>)
-                            (when active-updated
-                              (try
-                                (analytics/set-gauge! :metabase-search/appdb-index-size (t2/count (name active-updated)))
-                                (catch Exception e
-                                  (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
+                            (log/trace "indexed documents for " <>)))))]
     (if reindexing?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]
@@ -380,23 +389,14 @@
 
 (defmethod search.engine/delete! :search.engine/appdb [_engine search-model ids]
   (when (seq ids)
-    (u/prog1 (->> [(active-table) (pending-table)]
-                  (keep (fn [table-name]
-                          (when table-name
-                            {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
-                                               ;; Race conditions with table being deleted, especially in tests.
-                                               (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
-                  (apply merge-with +)
-                  (into {}))
-      (when (active-table)
-        (try
-          (analytics/set-gauge! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                         :from   [(active-table)]
-                                                                                         :limit  1})))
-          (catch Exception e
-            ;; No point tracking the size of the newer index table, since we won't have modified it.
-            (when-not (table-not-found-exception? e)
-              (throw e))))))))
+    (->> [(active-table) (pending-table)]
+         (keep (fn [table-name]
+                 (when table-name
+                   {search-model (try (t2/delete! table-name :model search-model :model_id [:in (set ids)])
+                                      ;; Race conditions with table being deleted, especially in tests.
+                                      (catch Exception e (if (table-not-found-exception? e) 0 (throw e))))})))
+         (apply merge-with +)
+         (into {}))))
 
 (defn when-index-created
   "Return creation time of the active index, or nil if there is none."
@@ -429,7 +429,7 @@
   (log/infof "Resetting appdb index for version %s, active table: %s" (search.spec/index-version-hash)
              (pr-str (active-table)))
   (letfn [(reset-logic []
-              ;; stop tracking any pending table
+            ;; stop tracking any pending table
             (when-let [table-name (pending-table)]
               (when-not *mocking-tables*
                 (let [deleted (search-index-metadata/delete-index! :appdb (search.spec/index-version-hash) table-name)]
@@ -453,7 +453,6 @@
     (when-not *mocking-tables*
       (when (nil? (active-table))
         (sync-tracking-atoms!)))
-
     (when (or force-reset? (not (exists? (active-table))))
       (reset-index!))))
 

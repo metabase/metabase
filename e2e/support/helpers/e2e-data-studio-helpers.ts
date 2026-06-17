@@ -143,12 +143,13 @@ export const DataStudio = {
     visit: () => {
       cy.visit("/data-studio/library");
       DataStudio.Library.libraryPage().should("be.visible");
+      DataStudio.Library.collectionItem("Data").should("be.visible");
+      DataStudio.Library.collectionItem("Metrics").should("be.visible");
+      DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
     },
     noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
-    metricItem: (name: string) =>
-      cy.findAllByTestId("metric-name").contains(name),
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
@@ -157,5 +158,7 @@ export const DataStudio = {
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string | RegExp) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
+    emptyStateRow: (description: string | RegExp) =>
+      libraryPage().contains('[data-testid="empty-state-row"]', description),
   },
 };

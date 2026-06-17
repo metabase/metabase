@@ -2,6 +2,7 @@ import type {
   CardId,
   CollectionId,
   DatabaseId,
+  ErdParams,
   FieldId,
   MeasureId,
   NativeQuerySnippetId,
@@ -266,12 +267,49 @@ export function dataStudioMetricDependencies(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/dependencies`;
 }
 
-export function dataStudioMetricCaching(cardId: CardId) {
-  return `${dataStudioMetric(cardId)}/caching`;
-}
-
 export function dataStudioMetricHistory(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/history`;
+}
+
+type DataStudioSchemaViewerParams = {
+  databaseId: DatabaseId;
+  schema?: SchemaName;
+  tableIds?: readonly TableId[];
+};
+
+export function getSchemaViewerParams({
+  databaseId,
+  schema,
+  tableIds,
+}: DataStudioSchemaViewerParams): ErdParams {
+  const params: ErdParams = { "database-id": databaseId };
+  if (schema != null) {
+    params.schema = schema;
+  }
+  if (tableIds != null && tableIds.length > 0) {
+    params["table-ids"] = [...tableIds];
+  }
+  return params;
+}
+
+export function dataStudioSchemaViewer(args?: DataStudioSchemaViewerParams) {
+  const SCHEMA_VIEWER_BASE_URL = `${ROOT_URL}/schema-viewer`;
+  if (!args) {
+    return SCHEMA_VIEWER_BASE_URL;
+  }
+
+  const queryParams = getSchemaViewerParams(args);
+  const params = new URLSearchParams();
+  params.set("database-id", String(queryParams["database-id"]));
+  if (queryParams.schema != null) {
+    params.set("schema", queryParams.schema);
+  }
+  if (queryParams["table-ids"] != null) {
+    for (const id of queryParams["table-ids"]) {
+      params.append("table-ids", String(id));
+    }
+  }
+  return `${SCHEMA_VIEWER_BASE_URL}?${params.toString()}`;
 }
 
 export function dataStudioGlossary() {

@@ -45,8 +45,8 @@
   [query-type model]
   (comp
    (next-method query-type model)
-    ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
-    ;; This will also help to secure properties that we set to secret in the future.
+   ;; This is for safety - if a secret ever gets stored in details we don't want it to leak.
+   ;; This will also help to secure properties that we set to secret in the future.
    (map secret/clean-secret-properties-from-database)))
 
 (t2/deftransforms :model/Database
@@ -161,6 +161,16 @@
    implementation is a no-op — fresh OSS installs have no workspace_database table, and
    feature-off EE instances have nothing to reconcile."
   metabase-enterprise.workspaces.models.workspace-database
+  [_db-id]
+  nil)
+
+(defenterprise mark-transforms-stale-on-database-delete!
+  "Hook called from the `:model/Database` before-delete. Transforms whose `source_database_id`
+   is about to be SET NULL by the FK action survive the delete (so the analyst can read the
+   SQL/Python and rebuild against a new DB), but their dependency-analysis findings need to
+   be re-run so they surface on `/data-studio/dependency-diagnostics/broken`. OSS is a no-op
+   (no dependencies module)."
+  metabase-enterprise.dependencies.events
   [_db-id]
   nil)
 
@@ -427,6 +437,11 @@
   ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
   ;; / fields for a Database whose deletion is about to be refused.
   (reconcile-workspace-database-refs-before-delete! id)
+  ;; Mark transforms with this DB as source as stale so dependency-diagnostics re-analyzes
+  ;; them after the row's gone. Must run BEFORE the FK SET NULL fires (which happens when
+  ;; the database row is deleted below) so we can still resolve the affected transforms by
+  ;; source_database_id.
+  (mark-transforms-stale-on-database-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
@@ -619,13 +634,13 @@
                           (setting/can-read-setting? setting-name
                                                      (setting/current-user-readable-visibilities))
                           (catch Throwable e
-                         ;; there is an known issue with exception is ignored when render API response (#32822)
-                         ;; If you see this error, you probably need to define a setting for `setting-name`.
-                         ;; But ideally, we should resolve the above issue, and remove this try/catch
+                            ;; there is an known issue with exception is ignored when render API response (#32822)
+                            ;; If you see this error, you probably need to define a setting for `setting-name`.
+                            ;; But ideally, we should resolve the above issue, and remove this try/catch
                             (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
                                         setting-name)
-                         ;; let's be conservative and hide it by defaults, if you want to see it,
-                         ;; you need to define it :)
+                            ;; let's be conservative and hide it by defaults, if you want to see it,
+                            ;; you need to define it :)
                             false)))
                       settings)
                      (when (not= <> settings)
@@ -644,7 +659,7 @@
                                                     ::serdes/skip))
                            :import              identity}]
     {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
+                 :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :is_stub
                  :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
@@ -662,6 +677,7 @@
                  :is_full_sync     true
                  :is_on_demand     false
                  :is_sample        false
+                 :is_stub          false
                  :uploads_enabled  false}}))
 
 (def ^:dynamic *include-h2-in-extract?*

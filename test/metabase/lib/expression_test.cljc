@@ -414,7 +414,6 @@
                 3]]
               (lib/expressions query)))
       (is (= 1 (count (lib/joins query))))
-
       (let [dropped (lib/remove-join query join)]
         (is (empty? (lib/joins dropped)))
         (is (empty? (lib/expressions dropped)))))))
@@ -544,7 +543,8 @@
                (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
             :expression  (get exprs "non-circular-c")
             :aggregation (-> (get exprs "circular-c")
-                             (assoc 3 (lib/count)))
+                             (update 2 lib/sum)
+                             (assoc 4 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
@@ -659,6 +659,34 @@
       [:+ 1 [:- 1 true] true] "Types are incompatible: - expects a number as the 2nd parameter."
       [:+ 1 [:- 1 [:* 1 [:/ 1 true]]]] "Types are incompatible: / expects a number as the 2nd parameter."
       [:+ 1 [:- 1 [:* true [:/ 1 1]]]] "Types are incompatible: * expects a number as the 1st parameter.")))
+
+(deftest ^:parallel diagnose-expression-unaggregated-fields-test
+  (let [query         (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        created-at    [:field (meta/id :orders :created-at)]
+        total         [:field (meta/id :orders :total)]
+        subtotal      [:field (meta/id :orders :subtotal)]
+        diagnose-expr (fn [expr]
+                        (lib.expression/diagnose-expression query 0 :aggregation (lib/->mbql5 expr) nil))]
+    (testing "aggregations without an aggregation function are rejected with an understandable error message"
+      (are [expr] (= {:message  "Aggregations should contain at least one aggregation function."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:datetime-diff created-at created-at :hour]
+        total
+        [:+ total subtotal]))
+    (testing "aggregations with unaggregated refs are rejected with an understandable error message"
+      (are [expr] (= {:message  "Fields in custom aggregations must be wrapped with a function like Sum."
+                      :friendly true}
+                     (diagnose-expr expr))
+        [:+ [:sum total] subtotal]
+        [:+ [:sum total] [:floor subtotal]]))
+    (testing "aggregations that contain an aggregation function are accepted"
+      (are [expr] (nil? (diagnose-expr expr))
+        [:sum total]
+        [:+ [:sum total] [:sum subtotal]]
+        [:+ [:sum total] 4]
+        [:+ [:sum total] [:floor [:sum subtotal]]]
+        [:+ [:sum total] [:count]]))))
 
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))

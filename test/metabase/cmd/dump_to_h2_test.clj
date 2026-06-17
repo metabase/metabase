@@ -37,7 +37,6 @@
         (doseq [[filename contents] file-contents]
           (spit filename contents))
         (dump-to-h2/dump-to-h2! tmp-h2-db)
-
         (doseq [filename (keys file-contents)]
           (testing (str filename " was deleted")
             (is (false? (.exists (io/file filename))))))))))
@@ -83,7 +82,6 @@
                       (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})
                       (dump-to-h2/dump-to-h2! h2-file-enc {:dump-plaintext? false})
                       (dump-to-h2/dump-to-h2! h2-file-default-enc)))))
-
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
@@ -91,7 +89,6 @@
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
                                                       "select details from metabase_database where id=1;")))))))
-
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
@@ -100,7 +97,6 @@
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
                                                            "select details from metabase_database where id=1;"))))))))
-
               (testing "defaults to not decrypting"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"

@@ -129,8 +129,7 @@
     (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
       (is (false? (lib-be/enable-nested-queries))))
     (qp.store/with-metadata-provider (mock-metadata-provider)
-
-;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
+      ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
                             #"Nested queries are disabled"
                             (resolve-source-cards

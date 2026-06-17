@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { Box, Radio, Select, Stack, Switch, Text } from "metabase/ui";
 import {
   type CurrencyStyle,
@@ -15,8 +16,6 @@ import {
   getTimeStyleOptions,
 } from "metabase/visualizations/lib/formatting";
 import type { FormattingSettings } from "metabase-types/api";
-
-import { SetByEnvVar } from "./AdminSettingInput";
 
 const DEFAULT_FORMATTING_SETTINGS: FormattingSettings = {
   "type/Temporal": {

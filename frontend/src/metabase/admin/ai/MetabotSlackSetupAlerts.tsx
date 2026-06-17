@@ -26,7 +26,7 @@ export function MissingScopesAlert({
 
   return (
     <Alert
-      color="brand"
+      color="core-brand"
       title={t`Metabot needs more Slack permissions`}
       styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >
@@ -57,7 +57,7 @@ export function MissingScopesAlert({
 export function MetabotSetupRequiredAlert() {
   return (
     <Alert
-      color="brand"
+      color="core-brand"
       title={t`This feature requires an AI model`}
       styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >
@@ -80,7 +80,7 @@ export function EncryptionRequiredAlert({
 }: EncryptionRequiredAlertProps) {
   return (
     <Alert
-      color="brand"
+      color="core-brand"
       title={t`You must enable encryption for your instance in order to use this feature`}
       styles={{ label: { fontSize: "var(--mantine-font-size-md)" } }}
     >

@@ -12,16 +12,15 @@ import {
   inferAndUpdateEntityPermissions,
   restrictCreateQueriesPermissionsIfNeeded,
   revokeTransformsPermissionIfNeeded,
-  revokeWorkspacesPermissionIfNeeded,
   updateFieldsPermission,
   updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
-import { permissionApi } from "metabase/api";
+import { databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
-import { Tables } from "metabase/entities/tables";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
@@ -40,6 +39,7 @@ import type {
   CollectionPermissionsGraph,
   GroupId,
   GroupsPermissions,
+  PermissionEntityId,
   PermissionsGraph,
 } from "metabase-types/api";
 
@@ -48,7 +48,6 @@ import {
   DataPermission,
   DataPermissionType,
   type DataPermissionValue,
-  type EntityId,
   type PermissionSectionConfig,
 } from "./types";
 import {
@@ -191,7 +190,7 @@ export interface UpdateDataPermissionParams {
     "type" | "permission" | "postActions"
   >;
   value: DataPermissionValue;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
   view: "database" | "group";
 }
 interface UpdateDataPermissionPayload {
@@ -202,7 +201,7 @@ interface UpdateDataPermissionPayload {
   >;
   value: DataPermissionValue;
   metadata: Metadata;
-  entityId: EntityId;
+  entityId: PermissionEntityId;
 }
 export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
@@ -217,14 +216,20 @@ export const updateDataPermission = createThunkAction(
   }: UpdateDataPermissionParams) => {
     return (dispatch, getState): UpdateDataPermissionPayload | undefined => {
       if (isDatabaseEntityId(entityId)) {
-        dispatch(
-          Tables.actions.fetchList({
-            dbId: entityId.databaseId,
+        // Fire-and-forget background refresh of the database's table metadata;
+        // the reducer below reads the current snapshot synchronously. Swallow
+        // rejections so a failed fetch doesn't surface as an unhandled
+        // promise rejection.
+        void runRtkEndpoint(
+          {
+            id: entityId.databaseId,
             include_hidden: true,
             remove_inactive: true,
             skip_fields: true,
-          }),
-        );
+          },
+          dispatch,
+          databaseApi.endpoints.getDatabaseMetadata,
+        ).catch(() => undefined);
       }
 
       const metadata = getMetadataWithHiddenTables(getState());
@@ -632,17 +637,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
         );
       }
 
-      if (permissionInfo.type === DataPermissionType.WORKSPACES) {
-        return updatePermission(
-          state,
-          groupId,
-          entityId.databaseId,
-          DataPermission.WORKSPACES,
-          [],
-          value,
-        );
-      }
-
       if (
         permissionInfo.type === DataPermissionType.NATIVE &&
         PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
@@ -667,14 +661,6 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       );
 
       state = revokeTransformsPermissionIfNeeded(
-        state,
-        groupId,
-        entityId,
-        permissionInfo.permission,
-        value,
-      );
-
-      state = revokeWorkspacesPermissionIfNeeded(
         state,
         groupId,
         entityId,

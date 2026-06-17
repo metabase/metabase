@@ -1,6 +1,5 @@
 (ns metabase.warehouse-schema.models.field
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
@@ -468,21 +467,8 @@
     (t2/select-one :model/Field field-q)))
 
 (defmethod serdes/dependencies "Field" [field]
-  ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
-  ;; Take the path, but drop the Field section to get the parent Table's path instead.
-  (let [this  (serdes/path field)
-        table (remove #(= "Field" (:model %)) this)
-        fks   (some->> field :fk_target_field_id serdes/field->path)
-        human (->> (:dimensions field)
-                   (keep :human_readable_field_id)
-                   (map serdes/field->path)
-                   set)]
-    (-> (set/union
-         #{table}
-         human
-         (when fks #{fks})
-         (when (:parent_id field) #{(butlast this)}))
-        (disj this))))
+  (let [db-path (first (serdes/path field))]
+    #{[db-path]}))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed

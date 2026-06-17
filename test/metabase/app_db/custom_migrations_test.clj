@@ -444,14 +444,12 @@
                  :row 0}
                 {:id  tab1-card2-id
                  :row 2}
-
-               ;; tab 2
+                ;; tab 2
                 {:id  tab2-card1-id
                  :row 8}
                 {:id  tab2-card2-id
                  :row 12}
-
-               ;; tab 3
+                ;; tab 3
                 {:id  tab4-card1-id
                  :row 14}
                 {:id  tab4-card2-id
@@ -488,7 +486,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
@@ -531,7 +528,6 @@
                                                         :model_id  1
                                                         :user_id   user-id
                                                         :timestamp :%now}))]
-
       (migrate!)
       (testing "forward migration migrate correclty and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -596,10 +592,10 @@
                                 acc-row []]
                            (let [size-x  (inc (math/round (* 9 (math/random))))
                                  new-col (+ col size-x)]
-                              ;; we want to ensure we have a card at the end of the row
+                             ;; we want to ensure we have a card at the end of the row
                              (if (>= new-col 18)
                                (cons [col row (- 18 col) size-y] acc-row)
-                                ;; probability of skipping is 5%
+                               ;; probability of skipping is 5%
                                (if (> (math/random) 0.95)
                                  (recur (+ col size-x) acc-row)
                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
@@ -611,17 +607,14 @@
 (deftest ^:mb/old-migrations-test migrated-grid-18-to-24-stretch-test
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
         rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
-
     (testing "make sure the initial arry is good to start with"
       (is (true? (no-cards-are-out-of-grid-and-has-size-0? big-random-dashboard-cards 18)))
       (is (true? (no-cards-are-overlap? big-random-dashboard-cards))))
-
     (testing "migrates to 24"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? migrated-to-18 24))))
       (testing "shouldn't have overlapping cards"
         (is (true? (no-cards-are-overlap? migrated-to-18)))))
-
     (testing "rollbacked to 18"
       (testing "shouldn't have any cards out of grid"
         (is (true? (no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-24 18))))
@@ -1117,7 +1110,6 @@
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
-
                   (testing "the options is merged into settings correctly"
                     (is (= {:persist-models-enabled true
                             :database-enable-actions true}
@@ -1128,13 +1120,11 @@
                     (testing "even when settings is empty"
                       (is (= {:persist-models-enabled true}
                              (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
-
                   (testing "nil or empty options doesn't break migration"
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database nil-options-id)))
                     (is (= {:database-enable-actions true}
                            (t2/select-one-fn :settings :model/Database empty-options-id)))))
-
                 (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
@@ -1144,7 +1134,6 @@
                     (is (= {:options  nil
                             :settings {:database-enable-actions true}}
                            (t2/select-one [:model/Database :settings :options] empty-options-id))))
-
                   (testing "if settings doesn't have :persist-models-enabled, then options is empty map"))))))]
     (do-test false)
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
@@ -1554,14 +1543,12 @@
         sso-expected-mapping  {"group-mapping-a" [(inc admin-group-id)]
                                "group-mapping-b" [(inc admin-group-id) (+ 2 admin-group-id)]}
         ldap-expected-mapping {"dc=metabase,dc=com" [(inc admin-group-id)]}]
-
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
         (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
-
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1572,7 +1559,6 @@
           (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
-
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
       (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
@@ -1588,11 +1574,9 @@
       ;; 0 because we removed them and fresh db won't trigger any
       (is (= 0 (t2/count :data_migrations)))
       (migrate!))
-
     (testing "no data_migrations table after v.48.00-024"
       (is (thrown? ExceptionInfo
                    (t2/count :data_migrations))))
-
     (testing "rollback causes all known data_migrations to reappear"
       (migrate! :down 47)
       ;; 34 because there was a total of 34 data migrations (which are filled on rollback)
@@ -1630,19 +1614,16 @@
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
       (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
         (migrate!)
         (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
                (set (table-and-column-of-type datetime-type)))))
-
       (testing "downgrade should revert all converted columns to its original type"
         (migrate! :down 48)
         (is (true? (set/subset?
                     (set (#'custom-migrations/db-type->to-unified-columns db-type))
                     (table-and-column-of-type datetime-type)))))
-
-        ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
+      ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
       (testing "not nullable timestamp column should not have extra on update"
         (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
                                                            :last_name   "Hughes"
@@ -1693,14 +1674,12 @@
             (is (not (contains? card-revision-object "type"))))
           (testing "has dataset"
             (is (contains? card-revision-object "dataset")))))
-
       (testing "after migration card revisions should have type"
         (migrate!)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
               model-revision-object (t2/select-one-fn (comp json/decode :object) :revision model-revision-id)]
           (is (= "question" (get card-revision-object "type")))
           (is (= "model" (get model-revision-object "type")))))
-
       (testing "rollback should remove type and keep dataset"
         (migrate! :down 48)
         (let [card-revision-object  (t2/select-one-fn (comp json/decode :object) :revision card-revision-id)
@@ -1771,13 +1750,11 @@
                       (testing "sanity check that the schedule exists"
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (migrate!)
                     (testing "default options and scan with manual schedules should have scan field values"
                       (doseq [db db-with-scan-fv]
                         (is (= (#'task.sync-databases-test/all-db-sync-triggers-name db)
                                (#'task.sync-databases-test/query-all-db-sync-triggers-name db)))))
-
                     (testing "never scan and on demand should not have scan field values"
                       (doseq [db (t2/select :model/Database :id [:in (map :id db-without-scan-fv)])]
                         (is (= #{(#'api.database-test/sync-and-analyze-trigger-name db)}
@@ -1802,7 +1779,6 @@
                                                  :where  [:= :id db-id]})))]
         (testing "sanity check that db details is encrypted"
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
-
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
@@ -1849,7 +1825,6 @@
           (testing "migrate down will remove init-send-pulse-triggers job, send-pulse job and send-pulse triggers"
             (migrate! :down 49)
             (is (= #{} (scheduler-job-keys))))
-
           (testing "the init-send-pulse-triggers job should be re-run after migrate up"
             (migrate!)
             ;; promote the currently-bound app DB to the var's root so quartz triggers running on different threads
@@ -2060,13 +2035,10 @@
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}]))
-
     (testing "Values were indeed encrypted"
       (is (not= "true" (t2/select-one-fn :value :setting :key "enable-query-caching"))))
-
     (encryption-test/with-secret-key "whateverwhatever"
       (migrate!))
-
     (testing "But not anymore"
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
@@ -2224,7 +2196,6 @@
             (is (false? (sample-content-created?)))
             (migrate!)
             (is (= create? (sample-content-created?))))
-
           (when (true? create?)
             (testing "The Examples collection has permissions set to grant read-write access to all users"
               (let [id (t2/select-one-pk :model/Collection :is_sample true)]
@@ -2607,7 +2578,6 @@
                                                                  :channel_type "email"
                                                                  :details      (json/encode {:emails ["test@test.com"]})
                                                                  :enabled      true})))]
-
           (testing "after migration"
             (migrate!)
             (testing "pulse is migrated to notification"
@@ -2620,16 +2590,13 @@
                         :active       true
                         :creator_id   user-id}
                        (select-keys notification [:payload_type :active :creator_id])))
-
                 (is (= {:card_id        card-id
                         :send_once      false
                         :send_condition "has_result"}
                        (select-keys notification-card [:card_id :send_once :send_condition])))
-
                 (is (= {:type          "notification-subscription/cron"
                         :cron_schedule "0 0 18 * * ? *"}
                        (select-keys subscription [:type :cron_schedule])))
-
                 (is (= {:channel_type "channel/email"}
                        (select-keys handler [:channel_type])))
                 (is (= {:type    "notification-recipient/raw-value"
@@ -2638,7 +2605,6 @@
                 (is (= {:type    "notification-recipient/raw-value"
                         :details "{\"value\":\"test@test.com\"}"}
                        (select-keys recipient [:type :details]))))))
-
           (testing "after downgrade"
             (migrate! :down 52)
             (is (zero? (t2/count :notification :payload_type "notification/card")))))))))

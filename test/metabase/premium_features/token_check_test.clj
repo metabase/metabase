@@ -261,7 +261,6 @@
               (is (= {:transform-basic-runs    true
                       :transform-advanced-runs false}
                      (premium-features/locked-meters))))
-
             (testing "successful response WITHOUT :meters leaves the setting untouched"
               (reset! response {:valid true :status "ok"})
               (token-check/-clear-cache! checker)
@@ -271,7 +270,6 @@
                       :transform-advanced-runs false}
                      (premium-features/locked-meters))
                   "Setting should retain previous value when response omits :meters"))
-
             (testing "successful response with empty :meters {} writes empty map (legitimate unlock)"
               (reset! response {:valid true :status "ok" :meters {}})
               (token-check/-clear-cache! checker)
@@ -315,7 +313,6 @@
   (testing "returns the number of active users"
     (is (= (t2/count :model/User :is_active true :type :personal)
            (premium-features/active-users-count))))
-
   (testing "Default to 0 if db is not setup yet"
     (mc/binding (mdb.connection/application-db-handle) {:status (atom nil)}
                 (fn [] (is (zero? (premium-features/active-users-count)))))))
@@ -324,7 +321,6 @@
   (testing "valid tokens"
     (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 64 "a"))))
     (is (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str "mb_dev_" (repeat 57 "a")))))
-
   (testing "invalid tokens"
     (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 64 "x")))))
     (is (not (mr/validate [:re @#'token-check/RemoteCheckedToken] (apply str (repeat 65 "a")))))
@@ -335,17 +331,14 @@
   (testing "no limit set - no error"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly nil)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
-
   (testing "under limit - no error"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 5)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
-
   (testing "at limit - no error"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 10)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
-
   (testing "over limit - throws"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 11)]
@@ -357,19 +350,16 @@
   (testing "no limit set - no error"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly nil)]
       (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
-
   (testing "under limit - no error (room for one more)"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 9)]
       (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
-
   (testing "at limit - throws (no room for another)"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 10)]
       (is (thrown-with-msg? Exception
                             #"Adding another user would exceed the maximum"
                             (token-check/assert-airgap-allows-user-creation!)))))
-
   (testing "over limit - throws"
     (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
                                 token-check/active-user-count (constantly 11)]

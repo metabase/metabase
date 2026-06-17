@@ -39,7 +39,6 @@
             (is (contains? (file-set (io/file dump-dir))
                            ["settings.yaml"])
                 "A few top-level files are expected"))
-
           (testing "the Collections properly exported"
             (let [yaml-parent (-> (yaml/from-file (io/file dump-dir "collections" "main"
                                                            "some_collection.yaml"))
@@ -55,7 +54,6 @@
                          (update :created_at t/offset-date-time)
                          (select-keys (keys yaml-parent)))
                      yaml-parent))
-
               (is (= (-> (into {} (t2/select-one :model/Collection :id (:id child)))
                          (dissoc :id :location)
                          (assoc :parent_id (:entity_id parent))
@@ -138,7 +136,6 @@
             (is (contains? (file-set (io/file dump-dir "databases" "my_company_data" "tables"))
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
-
           (testing "the Field was properly exported"
             (is (= (ts/extract-one "Field" (:id website))
                    (-> (yaml/from-file (io/file dump-dir
@@ -148,6 +145,21 @@
                        (dissoc :metabase_version)
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
+
+(deftest entity-counts-report-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection coll {:name "Some Collection"}
+                         :model/Card       _    {:name "Some Card" :collection_id (:id coll)}]
+        (let [export   (into [] (extract/extract {:no-data-model true :no-transforms true}))
+              models   (map #(-> % :serdes/meta last :model) export)
+              expected (cond-> (frequencies (remove #{"Setting"} models))
+                         (some #{"Setting"} models) (assoc "Setting" 1))
+              report   (storage/store! export (storage.files/file-writer dump-dir))]
+          (testing ":entity-counts is a {model count} map, with all settings tallied as a single entry"
+            (is (= expected (:entity-counts report)))
+            (is (pos? (get-in report [:entity-counts "Setting"] 0))
+                "settings should be part of this export, to exercise the Setting tally")))))))
 
 (deftest yaml-sorted-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -173,7 +185,7 @@
                                  (is (= (not-empty (sort ks))
                                         (not-empty ks)))
                                  (do
-                                  ;; check every present key is sorted in a monotone increasing order
+                                   ;; check every present key is sorted in a monotone increasing order
                                    (is (< idx (get order k)))
                                    (recur (rest ks)
                                           (long new-idx)))))))
@@ -193,12 +205,12 @@
                                   (map? v)               (descend v (conj path k))
                                   (and (sequential? v)
                                        (map? (first v))) (run! #(descend % (conj path k)) v))))))]
-          (with-redefs [spit (fn [fname yaml-data]
-                               (testing (format "File %s\n" fname)
-                                 (let [coll (yaml/parse-string yaml-data)]
-                                   (if (str/ends-with? fname "settings.yaml")
-                                     (descend coll [:settings])
-                                     (descend coll)))))]
+          (mt/with-dynamic-fn-redefs [spit (fn [fname yaml-data]
+                                             (testing (format "File %s\n" fname)
+                                               (let [coll (yaml/parse-string yaml-data)]
+                                                 (if (str/ends-with? fname "settings.yaml")
+                                                   (descend coll [:settings])
+                                                   (descend coll)))))]
             (storage/store! export (storage.files/file-writer dump-dir))))))))
 
 (deftest store-error-test
@@ -294,13 +306,12 @@
 
               ;; Export again but with nested entity query results reversed,
               ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              original-fn @#'serdes/transform->nested
+              original-fn (mt/original-fn #'serdes/transform->nested)
               yaml-reversed
-              (with-redefs [serdes/transform->nested
-                            (fn [transform opts batch]
-                              (update-vals (original-fn transform opts batch) reverse))]
+              (mt/with-dynamic-fn-redefs [serdes/transform->nested
+                                          (fn [transform opts batch]
+                                            (update-vals (original-fn transform opts batch) reverse))]
                 (clean-and-export!))]
-
           (testing "Dashcard ordering should be stable regardless of DB return order"
             (is (= yaml-before yaml-reversed)
                 "Dashboard YAML should be identical even when DB returns dashcards in different order")))))))
@@ -324,6 +335,57 @@
                    (file-set (io/file dump-dir "collections")))
                 "collections form a tree, with same-named files")))))))
 
+(defn- export-and-read-eids!
+  "Export everything to `dump-dir`, then return the entity_id read from each of `filenames` under
+  collections/main/my_collection/."
+  [dump-dir filenames]
+  (storage/store! (into [] (extract/extract {:no-settings   true
+                                             :no-data-model true
+                                             :no-transforms true}))
+                  (storage.files/file-writer dump-dir))
+  (mapv (fn [filename]
+          (:entity_id (yaml/from-file (io/file dump-dir "collections" "main" "my_collection" filename))))
+        filenames))
+
+(deftest same-name-stable-filename-test
+  (testing "two same-named entities in a folder get deterministic filename de-dup suffixes (`foo.yaml` vs
+           `foo_2.yaml`) across exports — otherwise re-exports swap which card lands in which file, producing huge
+           phantom git-sync diffs (GHY-3754)"
+    (testing "the older entity (earlier created_at) keeps the unsuffixed file, so adding a new same-named entity
+             appends `_2` rather than displacing the existing file. created_at decides even when entity_id order and
+             insertion order both disagree"
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (mt/with-empty-h2-app-db!
+          ;; The OLD card has the *larger* entity_id and is inserted *second*, so created_at is the only thing that
+          ;; can put it in the unsuffixed file — proving created_at takes precedence over entity_id and row order.
+          (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
+                             :model/Card       _new {:name          "Dup Name"
+                                                     :collection_id (:id coll)
+                                                     :created_at    #t "2024-01-01T00:00:00Z"
+                                                     :entity_id     "aaaaaaaaaaaaaaaaaaaaa"}
+                             :model/Card       _old {:name          "Dup Name"
+                                                     :collection_id (:id coll)
+                                                     :created_at    #t "2020-01-01T00:00:00Z"
+                                                     :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}]
+            (is (= ["zzzzzzzzzzzzzzzzzzzzz" "aaaaaaaaaaaaaaaaaaaaa"]
+                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
+                "older card (earlier created_at) wins the unsuffixed file; newer card gets _2")))))
+    (testing "entity_id breaks ties deterministically when created_at is identical"
+      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+        (mt/with-empty-h2-app-db!
+          (ts/with-temp-dpc [:model/Collection coll {:name "My Collection"}
+                             :model/Card       _zzz {:name          "Dup Name"
+                                                     :collection_id (:id coll)
+                                                     :created_at    #t "2024-01-01T00:00:00Z"
+                                                     :entity_id     "zzzzzzzzzzzzzzzzzzzzz"}
+                             :model/Card       _aaa {:name          "Dup Name"
+                                                     :collection_id (:id coll)
+                                                     :created_at    #t "2024-01-01T00:00:00Z"
+                                                     :entity_id     "aaaaaaaaaaaaaaaaaaaaa"}]
+            (is (= ["aaaaaaaaaaaaaaaaaaaaa" "zzzzzzzzzzzzzzzzzzzzz"]
+                   (export-and-read-eids! dump-dir ["dup_name.yaml" "dup_name_2.yaml"]))
+                "with equal created_at, smaller entity_id wins the unsuffixed file")))))))
+
 (deftest ^:parallel resolve-path-test
   (let [resolve-path @#'storage.util/resolve-path]
     (testing "basic slugification"
@@ -331,22 +393,18 @@
         (is (= ["my_collection" "some_card"]
                (resolve-path fns [{:label "My Collection" :key "coll-1"}
                                   {:label "Some Card"     :key "card-1"}])))))
-
     (testing "special characters are replaced with underscores"
       (let [fns (atom {})]
         (is (= ["hello_world_"]
                (resolve-path fns [{:label "Hello World!" :key "a"}])))))
-
     (testing "slashes are escaped"
       (let [fns (atom {})]
         (is (= ["orders__SLASH__invoices"]
                (resolve-path fns [{:label "Orders/Invoices" :key "a"}])))))
-
     (testing "backslashes are escaped"
       (let [fns (atom {})]
         (is (= ["c__BACKSLASH__d"]
                (resolve-path fns [{:label "C\\D" :key "a"}])))))
-
     (testing "deduplication within the same folder"
       (let [fns (atom {})]
         (is (= ["my_card"]
@@ -354,7 +412,6 @@
         (is (= ["my_card_2"]
                (resolve-path fns [{:label "My Card" :key "card-2"}]))
             "second entity with same name in same folder gets _2 suffix")))
-
     (testing "same name in different folders does not conflict"
       (let [fns (atom {})]
         (is (= ["folder_a" "readme"]
@@ -364,7 +421,6 @@
                (resolve-path fns [{:label "Folder B" :key "f-b"}
                                   {:label "README"   :key "doc-2"}]))
             "same leaf name under different parents is fine")))
-
     (testing "same key with same slug is stable"
       (let [fns (atom {})]
         (is (= ["my_card"]
@@ -372,17 +428,14 @@
         (is (= ["my_card"]
                (resolve-path fns [{:label "My Card" :key "card-1"}]))
             "re-resolving the same key+label returns the same result")))
-
     (testing "unicode is preserved"
       (let [fns (atom {})]
         (is (= ["données"]
                (resolve-path fns [{:label "Données" :key "a"}])))))
-
     (testing "dots are preserved"
       (let [fns (atom {})]
         (is (= ["parent.child"]
                (resolve-path fns [{:label "parent.child" :key "a"}])))))
-
     (testing "duplicate parent folder names with different keys"
       (let [fns (atom {})]
         (is (= ["my_folder" "card_a"]
@@ -396,11 +449,9 @@
                (resolve-path fns [{:label "My Folder" :key "folder-3"}
                                   {:label "Card C"    :key "card-c"}]))
             "third folder with same name gets _3 suffix")))
-
     (testing "empty path returns empty vector"
       (let [fns (atom {})]
         (is (= [] (resolve-path fns [])))))
-
     (testing "same slug under different parent paths does not collide"
       (let [fns (atom {})]
         (is (= ["collections" "transforms" "my_transform"]

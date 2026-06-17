@@ -16,12 +16,14 @@ import {
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { QuestionLoader } from "metabase/common/components/QuestionLoader";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { EntityName } from "metabase/entities/containers/EntityName";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { GTAPApi } from "metabase/services";
 import { Button, Center, Icon, Loader } from "metabase/ui";
+import { getName } from "metabase/utils/name";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,
@@ -282,7 +284,7 @@ const EditSandboxingModal = ({
           <ActionButton
             className={CS.ml1}
             actionFn={savePolicy}
-            primary
+            variant="filled"
             disabled={!canSave}
           >
             {t`Save`}
@@ -327,6 +329,7 @@ interface PolicySummaryProps {
 }
 
 const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
+  const tc = useTranslateContent();
   const headingId = _.uniqueId();
   return (
     <div aria-labelledby={headingId}>
@@ -350,16 +353,11 @@ const PolicySummary = ({ policy, policyTable }: PolicySummaryProps) => {
           policy.card_id
             ? jt`rows in the ${(
                 <strong key="question-name">
-                  <EntityName
-                    entityType="questions"
-                    entityId={policy.card_id}
-                  />
+                  <QuestionName id={policy.card_id} />
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong key="table-name">
-                  <EntityName entityType="tables" entityId={policy.table_id} />
-                </strong>
+                <strong key="table-name">{tc(getName(policyTable))}</strong>
               )} table`
         }
       />

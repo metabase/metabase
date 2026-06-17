@@ -6,10 +6,12 @@
    [java-time.api :as t]
    [metabase.analyze.core :as analyze]
    [metabase.sync.core :as sync]
+   [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -23,6 +25,15 @@
     [(sync.util-test/only-step-keys step-info)
      (:task_details task-history)]))
 
+(defn- sync-database-counts!
+  "Like [[sync-database!']] but keeps only the create/update/delete/error counts. The
+  `:probed`/`:queries` observability counters are dropped — they're a function of how many
+  fields across the whole database have active FieldValues, which is global state these
+  whole-database sync tests don't (and shouldn't) pin down."
+  [step database]
+  (mapv #(select-keys % [:errors :created :updated :deleted])
+        (sync-database!' step database)))
+
 (deftest sync-recreate-field-values-test
   (testing "Test that when we delete FieldValues syncing the Table again will cause them to be re-created"
     (testing "Check that we have expected field values to start with"
@@ -30,7 +41,6 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
       ;; Reset them to values that should get updated during sync
       (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
-
       ;; sync to make sure the field values are filled
       (sync-database!' "update-field-values" (data/db))
       (is (= [1 2 3 4]
@@ -41,7 +51,7 @@
              (venues-price-field-values))))
     (testing "After the delete, a field values should not be created"
       (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
-             (sync-database!' "update-field-values" (data/db)))))
+             (sync-database-counts! "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :venues :price)))
@@ -64,7 +74,7 @@
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
       (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
-             (sync-database!' "update-field-values" (data/db)))))
+             (sync-database-counts! "update-field-values" (data/db)))))
     (testing "Make sure the value is back"
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
@@ -78,7 +88,7 @@
                     {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
                      :values       [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
-               (sync-database!' "update-field-values" (data/db))))
+               (sync-database-counts! "update-field-values" (data/db))))
         (is (= [1 2 3] (venues-price-field-values)))
         (testing "Fetching field values causes an on-demand update and marks Field Values as active"
           (is (partial= {:values [[1] [2] [3] [4]]}
@@ -90,7 +100,7 @@
                         (t2/select-one-pk :model/FieldValues :field_id (mt/id :venues :price) :type :full)
                         {:values [1 2 3]})
             (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
-                   (sync-database!' "update-field-values" (data/db))))
+                   (sync-database-counts! "update-field-values" (data/db))))
             (is (partial= {:values [[1] [2] [3] [4]]}
                           (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))
         (testing "If only advanced fields have been used recently, still sync"
@@ -102,9 +112,8 @@
                                           :type         :advanced
                                           :hash_key     "random-key"
                                           :last_used_at (t/instant)})
-
           (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
-                 (sync-database!' "update-field-values" (data/db)))))
+                 (sync-database-counts! "update-field-values" (data/db)))))
         (is (= [1 2 3 4] (venues-price-field-values)))))
     (finally
       ; clear out our changes to not mess up other tests. Changes are more than with-model-cleanup handles
@@ -129,30 +138,30 @@
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; expired linked-filter fieldvalues
+                                      ;; expired linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; valid sandbox fieldvalues
+                                      ;; valid sandbox fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; valid linked-filter fieldvalues
+                                      ;; valid linked-filter fieldvalues
                                       {:field_id   field-id
                                        :type       "advanced"
                                        :hash_key   "random-hash"
                                        :created_at now
                                        :updated_at now}
-                                       ;; old full fieldvalues
+                                      ;; old full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at expired-created-at
                                        :updated_at expired-created-at}
-                                       ;; new full fieldvalues
+                                      ;; new full fieldvalues
                                       {:field_id   field-id
                                        :type       "full"
                                        :created_at now
@@ -175,26 +184,22 @@
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
     (testing "... and it should also have some FieldValues"
       (is (= {:values                (one-off-dbs/range-str 50)
               :human_readable_values []
               :has_more_values       false}
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values :has_more_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
-
     ;; Manually add an advanced field values to test whether or not it got deleted later
     (t2/insert! :model/FieldValues {:field_id (mt/id :blueberries_consumed :str)
                                     :type :advanced
                                     :hash_key "random-key"})
-
     (testing "We mark the field values as :has_more_values when it grows too big."
       ;; now insert enough bloobs to put us over the limit and re-sync.
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
       (testing "has_field_values stay auto-list."
         (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
       (testing "its FieldValues be limited."
         (is (=? {:values #(>= analyze/auto-list-cardinality-threshold (count %))
                  :has_more_values true}
@@ -210,13 +215,11 @@
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
              (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
     (testing "... and it should also have some FieldValues"
       (is (= {:values                [(str/join (repeat 50 "A"))]
               :human_readable_values []}
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
-
     (testing "If the total length of all values exceeded the length threshold, it should get stay as auto list but be limitted"
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 10 "B"))
                                           (str/join (repeat (+ 100 field-values/*total-max-length*) "X"))
@@ -224,7 +227,6 @@
       (testing "has_field_values should have been set to nil."
         (is (= :auto-list
                (t2/select-one-fn :has_field_values :model/Field :id (mt/id :blueberries_consumed :str)))))
-
       (testing "Field values before the limit is reached are added"
         (is (=? {:has_more_values true
                  :values [(str/join (repeat 50 "A"))
@@ -249,14 +251,14 @@
                                       :type :advanced
                                       :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
-        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*distinct-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values :model/Field
                                    :id (mt/id :blueberries_consumed :str)))))
-        (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
-          (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
-                                               (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
+        (testing "it should still have FieldValues, but the stored list has at most field-values/*distinct-limit* elements"
+          (is (= {:values                (take field-values/*distinct-limit*
+                                               (one-off-dbs/range-str (+ 100 field-values/*distinct-limit*)))
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [:model/FieldValues :values :human_readable_values :has_more_values]
@@ -277,7 +279,6 @@
       (testing "has_more_values should initially be false"
         (is (= false
                (t2/select-one-fn :has_more_values :model/FieldValues :field_id (mt/id :blueberries_consumed :str)))))
-
       (testing "insert a row with the value length exceeds our length limit\n"
         (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
         (testing "has_field_values shouldn't change and has_more_values should be true"
@@ -298,9 +299,107 @@
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
       ;; Manually activate Field values since they are not created during sync (#53387)
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field (mt/id :blueberries_consumed :str)))
-      ;; we throw ConnectException, which is a non-recoverable exception
-      (mt/with-dynamic-fn-redefs [field-values/create-or-update-full-field-values! (fn [& _] (throw (java.net.ConnectException.)))]
+      ;; we throw ConnectException, which is a non-recoverable exception. Mock the SQL-path fetcher
+      ;; (run-distinct-batch) since that's what the H2 sync path will call.
+      (mt/with-dynamic-fn-redefs [distinct-batch/run-distinct-batch (fn [& _] (throw (java.net.ConnectException.)))]
         (is (=?
              {:steps [["delete-expired-advanced-field-values" {}]
                       ["update-field-values" {:throwable #(instance? Exception %)}]]}
              (sync/update-field-values! (data/db))))))))
+
+;;; ---------------------------------- can-batch-distinct? ----------------------------------
+
+(deftest can-batch-distinct?-test
+  (testing "SQL driver with :nested-queries and no required filter → batch path"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table table {:db_id db-id, :name "t", :database_require_filter false}]
+      (is (true? (#'sync.field-values/can-batch-distinct? table)))))
+  (testing "Tables with :database_require_filter true (e.g. partitioned BigQuery) fall back to per-field"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table table {:db_id db-id, :name "t", :database_require_filter true}]
+      (is (false? (#'sync.field-values/can-batch-distinct? table))
+          "Partitioned tables that require a WHERE on the partition column can't go through the
+           native UNION ALL path because it bypasses add-required-filters-if-needed middleware"))))
+
+;;; ---------------------------------- nested-JSON fields dispatch ----------------------------------
+
+(deftest ^:synchronized sync-fields-for-table!-routes-parent-id-fields-to-per-field-test
+  (testing "Fields with :parent_id (nested-JSON unfolded) go through the per-field path even when
+            the table is otherwise batch-able. Batching builds a CAST(name AS …) that doesn't
+            qualify the column with its parent, so the SQL would target the wrong column AND the
+            by-name lookup could collide if two child fields share a name across different parents
+            (e.g. JSON columns unfolded to `address.name` and `user.name`)."
+    (let [calls-to-fetch-distinct-for-table (atom [])
+          calls-to-fetch-distinct-per-field (atom [])]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                     :model/Table {tbl-id :id :as table} {:db_id db-id, :name "t"
+                                                          :database_require_filter false}
+                     :model/Field {parent-a :id} {:table_id tbl-id, :name "address"
+                                                  :base_type :type/JSON, :has_field_values :list}
+                     :model/Field {parent-b :id} {:table_id tbl-id, :name "user"
+                                                  :base_type :type/JSON, :has_field_values :list}
+                     :model/Field nested-a {:table_id tbl-id, :parent_id parent-a, :name "name"
+                                            :base_type :type/Text, :has_field_values :list}
+                     :model/Field nested-b {:table_id tbl-id, :parent_id parent-b, :name "name"
+                                            :base_type :type/Text, :has_field_values :list}
+                     :model/Field plain-c  {:table_id tbl-id, :name "plain"
+                                            :base_type :type/Text, :has_field_values :list}]
+        (with-redefs [sync.field-values/fetch-distinct-for-table
+                      (fn [_table fields]
+                        (swap! calls-to-fetch-distinct-for-table conj (set (map :id fields)))
+                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                         :queries 1
+                         :failed-fields #{}})
+                      sync.field-values/fetch-distinct-per-field
+                      (fn [fields]
+                        (swap! calls-to-fetch-distinct-per-field conj (set (map :id fields)))
+                        {:results (into {} (map (fn [f] [(:id f) {:values []}])) fields)
+                         :queries (count fields)
+                         :failed-fields #{}})]
+          (#'sync.field-values/sync-fields-for-table! table [nested-a nested-b plain-c] {})
+          (testing "Plain field goes to batch path"
+            (is (= [#{(:id plain-c)}] @calls-to-fetch-distinct-for-table)))
+          (testing "Both nested-JSON children with the same name go to per-field, preserving each field's identity"
+            (is (= [#{(:id nested-a) (:id nested-b)}] @calls-to-fetch-distinct-per-field))))))))
+
+;;; ---------------------------------- sync-fields-grouped-by-table! ----------------------------------
+
+(deftest ^:mb/driver-tests ^:synchronized sync-fields-grouped-by-table!-test
+  (testing "End-to-end: fetches via UNION, persists via persist-field-values!, returns counts"
+    (mt/dataset test-data
+      (mt/with-temp [:model/FieldValues _ {:field_id (mt/id :people :state)
+                                           :type     :full
+                                           :values   ["XX" "YY"]
+                                           :has_more_values false}]
+        (let [field  (t2/select-one :model/Field :id (mt/id :people :state))
+              counts (sync.field-values/sync-fields-grouped-by-table! [field])]
+          (is (map? counts) "Returns a counts map")
+          (is (= 1 (:probed counts)))
+          (testing "After sync, FieldValues row reflects the real distinct set"
+            (let [fv     (t2/select-one :model/FieldValues
+                                        :field_id (mt/id :people :state)
+                                        :type     :full)
+                  states (set (:values fv))]
+              (is (contains? states "CA"))
+              (is (not (contains? states "XX")) "Stale seeded values were replaced"))))))))
+
+(deftest sync-fields-grouped-by-table!-empty-input-test
+  (testing "Empty/nil input → nil (no work)"
+    (is (nil? (sync.field-values/sync-fields-grouped-by-table! [])))
+    (is (nil? (sync.field-values/sync-fields-grouped-by-table! nil)))))
+
+(deftest ^:mb/driver-tests ^:synchronized union-batching-test
+  (testing "Field count > *batch-size* is broken into multiple queries; every field's counts are accounted for"
+    (mt/dataset test-data
+      (binding [distinct-batch/*batch-size* 2]
+        (let [fields           (vec (t2/select :model/Field
+                                               :table_id (mt/id :people)
+                                               :active true
+                                               :visibility_type "normal"
+                                               {:order-by [[:name :asc]]}))
+              eligible-count   (count (filter field-values/field-should-have-field-values? fields))
+              counts           (sync.field-values/sync-fields-grouped-by-table! fields)]
+          (is (= eligible-count (:probed counts))
+              "Every FV-eligible field is reported as probed; sync-fields-grouped-by-table! drops the rest")
+          (is (>= (:queries counts) 2)
+              "More fields than *batch-size* should produce more than one query"))))))

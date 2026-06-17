@@ -7,7 +7,6 @@ import {
   setupListWorkspacesEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/urls";
 import type { Workspace } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -16,15 +15,14 @@ import {
 
 import { WorkspaceListPage } from "./WorkspaceListPage";
 
-const POSTGRES = createMockDatabase({
-  id: 10,
-  name: "Postgres",
+const ELIGIBLE_DATABASE = createMockDatabase({
   features: ["workspace"],
+  settings: { "database-enable-workspaces": true },
 });
 
 function setup({ workspaces = [] as Workspace[] } = {}) {
-  setupDatabasesEndpoints([POSTGRES]);
   setupListWorkspacesEndpoint(workspaces);
+  setupDatabasesEndpoints([ELIGIBLE_DATABASE]);
   setupCreateWorkspaceEndpoint(createMockWorkspace({ name: "Brand new" }));
 
   renderWithProviders(<Route path="*" component={WorkspaceListPage} />, {
@@ -36,23 +34,27 @@ describe("WorkspaceListPage", () => {
   it("from the empty state, opens the Add workspace modal", async () => {
     setup();
 
-    expect(await screen.findByText(/Isolated spaces/i)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("workspace-list-page"),
+    ).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Create a workspace/ }),
+      await screen.findByRole("button", { name: /Create a workspace/i }),
     );
 
     expect(
-      await screen.findAllByRole("heading", { name: "Create a workspace" }),
+      await screen.findAllByRole("heading", { name: /Create a workspace/i }),
     ).not.toHaveLength(0);
   });
 
-  it("when not empty, each workspace card links to its workspace page", async () => {
+  it("when not empty, renders a card with a menu for each workspace", async () => {
     const workspace = createMockWorkspace({ id: 42, name: "Existing" });
     setup({ workspaces: [workspace] });
 
+    const item = await screen.findByRole("region", { name: "Existing" });
+    expect(item).toBeInTheDocument();
     expect(
-      await screen.findByRole("region", { name: "Existing" }),
-    ).toHaveAttribute("href", Urls.workspace(workspace.id));
+      screen.getByRole("button", { name: "Workspace options" }),
+    ).toBeInTheDocument();
   });
 });

@@ -47,7 +47,7 @@ jobs:
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys
       - name: Restore ESLint cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: ${{ github.workspace}}/.eslintcache
           key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
@@ -164,7 +164,7 @@ jobs:
       needs: ${{ toJson(needs) }}
     steps:
       - name: Check frontend job status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
         with:

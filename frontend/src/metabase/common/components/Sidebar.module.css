@@ -25,12 +25,12 @@
 
 .item:hover {
   background-color: var(--mb-color-background-tertiary);
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .item.selected,
 .item.selected .icon {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .item.selected {
@@ -47,7 +47,7 @@
 
 .item:hover .name,
 .item.selected .name {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .icon {

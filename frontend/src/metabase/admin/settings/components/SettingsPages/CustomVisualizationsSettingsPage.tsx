@@ -1,12 +1,14 @@
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { useAdminSetting } from "metabase/api/utils";
+import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import {
+  Alert,
   Button,
   Card,
   Group,
@@ -17,6 +19,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 export function CustomVisualizationsManagePage() {
   const customVizLoaded = useHasTokenFeature("custom-viz");
@@ -80,9 +83,11 @@ export function CustomVisualizationsDevelopmentPage() {
 }
 
 const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
+const CSP_IMG_ENABLED_SETTING = "csp-img-enabled";
 
 function CustomVizEmptyState() {
   const { updateSetting } = useAdminSetting(CUSTOM_VIZ_ENABLED_SETTING);
+  const { value: cspImgEnabled } = useAdminSetting(CSP_IMG_ENABLED_SETTING);
   const { sendErrorToast } = useMetadataToasts();
 
   const handleEnable = async () => {
@@ -109,15 +114,33 @@ function CustomVizEmptyState() {
               <Text c="text-secondary" lh="1.25rem">
                 {t`Show your data the way you need to with custom visualizations. Use the custom viz SDK to build visualization plugins and upload them here as packaged bundles (.tgz).`}
               </Text>
-              <Text fw="bold" lh="1.25rem">
+              <Alert title={t`Security risk`} icon={<Icon name="warning" />}>
                 {t`Be aware that custom visualizations can execute arbitrary code, and should only be added from trusted sources.`}
-              </Text>
+              </Alert>
+
+              {!cspImgEnabled && (
+                <Text c="text-secondary" lh="1.25rem">
+                  {jt`Turn on "Restrict image domains" in ${(
+                    <Link
+                      key="link"
+                      to={Urls.generalSettings()}
+                      variant="brand"
+                    >
+                      {t`General settings`}
+                    </Link>
+                  )} before enabling custom visualizations.`}
+                </Text>
+              )}
             </Stack>
-            <Group gap="sm">
-              <Button variant="filled" onClick={handleEnable}>
+            <Stack align="flex-start">
+              <Button
+                variant="filled"
+                onClick={handleEnable}
+                disabled={!cspImgEnabled}
+              >
                 {t`Enable custom visualizations`}
               </Button>
-            </Group>
+            </Stack>
           </Stack>
           <SimpleGrid cols={2} spacing="sm">
             <FeatureCard
@@ -157,7 +180,7 @@ function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
     <Paper bg="background-secondary" p="md" radius="md" shadow="none">
       <Group gap="sm" align="flex-start" wrap="nowrap">
-        <Icon name={icon} size={16} c="brand" style={{ flexShrink: 0 }} />
+        <Icon name={icon} size={16} c="core-brand" style={{ flexShrink: 0 }} />
         <Stack gap="xs">
           <Text fw="bold" lh="1rem">
             {title}

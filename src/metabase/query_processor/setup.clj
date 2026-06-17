@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.metadata :as lib.metadata]
@@ -21,7 +22,12 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)
+   (org.apache.logging.log4j ThreadContext)))
+
+(set! *warn-on-reflection* true)
 
 (mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
   [query :- ::qp.schema/any-query]
@@ -187,13 +193,60 @@
         (setting/with-database db
           (f query))))))
 
+(defonce ^:private query-timeout-executor
+  ;; one daemon thread for the whole JVM; the scheduled work is a single non-blocking `a/put!`.
+  ;; `setRemoveOnCancelPolicy` makes cancelled tasks leave the queue immediately instead of at their deadline.
+  (delay
+    (doto (ScheduledThreadPoolExecutor. 1
+                                        (reify ThreadFactory
+                                          (newThread [_ r]
+                                            (doto (Thread. ^Runnable r "query-timeout-scheduler")
+                                              (.setDaemon true)))))
+      (.setRemoveOnCancelPolicy true))))
+
+(defn- schedule-query-timeout-cancel!
+  "Schedule a put of `::timeout` to `canceled-chan` after `*query-timeout-ms*`. Driver execution wires this channel
+  to `Statement.cancel()` (see [[metabase.driver.sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement!]]),
+  which for MySQL/MariaDB issues `KILL QUERY` on a side connection — so this is the cross-driver path that actually
+  stops a running query on the server when the timeout fires. The timer never reads from `canceled-chan`, since
+  callers (notably tests) may bind a regular channel where `alts!`/`<!` would consume the cancel signal away from
+  the driver's listener.
+
+  Returns a `ScheduledFuture`; the caller must cancel it when the query completes."
+  ^ScheduledFuture [canceled-chan]
+  (let [timeout-ms  (long driver.settings/*query-timeout-ms*)
+        ;; capture the log4j ThreadContext (an immutable map of strings) at schedule time: the warn below fires on
+        ;; the scheduler thread, which otherwise has no query/job attribution for log filtering. Strings only — the
+        ;; closure must stay cheap, since it lives until the timeout fires or the query completes.
+        log-context (ThreadContext/getImmutableContext)]
+    ;; Deliberately a plain fn on a Java scheduler rather than an `a/go` block: `go` conveys the dynamic binding
+    ;; frame (including the bound metadata provider and its cache) into a handler parked on an uncancellable
+    ;; `a/timeout` channel, pinning ~1MB per QP invocation in the static timer queue until the deadline — which
+    ;; OOMed instances under sustained query rates (#75748). A plain fn captures only `canceled-chan` and the
+    ;; context strings above, and cancelling the future releases even those as soon as the query finishes.
+    (.schedule ^ScheduledThreadPoolExecutor @query-timeout-executor
+               ^Runnable (fn []
+                           ;; `put!` returns false if the chan is already closed (the pipeline closes it on
+                           ;; successful reduction) — don't log a spurious warning for a completed query.
+                           (when (a/put! canceled-chan ::timeout)
+                             ;; the scheduler thread runs nothing else, so there is no prior context to preserve
+                             (ThreadContext/putAll log-context)
+                             (try
+                               (log/warnf "Query exceeded timeout of %d ms; canceling" timeout-ms)
+                               (finally
+                                 (ThreadContext/clearMap)))))
+               timeout-ms
+               TimeUnit/MILLISECONDS)))
+
 (mu/defn- do-with-canceled-chan :- fn?
   [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
-    (if qp.pipeline/*canceled-chan*
-      (f query)
-      (binding [qp.pipeline/*canceled-chan* (a/promise-chan)]
-        (f query)))))
+    (binding [qp.pipeline/*canceled-chan* (or qp.pipeline/*canceled-chan* (a/promise-chan))]
+      (let [timeout-task (schedule-query-timeout-cancel! qp.pipeline/*canceled-chan*)]
+        (try
+          (f query)
+          (finally
+            (.cancel timeout-task false)))))))
 
 (def ^:private setup-middleware
   "Setup middleware has the signature

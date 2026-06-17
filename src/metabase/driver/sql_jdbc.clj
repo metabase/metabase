@@ -20,6 +20,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -75,6 +76,7 @@
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/set-query-timeout] [_driver _feature _db] true)
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -114,14 +116,11 @@
   [driver database & {:as args}]
   (sql-jdbc.sync/describe-indexes driver database args))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defmethod driver/describe-table-fks :sql-jdbc
-  [driver database table]
-  (sql-jdbc.sync/describe-table-fks driver database table))
-
-(defmethod driver/describe-fks :sql-jdbc
-  [driver database & {:as args}]
-  (sql-jdbc.sync/describe-fks driver database args))
+(mu/defmethod driver/describe-fks :sql-jdbc :- ::driver/describe-fks.result
+  [driver          :- :keyword
+   database        :- ::lib.schema.metadata/database
+   & {:as options} :- ::driver/describe-fks.options]
+  (sql-jdbc.sync/describe-fks driver database options))
 
 (defmethod driver/describe-table-indexes :sql-jdbc
   [driver database table]

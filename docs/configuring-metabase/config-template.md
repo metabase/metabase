@@ -112,6 +112,8 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csp-img-allowed-hosts: ''
+    csp-img-enabled: false
     csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
@@ -129,6 +131,7 @@ config:
     email-from-address: notifications@metabase.com
     email-from-address-override: notifications@metabase.com
     email-from-name: null
+    email-max-recipients-per-message: 50
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
@@ -214,6 +217,7 @@ config:
     mcp-apps-cors-custom-origins: ''
     mcp-apps-cors-enabled-clients: []
     metabot-enabled: true
+    metabot-recent-views-enabled: true
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -240,6 +244,7 @@ config:
     remote-sync-auto-import-rate: 5
     remote-sync-branch: null
     remote-sync-check-changes-cache-ttl-seconds: 60
+    remote-sync-git-timeout-seconds: 60
     remote-sync-task-time-limit-ms: 300000
     remote-sync-token: null
     remote-sync-transforms: false
@@ -310,9 +315,14 @@ config:
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
+    transform-run-job-sql-concurrency: 3
     transform-timeout: 240
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null
+    usage-metadata-enabled: false
+    usage-metadata-last-completed-day: null
+    usage-metadata-retention-days: 90
+    usage-metadata-schedule: 0 0 2 * * ? *
     user-visibility: all
 ```

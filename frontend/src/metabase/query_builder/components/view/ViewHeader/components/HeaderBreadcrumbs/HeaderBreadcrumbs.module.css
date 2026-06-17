@@ -2,7 +2,7 @@
   max-width: 100%;
 
   &.headVariant {
-    .HeaderBadge {
+    .HeaderBreadcrumb {
       font-size: 1.25rem;
     }
   }
@@ -15,13 +15,4 @@
   padding-left: 0.5em;
   padding-right: 0.5em;
   user-select: none;
-}
-
-.HeaderBadge {
-  /* specificity */
-  .HeaderBadgeIcon {
-    width: 1em;
-    height: 1em;
-    margin-right: 0.5em;
-  }
 }

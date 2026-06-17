@@ -8,7 +8,7 @@
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
-   [metabase.metabot.tools.shared.llm-representations :as llm-rep]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -112,23 +112,24 @@
   [{:keys [metrics models]}]
   (let [content (str (when (seq metrics)
                        (str "<metrics>\n"
-                            (str/join "\n" (map llm-rep/metric->xml metrics))
+                            (str/join "\n" (map llm-shape/metric->xml metrics))
                             "\n</metrics>\n"))
                      (when (seq models)
                        (str "<metabase-models>\n"
-                            (str/join "\n" (map llm-rep/model->xml models))
+                            (str/join "\n" (map llm-shape/model->xml models))
                             "\n</metabase-models>")))]
     (format-with-instructions content instructions/answer-sources-instructions)))
 
 (defn- format-metadata-output
   [structured]
-  (llm-rep/get-metadata-result->xml structured))
+  (llm-shape/get-metadata-result->xml structured))
 
 (defn- format-field-metadata-output
   ;; NOTE: keep in sync with read_resource.clj/format-content :field-metadata branch
-  [{:keys [field_id value_metadata]}]
+  [{:keys [field_id value_metadata portable_fk table_reference]}]
   (format-with-instructions
-   (llm-rep/field-metadata->xml {:field_id field_id :value_metadata value_metadata})
+   (llm-shape/field-metadata->xml {:field_id field_id :value_metadata value_metadata
+                                   :portable_fk portable_fk :table_reference table_reference})
    instructions/field-metadata-instructions))
 
 (defn- add-output

@@ -110,7 +110,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :fields [[:field $venues.name {:source-field %checkins.venue-id}]
-                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+                         [:field $users.name {:source-field %checkins.user-id}]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-2
   (testing "Ignores explicit joins (fields with both :source-field and :join-alias)"
     (is (= #{}
            (lib/all-implicitly-joined-field-ids
@@ -122,7 +124,9 @@
                                                :join-alias "V"}]]
                 :joins [{:source-table $$venues
                          :alias "V"
-                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+                         :condition [:= $checkins.venue-id &V.venues.id]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-3
   (testing "Works with breakouts and aggregations"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -131,7 +135,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
-                :aggregation [[:count]]}))))))
+                :aggregation [[:count]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-4
   (testing "Works with filters"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -139,7 +145,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-5
   (testing "Works with aggregations"
     (is (= (lib.tu.macros/$ids nil #{%venues.price})
            (lib/all-implicitly-joined-field-ids
@@ -147,7 +155,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-6
   (testing "Works with order-by"
     (is (= (lib.tu.macros/$ids nil #{%venues.name})
            (lib/all-implicitly-joined-field-ids
@@ -155,7 +165,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-7
   (testing "Works in join conditions"
     (is (= (lib.tu.macros/$ids nil #{%categories.name})
            (lib/all-implicitly-joined-field-ids
@@ -165,7 +177,9 @@
                {:source-table $$venues
                 :joins [{:source-table $$users
                          :alias "U"
-                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]}))))))
+                         :condition [:= [:field $categories.name {:source-field %venues.category-id}] &U.users.name]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-field-ids-test-8
   (testing "Ignores string field names (should only collect integer field IDs) - GHY-3085"
     (mu/disable-enforcement
       (is (= #{}
@@ -181,7 +195,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :fields [[:field $venues.name {:source-field %checkins.venue-id}]
-                         [:field $users.name {:source-field %checkins.user-id}]]}))))))
+                         [:field $users.name {:source-field %checkins.user-id}]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-2
   (testing "Returns empty set when no implicit joins"
     (is (= nil
            (lib/all-implicitly-joined-table-ids
@@ -189,7 +205,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :fields [$checkins.id $checkins.date]}))))))
+                :fields [$checkins.id $checkins.date]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-3
   (testing "Ignores explicit joins"
     (is (= nil
            (lib/all-implicitly-joined-table-ids
@@ -201,7 +219,9 @@
                                                :join-alias "V"}]]
                 :joins [{:source-table $$venues
                          :alias "V"
-                         :condition [:= $checkins.venue-id &V.venues.id]}]}))))))
+                         :condition [:= $checkins.venue-id &V.venues.id]}]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-4
   (testing "Works with breakouts"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -210,7 +230,9 @@
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
                 :breakout [[:field $venues.name {:source-field %checkins.venue-id}]]
-                :aggregation [[:count]]}))))))
+                :aggregation [[:count]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-5
   (testing "Works with filters"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -218,7 +240,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]}))))))
+                :filter [:= [:field $venues.name {:source-field %checkins.venue-id}] "Bird's Nest"]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-6
   (testing "Works with aggregations"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -226,7 +250,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]}))))))
+                :aggregation [[:sum [:field $venues.price {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-7
   (testing "Works with order-by"
     (is (= (lib.tu.macros/$ids nil #{$$venues})
            (lib/all-implicitly-joined-table-ids
@@ -234,7 +260,9 @@
              meta/metadata-provider
              (lib.tu.macros/mbql-query nil
                {:source-table $$checkins
-                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]}))))))
+                :order-by [[:asc [:field $venues.name {:source-field %checkins.venue-id}]]]})))))))
+
+(deftest ^:parallel all-implicitly-joined-table-ids-test-8
   (testing "Works in join conditions"
     (is (= (lib.tu.macros/$ids nil #{$$categories})
            (lib/all-implicitly-joined-table-ids
@@ -317,3 +345,51 @@
             :segment #{}
             :snippet #{snippet-id}}
            (lib/all-referenced-entity-ids [query])))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-table-test
+  (testing ":include-implicitly-joinable? adds the source Table's columns' FK-target Tables to :table"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (= #{(meta/id :orders)}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, only the source Table is referenced")
+      (is (= #{(meta/id :orders) (meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the FK-target Tables of the source columns are included too"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-card-test
+  (testing ":include-implicitly-joinable? adds a source Card's result-metadata columns' FK-target Tables to :table"
+    (let [card-id 1
+          mp      (lib.tu/metadata-provider-with-card-from-query
+                   meta/metadata-provider card-id
+                   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
+          query   (lib/query mp (lib.metadata/card mp card-id))]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids [query])))
+          "without the option, the Card source references no Tables")
+      (is (= #{(meta/id :people) (meta/id :products)}
+             (:table (lib/all-referenced-entity-ids [query] {:include-implicitly-joinable? true})))
+          "with the option, the Card columns' FK-target Tables are included"))))
+
+(deftest ^:parallel all-referenced-entity-ids-implicitly-joinable-result-metadata-fk-override-test
+  (testing ":include-implicitly-joinable? follows an FK target set on a Card's result metadata even when the raw Field
+            has no such FK"
+    (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+          returned       (lib/returned-columns products-query)
+          plain-mp       (lib.tu/metadata-provider-with-card-from-query meta/metadata-provider 1 products-query)
+          override-mp    (lib.tu/metadata-provider-with-card-from-query
+                          meta/metadata-provider 2 products-query
+                          {:result-metadata (mapv (fn [col]
+                                                    (cond-> col
+                                                      (= (:id col) (meta/id :products :price))
+                                                      (assoc :fk-target-field-id (meta/id :people :id))))
+                                                  returned)})]
+      (is (= #{}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query plain-mp (lib.metadata/card plain-mp 1))]
+                      {:include-implicitly-joinable? true})))
+          "PRODUCTS columns have no raw FKs, so nothing is implicitly joinable")
+      (is (= #{(meta/id :people)}
+             (:table (lib/all-referenced-entity-ids
+                      [(lib/query override-mp (lib.metadata/card override-mp 2))]
+                      {:include-implicitly-joinable? true})))
+          "the result-metadata FK-target override pulls in PEOPLE, which the raw PRODUCTS.PRICE Field does not reference"))))

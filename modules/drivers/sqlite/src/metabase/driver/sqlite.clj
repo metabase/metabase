@@ -167,7 +167,7 @@
 
 (defmethod sql.qp/date [:sqlite :second]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:%M:%S" expr))
     (->datetime (strftime "%Y-%m-%d %H:%M:%S" expr))))
 
@@ -177,7 +177,7 @@
 
 (defmethod sql.qp/date [:sqlite :minute]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:%M" expr))
     (->datetime (strftime "%Y-%m-%d %H:%M" expr))))
 
@@ -187,7 +187,7 @@
 
 (defmethod sql.qp/date [:sqlite :hour]
   [_driver _unit expr]
-  (if (= (h2x/database-type expr) "time")
+  (if (h2x/database-or-effective-type-isa? expr "time" :type/Time)
     (->time (strftime "%H:00" expr))
     (->datetime (strftime "%Y-%m-%d %H:00" expr))))
 
@@ -454,9 +454,9 @@
         month-of-year-diff (h2x/- (extract :month-of-year y) (extract :month-of-year x))
         total-month-diff   (h2x/+ month-of-year-diff (h2x/* year-diff 12))]
     (h2x/+ total-month-diff
-          ;; total-month-diff counts month boundaries not whole months, so we need to adjust
-          ;; if x<y but x>y in the month calendar then subtract one month
-          ;; if x>y but x<y in the month calendar then add one month
+           ;; total-month-diff counts month boundaries not whole months, so we need to adjust
+           ;; if x<y but x>y in the month calendar then subtract one month
+           ;; if x>y but x<y in the month calendar then add one month
            [:case
             [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
             -1

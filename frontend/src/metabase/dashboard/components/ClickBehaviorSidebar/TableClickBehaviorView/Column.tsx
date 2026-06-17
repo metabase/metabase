@@ -1,9 +1,10 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
 import { DashboardName } from "metabase/common/components/DashboardName";
-import { Questions } from "metabase/entities/questions";
+import { QuestionName } from "metabase/common/components/QuestionName";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
+  CardId,
   ClickBehavior,
   CustomDestinationClickBehavior,
   DatasetColumn,
@@ -31,7 +32,7 @@ const getLinkTargetName = (clickBehavior: CustomDestinationClickBehavior) => {
   if (clickBehavior.linkType === "question") {
     return (
       <Quoted key="link-question">
-        <Questions.Name id={targetId} />
+        <QuestionName id={targetId as CardId} />
       </Quoted>
     );
   }
@@ -85,7 +86,7 @@ export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column) as unknown as IconName}
-      c="brand"
+      c="core-brand"
       size={18}
     />
     <div>

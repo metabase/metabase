@@ -16,7 +16,9 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time OffsetDateTime)))
 
 (comment metabase.transforms-rest.api.transform-job/keep-me
          metabase.transforms-rest.api.transform-tag/keep-me)
@@ -95,7 +97,10 @@
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
-   [:last_checkpoint_value {:optional true} [:maybe :string]]])
+   [:last_checkpoint_value {:optional true} [:maybe :string]]
+   [:can_read {:optional true} :boolean]
+   [:can_write {:optional true} :boolean]
+   [:can_execute {:optional true} :boolean]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -164,11 +169,10 @@
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
+  (transforms.core/check-feature-enabled! body)
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
-  (transforms.core/check-feature-enabled! body)
   (transforms.core/validate-incremental-column-type! body)
-
   (api/check (not (transforms-base.u/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
@@ -190,7 +194,7 @@
         {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
         dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
-    (->> (t2/hydrate dependencies :creator :owner)
+    (->> (t2/hydrate dependencies :creator :owner :can_read :can_write :can_execute)
          transforms.u/add-source-readable)))
 
 (api.macros/defendpoint :get "/run" :- [:map {:closed true}
@@ -202,7 +206,7 @@
   [_route-params
    query-params :-
    [:map
-    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags"]]
+    [:sort-column    {:optional true} [:enum "transform-name" "start-time" "end-time" "status" "run-method" "transform-tags" "duration"]]
     [:sort-direction {:optional true} [:enum "asc" "desc"]]
     [:transform-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
@@ -215,7 +219,7 @@
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
                                          :limit  (request/limit)))
-      (update :data #(map transforms-base.u/localize-run-timestamps %))))
+      (update :data #(map transforms-base.u/present-run %))))
 
 (api.macros/defendpoint :get "/run/:run-id" :- TransformRunResponse
   "Get a transform run by ID."
@@ -224,7 +228,7 @@
   (api/check-data-analyst)
   (let [run (api/check-404 (t2/select-one :model/TransformRun :id run-id))]
     (-> (t2/hydrate run [:transform :collection :transform_tag_ids])
-        transforms-base.u/localize-run-timestamps)))
+        transforms-base.u/present-run)))
 
 (api.macros/defendpoint :put "/:id" :- TransformResponse
   "Update a transform."
@@ -266,7 +270,10 @@
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
     (transforms.core/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
-      (transforms.core/cancel-run! (:id run))))
+      ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
+      ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of
+      ;; getting the exact timestamp back out of the DB.
+      (transforms.core/cancel-run! run (OffsetDateTime/now))))
   nil)
 
 (api.macros/defendpoint :post "/:id/reset-checkpoint" :- :nil
@@ -306,7 +313,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (run-transform! (api/write-check :model/Transform id)))
+  (run-transform! (api/read-check :model/Transform id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

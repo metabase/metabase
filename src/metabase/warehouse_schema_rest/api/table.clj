@@ -118,7 +118,7 @@
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
-                     (premium-features/has-feature? :transforms-basic) (conj :transform))]
+                     (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
@@ -176,9 +176,9 @@
           {:name "query-table-async"}
           (qp.streaming/streaming-response [rff :api]
             (qp/process-query query
-             ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
-             ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
-             ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                              ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+                              ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+                              ;; Then we can avoid building non-relevant fields, only to throw them away again.
                               (qp.streaming/transforming-query-response
                                rff
                                (fn [response]
@@ -428,8 +428,12 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   field-order :- [:sequential ms/PositiveInt]]
-  (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order))
+   ;; Accept either a bare sequential (legacy) or a wrapped {:field_order [...]} body.
+   body :- [:or
+            [:sequential ms/PositiveInt]
+            [:map [:field_order [:sequential ms/PositiveInt]]]]]
+  (let [field-order (if (map? body) (:field_order body) body)]
+    (-> (t2/select-one :model/Table :id id) api/write-check (table/custom-order-fields! field-order)))
   {:success true})
 
 (mu/defn- update-csv!
@@ -440,10 +444,8 @@
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
-    (let [_result (upload/update-csv! options)]
-      {:status 200
-       ;; There is scope to return something more interesting.
-       :body   nil})
+    (upload/update-csv! options)
+    api/generic-204-no-content
     (catch Throwable e
       {:status (or (-> e ex-data :status-code)
                    500)

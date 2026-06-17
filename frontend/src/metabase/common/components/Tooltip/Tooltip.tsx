@@ -8,6 +8,8 @@ import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/con
 import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
+import "./tippy.module.css";
+
 const TippyComponent = Tippy.default;
 
 export interface TooltipProps extends Partial<
@@ -93,7 +95,7 @@ export function Tooltip({
     [preventOverflow],
   );
 
-  // themes styles come from frontend/src/metabase/common/components/Popover/Popover.css
+  // themes styles come from ./tippy.module.css
   // Tippy theming API: https://atomiks.github.io/tippyjs/v6/themes/
   const theme = `tooltip ${isPadded ? "" : "no-padding"}`;
 

@@ -41,6 +41,18 @@
        (finally
          (fs/delete sample-file-path))))
 
+(deftest blacklisted-extensions-skipped-test
+  (let [png-path (str u/project-root-directory "/" "test-token-scan.png")]
+    (try
+      ;; Write a token-like string into a .png file; it must be skipped, not scanned.
+      (spit png-path token-like-comment)
+      (is (= {:total-files 0, :files-with-matches 0, :total-matches 0}
+             (-> (token-scan/run-scan {:arguments [png-path] :options {}})
+                 (select-keys [:total-files :files-with-matches :total-matches])))
+          "blacklisted file extensions (e.g. .png) should be skipped entirely")
+      (finally
+        (fs/delete png-path)))))
+
 (deftest missing-file-test
   (try
     (token-scan/run-scan {:arguments ["some-missing-file.txt"]})

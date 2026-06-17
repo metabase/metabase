@@ -2,6 +2,7 @@ import type {
   CreateBranchRequest,
   ExportChangesRequest,
   ExportChangesResponse,
+  ExportPreflightResponse,
   GetBranchesResponse,
   HasRemoteChangesResponse,
   ImportFromBranchRequest,
@@ -10,6 +11,8 @@ import type {
   RemoteSyncConfigurationSettings,
   RemoteSyncHasChangesResponse,
   RemoteSyncTask,
+  TestRemoteSyncConnectionRequest,
+  TestRemoteSyncConnectionResponse,
   UpdateRemoteSyncConfigurationResponse,
 } from "metabase-types/api";
 
@@ -22,13 +25,14 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       ExportChangesResponse,
       ExportChangesRequest
     >({
-      query: ({ message, force, branch }) => ({
+      query: ({ message, force, branch, merge }) => ({
         url: `/api/ee/remote-sync/export`,
         method: "POST",
         body: {
           message,
           branch,
           force,
+          merge,
         },
       }),
       invalidatesTags: () => [
@@ -36,16 +40,29 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
         tag("session-properties"),
       ],
     }),
+    getExportPreflight: builder.query<
+      ExportPreflightResponse,
+      { branch: string }
+    >({
+      query: ({ branch }) => ({
+        url: `/api/ee/remote-sync/export-preflight`,
+        method: "GET",
+        params: { branch },
+      }),
+      providesTags: () => [tag("remote-sync-has-remote-changes")],
+    }),
     importChanges: builder.mutation<
       ImportFromBranchResponse,
       ImportFromBranchRequest
     >({
-      query: ({ branch, force }) => ({
+      query: ({ branch, force, merge, expected_branch }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
           branch,
           force,
+          merge,
+          expected_branch,
         },
       }),
       /**
@@ -140,6 +157,16 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: () => [tag("remote-sync-current-task")],
     }),
+    testRemoteSyncConnection: builder.mutation<
+      TestRemoteSyncConnectionResponse,
+      TestRemoteSyncConnectionRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/test-connection`,
+        body,
+      }),
+    }),
   }),
 });
 
@@ -149,9 +176,11 @@ export const {
   useGetHasRemoteChangesQuery,
   useUpdateRemoteSyncSettingsMutation,
   useExportChangesMutation,
+  useLazyGetExportPreflightQuery,
   useGetBranchesQuery,
   useCreateBranchMutation,
   useImportChangesMutation,
   useGetRemoteSyncCurrentTaskQuery,
   useCancelRemoteSyncCurrentTaskMutation,
+  useTestRemoteSyncConnectionMutation,
 } = remoteSyncApi;

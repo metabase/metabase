@@ -203,7 +203,7 @@
                                (into #{} (map (comp :lib/expression-name second)) expressions)))
           pred             #(bad-ref-clause? :expression expression-names %)
           form             (-> (stage-with-joins-and-namespaced-keys-removed stage)
-                   ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
+                               ;; also ignore expression refs inside `:parameters` since they still use legacy syntax these days.
                                (dissoc :parameters))]
       (when (lib.schema.util/pred-matches-form? form pred)
         (lib.schema.util/matching-locations form pred)))))
@@ -363,7 +363,8 @@
    (common/disallowed-keys
     {:source-metadata "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"
      :source-query    ":source-query is not allowed in MBQL 5 queries."
-     :type            ":type is not allowed in a query stage in any version of MBQL"})])
+     :type            ":type is not allowed in a query stage in any version of MBQL"
+     :database        ":database is not allowed in a query stage, only at the top level of a query."})])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

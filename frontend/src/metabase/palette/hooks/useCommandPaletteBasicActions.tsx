@@ -65,7 +65,9 @@ export const useCommandPaletteBasicActions = ({
     enabled: isLoggedIn,
   });
   const { data: searchResults } = useSearchQuery(
-    isLoggedIn ? { models: ["dataset"], limit: 1 } : skipToken,
+    isLoggedIn
+      ? { models: ["dataset"], limit: 1, context: "basic-actions" }
+      : skipToken,
   );
   const hasModels = (searchResults?.data?.length ?? 0) > 0;
 
@@ -225,12 +227,7 @@ export const useCommandPaletteBasicActions = ({
         perform: () =>
           openNewModalWithProps({
             id: "embed",
-            props: {
-              initialState: {
-                isGuest: true,
-                useExistingUserSession: true,
-              },
-            },
+            props: null,
           }),
       });
     }

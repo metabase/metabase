@@ -3,6 +3,7 @@ import { Route } from "react-router";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
+  setupGetCurrentWorkspaceEndpoint,
   setupLibraryEndpoints,
   setupPropertiesEndpoints,
   setupRemoteSyncEndpoints,
@@ -14,6 +15,7 @@ import { renderWithProviders } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
+  CurrentWorkspace,
   RemoteSyncEntity,
   TokenFeatures,
 } from "metabase-types/api";
@@ -128,6 +130,7 @@ interface SetupOpts {
   remoteSyncEnabled?: boolean;
   remoteSyncBranch?: string | null;
   isAdmin?: boolean;
+  currentWorkspace?: CurrentWorkspace | null;
   hasDirtyChanges?: boolean;
   hasTransformDirtyChanges?: boolean;
   remoteSyncTransforms?: boolean;
@@ -140,6 +143,7 @@ export const setup = ({
   remoteSyncEnabled = true,
   remoteSyncBranch = null,
   isAdmin = true,
+  currentWorkspace = null,
   hasDirtyChanges = false,
   hasTransformDirtyChanges = false,
   remoteSyncTransforms = false,
@@ -177,6 +181,7 @@ export const setup = ({
   setupDirtyEndpoints({ dirty, collections });
   setupNavbarEndpoints(isNavbarOpened);
   setupLibraryEndpoints(false);
+  setupGetCurrentWorkspaceEndpoint(currentWorkspace);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-remote-sync-dev-instance",
@@ -193,34 +198,20 @@ export const setup = ({
     enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
-  const hasUpsell = !remoteSyncEnabled;
-
-  if (hasUpsell) {
-    renderWithProviders(
-      <Route
-        path="/"
-        component={() => (
-          <DataStudioLayout>
-            <div data-testid="content">{"Content"}</div>
-          </DataStudioLayout>
-        )}
-      />,
-      {
-        storeInitialState: state,
-        withRouter: true,
-      },
-    );
-  } else {
-    renderWithProviders(
-      <DataStudioLayout>
-        <div data-testid="content">{"Content"}</div>
-      </DataStudioLayout>,
-      {
-        storeInitialState: state,
-        withRouter: false,
-      },
-    );
-  }
+  renderWithProviders(
+    <Route
+      path="/"
+      component={() => (
+        <DataStudioLayout>
+          <div data-testid="content">{"Content"}</div>
+        </DataStudioLayout>
+      )}
+    />,
+    {
+      storeInitialState: state,
+      withRouter: true,
+    },
+  );
 };
 
 export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
@@ -229,11 +220,14 @@ export const DEFAULT_EE_SETTINGS: Partial<SetupOpts> = {
     "remote_sync",
     "dependencies",
     "feature_level_permissions",
+    "workspaces",
   ],
   tokenFeatures: {
     remote_sync: true,
     advanced_permissions: true,
     library: true,
     dependencies: true,
+    "schema-viewer": true,
+    workspaces: true,
   },
 };

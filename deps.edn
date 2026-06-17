@@ -497,7 +497,6 @@
     "modules/drivers/bigquery-cloud-sdk/test"
     "modules/drivers/clickhouse/test"
     "modules/drivers/databricks/test"
-    "modules/drivers/druid/test"
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
@@ -561,8 +560,6 @@
     "modules/drivers/databricks/test"
     "modules/drivers/druid-jdbc/src"
     "modules/drivers/druid-jdbc/test"
-    "modules/drivers/druid/src"
-    "modules/drivers/druid/test"
     "modules/drivers/hive-like/src"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/src"
@@ -600,7 +597,6 @@
                 "modules/drivers/bigquery-cloud-sdk/src"
                 "modules/drivers/clickhouse/src"
                 "modules/drivers/databricks/src"
-                "modules/drivers/druid/src"
                 "modules/drivers/druid-jdbc/src"
                 "modules/drivers/hive-like/src"
                 "modules/drivers/mongo/src"
@@ -626,7 +622,6 @@
                                  "modules/drivers/bigquery-cloud-sdk/src"
                                  "modules/drivers/clickhouse/src"
                                  "modules/drivers/databricks/src"
-                                 "modules/drivers/druid/src"
                                  "modules/drivers/druid-jdbc/src"
                                  "modules/drivers/hive-like/src"
                                  "modules/drivers/mongo/src"
@@ -773,10 +768,9 @@
   ;;    ./bin/mage cljfmt-all
   ;;
   ;; ./bin/mage cljfmt-all -h for more info
-  :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:mvn/version "0.15.3"}}
-   :ns-default cljfmt.tool
-   :exec-fn    cljfmt.tool/fix}
+  ;;
+  ;; (this doc was here because we previously had a `:cljfmt` alias here, now specified in `bb.edn`, but leaving these
+  ;; dox here in case anyone comes looking for it -- Cam
 
   ;;; building Uberjar, build and release scripts
 

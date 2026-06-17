@@ -1,20 +1,25 @@
 (ns metabase.transforms.models.transform-run
   (:require
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.run-tracking.core :as rt]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import
+   (java.time OffsetDateTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -119,6 +124,17 @@
                                 :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
+(defn- publish-timeout-event!
+  "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
+  failures don't bubble into the caller's timeout flow."
+  [run]
+  (try
+    (events/publish-event! :event/transform-run-timeout
+                           (cond-> {:object run}
+                             (:user_id run) (assoc :user-id (:user_id run))))
+    (catch Throwable t
+      (log/warnf t "Failed to publish transform-run-timeout event for run %s" (pr-str (:id run))))))
+
 (defn timeout-run!
   "Mark a started run as timed out."
   ([run-id]
@@ -132,35 +148,84 @@
                                 :message   "Timed out"
                                 :status    :timeout
                                 :is_active nil}))
-     (cancel/delete-cancelation! run-id))))
+     (cancel/delete-cancelation! run-id)
+     (when (pos? <>)
+       (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
+       (when-let [run (t2/select-one :model/TransformRun :id run-id)]
+         (publish-timeout-event! run))))))
+
+(defn- reap-transform-runs!
+  "Reap active transform runs by `stale-column` into a timeout carrying `message`, publishing a timeout
+  event per run. See [[metabase.run-tracking.core/reap-orphaned!]]."
+  [stale-column age unit message]
+  (let [end-time (OffsetDateTime/now ZoneOffset/UTC)
+        reaped   (rt/reap-orphaned!
+                  {:model    :model/TransformRun
+                   :active   [:= :is_active true]
+                   :stale    [:< stale-column (rt/cutoff age unit)]
+                   :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
+                   :metrics  {:total-metric   :metabase-transforms/timeouts-total
+                              :latency-metric :metabase-transforms/timeout-detection-latency-ms
+                              :tags           {:type "transform"}
+                              :latency-column stale-column
+                              :timeout-ms     (rt/unit->ms age unit)}})]
+    (doseq [run reaped]
+      (publish-timeout-event! (assoc run
+                                     :status    :timeout
+                                     :is_active nil
+                                     :end_time  end-time
+                                     :message   message)))
+    (cancel/delete-old-canceling-runs!)
+    reaped))
 
 (defn timeout-old-runs!
-  "Time out all active runs older than the specified age."
+  "Time out all active runs whose `start_time` is older than the specified age. Returns the rows that were
+  timed out."
   [age unit]
-  (u/prog1 (t2/update! :model/TransformRun
-                       :is_active true
-                       :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-                       {:status    :timeout
-                        :end_time  :%now
-                        :is_active nil
-                        :message   "Timed out by metabase"})
-    (cancel/delete-old-canceling-runs!)))
+  (reap-transform-runs! :start_time age unit "Timed out by metabase"))
+
+(defn heartbeat-runs!
+  "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
+  [run-ids]
+  (rt/heartbeat-ids! :model/TransformRun [:= :is_active true] :last_heartbeat run-ids))
+
+(defn reap-orphaned-runs!
+  "Time out active runs whose `last_heartbeat` is older than `stale-minutes` (their owning process is
+  presumed dead). Returns the rows that were timed out."
+  [stale-minutes]
+  (reap-transform-runs! :last_heartbeat stale-minutes :minute "Timed out: no heartbeat"))
 
 (defn cancel-old-canceling-runs!
-  "Cancel all canceling runs older than the specified age."
+  "Atomically force-cancels active runs whose cancelation requests are older than `age` `unit`. Returns the
+  pre-update run rows we transitioned, each augmented with `:request_time` from its cancelation row, so callers
+  can emit observability only for runs we actually changed.
+
+  Race-free per app-db semantics: SELECT … FOR UPDATE row-locks the chosen runs across the transaction, so
+  concurrent writers (`cancel-run!`, `timeout-run!`) block until we commit and the matching UPDATE-by-id hits
+  exactly the locked rows. Rows another writer already transitioned (no longer `is_active`) simply drop out of
+  the lock set and are not reported."
   [age unit]
-  (u/prog1 (t2/update! :model/TransformRun
-                       :is_active true
-                       :id [:in {:select :run_id
-                                 :from   :transform_run_cancelation
-                                 :where  [:<
-                                          :transform_run_cancelation.time
-                                          (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]}]
-                       {:status    :canceled
-                        :end_time  :%now
-                        :is_active nil
-                        :message   "Canceled by user but could not guarantee run stopped."})
-    (cancel/delete-old-canceling-runs!)))
+  (t2/with-transaction [_conn]
+    (let [cutoff (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
+          times  (into {} (map (juxt :run_id :time))
+                       (t2/select [:model/TransformRunCancelation :run_id :time]
+                                  :time [:< cutoff]))
+          locked (when (seq times)
+                   (t2/select :model/TransformRun
+                              {:where [:and [:= :is_active true] [:in :id (keys times)]]
+                               :for   :update}))]
+      (when (seq locked)
+        (t2/update! :model/TransformRun
+                    :id        [:in (mapv :id locked)]
+                    :is_active true
+                    {:status    :canceled
+                     :end_time  :%now
+                     :is_active nil
+                     :message   "Canceled by user but could not guarantee run stopped."})
+        (cancel/delete-old-canceling-runs!))
+      (mapv #(assoc % :request_time (times (:id %)))
+            (when (seq locked)
+              (t2/select :model/TransformRun :id [:in (mapv :id locked)]))))))
 
 (defn running-run-for-transform-id
   "Return a single active transform run or nil."
@@ -168,6 +233,20 @@
   (t2/select-one :model/TransformRun
                  :transform_id transform-id
                  :is_active true))
+
+(defn last-successful-run-times
+  "Map each id in `transform-ids` with a succeeded run to its most recent run's `end_time`. Ids with
+  no succeeded run are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (into {}
+          (map (juxt :transform_id :last_success))
+          (t2/select :model/TransformRun
+                     {:select   [:transform_id [[:max :end_time] :last_success]]
+                      :where    [:and
+                                 [:in :transform_id transform-ids]
+                                 [:= :status [:inline "succeeded"]]]
+                      :group-by [:transform_id]}))))
 
 (defn- timestamp-constraint
   [field-name date-string]
@@ -288,6 +367,13 @@
        :status          [[(translate-status-clause) sort-direction]]
        :run-method      [[(translate-run-method-clause) sort-direction]]
        :transform-tags  [[(first-tag-name-subquery) sort-direction nulls-sort]]
+       ;; In-progress runs (end_time = nil) sink to the bottom in BOTH
+       ;; directions — null means "no measurable duration yet," not
+       ;; "longest duration."
+       :duration        [[[:is :end_time nil] :asc]
+                         [(h2x/calculate-interval-honeysql-form
+                           (mdb/db-type) :end_time :start_time)
+                          sort-direction]]
        [[:start_time sort-direction]
         [:end_time   sort-direction nulls-sort]])
      [:transform_run.id sort-direction])))
