@@ -263,6 +263,14 @@
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
+(defn- dashboard-with-uuid-for-param-values
+  "Light Dashboard fetch for the public param-value endpoints. Unlike [[dashboard-with-uuid]]/[[public-dashboard]] it
+  skips the full hydration (dashcards/cards/series/tabs/param_fields/query-average-durations) -- `param-values` and
+  `dashboard-param-remapped-value` only need `:resolved-params`, which they hydrate themselves. Matches how the embed
+  param-value endpoints fetch the Dashboard."
+  [uuid]
+  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -532,7 +540,7 @@
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard (dashboard-with-uuid uuid)]
+  (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
@@ -549,7 +557,7 @@
                                       [:query     ms/NonBlankString]]
    constraint-param-key->value]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard (dashboard-with-uuid uuid)]
+  (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
@@ -565,7 +573,7 @@
                                 [:param-key ms/NonBlankString]]
    {:keys [value]}          :- [:map [:value :any]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [dashboard (dashboard-with-uuid uuid)]
+  (let [dashboard (dashboard-with-uuid-for-param-values uuid)]
     (request/as-admin
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/dashboard-param-remapped-value dashboard param-key (codec/url-decode value))))))

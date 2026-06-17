@@ -1,0 +1,34 @@
+.root {
+  /* Establish a stacking context so the overlay z-indexes layer correctly. */
+  transform: scale(1);
+}
+
+.spread {
+  position: absolute;
+  inset: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.visualization {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.warnings {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  margin-top: var(--mantine-spacing-md);
+  margin-right: var(--mantine-spacing-md);
+}
+
+.shadowed {
+  box-shadow: 0 2px 2px var(--mb-color-shadow);
+}

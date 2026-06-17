@@ -10,6 +10,7 @@ import areaStackInterpolateMissingValues from "./area-stack-interpolate-missing-
 import areaStackLinearXAxis from "./area-stack-linear-x-axis.json";
 import areaStackedAutoDataLabels from "./area-stacked-auto-data-labels.json";
 import autoYSplit from "./auto-y-split.json";
+import bar45DegreeLabels from "./bar-45-degree-labels.json";
 import barAutoFormattingCompact from "./bar-auto-formatting-compact.json";
 import barAutoFormattingFull from "./bar-auto-formatting-full.json";
 import barBreakoutWithLineSeriesStackedRightAxisOnly from "./bar-breakout-with-line-series-stacked-right-axis-only.json";
@@ -262,4 +263,5 @@ export const data = {
   lineChartSplitPanelsTimeseriesDifferentRanges,
   comboSplitPanelsMixedSeriesDisplaySettings,
   barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
+  bar45DegreeLabels,
 };

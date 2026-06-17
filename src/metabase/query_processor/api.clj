@@ -186,11 +186,10 @@
              [:database ms/PositiveInt]
              [:settings {:optional true} [:maybe [:map
                                                   [:include_sensitive_fields {:optional true} :boolean]]]]]]
-  (lib-be/with-metadata-provider-cache
-    (queries/batch-fetch-query-metadata
-     [query]
-     (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
-       {:include-sensitive-fields? include-sensitive-fields}))))
+  (queries/batch-fetch-query-metadata
+   [query]
+   (when-some [include-sensitive-fields (get-in query [:settings :include_sensitive_fields])]
+     {:include-sensitive-fields? include-sensitive-fields})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
