@@ -3,6 +3,10 @@ import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
+import {
+  type Destination,
+  QuestionMoveConfirmModal,
+} from "metabase/common/collections/components/QuestionMoveConfirmModal";
 import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
@@ -15,10 +19,6 @@ import {
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { ArchivedBulkActions } from "./ArchivedBulkActions";
-import {
-  type Destination,
-  QuestionMoveConfirmModal,
-} from "./QuestionMoveConfirmModal";
 import { UnarchivedBulkActions } from "./UnarchivedBulkActions";
 
 type CollectionBulkActionsProps = {

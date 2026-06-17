@@ -9,8 +9,8 @@ import {
   useListDatabasesQuery,
   useReorderBookmarksMutation,
 } from "metabase/api";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import CreateCollectionModal from "metabase/common/collections/containers/CreateCollectionModal";
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,

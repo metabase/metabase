@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CollectionRowMenu } from "metabase/collections/components/CollectionRowMenu";
+import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import {
   PLUGIN_SNIPPET_FOLDERS,

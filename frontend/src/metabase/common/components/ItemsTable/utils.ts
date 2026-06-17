@@ -1,7 +1,7 @@
 import type {
   CollectionContentTableColumn,
   CollectionContentTableColumnsMap,
-} from "metabase/collections/components/CollectionContent";
+} from "metabase/common/collections/columns";
 import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";

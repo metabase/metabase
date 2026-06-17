@@ -5,7 +5,7 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import { skipToken, useGetCollectionQuery } from "metabase/api";
-import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
 import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { FormErrorMessage } from "metabase/common/components/FormErrorMessage";
 import { FormFooter } from "metabase/common/components/FormFooter";

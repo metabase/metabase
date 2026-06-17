@@ -2,7 +2,7 @@ import type { Dispatch, MouseEvent, SetStateAction } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import ActionMenu from "metabase/collections/components/ActionMenu";
+import ActionMenu from "metabase/common/collections/components/ActionMenu";
 import type {
   CreateBookmark,
   DeleteBookmark,

@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
+import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
