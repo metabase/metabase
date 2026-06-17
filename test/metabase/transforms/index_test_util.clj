@@ -41,16 +41,23 @@
 
 (def driver-cases
   "Driver -> test case: `:indexes` to declare (covering every index method the driver supports), `:physical-indexes`
-  a `(fn [database schema table])` reading them back from the system catalog, and `:expected` what it should return.
+  a `(fn [database schema table])` reading them back from the system catalog, `:expected` what it should return, and
+  `:fetched` the normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) for the same indexes.
   Target columns come from the transforms-test `transforms_products` (`category` text, `price` float)."
   {;; Postgres: standalone btree
    :postgres   {:indexes          [{:kind :btree :name "by_category" :columns [{:name "category"}]}]
                 :expected         #{"by_category"}
-                :physical-indexes postgres-indexes}
+                :physical-indexes postgres-indexes
+                :fetched          #{{:name "by_category" :kind :btree :access_method "btree"
+                                     :is_unique false :is_primary false :is_valid true
+                                     :key_columns ["category"] :include_columns [] :partial_predicate nil}}}
    ;; Redshift: inline sortkey
    :redshift   {:indexes          [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
                 :expected         {:columns ["category" "price"] :style :interleaved}
-                :physical-indexes redshift-sortkey}
+                :physical-indexes redshift-sortkey
+                :fetched          #{{:name nil :kind :sortkey :access_method nil
+                                     :is_unique false :is_primary false :is_valid true
+                                     :key_columns ["category" "price"] :include_columns [] :partial_predicate nil}}}
    ;; ClickHouse: inline order-by + standalone skip-index in one target. It echoes a single-column key/expr back in
    ;; parens, hence "(category)" and "(price)" (a multi-column key would read as a bare "a, b").
    :clickhouse {:indexes          [{:kind :order-by :columns [{:name "category"}]}
@@ -58,7 +65,13 @@
                                     :columns [{:name "price"}] :granularity 1}]
                 :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
-                :physical-indexes clickhouse-indexes}})
+                :physical-indexes clickhouse-indexes
+                :fetched          #{{:name "by_price" :kind :skip-index :access_method "minmax"
+                                     :is_unique false :is_primary false :is_valid true
+                                     :key_columns ["price"] :include_columns [] :partial_predicate nil}
+                                    {:name nil :kind :order-by :access_method nil
+                                     :is_unique false :is_primary false :is_valid true
+                                     :key_columns ["category"] :include_columns [] :partial_predicate nil}}}})
 
 (defn index-test-drivers
   "Drivers that run transforms and declare any index support."
