@@ -8,7 +8,12 @@ import { isCartesianChart } from "metabase/visualizations";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
-import { isCountry, isDate, isState } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCountry,
+  isDate,
+  isNumeric,
+  isState,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   CardDisplayType,
   Dataset,
@@ -454,7 +459,12 @@ export function getHeatMapSeries({
   let maxValue: number | undefined;
   series.forEach((s, i) => {
     const segmentName = legendItems[i].name;
-    for (const row of s.data.rows) {
+    // the backend returns rows sorted by the metric value
+    // but for numeric dimensions in the heat map, we should sort by the dimension value
+    const seriesRows = isNumeric(s.data.cols[0])
+      ? s.data.rows.toSorted((a, b) => Number(a[0]) - Number(b[0]))
+      : s.data.rows;
+    for (const row of seriesRows) {
       rows.push([...row, segmentName]);
       const value = row[1];
       if (typeof value !== "number") {

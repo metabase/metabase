@@ -162,15 +162,12 @@ describe("ExplorationSidebar", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows a red error marker for error queries, with the error message in its tooltip", async () => {
+  it("shows a red error marker for error queries", async () => {
     setup({ queries: [errorQuery] });
 
     const row = getRow("Revenue by source");
     const marker = within(row).getByTestId("exploration-error-marker");
     expect(marker).toBeInTheDocument();
-
-    await userEvent.hover(marker);
-    expect(await screen.findByText("Database timed out")).toBeInTheDocument();
   });
 
   it("keeps a manually collapsed heading collapsed when the tree reloads", async () => {

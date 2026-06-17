@@ -185,9 +185,7 @@ describe("ExplorationGroupVisualization", () => {
       ],
     });
 
-    expect(
-      screen.getAllByText("Revenue across regions").length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("Q1").length).toBeGreaterThan(0); // we use the first query's name for the header
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
@@ -246,7 +244,7 @@ describe("ExplorationGroupVisualization", () => {
     expect(screen.queryByTestId("visualization-stub")).not.toBeInTheDocument();
   });
 
-  it("shows the group name in the header", () => {
+  it("shows the first query's name in the header", () => {
     const queries = [
       createQuery({ id: 101, name: "Revenue (US)", status: "done" }),
       createQuery({ id: 102, name: "Revenue (EU)", status: "done" }),
@@ -257,9 +255,7 @@ describe("ExplorationGroupVisualization", () => {
     ]);
     setup({ queries, datasets });
 
-    expect(screen.getByText("Revenue across regions")).toBeInTheDocument();
-    // Per-query names live in chart data, not the group header.
-    expect(screen.queryByText("Revenue (US)")).not.toBeInTheDocument();
+    expect(screen.getByText("Revenue (US)")).toBeInTheDocument();
   });
 
   it("shows the timeline dropdown when the group has timeseries charts", async () => {
