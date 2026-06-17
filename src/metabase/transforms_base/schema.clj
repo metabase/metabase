@@ -30,11 +30,8 @@
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
-   ;; Indexes to apply to the target table on every full run. Each is a structured index map (see
-   ;; [[metabase.driver/compile-create-index]]); the driver's `supported-index-methods` decides each kind's
-   ;; lifecycle (`:inline` at table creation vs `:standalone` afterwards). Not persisted on the target: hydrated
-   ;; onto it before a run by `metabase.transforms.execute/hydrate-transform-indexes` (a stub today, a
-   ;; `metabase_index_request` read once that model lands).
+   ;; Indexes to apply on every full run (see [[metabase.driver/compile-create-index]]). Not persisted here:
+   ;; hydrated onto the target before a run by `metabase.transforms.execute/hydrate-transform-indexes`.
    [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform

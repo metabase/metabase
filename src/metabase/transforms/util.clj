@@ -154,9 +154,8 @@
                             driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
                     (canceling/chan-start-run! run-id cancel-chan)
                     (run-transform! cancel-chan source-range-params)))]
-        ;; Create the target's standalone indexes now that the table exists, before saving the watermark and
-        ;; marking the run succeeded. A failure here goes through the catch below and fails the run; doing it
-        ;; before the watermark means a retry is still a full rebuild that re-attempts the index.
+        ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
+        ;; stays a full rebuild that re-attempts the index).
         (transforms-base.u/apply-target-indexes! transform)
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)

@@ -1,16 +1,8 @@
 (ns ^:mb/driver-tests metabase.transforms.index-test
-  "End-to-end tests that indexes declared on a transform target are applied to the physical target table when the
-  transform runs, and behave correctly across re-runs and failures. Proves the Phase 1 wiring: declared indexes
-  flow out of the hydration seam and through the creation lifecycle, whatever the driver's mix of `:inline` and
-  `:standalone` index methods.
-
-  The per-driver cases, catalog readers, and driver selectors live in [[metabase.transforms.index-test-util]] and
-  are shared with the incremental suite. The same assertions run for both transform kinds, since the target table
-  is built at a different seam for each: a SQL transform creates it with a CTAS, a Python transform with
-  `create-table!`.
-
-  Indexes reach a run via `execute!`'s hydration seam (the `metabase_index_request` store doesn't exist yet), so
-  each test stubs [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
+  "End-to-end: indexes declared on a transform target reach the physical table when the transform runs, across
+  re-runs and failures, for both transform kinds (SQL builds the table with a CTAS, Python with `create-table!`).
+  Per-driver cases and helpers live in [[metabase.transforms.index-test-util]]. Each test stubs
+  [[metabase.transforms.execute/hydrate-transform-indexes]] to inject its case."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -33,8 +25,7 @@
            {:source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))})})
 
 (defn- python-source
-  "A Python transform source that returns `transforms_products` unchanged (built via `create-table!`), so the target
-  carries the same columns the driver-cases indexes reference."
+  "A Python transform source that returns `transforms_products` unchanged (built via `create-table!`)."
   []
   {:type            "python"
    :source-database (mt/id)
@@ -42,9 +33,8 @@
    :body            "def transform(transforms_products):\n    return transforms_products"})
 
 (defn- test-declared-indexes!
-  "Shared body for both transform kinds: run a transform whose source is built by the 0-arg `make-source` with the
-  driver's `:indexes` hydrated onto its target, and assert `:physical-indexes` reads `:expected` back from the
-  catalog. Runs twice to prove the indexes survive a full rebuild unchanged."
+  "Run a transform (source from the 0-arg `make-source`) with the driver's `:indexes` hydrated onto its target, then
+  assert `:physical-indexes` reads `:expected` from the catalog. Runs twice to check they survive a rebuild."
   [{:keys [indexes expected physical-indexes]} make-source]
   (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
     (with-transform-cleanup! [{table-name :name :as target}
@@ -83,9 +73,8 @@
 
 (deftest ^:synchronized declared-index-failure-fails-the-run-test
   (testing "a bad index declaration fails the whole run instead of being silently skipped"
-    ;; A column the table doesn't have. For an inline kind the CTAS fails; for a standalone kind the post-create
-    ;; `CREATE INDEX` fails. Either way `apply-target-indexes!` runs inside the cancelable scope before the run is
-    ;; marked succeeded, so the throw both surfaces from `execute!` and records the run as `:failed`.
+    ;; The index points at a missing column, so creation fails (inline: the CTAS; standalone: the CREATE INDEX).
+    ;; Either way it runs before the run is marked succeeded, so the throw surfaces and the run is recorded :failed.
     (mt/test-drivers (index-util/index-test-drivers)
       (mt/dataset transforms-dataset/transforms-test
         (let [test-case (index-util/driver-cases driver/*driver*)]
@@ -112,10 +101,8 @@
 
 (deftest ^:synchronized declared-index-creation-is-idempotent-test
   (testing "re-applying a target's indexes is a no-op (CREATE INDEX IF NOT EXISTS), not an error"
-    ;; The standalone create path is gated to full rebuilds, so it normally meets a freshly-created table. This
-    ;; pins the belt-and-suspenders idempotency: re-running `apply-target-indexes!` against the live table (where
-    ;; the index already exists) must not throw. No-op for inline-only drivers, whose idempotency comes from the
-    ;; table recreation covered by `declared-indexes-applied-and-replayed-test`.
+    ;; The standalone path normally meets a fresh table; this pins that re-running it against the live table (index
+    ;; already there) doesn't throw. No-op for inline-only drivers (covered by the replay test above).
     (mt/test-drivers (index-util/index-test-drivers)
       (mt/dataset transforms-dataset/transforms-test
         (let [{:keys [indexes expected physical-indexes] :as test-case} (index-util/driver-cases driver/*driver*)]

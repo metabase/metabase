@@ -560,14 +560,9 @@
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
 (defn- apply-standalone-indexes!
-  "Create the target table's `:standalone` indexes as separate DDL statements, now that the table exists. Each
-  driver's `supported-index-methods` decides which index kinds it applies this way; `:inline` kinds (and inline-only
-  drivers) render inside the table-creation statement and are skipped here, so passing the full index list is safe.
-  Reads the indexes hydrated onto the target by `metabase.transforms.execute/execute!`. Runs synchronously and is
-  required, not best-effort: a failure here propagates and fails the run.
-
-  Each create is emitted with `:if-not-exists` so a rebuild that finds the index already there is a no-op rather
-  than an error."
+  "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
+  table creation, so they're filtered out here and passing the full list is safe. Each create uses `:if-not-exists`,
+  so re-applying is a no-op. Throws on failure."
   [database target]
   (when-let [indexes (not-empty (:indexes target))]
     (let [driver     (:engine database)
@@ -583,13 +578,9 @@
                                                                       (assoc index :if-not-exists true)))))))))
 
 (defn apply-target-indexes!
-  "Create the target table's standalone indexes, on full-create runs only: a full `:table` run recreates the table
-  (so indexes must be reinstalled), as does a first/full-reset incremental run. Plain append runs preserve the
-  existing table and its live indexes, so they skip this. No-op for inline-only drivers/kinds, or a target with no
-  declared indexes.
-
-  Called inside the run's cancelable scope, *before* the run is marked succeeded and before the target is synced, so
-  a failure fails the run record (not just the `execute!` call) and the synced metadata sees the indexes."
+  "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
+  recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
+  failure fails the run record, not just `execute!`."
   [transform]
   (when (or (= :table (keyword (:type (:target transform))))
             (full-incremental-run? transform))
@@ -606,8 +597,8 @@
 
    This is called after the core execution completes. Callers that use
    `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
-   to preserve the correct order of operations. Standalone indexes are applied earlier, by
-   `apply-target-indexes!`, so a failure there can still fail the run."
+   to preserve the correct order of operations. (Standalone indexes are applied earlier, by
+   `apply-target-indexes!`, so a failure there still fails the run.)"
   [transform opts]
   (let [{:keys [target]} transform
         {:keys [publish-events?]

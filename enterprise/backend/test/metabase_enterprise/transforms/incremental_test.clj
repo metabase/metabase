@@ -678,18 +678,15 @@
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
 
 (defn- incremental-index-test-drivers
-  "Index-supporting drivers that also run incremental transforms (the incremental suite excludes redshift/clickhouse/
-  sqlserver, so today this is effectively postgres)."
+  "Index-supporting drivers that also run incremental transforms (effectively postgres today; the incremental suite
+  excludes redshift/clickhouse/sqlserver)."
   []
   (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
 (deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
   (testing "incremental: the first (full) run creates the target's declared indexes; an append run preserves them"
-    ;; The first run has no watermark, so it's a full rebuild that creates the table and its indexes. An append run
-    ;; keeps the live table, so `apply-target-indexes!`'s full-rebuild gate skips it and the indexes stay put.
-    ;; (Re-issuing would be a safe no-op now that standalone creates use IF NOT EXISTS, but skipping avoids the
-    ;; churn.) A broken gate would re-run index creation against the live table on the append.
-    ;; Indexes reach the run via `execute!`'s hydration seam, stubbed until the index-request model lands.
+    ;; The first run has no watermark, so it's a full rebuild that creates the indexes. The append run keeps the
+    ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test

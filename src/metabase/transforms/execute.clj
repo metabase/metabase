@@ -26,8 +26,8 @@
   identify a target DB), the hook is skipped — workspace rewriting requires a
   known DB id to look up `db-workspace-namespace`.
 
-  Also hydrates the declared indexes onto the target so the model-free base reads
-  them off `(:indexes target)` at every table-creation seam."
+  Also hydrates the declared indexes onto the target so the base reads them off
+  `(:indexes target)` at every table-creation seam."
   [transform]
   (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
         (assoc transform :target

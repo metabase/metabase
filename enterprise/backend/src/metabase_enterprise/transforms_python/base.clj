@@ -100,8 +100,7 @@
                              :type (python-runner/restricted-insert-type base_type)
                              :nullable? true})
                           (:fields metadata))}
-    ;; Inline indexes so `create-table-from-schema!` -> `create-table!` can render them (e.g. Redshift SORTKEY).
-    ;; Python transforms create the table here rather than via CTAS, so this is the only place they get inlined.
+    ;; Python builds the table via `create-table!` (not a CTAS), so this is where inline indexes get rendered.
     (seq indexes) (assoc :indexes indexes)))
 
 (defn- insert-data!
