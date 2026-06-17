@@ -6,8 +6,8 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
-} from "metabase/collections/schemas";
-import type { EntityType } from "metabase/collections/utils";
+} from "metabase/common/collections/schemas";
+import type { EntityType } from "metabase/common/collections/utils";
 import type {
   EntityPickerOptions,
   OmniPickerItem,

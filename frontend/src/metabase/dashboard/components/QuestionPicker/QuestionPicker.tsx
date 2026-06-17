@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListCollectionsQuery } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
-import getExpandedCollectionsById from "metabase/collections/getExpandedCollectionsById";
-import { isPublicCollection } from "metabase/collections/utils";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
+import { isPublicCollection } from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";

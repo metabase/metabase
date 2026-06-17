@@ -7,7 +7,7 @@ import FormCollectionPicker from "metabase/collections/containers/FormCollection
 import {
   COLLECTION_FORM_SCHEMA,
   type CollectionFormValues,
-} from "metabase/collections/schemas";
+} from "metabase/common/collections/schemas";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,

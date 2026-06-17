@@ -10,13 +10,13 @@ import {
   isDefaultGroup,
 } from "metabase/admin/utils/groups";
 import { collectionApi } from "metabase/api";
-import { ROOT_COLLECTION } from "metabase/collections/constants";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   getCollectionIcon,
   isInstanceAnalyticsCollection,
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,

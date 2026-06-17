@@ -8,8 +8,11 @@ import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCa
 import type {
   CreateBookmark,
   DeleteBookmark,
-} from "metabase/collections/types";
-import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import {
+  isPreviewShown,
+  isRootCollection,
+} from "metabase/common/collections/utils";
 import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
 import { Box, Group, Icon, Stack } from "metabase/ui";

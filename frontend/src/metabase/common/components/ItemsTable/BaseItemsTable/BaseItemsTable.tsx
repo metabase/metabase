@@ -8,8 +8,8 @@ import type {
   OnCopy,
   OnMove,
   OnToggleSelectedWithItem,
-} from "metabase/collections/types";
-import { isTrashedCollection } from "metabase/collections/utils";
+} from "metabase/common/collections/types";
+import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";

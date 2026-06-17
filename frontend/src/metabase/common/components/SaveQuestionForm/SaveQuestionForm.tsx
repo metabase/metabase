@@ -2,7 +2,7 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
-import { getEntityTypeFromCardType } from "metabase/collections/utils";
+import { getEntityTypeFromCardType } from "metabase/common/collections/utils";
 import { FormDashboardTabSelect } from "metabase/common/components/FormDashboardTabSelect";
 import { FormFooter } from "metabase/common/components/FormFooter";
 import { getPlaceholder } from "metabase/common/components/SaveQuestionForm/util";

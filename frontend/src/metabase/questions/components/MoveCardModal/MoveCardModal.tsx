@@ -6,11 +6,11 @@ import _ from "underscore";
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
-import type { MoveDestination } from "metabase/collections/types";
+import type { MoveDestination } from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
   getEntityTypeFromCardType,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { DashboardName } from "metabase/common/components/DashboardName";
 import type { OmniPickerCollectionItem } from "metabase/common/components/Pickers";

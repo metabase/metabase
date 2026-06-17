@@ -3,7 +3,7 @@ import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import CollectionCopyEntityModal from "metabase/collections/components/CollectionCopyEntityModal";
-import { isTrashedCollection } from "metabase/collections/utils";
+import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";

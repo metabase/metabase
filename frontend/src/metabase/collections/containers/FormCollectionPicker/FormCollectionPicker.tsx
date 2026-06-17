@@ -9,7 +9,7 @@ import {
   canonicalCollectionId,
   isTrashedCollection,
   isValidCollectionId,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import {
   CollectionPickerModal,

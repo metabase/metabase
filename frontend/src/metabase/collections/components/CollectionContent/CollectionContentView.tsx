@@ -15,7 +15,6 @@ import {
 import { listTag } from "metabase/api/tags";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import { useSetArchive } from "metabase/archive/hooks";
-import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
   type CollectionContentTableColumn,
@@ -23,17 +22,18 @@ import {
 } from "metabase/collections/components/CollectionContent/constants";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
+import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
 import type {
   CollectionOrTableIdProps,
   CreateBookmark,
   DeleteBookmark,
   OnFileUpload,
   UploadFile,
-} from "metabase/collections/types";
+} from "metabase/common/collections/types";
 import {
   isRootTrashCollection,
   isTrashedCollection,
-} from "metabase/collections/utils";
+} from "metabase/common/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
 import { useSetCollection, useToast } from "metabase/common/hooks";

@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
-import type { OnToggleSelectedWithItem } from "metabase/collections/types";
+import type { OnToggleSelectedWithItem } from "metabase/common/collections/types";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";

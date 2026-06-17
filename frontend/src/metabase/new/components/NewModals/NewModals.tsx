@@ -8,8 +8,8 @@ import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal, {
   type CreateCollectionModalOwnProps,
 } from "metabase/collections/containers/CreateCollectionModal";
-import { useInitialCollectionId } from "metabase/collections/hooks";
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
+import { useInitialCollectionId } from "metabase/common/collections/hooks";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import {

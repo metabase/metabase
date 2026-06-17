@@ -8,7 +8,7 @@ import {
   useListDatabaseSchemasQuery,
   useSearchQuery,
 } from "metabase/api";
-import { getCollectionName } from "metabase/collections/utils";
+import { getCollectionName } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Tree } from "metabase/common/components/tree";

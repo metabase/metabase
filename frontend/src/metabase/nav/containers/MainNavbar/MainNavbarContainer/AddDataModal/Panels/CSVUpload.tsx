@@ -12,7 +12,7 @@ import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { useGetDefaultCollectionId } from "metabase/common/collections/hooks";
 import { CollectionName } from "metabase/common/components/CollectionName";
 import {
   CollectionPickerModal,

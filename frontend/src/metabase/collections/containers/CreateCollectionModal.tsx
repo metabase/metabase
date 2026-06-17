@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useCreateCollectionMutation } from "metabase/api";
+import { getCollectionPathAsArray } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
@@ -12,7 +13,6 @@ import type { Collection } from "metabase-types/api";
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
-import { getCollectionPathAsArray } from "../utils";
 
 export interface CreateCollectionModalOwnProps extends Omit<
   CreateCollectionFormOwnProps,
