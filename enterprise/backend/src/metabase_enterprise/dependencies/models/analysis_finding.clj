@@ -81,6 +81,12 @@
   []
   (t2/exists? :model/AnalysisFinding :stale true))
 
+(defn stale-entity-count
+  "Number of analysis findings currently marked stale, across all entity types. Used by the entity-check drain loop to
+  detect whether it is still making progress."
+  []
+  (t2/count :model/AnalysisFinding :stale true))
+
 (defn instances-for-analysis
   "Find a batch of instances of type `entity-type` and maximum size `batch-size` with missing, outdated,
   or stale AnalysisFindings.
