@@ -1430,7 +1430,6 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            ;; authenticated app path: fetch fresh entities (no caching/staleness)
             {:dashboard     (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
              :card          (api/check-404 (t2/select-one :model/Card :id card-id))
              :dashcard      (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
@@ -1465,7 +1464,6 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             ;; authenticated app path: fetch fresh entities (no caching/staleness)
              {:dashboard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
               :card      (api/check-404 (t2/select-one :model/Card :id card-id))
               :dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
