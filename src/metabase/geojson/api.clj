@@ -45,7 +45,9 @@
                     (if (:link-local (ex-data e))
                       (throw (ex-info (ex-message e) (dissoc (ex-data e) :link-local) e))
                       (throw (ex-info (tru "GeoJSON URL failed to load") {:status-code 400})))))
-        success? (<= 200 (:status resp) 399)
+        ;; only 2xx is a real success — a 3xx redirect isn't followed (`:redirect-strategy :none`, for SSRF
+        ;; protection), so its (empty) body must be treated as a failed load rather than streamed as GeoJSON.
+        success? (<= 200 (:status resp) 299)
         allowed-content-types #{"application/geo+json"
                                 "application/vnd.geo+json"
                                 "application/json"
