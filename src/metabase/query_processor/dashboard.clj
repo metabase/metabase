@@ -198,10 +198,10 @@
                              (dissoc options :dashboard :dashcard :card)
                              {:parameters   resolved-params
                               :dashboard-id dashboard-id
-                              :dashcard-id  dashcard-id})]
+                              :dashcard     dashcard})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
                     dashboard-id card-id dashcard-id
                     (u/pprint-to-str options))
         ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
         (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-          (m/mapply qp.card/process-query-for-card card-id export-format options))))))
+          (m/mapply qp.card/process-query-for-card card export-format options))))))

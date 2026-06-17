@@ -300,8 +300,9 @@
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [result (request/with-current-user creator-id
-                 (-> (qp.card/process-query-for-card card-id :api
+  (let [card   (t2/select-one :model/Card card-id)
+        result (request/with-current-user creator-id
+                 (-> (qp.card/process-query-for-card card :api
                                                      ;; TODO rename to :notification?
                                                      :context     :pulse
                                                      :constraints {}
@@ -320,6 +321,6 @@
                      fixup-viz-settings
                      format-qp-result))]
     (log/debugf "Result has %d rows" (:row_count result))
-    {:card   (t2/select-one :model/Card card-id)
+    {:card   card
      :result result
      :type   :card}))

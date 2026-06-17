@@ -524,7 +524,7 @@
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
               (qp/process-query-for-card
-               card-id :api
+               (t2/select-one :model/Card :id card-id) :api
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
@@ -558,7 +558,7 @@
             (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
               (mt/as-admin
                 (qp/process-query-for-card
-                 card-id :api
+                 (t2/select-one :model/Card :id card-id) :api
                  :parameters [{:id     "product-id-param"
                                :type   :id
                                :target [:dimension (mt/$ids orders $product_id)]

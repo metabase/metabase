@@ -91,6 +91,38 @@
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
+(def ^:private cached-entity-ttl-ms
+  "How long the public/embed entity caches below hold onto a fetched Dashboard/DashboardCard/Card row.
+
+  These caches exist ONLY for the high-volume, unauthenticated public + embed read paths, where bounded staleness (up
+  to this TTL) is acceptable in exchange for cutting duplicate app-DB fetches within a single request. They must NEVER
+  be used on any path that requires read-your-writes freshness (i.e. the authenticated app)."
+  (u/minutes->ms 1))
+
+(def fetch-cached-dashboard
+  "TTL-memoized fetch of a full `:model/Dashboard` row by id. Public/embed read paths only; see
+  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/Dashboard :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
+(def fetch-cached-dashcard
+  "TTL-memoized fetch of a full `:model/DashboardCard` row by id. Public/embed read paths only; see
+  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/DashboardCard :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
+(def fetch-cached-card
+  "TTL-memoized fetch of a full `:model/Card` row by id. Public/embed read paths only; see [[cached-entity-ttl-ms]].
+  Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/Card :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -161,7 +193,8 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (request/as-admin
-    (m/mapply qp.card/process-query-for-card card-id export-format
+    ;; public/embed read path: hand qp.card the cached Card so it doesn't re-fetch it (it still read-checks it)
+    (m/mapply qp.card/process-query-for-card (api/check-404 (fetch-cached-card card-id)) export-format
               :parameters parameters
               :context    (export-format->context export-format)
               :qp         qp
@@ -284,38 +317,6 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
-
-(def ^:private cached-entity-ttl-ms
-  "How long the public/embed entity caches below hold onto a fetched Dashboard/DashboardCard/Card row.
-
-  These caches exist ONLY for the high-volume, unauthenticated public + embed read paths, where bounded staleness (up
-  to this TTL) is acceptable in exchange for cutting duplicate app-DB fetches within a single request. They must NEVER
-  be used on any path that requires read-your-writes freshness (i.e. the authenticated app)."
-  (u/minutes->ms 1))
-
-(def fetch-cached-dashboard
-  "TTL-memoized fetch of a full `:model/Dashboard` row by id. Public/embed read paths only; see
-  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
-   (fn [id] (t2/select-one :model/Dashboard :id id))
-   :ttl/threshold cached-entity-ttl-ms))
-
-(def fetch-cached-dashcard
-  "TTL-memoized fetch of a full `:model/DashboardCard` row by id. Public/embed read paths only; see
-  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
-   (fn [id] (t2/select-one :model/DashboardCard :id id))
-   :ttl/threshold cached-entity-ttl-ms))
-
-(def fetch-cached-card
-  "TTL-memoized fetch of a full `:model/Card` row by id. Public/embed read paths only; see [[cached-entity-ttl-ms]].
-  Do NOT use on authenticated app paths that require read-your-writes freshness."
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
-   (fn [id] (t2/select-one :model/Card :id id))
-   :ttl/threshold cached-entity-ttl-ms))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via

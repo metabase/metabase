@@ -242,7 +242,7 @@
         lon-field-ref (mbql.normalize/normalize lon-field-ref)
         result
         (qp.card/process-query-for-card
-         card-id
+         (api/check-404 (t2/select-one :model/Card :id card-id))
          :api
          {:parameters parameters
           :context    :map-tiles
