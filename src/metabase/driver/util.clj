@@ -595,6 +595,18 @@
     "official"
     "community"))
 
+(defn- creatable?
+  "Whether users may select this driver to create a new data warehouse connection, given `context` -- a map describing
+  the environment, currently `{:hosted? <boolean>}`. Defaults to true. A driver registered only to power an
+  internal/bundled database -- e.g. SQLite, which backs the bundled Sample Database but is not offered to Cloud users
+  as a warehouse -- returns false in the contexts where it is not user-creatable, so it is omitted from the
+  add-database engine list there. Affects only the engine list shown to users; the driver stays registered and
+  `available?` for internal use."
+  [driver {:keys [hosted?]}]
+  (not (and
+        (= driver :sqlite)
+        (= hosted? true))))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
@@ -614,7 +626,7 @@
                                      :details-fields props
                                      :driver-name    (driver/display-name driver)
                                      :superseded-by  (driver/superseded-by driver)
-                                     :creatable?     (driver/creatable? driver context)
+                                     :creatable?     (creatable? driver context)
                                      :extra-info     (driver/extra-info driver)})
                  acc))
              (transient {}) (available-drivers)))))

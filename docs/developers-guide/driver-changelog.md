@@ -6,12 +6,6 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
-- `metabase.driver/creatable?` has been added. It takes `[driver context]`, where `context` is a map describing the
-  environment (currently `{:hosted? <boolean>}`), and returns whether users may select the driver to create a new
-  data warehouse connection. It defaults to `true`; a driver only registered to power an internal/bundled database
-  (e.g. SQLite, which backs the bundled Sample Database but is not offered to Cloud users) can return `false` for the
-  contexts where it should be omitted from the add-database engine list.
-
 - `metabase.driver/describe-table-fks`, deprecated in 0.49.0, has been removed. Please implement
   `metabase.driver/describe-fks` instead. This method is now required for drivers that support
   `:metadata/key-constraints`.
