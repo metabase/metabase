@@ -2,6 +2,7 @@ import type { TreemapSeriesOption } from "echarts/charts";
 import { match } from "ts-pattern";
 
 import { formatPercent as formatPercentDefault } from "metabase/static-viz/lib/numbers";
+import { getTextColorForBackground } from "metabase/ui/colors";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -24,6 +25,7 @@ import {
 } from "../style";
 import {
   getLeafFormatter,
+  getLeafLabelColorOverride,
   getRichLeafLabel,
   getRichUpperLabel,
   sanitizeRichTextContent,
@@ -220,6 +222,7 @@ function toGroupSeriesNode({
         id: groupId,
         value: node.value,
         displayName: node.displayName,
+        backgroundColor: groupColor,
       }),
     };
   }
@@ -233,6 +236,7 @@ function toGroupSeriesNode({
         parentValue: node.value,
         rootIndex,
         leafIndex,
+        backgroundColor: groupColor,
       }),
     ),
   };
@@ -244,12 +248,14 @@ function toLeafSeriesNode({
   parentValue,
   rootIndex,
   leafIndex,
+  backgroundColor,
 }: {
   config: TreemapSeriesBuildConfig;
   leaf: TreemapNode;
   parentValue: number;
   rootIndex: number;
   leafIndex: number;
+  backgroundColor: string | undefined;
 }): TreemapSeriesNode {
   const leafId = getTreemapNodeId(rootIndex, leafIndex);
 
@@ -265,6 +271,7 @@ function toLeafSeriesNode({
       value: leaf.value,
       displayName: leaf.displayName,
       parentValue,
+      backgroundColor,
     }),
   };
 }
@@ -311,12 +318,14 @@ function getTileLabelOverride({
   value,
   displayName,
   parentValue,
+  backgroundColor,
 }: {
   config: TreemapSeriesBuildConfig;
   id: string;
   value: number;
   displayName: string;
   parentValue?: number;
+  backgroundColor: string | undefined;
 }): Pick<TreemapSeriesNode, "label"> {
   const {
     showLeafLabels,
@@ -334,6 +343,10 @@ function getTileLabelOverride({
   if (layout == null) {
     return HIDDEN_LABEL_OVERRIDE;
   }
+  const textColor = backgroundColor
+    ? getTextColorForBackground(backgroundColor, renderingContext.getColor)
+    : undefined;
+  const colorOverride = getLeafLabelColorOverride(renderingContext, textColor);
   // ECharts truncation is unreliable, so we use our own trunaction logic
   const leafName = truncateText(
     displayName,
@@ -353,6 +366,7 @@ function getTileLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
+        ...colorOverride,
         formatter: getLeafFormatter(
           leafName,
           formatValue(value),
@@ -371,6 +385,7 @@ function getTileLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
+        ...colorOverride,
         formatter: sanitizeRichTextContent(leafName),
       },
     }));

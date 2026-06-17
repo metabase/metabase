@@ -1,35 +1,39 @@
 import type { RenderingContext } from "metabase/visualizations/types";
 
 import { PARENT_HEADER_VALUE_PERCENT_GAP } from "./model/labels";
-import { TREEMAP_CHART_STYLE, groupHeader, leafBlock } from "./style";
+import { groupHeader, leafBlock } from "./style";
 
-export function getRichLeafLabel(renderingContext: RenderingContext) {
-  const color = renderingContext.getColor("white");
-  const {
-    textShadowColor,
-    textShadowBlur,
-    textShadowOffsetX,
-    textShadowOffsetY,
-  } = TREEMAP_CHART_STYLE.nodeLabels;
-  const shadow = {
+export function getLeafLabelColorOverride(
+  renderingContext: RenderingContext,
+  textColor?: string,
+) {
+  const color = textColor ?? renderingContext.getColor("white");
+  return {
+    color,
+    rich: getRichLeafLabel(renderingContext, textColor),
+  };
+}
+
+export function getRichLeafLabel(
+  renderingContext: RenderingContext,
+  textColor?: string,
+) {
+  const color = textColor ?? renderingContext.getColor("white");
+  const base = {
     fontFamily: renderingContext.fontFamily,
     color,
-    textShadowColor,
-    textShadowBlur,
-    textShadowOffsetX,
-    textShadowOffsetY,
   };
 
   return {
     name: {
-      ...shadow,
+      ...base,
       fontSize: leafBlock.name.fontSize,
       fontWeight: leafBlock.name.fontWeight,
       height: leafBlock.name.height,
       verticalAlign: "middle" as const,
     },
     value: {
-      ...shadow,
+      ...base,
       fontSize: leafBlock.value.fontSize,
       fontWeight: leafBlock.value.fontWeight,
       padding: [leafBlock.valueGap, 0, 0, 0],
@@ -37,7 +41,7 @@ export function getRichLeafLabel(renderingContext: RenderingContext) {
       verticalAlign: "middle" as const,
     },
     pct: {
-      ...shadow,
+      ...base,
       fontSize: leafBlock.percent.fontSize,
       fontWeight: leafBlock.percent.fontWeight,
       height: leafBlock.percent.height,
