@@ -1,1 +1,2 @@
-export const monospaceFontFamily = `"JetBrains Mono", "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "Source Code Pro", "source-code-pro", monospace`;
+export const monospaceFontFamily =
+  "var(--mb-default-monospace-font-family, monospace)";

@@ -58,7 +58,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
     return (
       <Stack gap="0.5rem" w="30rem" maw="100%">
         <Text c="text-primary-inverse">{t`Couldn't save table changes:`}</Text>
-        <Text c="text-primary-inverse" style={{ fontFamily: "monospace" }}>
+        <Text c="text-primary-inverse" ff="monospace">
           {errorMessage}
         </Text>
       </Stack>

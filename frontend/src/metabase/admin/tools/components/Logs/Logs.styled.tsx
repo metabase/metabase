@@ -13,7 +13,7 @@ export const LogsContent = styled.div`
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: var(--mb-color-background-secondary);
-  font-family: "Lucida Console", Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 14px;
   white-space: pre;
   padding: 1em;

@@ -23,7 +23,7 @@
 }
 
 .tableActualName {
-  font-family: "Lucida Console", Monaco, monospace;
+  font-family: var(--mb-default-monospace-font-family, monospace);
   font-size: 13px;
   line-height: 1.4em;
   letter-spacing: 1px;

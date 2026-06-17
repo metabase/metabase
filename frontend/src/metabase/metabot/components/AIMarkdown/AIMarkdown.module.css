@@ -88,7 +88,7 @@
 }
 
 .aiMarkdown code {
-  font-family: Monaco, Menlo, "Courier New", monospace;
+  font-family: var(--mb-default-monospace-font-family, monospace);
   background: var(--mb-color-background-secondary);
   color: var(--mb-color-text-primary);
   padding: 0.125rem 0.375rem;
