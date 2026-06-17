@@ -1,8 +1,6 @@
 import { t } from "ttag";
 
-import { Box, Icon, Title } from "metabase/ui";
-
-import S from "./TreemapBreadcrumb.module.css";
+import { Group, Icon, Text, UnstyledButton } from "metabase/ui";
 
 interface TreemapBreadcrumbProps {
   groupLabel: string | null;
@@ -16,23 +14,32 @@ export function TreemapBreadcrumb({
   onBackClick,
 }: TreemapBreadcrumbProps) {
   return (
-    <Box className={S.breadcrumb} data-testid="treemap-breadcrumb">
-      {groupLabel == null ? (
-        <Title order={5}>{t`Total`}</Title>
-      ) : (
-        <button
-          type="button"
-          className={S.back}
-          aria-label={groupLabel}
-          onClick={onBackClick}
-        >
-          <Icon name="arrow_left" size={16} aria-hidden />
-          <span>{groupLabel}</span>
-        </button>
-      )}
-      <div className={S.values}>
-        <span className={S.value}>{value}</span>
-      </div>
-    </Box>
+    <Group data-testid="treemap-breadcrumb" px="xl" pt={24} pb="sm" gap="sm">
+      <Label groupLabel={groupLabel} onBackClick={onBackClick} />
+      <Text fw={400} lh="md">
+        {value}
+      </Text>
+    </Group>
+  );
+}
+
+function Label({
+  groupLabel,
+  onBackClick,
+}: {
+  groupLabel: string | null;
+  onBackClick: () => void;
+}) {
+  if (groupLabel == null) {
+    return <Text fw={700} lh="md">{t`Total`}</Text>;
+  }
+
+  return (
+    <UnstyledButton type="button" onClick={onBackClick}>
+      <Group>
+        <Icon name="arrow_left" aria-hidden />
+        <Text fw={700}>{groupLabel}</Text>
+      </Group>
+    </UnstyledButton>
   );
 }
