@@ -12,6 +12,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
+   [metabase.channel.render.core :as channel.render]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api :as api.dashboard]
@@ -677,6 +678,60 @@
                                                                       :position         0}]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
+
+;;; ------------------------------------------- PDF export ----------------------------------------------------------
+
+;; The actual server-side render is exercised by metabase.channel.render.pdf-test (golden + smoke tests); here we
+;; stub it so these tests cover only the HTTP contract: parameter threading, paper size, and content negotiation.
+(deftest dashboard-pdf-test
+  (testing "POST /api/dashboard/:id/pdf"
+    (mt/with-temp [:model/Dashboard {dash-id :id} {:name "My Bird Dashboard"}]
+      (let [calls    (atom [])
+            fake-pdf (.getBytes "%PDF-1.4 fake")]
+        (with-redefs [channel.render/render-dashboard-to-pdf
+                      (fn [dashboard-id user-id parameters paper-key]
+                        (swap! calls conj {:dashboard-id dashboard-id
+                                           :user-id      user-id
+                                           :parameters   parameters
+                                           :paper-key    paper-key})
+                        fake-pdf)]
+          (testing "defaults to empty parameters and A4, streaming a non-empty PDF body"
+            (reset! calls [])
+            (let [resp (mt/user-http-request :rasta :post 200 (format "dashboard/%d/pdf" dash-id)
+                                             {:request-options {:as :byte-array}}
+                                             {})]
+              (is (pos? (count resp)))
+              (is (= [{:dashboard-id dash-id
+                       :user-id      (mt/user->id :rasta)
+                       :parameters   []
+                       :paper-key    :a4}]
+                     @calls))))
+          (testing "threads parameter overrides (array form) and paper_size through to the renderer"
+            (reset! calls [])
+            (mt/user-http-request :rasta :post 200 (format "dashboard/%d/pdf" dash-id)
+                                  {:request-options {:as :byte-array}}
+                                  {:parameters [{:id "p1" :value "CA"}]
+                                   :paper_size "letter"})
+            (is (= [{:id "p1" :value "CA"}] (:parameters (first @calls))))
+            (is (= :letter (:paper-key (first @calls)))))
+          (testing "accepts parameters as a JSON-encoded string (for <form>-driven downloads)"
+            (reset! calls [])
+            (mt/user-http-request :rasta :post 200 (format "dashboard/%d/pdf" dash-id)
+                                  {:request-options {:as :byte-array}}
+                                  {:parameters (json/encode [{:id "p1" :value "NY"}])})
+            (is (= [{:id "p1" :value "NY"}] (:parameters (first @calls)))))
+          (testing "rejects an invalid paper_size"
+            (mt/user-http-request :rasta :post 400 (format "dashboard/%d/pdf" dash-id)
+                                  {:paper_size "a3"})))))))
+
+(deftest dashboard-pdf-permissions-test
+  (testing "POST /api/dashboard/:id/pdf requires read permission on the dashboard"
+    (with-redefs [channel.render/render-dashboard-to-pdf (fn [& _] (.getBytes "x"))]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "No-read Collection"}
+                       :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 (format "dashboard/%d/pdf" dash-id) {}))))))))
 
 (deftest put-dashboard-hides-unreadable-cards-test
   (testing "PUT /api/dashboard/:id should hide card details from collections the user cannot access (#UXW-3571)"

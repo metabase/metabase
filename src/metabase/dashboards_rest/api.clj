@@ -59,6 +59,19 @@
 
 (set! *warn-on-reflection* true)
 
+;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
+;;; different?
+(def ParameterWithID
+  "Schema for a parameter map with an string `:id`. This is the shape of runtime parameter *overrides* the FE sends
+  when running a dashcard query or exporting a dashboard -- distinct from the stored parameter declarations
+  (`::parameters.schema/parameters`), which also require `:type`."
+  (mu/with-api-error-message
+   [:and
+    [:map
+     [:id ms/NonBlankString]]
+    [:map-of :keyword :any]]
+   (deferred-tru "value must be a parameter map with an ''id'' key")))
+
 (defn- dashboards-list [filter-option]
   (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
                                                        (:all :archived)  true
@@ -632,22 +645,42 @@
         (events/publish-event! :event/dashboard-read {:object-id (:id dashboard) :user-id api/*current-user-id*})))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/pdf" :- :any
-  "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render
-  charts) and stream it back as a file download."
+(api.macros/defendpoint :post "/:id/pdf" :- :any
+  "Render Dashboard with ID to a PDF (server-side, the same way dashboard subscriptions render charts) and stream it
+  back as a file download.
+
+  `parameters` are runtime parameter overrides -- the same shape the dashcard query endpoints accept: a sequence of
+  `{:id ... :value ...}` maps, or a JSON-encoded string of that sequence (the string form lets an HTML `<form>`
+  action drive the download). Parameters left unspecified fall back to the dashboard's own defaults.
+
+  `paper_size` is `\"a4\"` (default) or `\"letter\"`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   _body
+   {:keys [parameters paper_size]} :- [:map
+                                       [:parameters {:optional true} [:maybe [:or
+                                                                              [:sequential ParameterWithID]
+                                                                              ;; JSON-string form for <form>-driven
+                                                                              ;; downloads, mirroring the dashcard
+                                                                              ;; export-format endpoint
+                                                                              ms/JSONString]]]
+                                       [:paper_size {:default "a4"} [:maybe [:enum "a4" "letter"]]]]
    _request
    respond
    raise]
   (try
-    (api/read-check :model/Dashboard id)
-    (let [pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id* [])]
+    (let [dashboard (api/read-check :model/Dashboard id)
+          params    (cond-> parameters
+                      (string? parameters) json/decode+kw)
+          pdf-bytes (channel.render/render-dashboard-to-pdf id api/*current-user-id*
+                                                            (or params [])
+                                                            (keyword (or paper_size "a4")))
+          filename  (str (or (not-empty (u/slugify (:name dashboard)))
+                             (str "dashboard-" id))
+                         ".pdf")]
       (respond {:status  200
                 :headers {"Content-Type"        "application/pdf"
-                          "Content-Disposition" (format "attachment; filename=\"dashboard-%d.pdf\"" id)}
+                          "Content-Disposition" (format "attachment; filename=\"%s\"" filename)}
                 :body    (java.io.ByteArrayInputStream. pdf-bytes)}))
     (catch Throwable e
       (raise e))))
@@ -1351,17 +1384,6 @@
       (api/read-check :model/Field field-id))
     (into {} (for [field-id filtered-field-ids]
                [field-id (sort (chain-filter/filterable-field-ids field-id filtering-field-ids))]))))
-
-;;; TODO -- why don't we use [[metabase.util.malli.schema/Parameter]] for this? Are the parameters passed here
-;;; different?
-(def ParameterWithID
-  "Schema for a parameter map with an string `:id`."
-  (mu/with-api-error-message
-   [:and
-    [:map
-     [:id ms/NonBlankString]]
-    [:map-of :keyword :any]]
-   (deferred-tru "value must be a parameter map with an ''id'' key")))
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 
