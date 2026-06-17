@@ -9,7 +9,7 @@ import { type ModalProps, NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 export const getRoutes = () => {
   const modalProps: Partial<ModalProps> = {
     ...NO_ANIMATION_MODAL_PROPS,
-    size: "85%",
+    size: "95%",
   };
   return (
     <Route path="/model/:slug/detail">

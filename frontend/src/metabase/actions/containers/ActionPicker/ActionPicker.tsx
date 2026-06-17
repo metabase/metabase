@@ -142,7 +142,7 @@ function ModelActionPicker({
       <Modal
         opened={isActionCreatorOpen}
         onClose={closeModal}
-        size="85%"
+        size="95%"
         withCloseButton={false}
         padding={0}
       >

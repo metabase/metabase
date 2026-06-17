@@ -163,7 +163,7 @@ function ActionVizForm({
           opened={showEditModal}
           data-testid="action-editor-modal"
           onClose={closeEditModal}
-          size="85%"
+          size="95%"
           withCloseButton={false}
           padding={0}
         >

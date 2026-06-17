@@ -150,7 +150,7 @@ export const CustomGeoJSONWidget = () => {
         <Modal
           opened
           onClose={handleCancel}
-          size="85%"
+          size="95%"
           withCloseButton={false}
           padding={0}
         >
