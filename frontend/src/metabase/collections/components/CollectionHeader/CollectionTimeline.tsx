@@ -18,7 +18,7 @@ const CollectionTimeline = ({
     <Tooltip label={t`Events`} position="bottom">
       <div>
         <ActionIcon variant="viewHeader" size="2rem" component={Link} to={url}>
-          <Icon name="calendar" size={20} />
+          <Icon name="calendar" size={16} />
         </ActionIcon>
       </div>
     </Tooltip>
