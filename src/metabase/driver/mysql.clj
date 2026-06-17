@@ -162,7 +162,7 @@
 ;; MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 (defmethod driver/database-supports? [:mysql :nested-field-columns]
   [_driver _feat db]
-  (and (driver.common/json-unfolding-default db) (mysql? db)))
+  (and (driver.common/json-unfolding-default db) (not (mariadb? db))))
 
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
