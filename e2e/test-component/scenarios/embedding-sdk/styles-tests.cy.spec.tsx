@@ -1,5 +1,4 @@
 import {
-  CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
@@ -371,7 +370,6 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("modals, popovers and tooltips", () => {
-
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
