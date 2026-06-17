@@ -54,7 +54,7 @@
    query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card             card
@@ -187,7 +187,7 @@
    query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card             card

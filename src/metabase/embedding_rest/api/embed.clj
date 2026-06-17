@@ -91,7 +91,7 @@
                                                      qp qp.card/process-query-for-card-default-qp}
                                                 :as options}]
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)
-        card    (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card    (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (database-routing/with-database-routing-off
       (api.embed.common/process-query-for-card-with-params
@@ -311,7 +311,7 @@
                                  [:param-key ms/NonBlankString]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card card
@@ -326,7 +326,7 @@
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card card
@@ -345,7 +345,7 @@
    {:keys [value]} :- [:map [:value :string]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (t2/select-one :model/Card :id card-id))]
+        card (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
                                                  :card card
@@ -405,7 +405,7 @@
        [:lonField string?]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (t2/select-one :model/Card :id card-id))
+        card (api/check-404 (t2/select-one :model/Card card-id))
         parameters (when parameters (json/decode+kw parameters))
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]

@@ -727,8 +727,8 @@
        [:lonField string?]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard  (api/check-404 (t2/select-one :model/Dashboard :public_uuid uuid, :archived false))
-        dashcard   (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card       (api/check-404 (t2/select-one :model/Card :id card-id))
+        dashcard   (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card       (api/check-404 (t2/select-one :model/Card card-id))
         parameters (when parameters (json/decode+kw parameters))
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]

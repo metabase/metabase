@@ -305,7 +305,7 @@
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card :id card-id))
+  (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card card-id))
                                 parameters zoom x y lat-field lon-field))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
