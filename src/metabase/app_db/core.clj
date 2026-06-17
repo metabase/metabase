@@ -168,4 +168,5 @@
   []
   (assert (or (not config/is-prod?)
               (config/config-bool :mb-enable-test-endpoints)))
-  (mc/swap! (mdb.connection/application-db-handle) assoc [:id (swap! mdb.connection/application-db-counter inc)]))
+  (mc/swap! (mdb.connection/application-db-handle)
+            assoc :id (swap! mdb.connection/application-db-counter inc)))

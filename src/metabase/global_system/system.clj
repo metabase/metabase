@@ -17,9 +17,7 @@
       (thunk)))
   (reset! [_ new-value]
     (clojure.core/swap! *system* assoc k new-value))
-  (swap! [_ f]
-    (clojure.core/swap! *system* update k f))
-  (swap! [_ f args]
+  (swap!* [_ f args]
     (clojure.core/swap! *system*
                         (fn swap!* [old-system]
                           (apply update old-system k f args))))

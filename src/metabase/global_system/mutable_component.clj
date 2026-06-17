@@ -15,12 +15,18 @@
     "Sets the value in the atom held by the current dynamic binding. Visible to all scopes
      reading through that same binding (including sibling calls), but not to code outside
      the current dynamic scope.")
-  (swap!
-    [handle f]
+  (swap!*
     [handle f args]
-    "Updates the value in the atom held by the current dynamic binding by applying `f` to
-     the current value and any extra `args`. Visibility same as [[reset!]].")
+    "Same as [[swap!]] but accepts [[args]] as an explicit collection. Prefer [[swap!]] in most cases.")
   (alter-root [handle new-value]
     "Installs a new root binding (a fresh atom) for the underlying var. Visible to all
      threads and all scopes that are not inside an active dynamic binding, ignoring any
      currently-active dynamic bindings on this thread."))
+
+(defn swap!
+  "Updates the value in the atom held by the current dynamic binding by applying `f` to
+   the current value and any extra `args`. Visibility same as [[reset!]].
+
+   This varargs shim exists just because protocol methods can't take varargs."
+  [handle f & args]
+  (swap!* handle f args))
