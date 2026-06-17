@@ -10,7 +10,8 @@
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs])
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util :as u])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -143,6 +144,45 @@
             (qp.si/finish! results-writer {:row_count 1}))
           (is (= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
                  (take 3 (seq (.toByteArray bos))))))))))
+
+(deftest csv-export-omits-utf8-bom-when-disabled-test
+  (testing "CSV exports omit the UTF-8 BOM when `:csv-include-bom?` is false (#75875)"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}] :csv-include-bom? false}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (let [bytes (seq (.toByteArray bos))]
+            (is (not= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                      (take 3 bytes))
+                "should not start with a BOM")
+            ;; first byte should be the start of the (empty) header line, not the BOM
+            (is (not= (unchecked-byte 0xEF) (first bytes)))))))))
+
+(deftest csv-export-bom-respects-csv-include-bom-param-test
+  (testing "the csv_include_bom API param controls whether the downloaded CSV starts with a UTF-8 BOM (#75875)"
+    (let [bom-prefix? (fn [^String s] (str/starts-with? s u/utf8-bom))
+          download    (fn [params]
+                        (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                              (merge {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}
+                                                     params)))]
+      (testing "included by default"
+        (is (true? (bom-prefix? (download {})))))
+      (testing "included when explicitly true"
+        (is (true? (bom-prefix? (download {:csv_include_bom true})))))
+      (testing "omitted when false"
+        (is (false? (bom-prefix? (download {:csv_include_bom false})))))
+      (testing "the card query endpoint also honors the param"
+        ;; allowing `with-temp` here since it tests against the REST API
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 1})}]
+          (let [download-card (fn [params]
+                                (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" card-id) params))]
+            (is (true? (bom-prefix? (download-card {}))))
+            (is (false? (bom-prefix? (download-card {:csv_include_bom false}))))))))))
 
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
