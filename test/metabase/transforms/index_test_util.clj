@@ -56,12 +56,13 @@
    :redshift   {:indexes          [{:kind :sortkey :style :interleaved :columns [{:name "category"} {:name "price"}]}]
                 :expected         {:columns ["category" "price"] :style :interleaved}
                 :physical-indexes redshift-sortkey}
-   ;; ClickHouse: inline order-by + standalone skip-index, both in one target. ClickHouse normalizes the index
-   ;; expression in the catalog and reports a single column wrapped in parens, so `expr` reads back as "(price)".
+   ;; ClickHouse: inline order-by + standalone skip-index, both in one target. ClickHouse echoes a single-column key
+   ;; or index expression back wrapped in parens: `sorting_key` reads "(category)" (a multi-column key would render
+   ;; as a bare "a, b") and the skip-index `expr` reads "(price)".
    :clickhouse {:indexes          [{:kind :order-by :columns [{:name "category"}]}
                                    {:kind    :skip-index :name "by_price" :type :minmax
                                     :columns [{:name "price"}] :granularity 1}]
-                :expected         {:sorting-key  "category"
+                :expected         {:sorting-key  "(category)"
                                    :skip-indexes [{:name "by_price" :type "minmax" :expr "(price)" :granularity 1}]}
                 :physical-indexes clickhouse-indexes}})
 
