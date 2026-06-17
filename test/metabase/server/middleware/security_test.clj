@@ -162,6 +162,24 @@
         (is (str/includes? data-script-src "'nonce-"))
         (is (not (str/includes? data-script-src "'unsafe-inline'")))))))
 
+(deftest data-app-unsafe-eval-csp-test
+  (testing "Only data-app iframe responses allow 'unsafe-eval' in script-src"
+    ;; Data apps run their uploaded bundle through a Near-Membrane sandbox whose
+    ;; same-origin child iframe inherits this document's CSP and evaluates the
+    ;; bundle source via `eval`, so the data-app entrypoint must permit
+    ;; 'unsafe-eval' while the main app CSP stays strict.
+    (with-redefs [config/is-dev? false]
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            script-src-for  (fn [uri]
+                              (-> (wrapped-handler {:uri uri :headers {}} identity identity)
+                                  (csp-directive-from-response "script-src")))]
+        (is (not (str/includes? (script-src-for "/") "'unsafe-eval'")))
+        (is (str/includes? (script-src-for "/embed/data-app/boba") "'unsafe-eval'"))
+        ;; sub-routes under the data-app entrypoint are the same SPA shell
+        (is (str/includes? (script-src-for "/embed/data-app/boba/sub/route") "'unsafe-eval'"))))))
+
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
     (are [url expected] (= expected
