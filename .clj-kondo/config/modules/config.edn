@@ -1012,6 +1012,7 @@
            collections
            contextual-interestingness
            documents
+           driver
            events
            interestingness
            lib

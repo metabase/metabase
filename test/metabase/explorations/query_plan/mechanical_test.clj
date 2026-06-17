@@ -200,6 +200,79 @@
       (is (= 1 (count (by-group 2))))
       (is (every? #(and (= 7 (:metric_id %)) (= "d1" (:dimension_id %))) (:plan r))))))
 
+;;; ---------------------------------------------------------------------------
+;;; Time-series transform variants: cumulative / offset-mom / offset-yoy / pct-change
+;;; ---------------------------------------------------------------------------
+
+(def ^:private transform-variant-names
+  #{"cumulative" "offset-mom" "offset-yoy" "pct-change"})
+
+(defn- transforms-emitted [r]
+  (set (filter transform-variant-names (map :variant (:plan r)))))
+
+(defn- transform-facts
+  "Merge the aggregation/driver facts `qp.context` computes and the mechanical
+  transform gates read. Defaults model a single count/sum metric on a
+  window-function-capable DB with >1yr of history."
+  [metric & {:keys [single? cumulable? window? default-span]
+             :or   {single? true cumulable? true window? true default-span 1000}}]
+  (assoc metric
+         :single-aggregation?        single?
+         :cumulable-aggregation?     cumulable?
+         :supports-window-functions? window?
+         :default-temporal-span-days default-span))
+
+(deftest transform-variant-emission-test
+  (testing "datetime temporal dim (month grain): cumulative + pct-change + offset-yoy;
+            offset-mom dropped as a month-grain duplicate of pct-change"
+    (let [dim (assoc (datetime-dim "d") :temporal-span-days 1000)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim})))]
+      (is (= #{"cumulative" "pct-change" "offset-yoy"} (transforms-emitted r)))))
+  (testing "date temporal dim (day grain): offset-mom is now distinct, so all four emit"
+    (let [dim (assoc (date-dim "d") :temporal-span-days 1000)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim})))]
+      (is (= #{"cumulative" "offset-mom" "offset-yoy" "pct-change"} (transforms-emitted r)))))
+  (testing "no window-function support: cumulative still emits (Clojure fallback exists),
+            offset/pct-change do not (they have none)"
+    (let [dim (assoc (date-dim "d") :temporal-span-days 1000)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim}) :window? false))]
+      (is (= #{"cumulative"} (transforms-emitted r)))))
+  (testing "non-cumulable aggregation (e.g. avg/min): cumulative skipped, offset/pct-change emit"
+    (let [dim (assoc (date-dim "d") :temporal-span-days 1000)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim}) :cumulable? false))]
+      (is (= #{"offset-mom" "offset-yoy" "pct-change"} (transforms-emitted r)))))
+  (testing "short history span-gates offset-yoy out (<13mo); cumulative + pct-change remain"
+    (let [dim (assoc (datetime-dim "d") :temporal-span-days 100)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim})))]
+      (is (= #{"cumulative" "pct-change"} (transforms-emitted r)))))
+  (testing "unknown span fails open: offset variants still emit"
+    (let [r (plan! (transform-facts (metric-with-dims 1 {"d" (date-dim "d")})))]
+      (is (= #{"cumulative" "offset-mom" "offset-yoy" "pct-change"} (transforms-emitted r)))))
+  (testing "faceted (categorical dim + metric temporal breakout): emits faceted transforms;
+            offset-mom dropped (metric breakout grain is month)"
+    (let [r (plan! (transform-facts (metric-with-dims 1 {"d" (text-dim "d" 10)} true)))]
+      (is (= #{"cumulative" "pct-change" "offset-yoy"} (transforms-emitted r)))))
+  (testing "no eligible temporal axis (categorical dim, metric has no temporal breakout): nothing emitted"
+    (let [r (plan! (transform-facts (metric-with-dims 1 {"d" (text-dim "d" 10)} false)))]
+      (is (empty? (transforms-emitted r)))))
+  (testing "numeric dims get NO transforms — a binned numeric is an unreadable facet series
+            (the chart would render it as the x-axis, displacing the temporal axis)"
+    (let [r (plan! (transform-facts (metric-with-dims 1 {"n" (numeric-dim "n")} true)))]
+      (is (empty? (transforms-emitted r)))))
+  (testing "multiple aggregations disqualify all four (single-aggregation gate)"
+    (let [dim (assoc (datetime-dim "d") :temporal-span-days 1000)
+          r   (plan! (transform-facts (metric-with-dims 1 {"d" dim}) :single? false :cumulable? false))]
+      (is (empty? (transforms-emitted r)))))
+  (testing "transform variants are not fanned across segments"
+    (let [dim (assoc (date-dim "d") :temporal-span-days 1000)
+          m   (transform-facts (metric-with-dims 1 {"d" dim} false
+                                                 [{:id 100 :name "Active"}]))
+          r   (plan! m)]
+      (doseq [variant transform-variant-names]
+        (let [items (filter #(= variant (:variant %)) (:plan r))]
+          (is (= 1 (count items)) (str variant " emitted once, not fanned"))
+          (is (nil? (get-in (first items) [:params :segment_id]))))))))
+
 (deftest no-rationale-noise-test
   (testing "Mechanical items don't carry rationale strings — the variant + dim type
             already explains the choice, and a per-item rationale would be filler"

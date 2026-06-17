@@ -187,6 +187,78 @@
                (-> (qp/process-query (variants/dataset-query "per-value-time-series" ctx))
                    :data :rows vec)))))))
 
+;; ---------------------------------------------------------------------------
+;; Time-series transforms: cumulative / offset-yoy / pct-change
+;; ---------------------------------------------------------------------------
+
+(deftest cumulative-temporal-dim-test
+  (testing "cumulative over a temporal dim replaces the metric aggregation with a
+            running total, bucketed monthly and ordered ascending"
+    (let [ctx {:mp      (mt/metadata-provider)
+               :card    (orders-count-card 9000010)
+               :target  [:field (mt/id :orders :created_at) nil]
+               :dim     created-at-dim
+               :segment nil
+               :params  {}}
+          q   (variants/dataset-query "cumulative" ctx)]
+      (is (= ["Cumulative count"] (clause-names q (lib/aggregations q))))
+      (is (= ["Created At: Month ascending"] (clause-names q (lib/order-bys q))))
+      (let [rows   (-> (qp/process-query q) :data :rows vec)
+            counts (mapv second rows)]
+        (is (seq rows))
+        (is (apply <= counts) "running total is non-decreasing over time")))))
+
+(deftest cumulative-faceted-test
+  (testing "cumulative faceted by a categorical dim: temporal axis first, dim as
+            series, running total accumulated per series"
+    (let [ctx {:mp      (mt/metadata-provider)
+               :card    (orders-count-by-month-card 9000011)
+               :target  (orders-category-target)
+               :dim     category-dim
+               :segment nil
+               :params  {}}
+          q   (variants/dataset-query "cumulative" ctx)]
+      (is (= ["Cumulative count"] (clause-names q (lib/aggregations q))))
+      (is (= ["Created At: Month ascending" "Category ascending"]
+             (clause-names q (lib/order-bys q))))
+      (is (= 2 (count (lib/breakouts q))) "breaks out by temporal axis + dim")
+      (let [rows (-> (qp/process-query q) :data :rows vec)]
+        (is (seq rows))
+        (doseq [[_category crows] (group-by second rows)]
+          (is (apply <= (mapv #(nth % 2) crows))
+              "running total is non-decreasing within each series"))))))
+
+(deftest pct-change-temporal-dim-test
+  (testing "pct-change replaces the metric aggregation with a single
+            (current - prior) / prior column; the first period has no prior"
+    (let [ctx {:mp      (mt/metadata-provider)
+               :card    (orders-count-card 9000012)
+               :target  [:field (mt/id :orders :created_at) nil]
+               :dim     created-at-dim
+               :segment nil
+               :params  {}}
+          q   (variants/dataset-query "pct-change" ctx)]
+      (is (= 1 (count (lib/aggregations q))) "single transformed measure column")
+      (is (= ["Created At: Month ascending"] (clause-names q (lib/order-bys q))))
+      (let [rows (-> (qp/process-query q) :data :rows vec)]
+        (is (seq rows))
+        (is (nil? (second (first rows))) "first month has no prior period")))))
+
+(deftest offset-yoy-forces-month-grain-test
+  (testing "offset-yoy buckets the axis by month and looks 12 rows back; the first
+            year has no prior-year comparison"
+    (let [ctx {:mp      (mt/metadata-provider)
+               :card    (orders-count-card 9000013)
+               :target  [:field (mt/id :orders :created_at) nil]
+               :dim     created-at-dim
+               :segment nil
+               :params  {}}
+          q   (variants/dataset-query "offset-yoy" ctx)]
+      (is (= ["Created At: Month ascending"] (clause-names q (lib/order-bys q))))
+      (let [rows (-> (qp/process-query q) :data :rows vec)]
+        (is (seq rows))
+        (is (nil? (second (first rows))) "first month has no prior-year value")))))
+
 (deftest top-n-other-row-order-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "top-n-other sorts non-Other rows by metric desc and pins (Other) last,

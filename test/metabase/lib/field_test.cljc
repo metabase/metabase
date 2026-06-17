@@ -52,6 +52,15 @@
         (is (= (:effective-type (meta/field-metadata :orders :created-at))
                (lib/type-of query col)))))))
 
+(deftest ^:parallel temporal-column-span-days-test
+  (testing "days between earliest and latest fingerprint values (DATE spans 2013-01-03 -> 2015-12-29)"
+    (let [span (lib/temporal-column-span-days (meta/field-metadata :checkins :date))]
+      (is (number? span))
+      (is (< 1000 span 1200))))
+  (testing "nil when the column has no usable :type/DateTime fingerprint range"
+    (is (nil? (lib/temporal-column-span-days (meta/field-metadata :venues :price))))
+    (is (nil? (lib/temporal-column-span-days (dissoc (meta/field-metadata :checkins :date) :fingerprint))))))
+
 (deftest ^:parallel ref-test
   (is (=? [:field
            {:base-type      :type/DateTime

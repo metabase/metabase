@@ -110,18 +110,96 @@
          (or (nil? eff)
              (> eff top-n-other-min-cardinality)))))
 
+(def ^:private no-segment-fan-variants
+  "Variants that are NOT fanned out across the metric's segments — the
+  per-series line charts (`time-facet` and the time-series transforms) are
+  already busy enough without splitting each further across segments."
+  #{"time-facet" "cumulative" "offset-mom" "offset-yoy" "pct-change"})
+
 (defn- fan-segments
   "Expand one plan item across `[nil + metric.segments]`, producing N+1
   copies — the bare unsegmented item plus one per available segment. Each
-  segmented copy carries `:params.segment_id <id>`. `time-facet` skips the
-  fan-out (per the pre-LLM rule: the per-category line series is already
-  busy enough without splitting it further across segments)."
+  segmented copy carries `:params.segment_id <id>`. Variants in
+  `no-segment-fan-variants` skip the fan-out."
   [metric item]
-  (if (= "time-facet" (:variant item))
+  (if (no-segment-fan-variants (:variant item))
     [item]
     (cons item
           (for [seg (:segments metric)]
             (update item :params assoc :segment_id (:id seg))))))
+
+(def ^:private offset-yoy-min-span-days
+  "Minimum temporal span (days) for an `offset-yoy` variant — need at least one
+  prior-year point to compare against. ~13 months."
+  380)
+
+(def ^:private offset-mom-min-span-days
+  "Minimum temporal span (days) for an `offset-mom` variant. ~2 months."
+  60)
+
+(defn- faceted-transform-dim?
+  "A dim qualifies as the *series* of a faceted transform when it's `time-facet`
+  eligible AND categorical (non-numeric). A binned numeric makes an unreadable
+  series — and the chart renders the binned numeric as the x-axis, displacing
+  the temporal axis the transform exists to show. Numeric dims therefore get no
+  time-series transform at all (they're not temporal either)."
+  [metric dim]
+  (and (time-facet-eligible? metric dim)
+       (not (qp.mbql/dim-type-isa? dim :type/Number))))
+
+(defn- transform-axis
+  "Which temporal axis a time-series transform would use for this (metric, dim)
+  pair, or nil if neither applies:
+   - `:temporal-dim` — the dim is itself temporal (single series over the dim);
+   - `:faceted`      — a categorical, `time-facet`-eligible dim (the metric's own
+                       default temporal breakout on the x-axis, dim as series)."
+  [metric dim]
+  (cond
+    (qp.mbql/dim-type-isa? dim :type/Temporal) :temporal-dim
+    (faceted-transform-dim? metric dim)        :faceted))
+
+(defn- axis-span-days
+  "Temporal span (days) of the axis a transform would use, or nil when unknown
+  (fingerprint missing / unanalyzed) — callers fail open on nil."
+  [metric dim axis]
+  (case axis
+    :temporal-dim (:temporal-span-days dim)
+    :faceted      (:default-temporal-span-days metric)
+    nil))
+
+(defn- axis-grain-month?
+  "True when the transform's natural axis grain is already month — used to drop
+  `offset-mom` (which forces month grain) as a duplicate of `pct-change`."
+  [metric dim axis]
+  (case axis
+    :temporal-dim (= :month (second (qp.mbql/default-bucket-for-dim dim)))
+    :faceted      (= "month" (:unit (:default-temporal-breakout-summary metric)))
+    false))
+
+(defn- transform-variants
+  "Time-series transform variants applicable to this (metric, dim) pair. All
+  require a single aggregation and an eligible temporal axis; cumulative needs a
+  count/sum metric; offset/pct-change need window-function support; the offset
+  variants are span-gated (fail open on unknown span) and `offset-mom` is dropped
+  when it would duplicate `pct-change` (month-grain axis)."
+  [metric dim]
+  (when-let [axis (transform-axis metric dim)]
+    (let [single?    (:single-aggregation? metric)
+          window?    (and single? (:supports-window-functions? metric))
+          span       (axis-span-days metric dim axis)
+          span-ok?   (fn [min-days] (or (nil? span) (>= span min-days)))]
+      (cond-> []
+        (:cumulable-aggregation? metric)
+        (conj "cumulative")
+
+        window?
+        (conj "pct-change")
+
+        (and window? (not (axis-grain-month? metric dim axis)) (span-ok? offset-mom-min-span-days))
+        (conj "offset-mom")
+
+        (and window? (span-ok? offset-yoy-min-span-days))
+        (conj "offset-yoy")))))
 
 (defn- items-for-pair
   "Emit eligible variants for one applicable (metric, dim) pair: `default`
@@ -149,9 +227,10 @@
         facet       (when (time-facet-eligible? metric dim) [(item "time-facet")])
         top-n-other (when (top-n-other-eligible? dim)
                       [(assoc (item "top-n-other")
-                              :params {:k top-n-other-default-k})])]
+                              :params {:k top-n-other-default-k})])
+        transforms  (mapv item (transform-variants metric dim))]
     (vec (mapcat (partial fan-segments metric)
-                 (concat base patterns facet top-n-other)))))
+                 (concat base patterns facet top-n-other transforms)))))
 
 (defn- run-plan!
   "Walk each group's metric × dim matrix and emit plan items per `items-for-pair`,

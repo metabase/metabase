@@ -324,6 +324,26 @@
 (lib.common/defop sum-where   [x y])
 (lib.common/defop var         [x])
 
+(def ^:private aggregation-tag->cumulative
+  "Plain aggregation operators that have a cumulative (running-total) window-function counterpart,
+  mapped to the tag they rewrite to."
+  {:count :cum-count
+   :sum   :cum-sum})
+
+(mu/defn cumulative-aggregation :- [:maybe ::lib.schema.aggregation/aggregation]
+  "Return the cumulative (running-total) counterpart of aggregation clause `an-aggregation`: a
+  `:count` becomes `:cum-count` and a `:sum` becomes `:cum-sum`, preserving the clause's options and
+  arguments. Returns `nil` when the aggregation's operator has no cumulative form (anything other
+  than count and sum).
+
+  This lets feature code outside Lib obtain the running-total version of an aggregation -- e.g. a
+  metric's aggregation -- without inspecting the clause's operator or arguments, and use the `nil`
+  return to gate whether a cumulative variant is applicable at all."
+  [an-aggregation :- ::lib.schema.aggregation/aggregation]
+  (let [[tag & opts+args] an-aggregation]
+    (when-let [cum-tag (aggregation-tag->cumulative tag)]
+      (into [cum-tag] opts+args))))
+
 (defmethod lib.ref/ref-method :aggregation
   [aggregation-clause]
   aggregation-clause)

@@ -396,6 +396,131 @@
                (fn [rows]
                  (vec (sort-by #(= other-bucket-label (first %)) rows))))))
 
+;; ---------------------------------------------------------------------------
+;; Time-series aggregation transforms — cumulative / offset-mom / offset-yoy /
+;; pct-change.
+;;
+;; Each reshapes the metric's single aggregation into a time-series transform,
+;; then breaks out over a temporal axis. The axis is chosen by the dim's type:
+;;
+;;   temporal dim     breakout = the dim, bucketed; a single series.
+;;   categorical dim  breakout = [metric's default temporal breakout, the dim];
+;;                    a faceted chart with one line per dim value.
+;;
+;; `offset-mom`/`offset-yoy` force a MONTH grain (so "one month / one year ago"
+;; is a stable row offset); `cumulative`/`pct-change` ride the axis's natural
+;; grain. Window functions (`:cum-sum`/`:cum-count`/`:offset`) get NO implicit
+;; breakout order-by from the QP, so these builders add an explicit ASCENDING
+;; temporal order-by; the faceted case puts the temporal breakout first so the
+;; window partitions per dim value.
+;; ---------------------------------------------------------------------------
+
+(def ^:private offset-look-back
+  "Row offset per offset-style variant. Negative because `:offset` compiles to
+  LAG for negative n (look back) and LEAD for positive. `offset-yoy` is -12
+  because the axis is forced to month grain."
+  {"offset-mom" -1
+   "offset-yoy" -12
+   "pct-change" -1})
+
+(defn- forced-month-grain?
+  "True for the offset variants that pin the temporal axis to month grain."
+  [variant]
+  (contains? #{"offset-mom" "offset-yoy"} variant))
+
+(defn- pct-change-aggregation
+  "A single 'percent change vs `n` rows ago' aggregation expression from `agg`:
+  `(current - prior) / prior`, where `prior = offset(agg, n)`. Each occurrence of
+  the metric aggregation gets fresh uuids so the repeated clause doesn't collide."
+  [agg n]
+  (let [current (lib/fresh-uuids agg)
+        prior   (fn [] (lib/offset (lib/fresh-uuids agg) n))]
+    (lib// (lib/- current (prior)) (prior))))
+
+(defn- transform-aggregation
+  "Replace `query`'s sole aggregation with its transformed form for `variant`.
+  Returns nil when the transform doesn't apply (e.g. `cumulative` on a metric
+  whose aggregation has no cumulative form) — the runner treats nil as a
+  row-level error, but the mechanical planner gates these out up front."
+  [query variant]
+  (let [agg (first (lib/aggregations query))]
+    (if (= "cumulative" variant)
+      (when-let [cum (lib/cumulative-aggregation agg)]
+        (lib/replace-clause query agg cum))
+      (lib/replace-clause query agg (pct-change-aggregation agg (offset-look-back variant))))))
+
+(defn- order-by-breakouts-asc
+  "Order ascending by each of `query`'s breakouts, in breakout order. Window
+  functions get no implicit breakout order-by, so the transforms add it
+  explicitly. Orders by the breakout *columns* (fresh refs) rather than the
+  breakout clauses themselves, so the order-by doesn't reuse a breakout's uuid."
+  [query]
+  (reduce (fn [q col] (lib/order-by q col :asc))
+          query
+          (lib/breakouts-metadata query)))
+
+(defn- transform-over-temporal-dim
+  "Single-series transform over a temporal dim."
+  [{:keys [mp card target dim segment]} variant]
+  (let [base       (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+        ref-clause (qp.mbql/normalize-target-ref target)
+        unit       (if (forced-month-grain? variant)
+                     :month
+                     (or (second (qp.mbql/default-bucket-for-dim dim)) :month))
+        breakout   (lib/with-temporal-bucket ref-clause unit)]
+    (some-> (transform-aggregation base variant)
+            (lib/breakout breakout)
+            (maybe-segment-filtered segment)
+            order-by-breakouts-asc)))
+
+(defn- transform-faceted-by-dim
+  "Faceted transform: the metric's default temporal breakout on the x-axis, the
+  categorical dim as the series. Temporal breakout first so window functions
+  partition per dim value."
+  [{:keys [mp card target dim segment]} variant]
+  (when-let [[temporal-col raw-unit] (qp.mbql/extract-default-temporal-breakout-col
+                                      mp (:dataset_query card))]
+    (let [base         (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
+          ref-clause   (qp.mbql/normalize-target-ref target)
+          dim-breakout (qp.mbql/apply-default-bucket base ref-clause dim)
+          unit         (if (forced-month-grain? variant) :month (or raw-unit :month))
+          temporal-bo  (lib/with-temporal-bucket temporal-col unit)]
+      (some-> (transform-aggregation base variant)
+              (lib/breakout temporal-bo)
+              (lib/breakout dim-breakout)
+              (maybe-segment-filtered segment)
+              order-by-breakouts-asc))))
+
+(defn- transform-dataset-query
+  [variant {:keys [dim] :as ctx}]
+  (if (temporal-dim? dim)
+    (transform-over-temporal-dim ctx variant)
+    (transform-faceted-by-dim ctx variant)))
+
+(doseq [variant ["cumulative" "offset-mom" "offset-yoy" "pct-change"]]
+  (defmethod plan-rows variant [_ ctx] (one-row variant "line" ctx)))
+
+(defmethod query-name "cumulative"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (Cumulative)" (:name card) dim-label) segment))
+
+(defmethod query-name "offset-mom"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (Month over month)" (:name card) dim-label) segment))
+
+(defmethod query-name "offset-yoy"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (Year over year)" (:name card) dim-label) segment))
+
+(defmethod query-name "pct-change"
+  [_ {:keys [card dim-label segment]}]
+  (with-segment-suffix (tru "{0} by {1} (% change)" (:name card) dim-label) segment))
+
+(defmethod dataset-query "cumulative" [variant ctx] (transform-dataset-query variant ctx))
+(defmethod dataset-query "offset-mom" [variant ctx] (transform-dataset-query variant ctx))
+(defmethod dataset-query "offset-yoy" [variant ctx] (transform-dataset-query variant ctx))
+(defmethod dataset-query "pct-change" [variant ctx] (transform-dataset-query variant ctx))
+
 (def known-variants
   "Set of variant names the multimethods dispatch on. Exposed for the LLM
   validator so the schema enum and the dispatch table can't drift."
@@ -405,4 +530,8 @@
     "time-facet"
     "top-n-other"
     "per-value-time-series"
-    "filtered-subset"})
+    "filtered-subset"
+    "cumulative"
+    "offset-mom"
+    "offset-yoy"
+    "pct-change"})

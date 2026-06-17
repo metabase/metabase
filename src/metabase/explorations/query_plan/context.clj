@@ -14,11 +14,13 @@
   iterate on prompt engineering."
   (:require
    [clojure.string :as str]
+   [metabase.driver.util :as driver.u]
    [metabase.explorations.groups :as explorations.groups]
    [metabase.explorations.models.exploration-thread-group :as thread-group]
    [metabase.explorations.query-plan.mbql :as qp.mbql]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -120,13 +122,26 @@
       (:fingerprint col))
     (catch Exception _ nil)))
 
+(defn- column-temporal-span-for-target
+  "Span in days of the temporal column `target` resolves to (via
+  [[metabase.lib.core/temporal-column-span-days]]), or nil for non-temporal /
+  unanalyzed columns. Powers the year-over-year / month-over-month span gate on
+  a temporal dim."
+  [base-query columns target]
+  (try
+    (let [ref-clause (qp.mbql/normalize-target-ref target)
+          col        (lib/find-matching-column base-query -1 ref-clause columns)]
+      (lib/temporal-column-span-days col))
+    (catch Exception _ nil)))
+
 (defn- applicability
   "For each chosen `dim`, decide whether it has a resolvable target on
   `card`'s `dimension_mappings`. Returns
   `{dimension_id {:target :enriched-dim} | nil}` keyed by dim id. The dim
-  is enriched with the resolved column's `:fingerprint`, looked up through
-  the metadata provider — bare thread-dim rows don't store fingerprints, so
-  categorical-cardinality probes have nothing to read without this lookup."
+  is enriched with the resolved column's `:fingerprint` and (for temporal dims)
+  its `:temporal-span-days`, looked up through the metadata provider — bare
+  thread-dim rows don't store fingerprints, so categorical-cardinality probes
+  and span gates have nothing to read without this lookup."
   [dim-by-id metric mp card-dataset-query]
   (let [mappings (:dimension_mappings metric)
         base    (try (lib/query mp card-dataset-query) (catch Exception _ nil))
@@ -135,9 +150,37 @@
           (keep (fn [[dim-id dim]]
                   (when-let [target (qp.mbql/find-dimension-target dim-id mappings)]
                     (let [fp   (when base (column-fingerprint-for-target base columns target))
-                          dim' (cond-> dim fp (assoc :fingerprint fp))]
+                          span (when base (column-temporal-span-for-target base columns target))
+                          dim' (cond-> dim
+                                 fp   (assoc :fingerprint fp)
+                                 span (assoc :temporal-span-days span))]
                       [dim-id {:target target :dim dim'}]))))
           dim-by-id)))
+
+(defn- transform-eligibility
+  "Aggregation/driver facts the mechanical planner needs to decide whether the
+  cumulative/offset/pct-change variants apply to this metric: whether it has a
+  single aggregation, whether that aggregation has a cumulative form, whether the
+  metric's database supports window functions (required for offset/pct-change,
+  which have no Clojure fallback), and the span of the metric's own default
+  temporal breakout (for the faceted span gate). Fails closed on any error."
+  [mp dataset-query default-temp]
+  (try
+    (let [base    (lib/query mp dataset-query)
+          aggs    (lib/aggregations base)
+          db      (lib.metadata/database base)
+          single? (= 1 (count aggs))]
+      {:single-aggregation?        single?
+       :cumulable-aggregation?     (and single? (some? (lib/cumulative-aggregation (first aggs))))
+       :supports-window-functions? (boolean (and (:engine db)
+                                                 (driver.u/supports?
+                                                  (:engine db) :window-functions/offset db)))
+       :default-temporal-span-days (some-> default-temp first lib/temporal-column-span-days)})
+    (catch Exception _
+      {:single-aggregation?        false
+       :cumulable-aggregation?     false
+       :supports-window-functions? false
+       :default-temporal-span-days nil})))
 
 (defn- metric-context
   "Per-metric entry for [[metric-and-dim-context]]'s `:metrics` list. Enriches
@@ -150,18 +193,20 @@
         enriched-thread-dims (update-vals dim-by-id #(thread-group/enrich-with-card-group % card-dims))
         appl                 (applicability enriched-thread-dims tm mp dataset-query)
         default-temp         (qp.mbql/extract-default-temporal-breakout-col mp dataset-query)]
-    {:metric-id                         (:card_id tm)
-     :card                              card
-     :mp                                mp
-     :applicability                     appl
-     :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
-                                          {:column display-name
-                                           :unit   (some-> unit name)})
-     :segments                          (segment-blurbs mp dataset-query)
-     :name                              (:name card)
-     :description                       (some-> (:description card) str/trim not-empty)
-     :aggregation                       (aggregation-summary mp dataset-query)
-     :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)}))
+    (merge
+     (transform-eligibility mp dataset-query default-temp)
+     {:metric-id                         (:card_id tm)
+      :card                              card
+      :mp                                mp
+      :applicability                     appl
+      :default-temporal-breakout-summary (when-let [[_col unit display-name] default-temp]
+                                           {:column display-name
+                                            :unit   (some-> unit name)})
+      :segments                          (segment-blurbs mp dataset-query)
+      :name                              (:name card)
+      :description                       (some-> (:description card) str/trim not-empty)
+      :aggregation                       (aggregation-summary mp dataset-query)
+      :result-column-name                (metrics/aggregation-column-name (:database_id card) dataset-query)})))
 
 (defn- group-context
   "Per-group entry for [[metric-and-dim-context]]'s `:groups` list. Hydrates this group's
