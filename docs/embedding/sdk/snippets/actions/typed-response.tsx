@@ -14,7 +14,7 @@ const SET_DISCOUNT_ACTION_ID = 42;
 type SetDiscountParameters = { id: number; discount: number };
 
 function SetDiscountButton({ orderId }: { orderId: number }) {
-  const { execute, result } = useAction<SetDiscountParameters, "query">(
+  const { execute, result } = useAction<SetDiscountParameters, "sql">(
     SET_DISCOUNT_ACTION_ID,
   );
 

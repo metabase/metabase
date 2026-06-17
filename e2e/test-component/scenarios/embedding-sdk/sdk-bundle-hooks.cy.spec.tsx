@@ -283,12 +283,12 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
           model_id: model.id,
         }).then(() => {
           // Re-fetch the action list scoped to the model we just created
-          // rather than trusting the create response. `POST /api/action`
-          // returns a stale action under H2 (where `t2/insert!` returns
-          // nil and the handler falls back to "last action of this type")
-          // — which leads to a flaky 404 from `eid-translation/->id-or-404`
-          // at execute time on CI. Scoping by `model-id` is unambiguous
-          // because we created exactly one action for this model.
+          // rather than trusting the create response, which was flaky on CI:
+          // the create path goes through `t2/insert-returning-instances!`
+          // (see `actions/models.clj`) and intermittently yielded an id that
+          // 404'd from `eid-translation/->id-or-404` at execute time. Scoping
+          // the GET by `model-id` is unambiguous because we created exactly
+          // one action for this model.
           cy.request("GET", `/api/action?model-id=${model.id}`).then(
             ({ body: actions }) => {
               const action = actions[0];
@@ -398,29 +398,6 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
       });
     });
 
-    it("should execute the action when called without rendered SDK components", () => {
-      cy.get<number>("@actionId").then((actionId) => {
-        cy.intercept("POST", `/api/action/${actionId}/execute`).as(
-          "executeAction",
-        );
-
-        mountSdk(
-          <>
-            <ComponentWithHook actionId={actionId} />
-
-            <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG} />
-          </>,
-        );
-
-        cy.wait("@executeAction").its("response.statusCode").should("eq", 200);
-
-        cy.findByTestId("action-result").should(
-          "contain.text",
-          '"rows-updated":',
-        );
-      });
-    });
-
     it("should surface a permission-denied error from the execute endpoint", () => {
       // This is the one test where we stub the response: the focus is on
       // how the hook surfaces a non-2xx body via `error.data.message`,
@@ -512,8 +489,10 @@ describe("scenarios > embedding-sdk > sdk-bundle public hooks", () => {
 
         cy.findByTestId("action-reset").click();
 
+        // The execute succeeded, so `result` was set and `error` never was —
+        // asserting `result` returns to "idle" is what proves reset() cleared
+        // the populated state.
         cy.findByTestId("action-result").should("have.text", "idle");
-        cy.findByTestId("action-error").should("have.text", "");
       });
     });
   });

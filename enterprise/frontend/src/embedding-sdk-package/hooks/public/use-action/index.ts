@@ -7,7 +7,7 @@ export type {
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
-  ActionResultForQuery,
+  ActionResultForSql,
   ActionResultForUpdate,
   AnyActionResult,
 } from "./types";

@@ -37,7 +37,7 @@ export type {
   ActionResultForCreate,
   ActionResultForDelete,
   ActionResultForKind,
-  ActionResultForQuery,
+  ActionResultForSql,
   ActionResultForUpdate,
   AnyActionResult,
   UseActionResult,

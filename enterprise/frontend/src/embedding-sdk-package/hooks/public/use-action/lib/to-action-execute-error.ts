@@ -1,3 +1,6 @@
+// eslint-disable-next-line metabase/no-external-references-for-sdk-package-code -- reuse the shared abort/status error helpers rather than re-implementing them
+import { getErrorStatus, isAbortError } from "metabase/api/client/errors";
+
 import type { ActionExecuteError } from "../types";
 
 /**
@@ -14,19 +17,11 @@ import type { ActionExecuteError } from "../types";
  * the message.
  */
 export const toActionExecuteError = (error: unknown): ActionExecuteError => {
-  const isAbort =
-    error != null &&
-    typeof error === "object" &&
-    (error as { name?: unknown }).name === "AbortError";
+  const isAbort = isAbortError(error);
+  const status = getErrorStatus(error);
 
-  if (
-    error != null &&
-    typeof error === "object" &&
-    "status" in error &&
-    typeof (error as { status: unknown }).status === "number"
-  ) {
-    const { status, data, isCancelled } = error as {
-      status: number;
+  if (status !== undefined) {
+    const { data, isCancelled } = error as {
       data?: unknown;
       isCancelled?: unknown;
     };

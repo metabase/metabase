@@ -15,11 +15,11 @@ import type { RowValue } from "metabase-types/api";
  * `row/*` + `bulk/*` `implicitKind` and the `query` `type` value, but
  * exposes a simpler five-value surface to callers: `create` / `update` /
  * `delete` always refer to a single row, `bulk` covers any bulk variant,
- * and `query` covers custom SQL actions.
+ * and `sql` covers custom SQL actions (the backend's `query`-type action).
  *
  * @category useAction
  */
-export type ActionKind = "create" | "update" | "delete" | "bulk" | "query";
+export type ActionKind = "create" | "update" | "delete" | "bulk" | "sql";
 
 /**
  * Response from a single-row create — the inserted row.
@@ -65,7 +65,7 @@ export type ActionResultForBulk = {
  *
  * @category useAction
  */
-export type ActionResultForQuery = {
+export type ActionResultForSql = {
   "rows-affected": number;
 };
 
@@ -82,7 +82,7 @@ export type AnyActionResult =
   | ActionResultForUpdate
   | ActionResultForDelete
   | ActionResultForBulk
-  | ActionResultForQuery;
+  | ActionResultForSql;
 
 /**
  * Shape of the thrown error captured into the hook's `error` state on a
@@ -125,6 +125,6 @@ export type ActionResultForKind<TKind extends ActionKind | undefined> =
         ? ActionResultForDelete
         : TKind extends "bulk"
           ? ActionResultForBulk
-          : TKind extends "query"
-            ? ActionResultForQuery
+          : TKind extends "sql"
+            ? ActionResultForSql
             : AnyActionResult;

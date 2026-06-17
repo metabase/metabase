@@ -22,7 +22,7 @@ const { execute, isExecuting, result, error, reset } = useAction<
 
 - `actionId` — the action's numeric id, its `entity_id` string, or `null`. Find the numeric id in Metabase by opening the action editor and copying it from the URL.
 - `TParameters` — a TypeScript type describing the parameters object that will be passed to `execute`. Keys are the action's parameter slugs (the names shown in the action editor).
-- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"query"` to get a typed `result` for that single shape. Omit it and `result` defaults to a union of every possible response body (`AnyActionResult`), narrowable with `"<key>" in result`. See [Typing the response](#typing-the-response).
+- `TKind` (optional) — the action's kind literal. Pass one of `"create"`, `"update"`, `"delete"`, `"bulk"`, or `"sql"` to get a typed `result` for that single shape. Omit it and `result` defaults to a union of every possible response body (`AnyActionResult`), narrowable with `"<key>" in result`. See [Typing the response](#typing-the-response).
 - `execute(parameters)` — call this from an event handler to trigger the action. The hook does not auto-fire on mount. Resolves to the response body on success, throws on failure, or resolves to `null` if `actionId` is `null` or the SDK is not yet initialized. You can `await` it or fire and forget — the same error is written to `error` state either way, so a render-time error message will appear even without a `try`/`catch`.
 - `isExecuting` — `true` between the call and its resolution. Use it to disable the trigger and prevent double-clicks.
 - `result` — the response body, or `null` before the first call and after `reset()`.
@@ -84,7 +84,7 @@ The action's **kind** drives the shape of `result`. Pass it as the second generi
 | `"update"`         | Single-row update                                | `{ "rows-updated": readonly RowValue[] }`                                                         |
 | `"delete"`         | Single-row delete                                | `{ "rows-deleted": readonly RowValue[] }`                                                         |
 | `"bulk"`           | Any bulk variant (bulk create / update / delete) | `{ success: boolean; "rows-created"?: number; "rows-updated"?: number; "rows-deleted"?: number }` |
-| `"query"`          | Custom SQL action                                | `{ "rows-affected": number }`                                                                     |
+| `"sql"`            | Custom SQL action                                | `{ "rows-affected": number }`                                                                     |
 
 #### API Reference
 
@@ -95,7 +95,7 @@ The action's **kind** drives the shape of `result`. Pass it as the second generi
 - [ActionResultForUpdate](./api/ActionResultForUpdate.html)
 - [ActionResultForDelete](./api/ActionResultForDelete.html)
 - [ActionResultForBulk](./api/ActionResultForBulk.html)
-- [ActionResultForQuery](./api/ActionResultForQuery.html)
+- [ActionResultForSql](./api/ActionResultForSql.html)
 
 Example with a known kind:
 
@@ -121,13 +121,13 @@ The union default catches mistyped reads: if the type system can't prove `result
 
 When an action succeeds, you'll need to refresh any data in the UI that the action could have changed, otherwise the data on screen may be stale. There is no automatic refresh.
 
-After `execute` resolves successfully, load the data hook above the action trigger so its `refetch` callback can be passed down:
+After `execute` resolves successfully, refresh a question by remounting it: keep a `refreshKey` in state, use it as the question's `key`, and bump it after the action. The new `key` gives the question a fresh mount, which re-runs its query.
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/with-refresh.tsx" %}
 ```
 
-If a single action invalidates more than one view, kick off the refreshes in parallel and `await` them together so the user sees a single coherent flip from stale to fresh:
+If a single action invalidates more than one view, drive every dependent question off the same `refreshKey` so one state bump remounts them all and they re-query together:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/actions/parallel-refresh.tsx" snippet="parallel-refresh" %}

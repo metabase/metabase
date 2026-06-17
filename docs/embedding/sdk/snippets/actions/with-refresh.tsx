@@ -1,8 +1,10 @@
+import { useState } from "react";
+
 import {
+  InteractiveQuestion,
   MetabaseProvider,
   defineMetabaseAuthConfig,
   useAction,
-  useQuestionQuery,
 } from "@metabase/embedding-sdk-react";
 
 const authConfig = defineMetabaseAuthConfig({
@@ -18,39 +20,26 @@ type MarkShippedParameters = {
 };
 
 function OrdersScreen() {
-  // Load the question above the action trigger so its `refetch` callback
-  // can be passed down. Lifting the data hook up is what makes
-  // "refresh after action" possible.
-  const { data, refetch } = useQuestionQuery(ORDERS_QUESTION_ID);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <div>
-      <OrdersList rows={data?.rows ?? []} />
-      <MarkAllShippedButton onShipped={refetch} />
+      <InteractiveQuestion key={refreshKey} questionId={ORDERS_QUESTION_ID} />
+      <MarkAllShippedButton onShipped={() => setRefreshKey((key) => key + 1)} />
     </div>
   );
 }
 
-function OrdersList({ rows }: { rows: unknown[][] }) {
-  return (
-    <ul>
-      {rows.map((row, i) => (
-        <li key={i}>{JSON.stringify(row)}</li>
-      ))}
-    </ul>
-  );
-}
-
 function MarkAllShippedButton({ onShipped }: { onShipped: () => void }) {
-  const { execute, isExecuting } =
-    useAction<MarkShippedParameters>(MARK_SHIPPED_ACTION_ID);
+  const { execute, isExecuting } = useAction<MarkShippedParameters>(
+    MARK_SHIPPED_ACTION_ID,
+  );
 
   const onClick = async () => {
     await execute({ id: 1 });
-    // After the action succeeds, refresh every data view that depends on
-    // the mutated rows. `await` the refresh so callers know when the UI
-    // reflects the new state.
-    await onShipped();
+    // Only refresh once the action has succeeded, so the question re-queries
+    // against the mutated rows.
+    onShipped();
   };
 
   return (
