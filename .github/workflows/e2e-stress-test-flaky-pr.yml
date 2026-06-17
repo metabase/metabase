@@ -80,4 +80,7 @@ jobs:
     secrets: inherit
     with:
       spec: ${{ matrix.spec }}
-      burn_in: "20"
+      burn_in: 20
+      qa_db: true
+      mb_edition: ee
+      build_jar: true
