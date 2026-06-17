@@ -6,7 +6,7 @@ title: Driver interface changelog
 
 ## Metabase 0.63.0
 
-- `metabase.driver/fetch-table-indexes` has been added. It returns the indexes that physically exist on a table, as a
+- `metabase.driver/fetch-indexes` has been added. It returns the indexes that physically exist on a table, as a
   vector of normalized index maps. It has no safe default (the default implementation throws), so only drivers that
   can introspect indexes need to implement it. Implemented by Postgres, ClickHouse, and Redshift.
 

@@ -251,7 +251,7 @@
 ;; Redshift has no secondary indexes; the only physical "index" is the inline, unnamed sortkey, so we override the
 ;; inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position (negative marks the
 ;; whole key INTERLEAVED). Blank `schema` falls back to `current_schema()`.
-(defmethod driver/fetch-table-indexes :redshift
+(defmethod driver/fetch-indexes :redshift
   [_driver database schema table]
   (let [rows (jdbc/query
               (sql-jdbc.conn/db->pooled-connection-spec database)

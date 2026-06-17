@@ -81,7 +81,7 @@
   (mapv #(assoc % :columns [{:name "definitely_not_a_real_column"}]) indexes))
 
 (defn- idx
-  "A normalized [[metabase.driver/fetch-table-indexes]] entry (sans `:definition`) with defaults, for terse `:expected`."
+  "A normalized [[metabase.driver/fetch-indexes]] entry (sans `:definition`) with defaults, for terse `:expected`."
   [nm kind access-method key-columns & {:keys [unique primary include partial]
                                         :or   {unique false primary false include [] partial nil}}]
   {:name nm :kind kind :access-method access-method :is-unique unique :is-primary primary :is-valid true
@@ -90,7 +90,7 @@
 (def fetch-cases
   "Driver -> fetch-correctness cases. Each case creates `:table` via the literal `:create` statements (popular index
   kinds, made directly so we cover catalog shapes the apply path never produces, e.g. Postgres gin/partial), and
-  `:expected` is the set of normalized [[metabase.driver/fetch-table-indexes]] maps (sans `:definition`) it must return.
+  `:expected` is the set of normalized [[metabase.driver/fetch-indexes]] maps (sans `:definition`) it must return.
   Index models differ, so a case carries however many indexes that driver puts on one table."
   {:postgres
    [{:label  "btree, unique, composite, INCLUDE, partial, gin, brin, hash, expression, and the primary key"

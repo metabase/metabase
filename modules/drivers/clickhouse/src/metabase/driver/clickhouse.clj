@@ -323,7 +323,7 @@
 
 ;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
 ;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
-(defmethod driver/fetch-table-indexes :clickhouse
+(defmethod driver/fetch-indexes :clickhouse
   [_driver database schema table]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         db        (perf/not-empty schema)
