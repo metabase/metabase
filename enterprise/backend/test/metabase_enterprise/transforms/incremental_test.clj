@@ -18,6 +18,7 @@
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.index-test-util :as index-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [next.jdbc :as next.jdbc]
@@ -676,38 +677,39 @@
                               (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                               (is (some? checkpoint) "Checkpoint should be updated"))))))))))))))))
 
-(defn- pg-index-names
-  [schema table]
-  (->> (next.jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
-                           ["SELECT indexname FROM pg_indexes WHERE schemaname = ? AND tablename = ?" schema table]
-                           {:builder-fn jdbc.rs/as-unqualified-lower-maps})
-       (map :indexname)
-       set))
+(defn- incremental-index-test-drivers
+  "Index-supporting drivers that also run incremental transforms (effectively postgres today; the incremental suite
+  excludes redshift/clickhouse/sqlserver)."
+  []
+  (into #{} (filter (index-util/index-test-drivers)) (test-drivers)))
 
-(deftest ^:synchronized incremental-append-preserves-declared-indexes-test
-  (testing "the first incremental run creates the target's standalone indexes; an append run leaves them untouched"
-    ;; The gating in `complete-execution!` (re)applies standalone indexes only on a full-create run: a `:table` run,
-    ;; or a first/full-reset incremental run. A plain append must skip it, otherwise it re-issues `CREATE INDEX`
-    ;; against the live table (no IF NOT EXISTS) and `execute!` throws. So a broken gate fails the append run below,
-    ;; not just the index assertion.
-    (mt/test-drivers #{:postgres}
-      (mt/with-premium-features #{:transforms-basic}
+(deftest ^:synchronized ^:mb/transforms-python-test declared-indexes-on-incremental-transform-test
+  (testing "incremental: the first (full) run creates the target's declared indexes; an append run preserves them"
+    ;; The first run has no watermark, so it's a full rebuild that creates the indexes. The append run keeps the
+    ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
+    (mt/test-drivers (incremental-index-test-drivers)
+      (mt/with-premium-features #{:transforms-basic :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
-          (let [checkpoint-config (:integer checkpoint-configs)
-                indexed-target    (assoc (target-table-gen "incremental_index")
-                                         :indexes [{:kind :btree :name "incr_by_category" :columns [{:name "category"}]}])]
-            (with-transform-cleanup! [target indexed-target]
-              (let [payload (make-incremental-transform-payload "Incremental Index Transform" target :mbql checkpoint-config)
-                    schema  (:schema target)
-                    table   (:name target)]
-                (mt/with-temp [:model/Transform transform payload]
-                  (testing "first (full) run creates the declared btree"
-                    (transforms.execute/execute! transform {:run-method :manual})
-                    (transforms.tu/wait-for-table table 10000)
-                    (is (contains? (pg-index-names schema table) "incr_by_category")))
-                  (testing "append run preserves the btree without re-creating it"
-                    (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
-                                                  :price 379.99 :created-at "2024-01-20T10:00:00"}]
-                      (let [transform (t2/select-one :model/Transform (:id transform))]
-                        (transforms.execute/execute! transform {:run-method :manual})
-                        (is (contains? (pg-index-names schema table) "incr_by_category"))))))))))))))
+          (let [{:keys [indexes expected physical-indexes]} (index-util/driver-cases driver/*driver*)
+                checkpoint-config (:integer checkpoint-configs)
+                checkpoint-field  (:field-name checkpoint-config)]
+            (doseq [transform-type [:mbql :python]]
+              (testing (str "transform-type " transform-type)
+                (with-transform-cleanup! [{table-name :name :as target} (target-table-gen "incremental_index")]
+                  (let [payload (make-incremental-transform-payload "Incremental Index Transform"
+                                                                    target transform-type checkpoint-config)
+                        schema  (:schema target)]
+                    (mt/with-temp [:model/Transform transform payload]
+                      (with-redefs [transforms.execute/hydrate-transform-indexes (constantly indexes)]
+                        (testing "first (full) run creates the declared indexes"
+                          (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                            {:run-method :manual})
+                          (transforms.tu/wait-for-table table-name 10000)
+                          (is (= expected (physical-indexes (mt/db) schema table-name))))
+                        (testing "append run preserves the indexes"
+                          (with-insert-test-products! [{:name "Incremental Index Product" :category "Gadget"
+                                                        :price 379.99 :created-at "2024-01-20T10:00:00"}]
+                            (let [transform (t2/select-one :model/Transform (:id transform))]
+                              (execute-transform-with-ordering! transform transform-type checkpoint-field
+                                                                {:run-method :manual})
+                              (is (= expected (physical-indexes (mt/db) schema table-name))))))))))))))))))
