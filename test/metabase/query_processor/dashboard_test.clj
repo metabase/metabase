@@ -128,22 +128,23 @@
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                    :type     :native
-                                                    :native   {:query (str "SELECT distinct category "
-                                                                           "FROM products "
-                                                                           "WHERE {{filter}} "
-                                                                           "ORDER BY category ASC")
-                                                               :template-tags
-                                                               {"filter"
-                                                                {:id           "xyz456"
-                                                                 :name         "filter"
-                                                                 :display-name "Filter"
-                                                                 :type         :dimension
-                                                                 :dimension    [:field (mt/id :products :category) nil]
-                                                                 :widget-type  :category
-                                                                 :default      ["Gizmo" "Gadget"]
-                                                                 :required     false}}}}}
+        [:model/Card {card-id :id, :as card}
+         {:dataset_query {:database (mt/id)
+                          :type     :native
+                          :native   {:query (str "SELECT distinct category "
+                                                 "FROM products "
+                                                 "WHERE {{filter}} "
+                                                 "ORDER BY category ASC")
+                                     :template-tags
+                                     {"filter"
+                                      {:id           "xyz456"
+                                       :name         "filter"
+                                       :display-name "Filter"
+                                       :type         :dimension
+                                       :dimension    [:field (mt/id :products :category) nil]
+                                       :widget-type  :category
+                                       :default      ["Gizmo" "Gadget"]
+                                       :required     false}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "category"
                                                             :slug    "category"
                                                             :id      "abc123"
@@ -156,7 +157,7 @@
                                                                        :target       [:dimension [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
-                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+                 (mt/rows (qp.card-test/run-query-for-card card)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Gadget"] ["Gizmo"]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))
@@ -226,17 +227,18 @@
   (testing "If both Dashboard and Card have default values for a raw value parameter, Card defaults should take precedence\n"
     (mt/dataset test-data
       (mt/with-temp
-        [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                    :type     :native
-                                                    :native   {:query "SELECT {{filter}}"
-                                                               :template-tags
-                                                               {"filter"
-                                                                {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
-                                                                 :name         "filter"
-                                                                 :display-name "Filter"
-                                                                 :type         "text"
-                                                                 :required     true
-                                                                 :default      "Foo"}}}}}
+        [:model/Card {card-id :id, :as card}
+         {:dataset_query {:database (mt/id)
+                          :type     :native
+                          :native   {:query "SELECT {{filter}}"
+                                     :template-tags
+                                     {"filter"
+                                      {:id           "f0774ef5-a14a-e181-f557-2d4bb1fc94ae"
+                                       :name         "filter"
+                                       :display-name "Filter"
+                                       :type         "text"
+                                       :required     true
+                                       :default      "Foo"}}}}}
          :model/Dashboard {dashboard-id :id} {:parameters [{:name    "Text"
                                                             :slug    "text"
                                                             :id      "5791ff38"
@@ -249,7 +251,7 @@
                                                                        :target       [:variable [:template-tag "filter"]]}]}]
         (testing "Sanity check: running Card query should use Card defaults"
           (is (= [["Foo"]]
-                 (mt/rows (qp.card-test/run-query-for-card card-id)))))
+                 (mt/rows (qp.card-test/run-query-for-card card)))))
         (testing "No value specified: should prefer Card defaults"
           (is (= [["Foo"]]
                  (mt/rows (run-query-for-dashcard dashboard-id card-id dashcard-id)))))

@@ -24,19 +24,18 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
 (defn run-query-for-card
   "Run query for Card synchronously."
-  [card-id]
+  [card]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check
   ;; stuff doesn't belong in the Dashboard QP namespace
   (mt/as-admin
     (qp.card/process-query-for-card
-     (t2/select-one :model/Card :id card-id) :api
+     card :api
      :make-run (constantly
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
@@ -210,25 +209,25 @@
 
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:count]]})
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:aggregation [[:count]]})
 
-                                              :visualization_settings
-                                              {:column_settings {(json/encode
-                                                                  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
-                                                                 {:date_abbreviate true
-                                                                  :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
+                                     :visualization_settings
+                                     {:column_settings {(json/encode
+                                                         [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]])
+                                                        {:date_abbreviate true
+                                                         :some_other_key  [:ref [:field Integer/MAX_VALUE {:base-type :type/DateTime, :temporal-unit :month}]]}}}}]
       (is (= [[100]]
-             (mt/rows (run-query-for-card card-id)))))))
+             (mt/rows (run-query-for-card card)))))))
 
 (deftest ^:parallel pivot-tables-should-not-override-the-run-function
   (testing "Pivot tables should not override the run function (#44160)"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                              (mt/mbql-query venues
-                                                {:aggregation [[:count]]})
-                                              :display :pivot}]
-      (let [result (run-query-for-card card-id)]
+    (mt/with-temp [:model/Card card {:dataset_query
+                                     (mt/mbql-query venues
+                                       {:aggregation [[:count]]})
+                                     :display :pivot}]
+      (let [result (run-query-for-card card)]
         (is (=? {:status :completed}
                 result))
         (is (= [[100]] (mt/rows result)))))))
@@ -282,7 +281,7 @@
                                                           :display_name "Name"
                                                           :base_type    :type/Text}]}]
         (mt/with-metadata-provider (mt/id)
-          (run-query-for-card (u/the-id card))
+          (run-query-for-card card)
           (is (= [{:name         "NAME"
                    :display_name "Name"
                    :base_type    :type/Text}]
@@ -325,8 +324,8 @@
                                                 mp     (mt/metadata-provider)]
                                             {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
                                              :result_metadata (:result-metadata card-2)})]
-          (doseq [[card-type card-id] {"model"                     (:id card-1)
-                                       "card with model as source" (:id card-2)}]
+          (doseq [[card-type card] {"model"                     card-1
+                                    "card with model as source" card-2}]
             (testing card-type
               (is (=? [{:name "ID",          :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
                        {:name "NAME",        :description "user description", :display_name "user display name", :semantic_type :type/Name}
@@ -334,7 +333,7 @@
                        {:name "LATITUDE",    :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
-                      (mt/cols (run-query-for-card card-id)))))))))))
+                      (mt/cols (run-query-for-card card)))))))))))
 
 (def card-download-filename-cases
   [["My Public Report" "my_public_report"]
