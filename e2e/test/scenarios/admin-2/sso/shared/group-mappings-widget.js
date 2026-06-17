@@ -1,5 +1,3 @@
-import { popover } from "e2e/support/helpers";
-
 export function crudGroupMappingsWidget(authenticationMethod) {
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
   cy.wait("@getSettings");
@@ -88,15 +86,11 @@ const addGroupsToMapping = (mappingName, groups) => {
     });
 
   groups.forEach((group) => {
-    popover().within(() => {
-      cy.findByText(group).click();
-
-      cy.findByText(group)
-        .closest("[data-element-id=list-section]")
-        .within(() => {
-          cy.icon("check");
-        });
-    });
+    cy.findByRole("option", { name: group }).click();
+    // Wait for the selection to round-trip before picking the next group
+    cy.findByRole("option", { name: group })
+      .find("input[type=checkbox]")
+      .should("be.checked");
   });
 
   cy.realPress("{esc}");
