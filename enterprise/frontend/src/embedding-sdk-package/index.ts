@@ -62,6 +62,7 @@ export {
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "./hooks/public/use-metabase-query";
+/** @internal */
 export type {
   MetabaseBreakout,
   MetabaseQueryOptions,
