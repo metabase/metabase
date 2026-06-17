@@ -30,6 +30,33 @@
   taller than its text -- still has room to render."
   9.0)
 
+(defn- centered
+  [container-size content-size]
+  (max 0.0 (/ (- container-size content-size)
+              2.0)))
+
+(defn h-center
+  "Centers content horizontally in a container, returning the `x` coordinate for the content.
+
+  If the content overflows the container, returns the `x` of the container. In other words, this overflows the
+  right edge of the container rather than overflowing both sides.
+
+  Works with any unit, provided all values are in the same unit."
+  [base-x container-w content-w]
+  (+ base-x (centered container-w content-w)))
+
+(defn v-center
+  "Centers content vertically in a container, returning the `y` coordinate for the content.
+
+  This is distinct from [[h-center]] because in PDFs y=0 is at the bottom of the page, increasing upwards.
+
+  If the content overflows the container, returns the `y` of the container. In other words, this overflows the
+  bottom edge of the container rather than overflowing both sides.
+
+  Works with any unit, provided all values are in the same unit."
+  [base-y container-h content-h]
+  (- base-y (centered container-h content-h)))
+
 ;; --------------------------------------------------------------------------------------------
 ;; Typography sizes
 ;; --------------------------------------------------------------------------------------------

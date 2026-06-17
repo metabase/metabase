@@ -99,7 +99,7 @@
 (defn- rows-for-pt
   "How many *whole* grid rows are needed to hold `pt` points of vertical space."
   [pt unit]
-  (long (Math/ceil (/ (double pt) (double unit)))))
+  (long (Math/ceil (double (/ pt unit)))))
 
 (defn- paper-dims
   [paper-key]
@@ -139,10 +139,10 @@
   "Record a clickable rectangle for link `href`, covering text drawn at `[x, baseline]`."
   [x baseline width pt href]
   (when (and *link-rects* (clickable-href? href))
-    (swap! *link-rects* conj {:x0   (double x)
-                              :y0   (- (double baseline) (* 0.2 pt))
-                              :x1   (+ (double x) width)
-                              :y1   (+ (double baseline) (* 0.85 pt))
+    (swap! *link-rects* conj {:x0   x
+                              :y0   (- baseline (* 0.2 pt))
+                              :x1   (+ x width)
+                              :y1   (+ baseline (* 0.85 pt))
                               :href href})))
 
 (defn- draw-md-ruby-item!
@@ -152,8 +152,8 @@
   [^PDPageContentStream cs x baseline {:keys [base base-ww color font pt reading reading-ww ruby-pt ww] :as item}]
   ;; Either the base or the reading might be longer! `ww` is the greater of the two widths, and we center both
   ;; reading and base text inside a box of width `ww`.
-  (let [base-x (+ x (/ (- ww base-ww) 2.0))
-        read-x (+ x (/ (- ww reading-ww) 2.0))]
+  (let [base-x (common/h-center x ww base-ww)
+        read-x (common/h-center x ww reading-ww)]
     (.setNonStrokingColor cs ^Color color)
     (draw-line! cs font pt base-x baseline base)
     (draw-line! cs font ruby-pt read-x (+ baseline pt 1.0) reading)
@@ -194,10 +194,10 @@
   (reduce #(draw-md-item! cs %1 baseline %2)
           ;; Starting `x` depends on `rtl?`: flush left for LTR, or inset from left to make the line flush right.
           (if rtl?
-            (+ (double x)
-               (max 0.0 (- (double content-w)
+            (+ x
+               (max 0.0 (- content-w
                            (typeset/md-line-width items))))
-            (double x))
+            x)
           (typeset/reorder-bidi-items items)))
 
 (defn- draw-item-lines!
@@ -222,7 +222,7 @@
                 (when (>= y' bottom)
                   (draw-md-line! cs content-x content-w rtl? baseline line))
                 y'))
-            (double top-y)
+            top-y
             lines)))
 
 (defn- draw-text-block!
@@ -244,9 +244,9 @@
                            (map (fn [line]
                                   (mapv #(assoc % :color color) line))))
                       (typeset/words->lines (typeset/runs->words runs) font-pt false max-w))
-          y     (draw-item-lines! cs lines x max-w top-y (- (double top-y) max-h)
+          y     (draw-item-lines! cs lines x max-w top-y (- top-y max-h)
                                   font-pt (font/base-rtl? text) nil x nil)]
-      (- (double top-y) y))))
+      (- top-y y))))
 
 (defn- draw-code-block!
   "Draws a monospaced code block.
@@ -260,7 +260,7 @@
         y    (reduce (fn [y line]
                        (draw-line! cs font pt (+ x 4.0) (- y pt) line)
                        (- y lh))
-                     (double top-y)
+                     top-y
                      (str/split-lines (str (:text block))))]
     (.setNonStrokingColor cs Color/BLACK)
     (- y 2.0)))
@@ -270,15 +270,15 @@
 
   Returns the y below the block."
   [^PDImageXObject img ^PDPageContentStream cs x top-y cell-w bottom]
-  (let [iw              (double (.getWidth img))
-        ih              (double (.getHeight img))
-        avail-h         (- (double top-y) bottom)
+  (let [iw              (.getWidth img)
+        ih              (.getHeight img)
+        avail-h         (- top-y bottom)
         draw-w          cell-w
         draw-h          (* draw-w (/ ih iw))
         [draw-w draw-h] (if (> draw-h avail-h)
                           [(* avail-h (/ iw ih)) avail-h]
                           [draw-w draw-h])
-        y               (- (double top-y) draw-h)]
+        y               (- top-y draw-h)]
     (.drawImage cs img (float x) (float y) (float draw-w) (float draw-h))
     (- y 4.0)))
 
@@ -290,14 +290,14 @@
   (let [pt   (* common/text-card-pt scale)
         txt  (if (str/blank? alt) src alt)
         used (draw-text-block! cs (font/face :regular) pt common/link-color x top-y cell-w
-                               (- (double top-y) bottom) txt)]
+                               (- top-y bottom) txt)]
     (when (and *link-rects* (clickable-href? src))
-      (swap! *link-rects* conj {:x0   (double x)
-                                :y0   (- (double top-y) used)
-                                :x1   (+ (double x) cell-w)
-                                :y1   (double top-y)
+      (swap! *link-rects* conj {:x0   x
+                                :y0   (- top-y used)
+                                :x1   (+ x cell-w)
+                                :y1   top-y
                                 :href src}))
-    (- (double top-y) used 4.0)))
+    (- top-y used 4.0)))
 
 (defn- draw-image-block!
   "Draw a Markdown image: securely fetch + embed it scaled to the cell width (clamped to the
@@ -311,8 +311,7 @@
 (defn- draw-hr-block!
   "Draw a Markdown `:hr` block. Returns the y below the block."
   [^PDPageContentStream cs x top-y cell-w scale]
-  (let [y (- (double top-y)
-             (* 5.0 scale))]
+  (let [y (- top-y (* 5.0 scale))]
     (doto cs
       (.setStrokingColor ^Color common/body-color)
       (.moveTo (float x) (float y))
@@ -329,15 +328,14 @@
         base-pt     (* scale (if heading?
                                (typeset/heading-pt level)
                                common/text-card-pt))
-        indent-x    (+ (double x)
-                       (* 14.0 (long (or indent 0))))
+        indent-x    (+ x (* 14.0 (long (or indent 0))))
         ;; markers ("- ", "1. ") are ASCII; keep their trailing space (sanitize would trim it)
         marker-font (font/face :regular)
         marker-w    (if marker
                       (font/text-width marker-font base-pt marker)
                       0.0)
         content-x   (+ indent-x marker-w)
-        content-w   (- (+ (double x) cell-w) content-x)
+        content-w   (- (+ x cell-w) content-x)
         ;; right-align RTL paragraphs and headings; list items (those with a marker) stay
         ;; left-aligned for now -- proper RTL lists (marker on the right) are a separate change.
         rtl?        (and (nil? marker)
@@ -365,7 +363,7 @@
   [^PDDocument doc ^PDPageContentStream cs x top-y cell-w cell-h text]
   (let [blocks (md/parse-markdown-blocks text)
         scale  (typeset/fit-scale blocks cell-w cell-h)
-        bottom (- (double top-y) cell-h)]
+        bottom (- top-y cell-h)]
     (reduce (fn [y block]
               (if (<= y (+ bottom 2.0))
                 y
@@ -530,19 +528,19 @@
   Used for card types that can't fill an arbitrary box (scalar, pie, gauge, ...). Horizontal centering keeps a narrow
   scalar (e.g. a big number) from hugging the left edge of its cell."
   [^PDPageContentStream cs ^PDImageXObject img x top-y cell-w cell-h]
-  (let [iw    (double (.getWidth img))
-        ih    (double (.getHeight img))
+  (let [iw    (.getWidth img)
+        ih    (.getHeight img)
         scale (min (/ cell-w iw) (/ cell-h ih))
         dw    (* iw scale)
         dh    (* ih scale)
-        dx    (+ x (/ (- cell-w dw)
-                      2.0))]
+        dx    (common/h-center x cell-w dw)]
     (.drawImage cs img (float dx) (float (- top-y dh)) (float dw) (float dh))))
 
 (defn- pt->px [pt]
-  (-> pt double (* common/dpi) (/ 72.0) Math/round long))
+  (-> pt (* common/dpi) (/ 72.0) double Math/round long))
 (defn- px->pt ^double [px]
-  (* (double px) (/ 72.0 common/dpi)))
+  (* (double px)
+     (/ 72.0 common/dpi)))
 
 (defn- card-title [card dashcard]
   (or (get-in dashcard [:visualization_settings :card.title])
@@ -639,9 +637,9 @@
                                                                           max-nw typeset/split-word-into-chars))
                                           max 0.0 entries))
           value-w  (- avail-w name-w common/param-chip-gap)
-          name-x   (cond-> (double x)
+          name-x   (cond-> x
                      rtl? (+ value-w common/param-chip-gap))
-          value-x  (cond-> (double x)
+          value-x  (cond-> x
                      (not rtl?) (+ name-w common/param-chip-gap))
           rows     (mapv (fn [{:keys [name value]}]
                            (let [nl (styled-run-lines name  {:bold? true}       name-w)
@@ -683,7 +681,7 @@
                    (draw-item-lines! cs value-lines value-x value-w y bottom common/param-pt
                                      (lines-rtl? value-lines) nil value-x nil)
                    (- y height)))
-               (double top-y)
+               top-y
                rows)
        4.0)))
 
@@ -715,7 +713,7 @@
   "Draw inline-parameter `lines` from `top-y` within `[x, x+content-w]`."
   [^PDPageContentStream cs lines x content-w top-y]
   (when (seq lines)
-    (draw-item-lines! cs lines x content-w top-y (- (double top-y)
+    (draw-item-lines! cs lines x content-w top-y (- top-y
                                                     (typeset/lines-height lines common/param-pt)
                                                     1.0)
                       common/param-pt (lines-rtl? lines) nil x nil)))
@@ -851,8 +849,8 @@
   current point (`r` before the corner along incoming-edge direction `[dx1 dy1]`) to the point `r`
   past it along outgoing-edge direction `[dx2 dy2]`, with control points `c` short of the corner."
   [cs r c ax ay dx1 dy1 dx2 dy2]
-  (let [r  (double r)
-        rc (- r (double c))]
+  (let [r  r
+        rc (- r c)]
     (curve-to! cs
                (- ax (* rc dx1)) (- ay (* rc dy1))
                (+ ax (* rc dx2)) (+ ay (* rc dy2))
@@ -863,11 +861,11 @@
   at `line-w` points and corner radius `r` points, then reset to a black hairline. Corners are
   quarter-circle cubic Béziers (see [[corner-to!]])."
   [^PDPageContentStream cs ^Color color line-w r x top-y w h]
-  (let [l  (double x)
-        t  (double top-y)
-        rt (+ l (double w))
-        b  (- t (double h))
-        r  (min (double r) (/ (double w) 2.0) (/ (double h) 2.0))
+  (let [l  x
+        t  top-y
+        rt (+ l w)
+        b  (- t h)
+        r  (min r (/ w 2.0) (/ h 2.0))
         c  (* r bezier-circle-kappa)]
     (.setStrokingColor cs color)
     (.setLineWidth cs (float line-w))
@@ -898,7 +896,7 @@
         ;; image is at table-supersample x logical pixels -> divide back to points
         dw  (supersampled-px->pt (.getWidth img))
         dh  (supersampled-px->pt (.getHeight img))]
-    (.drawImage cs img (float x) (float (- (double body-top) dh)) (float dw) (float dh))
+    (.drawImage cs img (float x) (float (- body-top dh)) (float dw) (float dh))
     (stroke-round-rect! cs table-frame-color 0.5 4.0 x body-top dw dh)))
 
 (def ^:private no-results-image-bytes
@@ -926,13 +924,13 @@
         gap            6.0
         img            (PDImageXObject/createFromByteArray doc @no-results-image-bytes "no-results")
         ;; square icon, capped to its design size and shrunk to leave room for the label in a short body
-        side           (max 0.0 (min no-results-icon-pt (double cell-w) (- (double body-h) label-pt gap)))
+        side           (max 0.0 (min no-results-icon-pt cell-w (- body-h label-pt gap)))
         block-h        (+ side gap label-pt)
         ;; top edge of the icon, so the whole icon+label block is vertically centered in the body band
-        icon-top       (- (double body-top) (max 0.0 (/ (- (double body-h) block-h) 2.0)))
-        icon-x         (+ (double x) (/ (- (double cell-w) side) 2.0))
+        icon-top       (common/v-center body-top body-h block-h)
+        icon-x         (common/h-center x cell-w side)
         label-w        (font/text-width (font/face :regular) label-pt label)
-        label-x        (+ (double x) (/ (- (double cell-w) label-w) 2.0))
+        label-x        (common/h-center x cell-w label-w)
         label-baseline (- icon-top side gap label-pt)]
     (.drawImage cs img (float icon-x) (float (- icon-top side)) (float side) (float side))
     (.setNonStrokingColor cs ^Color common/body-color)
@@ -1132,7 +1130,7 @@
   Returns the drawn width."
   [^PDPageContentStream cs x top h]
   (let [{:keys [vw vh groups]} @brand-logo
-        scale (/ (double h) vh)
+        scale (double (/ h vh))
         ;; SVG user space (y-down) -> PDF (y-up): place SVG (0,0) at (x, top).
         xform (AffineTransform. scale 0.0 0.0 (- scale) (double x) (double top))]
     (doseq [{:keys [^Color color ds]} groups]
@@ -1152,12 +1150,12 @@
   (let [{:keys [vw vh]} @brand-logo
         text-face (font/face :regular)
         prefix    (str (tru "Made with"))
-        logo-w    (* brand-logo-pt (/ (double vw) (double vh)))
+        logo-w    (* brand-logo-pt (/ vw vh))
         text-w    (font/text-width text-face brand-text-pt prefix)
-        logo-x    (- (double right) logo-w)
+        logo-x    (- right logo-w)
         text-x    (- logo-x brand-gap-pt text-w)
         ;; vertically center the text's cap (~0.7*pt tall) on the logo's middle
-        baseline  (- (double logo-top) (/ brand-logo-pt 2.0) (* brand-text-pt 0.35))]
+        baseline  (- logo-top (/ brand-logo-pt 2.0) (* brand-text-pt 0.35))]
     (.setNonStrokingColor cs brand-text-color)
     (draw-line! cs text-face brand-text-pt text-x baseline prefix)
     (.setNonStrokingColor cs Color/BLACK)
@@ -1166,12 +1164,10 @@
 (defn- draw-header!
   [^PDPageContentStream cs page-height content-w {:keys [dashboard-title tab-title param-table]}]
   (let [bold (font/face :bold)
-        top  (- (double page-height) common/margin)
+        top  (- page-height common/margin)
         ;; "Made with Metabase" badge, vector-drawn in the empty top common/margin band, right-aligned
         _    (draw-brand-badge! cs (+ common/margin content-w)
-                                (- (double page-height)
-                                   (/ (- common/margin brand-logo-pt)
-                                      2.0)))
+                                (common/v-center page-height common/margin brand-logo-pt))
         ;; order: dashboard title, then the dashboard-wide parameter table, then the tab title
         y1   (if dashboard-title
                (do (draw-line! cs bold common/dashboard-title-pt
@@ -1214,10 +1210,10 @@
   [^PDPageContentStream cs x top-y cell-w cell-h inline-params draw-content!]
   (let [ip-lines (inline-param-lines inline-params cell-w)
         iph      (inline-params-height ip-lines)]
-    (draw-content! (- (double cell-h) iph))
+    (draw-content! (- cell-h iph))
     (when (seq ip-lines)
-      (draw-inline-params! cs ip-lines x cell-w (- (double top-y)
-                                                   (- (double cell-h) iph))))))
+      (draw-inline-params! cs ip-lines x cell-w (- top-y
+                                                   (- cell-h iph))))))
 
 (defn- render-page!
   [^PDDocument doc {:keys [^PDRectangle rect unit]} timezone page]

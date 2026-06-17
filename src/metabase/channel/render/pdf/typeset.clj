@@ -478,10 +478,7 @@
   "Drawn width of a (reordered) markdown line: each item's advance plus the space before it."
   ^double [items]
   (transduce (map (fn ^double [{:keys [sp space-before? ww]}]
-                    (+ (if space-before?
-                         (double sp)
-                         0.0)
-                       (double ww))))
+                    (double (+ ww (if space-before? sp 0.0)))))
              + 0.0 items))
 
 (def face-id->style
