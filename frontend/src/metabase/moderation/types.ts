@@ -86,3 +86,25 @@ export interface ModerationPlugin {
     reload?: () => void,
   ) => ReactNode[];
 }
+
+const NoComponent = () => null;
+
+/**
+ * The contract's empty value — the OSS default behaviour, and the fallback the
+ * enterprise plugin delegates to when its feature flag is off. Consumers reach
+ * it as `PLUGIN_MODERATION` through `metabase/moderation/plugin`.
+ */
+export const PLUGIN_MODERATION_NOOP: ModerationPlugin = {
+  isEnabled: () => false,
+  EntityModerationIcon: NoComponent,
+  ModerationReviewTextForQuestion: NoComponent,
+  ModerationReviewTextForDashboard: NoComponent,
+  ModerationStatusIcon: NoComponent,
+  MetabotVerifiedContentConfigurationPane: NoComponent,
+  getStatusIcon: () => undefined,
+  getQuestionIcon: () => null,
+  getModerationTimelineEvents: () => [],
+  useCardMenuItems: () => [],
+  useDashboardMenuItems: () => [],
+  useQuestionMenuItems: () => [],
+};

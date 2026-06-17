@@ -1,5 +1,7 @@
-import { PLUGIN_MODERATION as disabledPlugin } from "metabase/moderation/default";
-import type { ModerationPlugin } from "metabase/moderation/types";
+import {
+  type ModerationPlugin,
+  PLUGIN_MODERATION_NOOP,
+} from "metabase/moderation/types";
 import { gatedPlugin } from "metabase/plugins/gated-plugin";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { Dashboard } from "metabase-types/api";
@@ -63,5 +65,5 @@ const enterprisePlugin: ModerationPlugin = {
 export const PLUGIN_MODERATION: ModerationPlugin = gatedPlugin(
   isEnabled,
   enterprisePlugin,
-  disabledPlugin,
+  PLUGIN_MODERATION_NOOP,
 );
