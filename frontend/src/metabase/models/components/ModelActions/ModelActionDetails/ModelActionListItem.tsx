@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { ActionIcon, Button, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
@@ -134,14 +134,15 @@ function ModelActionListItem({
           <>
             <ActionRunButtonContainer>
               <Tooltip label={t`Run`}>
-                <Button
+                <ActionIcon
                   variant="subtle"
                   bg="background-primary"
                   c="text-primary"
-                  leftSection={<Icon name="play" />}
                   aria-label={t`Run`}
                   onClick={openExecuteModal}
-                />
+                >
+                  <Icon name="play" />
+                </ActionIcon>
               </Tooltip>
             </ActionRunButtonContainer>
             <ActionExecuteModal

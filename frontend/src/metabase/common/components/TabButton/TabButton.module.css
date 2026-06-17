@@ -1,8 +1,6 @@
 .menuButton {
   &[data-variant="subtle"] {
     align-self: center;
-    height: auto;
-    padding: 0.25rem;
     color: inherit;
     transition: background-color 0s;
 

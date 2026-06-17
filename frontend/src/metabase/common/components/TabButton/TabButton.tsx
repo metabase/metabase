@@ -23,7 +23,7 @@ import {
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { Button, Icon, Popover } from "metabase/ui";
+import { ActionIcon, Icon, Popover } from "metabase/ui";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -164,16 +164,18 @@ const _TabButton = forwardRef(function TabButton(
           trapFocus
         >
           <Popover.Target>
-            <Button
+            <ActionIcon
               variant="subtle"
+              size="xs"
               className={cx(S.menuButton, {
                 [S.menuButtonOpen]: isMenuOpen && !disabled,
               })}
-              leftSection={<Icon name="chevrondown" size={10} />}
               onClick={() => setIsMenuOpen(true)}
               ref={menuButtonRef}
               disabled={disabled}
-            />
+            >
+              <Icon name="chevrondown" size={10} />
+            </ActionIcon>
           </Popover.Target>
           <Popover.Dropdown
             // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
