@@ -404,25 +404,15 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       );
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
-      // Switching tables loads the new table's metadata async; wait for that
-      // specific request so the field interaction doesn't run against the
-      // previously-selected table (a fresh alias avoids matching a stale one).
-      cy.intercept("GET", "/api/table/*/query_metadata*").as(
-        "manyTypesMetadata",
-      );
+      // The in-test DB switch via picker (.getDatabase().click() then
+      // .getTable().click()) races the picker re-render: the table click can
+      // land before the writable DB tables list is interactive, so the click
+      // never propagates to a URL change. The "Error handling" sibling above
+      // hit the same flake and was fixed by using visit({ databaseId:
+      // WRITABLE_DB_ID }) (which waits for picker bootstrap). Same pattern
+      // here.
+      visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
-      // The cy.wait below matches any /api/table/*/query_metadata* hit
-      // and can resolve on a stale/sibling request before the router lands
-      // Many Data Types. aria-selected (derived from URL path.tableId via
-      // the TreeTable selectedRowId) is a deterministic signal that the
-      // navigation actually completed.
-      TablePicker.getTable("Many Data Types").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.wait("@manyTypesMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
@@ -433,15 +423,9 @@ describe.each<Area>(areas)("data model > %s", (area: Area) => {
       FieldSection.getUnfoldJsonInput().should("have.value", "Yes");
 
       cy.log("formatting");
-      cy.intercept("GET", "/api/table/*/query_metadata*").as("ordersMetadata");
+      // Same fresh-visit anchor as the Many Data Types switch above.
+      visit({ databaseId: SAMPLE_DB_ID });
       TablePicker.getTable("Orders").click();
-      // Same anchor as the Many Data Types switch above.
-      TablePicker.getTable("Orders").should(
-        "have.attr",
-        "aria-selected",
-        "true",
-      );
-      cy.wait("@ordersMetadata");
       if (area === "data studio") {
         TableSection.clickFieldsTab();
       }
