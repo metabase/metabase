@@ -21,14 +21,16 @@ import {
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/redux";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
-import { formatStatus } from "metabase/transforms/utils";
+import { formatRunMethod, formatStatus } from "metabase/transforms/utils";
 import { Center, Flex, Group, Select, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import {
   TRANSFORM_JOB_RUN_STATUSES,
+  TRANSFORM_RUN_METHODS,
   type TransformJobRun,
   type TransformJobRunId,
   type TransformJobRunStatus,
+  type TransformRunMethod,
 } from "metabase-types/api";
 
 import { JobTabs } from "../../components/JobTabs";
@@ -70,6 +72,8 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
           offset: page * PAGE_SIZE,
           limit: PAGE_SIZE,
           status: parsedParams.status,
+          "run-method": parsedParams.runMethod,
+          "start-time": parsedParams.startTime,
           "sort-column": parsedParams.sortColumn,
           "sort-direction": parsedParams.sortDirection,
         }
@@ -111,6 +115,20 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
   const handleStatusChange = useCallback(
     (status: TransformJobRunStatus | undefined) => {
       handleParamsChange({ ...parsedParams, status, page: undefined });
+    },
+    [parsedParams, handleParamsChange],
+  );
+
+  const handleRunMethodChange = useCallback(
+    (runMethod: TransformRunMethod | undefined) => {
+      handleParamsChange({ ...parsedParams, runMethod, page: undefined });
+    },
+    [parsedParams, handleParamsChange],
+  );
+
+  const handleStartTimeChange = useCallback(
+    (startTime: string | undefined) => {
+      handleParamsChange({ ...parsedParams, startTime, page: undefined });
     },
     [parsedParams, handleParamsChange],
   );
@@ -171,18 +189,44 @@ export function JobRunListPage({ params, location }: JobRunListPageProps) {
                 value={parsedParams.status ?? null}
                 placeholder={t`All statuses`}
                 clearable
-                w={200}
+                w={180}
                 aria-label={t`Status`}
                 onChange={(value) =>
                   handleStatusChange(
-                    (value as TransformJobRunStatus | null) ?? undefined,
+                    Urls.parseEnumParam(value, TRANSFORM_JOB_RUN_STATUSES),
                   )
                 }
+              />
+              <Select
+                data={getRunMethodOptions()}
+                value={parsedParams.runMethod ?? null}
+                placeholder={t`All triggers`}
+                clearable
+                w={180}
+                aria-label={t`Trigger`}
+                onChange={(value) =>
+                  handleRunMethodChange(
+                    Urls.parseEnumParam(value, TRANSFORM_RUN_METHODS),
+                  )
+                }
+              />
+              <Select
+                data={getStartTimeOptions()}
+                value={parsedParams.startTime ?? null}
+                placeholder={t`Any time`}
+                clearable
+                w={180}
+                aria-label={t`Started at`}
+                onChange={(value) => handleStartTimeChange(value ?? undefined)}
               />
             </Group>
             <JobRunTable
               runs={runs}
-              hasFilters={parsedParams.status != null}
+              hasFilters={
+                parsedParams.status != null ||
+                parsedParams.runMethod != null ||
+                parsedParams.startTime != null
+              }
               sortOptions={getSortOptions(parsedParams)}
               onSortOptionsChange={handleSortOptionsChange}
               onSelect={handleSelect}
@@ -222,6 +266,26 @@ function getStatusOptions() {
     value: status,
     label: formatStatus(status),
   }));
+}
+
+function getRunMethodOptions() {
+  return TRANSFORM_RUN_METHODS.map((runMethod) => ({
+    value: runMethod,
+    label: formatRunMethod(runMethod),
+  }));
+}
+
+function getStartTimeOptions() {
+  return [
+    { value: "thisday", label: t`Today` },
+    { value: "past1days", label: t`Yesterday` },
+    { value: "past1weeks", label: t`Previous week` },
+    { value: "past7days", label: t`Previous 7 days` },
+    { value: "past30days", label: t`Previous 30 days` },
+    { value: "past1months", label: t`Previous month` },
+    { value: "past3months", label: t`Previous 3 months` },
+    { value: "past12months", label: t`Previous 12 months` },
+  ];
 }
 
 export function isPollingNeeded(runs: TransformJobRun[] = []) {

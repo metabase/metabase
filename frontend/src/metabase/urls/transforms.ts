@@ -98,13 +98,22 @@ export function transformJob(id: TransformJobId) {
 export type TransformJobRunListParams = {
   page?: number;
   status?: TransformJobRunStatus;
+  runMethod?: TransformRunMethod;
+  startTime?: string;
   sortColumn?: TransformJobRunSortColumn;
   sortDirection?: SortDirection;
 };
 
 export function transformJobRuns(
   id: TransformJobId,
-  { page, status, sortColumn, sortDirection }: TransformJobRunListParams = {},
+  {
+    page,
+    status,
+    runMethod,
+    startTime,
+    sortColumn,
+    sortDirection,
+  }: TransformJobRunListParams = {},
 ) {
   const searchParams = new URLSearchParams();
   if (page != null) {
@@ -112,6 +121,12 @@ export function transformJobRuns(
   }
   if (status != null) {
     searchParams.set("status", status);
+  }
+  if (runMethod != null) {
+    searchParams.set("run-method", runMethod);
+  }
+  if (startTime != null) {
+    searchParams.set("start-time", startTime);
   }
   if (sortColumn != null) {
     searchParams.set("sort-column", sortColumn);

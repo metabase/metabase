@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -11,6 +12,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import type {
@@ -31,9 +33,14 @@ const JOB_ID = 3;
 type SetupOpts = {
   runs?: TransformJobRun[];
   transformRunsByRunId?: Record<number, TransformRunForJobRun[]>;
+  initialRoute?: string;
 };
 
-function setup({ runs = [], transformRunsByRunId = {} }: SetupOpts = {}) {
+function setup({
+  runs = [],
+  transformRunsByRunId = {},
+  initialRoute = `/data-studio/transforms/jobs/${JOB_ID}/runs`,
+}: SetupOpts = {}) {
   const job = createMockTransformJob({ id: JOB_ID, name: "Nightly job" });
 
   setupUserMetabotPermissionsEndpoint();
@@ -51,12 +58,21 @@ function setup({ runs = [], transformRunsByRunId = {} }: SetupOpts = {}) {
   mockGetBoundingClientRect({ width: 1200, height: 800 });
 
   const path = "/data-studio/transforms/jobs/:jobId/runs";
-  const initialRoute = `/data-studio/transforms/jobs/${JOB_ID}/runs`;
 
   renderWithProviders(<Route path={path} component={JobRunListPage} />, {
     withRouter: true,
     initialRoute,
   });
+}
+
+function getLastRunsRequestParams() {
+  const call = fetchMock.callHistory.lastCall(
+    `path:/api/transform-job/${JOB_ID}/runs`,
+  );
+  if (!call) {
+    throw new Error("Expected a request to the job runs endpoint");
+  }
+  return new URL(call.url).searchParams;
 }
 
 describe("JobRunListPage", () => {
@@ -96,7 +112,7 @@ describe("JobRunListPage", () => {
     await userEvent.click(row);
 
     const sidebar = await screen.findByTestId("job-run-list-sidebar");
-    expect(within(sidebar).getByText("transform_2")).toBeInTheDocument();
+    expect(await within(sidebar).findByText("transform_2")).toBeInTheDocument();
   });
 
   it("renders the error section for a failed transform run in the sidebar", async () => {
@@ -121,5 +137,70 @@ describe("JobRunListPage", () => {
     expect(
       await screen.findByRole("region", { name: "Error" }),
     ).toBeInTheDocument();
+  });
+
+  describe("filters", () => {
+    it("filters by status", async () => {
+      setup({
+        runs: [createMockTransformJobRun({ id: 5, status: "succeeded" })],
+      });
+      await screen.findByText("Success");
+
+      await userEvent.click(screen.getByLabelText("Status"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Failed" }),
+      );
+
+      await waitFor(() => {
+        expect(getLastRunsRequestParams().get("status")).toBe("failed");
+      });
+    });
+
+    it("filters by trigger (run method)", async () => {
+      setup({
+        runs: [createMockTransformJobRun({ id: 5, status: "succeeded" })],
+      });
+      await screen.findByText("Success");
+
+      await userEvent.click(screen.getByLabelText("Trigger"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Manual" }),
+      );
+
+      await waitFor(() => {
+        expect(getLastRunsRequestParams().get("run-method")).toBe("manual");
+      });
+    });
+
+    it("filters by start time", async () => {
+      setup({
+        runs: [createMockTransformJobRun({ id: 5, status: "succeeded" })],
+      });
+      await screen.findByText("Success");
+
+      await userEvent.click(screen.getByLabelText("Started at"));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Previous 7 days" }),
+      );
+
+      await waitFor(() => {
+        expect(getLastRunsRequestParams().get("start-time")).toBe("past7days");
+      });
+    });
+
+    it("sends active filters from the URL in the request", async () => {
+      setup({
+        runs: [],
+        initialRoute: `/data-studio/transforms/jobs/${JOB_ID}/runs?status=failed&run-method=manual&start-time=past7days`,
+      });
+
+      // With filters applied, the empty state reflects "not found" rather than "none yet".
+      expect(await screen.findByText("No runs found")).toBeInTheDocument();
+
+      const params = getLastRunsRequestParams();
+      expect(params.get("status")).toBe("failed");
+      expect(params.get("run-method")).toBe("manual");
+      expect(params.get("start-time")).toBe("past7days");
+    });
   });
 });

@@ -350,6 +350,8 @@ export type ListTransformRunsResponse = {
 export type ListTransformJobRunsRequest = {
   jobId: TransformJobId;
   status?: TransformJobRunStatus;
+  "run-method"?: TransformRunMethod;
+  "start-time"?: string;
   "sort-column"?: TransformJobRunSortColumn;
   "sort-direction"?: SortDirection;
 } & PaginationRequest;
