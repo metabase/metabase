@@ -1,15 +1,10 @@
 (ns metabase.transforms.models.job-run
   (:require
-   [metabase.analytics-interface.core :as analytics]
-   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
-   [metabase.transforms.models.timeout-util :as timeout-util]
-   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.run-tracking.core :as rt]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize])
-  (:import
-   (java.time Instant)))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,25 +75,25 @@
                      {:status :failed
                       :is_active nil})))
 
-(defn timeout-old-runs!
-  "Time out all active job runs older than the specified age. Returns the rows that
-  were timed out so callers can take follow-up action (e.g. sending notifications).
-  See [[metabase.transforms.models.timeout-util/timeout-rows!]] for atomicity rationale."
-  [age unit]
-  (let [cutoff      (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)
-        timeout-dur (timeout-util/unit->duration age unit)
-        detected-at (Instant/now)
-        timed-out   (timeout-util/timeout-rows! :model/TransformJobRun :updated_at cutoff)]
-    (when (seq timed-out)
-      (analytics/inc! :metabase-transforms/timeouts-total
-                      {:type "job"}
-                      (count timed-out))
-      (doseq [run timed-out]
-        (when-let [updated-at (:updated_at run)]
-          (analytics/observe! :metabase-transforms/timeout-detection-latency-ms
-                              {:type "job"}
-                              (timeout-util/detection-latency-ms updated-at timeout-dur detected-at)))))
-    timed-out))
+(defn heartbeat-runs!
+  "Stamp `last_heartbeat = now` on the given still-active job-run-ids."
+  [run-ids]
+  (rt/heartbeat-ids! :model/TransformJobRun [:= :is_active true] :last_heartbeat run-ids))
+
+(defn reap-orphaned-runs!
+  "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
+  process is presumed dead). Returns the rows that were timed out so callers can notify."
+  [stale-minutes]
+  (rt/reap-orphaned!
+   {:model    :model/TransformJobRun
+    :active   [:= :is_active true]
+    :stale    [:< :last_heartbeat (rt/cutoff stale-minutes :minute)]
+    :terminal {:status "timeout" :end_time :%now :is_active nil :message "Timed out: no heartbeat"}
+    :metrics  {:total-metric   :metabase-transforms/timeouts-total
+               :latency-metric :metabase-transforms/timeout-detection-latency-ms
+               :tags           {:type "job"}
+               :latency-column :last_heartbeat
+               :timeout-ms     (rt/unit->ms stale-minutes :minute)}}))
 
 (defn running-run-for-job-id
   "Return a single active job run or nil."

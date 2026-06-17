@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -350,7 +349,7 @@
 (deftest dataset-leaf-records-query-execution-test
   (testing "POST /api/metric/dataset (leaf path) writes a QueryExecution row with :context :metric"
     (mt/test-helpers-set-global-values!
-      (binding [qp.util/*execute-async?* false]
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (mt/with-temp [:model/Card metric {:name          "QE Leaf Metric"
                                            :type          :metric
                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
@@ -366,7 +365,7 @@
 (deftest dataset-arithmetic-records-one-qe-per-leaf-test
   (testing "POST /api/metric/dataset (arithmetic) writes one QueryExecution row per leaf"
     (mt/test-helpers-set-global-values!
-      (binding [qp.util/*execute-async?* false]
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (mt/with-temp [:model/Card metric-a {:name          "QE Arith A"
                                              :type          :metric
                                              :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
@@ -388,7 +387,7 @@
 (deftest breakout-values-records-query-execution-test
   (testing "POST /api/metric/breakout-values writes a QueryExecution row with :context :metric"
     (mt/test-helpers-set-global-values!
-      (binding [qp.util/*execute-async?* false]
+      (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (mt/with-temp [:model/Card metric {:name          "QE Breakout Metric"
                                            :type          :metric
                                            :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]

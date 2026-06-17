@@ -5,6 +5,10 @@ import { t } from "ttag";
 
 import { useUpdateCardMutation } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import type {
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
@@ -20,7 +24,6 @@ import type { Card as CardApiType } from "metabase-types/api";
 import { MetricPageCard } from "../../components/MetricPageCard";
 import { MetricPageShell } from "../../components/MetricPageShell";
 import { MetricQueryEditor } from "../../components/MetricQueryEditor";
-import type { MetricPageProps, MetricUrls } from "../../types";
 import { metricUrls as defaultUrls } from "../../urls";
 import { getValidationResult } from "../../utils/validation";
 

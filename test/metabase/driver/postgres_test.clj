@@ -598,9 +598,7 @@
                   "      \"json_alias_test\""
                   "    ORDER BY"
                   "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""
-                  "LIMIT"
-                  "  1048575"]
+                  "  ) AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC

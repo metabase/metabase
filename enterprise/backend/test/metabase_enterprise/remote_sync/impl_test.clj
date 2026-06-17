@@ -85,7 +85,10 @@
                              bad-yaml}}
           result    (impl/import! (source.p/snapshot (test-helpers/create-mock-source :initial-files files)) task-id)]
       (is (= :error (:status result))
-          "Import should fail when a YAML file cannot be parsed, not silently skip it"))))
+          "Import should fail when a YAML file cannot be parsed, not silently skip it")
+      (testing "the error message names the offending file and the parse reason"
+        (is (str/includes? (:message result) "collections/main/test/bad_card.yaml"))
+        (is (str/includes? (:message result) "expected ',' or ']'"))))))
 
 (deftest import!-handles-generic-errors-test
   (testing "import! handles generic errors"
@@ -109,7 +112,19 @@
           e     (ex-info "Failed to load into database for Card abc123"
                          {:path "Card abc123"}
                          cause)]
-      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance")))))
+      (is (str/includes? (impl/source-error-message e) "A referenced database does not exist on this instance"))))
+  (testing "source-error-message lists each unreadable file with its parse reason (GHY-3887)"
+    (let [ingest-err (ex-info "Failed to parse file: collections/transforms/a.yaml"
+                              {:file "collections/transforms/a.yaml"
+                               :reason "found character '@' that cannot start any token. (Do not use @ for indentation) (line 1, column 1)"})
+          e          (ex-info "Failed to read 1 file(s) during ingestion: collections/transforms/a.yaml"
+                              {:ingest-errors [ingest-err]
+                               :files         ["collections/transforms/a.yaml"]}
+                              ingest-err)
+          msg        (impl/source-error-message e)]
+      (is (str/includes? msg "Failed to read 1 file(s)"))
+      (is (str/includes? msg "collections/transforms/a.yaml"))
+      (is (str/includes? msg "found character '@'")))))
 
 ;; We need to make sure the task-id we use to track the Remote Sync is not bound to a transactions because of the behavior of
 ;; update-sync-progress. So the follow two tests cannot use with-temp to create models
@@ -537,6 +552,23 @@
                     "Should return task ID from async-import!")
                 (is @import-called?
                     "Should call async-import! in read-only mode")))))))))
+
+(deftest finish-remote-config!-does-not-force-transform-deletion-test
+  (testing "GHY-3900: the enable-triggered import must not force transform deletion (passes :force-deletion? false)"
+    (mt/with-model-cleanup [:model/RemoteSyncTask :model/Collection]
+      (let [mock-source    (test-helpers/create-mock-source)
+            captured-args  (atom nil)]
+        (mt/with-temp [:model/Collection _ {:name "Remote Collection" :is_remote_synced true :location "/"}]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-branch "main"
+                                             remote-sync-type :read-only]
+            (mt/with-dynamic-fn-redefs [source/source-from-settings (constantly mock-source)
+                                        impl/async-import! (fn [& args] (reset! captured-args args) {:id 123})]
+              (impl/finish-remote-config!)
+              (let [[_branch _force? _import-args & kvs] @captured-args]
+                (is (false? (:force-deletion? (apply hash-map kvs)))
+                    "finish-remote-config! should pass :force-deletion? false so deletions surface as conflicts")))))))))
 
 (deftest finish-remote-config!-does-nothing-when-collection-exists-in-dev-mode-test
   (testing "finish-remote-config! does nothing when collection exists in read-write mode"

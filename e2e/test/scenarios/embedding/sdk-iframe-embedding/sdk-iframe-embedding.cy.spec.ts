@@ -816,6 +816,32 @@ describe("scenarios > embedding > modular embedding", () => {
       });
     });
 
+    it("should not send SDK tracker events through the analytics proxy", () => {
+      let proxyCallCount = 0;
+      cy.intercept("POST", "/api/analytics-proxy", () => {
+        proxyCallCount++;
+      }).as("analyticsProxy");
+
+      cy.signOut();
+      cy.visit("http://localhost:4000");
+      H.loadSdkIframeEmbedTestPage({
+        origin: "http://different-than-metabase-instance.com",
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: { dashboardId: ORDERS_DASHBOARD_ID },
+          },
+        ],
+        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`,
+      }).within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+      });
+
+      cy.wrap(null).then(() => {
+        expect(proxyCallCount).to.eq(0);
+      });
+    });
+
     it("should not send an modular embedding usage event in the preview", () => {
       cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 

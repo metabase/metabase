@@ -1,7 +1,8 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { Popover } from "metabase/ui";
 
 import { ColorPickerContent } from "./ColorPickerContent";
 import { ColorPickerTrigger } from "./ColorPickerTrigger";
@@ -22,21 +23,27 @@ export const ColorPicker = forwardRef(function ColorPicker(
   { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [opened, { open, close }] = useDisclosure(false);
+
   return (
-    <TippyPopoverWithTrigger
-      disableContentSandbox
-      renderTrigger={({ onClick }) => (
+    <Popover opened={opened} onClose={close} position="bottom-start">
+      <Popover.Target>
         <ColorPickerTrigger
           {...props}
           ref={ref}
           value={value}
           placeholder={placeholder}
           isAuto={isAuto}
-          onClick={onClick}
+          onClick={open}
           onChange={onChange}
         />
-      )}
-      popoverContent={<ColorPickerContent value={value} onChange={onChange} />}
-    />
+      </Popover.Target>
+      <Popover.Dropdown
+        // TODO: remove when the legacy Modal / RENDERED_POPOVERS stack is no longer used (GDGT-2575)
+        setupSequencedCloseHandler={close}
+      >
+        <ColorPickerContent value={value} onChange={onChange} />
+      </Popover.Dropdown>
+    </Popover>
   );
 });

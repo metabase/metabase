@@ -970,7 +970,7 @@ describe("issue 16108", () => {
     cy.icon("download").realHover();
     H.tooltip().findByText("Download results");
     H.sharingMenuButton().realHover();
-    H.tooltip().findByText("Sharing");
+    H.tooltip().findByText("Share");
   });
 });
 
@@ -996,6 +996,15 @@ describe("issue 49525", { tags: "@external" }, () => {
         columns: ["CATEGORY"],
         values: ["COUNT"],
       },
+      "table.column_formatting": [
+        {
+          type: "single",
+          columns: ["count"],
+          color: "#84BB4C",
+          operator: ">",
+          value: 10,
+        },
+      ],
     },
   };
 
@@ -1051,6 +1060,45 @@ describe("issue 49525", { tags: "@external" }, () => {
           "Created At: Year,Doohickey,Gadget,Gizmo,Widget,Row totals\r",
         );
       });
+    });
+  });
+
+  it("renders the pivot table inline in the subscription email body (UXW-4378)", () => {
+    H.openDashboardMenu("Subscriptions");
+    H.sidebar().within(() => {
+      cy.findByText("Email it").click();
+      cy.findByPlaceholderText("Enter user names or email addresses").click();
+    });
+
+    H.popover().findByText(`${first_name} ${last_name}`).click();
+
+    // Close the recipient popover so the send button is clickable
+    H.sidebar().findByText("To:").click();
+
+    H.sendEmailAndVisitIt();
+
+    cy.get(".container").within(() => {
+      // Transposed pivot: row dimension as the top-left label, categories across the top,
+      // a grand-totals column appended, and no internal pivot-grouping column.
+      cy.findByText("Created At: Year").should("exist");
+      ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach((category) =>
+        cy.findByText(category).should("exist"),
+      );
+      cy.findByText("Row totals").should("exist");
+      cy.contains("pivot-grouping").should("not.exist");
+
+      // Conditional formatting (count > 10 -> green) colors only the larger value cells:
+      // the 8 cell stays transparent, the 200 grand total is green.
+      cy.contains("td", /^8$/).should(
+        "have.css",
+        "background-color",
+        "rgba(0, 0, 0, 0)",
+      );
+      cy.contains("td", /^200$/).should(
+        "have.css",
+        "background-color",
+        "rgba(132, 187, 76, 0.65)",
+      );
     });
   });
 });

@@ -199,7 +199,7 @@
                   :include-field-values true}
             report (serdes/with-cache (serialization/store! (serialization/extract opts)
                                                             (serialization/file-writer (.getPath temp-path))))]
-        (log/info "Export complete:" (count (:seen report)) "entities exported")
+        (log/info "Export complete:" (reduce + 0 (vals (:entity-counts report))) "entities exported")
         (when (seq (:errors report))
           (log/warn "Export had errors:" (:errors report)))
         {:report report

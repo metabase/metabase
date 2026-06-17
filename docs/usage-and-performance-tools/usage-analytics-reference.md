@@ -672,6 +672,7 @@ The Query Source column on the [Query log](#query-log) model takes one of:
 - embedded-xlsx-download
 - json-download
 - map-tiles
+- metric
 - public-csv-download
 - public-dashboard
 - public-json-download
