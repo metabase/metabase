@@ -2874,3 +2874,75 @@
         (is (not (contains? counts "or")))
         (is (not (contains? counts "case")))
         (is (not (contains? counts "coalesce")))))))
+
+;;; ============================================================
+;;; Pass 1.89 - merge trailing options-map into position-1 opts on N-ary string filters
+;;; ============================================================
+
+(deftest ^:parallel merge-string-filter-trailing-options-test
+  (testing (str "N-ary string-search filters carry case-sensitivity in their position-1 options,\n"
+                "but LLMs append it as a trailing map. These clauses are variadic, so the\n"
+                "fixed-arity merge-trailing-options pass skips them; this pass merges the trailing\n"
+                "map (a string-search value is never a map, so it is unambiguously misplaced opts).")
+    (testing "contains"
+      (is (= ["contains" {"case-sensitive" false}
+              ["field" {} ["S" "P" "T" "EMAIL"]] "@gmail.com"]
+             (repair/repair trivial-mp
+                            ["contains" {}
+                             ["field" {} ["S" "P" "T" "EMAIL"]] "@gmail.com"
+                             {"case-sensitive" false}]))))
+    (testing "starts-with / ends-with / does-not-contain"
+      (doseq [head ["starts-with" "ends-with" "does-not-contain"]]
+        (is (= [head {"case-sensitive" false} ["field" {} ["S" "P" "T" "C"]] "x"]
+               (repair/repair trivial-mp
+                              [head {} ["field" {} ["S" "P" "T" "C"]] "x"
+                               {"case-sensitive" false}]))
+            head)))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-multi-value-test
+  (testing "multiple string values + trailing options: only the trailing map is merged"
+    (is (= ["contains" {"case-sensitive" true} ["field" {} ["S" "P" "T" "C"]] "a" "b"]
+           (repair/repair trivial-mp
+                          ["contains" {} ["field" {} ["S" "P" "T" "C"]] "a" "b"
+                           {"case-sensitive" true}])))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-keys-win-test
+  (testing "trailing keys win on conflict; existing position-1 keys are preserved"
+    (is (= ["contains" {"case-sensitive" false "lib/uuid" "u"} ["field" {} ["S" "P" "T" "C"]] "x"]
+           (repair/repair trivial-mp
+                          ["contains" {"case-sensitive" true "lib/uuid" "u"}
+                           ["field" {} ["S" "P" "T" "C"]] "x"
+                           {"case-sensitive" false}])))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-nested-in-and-test
+  (testing (str "a contains clause with trailing case-sensitivity options, nested inside `and`\n"
+                "inside the stage filters (the gmail-customers repro), is repaired via postwalk")
+    (let [q   {"lib/type" "mbql/query"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "filters"      [["and" {}
+                                             ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "active"]
+                                             ["contains" {}
+                                              ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+                                              "@gmail.com" {"case-sensitive" false}]]]}]}
+          out (repair/repair trivial-mp q)
+          ;; and-clause is ["and" {} <=-cond> <contains-cond>]; the contains is at index 3
+          c   (get-in out ["stages" 0 "filters" 0 3])]
+      (is (= ["contains" {"case-sensitive" false}
+              ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]
+             c)))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-no-op-test
+  (testing "well-formed string filters are unchanged"
+    (testing "options already in position 1"
+      (let [ok ["contains" {"case-sensitive" false} ["field" {} ["S" "P" "T" "C"]] "x"]]
+        (is (= ok (repair/repair trivial-mp ok)))))
+    (testing "plain contains with no trailing options map"
+      (let [ok ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x"]]
+        (is (= ok (repair/repair trivial-mp ok)))))))
+
+(deftest ^:parallel merge-string-filter-trailing-options-idempotent-test
+  (testing "repair(repair(q)) = repair(q)"
+    (let [bug  ["contains" {} ["field" {} ["S" "P" "T" "C"]] "x" {"case-sensitive" false}]
+          once (repair/repair trivial-mp bug)]
+      (is (= once (repair/repair trivial-mp once))))))
