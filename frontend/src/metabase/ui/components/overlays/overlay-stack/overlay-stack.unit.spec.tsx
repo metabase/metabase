@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
-import { render, screen, waitForElementToBeRemoved } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 import { Button, Menu, Modal, Popover } from "metabase/ui";
 
 const OVERLAY_TESTID = "modal-overlay";
@@ -61,7 +61,9 @@ describe("Modal with an overlay above it", () => {
 
       await userEvent.click(screen.getByTestId(OVERLAY_TESTID));
 
-      await waitForElementToBeRemoved(() => screen.queryByText(UPPER_CONTENT));
+      await waitFor(() => {
+        expect(screen.queryByText(UPPER_CONTENT)).not.toBeInTheDocument();
+      });
       expect(onClose).not.toHaveBeenCalled();
     },
   );

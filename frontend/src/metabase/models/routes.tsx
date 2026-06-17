@@ -4,12 +4,12 @@ import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal/A
 import { ModelDetailPage } from "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
-import type { ModalProps } from "metabase/ui";
+import { type ModalProps, NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 
 export const getRoutes = () => {
   const modalProps: Partial<ModalProps> = {
+    ...NO_ANIMATION_MODAL_PROPS,
     size: "85%",
-    transitionProps: { duration: 0 },
   };
   return (
     <Route path="/model/:slug/detail">

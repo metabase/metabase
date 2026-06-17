@@ -12,6 +12,7 @@ export type { ModalProps } from "@mantine/core";
 export { useModalsStack } from "@mantine/core";
 
 export * from "./Modal.config";
+export * from "./constants";
 
 export function Modal(props: ModalProps) {
   const closeProps = useGatedCloseProps(props);

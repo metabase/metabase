@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import { NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 
 import DeleteEventModal from "./containers/DeleteEventModal";
 import DeleteTimelineModal from "./containers/DeleteTimelineModal";
@@ -23,42 +24,42 @@ const getRoutes = () => {
         {...{
           path: "timelines",
           modal: TimelineIndexModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/new",
           modal: NewTimelineModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/archive",
           modal: TimelineListArchiveModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId",
           modal: TimelineDetailsModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/edit",
           modal: EditTimelineModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/move",
           modal: MoveTimelineModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
           noWrap: true,
         }}
       />
@@ -66,49 +67,49 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/archive",
           modal: TimelineArchiveModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/delete",
           modal: DeleteTimelineModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/new/events/new",
           modal: NewEventWithTimelineModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/new",
           modal: NewEventModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/edit",
           modal: EditEventModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/move",
           modal: MoveEventModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
       <ModalRoute
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/delete",
           modal: DeleteEventModal,
-          modalProps: { transitionProps: { duration: 0 } },
+          modalProps: NO_ANIMATION_MODAL_PROPS,
         }}
       />
     </Fragment>
