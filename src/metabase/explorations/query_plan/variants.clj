@@ -287,7 +287,7 @@
         bucketed   (lib/breakout base-query breakout)]
     (-> bucketed
         (maybe-segment-filtered segment)
-        (lib/order-by breakout :asc))))
+        (lib/order-by (first (lib/breakouts-metadata bucketed)) :asc))))
 
 (defmethod dataset-query "temporal-pattern-day"
   [_ ctx] (temporal-pattern-mbql ctx :day-of-week))

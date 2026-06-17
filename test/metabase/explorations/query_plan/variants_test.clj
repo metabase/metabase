@@ -119,6 +119,21 @@
       (is (= ["Count descending"]
              (clause-names q (lib/order-bys q)))))))
 
+(deftest temporal-pattern-order-by-test
+  (doseq [variant ["temporal-pattern-day" "temporal-pattern-hour"]]
+    (testing variant
+      (let [ctx {:mp      (mt/metadata-provider)
+                 :card    (orders-count-card 9000007)
+                 :target  [:field (mt/id :orders :created_at) nil]
+                 :dim     created-at-dim
+                 :segment nil
+                 :params  {}}
+            q   (variants/dataset-query variant ctx)]
+        ;; Orders by the single bucketed breakout, ascending.
+        (is (= 1 (count (lib/order-bys q))))
+        ;; Round-trips through the QP without a duplicate-:lib/uuid failure.
+        (is (seq (-> (qp/process-query q) :data :rows)))))))
+
 (deftest time-facet-temporal-order-test
   (testing "time-facet orders by date desc then metric desc,
             so a fired cap keeps the most recent months across all dim values"
