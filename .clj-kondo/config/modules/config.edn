@@ -1050,7 +1050,8 @@
    :uses #{api
            models
            util}
-   :model-imports #{:model/Table :model/Transform}}
+   :model-exports #{:model/TableIndex}
+   :model-imports #{:model/Transform}}
 
   initialization-status
   {:team "UX West"
@@ -2345,6 +2346,7 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/User}}
 
   transforms-base

@@ -307,6 +307,19 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method indexes
+  :indexes
+  "Fetch the table indexes that belong to each transform"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          idx-mappings  (group-by :transform_id
+                                  (t2/select :model/TableIndex
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:index_name :asc]]}))]
+      (for [transform transforms]
+        (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
+
 (mi/define-batched-hydration-method table-with-db-and-fields
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
