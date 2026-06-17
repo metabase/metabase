@@ -16,6 +16,7 @@ const CHART_ANALYSIS_ENABLED = {
   sankey: true,
   scatter: true,
   waterfall: true,
+  whisker: true,
   // disabled
   action: false,
   heading: false,
@@ -57,6 +58,7 @@ export const CHART_ANALYSIS_RENDER_FORMATS = {
   sankey: "svg",
   scatter: "svg",
   waterfall: "svg",
+  whisker: "svg",
 } as const satisfies { [display in EnabledChartTypes]: "png" | "svg" | "none" };
 
 export const canAnalyzeQuestion = (display: VisualizationDisplay) => {

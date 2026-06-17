@@ -8,6 +8,7 @@ import {
 import { AreaChart } from "./visualizations/AreaChart";
 import { BarChart } from "./visualizations/BarChart";
 import { BoxPlot } from "./visualizations/BoxPlot";
+import { BoxWhisker } from "./visualizations/BoxWhisker";
 import { ComboChart } from "./visualizations/ComboChart";
 import { Funnel } from "./visualizations/Funnel";
 import { Gauge } from "./visualizations/Gauge";
@@ -40,6 +41,7 @@ export default function () {
   registerVisualization(RowChart);
   registerVisualization(ScatterPlot);
   registerVisualization(BoxPlot);
+  registerVisualization(BoxWhisker);
   registerVisualization(PieChart);
   registerVisualization(Map);
   registerVisualization(Funnel);

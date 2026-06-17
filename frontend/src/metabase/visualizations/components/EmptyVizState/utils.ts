@@ -11,7 +11,8 @@ export type ExcludedEmptyVizDisplayTypes =
   | "table"
   | "list"
   | "object"
-  | "boxplot";
+  | "boxplot"
+  | "whisker";
 type SupportedDisplayType = Exclude<
   CardDisplayType,
   ExcludedEmptyVizDisplayTypes
