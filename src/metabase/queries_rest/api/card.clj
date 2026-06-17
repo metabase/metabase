@@ -922,7 +922,7 @@
         (api/read-check (api/check-404 (t2/select-one :model/Card :id resolved-card-id)))
         (serve-cached-stored-result stored_result_id sort))
       (qp.card/process-query-for-card
-       resolved-card-id :api
+       (api/check-404 (t2/select-one :model/Card resolved-card-id)) :api
        :parameters parameters
        :ignore-cache ignore_cache
        :dashboard-id dashboard_id
@@ -962,7 +962,7 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (qp.card/process-query-for-card
-   card-id export-format
+   (api/check-404 (t2/select-one :model/Card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -1036,7 +1036,7 @@
    {:keys [parameters ignore_cache]
     :or   {ignore_cache false}} :- [:map
                                     [:ignore_cache {:optional true} [:maybe :boolean]]]]
-  (qp.card/process-query-for-card card-id :api
+  (qp.card/process-query-for-card (api/check-404 (t2/select-one :model/Card card-id)) :api
                                   :parameters   parameters
                                   :qp           qp.pivot/run-pivot-query
                                   :ignore-cache ignore_cache))
