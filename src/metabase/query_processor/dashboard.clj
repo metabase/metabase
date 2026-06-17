@@ -195,10 +195,9 @@
                              {:ignore-cache false
                               :constraints  (qp.constraints/default-query-constraints)
                               :context      :dashboard}
-                             (dissoc options :dashboard :dashcard :card)
+                             (dissoc options :dashboard :card)
                              {:parameters   resolved-params
-                              :dashboard-id dashboard-id
-                              :dashcard     dashcard})]
+                              :dashboard-id dashboard-id})]
         (log/tracef "Running Query for Dashboard %d, Card %d, Dashcard %d with options\n%s"
                     dashboard-id card-id dashcard-id
                     (u/pprint-to-str options))
