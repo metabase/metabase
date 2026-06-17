@@ -1,0 +1,14 @@
+.actionButton {
+  /*
+   * Action buttons keep their variant color when disabled (e.g. an
+   * unconfigured action button while editing a dashboard), matching the
+   * legacy behaviour of dimming rather than greying out.
+   */
+  &[data-variant]:disabled,
+  &[data-variant][data-disabled="true"] {
+    opacity: 0.5;
+    color: var(--button-color);
+    background-color: var(--button-bg);
+    border-color: var(--button-bd);
+  }
+}

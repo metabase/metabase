@@ -5,6 +5,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type { IconName } from "metabase-types/api";
 
+import S from "./ActionButton.module.css";
 import { StyledButtonContent } from "./ActionButton.styled";
 
 const BUTTON_VARIANT_PROPS: Record<
@@ -43,6 +44,7 @@ function ActionButtonView({
 
   return (
     <Button
+      className={S.actionButton}
       p={0}
       h={isFullHeight !== false ? "100%" : undefined}
       bd={focus ? "2px solid var(--mb-color-focus)" : undefined}
