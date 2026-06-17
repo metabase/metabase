@@ -2,11 +2,15 @@
   "Interactive Cytoscape.js visualization of the Metabase modules graph.
 
   Backed by a small Ring/Jetty server so the browser only fetches the *pruned* subgraph for the
-  module currently in focus instead of the full 600+ node hairball. Endpoints:
+  module(s) currently in focus instead of the full 600+ node hairball. Multi-focus unions and
+  configurable hop degree (1-3) are supported. Endpoints:
 
     GET /                  -> HTML shell
-    GET /api/modules       -> [{:label :team :apiCount}] for the picker
-    GET /api/focus?m=NAME  -> {:nodes [...] :edges [...]} 1-degree neighborhood of NAME
+    GET /api/modules       -> [{:label :team :apiCount :edgeCount}] for the picker
+    GET /api/focus?m=LABEL1,LABEL2,...        {:focus [...] :nodes [...] :edges [...] :stats {...}}
+                       &degree=N
+                       &expanded=MOD1,MOD2,...
+                       &hidden=re:pat1,team:T1,LABEL3,...
     GET /api/full          -> full graph (escape hatch / debugging)
 
   Usage:
@@ -47,7 +51,7 @@
       (str "src/" path ".clj"))))
 
 (defn- module->github-path
-  "Best-effort source directory for a module symbol."
+  "Best-effort repo-relative source path for a module symbol."
   [module-symb]
   (let [s (str module-symb)]
     (cond
@@ -58,7 +62,7 @@
       (str "src/metabase/" s))))
 
 (defn- module-source-dir
-  "Absolute filesystem path to the module's source directory, or nil if it doesn't exist."
+  "`java.io.File` for the module's source directory (relative to project root), or nil if it doesn't exist."
   [module-symb]
   (let [rel (module->github-path module-symb)
         f   (io/file rel)]
@@ -90,7 +94,11 @@
 
 (defn reset-cache! [] (reset! cache nil))
 
-(defn- build-cache []
+
+(defn- build-cache
+  "Build the full modules cache — a map with keys :kondo, :module-nodes, :api-children, :all-edges,
+  :edges-by-mod. Called once on first request and memoized via the `cache` atom."
+  []
   (let [kondo (deps-graph/kondo-config)
         deps  (deps-graph/dependencies)
         ;; Build module node + child api-ns node list once.
@@ -323,7 +331,10 @@
                     :edgeCount   (count edges)
                     :rawEdges    (count raw-edges)}}))))
 
-(defn full-graph []
+(defn full-graph
+  "Return the full module graph with all nodes (modules + api namespaces) and all edges, unfiltered.
+  Escape hatch for debugging; the normal interactive path is `focus-subgraph`."
+  []
   (let [{:keys [module-nodes api-children all-edges]} (ensure-cache!)
         nodes (vec
                (mapcat (fn [[m mn]]
@@ -357,24 +368,33 @@
           (for [pair (str/split qs #"&")
                 :let [[k v] (str/split pair #"=" 2)]
                 :when k]
-            [k (some-> v java.net.URLDecoder/decode)]))))
+            [k (try (java.net.URLDecoder/decode v)
+                    (catch IllegalArgumentException _
+                      v))]))))
 
-(defn handler [req]
-  (let [uri (:uri req)
-        q   (parse-query (:query-string req))]
-    (case uri
-      "/"             (html-response html-page)
-      "/api/modules"  (json-response (modules-list))
-      "/api/focus"    (json-response
-                       (focus-subgraph (some-> (get q "m") (str/split #","))
-                                       (try (Integer/parseInt (or (get q "degree") "1"))
-                                            (catch Exception _ 1))
-                                       (when-let [exp (get q "expanded")]
-                                         (set (remove str/blank? (str/split exp #","))))
-                                       (parse-hidden (get q "hidden")
-                                                     (:module-nodes (ensure-cache!)))))
-      "/api/full"     (json-response (full-graph))
-      {:status 404 :body "not found"})))
+(defn handler
+  "Ring handler. See ns-level docstring for endpoint contracts."
+  [req]
+  (try
+    (let [uri (:uri req)
+          q   (parse-query (:query-string req))]
+      (case uri
+        "/"             (html-response html-page)
+        "/api/modules"  (json-response (modules-list))
+        "/api/focus"    (json-response
+                         (focus-subgraph (some-> (get q "m") (str/split #","))
+                                         (try (Integer/parseInt (or (get q "degree") "1"))
+                                              (catch Exception _ 1))
+                                         (when-let [exp (get q "expanded")]
+                                           (set (remove str/blank? (str/split exp #","))))
+                                         (parse-hidden (get q "hidden")
+                                                       (:module-nodes (ensure-cache!)))))
+        "/api/full"     (json-response (full-graph))
+        {:status 404 :body "not found"}))
+    (catch Exception e
+      {:status 500
+       :headers {"Content-Type" "application/json"}
+       :body    (json/generate-string {:error (.getMessage e)})})))
 
 ;; --- server lifecycle ---------------------------------------------------------------------------
 
