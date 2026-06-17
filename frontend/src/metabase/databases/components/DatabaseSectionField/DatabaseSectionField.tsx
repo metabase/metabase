@@ -2,10 +2,8 @@ import { useField } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Button } from "metabase/common/components/Button";
 import { FormField } from "metabase/common/components/FormField";
-
-import S from "./DatabaseSectionField.module.css";
+import { Button, Icon } from "metabase/ui";
 
 export interface DatabaseSectionFieldProps {
   name: string;
@@ -23,9 +21,11 @@ const DatabaseSectionField = ({
   return (
     <FormField>
       <Button
-        className={S.sectionButton}
+        w="fit-content"
         type="button"
-        iconRight={value ? "chevronup" : "chevrondown"}
+        variant="subtle"
+        size="compact-sm"
+        rightSection={<Icon name={value ? "chevronup" : "chevrondown"} />}
         onClick={handleClick}
       >
         {value ? t`Hide advanced options` : t`Show advanced options`}

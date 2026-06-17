@@ -20,7 +20,8 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.web-mercator :as mercator])
   (:import
    (java.awt Color)
    (java.awt.image BufferedImage)
@@ -43,9 +44,6 @@
   2000)
 
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
-
-(defn- degrees->radians ^double [^double degrees]
-  (* degrees (/ Math/PI 180.0)))
 
 (defn- radians->degrees ^double [^double radians]
   (/ radians (/ Math/PI 180.0)))
@@ -85,36 +83,23 @@
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
 (defn- create-tile ^BufferedImage [zoom points]
-  (let [num-tiles (bit-shift-left 1 zoom)
-        tile      (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
-        graphics  (.getGraphics tile)
-        color-blue (new Color 76 157 230)
+  (let [tile        (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
+        graphics    (.getGraphics tile)
+        color-blue  (new Color 76 157 230)
         color-white (Color/white)]
     (try
-      (doseq [[^double lat ^double lon] points]
-        (let [sin-y      (-> (Math/sin (degrees->radians lat))
-                             (Math/max -0.9999)                           ; bound sin-y between -0.9999 and 0.9999 (why ?))
-                             (Math/min 0.9999))
-              point      {:x (+ pixel-origin
-                                (* lon pixels-per-lon-degree))
-                          :y (+ pixel-origin
-                                (* 0.5
-                                   (Math/log (/ (inc sin-y)
-                                                (- 1 sin-y)))
-                                   pixels-per-lon-radian
-                                   -1.0))}         ; huh?
-              map-pixel  {:x (int (Math/floor (* (point :x) num-tiles)))
-                          :y (int (Math/floor (* (point :y) num-tiles)))}
-              tile-pixel {:x (mod (map-pixel :x) tile-size)
-                          :y (mod (map-pixel :y) tile-size)}
-              ;; cx/cy is needed to put center of a pin at the tile-pixel position
-              cx   (- (tile-pixel :x) pin-size-half)
-              cy   (- (tile-pixel :y) pin-size-half)]
-          ;; now draw a "pin" at the given tile pixel location
-          (.setColor graphics color-white)
-          (.fillRect graphics cx cy pin-size pin-size)
-          (.setColor graphics color-blue)
-          (.fillRect graphics (inc cx) (inc cy) (- pin-size 2) (- pin-size 2))))
+      (doseq [[^double lat ^double lon] points
+              :let [[world-x world-y] (mercator/latlon->world-px lat lon zoom)
+                    tile-x            (-> (double world-x) Math/floor int (mod tile-size))
+                    tile-y            (-> (double world-y) Math/floor int (mod tile-size))
+                    ;; cx/cy is needed to put center of a pin at the tile-pixel position
+                    cx                (- tile-x pin-size-half)
+                    cy                (- tile-y pin-size-half)]]
+        ;; now draw a "pin" at the given tile pixel location
+        (.setColor graphics color-white)
+        (.fillRect graphics cx cy pin-size pin-size)
+        (.setColor graphics color-blue)
+        (.fillRect graphics (inc cx) (inc cy) (- pin-size 2) (- pin-size 2)))
       (catch Throwable e
         (.printStackTrace e))
       (finally
