@@ -481,12 +481,23 @@ const buildEChartsBarSeries = (
   const stack = stackName ?? `bar_${seriesModel.dataKey}`;
   const isStacked = settings["stackable.stack_type"] != null;
 
+  const dimensionValueColors = settings["graph._dimension_value_colors"];
+  const itemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
+    dimensionValueColors == null
+      ? seriesModel.color
+      : (params: CallbackDataParams) => {
+          const xValue = dataset[params.dataIndex]?.[X_AXIS_DATA_KEY];
+          return dimensionValueColors[String(xValue)] ?? seriesModel.color;
+        };
+  const emphasisItemColor: NonNullable<BarSeriesOption["itemStyle"]>["color"] =
+    dimensionValueColors == null ? seriesModel.color : "inherit";
+
   const seriesOption: BarSeriesOption = {
     id: seriesModel.dataKey,
     emphasis: {
       focus: hasMultipleSeries ? "series" : "self",
       itemStyle: {
-        color: seriesModel.color,
+        color: emphasisItemColor,
       },
     },
     blur: {
@@ -548,7 +559,7 @@ const buildEChartsBarSeries = (
           },
         }),
     itemStyle: {
-      color: seriesModel.color,
+      color: itemColor,
     },
   };
 
