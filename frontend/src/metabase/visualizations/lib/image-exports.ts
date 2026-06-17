@@ -49,6 +49,30 @@ export const saveDomImageStyles = css`
   }
 `;
 
+const SVG_VAR_PAINT_ATTRIBUTES = [
+  "fill",
+  "stroke",
+  "stop-color",
+  "flood-color",
+  "lighting-color",
+];
+
+// html2canvas serializes <svg> to a standalone image where :root custom props are out of
+// scope, so var() paint (e.g. white pie-slice borders) is lost. Bake in the resolved value.
+export const resolveSvgVarPaint = (root: HTMLElement) => {
+  root.querySelectorAll<SVGElement>("svg, svg *").forEach((el) => {
+    SVG_VAR_PAINT_ATTRIBUTES.forEach((attr) => {
+      const value = el.getAttribute(attr);
+      if (value?.includes("var(")) {
+        const resolved = getComputedStyle(el).getPropertyValue(attr);
+        if (resolved) {
+          el.setAttribute(attr, resolved);
+        }
+      }
+    });
+  });
+};
+
 export const getDomToCanvas = async (
   element: HTMLElement,
   options: {
@@ -66,7 +90,10 @@ export const getDomToCanvas = async (
     width: options.width,
     height: options.height,
     scale: options.scale,
-    onclone: options.onclone,
+    onclone: (doc, node) => {
+      options.onclone?.(doc, node);
+      resolveSvgVarPaint(node);
+    },
   });
 };
 

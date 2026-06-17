@@ -11,7 +11,10 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import { fixParameterLegendOffsetForExport } from "./image-exports";
+import {
+  fixParameterLegendOffsetForExport,
+  resolveSvgVarPaint,
+} from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 // DOM ids on exportable nodes so the PDF exporter and downloads thunk can find them
@@ -276,6 +279,8 @@ export const saveDashboardPdf = async ({
         const branding = createBrandingElement(size);
         node.insertBefore(branding, node.firstChild);
       }
+
+      resolveSvgVarPaint(node);
     },
   });
 

@@ -7,6 +7,7 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
+import { resolveSvgVarPaint } from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -71,6 +72,8 @@ export const saveChartImage = async ({
 
         node.appendChild(branding);
       }
+
+      resolveSvgVarPaint(node);
     },
   });
 
