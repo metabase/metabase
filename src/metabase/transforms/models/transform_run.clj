@@ -7,11 +7,10 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.run-tracking.core :as rt]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
+   [metabase.transforms.models.util :as transforms.models.u]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -248,22 +247,7 @@
                                  [:= :status [:inline "succeeded"]]]
                       :group-by [:transform_id]}))))
 
-(defn- timestamp-constraint
-  [field-name date-string]
-  (let [{:keys [start end]}
-        (try
-          (params.dates/date-string->range date-string {:inclusive-end? false})
-          (catch Exception e
-            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
-                            {:status-code 400}
-                            e))))
-        start (some-> start u.date/parse)
-        end   (some-> end   u.date/parse)]
-    (into [:and] (remove nil?)
-          [(when start
-             [:>= field-name start])
-           (when end
-             [:< field-name end])])))
+(def ^:private timestamp-constraint transforms.models.u/timestamp-constraint)
 
 (defn- paged-runs-join-clause
   "Returns a `:left-join` clause for transform runs sort columns that require joining other tables."

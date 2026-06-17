@@ -2,6 +2,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.run-tracking.core :as rt]
+   [metabase.transforms.models.util :as transforms.models.u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
@@ -106,7 +107,7 @@
   "Return a page of the list of job runs.
 
   Follows the conventions used by the FE."
-  [{:keys [offset limit sort-column sort-direction job-id status]}]
+  [{:keys [offset limit sort-column sort-direction job-id status run-method start-time]}]
   (let [offset         (or offset 0)
         limit          (or limit 20)
         sort-direction (or (keyword sort-direction) :desc)
@@ -120,7 +121,9 @@
         where-cond     (cond-> []
                          job-id               (conj [:= :job_id job-id])
                          status               (conj [:= :status status])
-                         (= status "started") (conj [:= :is_active true]))
+                         (= status "started") (conj [:= :is_active true])
+                         run-method           (conj [:= :run_method run-method])
+                         start-time           (conj (transforms.models.u/timestamp-constraint :start_time start-time)))
         where          (when (seq where-cond) (into [:and] where-cond))
         query-opts     (cond-> {:order-by order-by :offset offset :limit limit}
                          where (assoc :where where))

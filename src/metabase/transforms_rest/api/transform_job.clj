@@ -328,6 +328,8 @@
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]
    query-params :- [:map
                     [:status {:optional true} [:maybe [:enum "started" "succeeded" "failed" "timeout"]]]
+                    [:run-method {:optional true} [:maybe [:enum "manual" "cron"]]]
+                    [:start-time {:optional true} [:maybe ms/NonBlankString]]
                     [:sort-column {:optional true} [:maybe [:enum "start_time" "end_time"]]]
                     [:sort-direction {:optional true} [:maybe [:enum "asc" "desc"]]]]]
   (api/check-data-analyst)
