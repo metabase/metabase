@@ -5,38 +5,10 @@ const { H } = cy;
 const GENERATED_CARD_NAME = "Feature requests mentioned twice";
 const MOCK_LLM_PORT = 6124;
 
-// Document cards gate data loading on IntersectionObserver (see
-// useNodeInViewport). A freshly inserted Metabot card never receives an
-// intersection event in the headless browser, so its data — and title —
-// never load. Stub the observer to always report intersecting.
-const stubIntersectionObserver = (win: Cypress.AUTWindow) => {
-  win.IntersectionObserver = class MockIntersectionObserver implements IntersectionObserver {
-    root: Element | null = null;
-    rootMargin = "";
-    scrollMargin = "";
-    thresholds: ReadonlyArray<number> = [];
-
-    constructor(private readonly callback: IntersectionObserverCallback) {}
-
-    observe(target: Element) {
-      this.callback(
-        [{ isIntersecting: true, target } as IntersectionObserverEntry],
-        this,
-      );
-    }
-    unobserve() {}
-    disconnect() {}
-    takeRecords(): IntersectionObserverEntry[] {
-      return [];
-    }
-  };
-};
-
 describe("documents > metabot (#73690)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.on("window:before:load", stubIntersectionObserver);
     cy.task("startMockLlmServer", {
       port: MOCK_LLM_PORT,
       toolCall: {

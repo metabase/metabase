@@ -1,11 +1,5 @@
 import { useIntersection, useMergedRef } from "@mantine/hooks";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 import { useCurrentRef } from "metabase/common/hooks/use-current-ref";
 import { usePrefetchQueue } from "metabase/documents/contexts/PrefetchQueueContext";
@@ -13,21 +7,6 @@ import { usePrintContext } from "metabase/documents/contexts/PrintContext";
 import { useScrollContainer } from "metabase/documents/contexts/ScrollContainerContext";
 
 const noopSubscribe = () => () => {};
-
-const OBSERVER_ROOT_MARGIN = "200%";
-
-// if card is in viewport right away, intersection observer doesn't fire
-// so we need to handle such cases manually
-function measureIsInViewport(
-  element: HTMLElement,
-  scrollContainer: HTMLElement | null,
-): boolean {
-  const rect = element.getBoundingClientRect();
-  const root = scrollContainer?.getBoundingClientRect();
-  const rootTop = root ? root.top : 0;
-  const rootBottom = root ? root.bottom : window.innerHeight;
-  return rect.top < rootBottom && rect.bottom > rootTop;
-}
 
 /**
  * Detects whether a node view element is near the viewport (always true while
@@ -40,25 +19,19 @@ export function useNodeInViewport(id?: string) {
 
   const { ref: ioRef, entry } = useIntersection({
     root: scrollContainer,
-    rootMargin: OBSERVER_ROOT_MARGIN,
+    // 200% margin: IO fires when the card is up to 2 viewport heights
+    // away from visible, giving React + ECharts time to mount before
+    // the user can see the card during normal scrolling. Trade-off:
+    // more visualizations stay mounted in the buffer, but bounded
+    // (~5-8 cards in a typical doc).
+    rootMargin: "200%",
     threshold: 0,
   });
 
   const elementRef = useRef<HTMLElement | null>(null);
+  const ref = useMergedRef(elementRef, ioRef);
 
-  const [measuredInViewport, setMeasuredInViewport] = useState(false);
-  const measureRef = useCallback(
-    (node: HTMLElement | null) => {
-      elementRef.current = node;
-      if (node != null) {
-        setMeasuredInViewport(measureIsInViewport(node, scrollContainer));
-      }
-    },
-    [scrollContainer],
-  );
-  const ref = useMergedRef(measureRef, ioRef);
-
-  const ioIntersecting = entry ? entry.isIntersecting : measuredInViewport;
+  const ioIntersecting = entry?.isIntersecting ?? false;
 
   // Only nodes with an id can hold prefetch tickets, so id-less nodes
   // (text blocks) skip the store subscription instead of being notified
