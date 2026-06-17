@@ -2227,7 +2227,7 @@
                            {:transform_id transform-id
                             :tag_id daily-tag-id
                             :position 2}]
-          (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags))]
+          (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id transform-id) :tags :indexes))]
             (testing "basic Transform structure"
               (is (=? {:serdes/meta [{:model "Transform"
                                       :id transform-eid}]
@@ -2258,7 +2258,7 @@
                 (is (contains? deps [{:model "TransformTag" :id custom-tag-eid}]))
                 (is (contains? deps [{:model "TransformTag" :id daily-tag-eid}])))))
           (testing "python transform source-tables export"
-            (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id python-transform-id) :tags))]
+            (let [ser (serdes/extract-one "Transform" {} (t2/hydrate (t2/select-one :model/Transform :id python-transform-id) :tags :indexes))]
               (is (=? {:source {:type :python
                                 :source-database "My Database"
                                 :source-tables [{:alias       "orders"

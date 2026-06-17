@@ -58,6 +58,7 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpQueryHandle                    metabase.mcp.models.mcp-query-handle
     :model/Measure                           metabase.measures.models.measure
+    :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation
     :model/MetabotFeedback                   metabase.metabot.models.metabot-feedback
