@@ -1895,6 +1895,14 @@
                     :model/Segment
                     :model/Transform}}
 
+  run-tracking
+  {:team "Gadget"
+   :api  #{metabase.run-tracking.core}
+   :uses #{analytics-interface
+           app-db
+           task
+           util}}
+
   sample-data
   {:team "UX West"
    :api  #{metabase.sample-data.core
@@ -2220,13 +2228,13 @@
            metabase.task-history.core
            metabase.task-history.init}
    :uses #{api
-           app-db
            config
            models
            permissions
            premium-features
            query-processor
            request
+           run-tracking
            task
            tracing
            util}
@@ -2325,6 +2333,7 @@
            query-processor
            remote-sync
            revisions
+           run-tracking
            search
            settings
            task
