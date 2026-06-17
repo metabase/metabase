@@ -3,7 +3,7 @@ import type { RenderingContext } from "metabase/visualizations/types";
 import { PARENT_HEADER_VALUE_PERCENT_GAP } from "./model/labels";
 import { groupHeader, leafBlock } from "./style";
 
-export function getLeafLabelColorOverride(
+export function getLeafLabelStyle(
   renderingContext: RenderingContext,
   textColor?: string,
 ) {

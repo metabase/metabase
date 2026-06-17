@@ -25,7 +25,7 @@ import {
 } from "../style";
 import {
   getLeafFormatter,
-  getLeafLabelColorOverride,
+  getLeafLabelStyle,
   getRichLeafLabel,
   getRichUpperLabel,
   sanitizeRichTextContent,
@@ -355,7 +355,7 @@ function getTileLabelOverride({
   const textColor = backgroundColor
     ? getTextColorForBackground(backgroundColor, renderingContext.getColor)
     : undefined;
-  const colorOverride = getLeafLabelColorOverride(renderingContext, textColor);
+  const leafLabelStyle = getLeafLabelStyle(renderingContext, textColor);
   // ECharts truncation is unreliable, so we use our own trunaction logic
   const leafName = truncateText(
     displayName,
@@ -375,7 +375,7 @@ function getTileLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
-        ...colorOverride,
+        ...leafLabelStyle,
         formatter: getLeafFormatter(
           leafName,
           formatValue(value),
@@ -394,7 +394,7 @@ function getTileLabelOverride({
         show: true,
         width: layout.width,
         overflow: "truncate" as const,
-        ...colorOverride,
+        ...leafLabelStyle,
         formatter: sanitizeRichTextContent(leafName),
       },
     }));
