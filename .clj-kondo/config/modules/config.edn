@@ -956,7 +956,7 @@
            request
            tiles
            util}
-   :model-imports #{:model/Card :model/Dashboard :model/EmbeddingTheme}}
+   :model-imports #{:model/Card :model/Dashboard :model/DashboardCard :model/EmbeddingTheme}}
 
   events
   {:team "DevEx"
@@ -1612,7 +1612,6 @@
    :uses #{actions
            analytics
            api
-           app-db
            dashboards
            dashboards-rest
            events

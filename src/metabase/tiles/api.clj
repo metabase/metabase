@@ -236,13 +236,14 @@
     (tiles-response result zoom points)))
 
 (defn process-tiles-query-for-card
-  "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
-  [card-id parameters zoom x y lat-field-ref lon-field-ref]
+  "Generates a single tile image for a pre-loaded Card and returns a Ring response that contains the data as a PNG.
+  Callers are responsible for selecting the `card` entity exactly once per request and threading it here."
+  [card parameters zoom x y lat-field-ref lon-field-ref]
   (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
         lon-field-ref (mbql.normalize/normalize lon-field-ref)
         result
         (qp.card/process-query-for-card
-         (api/check-404 (t2/select-one :model/Card :id card-id))
+         card
          :api
          {:parameters parameters
           :context    :map-tiles
@@ -304,7 +305,8 @@
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))
+  (process-tiles-query-for-card (api/check-404 (t2/select-one :model/Card :id card-id))
+                                parameters zoom x y lat-field lon-field))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
