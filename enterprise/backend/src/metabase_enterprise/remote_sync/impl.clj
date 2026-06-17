@@ -512,21 +512,19 @@
             finalize!             #(remote-sync.task/set-version! task-id snapshot-version)
             path-filters          (mapv #(re-pattern (str % "/.*")) serialization/legal-top-level-paths)
             ;; First-import conflicts only block the first import; deletion conflicts block every import (an
-            ;; already-configured instance must not silently delete unsynced transforms — GHY-3900). Lazy so a
-            ;; cheap no-op pull returns without reading the tree.
+            ;; already-configured instance must not silently delete unsynced transforms). The get-conflicts tree scan
+            ;; is itself deferred so it only runs when one of the gates is open (e.g. a forced import with
+            ;; force-deletion? true skips it entirely).
             blocking-conflicts (delay
-                                 (let [{:keys [first-import-conflicts deletion-conflicts]}
-                                       (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
-                                                      first-import?)]
-                                   (vec (concat (when (and first-import? (not force?)) first-import-conflicts)
-                                                (when (not force-deletion?) deletion-conflicts)))))
-            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))
-            full-import! (fn []
-                           (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)
-                           (log/info "Successfully reloaded entities from git repository")
-                           {:status :success
-                            :version snapshot-version
-                            :message "Successfully reloaded from git repository"})]
+                                 (let [conflicts (delay (get-conflicts (source.p/->ingestable snapshot {:path-filters path-filters})
+                                                                       first-import?))]
+                                   (cond-> []
+                                     (and first-import? (not force?))
+                                     (into (:first-import-conflicts @conflicts))
+
+                                     (not force-deletion?)
+                                     (into (:deletion-conflicts @conflicts)))))
+            incremental-plan   (delay (incremental-import-plan snapshot last-imported-version))]
         (cond
           merge?
           (import-merged! snapshot base-snapshot task-id sync-timestamp)
@@ -539,27 +537,29 @@
              :version snapshot-version
              :message message})
 
+          ;; Incremental fast-path: not forced, no local drift, and the change is incrementally loadable.
+          ;; Touches only changed files, so it can't wholesale-delete unsynced transforms — no conflict scan,
+          ;; and only the cheap O(changes) diff is computed (never the full-tree get-conflicts read).
+          (and (not force?) (not (remote-sync.object/dirty?)) (not= incremental-not-possible @incremental-plan))
+          (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)
+
           (seq @blocking-conflicts)
           (let [message (format "Skipping import: snapshot version %s contains conflicts use force to override" snapshot-version)]
             (log/info message)
             {:status :conflict
              :version snapshot-version
-             :conflicts (into #{} (map :category) @blocking-conflicts)  ; Backward compat: set of category names
+             :conflicts (into #{} (map :category) @blocking-conflicts) ; Backward compat: set of category names
              :conflict-details @blocking-conflicts
              :message message})
 
-          force?
-          (full-import!)
-
-          (remote-sync.object/dirty?)
-          (full-import!)
-
-          (= incremental-not-possible @incremental-plan)
-          (full-import!)
-
-          ;; Subsequent import: incremental fast-path
+          ;; No blocking conflicts: do the full reload.
           :else
-          (incremental-load-snapshot! @incremental-plan snapshot-version task-id sync-timestamp :finalize! finalize!)))
+          (do
+            (load-snapshot! snapshot task-id sync-timestamp :finalize! finalize!)
+            (log/info "Successfully reloaded entities from git repository")
+            {:status :success
+             :version snapshot-version
+             :message "Successfully reloaded from git repository"})))
       (catch Exception e
         ;; A cancellation isn't a failure: log it and return nil. Otherwise log the error, count it, and
         ;; return a user-friendly :error result.
