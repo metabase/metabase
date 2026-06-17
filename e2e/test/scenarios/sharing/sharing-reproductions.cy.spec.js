@@ -1053,7 +1053,8 @@ describe("issue 49525", { tags: "@external" }, () => {
         url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.generatedFileName}`,
         encoding: "utf8",
       }).then((response) => {
-        const csvContent = response.body;
+        // CSV exports begin with a UTF-8 BOM; strip it before asserting.
+        const csvContent = response.body.replace(/^\uFEFF/, "");
         const rows = csvContent.split("\n");
         const headers = rows[0];
         expect(headers).to.equal(

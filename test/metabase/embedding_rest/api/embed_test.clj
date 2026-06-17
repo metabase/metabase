@@ -844,10 +844,10 @@
                                                     {:name "PRICE" :fieldRef [:field (mt/id :venues :price) nil] :enabled true}]}}}]
           (let [results (client/client :get 200 (str (dashcard-url dashcard) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv results)))))
+                   (first (csv/read-csv (u/strip-bom results))))))
           (let [eid-results (client/client :get 200 (str (dashcard-url dashcard {} (dashcard->dash-eid dashcard)) "/csv"))]
             (is (= ["Name" "ID" "Category ID" "Price"]
-                   (first (csv/read-csv eid-results))))))))))
+                   (first (csv/read-csv (u/strip-bom eid-results)))))))))))
 
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "

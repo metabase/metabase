@@ -9,6 +9,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
+   [metabase.util :as u]
    [metabase.util.performance :refer [mapv]])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
@@ -70,6 +71,8 @@
       (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
                    :or   {format-rows? true
                           pivot?       false}} :data} viz-settings]
+        ;; Emit a UTF-8 BOM as the very first bytes so non-ASCII characters render correctly
+        (.write writer u/utf8-bom)
         (let [col-names            (vec (streaming.common/column-titles ordered-cols viz-settings format-rows?))
               pivot-grouping-index (pivot.postprocess/pivot-grouping-index col-names)]
           (cond

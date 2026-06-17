@@ -131,6 +131,19 @@
         (let [bytea (.toByteArray bos)]
           (rest (csv/read-csv (String. bytea))))))))
 
+(deftest csv-export-includes-utf8-bom-test
+  (testing "CSV exports start with a UTF-8 BOM so Excel renders non-ASCII chars like £ correctly"
+    (driver/with-driver :h2
+      (mt/with-metadata-provider (mt/id)
+        (with-open [bos (ByteArrayOutputStream.)
+                    os  (BufferedOutputStream. bos)]
+          (let [results-writer (qp.si/streaming-results-writer :csv os)]
+            (qp.si/begin! results-writer {:data {:ordered-cols [{:base_type :type/*}]}} {})
+            (qp.si/write-row! results-writer ["£37.65"] 0 [] {})
+            (qp.si/finish! results-writer {:row_count 1}))
+          (is (= [(unchecked-byte 0xEF) (unchecked-byte 0xBB) (unchecked-byte 0xBF)]
+                 (take 3 (seq (.toByteArray bos))))))))))
+
 (deftest lazy-seq-realized-test
   (testing "Lazy seqs within rows are automatically realized during exports (#26261)"
     (let [row (first (csv-export [[(lazy-seq [1 2 3])]]))]
