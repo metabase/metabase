@@ -96,7 +96,7 @@
         path (atom :fallback)]
     (with-redefs [impl/incremental-load-snapshot!
                   (fn [& args] (let [r (apply real args)]
-                                 (reset! path (if (= r :remote-sync/fallback) :fallback :incremental))
+                                 (reset! path (if (= r @#'impl/incremental-not-possible) :fallback :incremental))
                                  r))]
       [(import-at! src "v1" :force? false) @path])))
 
@@ -256,3 +256,22 @@
      (fn [f0]
        ;; remove the whole bench subtree (collection + both cards)
        (is (= :fallback (run-differential! f0 {})))))))
+
+;;; ------------------------------------------ First import: never incremental ------------------------------------------
+
+(deftest first-import-no-force-uses-full-load-test
+  (testing "GHY-3779: a first import (no prior version, so last-version is nil) with force? false must NOT
+            attempt the incremental fast-path. incremental-load-snapshot! assumes local state equals
+            last-version, which cannot hold on a first import — driving it with a nil base diffs against an
+            unresolvable version (a real git source NPEs on resolve(nil)). The first import must take the
+            full load-snapshot! and succeed."
+    (do-with-bench!
+     (fn [f0]
+       (let [src     (rs.test/versioned-source :trees {"v0" f0} :current "v0")
+             real    @#'impl/incremental-load-snapshot!
+             called? (atom false)]
+         (with-redefs [impl/incremental-load-snapshot! (fn [& args] (reset! called? true) (apply real args))]
+           ;; no baseline import has run, so this is the first import: first-import? is true
+           (is (= :success (:status (import-at! src "v0" :force? false))))
+           (is (not @called?)
+               "incremental-load-snapshot! must not run on a first import")))))))

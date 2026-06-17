@@ -96,7 +96,7 @@
   "Paths that changed between `from-version` and `snapshot`'s version, as
   `{:added #{} :modified #{} :deleted #{}}`, or nil when an incremental diff isn't available — the base
   can't be resolved (force-push/rebase), or the snapshot's source type doesn't support diffing. A nil
-  result signals callers to fall back to a full import."
+  result means diffing is not possible."
   [snapshot from-version]
   (when (satisfies? Diffable snapshot)
     (changed-files* snapshot from-version)))
