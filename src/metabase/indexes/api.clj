@@ -80,11 +80,13 @@
    _query-params
    {:keys [structured]} :- [:map [:structured :map]]]
   (write-check-owner! (api/check-404 (t2/select-one :model/TableIndex :id id)))
-  (t2/update! :model/TableIndex id {:structured    structured
-                                    :index_name    (index-name structured)
-                                    :status        :pending
-                                    :error_message nil})
-  (t2/select-one :model/TableIndex :id id))
+  ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
+  (t2/with-transaction [_conn]
+    (t2/update! :model/TableIndex id {:structured    structured
+                                      :index_name    (index-name structured)
+                                      :status        :pending
+                                      :error_message nil})
+    (t2/select-one :model/TableIndex :id id)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
