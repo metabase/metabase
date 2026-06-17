@@ -510,7 +510,7 @@
 
 (deftest different-filters-update-result-metadata-test
   ;; When the query itself changes (different filter baked in), result_metadata should update.
-  (mt/with-temp [:model/Card {card-id :id, :as card}
+  (mt/with-temp [:model/Card {card-id :id}
                  {:dataset_query   (mt/mbql-query orders
                                      {:aggregation [[:count] [:sum $total]]
                                       :breakout    [$product_id]})
@@ -524,7 +524,7 @@
                                            :filter      [:= $product_id product-id]})})
             (mt/as-admin
               (qp/process-query-for-card
-               card :api
+               (t2/select-one :model/Card card-id) :api
                :make-run (constantly
                           (fn [query info]
                             (qp/process-query (assoc query :info info))))))
