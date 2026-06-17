@@ -2673,12 +2673,12 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig qp.card/process-query-for-card]
-        (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                       (apply orig card-id export-format
-                                                              :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                      {:constraints constraints}))
-                                                              options))]
+      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card export-format & options]
+                                                                     (apply orig card export-format
+                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                                    {:constraints constraints}))
+                                                                            options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
