@@ -35,7 +35,10 @@
              :segment nil
              :params  {:k k}}
         q   (variants/dataset-query "top-n-other" ctx)]
-    (-> (qp/process-query q) :data :rows vec)))
+    ;; The query orders by metric desc; `pin-other-last` (run by the runner on
+    ;; the QP result) moves `(Other)` to the end. Mirror that here so the test
+    ;; exercises the same effective ordering the chart sees.
+    (-> (variants/pin-other-last "top-n-other" (qp/process-query q)) :data :rows vec)))
 
 ;; ---------------------------------------------------------------------------
 ;; Temporal-axis variants: order by date desc + not-null filter + row cap
@@ -165,13 +168,35 @@
                    :data :rows vec)))))))
 
 (deftest top-n-other-row-order-test
-  (testing "top-n-other sorts non-Other rows by metric desc and pins (Other) last,
-            even when (Other) has the largest metric value."
-    ;; Sample PRODUCTS counts: Widget 54, Gadget 53, Gizmo 51, Doohickey 42.
-    ;; With k=2 the top buckets are Widget/Gadget; (Other) rollup = Gizmo+Doohickey = 93.
-    (is (= [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]
-           (run-top-n-other {:card-id 9000001 :k 2}))))
-  (testing "when k >= distinct dim values, no (Other) row appears — just the dim values
-            sorted by metric desc."
-    (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
-           (run-top-n-other {:card-id 9000002 :k 4})))))
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "top-n-other sorts non-Other rows by metric desc and pins (Other) last,
+              even when (Other) has the largest metric value."
+      ;; Sample PRODUCTS counts: Widget 54, Gadget 53, Gizmo 51, Doohickey 42.
+      ;; With k=2 the top buckets are Widget/Gadget; (Other) rollup = Gizmo+Doohickey = 93.
+      (is (= [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]
+             (run-top-n-other {:card-id 9000001 :k 2}))))
+    (testing "when k >= distinct dim values, no (Other) row appears — just the dim values
+              sorted by metric desc."
+      (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
+             (run-top-n-other {:card-id 9000002 :k 4}))))))
+
+(deftest pin-other-last-test
+  (testing "pin-other-last stably moves the (Other) row to the end, preserving the
+            metric-desc order of the named buckets"
+    (is (= {:data {:rows [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]}}
+           (variants/pin-other-last
+            "top-n-other"
+            {:data {:rows [["(Other)" 93] ["Widget" 54] ["Gadget" 53]]}}))))
+  (testing "no (Other) row → order unchanged"
+    (is (= {:data {:rows [["Widget" 54] ["Gadget" 53]]}}
+           (variants/pin-other-last
+            "top-n-other"
+            {:data {:rows [["Widget" 54] ["Gadget" 53]]}}))))
+  (testing "no-op for other variants"
+    (is (= {:data {:rows [["(Other)" 93] ["Widget" 54]]}}
+           (variants/pin-other-last
+            "default"
+            {:data {:rows [["(Other)" 93] ["Widget" 54]]}}))))
+  (testing "no-op for empty/error results"
+    (is (= {:data {:rows []}}
+           (variants/pin-other-last "top-n-other" {:data {:rows []}})))))
