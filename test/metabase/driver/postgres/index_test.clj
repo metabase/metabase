@@ -151,9 +151,8 @@
 ;;; ----------------------------------------- fetch-table-indexes ------------------------------------------
 
 (def ^:private fetch-cases
-  "Each case creates one index on the shared `fetch-table-indexes-test` table (`:ddl` is a `format` template taking the
-  qualified table name) and the normalized map `fetch-table-indexes` must report for it, sans `:definition`. Add a row to
-  cover a new access method, column shape, or catalog wrinkle. The shared table is:
+  "Each case is one index: `:ddl` (a `format` template taking the qualified table name) and the `:expected` normalized
+  map, sans `:definition`. Add a row to cover a new access method or column shape. The shared table is:
 
     (id INT PRIMARY KEY, user_id INT, email TEXT, a INT, b INT, data JSONB, created_at TIMESTAMP)"
   [{:label    "single-column btree"
@@ -216,8 +215,8 @@
                                                 "a INT, b INT, data JSONB, created_at TIMESTAMP)")
                                            qtable)])
         (try
-          ;; one "managed" index, created through Metabase's own standalone-create path so its name is exactly what
-          ;; we would persist in an IndexRequest row; the rest are created by hand below to stand in for DBA indexes.
+          ;; one "managed" index via Metabase's own standalone-create path; the rest are hand-created below to stand
+          ;; in for DBA indexes.
           (driver/execute-raw-queries! :postgres conn-spec
                                        (driver/compile-create-index
                                         :postgres schema table

@@ -1445,10 +1445,8 @@
      :partial_predicate (.getString rs "partial_predicate")
      :definition        (.getString rs "definition")}))
 
-;; Index detail beyond what `describe-table-indexes` gives us: key columns (ordered), INCLUDE columns, the partial
-;; predicate, access method, uniqueness/primary, validity, and `pg_get_indexdef` (the catalog's own DDL, the most
-;; faithful representation of what's on disk). `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits its
-;; key columns from the trailing INCLUDE columns. A blank schema falls back to the connection's `current_schema()`.
+;; `indkey` is a 0-based `int2vector`; `indnkeyatts` (PG 11+) splits the key columns from the trailing INCLUDE
+;; columns. A blank schema falls back to the connection's `current_schema()`.
 (defmethod driver/fetch-table-indexes :postgres
   [driver database schema table]
   (sql-jdbc.execute/do-with-connection-with-options

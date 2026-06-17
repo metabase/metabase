@@ -306,18 +306,16 @@
      [(format "ALTER TABLE %s MATERIALIZE INDEX %s" target idx)]]))
 
 (defn- expr->columns
-  "Best-effort split of a ClickHouse key expression into column names. Skip-index exprs read back parenthesized
-  (`(a, b)`), sorting keys don't (`a, b`); strip the wrapper, then split. A real expression (`lower(email)`) stays one
-  element and the faithful form lives in `:definition`."
+  "Best-effort split of a ClickHouse key expression into column names: strip a surrounding paren wrapper (skip-index
+  exprs have one, sorting keys don't), then split on commas. A real expression like `lower(email)` stays one element."
   [expr]
   (when (perf/not-empty expr)
     (-> (str/replace expr #"^\(|\)$" "")
         (str/split #",")
         (->> (perf/mapv str/trim)))))
 
-;; Named skip-indexes (`system.data_skipping_indices`) join by `:name`; the inline MergeTree sorting key
-;; (`system.tables.sorting_key`) has no name, so it's emitted with `:name nil`, and none when the table is unsorted.
-;; Blank `schema` falls back to `currentDatabase()`.
+;; Named skip-indexes come from `system.data_skipping_indices`; the inline MergeTree sorting key
+;; (`system.tables.sorting_key`) is emitted with `:name nil`. Blank `schema` falls back to `currentDatabase()`.
 (defmethod driver/fetch-table-indexes :clickhouse
   [_driver database schema table]
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec database)

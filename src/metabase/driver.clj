@@ -1612,9 +1612,8 @@
      :partial_predicate nil                     ; the WHERE clause of a partial index, else nil
      :definition        \"CREATE INDEX ...\"}   ; the catalog's own DDL/clause, the most faithful representation
 
-  Callers join each index against `IndexRequest` rows to tell Metabase-managed hints from DBA-made ones. Named indexes
-  (Postgres, ClickHouse skip-indexes) join by `:name`; unnamed inline sort keys (ClickHouse `ORDER BY`, Redshift
-  `SORTKEY`) carry `:name nil` and reconcile by `:kind` + `:key_columns`. Implemented by Postgres, ClickHouse, Redshift."
+  Callers join each index against `IndexRequest` rows: named indexes by `:name`, unnamed inline sort keys (ClickHouse
+  `ORDER BY`, Redshift `SORTKEY`, with `:name nil`) by `:kind` + `:key_columns`."
   {:added "0.63.0", :arglists '([driver database schema table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

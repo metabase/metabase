@@ -248,10 +248,9 @@
           cols      (str/join ", " (map #(sql.u/quote-name driver :field (:name %)) columns))]
       (format "%s SORTKEY (%s)" style-sql cols))))
 
-;; Redshift has no secondary indexes, so the inherited Postgres `pg_index` query is wrong here. The only physical
-;; "index" is the inline, unnamed sortkey. `svv_redshift_columns.sortkey` is its 1-based position (negative marks the
-;; whole key INTERLEAVED). Emit one entry with `:name nil`, or `[]` when there's no sortkey. Blank `schema` falls back
-;; to `current_schema()`.
+;; Redshift has no secondary indexes; the only physical "index" is the inline, unnamed sortkey, so we override the
+;; inherited Postgres `pg_index` query. `svv_redshift_columns.sortkey` is the 1-based position (negative marks the
+;; whole key INTERLEAVED). Blank `schema` falls back to `current_schema()`.
 (defmethod driver/fetch-table-indexes :redshift
   [_driver database schema table]
   (let [rows (jdbc/query
