@@ -14,3 +14,11 @@ export type CollectionContentTableColumn =
 export type CollectionContentTableColumnsMap = {
   [key in CollectionContentTableColumn]: true;
 };
+
+export const DEFAULT_VISIBLE_COLUMNS_LIST: CollectionContentTableColumn[] = [
+  "type",
+  "name",
+  "lastEditedBy",
+  "lastEditedAt",
+  "actionMenu",
+];

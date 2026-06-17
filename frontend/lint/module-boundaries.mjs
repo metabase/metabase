@@ -53,7 +53,7 @@ const elements = [
   createElement({ type: "shared", name: "archive" }),
   createElement({ type: "feature", name: "auth" }),
   createElement({ type: "feature", name: "browse" }),
-  createElement({ type: "shared", name: "collections" }),
+  createElement({ type: "feature", name: "collections" }),
   createElement({ type: "shared", name: "comments" }),
   createElement({ type: "shared", name: "common" }),
   createElement({

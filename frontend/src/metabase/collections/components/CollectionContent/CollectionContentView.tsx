@@ -23,6 +23,7 @@ import {
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import { trackCollectionBookmarked } from "metabase/common/collections/analytics";
+import { getComposedDragProps } from "metabase/common/collections/dropzone";
 import type {
   CollectionOrTableIdProps,
   CreateBookmark,
@@ -54,7 +55,6 @@ import UploadOverlay from "../UploadOverlay";
 
 import { CollectionMain, CollectionRoot } from "./CollectionContent.styled";
 import { CollectionItemsTable } from "./CollectionItemsTable";
-import { getComposedDragProps } from "./utils";
 
 const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
 
