@@ -582,6 +582,30 @@ describe("scenarios > metrics > explorer", () => {
       H.miniPicker().should("contain.text", "No search results");
     });
 
+    it("should disable tables without measures when browsing database measures", () => {
+      H.MetricsViewer.goToViewer();
+
+      H.MetricsViewer.searchInput().type("Sample", { waitForAnimations: true });
+      H.miniPickerBrowseAll().click();
+      cy.findByTestId("nested-item-picker").should("be.visible");
+      H.pickEntity({ path: ["Databases", "Sample Database"] });
+
+      H.entityPickerModalItem(2, "People").should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
+      H.entityPickerModalItem(2, "Orders").should(
+        "not.have.attr",
+        "data-disabled",
+      );
+
+      H.entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Test");
+        H.entityPickerModalItem(1, "Test Measure").should("be.visible");
+      });
+    });
+
     it("should add multiple metrics one by one using metrics dropdown", () => {
       H.MetricsViewer.goToViewer();
       addMetricInputSequence([
