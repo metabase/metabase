@@ -7,7 +7,7 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import { resolveSvgVarPaint } from "./image-exports";
+import { resolveSvgVarPaint, restoreNestedSvgOverflow } from "./image-exports";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
@@ -74,6 +74,7 @@ export const saveChartImage = async ({
       }
 
       resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 

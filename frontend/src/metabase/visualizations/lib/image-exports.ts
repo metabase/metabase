@@ -73,6 +73,14 @@ export const resolveSvgVarPaint = (root: HTMLElement) => {
   });
 };
 
+// html2canvas's clone wipes inline styles off SVG nodes (empty computed cssText in Chrome),
+// dropping overflow:visible so nested label <svg>s clip their text. Restore it for export.
+export const restoreNestedSvgOverflow = (root: HTMLElement) => {
+  root.querySelectorAll<SVGElement>("svg svg").forEach((svg) => {
+    svg.style.overflow = "visible";
+  });
+};
+
 export const getDomToCanvas = async (
   element: HTMLElement,
   options: {
@@ -93,6 +101,7 @@ export const getDomToCanvas = async (
     onclone: (doc, node) => {
       options.onclone?.(doc, node);
       resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 };

@@ -14,6 +14,7 @@ import {
 import {
   fixParameterLegendOffsetForExport,
   resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
 } from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
@@ -281,6 +282,7 @@ export const saveDashboardPdf = async ({
       }
 
       resolveSvgVarPaint(node);
+      restoreNestedSvgOverflow(node);
     },
   });
 
