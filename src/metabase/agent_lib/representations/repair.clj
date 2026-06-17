@@ -490,6 +490,53 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.89 -- merge a trailing options-map into position-1 on N-ary string-search filters
+;;; (`contains` / `does-not-contain` / `starts-with` / `ends-with`).
+;;;
+;;; These four string filters are N-ary in MBQL (`[op opts field val1 val2 …]`, at least two
+;;; string args) and carry their `case-sensitive` flag in the position-1 options map (see
+;;; `metabase.lib.schema.filter/string-filter-options`). Because they're variadic, the
+;;; fixed-arity [[merge-trailing-options*]] pass deliberately skips them -- there, a trailing
+;;; map could be a legitimate arg. LLMs nonetheless append the case-sensitivity options as a
+;;; trailing element, e.g.
+;;;
+;;;   ["contains" {} <field> "@gmail.com" {"case-sensitive" false}]
+;;;
+;;; A string-search value is always a string, never a map, so a trailing map is unambiguously
+;;; misplaced options. We merge it into position-1 (trailing keys win) and drop it. Left
+;;; unrepaired, `lib.normalize` cannot normalise the clause and the query explodes downstream
+;;; with a missing-`lib/uuid` "Invalid output" error.
+;;;
+;;; Runs after [[ensure-clause-options*]] so position 1 is already a map. Idempotent: the
+;;; repaired clause's last element is a string arg, so the predicate fails on a second pass.
+;;; ============================================================
+
+(def ^:private string-search-filter-heads
+  "N-ary string-search filter heads whose options (e.g. `case-sensitive`) belong in the
+  position-1 options map. See `metabase.lib.schema.filter`."
+  #{"contains" "does-not-contain" "starts-with" "ends-with"})
+
+(defn- needs-string-filter-options-merge?
+  "True when `node` is an N-ary string-search filter whose last element is a misplaced trailing
+  options map (the args before it are string values, never maps). See the pass docstring above."
+  [node]
+  (and (clause-like? node)
+       (contains? string-search-filter-heads (nth node 0))
+       ;; head + opts + field + >=1 value + trailing options-map
+       (>= (count node) 5)
+       (map? (nth node 1))
+       (map? (peek node))))
+
+(defn- merge-string-filter-trailing-options*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (needs-string-filter-options-merge? node)
+       (merge-trailing-options node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.84 -- normalise alternative `case` / `if` argument shapes.
 ;;;
 ;;; lib's canonical shape is `[case, {}, [[pred1 then1] [pred2 then2] ...] default?]` -
@@ -2513,6 +2560,7 @@
       rewrite-temporal-bucket-aliases*
       rewrite-direction-aliases*
       merge-trailing-options*
+      merge-string-filter-trailing-options*
       wrap-iso-date-bounds*
       wrap-now-literals*
       swap-between-bounds*
