@@ -587,14 +587,14 @@
         (source/merge-and-store! models snapshot base-snapshot task-id message)]
     (case status
       :conflict
-      (let [result {:status        :conflict
-                    :version       (source.p/version snapshot)
-                    :conflicts     (mapv remote-sync.merge/conflict-label conflicts)
-                    :merge-summary summary
-                    :message       "Export blocked: the same content was changed both locally and on the remote branch."}]
+      (let [conflicts (mapv remote-sync.merge/conflict-label conflicts)]
         (log/infof "Export merge conflict on %d entit(ies): %s"
-                   (count conflicts) (str/join ", " (:conflicts result)))
-        result)
+                   (count conflicts) (str/join ", " conflicts))
+        {:status        :conflict
+         :version       (source.p/version snapshot)
+         :conflicts     conflicts
+         :merge-summary summary
+         :message       "Export blocked: the same content was changed both locally and on the remote branch."})
 
       :success
       ;; Fold-in pull: the merge brought remote changes that aren't in the local app DB yet. Load the
