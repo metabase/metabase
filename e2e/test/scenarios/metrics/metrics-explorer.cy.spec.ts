@@ -2112,6 +2112,57 @@ describe("scenarios > metrics > explorer", () => {
     });
   });
 
+  describe("Responsive viewer controls", () => {
+    const setupTimeControls = (width: number) => {
+      cy.viewport(1280, 900);
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+      H.MetricsViewer.searchInput().type("{end}, Count of orders", {
+        waitForAnimations: true,
+      });
+      H.miniPicker()
+        .findByText("Count of orders")
+        .closest("[role='menuitem']")
+        .click();
+      runFormula();
+      cy.wait("@dataset");
+      cy.viewport(width, 900);
+    };
+
+    it("shows compact controls at phone widths and keeps them interactive", () => {
+      setupTimeControls(480);
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .should("be.visible");
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .should("be.visible");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-compact-chart-controls")
+        .click();
+      H.popover().findByText("Visualization").should("be.visible");
+      H.popover().findByRole("menuitem", { name: "Bar chart" }).click();
+      H.MetricsViewer.assertVizType("Bar");
+
+      H.MetricsViewer.getMetricControls()
+        .findByTestId("metrics-viewer-x-axis-controls")
+        .click();
+      H.popover()
+        .findByRole("button", { name: "Change column" })
+        .should("be.visible")
+        .should("contain.text", "Time");
+      H.popover()
+        .findByRole("button", { name: /by month/i })
+        .should("be.visible");
+      H.popover().findByRole("button", { name: "Change column" }).click();
+      H.MetricsViewer.dimensionPickerSidebar().should("be.visible");
+      cy.get(H.POPOVER_ELEMENT).should("not.exist");
+      assertMetricControlsDoNotOverflowViewport();
+    });
+  });
+
   describe("Metric math", () => {
     beforeEach(() => {
       interceptDatasetQuery();
@@ -2241,57 +2292,6 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchBarPills().should("have.length", 2);
       H.MetricsViewer.searchBarPills().eq(0).should("contain", "123 + 123");
       H.MetricsViewer.searchBarPills().eq(1).should("contain", "123");
-    });
-  });
-
-  describe("Responsive viewer controls", () => {
-    const setupTimeControls = (width: number) => {
-      cy.viewport(1280, 900);
-      interceptDatasetQuery();
-      H.MetricsViewer.goToViewer();
-      H.MetricsViewer.searchInput().type("{end}, Count of orders", {
-        waitForAnimations: true,
-      });
-      H.miniPicker()
-        .findByText("Count of orders")
-        .closest("[role='menuitem']")
-        .click();
-      runFormula();
-      cy.wait("@dataset");
-      cy.viewport(width, 900);
-    };
-
-    it("shows compact controls at phone widths and keeps them interactive", () => {
-      setupTimeControls(480);
-
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-compact-chart-controls")
-        .should("be.visible");
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-x-axis-controls")
-        .should("be.visible");
-
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-compact-chart-controls")
-        .click();
-      H.popover().findByText("Visualization").should("be.visible");
-      H.popover().findByRole("menuitem", { name: "Bar chart" }).click();
-      H.MetricsViewer.assertVizType("Bar");
-
-      H.MetricsViewer.getMetricControls()
-        .findByTestId("metrics-viewer-x-axis-controls")
-        .click();
-      H.popover()
-        .findByRole("button", { name: "Change column" })
-        .should("be.visible")
-        .should("contain.text", "Time");
-      H.popover()
-        .findByRole("button", { name: /by month/i })
-        .should("be.visible");
-      H.popover().findByRole("button", { name: "Change column" }).click();
-      H.MetricsViewer.dimensionPickerSidebar().should("be.visible");
-      cy.get(H.POPOVER_ELEMENT).should("not.exist");
-      assertMetricControlsDoNotOverflowViewport();
     });
   });
 });
