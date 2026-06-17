@@ -6,12 +6,12 @@ import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
-import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
+import { OverlayStackProvider } from "../../overlays/overlay-stack";
 import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 

@@ -1,70 +1,47 @@
 import {
-  type ReactNode,
-  createContext,
-  useCallback,
   useContext,
   useEffect,
   useId,
-  useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { useLatest } from "react-use";
 
-type OverlayStackContextValue = {
-  stack: string[];
-  push: (id: string) => void;
-  remove: (id: string) => void;
-};
+import { OverlayStackContext } from "./overlay-stack-provider";
 
-const OverlayStackContext = createContext<OverlayStackContextValue | null>(
-  null,
-);
-
-const useOverlayStackContext = () => {
-  const context = useContext(OverlayStackContext);
-  if (!context) {
+const useOverlayStackStore = () => {
+  const store = useContext(OverlayStackContext);
+  if (!store) {
     throw new Error(
-      "useOverlayStackContext must be used within an OverlayStackProvider",
+      "Overlay components must be rendered within an OverlayStackProvider",
     );
   }
-  return context;
-};
-
-export const OverlayStackProvider = ({ children }: { children: ReactNode }) => {
-  const [stack, setStack] = useState<string[]>([]);
-
-  const push = useCallback((id: string) => {
-    setStack((current) => [...current, id]);
-  }, []);
-
-  const remove = useCallback((id: string) => {
-    setStack((current) => current.filter((stackId) => stackId !== id));
-  }, []);
-
-  const value = useMemo(() => ({ stack, push, remove }), [stack, push, remove]);
-
-  return (
-    <OverlayStackContext.Provider value={value}>
-      {children}
-    </OverlayStackContext.Provider>
-  );
+  return store;
 };
 
 const useIsTopmost = (opened: boolean) => {
-  const { stack, push, remove } = useOverlayStackContext();
   const id = useId();
+  const store = useOverlayStackStore();
+  const currentStack = useSyncExternalStore(store.subscribe, store.getStack);
 
   useEffect(() => {
     if (!opened) {
       return;
     }
-    push(id);
-    return () => remove(id);
-  }, [opened, id, push, remove]);
+    store.push(id);
+    return () => store.remove(id);
+  }, [opened, id, store]);
 
-  return opened && stack.at(-1) === id;
+  return opened && currentStack.at(-1) === id;
 };
 
+// Overlays dismiss on different pointer phases: menus/popovers close on the
+// `mousedown` (pointer down) that lands outside, while modals close on the
+// following `click`. By the time a modal's click fires, the menu above it has
+// already closed and the modal has become topmost — so gating click-outside on
+// the *current* topmost would let the click leak through and close the modal.
+// We instead snapshot topmost-ness at pointer down (before any closing happens)
+// and gate the click against that snapshot.
 const useIsTopmostAtPointerDown = (isTopmost: boolean, opened: boolean) => {
   const isTopmostRef = useLatest(isTopmost);
   const [snapshot, setSnapshot] = useState(isTopmost);
