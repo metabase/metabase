@@ -494,6 +494,6 @@ describe("convertParametersToMbql", () => {
     });
 
     expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
-    expect(Lib.filters(questionWithFilters.query())).toHaveLength(1);
+    expect(Lib.filters(questionWithFilters.query(), -1)).toHaveLength(1);
   });
 });

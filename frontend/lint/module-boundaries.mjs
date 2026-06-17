@@ -156,6 +156,8 @@ const elements = [
     "frontend/src/metabase/app/selectors.ts",
     "frontend/src/metabase/app/selectors.unit.spec.ts",
     "frontend/src/metabase/reducers-main.ts",
+    "frontend/src/metabase/reducers-common.ts",
+    "frontend/src/metabase/reducers-public.ts",
     "frontend/src/metabase/routes.tsx",
     "frontend/src/metabase/routes-embed.tsx",
     "frontend/src/metabase/route-guards.tsx",

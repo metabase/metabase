@@ -1,8 +1,11 @@
 import type { Middleware, Reducer } from "@reduxjs/toolkit";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { Api } from "metabase/api";
+import { commonReducers } from "metabase/reducers-common";
 import { mainReducers } from "metabase/reducers-main";
+import { publicReducers } from "metabase/reducers-public";
 import { reducer as entitiesReducer } from "metabase/redux/entities";
 import type { State } from "metabase/redux/store";
 // Re-exported from the test-support tier so specs can build a main-app store
@@ -53,4 +56,43 @@ export function getMainStore(
     initialState,
     middleware,
   );
+}
+
+function getManifestStore(
+  reducers: Record<string, Reducer<any, any, any>>,
+  initialState: Partial<State> = {},
+  middleware: Middleware[] = [Api.middleware],
+) {
+  return getStore(
+    reducers,
+    _.pick(initialState, ...Object.keys(reducers)) as Partial<State>,
+    middleware,
+  );
+}
+
+/**
+ * Build a test/Storybook store wired with the reducers shared between the main
+ * and public apps. Use this instead of importing `commonReducers` from
+ * `metabase/reducers-common` into stories, which would cross module boundaries.
+ */
+export function getCommonStore(
+  initialState: Partial<State> = {},
+  middleware: Middleware[] = [Api.middleware],
+) {
+  return getManifestStore(commonReducers, initialState, middleware);
+}
+
+/**
+ * Build a test/Storybook store wired with the public-app reducers. Use this
+ * instead of importing `publicReducers` from `metabase/reducers-public` into
+ * stories, which would cross module boundaries.
+ *
+ * `publicReducers` mirrors `commonReducers` today, but stays a distinct entry
+ * point so public stories keep their own source of truth.
+ */
+export function getPublicStore(
+  initialState: Partial<State> = {},
+  middleware: Middleware[] = [Api.middleware],
+) {
+  return getManifestStore(publicReducers, initialState, middleware);
 }
