@@ -4,6 +4,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import cx from "classnames";
+import Color from "color";
 import type React from "react";
 import {
   type Ref,
@@ -499,8 +500,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           }
           if (isPercent && typeof value === "number" && isFinite(value)) {
             const clamped = Math.max(0, Math.min(1, value));
-            const opacity = Math.round(clamped * 100);
-            return `color-mix(in srgb, ${color("brand")} ${opacity}%, white)`;
+            return Color(color("brand"))
+              .mix(Color("white"), 1 - clamped)
+              .hex();
           }
           return tableTheme?.cell?.backgroundColor;
         },
