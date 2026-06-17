@@ -6,7 +6,7 @@ import { getTextColorForBackground } from "metabase/ui/colors";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type { RenderingContext } from "metabase/visualizations/types";
 
-import { getTreemapColors } from "../model/colors";
+import { getTreemapColors, getTreemapLeafColor } from "../model/colors";
 import { getTreemapNodeKey } from "../model/data";
 import { getTreemapPercentOfTotalFormatter } from "../model/formatters";
 import type { ParentLabelLayout, TreemapLabelLayout } from "../model/labels";
@@ -93,7 +93,6 @@ export function getTreemapChartOption(config: TreemapChartOptionConfig): {
 
   const groupLevel: NonNullable<TreemapSeriesOption["levels"]>[number] = {
     itemStyle: { borderWidth: 0, gapWidth: 1 },
-    colorSaturation: [0.3, 0.5],
     upperLabel: groupUpperLabel,
   };
 
@@ -227,6 +226,10 @@ function toGroupSeriesNode({
     };
   }
 
+  const childValues = node.children.map((child) => child.value);
+  const minChildValue = Math.min(...childValues);
+  const maxChildValue = Math.max(...childValues);
+
   return {
     ...groupNode,
     children: node.children.map((leaf, leafIndex) =>
@@ -236,7 +239,12 @@ function toGroupSeriesNode({
         parentValue: node.value,
         rootIndex,
         leafIndex,
-        backgroundColor: groupColor,
+        color: getTreemapLeafColor(
+          groupColor,
+          leaf.value,
+          minChildValue,
+          maxChildValue,
+        ),
       }),
     ),
   };
@@ -248,14 +256,14 @@ function toLeafSeriesNode({
   parentValue,
   rootIndex,
   leafIndex,
-  backgroundColor,
+  color,
 }: {
   config: TreemapSeriesBuildConfig;
   leaf: TreemapNode;
   parentValue: number;
   rootIndex: number;
   leafIndex: number;
-  backgroundColor: string | undefined;
+  color: string | undefined;
 }): TreemapSeriesNode {
   const leafId = getTreemapNodeId(rootIndex, leafIndex);
 
@@ -265,13 +273,14 @@ function toLeafSeriesNode({
     value: leaf.value,
     rawName: leaf.rawName,
     rowIndices: leaf.rowIndices,
+    itemStyle: { color },
     ...getTileLabelOverride({
       config,
       id: leafId,
       value: leaf.value,
       displayName: leaf.displayName,
       parentValue,
-      backgroundColor,
+      backgroundColor: color,
     }),
   };
 }
