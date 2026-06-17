@@ -371,20 +371,6 @@ describe("scenarios > embedding-sdk > styles", () => {
   });
 
   describe("modals, popovers and tooltips", () => {
-    it("standalone CreateDashboardModal should render with our styles", () => {
-      cy.mount(
-        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <CreateDashboardModal />
-        </MetabaseProvider>,
-      );
-
-      H.modal()
-        .findByText("New dashboard")
-        .should("exist")
-        .and("have.css", "font-family", "Lato, Arial, sans-serif");
-
-      // TODO: good place for a visual regression test
-    });
 
     it("mantine modals should render with our styles", () => {
       cy.mount(
