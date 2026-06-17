@@ -9,7 +9,7 @@ import { isDefaultGroup } from "metabase/admin/utils/groups";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import type { GroupId, GroupInfo } from "metabase-types/api";
 
 import AddMappingRow from "./AddMappingRow";
@@ -164,56 +164,52 @@ export function GroupMappingsWidgetView({
           </About>
         </Header>
 
-        <div>
-          <div>
-            {!showAddRow && (
-              <Button
-                className={CS.floatRight}
-                variant="filled"
-                size="sm"
-                mr="md"
-                mb={-40}
-                onClick={handleShowAddRow}
-              >
-                {t`New mapping`}
-              </Button>
+        <Box pos="relative">
+          {!showAddRow && (
+            <Button
+              pos="absolute"
+              top={0}
+              right={0}
+              mr="md"
+              variant="filled"
+              size="sm"
+              onClick={handleShowAddRow}
+            >
+              {t`New mapping`}
+            </Button>
+          )}
+          <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
+            {showAddRow && (
+              <AddMappingRow
+                mappings={mappings}
+                placeholder={groupPlaceholder}
+                onCancel={handleHideAddRow}
+                onAdd={handleAddMapping}
+              />
             )}
-            <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
-              {showAddRow && (
-                <AddMappingRow
-                  mappings={mappings}
-                  placeholder={groupPlaceholder}
-                  onCancel={handleHideAddRow}
-                  onAdd={handleAddMapping}
+            {Object.keys(mappings).length === 0 && !showAddRow && (
+              <tr>
+                <td>&nbsp;</td>
+                <td> {noMappingText(mappingSetting, groupSyncSwitchValue)}</td>
+                <td>&nbsp;</td>
+              </tr>
+            )}
+            {Object.entries(mappings).map(([name, selectedGroupIds]) => {
+              return groups?.length > 0 ? (
+                <MappingRow
+                  key={name}
+                  name={name}
+                  groups={groups}
+                  selectedGroupIds={selectedGroupIds}
+                  clearGroupMember={clearGroupMember}
+                  deleteGroup={deleteGroup}
+                  onChange={handleChangeMapping(name)}
+                  onDeleteMapping={handleDeleteMapping}
                 />
-              )}
-              {Object.keys(mappings).length === 0 && !showAddRow && (
-                <tr>
-                  <td>&nbsp;</td>
-                  <td>
-                    {" "}
-                    {noMappingText(mappingSetting, groupSyncSwitchValue)}
-                  </td>
-                  <td>&nbsp;</td>
-                </tr>
-              )}
-              {Object.entries(mappings).map(([name, selectedGroupIds]) => {
-                return groups?.length > 0 ? (
-                  <MappingRow
-                    key={name}
-                    name={name}
-                    groups={groups}
-                    selectedGroupIds={selectedGroupIds}
-                    clearGroupMember={clearGroupMember}
-                    deleteGroup={deleteGroup}
-                    onChange={handleChangeMapping(name)}
-                    onDeleteMapping={handleDeleteMapping}
-                  />
-                ) : null;
-              })}
-            </AdminContentTable>
-          </div>
-        </div>
+              ) : null;
+            })}
+          </AdminContentTable>
+        </Box>
       </Root>
       {saveError && (
         <div className={cx(CS.textError, CS.textBold, CS.m1)}>{saveError}</div>
