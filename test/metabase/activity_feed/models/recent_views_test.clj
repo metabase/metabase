@@ -1,4 +1,4 @@
-(ns metabase.activity-feed.models.recent-views-test
+(ns ^:synchronous metabase.activity-feed.models.recent-views-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
