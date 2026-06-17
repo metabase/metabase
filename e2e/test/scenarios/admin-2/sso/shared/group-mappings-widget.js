@@ -49,16 +49,22 @@ export function checkGroupConsistencyAfterDeletingMappings(
 
   deleteMappingWithGroups("cn=People2");
 
-  // cn=People1 will have Admin and nosql as groups
-  cy.findByText("1 other group");
-
-  // cn=People3 will have readonly as group
-  cy.findByText("readonly");
+  // Scope to the table: the group dropdown is portaled and stays mounted
+  // (hidden) after being opened, so a group name can also linger as an
+  // off-screen option outside the table.
+  cy.findByTestId("admin-content-table").within(() => {
+    // cn=People1 will have Admin and nosql as groups
+    cy.findByText("1 other group");
+    // cn=People3 will have readonly as group
+    cy.findByText("readonly");
+  });
 
   // Ensure mappings are as expected after a page reload
   cy.visit("/admin/settings/authentication/" + authenticationMethod);
-  cy.findByText("1 other group");
-  cy.findByText("readonly");
+  cy.findByTestId("admin-content-table").within(() => {
+    cy.findByText("1 other group");
+    cy.findByText("readonly");
+  });
 }
 
 const deleteMappingWithGroups = (mappingName) => {
