@@ -307,6 +307,19 @@
       (for [transform transforms]
         (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
 
+(mi/define-batched-hydration-method indexes
+  :indexes
+  "Fetch the table indexes that belong to each transform"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          idx-mappings  (group-by :transform_id
+                                  (t2/select :model/TableIndex
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:index_name :asc]]}))]
+      (for [transform transforms]
+        (assoc transform :indexes (get idx-mappings (u/the-id transform) []))))))
+
 (mi/define-batched-hydration-method table-with-db-and-fields
   :table-with-db-and-fields
   "Fetch tables with their fields. The tables show up under the `:table` property."
@@ -368,7 +381,8 @@
                                                                                         (m/update-existing :database_id import-maybe-int-database-fk)))))))))}
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
-               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))}})
+               :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
 
 (defmethod serdes/dependencies "Transform"
   [{:keys [collection_id source tags source_database_id]}]

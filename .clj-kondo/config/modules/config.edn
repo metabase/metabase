@@ -1044,6 +1044,15 @@
    :model-exports #{:model/ModelIndex :model/ModelIndexValue}
    :model-imports #{:model/Card :model/Collection}}
 
+  indexes
+  {:team "Gadget"
+   :api  #{metabase.indexes.api}
+   :uses #{api
+           models
+           util}
+   :model-exports #{:model/TableIndex}
+   :model-imports #{:model/Transform}}
+
   initialization-status
   {:team "UX West"
    :api  #{metabase.initialization-status.core}
@@ -2337,6 +2346,7 @@
                     :model/Database
                     :model/Field
                     :model/Table
+                    :model/TableIndex
                     :model/User}}
 
   transforms-base

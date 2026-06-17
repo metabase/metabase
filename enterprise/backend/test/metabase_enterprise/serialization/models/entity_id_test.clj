@@ -118,6 +118,7 @@
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
     :model/SupportAccessGrantLog
+    :model/TableIndex
     :model/TaskHistory
     :model/TaskRun
     :model/Tenant
