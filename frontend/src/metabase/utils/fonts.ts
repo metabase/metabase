@@ -12,6 +12,7 @@ export type MetabaseFontFamily =
   | "PT Sans"
   | "Poppins"
   | "PT Serif"
+  | "JetBrains Mono"
   | "Roboto Mono"
   | "Roboto Condensed"
   | "Playfair Display"
@@ -53,6 +54,7 @@ export const PREDEFINED_FONT_FAMILIES_FALLBACK_MAP: Record<
   "PT Sans": '"Lato", sans-serif',
   Poppins: '"Montserrat", sans-serif',
   "PT Serif": '"Lora", serif',
+  "JetBrains Mono": "monospace",
   "Roboto Mono": "monospace",
   "Roboto Condensed": "sans-serif",
   "Playfair Display": "serif",

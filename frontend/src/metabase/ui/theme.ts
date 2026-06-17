@@ -148,7 +148,7 @@ export const getThemeOverrides = (
     },
   },
   fontFamily: "var(--mb-default-font-family)",
-  fontFamilyMonospace: "Monaco, monospace",
+  fontFamilyMonospace: '"JetBrains Mono", monospace',
   components: {
     ...accordionOverrides,
     ...actionIconOverrides,

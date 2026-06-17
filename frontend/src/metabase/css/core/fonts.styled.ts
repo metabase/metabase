@@ -69,6 +69,54 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
           url("${basePath}/Lato/lato-v16-latin-900.svg#Lato") format("svg"); /* Legacy iOS */
     }
 
+    /* lato-500 - latin */
+    @font-face {
+      font-family: Lato;
+      font-style: normal;
+      font-weight: 500;
+      src:
+        local("Lato Medium"),
+        local("Lato-Medium"),
+        url("${basePath}/Lato/Lato-Medium.woff2") format("woff2");
+      font-display: swap;
+    }
+
+    /* lato-500-italic - latin */
+    @font-face {
+      font-family: Lato;
+      font-style: italic;
+      font-weight: 500;
+      src:
+        local("Lato Medium Italic"),
+        local("Lato-MediumItalic"),
+        url("${basePath}/Lato/Lato-MediumItalic.woff2") format("woff2");
+      font-display: swap;
+    }
+
+    /* lato-600 - latin */
+    @font-face {
+      font-family: Lato;
+      font-style: normal;
+      font-weight: 600;
+      src:
+        local("Lato Semibold"),
+        local("Lato-Semibold"),
+        url("${basePath}/Lato/Lato-Semibold.woff2") format("woff2");
+      font-display: swap;
+    }
+
+    /* lato-600-italic - latin */
+    @font-face {
+      font-family: Lato;
+      font-style: italic;
+      font-weight: 600;
+      src:
+        local("Lato Semibold Italic"),
+        local("Lato-SemiboldItalic"),
+        url("${basePath}/Lato/Lato-SemiboldItalic.woff2") format("woff2");
+      font-display: swap;
+    }
+
     /* PT Serif 400 */
     @font-face {
       font-family: "PT Serif";
@@ -508,6 +556,30 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
         local("RobotoMono-Regular"),
         url("${basePath}/Roboto_Mono/RobotoMono-Regular.woff2") format("woff2");
       font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono"),
+        local("JetBrainsMono-Regular"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Regular.woff2")
+          format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono Bold"),
+        local("JetBrainsMono-Bold"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Bold.woff2")
+          format("woff2");
+      font-weight: bold;
       font-style: normal;
       font-display: swap;
     }
