@@ -30,8 +30,6 @@
    [:database {:optional true} :int]
    [:schema {:optional true} [:maybe :string]]
    [:name :string]
-   ;; Indexes to apply on every full run (see [[metabase.driver/compile-create-index]]). Not persisted here:
-   ;; hydrated onto the target before a run by `metabase.transforms.execute/hydrate-transform-indexes`.
    [:indexes {:optional true} [:sequential :map]]])
 
 (mr/def ::transform

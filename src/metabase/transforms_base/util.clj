@@ -563,27 +563,25 @@
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
   table creation, so they're filtered out here and passing the full list is safe. Each create uses `:if-not-exists`,
   so re-applying is a no-op. Throws on failure."
-  [database target]
-  (when-let [indexes (not-empty (:indexes target))]
-    (let [driver     (:engine database)
-          methods    (driver/supported-index-methods driver database)
-          standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
-      (when (seq standalone)
-        (let [conn-spec (driver/connection-spec driver database)
-              schema    (:schema target)
-              table     (:name target)]
-          (doseq [index standalone]
-            (driver/execute-raw-queries! driver conn-spec
-                                         (driver/compile-create-index driver schema table
-                                                                      (assoc index :if-not-exists true)))))))))
+  [database {:keys [indexes schema] table-name :name}]
+  (let [driver     (:engine database)
+        methods    (driver/supported-index-methods driver database)
+        standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
+    (when (seq standalone)
+      (let [conn-spec (driver/connection-spec driver database)]
+        (doseq [index standalone]
+          (driver/execute-raw-queries! driver conn-spec
+                                       (driver/compile-create-index driver schema table-name
+                                                                    (assoc index :if-not-exists true))))))))
 
 (defn apply-target-indexes!
   "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
   recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
-  failure fails the run record, not just `execute!`."
+  failure fails the run record."
   [transform]
-  (when (or (= :table (keyword (:type (:target transform))))
-            (full-incremental-run? transform))
+  (when (and (seq (:indexes (:target transform)))
+             (or (= :table (keyword (:type (:target transform))))
+                 (full-incremental-run? transform)))
     (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (:target transform)))))
 

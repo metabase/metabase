@@ -123,7 +123,6 @@
                              ;; `metabase.driver.sql.query-processor/compile-transform :sql`.
                              :output-db (:db target)
                              :output-table (transforms-base.u/qualified-table-name driver target)
-                             ;; `compile-transform` inlines whichever of these it handles into the CTAS.
                              :indexes (:indexes target)}
           opts (transform-opts transform-details)
           features (transforms-base.u/required-database-features transform)]
