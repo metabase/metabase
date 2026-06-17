@@ -166,6 +166,34 @@
             (testing "the new database (not the old one) is what gets synced, after the swap commits"
               (is (= [(:id new-db)] @synced-db-ids)))))))))
 
+(deftest replace-sample-database-cascades-to-synced-schema-test
+  (testing "On H2 -> SQLite replacement, deleting the old sample DB also removes its synced schema (Tables, Fields,
+           Dimensions) and dashboard tabs - i.e. every entity belonging to the old H2 sample database is gone"
+    (mt/with-temp
+      [:model/Database  old-sample {:engine :h2, :is_sample true, :details {:db "mem:old-sample"}}
+       :model/Table     table      {:db_id (:id old-sample)}
+       :model/Field     field      {:table_id (:id table)}
+       :model/Dimension dimension  {:field_id (:id field)}
+       :model/Card      sample-card {:database_id (:id old-sample)}
+       :model/Dashboard sample-dash {}
+       :model/DashboardTab tab     {:dashboard_id (:id sample-dash)}
+       :model/DashboardCard _ {:dashboard_id (:id sample-dash), :card_id (:id sample-card)}
+       :model/Collection examples  {:name "Examples", :is_sample true}]
+      (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [db] db)]
+        (#'sample-data/update-sample-database-if-needed! old-sample))
+      (testing "the old sample DB is deleted"
+        (is (not (t2/exists? :model/Database :id (:id old-sample)))))
+      (testing "its synced schema cascades away"
+        (is (not (t2/exists? :model/Table :id (:id table))))
+        (is (not (t2/exists? :model/Field :id (:id field))))
+        (is (not (t2/exists? :model/Dimension :id (:id dimension)))))
+      (testing "its card and the dashboard emptied by the card's removal are deleted, along with the dashboard's tabs"
+        (is (not (t2/exists? :model/Card :id (:id sample-card))))
+        (is (not (t2/exists? :model/Dashboard :id (:id sample-dash))))
+        (is (not (t2/exists? :model/DashboardTab :id (:id tab)))))
+      (testing "the old Example collection is deleted"
+        (is (not (t2/exists? :model/Collection :id (:id examples))))))))
+
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
     (mt/with-temp-empty-app-db [_conn :h2]
