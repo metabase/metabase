@@ -5,6 +5,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { flushSync } from "react-dom";
 import { useLatest } from "react-use";
 
 import { OverlayStackContext } from "./overlay-stack-provider";
@@ -50,7 +51,13 @@ const useIsTopmostAtPointerDown = (isTopmost: boolean, opened: boolean) => {
     if (!opened) {
       return;
     }
-    const takeSnapshot = () => setSnapshot(isTopmostRef.current);
+    // The snapshot is committed with flushSync so the re-render lands synchronously
+    // within the pointer-down handler, before the `click` fires. A real user leaves
+    // time between the two events for React to re-render on its own, but Cypress
+    // dispatches pointerdown→click in one synchronous burst, so without flushSync
+    // the click would still read the stale snapshot and skip the close.
+    const takeSnapshot = () =>
+      flushSync(() => setSnapshot(isTopmostRef.current));
     document.addEventListener("pointerdown", takeSnapshot, true);
     return () =>
       document.removeEventListener("pointerdown", takeSnapshot, true);
