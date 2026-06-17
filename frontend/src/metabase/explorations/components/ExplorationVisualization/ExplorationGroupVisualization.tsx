@@ -89,7 +89,7 @@ function ExplorationGroupVisualizationBody(
   props: ExplorationGroupVisualizationProps,
 ) {
   const { group, queries } = props;
-  const groupName = group.name ?? t`Group`;
+  const groupName = queries[0]?.name ?? group.name ?? t`Group`;
 
   if (queries.length === 0) {
     // Defensive: a `page` group should always carry queries, but if BE
@@ -161,12 +161,13 @@ function ExplorationGroupVisualizationBody(
     );
   }
 
-  return <ExplorationGroupVisualizationChart {...props} />;
+  return (
+    <ExplorationGroupVisualizationChart {...props} groupName={groupName} />
+  );
 }
 
 function ExplorationGroupVisualizationChart({
   explorationId,
-  group,
   queries,
   explorationThread,
   availableTimelines,
@@ -174,7 +175,8 @@ function ExplorationGroupVisualizationChart({
   onSelectTimelineId,
   interestingTimelineIds,
   locationSearch,
-}: ExplorationGroupVisualizationProps) {
+  groupName,
+}: ExplorationGroupVisualizationProps & { groupName: string }) {
   // One RTKQ hook per query. ESLint complains about hooks-in-a-loop;
   // safe here because the parent keys this component on `group.id`, so
   // `queries` length is stable for the lifetime of a single mount.
@@ -185,8 +187,6 @@ function ExplorationGroupVisualizationChart({
     useGetExplorationQueryResultQuery(q.id),
   );
   /* eslint-enable react-hooks/rules-of-hooks */
-
-  const groupName = group.name ?? t`Group`;
 
   // Extract the identity-stable dataset references so they can be
   // individually tracked in the useMemo dependency array below.

@@ -151,6 +151,22 @@
           master-snapshot (source.p/snapshot master)]
       (is (= (git/commit-sha master "master") (:version master-snapshot))))))
 
+(deftest commit-sha-missing-object-is-nil-test
+  (testing "GHY-3917: a full SHA whose object isn't in the clone resolves to nil, not a phantom id"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"})
+            ;; JGit parses any complete 40-hex string into an ObjectId without a presence check; the
+            ;; existence guard is what turns a base commit orphaned by an upstream force-push/rebase into
+            ;; nil here instead of a later MissingObjectException when its tree is read.
+            absent-sha "0000000000000000000000000000000000000000"]
+        (is (some? (git/commit-sha master "master"))
+            "a real ref still resolves")
+        (is (nil? (git/commit-sha master absent-sha))
+            "a syntactically valid but absent full SHA resolves to nil")
+        (is (nil? (source.p/snapshot-at master absent-sha))
+            "snapshot-at returns nil for the orphaned base, so callers take the history-rewritten path")))))
+
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[master remote] (init-source! "master" remote-dir

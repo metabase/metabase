@@ -583,8 +583,8 @@
           (testing "We continue using our cached references for some time"
             (is (= active-before (active-table-after 100)))
             (is (= active-before (active-table-after (/ period 2)))))
-          (testing "But eventually we refresh")
-          (is (= active-after (active-table-after period))))
+          (testing "But eventually we refresh"
+            (is (= active-after (active-table-after period)))))
         (finally
           (t2/delete! :model/SearchIndexMetadata :version "auto-refresh-test")
           (#'search.index/delete-obsolete-tables!))))))

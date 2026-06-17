@@ -488,9 +488,6 @@ function ExplorationTreeItem({
   const groupData = item.data.type === "group" ? item.data : null;
   const isError = groupData?.status === "error";
   const isLoading = isLoadingStatus(item.data?.status);
-  const errorMessage = isError
-    ? groupData.queries.find((query) => query.status === "error")?.error_message
-    : null;
   const isInteresting =
     !isError &&
     (groupData?.interestingness_score ?? 0) >=
@@ -523,7 +520,11 @@ function ExplorationTreeItem({
       >
         {item.name}
       </Ellipsified>
-      {isError && <ExplorationErrorMarker message={errorMessage} />}
+      {isError && (
+        <ExplorationErrorMarker
+          message={t`We couldn't generate one or more of these charts.`}
+        />
+      )}
       {isInteresting && <PotentiallyInterestingMarker />}
     </ForwardRefLink>
   );

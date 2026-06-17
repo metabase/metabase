@@ -362,10 +362,12 @@
   flip the `ExplorationQuery` to `done`. `started` is the `OffsetDateTime` to stamp as the row's
   `:started_at`."
   [row ^OffsetDateTime started]
-  (let [qp-result    (qp/process-query
-                      (qp/userland-query-with-default-constraints
-                       (:dataset_query row)
-                       {:context :exploration}))
+  (let [qp-result    (qp.variants/pin-other-last
+                      (:query_type row)
+                      (qp/process-query
+                       (qp/userland-query-with-default-constraints
+                        (:dataset_query row)
+                        {:context :exploration})))
         bytes        (serialize-result qp-result)
         chart-config (safe-chart-config row qp-result)
         stats        (safe-deep-stats row chart-config)

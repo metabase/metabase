@@ -71,10 +71,7 @@ import { getDatasetError } from "metabase/visualizations/lib/errors";
 import { isTimeseries } from "metabase/visualizations/lib/renderer_utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import Question from "metabase-lib/v1/Question";
-import type {
-  CardDisplayType,
-  StoredResultSort,
-} from "metabase-types/api";
+import type { CardDisplayType, StoredResultSort } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
 import {

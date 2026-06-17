@@ -1484,6 +1484,7 @@
  [lib.metric
   available-metrics]
  [lib.limit
+  aggregated-output?
   current-limit
   disable-default-limit
   limit

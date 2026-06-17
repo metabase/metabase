@@ -127,6 +127,7 @@
     :model/SourceMetricDaily
     :model/SourceSegmentCompositeDaily
     :model/SourceSegmentDaily
+    :model/SsoRelayState
     :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TaskRun

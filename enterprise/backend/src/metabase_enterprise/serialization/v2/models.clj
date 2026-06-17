@@ -149,6 +149,7 @@
    "SourceMetricDaily"
    "SourceSegmentCompositeDaily"
    "SourceSegmentDaily"
+   "SsoRelayState"
    "StoredResult"
    "StoredResultUse"
    "SupportAccessGrantLog"

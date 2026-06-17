@@ -5,14 +5,12 @@ import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
-import {
-  buildColorScale,
-  getColorplethColorScale,
-} from "metabase/visualizations/components/ChoroplethMap";
+import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
 import {
   formatBreakoutValue,
   getSeriesVizSettingsKey,
 } from "metabase/visualizations/echarts/cartesian/model/series";
+import { buildColorScale } from "metabase/visualizations/lib/choropleth";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
@@ -800,7 +798,12 @@ export function getHeatMapSeries({
   let maxValue: number | undefined;
   series.forEach((s, i) => {
     const segmentName = legendItems[i].name;
-    for (const row of s.data.rows) {
+    // the backend returns rows sorted by the metric value
+    // but for numeric dimensions in the heat map, we should sort by the dimension value
+    const seriesRows = isNumeric(s.data.cols[0])
+      ? s.data.rows.toSorted((a, b) => Number(a[0]) - Number(b[0]))
+      : s.data.rows;
+    for (const row of seriesRows) {
       rows.push([...row, segmentName]);
       const value = row[1];
       if (typeof value !== "number") {

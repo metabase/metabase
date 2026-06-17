@@ -104,7 +104,7 @@
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
                        (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
-                       (map #(update % :last_run transforms-base.u/localize-run-timestamps))
+                       (map #(update % :last_run transforms-base.u/present-run))
                        (map transforms.u/add-source-readable)))))))
 
 (defn get-transform
@@ -114,7 +114,7 @@
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
-        (u/update-some :last_run transforms-base.u/localize-run-timestamps)
+        (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 

@@ -1,6 +1,6 @@
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorState } from "@tiptap/pm/state";
-import type { Editor, JSONContent, NodeViewProps } from "@tiptap/react";
+import type { Editor, JSONContent } from "@tiptap/react";
 
 import { NODES_WITH_ID } from "metabase/rich_text_editing/tiptap/extensions/NodeIds/utils";
 
@@ -41,24 +41,6 @@ export function updateCardEmbedNodeId(
   if (tr.docChanged) {
     editorInstance.view.dispatch(tr);
   }
-}
-
-export function isTopLevel({
-  editor,
-  getPos,
-}: Pick<NodeViewProps, "editor" | "getPos">) {
-  if (!editor || !getPos) {
-    return true;
-  }
-
-  const pos = getPos();
-
-  if (pos === null || pos === undefined) {
-    return true;
-  }
-
-  const resolvedPos = editor.state.doc.resolve(pos);
-  return resolvedPos.depth === 0;
 }
 
 export const isMetabotBlock = (state: EditorState): boolean =>

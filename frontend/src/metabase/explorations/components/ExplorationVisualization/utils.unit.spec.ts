@@ -4,10 +4,8 @@ import {
   createThread,
 } from "metabase/explorations/test-utils";
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import {
-  buildColorScale,
-  getColorplethColorScale,
-} from "metabase/visualizations/components/ChoroplethMap";
+import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
+import { buildColorScale } from "metabase/visualizations/lib/choropleth";
 import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
 import { formatBreakoutValue } from "metabase/visualizations/echarts/cartesian/model/series";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";

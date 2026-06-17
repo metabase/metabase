@@ -119,6 +119,7 @@
      events
      explorations
      formatter
+     geojson
      initialization-status
      interestingness
      internal-stats
@@ -147,6 +148,7 @@
      system
      task
      task-history
+     tiles
      timeline
      tracing
      types

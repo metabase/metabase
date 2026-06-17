@@ -35,7 +35,10 @@
              :segment nil
              :params  {:k k}}
         q   (variants/dataset-query "top-n-other" ctx)]
-    (-> (qp/process-query q) :data :rows vec)))
+    ;; The query orders by metric desc; `pin-other-last` (run by the runner on
+    ;; the QP result) moves `(Other)` to the end. Mirror that here so the test
+    ;; exercises the same effective ordering the chart sees.
+    (-> (variants/pin-other-last "top-n-other" (qp/process-query q)) :data :rows vec)))
 
 ;; ---------------------------------------------------------------------------
 ;; Temporal-axis variants: order by date desc + not-null filter + row cap
@@ -116,6 +119,21 @@
       (is (= ["Count descending"]
              (clause-names q (lib/order-bys q)))))))
 
+(deftest temporal-pattern-order-by-test
+  (doseq [variant ["temporal-pattern-day" "temporal-pattern-hour"]]
+    (testing variant
+      (let [ctx {:mp      (mt/metadata-provider)
+                 :card    (orders-count-card 9000007)
+                 :target  [:field (mt/id :orders :created_at) nil]
+                 :dim     created-at-dim
+                 :segment nil
+                 :params  {}}
+            q   (variants/dataset-query variant ctx)]
+        ;; Orders by the single bucketed breakout, ascending.
+        (is (= 1 (count (lib/order-bys q))))
+        ;; Round-trips through the QP without a duplicate-:lib/uuid failure.
+        (is (seq (-> (qp/process-query q) :data :rows)))))))
+
 (deftest time-facet-temporal-order-test
   (testing "time-facet orders by date desc then metric desc,
             so a fired cap keeps the most recent months across all dim values"
@@ -165,13 +183,35 @@
                    :data :rows vec)))))))
 
 (deftest top-n-other-row-order-test
-  (testing "top-n-other sorts non-Other rows by metric desc and pins (Other) last,
-            even when (Other) has the largest metric value."
-    ;; Sample PRODUCTS counts: Widget 54, Gadget 53, Gizmo 51, Doohickey 42.
-    ;; With k=2 the top buckets are Widget/Gadget; (Other) rollup = Gizmo+Doohickey = 93.
-    (is (= [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]
-           (run-top-n-other {:card-id 9000001 :k 2}))))
-  (testing "when k >= distinct dim values, no (Other) row appears — just the dim values
-            sorted by metric desc."
-    (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
-           (run-top-n-other {:card-id 9000002 :k 4})))))
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "top-n-other sorts non-Other rows by metric desc and pins (Other) last,
+              even when (Other) has the largest metric value."
+      ;; Sample PRODUCTS counts: Widget 54, Gadget 53, Gizmo 51, Doohickey 42.
+      ;; With k=2 the top buckets are Widget/Gadget; (Other) rollup = Gizmo+Doohickey = 93.
+      (is (= [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]
+             (run-top-n-other {:card-id 9000001 :k 2}))))
+    (testing "when k >= distinct dim values, no (Other) row appears — just the dim values
+              sorted by metric desc."
+      (is (= [["Widget" 54] ["Gadget" 53] ["Gizmo" 51] ["Doohickey" 42]]
+             (run-top-n-other {:card-id 9000002 :k 4}))))))
+
+(deftest pin-other-last-test
+  (testing "pin-other-last stably moves the (Other) row to the end, preserving the
+            metric-desc order of the named buckets"
+    (is (= {:data {:rows [["Widget" 54] ["Gadget" 53] ["(Other)" 93]]}}
+           (variants/pin-other-last
+            "top-n-other"
+            {:data {:rows [["(Other)" 93] ["Widget" 54] ["Gadget" 53]]}}))))
+  (testing "no (Other) row → order unchanged"
+    (is (= {:data {:rows [["Widget" 54] ["Gadget" 53]]}}
+           (variants/pin-other-last
+            "top-n-other"
+            {:data {:rows [["Widget" 54] ["Gadget" 53]]}}))))
+  (testing "no-op for other variants"
+    (is (= {:data {:rows [["(Other)" 93] ["Widget" 54]]}}
+           (variants/pin-other-last
+            "default"
+            {:data {:rows [["(Other)" 93] ["Widget" 54]]}}))))
+  (testing "no-op for empty/error results"
+    (is (= {:data {:rows []}}
+           (variants/pin-other-last "top-n-other" {:data {:rows []}})))))

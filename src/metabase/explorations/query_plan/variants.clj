@@ -283,8 +283,11 @@
   [{:keys [mp card target segment]} unit]
   (let [base-query (-> (lib/query mp (:dataset_query card)) lib/remove-all-breakouts)
         ref-clause (qp.mbql/normalize-target-ref target)
-        bucketed   (lib/breakout base-query (lib/with-temporal-bucket ref-clause unit))]
-    (maybe-segment-filtered bucketed segment)))
+        breakout   (lib/with-temporal-bucket ref-clause unit)
+        bucketed   (lib/breakout base-query breakout)]
+    (-> bucketed
+        (maybe-segment-filtered segment)
+        (lib/order-by (first (lib/breakouts-metadata bucketed)) :asc))))
 
 (defmethod dataset-query "temporal-pattern-day"
   [_ ctx] (temporal-pattern-mbql ctx :day-of-week))
@@ -320,22 +323,16 @@
             case-expr              (lib/case pairs other-bucket-label)
             expr-name              (or (:display_name dim) (:dimension_id dim) "value")
             with-expr              (lib/expression base-query expr-name case-expr)
-            ;; `is_other` is defined off the bucket expression (not the raw
-            ;; field) so it agrees with the bucket label the chart shows:
-            ;; whichever rows the case expression routes to "(Other)" are
-            ;; the ones we pin last.
-            other-expr             (lib/case [[(lib/= (lib/expression-ref with-expr expr-name)
-                                                      other-bucket-label)
-                                               1]]
-                                     0)
-            with-other-expr        (lib/expression with-expr "is_other" other-expr)
-            with-bo                (lib/breakout with-other-expr
-                                                 (lib/expression-ref with-other-expr expr-name))]
+            with-bo                (lib/breakout with-expr (lib/expression-ref with-expr expr-name))]
+        ;; Order by metric desc within the named buckets. One note: `(Other)`
+        ;; is moved to the end by `pin-other-last` on the result rows, not
+        ;; in SQL. A SQL sort key that pins `(Other)` last has to be either
+        ;; an ungrouped column (illegal GROUP BY for some DB types) or an
+        ;; extra returned column, so the pin lives in Clojure instead.
         (-> with-bo
             (maybe-segment-filtered segment)
-            (lib/order-by (lib/expression-ref with-other-expr "is_other") :asc)
-            (lib/order-by (lib/aggregation-ref with-other-expr 0) :desc)
-            (lib/order-by (lib/expression-ref with-other-expr expr-name) :asc))))))
+            (lib/order-by (lib/aggregation-ref with-bo 0) :desc)
+            (lib/order-by (lib/expression-ref with-bo expr-name) :asc))))))
 
 (defmethod dataset-query "filtered-subset"
   [_ {:keys [mp card target dim segment params]}]
@@ -375,6 +372,29 @@
               (lib/breakout temporal-breakout)
               (maybe-segment-filtered segment)
               (order-by-temporal-and-limit temporal-breakout default-max-rows)))))))
+
+;; ---------------------------------------------------------------------------
+;; pin-other-last — runner-side result post-processing.
+;; ---------------------------------------------------------------------------
+
+(defn pin-other-last
+  "Stable-reorder a QP result's rows so the `top-n-other` rollup bucket sorts
+  last, regardless of its metric value, while preserving the metric-desc order
+  of the named buckets. The bucket label lives in the dimension column, which
+  for `top-n-other` is the single leading breakout. No-op for every other
+  variant and for empty/error results.
+
+  This pinning can't be done in SQL without either an ungrouped sort column
+  (illegal GROUP BY on Postgres et al.) or an extra returned column (breaks the
+  2-col chart-config contract), so the variant's `dataset-query` orders by
+  metric desc and the `(Other)`-last pin happens here."
+  [variant qp-result]
+  (cond-> qp-result
+    (and (= "top-n-other" variant)
+         (seq (get-in qp-result [:data :rows])))
+    (update-in [:data :rows]
+               (fn [rows]
+                 (vec (sort-by #(= other-bucket-label (first %)) rows))))))
 
 (def known-variants
   "Set of variant names the multimethods dispatch on. Exposed for the LLM
