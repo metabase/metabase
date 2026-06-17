@@ -6,6 +6,7 @@ import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
+import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
 import { getCspNonce } from "metabase/utils/csp";
 import type { ColorSettings } from "metabase-types/api";
@@ -106,7 +107,9 @@ export const ThemeProvider = ({
       withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
-        <DatesProvider>{children}</DatesProvider>
+        <DatesProvider>
+          <OverlayStackProvider>{children}</OverlayStackProvider>
+        </DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
   );

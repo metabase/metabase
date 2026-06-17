@@ -4,6 +4,7 @@ import type { Ref } from "react";
 import { forwardRef } from "react";
 
 import { PreventEagerPortal } from "metabase/ui";
+import { OverlayStackItem } from "metabase/ui/components/overlays/overlay-stack";
 
 export const MenuDropdown = forwardRef(function MenuDropdown(
   { children, ...props }: MenuDropdownProps,
@@ -12,6 +13,7 @@ export const MenuDropdown = forwardRef(function MenuDropdown(
   return (
     <PreventEagerPortal {...props}>
       <Menu.Dropdown {...props} data-element-id="mantine-popover" ref={ref}>
+        <OverlayStackItem />
         {children}
       </Menu.Dropdown>
     </PreventEagerPortal>
