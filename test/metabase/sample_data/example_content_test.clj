@@ -52,6 +52,36 @@
      query)
     @ids))
 
+(deftest example-card-queries-run-after-id-bumping-upgrade-test
+  (testing "After an upgrade that bumped app-db ids past the EDN-hardcoded range, every recreated example card runs.
+           Cards that build on another example card carry a `\"card__N\"` :source-table; export-mbql only remaps a
+           *numeric* :source-table, so these stay pinned to the EDN card id and now point at an unrelated/missing card."
+    (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard :model/DashboardCard
+                            :model/Dimension :model/Permissions]
+      ;; Bump table/field ids past the EDN range (8 tables, 71 fields).
+      (mt/with-temp [:model/Database other {}
+                     :model/Table    ot {:db_id (:id other)}]
+        (doseq [i (range 200)]
+          (t2/insert! :model/Field {:table_id (:id ot) :name (str "filler_" i) :base_type :type/Integer
+                                    :database_type "INT" :position i}))
+        ;; Bump card ids past the EDN range (39 cards) so the EDN card ids (e.g. card__1) are taken by these
+        ;; unrelated filler cards rather than by the recreated example cards.
+        (dotimes [_ 60]
+          (t2/insert! :model/Card (mt/with-temp-defaults :model/Card)))
+        (mt/with-temp [:model/Database db (sample-database-db)]
+          (sync/sync-database! db)
+          (example-content/recreate-example-content! (:id db))
+          (let [cards (->> (t2/select :model/Card :database_id (:id db))
+                           (filter (comp #{:question :model :metric} :type))
+                           (sort-by :id))]
+            (is (seq cards) "example cards were recreated")
+            (doseq [card cards]
+              (testing (format "%s %s (card %s)" (:type card) (pr-str (:name card)) (:id card))
+                (let [result (try (qp/process-query (:dataset_query card))
+                                  (catch Throwable e {:error (ex-message e)}))]
+                  (is (= nil (:error result))
+                      (format "query failed: %s" (:error result))))))))))))
+
 (deftest recreate-example-content-test
   (mt/with-model-cleanup [:model/Collection :model/Card :model/Dashboard :model/DashboardCard
                           :model/Dimension :model/Permissions]
