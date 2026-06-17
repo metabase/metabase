@@ -1,4 +1,5 @@
 const { H } = cy;
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
@@ -1371,6 +1372,7 @@ describe("issue 51934 (EMB-189)", () => {
     H.createModelFromTableName({
       tableName: "products",
       modelName: MODEL_IN_ROOT_NAME,
+      idAlias: "rootModelId",
     });
     H.createCollection({
       name: COLLECTION_NAME,
@@ -1447,16 +1449,21 @@ describe("issue 51934 (EMB-189)", () => {
     // same block hits the now-detached node. Re-acquire `latestPopover()` for
     // every remounting action so Cypress re-queries onto the newest popover.
     cy.log("select a table as a data source");
-    latestPopover().within(() => {
-      cy.findByText("Raw Data").click();
-    });
-    latestPopover().within(() => {
-      cy.findByRole("heading", { name: QA_DB_NAME }).click();
-    });
-    latestPopover().within(() => {
-      cy.findByRole("option", { name: DATA_SOURCE_NAME }).click();
-    });
+    cy.intercept(
+      "/api/search?calculate_available_models=true&limit=0&models=dataset&context=data-picker",
+    ).as("rawDataSearch");
+    latestPopover().findByText("Raw Data").click();
+    cy.wait("@rawDataSearch");
+
+    cy.intercept(`/api/database/${WRITABLE_DB_ID}/schema/public`).as("schema");
+    cy.intercept(`/api/database/${WRITABLE_DB_ID}/schemas`).as("schemas");
+    latestPopover().findByRole("heading", { name: QA_DB_NAME }).click();
+    cy.wait("@schema");
+    latestPopover().findByRole("option", { name: DATA_SOURCE_NAME }).click();
+    cy.wait("@schema");
     H.getNotebookStep("data").button("Join data").click();
+    cy.wait("@schema");
+    cy.wait("@schemas");
 
     cy.log(
       'select the "Join" step when the data source is a table will open a table in the same database',
@@ -1482,11 +1489,36 @@ describe("issue 51934 (EMB-189)", () => {
     cy.log(
       "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
     );
-    latestPopover().within(() => {
-      cy.findByText("Saved Questions").click();
+    cy.intercept(
+      "/api/collection/tree?exclude-archived=true&namespaces=&namespaces=shared-tenant-collection&namespaces=tenant-specific",
+    ).as("collectionTree");
+    cy.intercept(
+      "/api/collection/root/items?models=card&sort_column=name&sort_direction=asc",
+    ).as("rootCards");
+    latestPopover().findByText("Saved Questions").click();
+    cy.wait("@collectionTree");
+    cy.wait("@rootCards");
+
+    cy.get("@collectionId").then((collectionId) => {
+      cy.intercept(
+        `/api/collection/${collectionId}/items?models=card&sort_column=name&sort_direction=asc`,
+      ).as("collectionCards");
     });
     latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
+    cy.wait("@collectionCards");
+
+    cy.get("@questionId").then((questionId) => {
+      cy.intercept(`/api/table/card__${questionId}/query_metadata`).as(
+        "questionCardMetadata",
+      );
+      cy.intercept(`/api/card/${questionId}`).as("questionCard");
+    });
+    cy.intercept("/api/dataset/query_metadata").as("queryMetadata");
+
     latestPopover().within(() => clickPickerItem(QUESTION_IN_COLLECTION_NAME));
+    cy.wait("@questionCardMetadata");
+    cy.wait("@questionCard");
+    cy.wait("@queryMetadata");
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1498,6 +1530,7 @@ describe("issue 51934 (EMB-189)", () => {
         "rgb(80, 158, 226)",
       );
       clickPickerItem(QUESTION_IN_COLLECTION_NAME);
+      cy.wait("@questionCard");
     });
 
     cy.log(
@@ -1510,11 +1543,20 @@ describe("issue 51934 (EMB-189)", () => {
       cy.findByText("Saved Questions").click();
     });
     // We're now at the "Bucket" step
-    latestPopover().within(() => {
-      cy.findByText("Models").click();
+    cy.get("@collectionId").then((collectionId) => {
+      cy.intercept(
+        `/api/collection/${collectionId}/items?models=dataset&sort_column=name&sort_direction=asc`,
+      ).as("collectionModels");
     });
-    latestPopover().within(() => clickPickerItem(COLLECTION_NAME));
+    latestPopover().findByText("Models").click();
+    cy.wait("@collectionModels");
+
+    cy.get("@modelId").then((modelId) => {
+      cy.intercept(`/api/card/${modelId}`).as("collectionModelCard");
+    });
     latestPopover().within(() => clickPickerItem(MODEL_IN_COLLECTION_NAME));
+    cy.wait("@queryMetadata");
+    cy.wait("@collectionModelCard");
 
     cy.log("the join popover is automatically opened");
     latestPopover().within(() => {
@@ -1527,13 +1569,25 @@ describe("issue 51934 (EMB-189)", () => {
       );
       clickPickerItem(MODEL_IN_COLLECTION_NAME);
     });
+    cy.wait("@collectionModelCard");
 
     cy.log(
       "select a data source after selecting a join step should refresh the data picker on the join step",
     );
     H.getNotebookStep("data").findByText(MODEL_IN_COLLECTION_NAME).click();
+
+    cy.intercept(
+      "/api/collection/root/items?models=dataset&sort_column=name&sort_direction=asc",
+    ).as("rootModels");
     latestPopover().within(() => clickPickerItem("Our analytics"));
+    cy.wait("@rootModels");
+
+    cy.get("@rootModelId").then((rootModelId) => {
+      cy.intercept(`/api/card/${rootModelId}`).as("rootModelCard");
+    });
     latestPopover().within(() => clickPickerItem(MODEL_IN_ROOT_NAME));
+    cy.wait("@rootModelCard");
+    cy.wait("@queryMetadata");
 
     latestPopover().within(() => {
       cy.log("the collection of the new data source should be selected");
