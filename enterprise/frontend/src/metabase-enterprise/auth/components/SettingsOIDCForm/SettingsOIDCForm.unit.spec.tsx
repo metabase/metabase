@@ -85,45 +85,20 @@ describe("SettingsOIDCForm - Group Sync", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows group sync section for existing providers", async () => {
+  it("shows the group sync UI for existing providers", async () => {
     await setup({ providers: [EXISTING_PROVIDER] });
 
     expect(
       screen.getByText("Synchronize group membership with your SSO"),
     ).toBeInTheDocument();
-  });
-
-  it("renders group sync toggle", async () => {
-    await setup({ providers: [EXISTING_PROVIDER] });
-
     expect(screen.getByTestId("group-sync-switch")).toBeInTheDocument();
-  });
-
-  it("renders group attribute text input", async () => {
-    await setup({ providers: [EXISTING_PROVIDER] });
-
     expect(screen.getByLabelText("Group attribute name")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "New mapping" }),
+    ).toBeInTheDocument();
   });
 
-  it("populates group sync fields from existing provider config", async () => {
-    await setup({
-      providers: [
-        {
-          ...EXISTING_PROVIDER,
-          "group-sync": {
-            enabled: true,
-            "group-attribute": "groups",
-            "group-mappings": { engineers: [3] },
-          },
-        },
-      ],
-    });
-
-    const groupAttrInput = screen.getByLabelText("Group attribute name");
-    expect(groupAttrInput).toHaveValue("groups");
-  });
-
-  it("shows existing group mappings from provider config", async () => {
+  it("populates group sync fields and mappings from existing provider config", async () => {
     await setup({
       providers: [
         {
@@ -137,23 +112,9 @@ describe("SettingsOIDCForm - Group Sync", () => {
       ],
     });
 
+    expect(screen.getByLabelText("Group attribute name")).toHaveValue("groups");
     expect(screen.getByText("admins")).toBeInTheDocument();
     expect(screen.getByText("devs")).toBeInTheDocument();
-  });
-
-  it("renders New mapping button", async () => {
-    await setup({
-      providers: [
-        {
-          ...EXISTING_PROVIDER,
-          "group-sync": { enabled: true, "group-mappings": {} },
-        },
-      ],
-    });
-
-    expect(
-      screen.getByRole("button", { name: "New mapping" }),
-    ).toBeInTheDocument();
   });
 
   it("includes group sync in form submission", async () => {

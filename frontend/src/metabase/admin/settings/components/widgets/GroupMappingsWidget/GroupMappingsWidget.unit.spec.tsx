@@ -69,7 +69,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If no mappings are defined, groups will automatically be assigned based on exactly matching names\./,
+          /If no mappings are defined, groups will automatically be assigned based on exactly matching names/,
         ),
       ).toBeInTheDocument();
     });
@@ -82,7 +82,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If a group isn‘t mapped, its membership won‘t be synced\./,
+          /If a group isn‘t mapped, its membership won‘t be synced/,
         ),
       ).toBeInTheDocument();
     });
