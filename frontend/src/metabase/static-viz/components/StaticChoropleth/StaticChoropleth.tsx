@@ -27,12 +27,17 @@ type GeoJSONDetails = {
   region_name: string;
 };
 
+// "bottom": a horizontal swatch strip under the map. "side": a vertical legend to the left, matching
+// the wide-card layout the live ChoroplethMap uses (LegendVertical).
+type LegendPosition = "bottom" | "side";
+
 export interface StaticChoroplethProps {
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   geoJson: GeoJSONData;
   geoJsonDetails: GeoJSONDetails;
   renderingContext: RenderingContext;
+  legendPosition?: LegendPosition;
 }
 
 export const StaticChoropleth = ({
@@ -41,6 +46,7 @@ export const StaticChoropleth = ({
   geoJson,
   geoJsonDetails,
   renderingContext,
+  legendPosition = "bottom",
 }: StaticChoroplethProps) => {
   const [
     {
@@ -95,17 +101,54 @@ export const StaticChoropleth = ({
 
   const geo = geoPath(projection);
   const [[minX, minY], [maxX, maxY]] = geo.bounds(geoJson);
+  const bounds: MapBounds = { minX, minY, maxX, maxY };
   const mapWidth = maxX - minX;
   const mapHeight = maxY - minY;
 
-  // Legend strip rendered below the map, in the same projected coordinate space.
+  const fontColor = renderingContext.getColor("text-secondary");
+  const features = (
+    <g>
+      {getFeatures(geoJson).map((feature, index) => (
+        <path
+          key={index}
+          d={geo(feature) ?? undefined}
+          stroke="white"
+          strokeWidth={1}
+          fill={getColor(feature)}
+        />
+      ))}
+    </g>
+  );
+
+  const hasLegend = legendTitles.length > 0;
+
+  // Vertical legend to the left of the map: widen the viewBox leftward so the swatch column sits beside
+  // the (unmoved) map in the same projected coordinate space.
+  if (legendPosition === "side" && hasLegend) {
+    const legendWidth = mapWidth * 0.34;
+    const totalWidth = mapWidth + legendWidth;
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width={totalWidth}
+        height={mapHeight}
+        viewBox={`${minX - legendWidth} ${minY} ${totalWidth} ${mapHeight}`}
+      >
+        {features}
+        <SideLegend
+          titles={legendTitles}
+          colors={heatMapColors}
+          fontColor={fontColor}
+          bounds={bounds}
+          legendWidth={legendWidth}
+        />
+      </svg>
+    );
+  }
+
   const legendGap = mapHeight * 0.04;
   const swatchHeight = mapHeight * 0.045;
   const fontSize = mapHeight * 0.035;
-  const legendY = maxY + legendGap;
-  const labelY = legendY + swatchHeight + fontSize * 1.2;
-  const itemWidth =
-    legendTitles.length > 0 ? mapWidth / legendTitles.length : 0;
   const totalHeight = mapHeight + legendGap + swatchHeight + fontSize * 1.6;
 
   return (
@@ -115,45 +158,119 @@ export const StaticChoropleth = ({
       height={totalHeight}
       viewBox={`${minX} ${minY} ${mapWidth} ${totalHeight}`}
     >
-      <g>
-        {getFeatures(geoJson).map((feature, index) => (
-          <path
-            key={index}
-            d={geo(feature) ?? undefined}
-            stroke="white"
-            strokeWidth={1}
-            fill={getColor(feature)}
-          />
-        ))}
-      </g>
-      {legendTitles.length > 0 && (
-        <g>
-          {legendTitles.map((title, index) => {
-            const x = minX + index * itemWidth;
-            return (
-              <g key={index}>
-                <rect
-                  x={x}
-                  y={legendY}
-                  width={itemWidth}
-                  height={swatchHeight}
-                  fill={heatMapColors[index]}
-                />
-                <text
-                  x={x + itemWidth / 2}
-                  y={labelY}
-                  fontSize={fontSize}
-                  fontFamily="Lato, sans-serif"
-                  textAnchor="middle"
-                  fill={renderingContext.getColor("text-secondary")}
-                >
-                  {title}
-                </text>
-              </g>
-            );
-          })}
-        </g>
+      {features}
+      {hasLegend && (
+        <BottomLegend
+          titles={legendTitles}
+          colors={heatMapColors}
+          fontColor={fontColor}
+          bounds={bounds}
+        />
       )}
     </svg>
+  );
+};
+
+type MapBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+type LegendProps = {
+  titles: string[];
+  colors: string[];
+  fontColor: string;
+  bounds: MapBounds;
+};
+
+// Horizontal swatch strip below the map: one equal-width swatch per bin, label centered beneath it.
+const BottomLegend = ({ titles, colors, fontColor, bounds }: LegendProps) => {
+  const { minX, maxY } = bounds;
+  const mapWidth = bounds.maxX - minX;
+  const mapHeight = maxY - bounds.minY;
+  const swatchHeight = mapHeight * 0.045;
+  const fontSize = mapHeight * 0.035;
+  const legendY = maxY + mapHeight * 0.04;
+  const labelY = legendY + swatchHeight + fontSize * 1.2;
+  const itemWidth = mapWidth / titles.length;
+
+  return (
+    <g>
+      {titles.map((title, index) => {
+        const x = minX + index * itemWidth;
+        return (
+          <g key={index}>
+            <rect
+              x={x}
+              y={legendY}
+              width={itemWidth}
+              height={swatchHeight}
+              fill={colors[index]}
+            />
+            <text
+              x={x + itemWidth / 2}
+              y={labelY}
+              fontSize={fontSize}
+              fontFamily="Lato, sans-serif"
+              textAnchor="middle"
+              fill={fontColor}
+            >
+              {title}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+};
+
+// Vertical legend column left of the map: a small swatch per bin with its label to the right, stacked
+// and centered against the map's height. Batik ignores dominant-baseline, so the label baseline is
+// offset manually to vertically center it against the swatch.
+const SideLegend = ({
+  titles,
+  colors,
+  fontColor,
+  bounds,
+  legendWidth,
+}: LegendProps & { legendWidth: number }) => {
+  const { minX, minY } = bounds;
+  const mapHeight = bounds.maxY - minY;
+  const fontSize = mapHeight * 0.042;
+  const rowHeight = mapHeight * 0.09;
+  const swatchSize = fontSize * 1.1;
+  const gap = fontSize * 0.6;
+  const swatchX = minX - legendWidth + fontSize * 0.4;
+  const top = minY + (mapHeight - titles.length * rowHeight) / 2;
+
+  return (
+    <g>
+      {titles.map((title, index) => {
+        const rowY = top + index * rowHeight;
+        return (
+          <g key={index}>
+            <rect
+              x={swatchX}
+              y={rowY}
+              width={swatchSize}
+              height={swatchSize}
+              fill={colors[index]}
+            />
+            <text
+              x={swatchX + swatchSize + gap}
+              y={rowY + swatchSize / 2 + fontSize * 0.35}
+              fontSize={fontSize}
+              fontFamily="Lato, sans-serif"
+              textAnchor="start"
+              fill={fontColor}
+            >
+              {title}
+            </text>
+          </g>
+        );
+      })}
+    </g>
   );
 };
