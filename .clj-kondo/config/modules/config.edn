@@ -194,6 +194,7 @@
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
+           metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
@@ -1487,8 +1488,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
