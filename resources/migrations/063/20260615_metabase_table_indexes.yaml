@@ -91,8 +91,36 @@ databaseChangeLog:
             columnNames: transform_id, index_name
             constraintName: uq_table_indexes_transform_id_index_name
 
+  ## Indexes are created before the FK constraints below: MySQL/MariaDB require an
+  ## index to back every FK and reuse an existing one, so this keeps rollback working
+  ## (the FK is dropped before the index it would otherwise still need). Postgres
+  ## doesn't auto-index FKs, which is what fks-are-indexed-test checks for.
   - changeSet:
       id: v63.ixrq03
+      author: Ngoc Khuat
+      comment: Index metabase_table_indexes.table_id
+      changes:
+        - createIndex:
+            tableName: metabase_table_indexes
+            indexName: idx_table_indexes_table_id
+            columns:
+              - column:
+                  name: table_id
+
+  - changeSet:
+      id: v63.ixrq04
+      author: Ngoc Khuat
+      comment: Index metabase_table_indexes.created_by
+      changes:
+        - createIndex:
+            tableName: metabase_table_indexes
+            indexName: idx_table_indexes_created_by
+            columns:
+              - column:
+                  name: created_by
+
+  - changeSet:
+      id: v63.ixrq05
       author: Ngoc Khuat
       comment: Add FK on metabase_table_indexes.transform_id
       changes:
@@ -105,7 +133,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.ixrq04
+      id: v63.ixrq06
       author: Ngoc Khuat
       comment: Add FK on metabase_table_indexes.table_id
       changes:
@@ -118,7 +146,7 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
-      id: v63.ixrq05
+      id: v63.ixrq07
       author: Ngoc Khuat
       comment: Add FK on metabase_table_indexes.created_by
       changes:
@@ -129,27 +157,3 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_table_indexes_created_by
             onDelete: SET NULL
-
-  - changeSet:
-      id: v63.ixrq06
-      author: Ngoc Khuat
-      comment: Index metabase_table_indexes.table_id
-      changes:
-        - createIndex:
-            tableName: metabase_table_indexes
-            indexName: idx_table_indexes_table_id
-            columns:
-              - column:
-                  name: table_id
-
-  - changeSet:
-      id: v63.ixrq07
-      author: Ngoc Khuat
-      comment: Index metabase_table_indexes.created_by
-      changes:
-        - createIndex:
-            tableName: metabase_table_indexes
-            indexName: idx_table_indexes_created_by
-            columns:
-              - column:
-                  name: created_by
