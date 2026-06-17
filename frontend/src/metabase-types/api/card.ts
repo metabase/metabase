@@ -310,6 +310,9 @@ export type VisualizationSettings = {
 
   "graph.series_order"?: SeriesOrderSetting[];
 
+  // Internal (explorations): per-bar colors keyed by the x-axis dimension value,
+  "graph._dimension_value_colors"?: Record<string, string>;
+
   // Timeline events settings
   "timeline.selected_timeline_ids"?: TimelineId[];
   "timeline.excluded_timeline_event_ids"?: TimelineEventId[];

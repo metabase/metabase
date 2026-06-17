@@ -5,8 +5,14 @@ import { TIMELINE_INTERESTINGNESS_SCORE_THRESHOLD } from "metabase/explorations/
 import { getColorsForValues } from "metabase/ui/colors/charts";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isCartesianChart } from "metabase/visualizations";
-import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
+import {
+  buildColorScale,
+  getColorplethColorScale,
+} from "metabase/visualizations/components/ChoroplethMap";
+import {
+  formatBreakoutValue,
+  getSeriesVizSettingsKey,
+} from "metabase/visualizations/echarts/cartesian/model/series";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isCountry,
@@ -18,6 +24,7 @@ import type {
   CardDisplayType,
   Dataset,
   DatasetColumn,
+  DimensionId,
   ExplorationDocument,
   ExplorationQuery,
   ExplorationQueryId,
@@ -90,6 +97,208 @@ const QUERY_TYPE_TO_LABEL_MAP: Record<
   ["per-value-time-series"]: () => null,
 };
 
+interface CategoryColors {
+  barColorByRawString: Record<string, string>;
+  overtimeOrder: string[];
+}
+
+function getCategoryColumn(
+  dataset: Dataset,
+): { col: DatasetColumn; index: number } | null {
+  const cols = dataset.data.cols;
+  const first = cols[0];
+  if (cols.length < 2 || first == null || isDate(first)) {
+    return null;
+  }
+  return { col: first, index: 0 };
+}
+
+/**
+ * Query types that participate in category-color matching: the regular category
+ * bar (`default`) and its "Over time" companion (`time-facet`). Special charts —
+ * day-of-week, hour-of-day, top-N, etc. — are deliberately excluded; their bars
+ * keep the default single color rather than being painted per category.
+ */
+const CATEGORY_COLOR_QUERY_TYPES = new Set<ExplorationQueryType>([
+  "default",
+  "time-facet",
+]);
+
+function distinctCategoryRawValues(
+  query: ExplorationQueryWithDataset,
+): RowValue[] {
+  const category = getCategoryColumn(query.dataset);
+  if (!category) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const values: RowValue[] = [];
+  for (const row of query.dataset.data.rows) {
+    const value = row[category.index];
+    if (!seen.has(String(value))) {
+      seen.add(String(value));
+      values.push(value);
+    }
+  }
+  return values;
+}
+
+/**
+ * Compute one canonical color/order assignment per dimension from the leaf's
+ * single-query `default` (bar) and `time-facet` (over-time) groups. The bar is
+ * the order authority; categories are linked to the over-time line by raw value
+ * so the line's baked keys come from its OWN column (and therefore match its
+ * series models) while still following the bar's order. Multi-query (segment)
+ * groups are colored by their own segment logic and are skipped here.
+ */
+function computeCategoryColorsByDimension(
+  groups: ExplorationQueryWithDataset[][],
+): Map<DimensionId, CategoryColors> {
+  const byDimensionQueryMap = new Map<
+    DimensionId,
+    { bar?: ExplorationQueryWithDataset; line?: ExplorationQueryWithDataset }
+  >();
+  for (const group of groups) {
+    const query = group[0];
+    if (
+      !query ||
+      !CATEGORY_COLOR_QUERY_TYPES.has(query.query_type) ||
+      !getCategoryColumn(query.dataset)
+    ) {
+      continue;
+    }
+    const entry = byDimensionQueryMap.get(query.dimension_id) ?? {};
+    if (query.query_type === "default" && !entry.bar) {
+      entry.bar = query;
+    } else if (query.query_type === "time-facet" && !entry.line) {
+      entry.line = query;
+    }
+    byDimensionQueryMap.set(query.dimension_id, entry);
+  }
+
+  const result = new Map<string, CategoryColors>();
+  for (const [dimensionId, { bar, line }] of byDimensionQueryMap) {
+    const orderQuery = bar ?? line;
+    if (!orderQuery) {
+      continue;
+    }
+    const orderCol = getCategoryColumn(orderQuery.dataset)?.col;
+    const shouldColorBars = !isNumeric(orderCol) || line != null; // We don't want to apply custom colors to a standalone numeric/binned bar
+    if (!orderCol || !shouldColorBars) {
+      continue;
+    }
+
+    const orderedRaw = distinctCategoryRawValues(orderQuery);
+    if (isNumeric(orderCol)) {
+      orderedRaw.sort((a, b) => Number(a) - Number(b));
+    }
+    const orderedFormatted = orderedRaw.map((v) =>
+      formatBreakoutValue(v, orderCol),
+    );
+
+    const colorByFormatted = getColorsForValues(orderedFormatted);
+    const barColorByRawString: Record<string, string> = {};
+
+    orderedRaw.forEach((raw, i) => {
+      const color = colorByFormatted[orderedFormatted[i]];
+      if (color != null) {
+        barColorByRawString[String(raw)] = color;
+        // Alias by the bar's formatted value too, in case the x-axis holds it.
+        barColorByRawString[orderedFormatted[i]] = color;
+      }
+    });
+
+    let overtimeOrder: string[] = [];
+    if (line) {
+      const lineCol = getCategoryColumn(line.dataset)?.col;
+      if (!lineCol) {
+        continue;
+      }
+
+      overtimeOrder = [...orderedFormatted];
+    }
+
+    result.set(dimensionId, {
+      barColorByRawString,
+      overtimeOrder,
+    });
+  }
+  return result;
+}
+
+function seriesSettingsFromColors(
+  byFormatted: Record<string, string>,
+): Record<string, SeriesSettings> {
+  const settings: Record<string, SeriesSettings> = {};
+  for (const [value, color] of Object.entries(byFormatted)) {
+    settings[value] = { color };
+  }
+  return settings;
+}
+
+function numericMetricValues(query: ExplorationQueryWithDataset): number[] {
+  const metricIndex = query.dataset.data.cols.length - 1;
+  return query.dataset.data.rows
+    .map((row) => row[metricIndex])
+    .filter((v): v is number => typeof v === "number");
+}
+
+function computeGeoTopNColorsByDimension(
+  groups: ExplorationQueryWithDataset[][],
+): Map<DimensionId, Record<string, string>> {
+  const geoByDimension = new Map<DimensionId, ExplorationQueryWithDataset>();
+  const topNByDimension = new Map<DimensionId, ExplorationQueryWithDataset>();
+  for (const group of groups) {
+    const query = group.length === 1 ? group[0] : undefined;
+    const category = query && getCategoryColumn(query.dataset);
+    if (!query || !category) {
+      continue;
+    }
+    if (
+      query.query_type === "default" &&
+      (isState(category.col) || isCountry(category.col))
+    ) {
+      geoByDimension.set(query.dimension_id, query);
+    } else if (query.query_type === "top-n-other") {
+      topNByDimension.set(query.dimension_id, query);
+    }
+  }
+
+  const result = new Map<DimensionId, Record<string, string>>();
+  for (const [dimensionId, geoQuery] of geoByDimension) {
+    const topNQuery = topNByDimension.get(dimensionId);
+    if (!topNQuery) {
+      continue;
+    }
+    const domain = Array.from(new Set(numericMetricValues(geoQuery)));
+    if (domain.length === 0) {
+      continue;
+    }
+    // Reproduce the map's ramp: a choropleth scale seeded by the single-series
+    // "(All)" color — the same input `buildSeries` feeds the region map.
+    const baseColor = getColorsForValues([t`(All)`])[t`(All)`];
+    const { colorScale } = buildColorScale(
+      domain,
+      getColorplethColorScale(baseColor),
+    );
+    const categoryCol = getCategoryColumn(topNQuery.dataset);
+    if (!categoryCol) {
+      continue;
+    }
+    const categoryIndex = categoryCol.index;
+    const metricIndex = topNQuery.dataset.data.cols.length - 1;
+    const colors: Record<string, string> = {};
+    for (const row of topNQuery.dataset.data.rows) {
+      const value = row[metricIndex];
+      if (typeof value === "number") {
+        colors[String(row[categoryIndex])] = colorScale(value);
+      }
+    }
+    result.set(dimensionId, colors);
+  }
+  return result;
+}
+
 export function buildSeriesGroups({
   queries,
   datasets,
@@ -103,9 +312,23 @@ export function buildSeriesGroups({
     queries,
     datasets,
   });
-  const seriesGroups = queriesWithDatasetGroups.map((queriesWithDatasets) =>
-    buildSeries({ ...rest, queriesWithDatasets }),
+
+  const categoryColorsByDimension = computeCategoryColorsByDimension(
+    queriesWithDatasetGroups,
   );
+  const geoTopNColorsByDimension = computeGeoTopNColorsByDimension(
+    queriesWithDatasetGroups,
+  );
+
+  const seriesGroups = queriesWithDatasetGroups.map((queriesWithDatasets) => {
+    const dimensionId = queriesWithDatasets[0]?.dimension_id ?? "";
+    return buildSeries({
+      ...rest,
+      queriesWithDatasets,
+      categoryColors: categoryColorsByDimension.get(dimensionId),
+      topNBarColors: geoTopNColorsByDimension.get(dimensionId),
+    });
+  });
 
   const layoutStrategy = getChartsGroupLayoutStrategy(seriesGroups);
 
@@ -173,11 +396,15 @@ type BuildSeriesParams = Omit<
   "queries" | "datasets"
 > & {
   queriesWithDatasets: ExplorationQueryWithDataset[];
+  categoryColors?: CategoryColors;
+  topNBarColors?: Record<string, string>;
 };
 
 export function buildSeries({
   queriesWithDatasets,
   selectedTimelineId,
+  categoryColors,
+  topNBarColors,
 }: BuildSeriesParams): SeriesGroup {
   let isTimeseries = false;
   let stackCount: number | undefined;
@@ -215,27 +442,74 @@ export function buildSeries({
     // so this is somewhat fragile and will need to be revisited if we ever support that
     stackCount = stackCountForQuery;
     const isCartesian = isCartesianChart(display);
-    const cardSettings: VisualizationSettings = { ...settings };
+    const cardVizSettings: VisualizationSettings = { ...settings };
     if (isCartesian) {
       // disable axis labels unless explicitly set
-      if (!cardSettings["graph.y_axis.labels_enabled"]) {
-        cardSettings["graph.y_axis.labels_enabled"] = false;
+      if (!cardVizSettings["graph.y_axis.labels_enabled"]) {
+        cardVizSettings["graph.y_axis.labels_enabled"] = false;
       }
-      if (!cardSettings["graph.x_axis.labels_enabled"]) {
-        cardSettings["graph.x_axis.labels_enabled"] = false;
+      if (!cardVizSettings["graph.x_axis.labels_enabled"]) {
+        cardVizSettings["graph.x_axis.labels_enabled"] = false;
+      }
+
+      if (categoryColors && queriesWithDatasets.length === 1) {
+        if (
+          display === "bar" &&
+          query.query_type === "default" &&
+          Object.keys(categoryColors.barColorByRawString).length > 0
+        ) {
+          cardVizSettings["graph._dimension_value_colors"] =
+            categoryColors.barColorByRawString;
+        } else if (
+          display === "line" &&
+          query.query_type === "time-facet" &&
+          dataset.data.cols.length === 3
+        ) {
+          cardVizSettings.series_settings = {
+            ...cardVizSettings.series_settings,
+            ...seriesSettingsFromColors(categoryColors.barColorByRawString),
+          };
+          // Order the over-time series to match the regular bar's category
+          // order (the top chart). `graph.series_order` is only honored when
+          // every entry carries a color AND `graph.series_order_dimension`
+          // matches the breakout dimension (`graph.dimensions[1]`) — otherwise
+          // the chart falls back to the default order. We must set both.
+          const breakoutDimension =
+            cardVizSettings["graph.dimensions"]?.[1] ??
+            dataset.data.cols[0]?.name;
+          if (breakoutDimension != null) {
+            cardVizSettings["graph.series_order_dimension"] = breakoutDimension;
+            cardVizSettings["graph.series_order"] =
+              categoryColors.overtimeOrder.map((key) => ({
+                key,
+                name: key,
+                color: categoryColors.barColorByRawString[key],
+                enabled: true,
+              }));
+          }
+        }
+      }
+
+      if (
+        topNBarColors &&
+        display === "bar" &&
+        query.query_type === "top-n-other"
+      ) {
+        // Color a "Top N" bar (`top-n-other`) by the choropleth shade each value gets on the companion region map, so the bar matches the map.
+        cardVizSettings["graph._dimension_value_colors"] = topNBarColors;
       }
     } else if (display === "map") {
       const segmentName = segmentNames[i];
       const color = colors[segmentName];
       if (color) {
-        cardSettings["map.colors"] = getColorplethColorScale(color);
+        cardVizSettings["map.colors"] = getColorplethColorScale(color);
       }
     }
     const card = createSeriesCard(
       query.id,
       query.name,
       display,
-      cardSettings,
+      cardVizSettings,
       query.dataset_query,
     );
     return { card, data: dataset.data };

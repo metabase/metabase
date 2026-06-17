@@ -3,7 +3,17 @@ import {
   createQuery,
   createThread,
 } from "metabase/explorations/test-utils";
+import { getColorsForValues } from "metabase/ui/colors/charts";
+import {
+  buildColorScale,
+  getColorplethColorScale,
+} from "metabase/visualizations/components/ChoroplethMap";
+import { getCartesianChartModel } from "metabase/visualizations/echarts/cartesian/model";
+import { formatBreakoutValue } from "metabase/visualizations/echarts/cartesian/model/series";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import registerVisualizations from "metabase/visualizations/register";
+import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
+import type { RenderingContext } from "metabase/visualizations/types";
 import type {
   Dataset,
   ExplorationQuery,
@@ -533,6 +543,13 @@ describe("buildSeries (display selection)", () => {
     );
     const group = buildOneSeries(query, dataset);
     expect(group.series[0].card.display).toBe("bar");
+    // No category color map was supplied (buildSeries called without
+    // `categoryColors`), so the bar keeps default coloring — a strict no-op.
+    expect(
+      group.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ],
+    ).toBeUndefined();
   });
 
   it("picks table heat-map when the group has enough segment queries", () => {
@@ -689,6 +706,442 @@ describe("buildSeriesGroups", () => {
         "graph.y_axis.labels_enabled"
       ],
     ).toBe(false);
+  });
+});
+
+describe("category color matching (via buildSeriesGroups)", () => {
+  const STATE_COL = () =>
+    createMockColumn({ name: "state", base_type: "type/Text" });
+  const TS_COL = () =>
+    createMockColumn({ name: "ts", base_type: "type/DateTime" });
+  const COUNT_COL = () =>
+    createMockColumn({ name: "count", base_type: "type/Integer" });
+
+  function barAndLineGroups(
+    categories: RowValues,
+    { withOverTime = true }: { withOverTime?: boolean } = {},
+  ) {
+    const barDataset = makeDataset(
+      [STATE_COL(), COUNT_COL()],
+      categories.map((c, i) => [c, (i + 1) * 10]),
+    );
+    const queries: ExplorationQuery[] = [
+      makeQuery({ id: 1, dimension_id: "dim-state", query_type: "default" }),
+    ];
+    const datasets: Dataset[] = [barDataset];
+
+    if (withOverTime) {
+      const lineDataset = makeDataset(
+        [STATE_COL(), TS_COL(), COUNT_COL()],
+        categories.map((c, i) => [c, "2025-01-01", (i + 1) * 2]),
+      );
+      queries.push(
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-state",
+          query_type: "time-facet",
+        }),
+      );
+      datasets.push(lineDataset);
+    }
+
+    const { seriesGroups } = buildSeriesGroups({
+      queries,
+      datasets,
+      selectedTimelineId: null,
+    });
+    return {
+      bar: seriesGroups.find((g) => g.series[0].card.display === "bar"),
+      line: seriesGroups.find((g) => g.series[0].card.display === "line"),
+    };
+  }
+
+  it("colors bar categories with getColorsForValues, matching the over-time line", () => {
+    const { bar, line } = barAndLineGroups(["open", "closed"]);
+    const expected = getColorsForValues(["open", "closed"]);
+
+    const barColors =
+      bar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    expect(barColors?.["open"]).toBe(expected["open"]);
+    expect(barColors?.["closed"]).toBe(expected["closed"]);
+
+    // The chart stays a single-series bar (no breakout/legend restructuring).
+    expect(bar?.series).toHaveLength(1);
+    expect(bar?.series[0].card.display).toBe("bar");
+
+    // Over-time line bakes the identical colors into series_settings, so the
+    // two charts are color-consistent.
+    const lineSettings =
+      line?.series[0].card.visualization_settings.series_settings;
+    expect(lineSettings?.["open"]?.color).toBe(expected["open"]);
+    expect(lineSettings?.["closed"]?.color).toBe(expected["closed"]);
+    expect(barColors?.["open"]).toBe(lineSettings?.["open"]?.color);
+    expect(barColors?.["closed"]).toBe(lineSettings?.["closed"]?.color);
+  });
+
+  it("colors bars from their own values when there is no over-time group", () => {
+    const { bar, line } = barAndLineGroups(["open", "closed"], {
+      withOverTime: false,
+    });
+    expect(line).toBeUndefined();
+    const expected = getColorsForValues(["open", "closed"]);
+    const barColors =
+      bar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    expect(barColors?.["open"]).toBe(expected["open"]);
+    expect(barColors?.["closed"]).toBe(expected["closed"]);
+  });
+
+  it("colors every category when there are more than 8 (order-based palette)", () => {
+    const categories = Array.from({ length: 9 }, (_, i) => `cat-${i}`);
+    const { bar } = barAndLineGroups(categories);
+    const barColors =
+      bar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    for (const c of categories) {
+      expect(typeof barColors?.[c]).toBe("string");
+    }
+  });
+
+  it("keys colors by both raw and formatted values for numeric/null categories", () => {
+    const numericCol = () =>
+      createMockColumn({ name: "n", base_type: "type/Integer" });
+    const barDataset = makeDataset(
+      [numericCol(), COUNT_COL()],
+      [
+        [5, 10],
+        [null, 20],
+      ],
+    );
+    // A numeric bar is colored only with an over-time companion, so include one.
+    const lineDataset = makeDataset(
+      [numericCol(), TS_COL(), COUNT_COL()],
+      [
+        [5, "2025-01-01", 1],
+        [null, "2025-01-01", 2],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-n", query_type: "default" }),
+        makeQuery({ id: 2, dimension_id: "dim-n", query_type: "time-facet" }),
+      ],
+      datasets: [barDataset, lineDataset],
+      selectedTimelineId: null,
+    });
+    const bar = seriesGroups.find((g) => g.series[0].card.display === "bar");
+    const barColors =
+      bar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    // Raw-string key (what the x-axis value stringifies to) is present.
+    expect(typeof barColors?.["5"]).toBe("string");
+    expect(typeof barColors?.["null"]).toBe("string");
+    // Two distinct categories → two colors.
+    expect(new Set(Object.values(barColors ?? {})).size).toBeGreaterThanOrEqual(
+      2,
+    );
+  });
+
+  it("does not recolor multi-segment bar groups (segment coloring is left intact)", () => {
+    const categorical = makeDataset([STATE_COL(), COUNT_COL()], [["open", 1]]);
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({
+          id: 1,
+          dimension_id: "dim-state",
+          segment_id: 1,
+          segment_name: "US",
+        }),
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-state",
+          segment_id: 2,
+          segment_name: "EU",
+        }),
+      ],
+      datasets: [categorical, categorical],
+      selectedTimelineId: null,
+    });
+    expect(
+      seriesGroups[0].series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ],
+    ).toBeUndefined();
+  });
+
+  it("reorders the over-time series models to the bar's order (end-to-end)", () => {
+    const barDataset = makeDataset(
+      [STATE_COL(), COUNT_COL()],
+      [
+        ["a", 1],
+        ["b", 2],
+        ["c", 3],
+      ],
+    );
+    // The over-time rows present the breakout values in a different order.
+    const lineDataset = makeDataset(
+      [STATE_COL(), TS_COL(), COUNT_COL()],
+      [
+        ["c", "2025-01-01", 1],
+        ["a", "2025-01-01", 2],
+        ["b", "2025-01-01", 3],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-state", query_type: "default" }),
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-state",
+          query_type: "time-facet",
+        }),
+      ],
+      datasets: [barDataset, lineDataset],
+      selectedTimelineId: null,
+    });
+
+    const line = seriesGroups.find((g) => g.series[0].card.display === "line");
+    const computed = getComputedSettingsForSeries(line?.series);
+    const ctx: RenderingContext = {
+      getColor: (n) => n,
+      measureText: () => 0,
+      measureTextHeight: () => 0,
+      fontFamily: "",
+      theme: DEFAULT_VISUALIZATION_THEME,
+    };
+    // The chart model sorts its series via `graph.series_order`; assert the
+    // resulting series models follow the bar order despite the c/a/b data.
+    const model = getCartesianChartModel(line!.series, computed, [], ctx);
+    expect(model.seriesModels.map((s) => s.vizSettingsKey)).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+  });
+
+  it("derives over-time keys from the breakout's own column (binned dimension)", () => {
+    const ratingCol = () =>
+      createMockColumn({
+        name: "rating",
+        base_type: "type/Float",
+        binning_info: { binning_strategy: "bin-width", bin_width: 0.75 },
+      });
+    // Bar rows arrive sorted by metric (desc), NOT by the bin value — the bar
+    // chart still renders the numeric x-axis ascending, so the over-time order
+    // must follow ascending bins (0, 0.75, 1.5), not this row order.
+    const barDataset = makeDataset(
+      [ratingCol(), COUNT_COL()],
+      [
+        [0.75, 99],
+        [0, 50],
+        [1.5, 10],
+      ],
+    );
+    const lineDataset = makeDataset(
+      [ratingCol(), TS_COL(), COUNT_COL()],
+      [
+        [1.5, "2025-01-01", 1],
+        [0, "2025-01-01", 2],
+        [0.75, "2025-01-01", 3],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-rating", query_type: "default" }),
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-rating",
+          query_type: "time-facet",
+        }),
+      ],
+      datasets: [barDataset, lineDataset],
+      selectedTimelineId: null,
+    });
+
+    const bar = seriesGroups.find((g) => g.series[0].card.display === "bar");
+    const line = seriesGroups.find((g) => g.series[0].card.display === "line");
+
+    // The over-time series-order keys are the breakout column's OWN formatted
+    // values (binned ranges), in the bar's order (0, 0.75, 1.5) — so they match
+    // the line's series models even though the bar's x-axis shows plain numbers.
+    const lineCol = line!.series[0].data.cols[0];
+    const expectedKeys = [0, 0.75, 1.5].map((v) =>
+      formatBreakoutValue(v, lineCol),
+    );
+    const order =
+      line!.series[0].card.visualization_settings["graph.series_order"];
+    expect(order?.map((o) => o.key)).toEqual(expectedKeys);
+    expect(order?.every((o) => typeof o.color === "string")).toBe(true);
+
+    // The order survives the full computed-settings pipeline (and therefore
+    // reorders the rendered series + legend), in the bar's order.
+    const computed = getComputedSettingsForSeries(line!.series);
+    expect(computed["graph.series_order"]?.map((o) => o.key)).toEqual(
+      expectedKeys,
+    );
+
+    // The bar paints each category by raw value with the same color the
+    // over-time series uses for that category.
+    const barColors =
+      bar!.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    expect(barColors?.["0"]).toBe(
+      order?.find((o) => o.key === expectedKeys[0])?.color,
+    );
+    expect(barColors?.["1.5"]).toBe(
+      order?.find((o) => o.key === expectedKeys[2])?.color,
+    );
+  });
+
+  it("does not per-color a standalone binned bar (no over-time companion)", () => {
+    const ratingCol = createMockColumn({
+      name: "rating",
+      base_type: "type/Float",
+      binning_info: { binning_strategy: "bin-width", bin_width: 0.75 },
+    });
+    const barDataset = makeDataset(
+      [
+        ratingCol,
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      [
+        [0, 50],
+        [0.75, 99],
+        [1.5, 10],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-rating", query_type: "default" }),
+      ],
+      datasets: [barDataset],
+      selectedTimelineId: null,
+    });
+    const bar = seriesGroups.find((g) => g.series[0].card.display === "bar");
+    expect(bar?.series[0].card.display).toBe("bar");
+    expect(
+      bar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ],
+    ).toBeUndefined();
+  });
+
+  it("colors a Top-N bar by the companion region map's choropleth scale", () => {
+    const stateGeoCol = () =>
+      createMockColumn({
+        name: "STATE",
+        base_type: "type/Text",
+        semantic_type: "type/State",
+      });
+    const statePlainCol = () =>
+      createMockColumn({ name: "State", base_type: "type/Text" });
+    const SUM = () =>
+      createMockColumn({ name: "sum", base_type: "type/Float" });
+
+    // The map (default geo query) is computed over the full set of states.
+    const mapValues = [
+      ["TX", 108000],
+      ["MN", 65000],
+      ["MT", 64000],
+      ["CO", 40000],
+      ["WI", 20000],
+      ["NY", 15000],
+    ];
+    const mapDataset = makeDataset([stateGeoCol(), SUM()], mapValues);
+    // The Top-N bar (plain string state column → renders as bar) shows a subset
+    // plus an "(Other)" bucket.
+    const topNDataset = makeDataset(
+      [statePlainCol(), SUM()],
+      [
+        ["TX", 108000],
+        ["MN", 65000],
+        ["(Other)", 900000],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-state", query_type: "default" }),
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-state",
+          query_type: "top-n-other",
+        }),
+      ],
+      datasets: [mapDataset, topNDataset],
+      selectedTimelineId: null,
+    });
+
+    const map = seriesGroups.find((g) => g.series[0].card.display === "map");
+    const bar = seriesGroups.find((g) => g.series[0].card.display === "bar");
+    expect(map).toBeTruthy();
+
+    const barColors =
+      bar!.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ];
+    // Reproduce the map's exact value→color scale.
+    const baseColor = getColorsForValues(["(All)"])["(All)"];
+    const { colorScale } = buildColorScale(
+      Array.from(new Set(mapValues.map((v) => v[1] as number))),
+      getColorplethColorScale(baseColor),
+    );
+    expect(barColors?.["TX"]).toBe(colorScale(108000));
+    expect(barColors?.["MN"]).toBe(colorScale(65000));
+    expect(barColors?.["(Other)"]).toBe(colorScale(900000));
+    // Distinct value buckets get distinct colors.
+    expect(barColors?.["TX"]).not.toBe(barColors?.["MN"]);
+  });
+
+  it("does not color special charts (day-of-week) even sharing a dimension with the default bar", () => {
+    const categoryDataset = makeDataset(
+      [STATE_COL(), COUNT_COL()],
+      [
+        ["open", 10],
+        ["closed", 20],
+      ],
+    );
+    const dayDataset = makeDataset(
+      [createMockColumn({ name: "day", base_type: "type/Text" }), COUNT_COL()],
+      [
+        ["Sunday", 5],
+        ["Monday", 6],
+      ],
+    );
+    const { seriesGroups } = buildSeriesGroups({
+      queries: [
+        makeQuery({ id: 1, dimension_id: "dim-state", query_type: "default" }),
+        makeQuery({
+          id: 2,
+          dimension_id: "dim-state",
+          query_type: "temporal-pattern-day",
+        }),
+      ],
+      datasets: [categoryDataset, dayDataset],
+      selectedTimelineId: null,
+    });
+
+    const defaultBar = seriesGroups.find((g) => g.queryType === "default");
+    const dayBar = seriesGroups.find(
+      (g) => g.queryType === "temporal-pattern-day",
+    );
+    // Both render as `bar`, but only the `default` one is color-matched.
+    expect(dayBar?.series[0].card.display).toBe("bar");
+    expect(
+      defaultBar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ],
+    ).toBeDefined();
+    expect(
+      dayBar?.series[0].card.visualization_settings[
+        "graph._dimension_value_colors"
+      ],
+    ).toBeUndefined();
   });
 });
 

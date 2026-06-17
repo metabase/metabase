@@ -655,6 +655,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
 export const GRAPH_COLORS_SETTINGS: VisualizationSettingsDefinitions = {
   // DEPRECATED: replaced with "color" series setting
   "graph.colors": {},
+  // Internal (explorations): per-bar colors keyed by the x-axis dimension value.
+  "graph._dimension_value_colors": {},
 };
 
 export const GRAPH_AXIS_SETTINGS: VisualizationSettingsDefinitions = {

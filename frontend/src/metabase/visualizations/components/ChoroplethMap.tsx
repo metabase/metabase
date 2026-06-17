@@ -330,7 +330,7 @@ function buildValuesMap(
   return valuesMap;
 }
 
-function buildColorScale(
+export function buildColorScale(
   domain: number[],
   settingsColors: string[] | undefined,
 ): {
