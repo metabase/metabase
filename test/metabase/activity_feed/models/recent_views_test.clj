@@ -19,7 +19,8 @@
 (use-fixtures
   :each (fn [f]
           (clear-test-user-recent-views)
-          (f)))
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (f))))
 
 (defn fixup [list-item]
   (-> list-item

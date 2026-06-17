@@ -142,6 +142,7 @@
            metabase.activity-feed.init}
    :uses #{api
            app-db
+           batch-processing
            collections
            config
            events
