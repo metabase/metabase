@@ -21,7 +21,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.web-mercator :as mercator])
+   [metabase.util.web-mercator :as mercator]
+   [toucan2.core :as t2])
   (:import
    (java.awt Color)
    (java.awt.image BufferedImage)
@@ -256,15 +257,15 @@
     (tiles-response result zoom points)))
 
 (defn process-tiles-query-for-dashcard
-  "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG"
-  [dashboard-id dashcard-id card-id parameters zoom x y lat-field-ref lon-field-ref]
+  "Generates a single tile image for a dashcard and returns a Ring response that contains the data as a PNG."
+  [dashboard dashcard card parameters zoom x y lat-field-ref lon-field-ref]
   (let [lat-field-ref (mbql.normalize/normalize lat-field-ref)
         lon-field-ref (mbql.normalize/normalize lon-field-ref)
         result
         (qp.dashboard/process-query-for-dashcard
-         :dashboard-id  dashboard-id
-         :dashcard-id   dashcard-id
-         :card-id       card-id
+         :dashboard     dashboard
+         :dashcard      dashcard
+         :card          card
          :export-format :api
          :parameters    parameters
          :context       :map-tiles
@@ -324,4 +325,7 @@
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))
+  (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
+                                    (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
+                                    (api/check-404 (t2/select-one :model/Card :id card-id))
+                                    parameters zoom x y lat-field lon-field))

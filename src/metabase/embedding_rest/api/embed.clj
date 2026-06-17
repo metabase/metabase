@@ -432,4 +432,4 @@
         lon-field (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))

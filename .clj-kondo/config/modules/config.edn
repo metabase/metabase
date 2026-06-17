@@ -1612,6 +1612,7 @@
    :uses #{actions
            analytics
            api
+           app-db
            dashboards
            dashboards-rest
            events

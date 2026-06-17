@@ -1,12 +1,14 @@
 (ns metabase.public-sharing-rest.api
   "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
   (:require
+   [clojure.core.memoize :as memoize]
    [hiccup.core :as hiccup]
    [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.dashboards-rest.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
@@ -283,6 +285,38 @@
   (u/prog1 (dashboard-with-uuid uuid)
     (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
+(def ^:private cached-entity-ttl-ms
+  "How long the public/embed entity caches below hold onto a fetched Dashboard/DashboardCard/Card row.
+
+  These caches exist ONLY for the high-volume, unauthenticated public + embed read paths, where bounded staleness (up
+  to this TTL) is acceptable in exchange for cutting duplicate app-DB fetches within a single request. They must NEVER
+  be used on any path that requires read-your-writes freshness (i.e. the authenticated app)."
+  (u/minutes->ms 1))
+
+(def fetch-cached-dashboard
+  "TTL-memoized fetch of a full `:model/Dashboard` row by id. Public/embed read paths only; see
+  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/Dashboard :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
+(def fetch-cached-dashcard
+  "TTL-memoized fetch of a full `:model/DashboardCard` row by id. Public/embed read paths only; see
+  [[cached-entity-ttl-ms]]. Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/DashboardCard :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
+(def fetch-cached-card
+  "TTL-memoized fetch of a full `:model/Card` row by id. Public/embed read paths only; see [[cached-entity-ttl-ms]].
+  Do NOT use on authenticated app paths that require read-your-writes freshness."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
+   (fn [id] (t2/select-one :model/Card :id id))
+   :ttl/threshold cached-entity-ttl-ms))
+
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
   `dashcard-id`. `card-id`, `dashboard-id`, and `dashcard-id` are all required; other parameters are optional:
@@ -291,17 +325,27 @@
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
   * `qp`            - QP function to run the query with. Default [[qp/process-query]] + [[qp/userland-context]]
 
+  This is the single bridge for all public + embed dashcard-query entry points. It resolves `dashboard-id`,
+  `dashcard-id`, and `card-id` to full entities via the shared TTL-memoized caches (acceptable here because these are
+  unauthenticated read paths) and hands the entities to [[qp.dashboard/process-query-for-dashcard]].
+
   Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
-  [& {:keys [export-format parameters qp]
+  [& {:keys [dashboard-id card-id dashcard-id export-format parameters qp]
       :or   {qp            qp.card/process-query-for-card-default-qp
              export-format :api}
       :as   options}]
-  (let [options (merge
+  (let [dashboard (api/check-404 (fetch-cached-dashboard dashboard-id))
+        dashcard  (api/check-404 (fetch-cached-dashcard dashcard-id))
+        card      (api/check-404 (fetch-cached-card card-id))
+        options (merge
                  {:context     :public-dashboard
                   :constraints (qp.constraints/default-query-constraints)}
-                 options
-                 {:parameters    (cond-> parameters
+                 (dissoc options :dashboard-id :card-id :dashcard-id)
+                 {:dashboard     dashboard
+                  :dashcard      dashcard
+                  :card          card
+                  :parameters    (cond-> parameters
                                    (string? parameters) json/decode+kw)
                   :export-format export-format
                   :qp            qp
@@ -724,7 +768,10 @@
         lat-field    (json/decode+kw latField)
         lon-field    (json/decode+kw lonField)]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+      (api.tiles/process-tiles-query-for-dashcard (api/check-404 (fetch-cached-dashboard dashboard-id))
+                                                  (api/check-404 (fetch-cached-dashcard dashcard-id))
+                                                  (api/check-404 (fetch-cached-card card-id))
+                                                  parameters zoom x y lat-field lon-field))))
 
 ;;; ------------------------------------------------ Public Documents -------------------------------------------------
 

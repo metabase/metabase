@@ -265,4 +265,4 @@
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]
     (request/as-admin
-      (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+      (api.embed.common/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))

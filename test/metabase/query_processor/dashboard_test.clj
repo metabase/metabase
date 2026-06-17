@@ -20,20 +20,26 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (mt/as-admin
     (apply qp.dashboard/process-query-for-dashcard
-           :dashboard-id dashboard-id
-           :card-id      card-id
-           :dashcard-id  dashcard-id
+           :dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+           :card      (t2/select-one :model/Card :id card-id)
+           :dashcard  (t2/select-one :model/DashboardCard :id dashcard-id)
            :make-run     (constantly
                           (fn run [query info]
                             (qp/process-query (assoc query :info info))))
            options)))
+
+(defn- resolve-params-for-query [dashboard-id card-id dashcard-id params]
+  (#'qp.dashboard/resolve-params-for-query (t2/select-one :model/Dashboard :id dashboard-id)
+                                           (t2/select-one :model/DashboardCard :id dashcard-id)
+                                           card-id
+                                           params))
 
 (deftest ^:parallel resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
                                                    {card-id :id}      :card
                                                    {dashcard-id :id}  :dashcard}]
     (letfn [(resolve-params [params]
-              (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params))]
+              (resolve-params-for-query dashboard-id card-id dashcard-id params))]
       (testing "Valid parameters"
         (is (= [{:type   :category
                  :id     "_PRICE_"
@@ -77,7 +83,7 @@
                      :type :number/=
                      :value [4]
                      :target [:variable [:template-tag "qty_locked"]]}]
-                   (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id params)))
+                   (resolve-params-for-query dashboard-id card-id dashcard-id params)))
             ;; test the full query with two different values to ensure it is actually used
             (is (= [[2391]]
                    (mt/rows

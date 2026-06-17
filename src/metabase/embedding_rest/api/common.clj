@@ -17,6 +17,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.tiles.api :as api.tiles]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -419,6 +420,15 @@
      :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
+
+(defn process-tiles-query-for-dashcard
+  "Like [[metabase.tiles.api/process-tiles-query-for-dashcard]], but resolves the Dashboard/DashboardCard/Card entities
+  through the shared public/embed TTL-memoized cache. Used by the embed tiles endpoints. Returns a Ring response."
+  [dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field]
+  (api.tiles/process-tiles-query-for-dashcard (api/check-404 (api.public/fetch-cached-dashboard dashboard-id))
+                                              (api/check-404 (api.public/fetch-cached-dashcard dashcard-id))
+                                              (api/check-404 (api.public/fetch-cached-card card-id))
+                                              parameters zoom x y lat-field lon-field))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param

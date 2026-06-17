@@ -1398,9 +1398,9 @@
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                body
-               {:dashboard-id dashboard-id
-                :card-id      card-id
-                :dashcard-id  dashcard-id}))))
+               {:dashboard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
+                :card      (api/check-404 (t2/select-one :model/Card :id card-id))
+                :dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1430,9 +1430,10 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard-id  dashboard-id
-             :card-id       card-id
-             :dashcard-id   dashcard-id
+            ;; authenticated app path: fetch fresh entities (no caching/staleness)
+            {:dashboard     (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
+             :card          (api/check-404 (t2/select-one :model/Card :id card-id))
+             :dashcard      (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
              :export-format export-format
              :parameters    (cond-> parameters
                               (string? parameters) json/decode+kw)
@@ -1464,7 +1465,8 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id
-              :qp           qp.pivot/run-pivot-query})))
+             ;; authenticated app path: fetch fresh entities (no caching/staleness)
+             {:dashboard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
+              :card      (api/check-404 (t2/select-one :model/Card :id card-id))
+              :dashcard  (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
+              :qp        qp.pivot/run-pivot-query})))
