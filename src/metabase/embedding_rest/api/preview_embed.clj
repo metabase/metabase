@@ -162,9 +162,9 @@
    query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-        dashcard         (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card :id card-id))
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -209,9 +209,9 @@
    query-params]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-        dashcard         (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card :id card-id))
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -243,7 +243,7 @@
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
-        card       (api/check-404 (t2/select-one :model/Card :id card-id))
+        card       (api/check-404 (t2/select-one :model/Card card-id))
         parameters (json/decode+kw parameters)
         lat-field  (json/decode+kw latField)
         lon-field  (json/decode+kw lonField)]
@@ -271,9 +271,9 @@
        [:lonField string?]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-        dashcard         (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card             (api/check-404 (t2/select-one :model/Card :id card-id))
+        dashboard        (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard         (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card             (api/check-404 (t2/select-one :model/Card card-id))
         parameters       (json/decode+kw parameters)
         lat-field        (json/decode+kw latField)
         lon-field        (json/decode+kw lonField)]

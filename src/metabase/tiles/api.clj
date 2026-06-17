@@ -327,7 +327,7 @@
        [:parameters {:optional true} ::parameters]
        [:latField ::legacy-ref]
        [:lonField ::legacy-ref]]]
-  (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-                                    (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-                                    (api/check-404 (t2/select-one :model/Card :id card-id))
+  (process-tiles-query-for-dashcard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+                                    (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+                                    (api/check-404 (t2/select-one :model/Card card-id))
                                     parameters zoom x y lat-field lon-field))

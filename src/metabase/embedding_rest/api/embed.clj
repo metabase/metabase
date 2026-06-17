@@ -186,9 +186,9 @@
            qp qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (api.embed.common/unsigned-token->dashboard-id unsigned-token)
-        dashboard      (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-        dashcard       (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card           (api/check-404 (t2/select-one :model/Card :id card-id))]
+        dashboard      (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard       (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card           (api/check-404 (t2/select-one :model/Card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (database-routing/with-database-routing-off
       (api.embed.common/process-query-for-dashcard
@@ -434,9 +434,9 @@
        [:lonField string?]]]
   (let [unsigned (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
-        dashboard (api/check-404 (t2/select-one :model/Dashboard :id dashboard-id))
-        dashcard (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id))
-        card (api/check-404 (t2/select-one :model/Card :id card-id))
+        dashboard (api/check-404 (t2/select-one :model/Dashboard dashboard-id))
+        dashcard (api/check-404 (t2/select-one :model/DashboardCard dashcard-id))
+        card (api/check-404 (t2/select-one :model/Card card-id))
         parameters (when parameters (json/decode+kw parameters))
         lat-field (json/decode+kw latField)
         lon-field (json/decode+kw lonField)]
