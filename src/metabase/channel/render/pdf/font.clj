@@ -297,8 +297,24 @@
 
 (def ^:private no-break-before-chars
   "CJK characters that must not start a line (closing punctuation, small kana); they attach to the previous break unit.
-  This is a simplified kinsoku rule."
-  (set "、。，．・：；！？）］｝」』】〕〉》〜ー…ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ"))
+  This is a simplified kinsoku rule.
+
+  Spelled out as `\\uXXXX` escapes rather than literal glyphs so the source stays ASCII -- several of these
+  forms trip the whitespace linter. Each line names the characters it encodes."
+  (set (str ; punctuation: ideographic & fullwidth comma/full-stop, katakana middle dot
+        "\u3001\u3002\uFF0C\uFF0E\u30FB"
+            ; fullwidth colon, semicolon, exclamation, question mark
+        "\uFF1A\uFF1B\uFF01\uFF1F"
+            ; fullwidth right paren, square & curly brackets
+        "\uFF09\uFF3D\uFF5D"
+            ; right brackets: corner, white-corner, lenticular, tortoise-shell, angle, double-angle
+        "\u300D\u300F\u3011\u3015\u3009\u300B"
+            ; wave dash, prolonged sound mark, horizontal ellipsis
+        "\u301C\u30FC\u2026"
+            ; small hiragana: a i u e o tu ya yu yo wa
+        "\u3041\u3043\u3045\u3047\u3049\u3063\u3083\u3085\u3087\u308E"
+            ; small katakana: a i u e o tu ya yu yo wa
+        "\u30A1\u30A3\u30A5\u30A7\u30A9\u30C3\u30E3\u30E5\u30E7\u30EE")))
 
 (defn no-break-before?
   "True if `cp` is a CJK character that must not start a line (closing punctuation, small kana), so
