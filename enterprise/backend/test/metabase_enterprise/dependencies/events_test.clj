@@ -736,6 +736,11 @@
              new-version (inc old-version)]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}]
            (deps.findings/upsert-analysis! card)
+           ;; Propagation now fires only on a real output change. Stamp a sentinel hash that differs
+           ;; from what re-analysis computes, so analyze-and-propagate! reaches the (throwing) mark step.
+           (t2/update! :model/AnalysisFinding
+                       :analyzed_entity_type :card :analyzed_entity_id card-id
+                       {:output_hash "force-change-sentinel"})
            (testing "Initial analysis exists"
              (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
                                                   :analyzed_entity_type :card
@@ -749,7 +754,11 @@
            (testing "Analysis should be unchanged after rolled-back transaction"
              (is (= old-version (t2/select-one-fn :analysis_version :model/AnalysisFinding
                                                   :analyzed_entity_type :card
-                                                  :analyzed_entity_id card-id))))))))))
+                                                  :analyzed_entity_id card-id)))
+             ;; output_hash rolled back to the sentinel too, proving the whole upsert was undone
+             (is (= "force-change-sentinel" (t2/select-one-fn :output_hash :model/AnalysisFinding
+                                                              :analyzed_entity_type :card
+                                                              :analyzed_entity_id card-id))))))))))
 
 (deftest ^:sequential card-update-triggers-native-cards-test
   (run-with-dependencies-setup!
