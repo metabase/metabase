@@ -154,6 +154,9 @@
                             driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
                     (canceling/chan-start-run! run-id cancel-chan)
                     (run-transform! cancel-chan source-range-params)))]
+        ;; Before the watermark/succeed mark, so a failure hits the catch below and fails the run (and a retry
+        ;; stays a full rebuild that re-attempts the index).
+        (transforms-base.u/apply-target-indexes! transform)
         (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
         ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's

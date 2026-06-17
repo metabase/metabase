@@ -559,6 +559,32 @@
 
 ;;; ------------------------------------------------- Post-Execution Completion -------------------------------------------------
 
+(defn- apply-standalone-indexes!
+  "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
+  table creation, so they're filtered out here and passing the full list is safe. Each create uses `:if-not-exists`,
+  so re-applying is a no-op. Throws on failure."
+  [database {:keys [indexes schema] table-name :name}]
+  (let [driver     (:engine database)
+        methods    (driver/supported-index-methods driver database)
+        standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
+    (when (seq standalone)
+      (let [conn-spec (driver/connection-spec driver database)]
+        (doseq [index standalone]
+          (driver/execute-raw-queries! driver conn-spec
+                                       (driver/compile-create-index driver schema table-name
+                                                                    (assoc index :if-not-exists true))))))))
+
+(defn apply-target-indexes!
+  "Apply the target's standalone indexes, on full-create runs only (a `:table` run or a full-reset incremental run
+  recreates the table; appends keep the live table and its indexes). Runs before the run is marked succeeded, so a
+  failure fails the run record."
+  [transform]
+  (when (and (seq (:indexes (:target transform)))
+             (or (= :table (keyword (:type (:target transform))))
+                 (full-incremental-run? transform)))
+    (let [database (t2/select-one :model/Database (transforms-base.i/target-db-id transform))]
+      (apply-standalone-indexes! database (:target transform)))))
+
 (defn complete-execution!
   "Post-processing steps after a transform has been executed successfully.
 
@@ -566,11 +592,11 @@
    - Sync target table to AppDB
    - Set `transform_id` on the target table
    - Publish Metabase events (unless `:publish-events?` is false)
-   - Create/drop secondary indexes
 
    This is called after the core execution completes. Callers that use
    `run-cancelable-transform!` should call this AFTER `succeed-started-run!`
-   to preserve the correct order of operations."
+   to preserve the correct order of operations. (Standalone indexes are applied earlier, by
+   `apply-target-indexes!`, so a failure there still fails the run.)"
   [transform opts]
   (let [{:keys [target]} transform
         {:keys [publish-events?]

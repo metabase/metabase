@@ -6,6 +6,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn hydrate-transform-indexes
+  "Declared indexes for `transform`. Stub until the index-request model lands; tests `with-redefs` it."
+  [_transform]
+  [])
+
 (defn- resolve-target
   "Apply the workspace target-rewrite hook before dispatch. On a workspaced child
   instance for `(:database target)`, the hook rewrites `:schema` to the workspace
@@ -19,12 +24,16 @@
 
   When `target-db-id` returns nil (no per-type impl, or transform shape doesn't
   identify a target DB), the hook is skipped — workspace rewriting requires a
-  known DB id to look up `db-workspace-namespace`."
+  known DB id to look up `db-workspace-namespace`.
+
+  Also hydrates the declared indexes onto the target so the base reads them off
+  `(:indexes target)` at every table-creation seam."
   [transform]
-  (if-let [db-id (transforms-base.i/target-db-id transform)]
-    (assoc transform :target
-           (transforms.query-impl/resolve-transform-target db-id (:target transform)))
-    transform))
+  (-> (if-let [db-id (transforms-base.i/target-db-id transform)]
+        (assoc transform :target
+               (transforms.query-impl/resolve-transform-target db-id (:target transform)))
+        transform)
+      (assoc-in [:target :indexes] (vec (hydrate-transform-indexes transform)))))
 
 (defn execute!
   "Run `transform` and sync its target table.

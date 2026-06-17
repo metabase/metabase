@@ -34,11 +34,13 @@
 (def ^:private order-by-cases
   ;; The table/column identifiers come from the shared `:sql-jdbc` renderer (double-quoted); the ORDER BY columns are
   ;; rendered with ClickHouse `quote-name` (backticks), matching the driver's pre-existing ORDER BY rendering.
-  [{:label        "order-by index sets the MergeTree sorting key"
+  ;; A sorting key gets `allow_nullable_key = 1`, since transform target columns are nullable and MergeTree otherwise
+  ;; rejects a nullable sorting key. The unsorted `ORDER BY ()` case has no key, so it doesn't.
+  [{:label        "order-by index sets the MergeTree sorting key and allows a nullable key"
     :indexes      [{:kind :order-by :columns [{:name "a"} {:name "b"}]}]
-    :ctas         "CREATE TABLE `events` ORDER BY (`a`, `b`) AS SELECT 1"
-    :create-table "CREATE TABLE \"events\" (\"a\" Int64, \"b\" Int64)\nENGINE = MergeTree\nORDER BY (`a`, `b`)\nSETTINGS replicated_deduplication_window = 0"}
-   {:label        "no order-by index -> empty ORDER BY () (unsorted)"
+    :ctas         "CREATE TABLE `events` ORDER BY (`a`, `b`) SETTINGS allow_nullable_key = 1 AS SELECT 1"
+    :create-table "CREATE TABLE \"events\" (\"a\" Int64, \"b\" Int64)\nENGINE = MergeTree\nORDER BY (`a`, `b`)\nSETTINGS replicated_deduplication_window = 0, allow_nullable_key = 1"}
+   {:label        "no order-by index -> empty ORDER BY () (unsorted), no nullable-key setting"
     :indexes      []
     :ctas         "CREATE TABLE `events` ORDER BY () AS SELECT 1"
     :create-table "CREATE TABLE \"events\" (\"a\" Int64, \"b\" Int64)\nENGINE = MergeTree\nORDER BY ()\nSETTINGS replicated_deduplication_window = 0"}])
