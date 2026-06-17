@@ -193,7 +193,6 @@
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
   (request/as-admin
-    ;; public/embed read path: hand qp.card the cached Card so it doesn't re-fetch it (it still read-checks it)
     (m/mapply qp.card/process-query-for-card (api/check-404 (fetch-cached-card card-id)) export-format
               :parameters parameters
               :context    (export-format->context export-format)
