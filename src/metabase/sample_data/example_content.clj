@@ -11,6 +11,7 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -67,6 +68,21 @@
               (m/update-existing :fk_target_field_id #(if (number? %) (get (:fields maps) % %) %))))
         cols))
 
+(defn- remap-source-card-refs
+  "`export-mbql` only remaps a numeric `:source-table` (a table id); a `\"card__N\"` `:source-table` - a card
+  that builds on another card - is left carrying the EDN card id. Rewrite each through the card id map so it
+  points at the recreated card instead of whatever row happens to occupy the EDN id on an upgraded app db."
+  [card-map query]
+  (walk/postwalk
+   (fn [x]
+     (if-let [[_ n] (and (map? x)
+                         (string? (:source-table x))
+                         (re-matches #"card__(\d+)" (:source-table x)))]
+       (let [old-id (parse-long n)]
+         (assoc x :source-table (str "card__" (get card-map old-id old-id))))
+       x))
+   query))
+
 (defn- remap-blob
   "Remap the entity ids embedded in a serialized JSON `blob` string of the given `kind`, returning a
   JSON string. Reuses the serdes export walkers with the FK resolvers bound to return new numeric ids
@@ -81,7 +97,7 @@
                                               (if k (get (get maps k) id id) id)))]
       (json/encode
        (case kind
-         :mbql       (serdes/export-mbql (json/decode+kw blob))
+         :mbql       (->> (json/decode+kw blob) serdes/export-mbql (remap-source-card-refs (:cards maps)))
          ;; export-parameters injects a :position artifact meant to be undone by import; drop it.
          :parameters (mapv #(dissoc % :position) (serdes/export-parameters (json/decode+kw blob)))
          :param-maps (serdes/export-parameter-mappings (json/decode+kw blob))
