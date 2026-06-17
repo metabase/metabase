@@ -79,7 +79,12 @@ describe("getTreemapChartOption", () => {
     const [a, b, c, d] = series.data[0].children ?? [];
     expect(a.label).toEqual({ show: false });
     expect(b.label).toEqual({ show: false });
-    expect(c.label).toEqual({ show: true, width: 80 });
+    expect(c.label).toEqual({
+      show: true,
+      width: 80,
+      overflow: "truncate",
+      formatter: "C",
+    });
     expect(d.label).toEqual({
       show: true,
       width: 120,
