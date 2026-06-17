@@ -74,6 +74,7 @@ export function FilterHeaderButton({
           <MultiStageFilterPicker
             query={query}
             canAppendStage={question.display() !== "pivot"}
+            color="core-brand"
             onChange={handleQueryChange}
             onClose={close}
           />

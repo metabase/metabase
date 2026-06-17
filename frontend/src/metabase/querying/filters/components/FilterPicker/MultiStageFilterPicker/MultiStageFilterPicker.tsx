@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { FilterColumnPicker } from "../FilterColumnPicker";
@@ -13,6 +14,7 @@ import type {
 export type MultiStageFilterPickerProps = {
   query: Lib.Query;
   canAppendStage: boolean;
+  color?: ColorName;
   onChange: (newQuery: Lib.Query, opts: FilterChangeOpts) => void;
   onClose?: () => void;
 };
@@ -20,6 +22,7 @@ export type MultiStageFilterPickerProps = {
 export function MultiStageFilterPicker({
   query: initialQuery,
   canAppendStage,
+  color,
   onChange,
   onClose,
 }: MultiStageFilterPickerProps) {
@@ -73,6 +76,7 @@ export function MultiStageFilterPicker({
       <FilterColumnPicker
         query={query}
         stageIndexes={stageIndexes}
+        color={color}
         withCustomExpression={false}
         onColumnSelect={setSelectedItem}
         onSegmentSelect={handleSegmentChange}

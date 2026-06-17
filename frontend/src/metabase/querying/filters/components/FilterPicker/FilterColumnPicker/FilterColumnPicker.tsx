@@ -21,6 +21,8 @@ import {
 } from "metabase/querying/expressions";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { color } from "metabase/ui/utils/colors";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
@@ -48,6 +50,7 @@ const SEARCH_PROP = [
 
 export interface FilterColumnPickerProps {
   className?: string;
+  color?: ColorName;
   query: Lib.Query;
   stageIndexes: number[];
   checkItemIsSelected?: (item: Item) => boolean;
@@ -76,6 +79,7 @@ export const isExpressionClauseItem = (
  */
 export function FilterColumnPicker({
   className,
+  color: colorProp,
   query,
   stageIndexes,
   checkItemIsSelected,
@@ -155,6 +159,7 @@ export function FilterColumnPicker({
     <DelayGroup>
       <AccordionList<Item, Section>
         className={cx(S.StyledAccordionList, className)}
+        style={colorProp ? { color: color(colorProp) } : undefined}
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
