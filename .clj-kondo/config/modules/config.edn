@@ -1050,7 +1050,6 @@
    :uses #{api
            models
            util}
-   :model-exports #{:model/TableIndex}
    :model-imports #{:model/Table :model/Transform}}
 
   initialization-status
