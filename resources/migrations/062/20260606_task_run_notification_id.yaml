@@ -14,10 +14,8 @@ databaseChangeLog:
             - columnExists:
                 tableName: task_run
                 columnName: notification_id
-      # No FK on notification_id, intentionally matching the polymorphic entity_id column on this
-      # table (entity_id points at card/dashboard/database by entity_type, so a single FK is
-      # impossible). task_run is a high-churn 90-day operational log, not a relational parent, so a
-      # referential cascade isn't wanted here.
+      # No FK: entity_id here is already FK-less (it's polymorphic), and task_run is a 90-day
+      # operational log, not a relational parent.
       changes:
         - addColumn:
             tableName: task_run
@@ -57,14 +55,10 @@ databaseChangeLog:
             tableName: task_run
             indexName: idx_task_run_notification_id_started_at
 
-  # Backfill the 90-day display window from the notification-send task_history child of each run,
-  # for both alerts (card) and subscriptions (dashboard). The notification_id lives in task_details
-  # JSON (top-level on success, nested under `original-info` when the send failed and
-  # with-task-history wrapped it). task_details is always written through the task_history
-  # `transform-json-eliding` model transform, so every notification-send row is machine-serialized
-  # JSON, never hand-authored: the cast can't hit malformed text and abort the migration. A row
-  # that's valid JSON but missing the key yields NULL (no error), so partial data is left NULL.
-  # Postgres + MySQL only. H2 self-heals as runs age out of the 90-day window.
+  # Backfill the 90-day window (alerts + subscriptions) from each run's notification-send
+  # task_history child. notification_id sits in task_details JSON, top-level or under `original-info`
+  # on failure. task_details is always JSON-serialized by the model, so the cast is safe; a row
+  # missing the key just yields NULL. Postgres + MySQL only; H2 ages out.
   - changeSet:
       id: v62.2026-06-06T00:00:02
       author: qnkhuat

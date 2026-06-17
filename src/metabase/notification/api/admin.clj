@@ -644,10 +644,8 @@
                                          [:= :th.task            task-channel-send]
                                          [:> :tr.started_at      (lookback-cutoff)]]
                               :order-by [[:tr.started_at :desc]]
-                              ;; Server-side upper bound. The `(take result-limit)` over
-                              ;; `partition-by run_id` closes the cursor well before this in practice;
-                              ;; the cap just guards against a pathological run with a huge number of
-                              ;; channel-send rows streaming unbounded.
+                              ;; safety cap; the (take result-limit) over partition-by run_id
+                              ;; normally closes the cursor first.
                               :limit    500})))
 
 (defn- get-notification-detail
