@@ -71,15 +71,51 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
    ```
 
    This resolves to the current internal-testing SDK build with the `@metabase/embedding-sdk-react/data-app` entrypoint and data-app sandbox contract. Do not use `latest`, `63-stable`, or a generic `^0.63.x` range for data apps until the data-app SDK surface is promoted out of the internal tag.
-3. Copy `.env.local.example` → `.env.local` and fill in `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys).
-4. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
-5. **Fix `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
+3. **Ensure the repo-root `.gitignore` ignores `.env.local`** — do this *before* creating any credentials file so the secret can never be committed. Create the `.gitignore` if the repo doesn't have one, then add the entry if it's missing:
+
+   ```bash
+   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+   if [ -z "$ROOT" ]; then
+     echo "MISSING (run this from inside the connected git repo)"
+   else
+     GITIGNORE="$ROOT/.gitignore"
+     # Create the repo-root .gitignore if absent, then ensure `.env.local` is
+     # ignored so the credentials file (next step) can never be committed.
+     [ -f "$GITIGNORE" ] || : > "$GITIGNORE"
+     grep -qxF ".env.local" "$GITIGNORE" || echo ".env.local" >> "$GITIGNORE"
+   fi
+   ```
+4. Set up the Metabase credentials at the **repository root** — `<repo>/.env.local` (usually two levels up from the app dir), **not** the app dir. One `.env.local` there serves every data app in the repo.
+
+   Create it from the example if absent, then verify the two vars are set **without printing the file** (it may hold other secrets) — `source` it and echo only a pass/fail signal, never the values:
+
+   ```bash
+   # Resolve the repo root first; an unguarded $(git ...) would expand to
+   # "/.env.local" outside a repo and touch a system-level file.
+   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+   if [ -z "$ROOT" ]; then
+     echo "MISSING (run this from inside the connected git repo)"
+   else
+     ENV_FILE="$ROOT/.env.local"
+     [ -f "$ENV_FILE" ] || cp .env.local.example "$ENV_FILE"
+     # Source inside a subshell so the vars never leak into your environment.
+     ( source "$ENV_FILE" 2>/dev/null
+       [ -n "$VITE_MB_URL" ] && [ -n "$VITE_MB_API_KEY" ]
+     ) && echo "creds present" || echo "MISSING"
+   fi
+   ```
+
+   If it prints `MISSING`, **ask the user to fill `VITE_MB_URL` (the running Metabase instance) and `VITE_MB_API_KEY` (Admin → Authentication → API keys) in `<repo>/.env.local` themselves** — up front, before anything needs the key.
+
+   > **Never ask the user to paste the API key into the chat, and never `cat` / `echo` / print `.env.local` or its variables.** It's git-ignored and may hold *other* secrets — the file's contents and the key must never enter the conversation or your context. Every command that needs the key `source`s the file (as above) so the shell uses the value directly; you only ever see the `creds present` / `MISSING` signal, never the secret itself. (`creds present` only means both vars are non-empty — not that the URL or key are valid; a bad key surfaces later when a request fails.)
+5. `npm install` (or whichever package manager the user prefers — the template ships with no lockfile, so `npm` / `yarn` / `pnpm` / `bun` all work; use the project's existing lockfile if one appears post-clone).
+6. **Fix the app's `.gitignore` so the lockfile *and* the built bundle get committed.** Two things must end up tracked in the remote-sync repo:
    - **Lockfile** — strip the lockfile-ignoring block (the chunk between `# Lockfiles —` and `bun.lockb`, covering `package-lock.json` / `yarn.lock` / `pnpm-lock.yaml` / `bun.lock` / `bun.lockb`) so the project commits its lockfile for reproducible installs.
    - **The built bundle** — Metabase serves the file at the `path` declared in `data_app.yml` (the template builds to `dist/index.js`, the default `path`) straight from the committed Git tree, so **that file must be committed**. If the template's `.gitignore` ignores `dist/` (or wherever your build outputs), remove that line.
    **Verify with `git status`** — after `npm install` + a build, both the generated lockfile and the built bundle (the file `path` points at) must appear as untracked/committable files. If either doesn't, the relevant `.gitignore` line is still there; remove it and re-check. Do **not** skip this — agents have repeatedly shipped projects with no committed lockfile or an un-synced bundle.
-6. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
-7. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
-8. **Edit `data_app.yml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
+7. `npm run dev` and confirm the preview at http://localhost:5174 renders the starter "Hello, data app" message.
+8. If the preview hits CORS, add `http://localhost:5174` under Admin → Embedding → Embedded analytics SDK → CORS.
+9. **Edit `data_app.yml`** (it ships with the template, in the app directory). This is the per-app config Metabase reads on sync — one file per app. Fill in its fields for this app:
 
    ```yaml
    name: Sales App        # display name shown in the admin UI
@@ -93,8 +129,7 @@ Once the template is in `<repo>/data_apps/<slug>/` (run everything below from th
 
 Generate `src/metabase.data.ts` by invoking the
 [`metabase-data-app-semantic-layer`](../metabase-data-app-semantic-layer/SKILL.md)
-skill. It prompts the user for an API key, hits
-`/api/typed-schemas/v1/typescript` on the target Metabase, and writes the file.
+skill, which pulls the typed schema from the target Metabase and writes the file.
 
 The schema is the **single source of truth** for what data the app can render. Every saved question, table, metric, segment, measure, and field the app references must come from it (`schema.questions.<name>`, `schema.tables.<t>.fields.<f>`, `schema.metrics.<m>.dimensions.<d>`, etc.). Never copy numeric IDs into constants; never invent fields the schema doesn't have. Re-run the schema skill whenever the upstream semantic layer changes (new question, renamed metric, added column).
 
@@ -305,7 +340,7 @@ Data apps are delivered by Git, not uploaded — you commit the app directory an
 
 | Symptom | Fix |
 |---|---|
-| "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `curl -H "X-API-Key: $KEY" $URL/api/user/current`, add `http://localhost:5174` to SDK CORS origins. |
+| "Failed to fetch the user, the session might be invalid." | Bad API key or CORS — check `( ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; [ -n "$ROOT" ] && source "$ROOT/.env.local" 2>/dev/null; [ -n "$VITE_MB_URL" ] && [ -n "$VITE_MB_API_KEY" ] && curl -H "x-api-key: $VITE_MB_API_KEY" "$VITE_MB_URL/api/user/current" || echo "set VITE_MB_URL / VITE_MB_API_KEY in the repo-root .env.local" )` (uses the repo-root `.env.local`), add `http://localhost:5174` to SDK CORS origins. |
 | Invisible chart labels. | Set `text-primary` in the theme (see *Theme rules*). |
 | Chart overflows its container. | Pass `height` / `width` to the SDK component (see *SDK component sizing*). |
 | "Invalid hook call" at runtime. | `react` not externalized — the template ships with this configured; check you didn't edit `vite.config.ts`. |
