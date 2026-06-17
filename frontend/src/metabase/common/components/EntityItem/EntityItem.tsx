@@ -35,6 +35,7 @@ import {
   Menu,
   Tooltip,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
 import type { CollectionItem, IconName } from "metabase-types/api";
 
@@ -317,10 +318,14 @@ function EntityItemMenu({
             const disabledProps = action.disabled
               ? { "aria-disabled": true, "data-disabled": true }
               : {};
+            const dangerColor: ColorName | undefined = action.danger
+              ? "danger"
+              : undefined;
             const menuItemProps = {
               ...disabledProps,
               className: cx(S.menuItem, { [S.dangerItem]: action.danger }),
               leftSection: getLeftSection(action.icon),
+              c: dangerColor,
             };
 
             if (action.link) {
