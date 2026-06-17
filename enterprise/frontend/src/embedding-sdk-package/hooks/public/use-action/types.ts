@@ -237,7 +237,7 @@ export type ActionParametersFromDataAppSchema<TAction> = TAction extends {
  *   row/update  → "update"
  *   row/delete  → "delete"
  *   bulk/*      → "bulk"
- *   type=query  → "query"
+ *   type=query  → "sql"
  *
  * Falls back to the full `ActionKind` union if `TAction` is not a schema
  * entry (e.g. a bare numeric id).
@@ -255,5 +255,5 @@ export type ActionKindFromDataAppSchema<TAction> = TAction extends {
       : TAction extends { implicitKind: `bulk/${string}` }
         ? "bulk"
         : TAction extends { type: "query" }
-          ? "query"
+          ? "sql"
           : ActionKind;

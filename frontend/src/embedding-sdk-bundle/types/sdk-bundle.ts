@@ -96,9 +96,6 @@ type ReduxStoreUtilityFunctionExports = {
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;
-  executeAction: ReduxStoreUtilityFunction<
-    (params: ExecuteActionParams) => Promise<ExecuteActionResult>
-  >;
   queryQuestion: ReduxStoreUtilityFunction<
     (params: QueryQuestionParams) => Promise<QueryQuestionResult>
   >;
