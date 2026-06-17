@@ -41,10 +41,6 @@
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
-(def ^:private ^:const default-query-row-limit
-  "Default row cap when :limit is omitted from a table query request."
-  200)
-
 (def ^:private ^:const page-size
   "Rows returned per page when paginating the combined query endpoint via continuation tokens.
    Also used as the query processor's per-call row constraint."
@@ -340,11 +336,11 @@
     decoded))
 
 (defn- clamp-total-limit
-  "Default a missing :limit and cap it at the combined endpoint's hard maximum.
-   This is the app-level total-row budget enforced across paginated responses; each page's QP-level
-   cap comes from `:page.items`, which `remaining-page-rows` clamps to respect this total."
+  "Cap `limit` at the combined endpoint's hard maximum.
+   A nil `limit` (no explicit limit in the query) defaults to the full 2000-row budget so that
+   omitting :limit doesn't silently collapse pagination to a single page."
   [limit]
-  (min (or limit default-query-row-limit) max-total-row-limit))
+  (min (or limit max-total-row-limit) max-total-row-limit))
 
 (defn- total-row-limit
   "The user's requested :limit read from a resolved lib query, defaulted and capped."
@@ -534,8 +530,14 @@
    :tool  {:name "query"
            :title "Query Tables and Metrics"
            :description (str "Execute a Metabase query and return results with column "
-                             "metadata. If more rows are available, the response includes a "
-                             "continuation_token — pass it back to get the next page.\n\n"
+                             "metadata, paginating automatically up to 2,000 rows total.\n\n"
+                             "Results are returned in pages of 200 rows. When more pages remain "
+                             "within the 2,000-row budget, the response includes a "
+                             "continuation_token — pass it back to fetch the next page. A missing "
+                             "continuation_token means the budget is exhausted or the table has "
+                             "fewer rows than the page size; it does NOT mean the table has no "
+                             "more rows. If the table is larger than 2,000 rows and you need more, "
+                             "add a filter or aggregation to narrow the result set.\n\n"
                              "Provide one of: a `query_handle` returned by construct_query "
                              "(preferred when you have one); a `{\"query\": <object>}` body "
                              "(same shape as construct_query; see the `construct_notebook_query` "
