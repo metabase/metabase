@@ -194,6 +194,7 @@
   analytics
   {:team "UX West"
    :api  #{metabase.analytics.api
+           metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
            metabase.analytics.init
@@ -492,18 +493,21 @@
            driver
            events
            formatter
+           geojson
            lib
            lib-be
            models
            notification
            parameters
            permissions
+           pivot
            premium-features
            query-processor
            settings
            slackbot
            system
            task
+           tiles
            timeline
            types
            util}
@@ -992,7 +996,8 @@
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
-           metabase.geojson.init}
+           metabase.geojson.init
+           metabase.geojson.settings}
    :uses #{api
            config
            permissions
@@ -1482,8 +1487,7 @@
            models
            query-processor
            util
-           warehouse-schema
-           warehouses}
+           warehouse-schema}
    :model-imports #{:model/Card
                     :model/Dashboard
                     :model/Field
@@ -1542,7 +1546,8 @@
 
   pivot
   {:team "UX West"
-   :api  #{metabase.pivot.core}
+   :api  #{metabase.pivot.core
+           metabase.pivot.postprocess}
    :uses #{models
            util}}
 
@@ -2270,7 +2275,8 @@
   tiles
   {:team "UX West"
    :api  #{metabase.tiles.api
-           metabase.tiles.init}
+           metabase.tiles.init
+           metabase.tiles.settings}
    :uses #{api
            legacy-mbql
            lib

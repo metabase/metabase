@@ -2325,6 +2325,34 @@ Upload settings.
 
 Prefix for upload table names.
 
+### `MB_USAGE_METADATA_ENABLED`
+
+- Type: boolean
+- Default: `false`
+
+Whether usage-driven metadata batch processing is enabled.
+
+### `MB_USAGE_METADATA_LAST_COMPLETED_DAY`
+
+- Type: string
+- Default: `null`
+
+Internal watermark for the last completed usage metadata day.
+
+### `MB_USAGE_METADATA_RETENTION_DAYS`
+
+- Type: integer
+- Default: `90`
+
+How many days of usage metadata rollups to retain.
+
+### `MB_USAGE_METADATA_SCHEDULE`
+
+- Type: string
+- Default: `0 0 2 * * ? *`
+
+Cron schedule (in UTC) for usage metadata batch processing.
+
 ### `MB_USER_VISIBILITY`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.

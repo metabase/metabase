@@ -464,6 +464,26 @@
             (testing (format "%s %s function works as expected on %s column for driver %s" op unit col-type driver/*driver*)
               (is (= (set expected) (set (test-datetime-math query)))))))))))
 
+(deftest ^:parallel datetime-arithmetic-expression-temporal-bucket-in-breakout-test
+  (testing "Breaking out by a datetime-arithmetic expression with a `:temporal-unit` truncates the value (#27808)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
+      (mt/dataset times-mixed
+        (let [mp     (mt/metadata-provider)
+              times  (lib.metadata/table mp (mt/id :times))
+              dt     (lib.metadata/field mp (mt/id :times :dt))
+              base   (-> (lib/query mp times)
+                         (lib/expression "shifted" (lib/datetime-subtract dt 2 :year)))
+              query  (-> base
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> (lib/expression-ref base "shifted")
+                                           (lib/with-temporal-bucket :year))))]
+          (is (= #{["2002-01-01T00:00:00Z" 1]
+                   ["2006-01-01T00:00:00Z" 1]
+                   ["2010-01-01T00:00:00Z" 2]}
+                 (set (mt/formatted-rows
+                       [u.date/temporal-str->iso8601-str int]
+                       (qp/process-query query))))))))))
+
 (deftest temporal-arithmetic-with-literal-date-test
   (mt/with-temporary-setting-values [start-of-week   :sunday
                                      report-timezone "UTC"]

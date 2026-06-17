@@ -69,7 +69,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
     icon: "share",
-    tooltip: "Sharing",
+    tooltip: "Share",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
