@@ -9,15 +9,12 @@
 import "./polyfill/use-sync-external-store";
 
 /**
- * We need to manually import them here to make sure they are included in the bundle
- * as they're dynamically loaded in the main codebase.
- *
- * This will crash the main app if it's included in the new iframe embedding plugin,
- * as we chunk-split these two dependencies to make it only dynamically loadable.
+ * NOTE: heavy, export-only dependencies (`jspdf`, `html2canvas-pro`) are
+ * intentionally NOT eagerly imported here. They are loaded on demand via
+ * dynamic `import()` from the main codebase (PDF / image export), so they no
+ * longer weigh down the SDK's critical-path bundle. On-demand chunks resolve
+ * against the runtime `publicPath` set in `./sdk-public-path`.
  */
-import "html2canvas-pro";
-import "jspdf";
-
 /**
  * The map renderer (and leaflet) is lazily chunk-split in the main app, but the
  * SDK bundle can't fetch on-demand chunks at runtime. Importing it eagerly here
