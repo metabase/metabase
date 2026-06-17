@@ -20,8 +20,17 @@ const OverlayStackContext = createContext<OverlayStackContextValue | null>(
   null,
 );
 
+const useOverlayStackContext = () => {
+  const context = useContext(OverlayStackContext);
+  if (!context) {
+    throw new Error(
+      "useOverlayStackContext must be used within an OverlayStackProvider",
+    );
+  }
+  return context;
+};
+
 export const OverlayStackProvider = ({ children }: { children: ReactNode }) => {
-  const parent = useContext(OverlayStackContext);
   const [stack, setStack] = useState<string[]>([]);
 
   const push = useCallback((id: string) => {
@@ -34,10 +43,6 @@ export const OverlayStackProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo(() => ({ stack, push, remove }), [stack, push, remove]);
 
-  if (parent) {
-    return <>{children}</>;
-  }
-
   return (
     <OverlayStackContext.Provider value={value}>
       {children}
@@ -46,21 +51,18 @@ export const OverlayStackProvider = ({ children }: { children: ReactNode }) => {
 };
 
 const useIsTopmost = (opened: boolean) => {
-  const context = useContext(OverlayStackContext);
+  const { stack, push, remove } = useOverlayStackContext();
   const id = useId();
-  const push = context?.push;
-  const remove = context?.remove;
 
   useEffect(() => {
-    if (!opened || !push || !remove) {
+    if (!opened) {
       return;
     }
     push(id);
     return () => remove(id);
   }, [opened, id, push, remove]);
 
-  const stack = context?.stack ?? [];
-  return opened && (!context || stack.at(-1) === id);
+  return opened && stack.at(-1) === id;
 };
 
 const useIsTopmostAtPointerDown = (isTopmost: boolean, opened: boolean) => {
