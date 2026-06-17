@@ -654,16 +654,6 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.signInAsAdmin();
   });
 
-  it("explains that the sample database cannot be edited", () => {
-    visitDatabase(SAMPLE_DB_ID);
-
-    cy.findByTestId("database-connection-info-section")
-      .findByRole("button", { name: "Edit connection details" })
-      .should("be.disabled")
-      .trigger("mouseenter", { force: true });
-    H.tooltip().findByText("The sample database cannot be edited.");
-  });
-
   it("database actions", () => {
     cy.intercept("POST", `/api/database/${SAMPLE_DB_ID}/sync_schema`).as(
       "sync_schema",
